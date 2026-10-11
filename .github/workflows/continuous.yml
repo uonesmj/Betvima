@@ -39,6 +39,9 @@ jobs:
           python3 -m unittest discover -s ops/continuous -p 'test_*.py' -v
   preview:
     needs: checks
+    concurrency:
+      group: betvima-server-publication
+      cancel-in-progress: false
     if: github.event_name == 'push' || !inputs.approve_production
     runs-on: ubuntu-24.04
     timeout-minutes: 40
@@ -51,6 +54,9 @@ jobs:
         run: python3 ops/continuous/dispatch.py preview
   production:
     needs: checks
+    concurrency:
+      group: betvima-server-publication
+      cancel-in-progress: false
     if: github.event_name == 'workflow_dispatch' && inputs.approve_production && github.actor == 'uonesmj' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-24.04
     timeout-minutes: 100
