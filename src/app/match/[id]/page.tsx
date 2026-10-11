@@ -16,36 +16,6 @@ export async function generateMetadata() {
     description: 'Betting markets and odds',
   };
 }
-function TeamLogo({
-  url,
-  name,
-}: {
-  url: string | null | undefined;
-  name: string;
-}) {
-  if (!url) {
-    return (
-      <div
-        className="grid h-[68px] w-[68px] shrink-0 place-items-center rounded-full border border-[#E0E4E8] bg-[#F3F5F7] text-xl font-black text-[#69717A] sm:h-[82px] sm:w-[82px]"
-        aria-label={name}
-      >
-        {name.slice(0, 1).toUpperCase()}
-      </div>
-    );
-  }
-
-  return (
-    <div className="grid h-[68px] w-[68px] shrink-0 place-items-center rounded-full border border-[#E0E4E8] bg-white p-3 sm:h-[82px] sm:w-[82px]">
-      <img
-        src={url}
-        alt=""
-        className="h-full w-full object-contain"
-        loading="eager"
-      />
-    </div>
-  );
-}
-
 export default async function MatchPage({
   params,
 }: {

@@ -20,6 +20,7 @@ import {
 import type { MatchView } from '@/components/betting/match-card';
 import { formatOddsScaled } from '@/lib/i18n';
 import { useBetSlip, type SlipItem } from '@/lib/store/betslip';
+import { LeagueLogo, TeamLogo } from '@/components/ui/logo';
 
 type Sport = {
   key: string;
@@ -76,35 +77,6 @@ function SportIcon({ sport }: { sport: Sport }) {
   return (
     <span className="grid h-full w-full place-items-center text-[#087FF5]">
       <Trophy size={25} strokeWidth={1.5} aria-hidden="true" />
-    </span>
-  );
-}
-
-function TeamLogo({
-  url,
-  size = 38,
-}: {
-  url?: string | null;
-  size?: number;
-}) {
-  if (url) {
-    return (
-      <img
-        src={url}
-        alt=""
-        className="team-logo shrink-0 object-contain"
-        style={{ width: size, height: size }}
-        loading="lazy"
-      />
-    );
-  }
-
-  return (
-    <span
-      className="team-logo grid shrink-0 place-items-center rounded-full bg-[#F0F2F4] text-[#8A929B]"
-      style={{ width: size, height: size }}
-    >
-      <Trophy size={Math.max(16, size * 0.48)} strokeWidth={1.5} />
     </span>
   );
 }
@@ -180,7 +152,6 @@ function MatchCard({
       ? 'Full Time Result'
       : market?.name ?? '';
 
-  const headerLogoUrl: string | undefined = match.leagueLogoUrl ?? ({"american-football":"/sports-new/svg/american-football.svg","basketball":"/sports-new/svg/basketball.svg","cricket":"/sports-new/svg/cricket.svg","ice-hockey":"/sports-new/svg/ice-hockey.svg","hockey":"/sports-new/svg/ice-hockey.svg","baseball":"/sports-new/svg/baseball.svg","table-tennis":"/sports-new/svg/table-tennis.svg","tennis":"/sports-new/svg/tennis.svg","football":"/sports-new/svg/football.svg","soccer":"/sports-new/svg/football.svg"} as Record<string,string>)[match.sportKey] ?? undefined;
   const lockedMatch =
     !match.isBettingAvailable ||
     (match.isLive && !liveEnabled);
@@ -191,25 +162,12 @@ function MatchCard({
       <div className="border-b border-[#E5E7EB] px-3 py-2.5">
         <div className="flex items-center justify-between gap-3">
           <div className="flex min-w-0 items-center gap-2.5">
-            {headerLogoUrl ? (
-              <img
-                src={headerLogoUrl}
-                alt=""
-                className="h-9 w-9 shrink-0 object-contain"
-                loading="lazy"
-              />
-            ) : /cricket/i.test(match.sportKey) ? (
-              <img
-                src="/sports/leagues/cricket.svg"
-                alt=""
-                className="h-9 w-9 shrink-0 object-contain"
-                loading="lazy"
-              />
-            ) : (
-              <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-[#EEF5FF] text-[#087FF5]">
-                <Trophy size={19} />
-              </span>
-            )}
+            <LeagueLogo
+              url={match.leagueLogoUrl}
+              name={match.leagueName}
+              sportKey={match.sportKey}
+              size={36}
+            />
 
             <div className="min-w-0">
               <div className="truncate text-[12px] font-extrabold leading-4 text-[#20242A]">
@@ -281,7 +239,7 @@ function MatchCard({
         <div className="grid grid-cols-[minmax(0,1fr)_96px_minmax(0,1fr)] items-center gap-2">
           <div className="min-w-0 text-center">
             <div className="flex justify-center">
-              <TeamLogo url={home?.logoUrl} size={58} />
+              <TeamLogo url={home?.logoUrl} name={home?.name} size={58} variant="circle" />
             </div>
             <div className="mt-2 line-clamp-2 text-[12px] font-extrabold leading-4 text-[#20242A]">
               {home?.name ?? 'TBD'}
@@ -313,7 +271,7 @@ function MatchCard({
 
           <div className="min-w-0 text-center">
             <div className="flex justify-center">
-              <TeamLogo url={away?.logoUrl} size={58} />
+              <TeamLogo url={away?.logoUrl} name={away?.name} size={58} variant="circle" />
             </div>
             <div className="mt-2 line-clamp-2 text-[12px] font-extrabold leading-4 text-[#20242A]">
               {away?.name ?? 'TBD'}

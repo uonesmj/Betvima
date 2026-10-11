@@ -14,13 +14,13 @@ import {
   Radio,
   ShieldAlert,
   Target,
-  Trophy,
   Zap,
 } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { MatchView } from './match-card';
 import { formatRelative } from '@/lib/i18n';
 import { LivePitchVisualization } from "./live-pitch-visualization";
+import { LeagueLogo, TeamLogo } from '@/components/ui/logo';
 
 function formatExactDate(value: string) {
   const date = new Date(value);
@@ -34,45 +34,6 @@ function formatExactDate(value: string) {
     timeZone: 'UTC',
     timeZoneName: 'short',
   }).format(date);
-}
-
-function TeamLogo({
-  url,
-  name,
-  size = 'normal',
-}: {
-  url: string | null | undefined;
-  name: string;
-  size?: 'normal' | 'large';
-}) {
-  const cls =
-    size === 'large'
-      ? 'h-[72px] w-[72px] sm:h-[92px] sm:w-[92px]'
-      : 'h-[58px] w-[58px] sm:h-[68px] sm:w-[68px]';
-
-  if (!url) {
-    return (
-      <div
-        className={`grid ${cls} shrink-0 place-items-center rounded-full border border-white/15 bg-white/10 text-xl font-black text-white shadow-[0_8px_30px_rgba(0,0,0,.2)]`}
-        aria-label={name}
-      >
-        {name.slice(0, 1).toUpperCase()}
-      </div>
-    );
-  }
-
-  return (
-    <div
-      className={`grid ${cls} shrink-0 place-items-center rounded-full border border-white/20 bg-white p-2.5 shadow-[0_8px_30px_rgba(0,0,0,.22)]`}
-    >
-      <img
-        src={url}
-        alt=""
-        className="h-full w-full object-contain"
-        loading="eager"
-      />
-    </div>
-  );
 }
 
 function toNumber(value: unknown) {
@@ -432,18 +393,14 @@ export function MatchHero({
 
       <div className="flex min-h-[58px] items-center justify-between gap-3 border-b border-[#E5E8EC] bg-white px-4 py-3 sm:px-5">
         <div className="flex min-w-0 items-center gap-3">
-          {match.leagueLogoUrl ? (
-            <img
-              src={match.leagueLogoUrl}
-              alt=""
-              className="h-8 w-8 shrink-0 object-contain"
-              loading="eager"
-            />
-          ) : (
-            <span className="grid h-8 w-8 shrink-0 place-items-center rounded-xl bg-[#F0F2F4]">
-              <Trophy size={15} className="text-[#606871]" />
-            </span>
-          )}
+          <LeagueLogo
+            url={match.leagueLogoUrl}
+            name={match.leagueName}
+            sportKey={match.sportKey}
+            size="lg"
+            variant="rounded"
+            eager
+          />
 
           <div className="min-w-0">
             <div className="truncate text-sm font-extrabold text-[#20242A]">
@@ -519,7 +476,7 @@ export function MatchHero({
                   href={`/match/${match.id}`}
                   className="group flex min-w-0 flex-col items-center text-center"
                 >
-                  <TeamLogo url={home?.logoUrl} name={homeName} size="large" />
+                  <TeamLogo url={home?.logoUrl} name={homeName} size={80} variant="circle" theme="dark" eager />
                   <span className="mt-1.5 line-clamp-2 max-w-[150px] text-sm font-black leading-5 text-white sm:max-w-[220px] sm:text-base">
                     {homeName}
                   </span>
@@ -552,7 +509,7 @@ export function MatchHero({
                   href={`/match/${match.id}`}
                   className="group flex min-w-0 flex-col items-center text-center"
                 >
-                  <TeamLogo url={away?.logoUrl} name={awayName} size="large" />
+                  <TeamLogo url={away?.logoUrl} name={awayName} size={80} variant="circle" theme="dark" eager />
                   <span className="mt-1.5 line-clamp-2 max-w-[150px] text-sm font-black leading-5 text-white sm:max-w-[220px] sm:text-base">
                     {awayName}
                   </span>

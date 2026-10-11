@@ -5,7 +5,7 @@ import { Tv } from 'lucide-react';
 import { useApp } from '@/components/layout/providers';
 import { formatOddsScaled, formatRelative } from '@/lib/i18n';
 import { useBetSlip, type SlipItem } from '@/lib/store/betslip';
-import { getTeamLogo } from '@/lib/team-logo';
+import { TeamLogo } from '@/components/ui/logo';
 
 export interface SelectionView {
   id: string;
@@ -113,16 +113,7 @@ export function MatchCard({
           className="min-w-0 rounded-xl py-0.5"
         >
           <div className="flex min-w-0 items-center gap-2.5">
-            {home ? (
-              <img
-                src={getTeamLogo(home)}
-                alt=""
-                className={`${compact ? "h-6 w-6" : "h-7 w-7"} shrink-0 object-contain`}
-                loading="lazy"
-              />
-            ) : (
-              <span className="h-7 w-7 shrink-0 rounded-full bg-[#F1F3F5]" />
-            )}
+            <TeamLogo url={home?.logoUrl} name={home?.name} size={compact ? 24 : 28} />
 
             <span className={`min-w-0 truncate font-extrabold text-[#20242A] ${compact ? "text-[11px] leading-4" : "text-[12px] leading-5"}`}>
               {home?.name ?? 'TBD'}
@@ -138,16 +129,7 @@ export function MatchCard({
           <div className={`${compact ? "my-1 h-px" : "my-1.5 h-px"} bg-[#ECEEF1]`} />
 
           <div className="flex min-w-0 items-center gap-2.5">
-            {away ? (
-              <img
-                src={getTeamLogo(away)}
-                alt=""
-                className={`${compact ? "h-6 w-6" : "h-7 w-7"} shrink-0 object-contain`}
-                loading="lazy"
-              />
-            ) : (
-              <span className="h-7 w-7 shrink-0 rounded-full bg-[#F1F3F5]" />
-            )}
+            <TeamLogo url={away?.logoUrl} name={away?.name} size={compact ? 24 : 28} />
 
             <span className={`min-w-0 truncate font-extrabold text-[#20242A] ${compact ? "text-[11px] leading-4" : "text-[12px] leading-5"}`}>
               {away?.name ?? 'TBD'}

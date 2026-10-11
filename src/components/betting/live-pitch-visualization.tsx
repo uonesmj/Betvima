@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Activity, AlertTriangle, ArrowLeftRight, CircleDot, Flag, Goal, Hand, ScanLine, ShieldAlert, Target, Zap, Crosshair } from 'lucide-react';
 import { getLiveEventMarker } from '@/lib/live-event-position';
+import { TeamLogo } from '@/components/ui/logo';
 
 type PitchEvent = {
   id: string;
@@ -264,13 +265,7 @@ useEffect(() => {
             </div>
           )}
           <div className="absolute left-[5%] top-[8%] flex items-center gap-1.5 rounded-full border border-white/15 bg-black/25 px-2 py-1 backdrop-blur">
-            {homeLogo ? (
-              <img src={homeLogo} alt="" className="h-5 w-5 object-contain" />
-            ) : (
-              <span className="grid h-5 w-5 place-items-center rounded-full bg-white/15 text-[8px] font-black text-white">
-                {homeName.slice(0, 1)}
-              </span>
-            )}
+            <TeamLogo url={homeLogo} name={homeName} size={20} theme="dark" />
             <span className="hidden max-w-[110px] truncate text-[8px] font-black text-white/75 sm:block">
               {homeName}
             </span>
@@ -280,13 +275,7 @@ useEffect(() => {
             <span className="hidden max-w-[110px] truncate text-[8px] font-black text-white/75 sm:block">
               {awayName}
             </span>
-            {awayLogo ? (
-              <img src={awayLogo} alt="" className="h-5 w-5 object-contain" />
-            ) : (
-              <span className="grid h-5 w-5 place-items-center rounded-full bg-white/15 text-[8px] font-black text-white">
-                {awayName.slice(0, 1)}
-              </span>
-            )}
+            <TeamLogo url={awayLogo} name={awayName} size={20} theme="dark" />
           </div>
         </div>
 
