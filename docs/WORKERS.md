@@ -1,6 +1,6 @@
 # Workers
 
-Four independent processes, one shared runtime (`src/workers/runtime.ts`), one durable queue
+Five independent processes, one shared runtime (`src/workers/runtime.ts`), one durable queue
 (`nova.job_queue`) plus the settlement-specific queue (`nova.settlement_jobs`).
 
 | Worker | Queue | Cadence (env) | Job kinds | What it does |
@@ -9,6 +9,7 @@ Four independent processes, one shared runtime (`src/workers/runtime.ts`), one d
 | Settlement | `settlement` | `SETTLEMENT_SCAN_INTERVAL_SECONDS` (default 60 s) | `settlement.settle_bet`, `settlement.regrade` | Consumes `nova.settlement_jobs`, grades legs, settles atomically, requests regrades; `manual_review` for held bets |
 | Affiliate | `affiliate` | `AFFILIATE_SETTLEMENT_CRON` / daily tick | `affiliate.settle_period`, `affiliate.recalc` | Friday settlement windows, commission computation, payout creation, fraud signal refresh |
 | Notification | `notification` | `NOTIFICATION_INTERVAL_SECONDS` | `notification.send`, `notification.retry` | Delivers queued notifications through the configured channel; without a provider it records `NOT_CONFIGURED` and retries later instead of failing silently |
+| Logo | `logo` | `LOGO_WORKER_INTERVAL_MS` (default 10 min) | `logo.sweep` | Backfills REAL team/league badges (ESPN, then sport-verified TheSportsDB) into `nova.teams.logo` / `nova.leagues.logo`; HEAD-verifies every URL and caches misses in `nova.logo_cache` — never stores placeholders |
 
 ## Runtime guarantees
 
