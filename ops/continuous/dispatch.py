@@ -1,5 +1,5 @@
 """GitHub-hosted runner: short-lived signed identity, no deployment secrets."""
-import json, os, sys, urllib.request
+import json, os, sys, time, urllib.request
 
 def main(mode):
     if mode not in ('preview','production'):raise ValueError('invalid_mode')
@@ -9,7 +9,17 @@ def main(mode):
     print('::add-mask::'+token,flush=True)
     request=urllib.request.Request('https://preview.betvima.com/__ci',data=json.dumps({'mode':mode,'token':token}).encode(),
                                   headers={'Content-Type':'application/json'},method='POST')
-    with urllib.request.urlopen(request,timeout=5500) as response:report=json.load(response)
+    # Builds outlive ordinary network/proxy connections. Submit once, then poll
+    # the opaque request handle; never replay the single-use GitHub identity.
+    with urllib.request.urlopen(request,timeout=60) as response:report=json.load(response)
+    ticket=report.get('ticket')
+    if ticket:
+        print('::add-mask::'+ticket,flush=True)
+        deadline=time.monotonic()+5500
+        while report.get('status')=='running' and time.monotonic()<deadline:
+            time.sleep(35)
+            request=urllib.request.Request('https://preview.betvima.com/__ci',data=json.dumps({'ticket':ticket}).encode(),headers={'Content-Type':'application/json'},method='POST')
+            with urllib.request.urlopen(request,timeout=60) as response:report=json.load(response)
     if report.get('status')!='verified':raise RuntimeError('deployment_not_verified')
     print(json.dumps(report))
 

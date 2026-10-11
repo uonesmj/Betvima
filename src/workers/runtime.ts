@@ -51,6 +51,9 @@ export function createWorker(options: WorkerOptions): WorkerHandle {
   const log = createLogger({ component: 'worker', queue: options.queue });
   const workerId = env.WORKER_ID || `${options.queue}-${process.pid}-${Math.random().toString(36).slice(2, 8)}`;
   const services = createServices();
+  // A tick-only worker (such as live odds) must not lease jobs it cannot handle.
+  // An empty kinds array means "all kinds" to the database queue adapter.
+  const acceptedKinds = options.handlers.flatMap((handler) => handler.kinds);
   const startedAt = new Date().toISOString();
   const stats = { processed: 0, failed: 0, lastError: null as string | null };
 
@@ -188,9 +191,9 @@ export function createWorker(options: WorkerOptions): WorkerHandle {
           await options.tick(ctx).catch((error) => log.error('tick failed', { error: (error as Error).message }));
           await heartbeat('idle');
         }
-        const jobs = await services.jobs.claim({
+        const jobs = acceptedKinds.length === 0 ? [] : await services.jobs.claim({
           queue: options.queue, workerId, limit: options.batchSize ?? 5,
-          kinds: options.handlers.flatMap((h) => h.kinds),
+          kinds: acceptedKinds,
         });
         if (jobs.length === 0) {
           await sleep(options.pollIntervalMs ?? 2_000);
@@ -231,10 +234,10 @@ export function createWorker(options: WorkerOptions): WorkerHandle {
         log.error('tick failed', { error: stats.lastError });
       }
     }
-    for (let round = 0; round < 20; round += 1) {
+    for (let round = 0; acceptedKinds.length > 0 && round < 20; round += 1) {
       const jobs = await services.jobs.claim({
         queue: options.queue, workerId, limit: options.batchSize ?? 5,
-        kinds: options.handlers.flatMap((h) => h.kinds),
+        kinds: acceptedKinds,
       });
       if (jobs.length === 0) break;
       for (const job of jobs) await runJob(job);

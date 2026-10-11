@@ -2,6 +2,7 @@ import type { Db } from '@/lib/ports/db';
 import type { JobRepository } from '@/lib/ports/repositories';
 import type { Job, UUID } from '@/lib/types';
 import { pgArray, toIso } from '@/server/db/rows';
+import { hostname } from 'node:os';
 
 /**
  * Durable queue backed by `nova.job_queue`.
@@ -76,9 +77,10 @@ export class PostgresJobRepository implements JobRepository {
     await this.db.query(
       `insert into nova.worker_heartbeats (worker_id, worker, hostname, version, last_seen_at, metadata)
        values ($1, $2, $3, $4, now(), $5::jsonb)
-       on conflict (worker_id) do update set last_seen_at = now(), metadata = excluded.metadata, worker = excluded.worker`,
-      [input.workerId, input.queue, process.env.HOSTNAME ?? 'unknown', process.env.npm_package_version ?? '1.0.0',
-        JSON.stringify({ status: input.status, processed: input.processedCount, failed: input.failedCount, current_job: input.currentJobId ?? null, ...(input.metrics ?? {}) })],
+       on conflict (worker_id) do update set last_seen_at = now(), metadata = excluded.metadata,
+         worker = excluded.worker, hostname = excluded.hostname, version = excluded.version`,
+      [input.workerId, input.queue, hostname(), process.env.npm_package_version ?? '1.0.0',
+        JSON.stringify({ ...(input.metrics ?? {}), status: input.status, processed: input.processedCount, failed: input.failedCount, current_job: input.currentJobId ?? null, pid: process.pid })],
     );
   }
 
