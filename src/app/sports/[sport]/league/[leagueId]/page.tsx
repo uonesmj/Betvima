@@ -6,6 +6,7 @@ import { createServices } from '@/server/services/container';
 import { serviceRoleContext } from '@/server/context';
 import { serializeMatch } from '@/server/queries/public';
 import { readLiveBettingEnabled } from '@/server/live-betting';
+import { readLeaguePageLeagues } from '@/server/queries/league-page';
 
 export const dynamic = 'force-dynamic';
 
@@ -21,11 +22,8 @@ export default async function LeaguePage({
   const currentSport = sports.find((item) => item.key === sport);
   if (!currentSport) notFound();
 
-  const [leagues, matches, liveBettingEnabled] = await Promise.all([
-    services.catalog.listLeagues(serviceRoleContext, {
-      sportKey: sport,
-      limit: 200,
-    }),
+  const [leagueCatalogue, matches, liveBettingEnabled] = await Promise.all([
+    readLeaguePageLeagues(services.catalog, serviceRoleContext, sport, leagueId),
     services.catalog.listMatches(serviceRoleContext, {
       sportKey: sport,
       leagueId,
@@ -37,7 +35,7 @@ export default async function LeaguePage({
     readLiveBettingEnabled(services.admin),
   ]);
 
-  const league = leagues.find((item) => item.id === leagueId);
+  const { league, leagues } = leagueCatalogue;
   if (!league) notFound();
 
   const serializedMatches = matches.items.map(serializeMatch);
