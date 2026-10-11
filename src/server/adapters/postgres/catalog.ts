@@ -339,6 +339,7 @@ export class PostgresCatalogRepository implements CatalogRepository {
          from nova.match_events e
          left join nova.teams t on t.id = e.team_id
         where e.match_id = $1
+          and e.provider_event_id like '5dollar:%'
         order by e.minute asc nulls last, e.occurred_at asc, e.created_at asc`,
       [matchId],
     );

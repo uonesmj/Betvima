@@ -75,7 +75,7 @@ function groupByLeague(matches: MatchView[]) {
 
 export function MatchListClient({
   matches,
-  liveEnabled = true,
+  liveEnabled = false,
   livePage = false,
 }: {
   matches: MatchView[];

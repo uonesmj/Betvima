@@ -4,7 +4,10 @@ import { formatRelative } from '@/lib/i18n';
 import { TopBetOdds } from './top-bet-odds';
 import type { MatchView } from './match-card';
 
-export function TopBetCard({ match }: { match: MatchView }) {
+export function TopBetCard({ match, liveEnabled = false }: { match: MatchView; liveEnabled?: boolean }) {
+  const matchForDisplay = match.isLive && !liveEnabled
+    ? { ...match, isBettingAvailable: false }
+    : match;
   const market = match.topMarkets?.find((m) => m.status === 'open' && m.selections.some((s) => s.status !== 'suspended'));
   const home = match.participants.find((p) => p.role === 'HOME');
   const away = match.participants.find((p) => p.role === 'AWAY');
@@ -37,7 +40,7 @@ export function TopBetCard({ match }: { match: MatchView }) {
         </div>
       </Link>
       <div className='border-t border-[#ECEEF1] px-3 pb-3 pt-2.5'>
-        {market && selections.length ? <TopBetOdds match={match} market={market} selections={selections} /> : <div className='rounded-xl bg-[#F5F6F8] px-3 py-3 text-center text-[10px] font-semibold text-[#969CA5]'>Odds unavailable</div>}
+        {market && selections.length ? <TopBetOdds match={matchForDisplay} market={market} selections={selections} /> : <div className='rounded-xl bg-[#F5F6F8] px-3 py-3 text-center text-[10px] font-semibold text-[#969CA5]'>Odds unavailable</div>}
       </div>
     </article>
   );

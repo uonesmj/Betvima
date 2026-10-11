@@ -1,7 +1,8 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Activity, AlertTriangle, ArrowLeftRight, CircleDot, Flag, Goal, Hand, ScanLine, ShieldAlert, Target, Zap, Crosshair } from 'lucide-react';
+import { getLiveEventMarker } from '@/lib/live-event-position';
 
 type PitchEvent = {
   id: string;
@@ -71,10 +72,6 @@ function EventIcon({ kind }: { kind: string }) {
 }
 
 
-const FORMATION: Array<[number, number]> = [
-  [8,50],[21,20],[21,40],[21,60],[21,80],
-  [38,30],[38,50],[38,70],[56,25],[56,50],[56,75],
-];
 export function LivePitchVisualization({
   homeName,
   awayName,
@@ -110,43 +107,7 @@ export function LivePitchVisualization({
         : (homePressure / pressureTotal) * 100
   )));
   const awayPct = 100 - homePct;
-  const homeThreatShare = attackHome / attackTotal;
-  const homePush = homeThreatShare * 7;
-  const awayPush = (1 - homeThreatShare) * 7;
-
-  // Advance the ball between player positions while the match is live.
-  const [ballStep, setBallStep] = useState(0);
-  useEffect(() => {
-    if (!isLive) return;
-    const timer = window.setInterval(() => setBallStep((n) => n + 1), 1700);
-    return () => window.clearInterval(timer);
-  }, [isLive]);
-  // Simulated passing: target the exact rendered position of a player.
-  // Possession share influences which side receives the next pass.
-  const homePassSlots = Math.max(1, Math.min(9, Math.round(homePct / 10)));
-  const possessionSlot = ballStep % 10;
-  const homePossesses = possessionSlot < homePassSlots;
-  const passIndex = Math.floor(ballStep / 1) % FORMATION.length;
-  // Deterministic visual movement: preserve each team's formation while
-  // players adjust their positions smoothly as the simulated play advances.
-  const getPlayerPosition = (index: number, team: 'home' | 'away', step: number): [number, number] => {
-    const [baseX, baseY] = FORMATION[index] ?? [50, 50];
-    const phase = step * 0.42;
-    const driftX = Math.sin(phase + index * 0.91 + (team === 'away' ? 1.4 : 0)) * 2.6;
-    const driftY = Math.cos(step * 0.36 + index * 1.17 + (team === 'away' ? 0.8 : 0)) * 4.2;
-    if (team === 'home') {
-      return [
-        Math.max(5, Math.min(65, baseX + homePush + driftX)),
-        Math.max(10, Math.min(90, baseY + driftY)),
-      ];
-    }
-    return [
-      Math.max(35, Math.min(95, 100 - baseX - awayPush + driftX)),
-      Math.max(10, Math.min(90, 100 - baseY + driftY)),
-    ];
-  };
-  const [ballX, ballY] = getPlayerPosition(passIndex, homePossesses ? 'home' : 'away', ballStep);
-  const [eventBall, setEventBall] = useState<{ id: string; x: number; y: number } | null>(null);
+  const [eventMarker, setEventMarker] = useState<{ id: string; x: number; y: 50; side: 'home' | 'away' } | null>(null);
 
   // Ignore the initially loaded event history; enqueue new IDs only once.
   const seenEventIds = useRef<Set<string>>(new Set());
@@ -184,45 +145,20 @@ export function LivePitchVisualization({
     if (newestEvent && isLive) {
       setPopupQueue([newestEvent]);
       // Estimated event location: provider coordinates are not available here.
-      const isHomeTeam = newestEvent.teamId && homeTeamId && newestEvent.teamId === homeTeamId
-        ? true
-        : newestEvent.teamId && awayTeamId && newestEvent.teamId === awayTeamId
-          ? false
-          : homePossesses;
-      const kind = eventKind(newestEvent.type);
-      const edgeY = newestEvent.id.length % 2 === 0 ? 7 : 93;
-      let eventX = isHomeTeam ? 66 : 34;
-      let eventY = 50;
-
-      if (kind === 'corner') {
-        eventX = isHomeTeam ? 95 : 5;
-        eventY = edgeY;
-      } else if (kind === 'offside') {
-        eventX = isHomeTeam ? 76 : 24;
-        eventY = newestEvent.id.length % 2 === 0 ? 38 : 62;
-      } else if (kind === 'foul' || kind === 'yellow' || kind === 'red') {
-        eventX = isHomeTeam ? 58 : 42;
-        eventY = 18 + (newestEvent.id.length * 13) % 64;
-      } else if (kind === 'goal' || kind === 'penalty') {
-        eventX = isHomeTeam ? 96 : 4;
-        eventY = 50;
-      } else if (kind === 'shot' || kind === 'miss' || kind === 'save') {
-        eventX = isHomeTeam ? 86 : 14;
-        eventY = 25 + (newestEvent.id.length * 17) % 50;
-      }
-      setEventBall({ id: newestEvent.id, x: eventX, y: eventY });
+      const marker = getLiveEventMarker(newestEvent.teamId, homeTeamId, awayTeamId);
+      setEventMarker(marker ? { id: newestEvent.id, ...marker } : null);
 
     }
-  }, [events, isLive]);
+  }, [events, isLive, homeTeamId, awayTeamId]);
 
-  
+  const eventMarkerId = eventMarker?.id;
   useEffect(() => {
-    if (!eventBall) return;
+    if (!eventMarkerId) return;
     const timer = window.setTimeout(() => {
-      setEventBall((current) => current?.id === eventBall.id ? null : current);
+      setEventMarker((current) => current?.id === eventMarkerId ? null : current);
     }, 3500);
     return () => window.clearTimeout(timer);
-  }, [eventBall?.id]);
+  }, [eventMarkerId]);
 
 useEffect(() => {
     if (!activePopupId) return;
@@ -236,11 +172,6 @@ useEffect(() => {
       window.clearTimeout(removeTimer);
     };
   }, [activePopupId]);
-
-  const intensity = useMemo(
-    () => Math.min(1, Math.max(homePressure, awayPressure) / 180),
-    [homePressure, awayPressure],
-  );
 
   return (
     <div className="relative mt-3 overflow-hidden rounded-[28px] border border-white/10 bg-[#0A1014] shadow-[0_25px_80px_rgba(0,0,0,.38)]">
@@ -291,30 +222,17 @@ useEffect(() => {
 
 
 
-          {FORMATION.map((_, i) => {
-            const [x, y] = getPlayerPosition(i, 'home', ballStep);
-            return (
-              <span key={`home-player-${i}`} aria-label={`${homeName}, player ${i + 1}`}
-                className="absolute z-[5] grid h-4 w-4 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full border border-white bg-sky-300 text-[7px] font-black text-slate-900 shadow-md transition-[left,top] duration-[1500ms] ease-in-out"
-                style={{ left: `${x}%`, top: `${y}%` }}>{i + 1}</span>
-            );
-          })}
-          {FORMATION.map((_, i) => {
-            const [x, y] = getPlayerPosition(i, 'away', ballStep);
-            return (
-              <span key={`away-player-${i}`} aria-label={`${awayName}, player ${i + 1}`}
-                className="absolute z-[5] grid h-4 w-4 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full border border-white bg-rose-400 text-[7px] font-black text-white shadow-md transition-[left,top] duration-[1500ms] ease-in-out"
-                style={{ left: `${x}%`, top: `${y}%` }}>{i + 1}</span>
-            );
-          })}
-          <div
-            className="absolute z-20 transition-[left,top] duration-[1500ms] ease-in-out"
-            style={{ left: `${eventBall ? eventBall.x : ballX}%`, top: `${eventBall ? eventBall.y : ballY}%` }}
-          >
-            <div className="relative grid h-7 w-7 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full border-2 border-white bg-[#F7F8F9] text-[#101820] shadow-[0_3px_12px_rgba(0,0,0,.35)]">
+          {eventMarker && (
+            <div
+              key={eventMarker.id}
+              role="img"
+              aria-label={`Live event reported for ${eventMarker.side === 'home' ? homeName : awayName}`}
+              className="event-burst absolute z-20 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white bg-[#F7F8F9] p-1.5 text-[#101820] shadow-[0_3px_12px_rgba(0,0,0,.35)]"
+              style={{ left: `${eventMarker.x}%`, top: `${eventMarker.y}%` }}
+            >
               <CircleDot size={13} strokeWidth={2.5} />
             </div>
-          </div>
+          )}
 
           {activePopup && (
             <div role="status" aria-live="polite"

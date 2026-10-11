@@ -6,7 +6,7 @@ const dictPath = path.join(root, 'src/lib/i18n/dictionaries.ts');
 const extraPath = path.join(root, 'src/lib/i18n/extra-overrides.ts');
 
 const dictSource = fs.readFileSync(dictPath, 'utf8');
-const extraSource = fs.readFileSync(extraPath, 'utf8');
+const extraSource = fs.existsSync(extraPath) ? fs.readFileSync(extraPath, 'utf8') : '';
 
 const localeMatch = dictSource.match(/export const LOCALES = \[([\s\S]*?)\] as const/);
 if (!localeMatch) throw new Error('LOCALES_NOT_FOUND');
@@ -24,6 +24,7 @@ function extractLocaleBlock(source, locale) {
   const patterns = [
     `'${locale}': {`,
     `"${locale}": {`,
+    `const ${locale}: Dict = {`,
     `${locale}: {`
   ];
 
@@ -159,3 +160,5 @@ console.log(`LOCALES=${locales.length}`);
 console.log(`COMPLETE=${complete}`);
 console.log(`INCOMPLETE=${incomplete}`);
 console.log(`TRANSLATION_PROGRESS=${Math.round((complete / (locales.length - 1)) * 100)}%`);
+
+if (incomplete > 0) process.exitCode = 1;

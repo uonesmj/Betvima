@@ -119,23 +119,14 @@ export function providers(): ProviderRegistryLike {
   const env = serverEnv();
   const oddsProvider = new TheOddsApiSportsProvider();
   const fiveDollarProvider = new FiveDollarFootballApiSportsProvider();
-  const primarySportsProvider: SportsDataProvider =
-    env.SPORTS_PROVIDER === "5dollarfootballapi"
-      ? fiveDollarProvider
-      : env.SPORTS_PROVIDER === "the_odds_api"
-        ? oddsProvider
-        : new DisabledSportsProvider();
-  const orderedSportsProviders =
-    env.SPORTS_PROVIDER === "the_odds_api"
-      ? [oddsProvider, fiveDollarProvider]
-      : env.SPORTS_PROVIDER === "5dollarfootballapi"
-        ? [fiveDollarProvider, oddsProvider]
-        : [];
-  const sportsProviders = orderedSportsProviders.filter(
+  // Odds API is the catalog/odds authority whenever configured. FiveDollar is
+  // deliberately second so it can fill catalog gaps without replacing Odds data.
+  const sportsProviders = [oddsProvider, fiveDollarProvider].filter(
     (provider, index, all) =>
       provider.configured &&
       all.findIndex((item) => item.name === provider.name) === index
   );
+  const primarySportsProvider = sportsProviders[0] ?? new DisabledSportsProvider();
 
   registry = {
     sports: primarySportsProvider,

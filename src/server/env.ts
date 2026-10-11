@@ -153,7 +153,8 @@ export function serverEnv(): ServerEnv {
     supabaseConfigured,
     configurationProblems: problems,
     configurationComplete: problems.length === 0,
-    sportsProviderEnabled: env.SPORTS_PROVIDER !== 'disabled' && Boolean(env.SPORTS_PROVIDER_API_KEY),
+    sportsProviderEnabled: Boolean(env.ODDS_API_KEY || env.FIVEDOLLAR_API_KEY) ||
+      (env.SPORTS_PROVIDER !== 'disabled' && Boolean(env.SPORTS_PROVIDER_API_KEY)),
     paymentProviderEnabled: env.PAYMENT_PROVIDER !== 'disabled' && Boolean(env.PAYMENT_PROVIDER_API_KEY),
     paymentProvider: env.PAYMENT_PROVIDER,
     paymentProviderBaseUrl: env.PAYMENT_PROVIDER_BASE_URL,

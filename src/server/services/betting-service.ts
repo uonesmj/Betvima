@@ -60,6 +60,9 @@ export class BettingService {
   async quote(input: QuoteInput): Promise<PlacementQuote> {
     const legs = await this.loadLegs(input);
     this.assertLegSet(input.slip, legs);
+    if (legs.some((leg) => leg.isLive) && !(await this.featureEnabled('LIVE_BETTING'))) {
+      throw new ApiError('LIVE_BETTING_DISABLED');
+    }
     const maxPayout = await this.maxPayoutMinor(input.currency);
     const odds = legs.map((l) => l.oddsScaled);
     const combined = accumulatorOddsScaled(odds);
@@ -101,6 +104,11 @@ export class BettingService {
     quoteToken?: string | null;
     acceptedOdds?: Record<string, string>;
   }): Promise<PlaceBetResult> {
+    const placementLegs = await this.loadLegs(input);
+    if (placementLegs.some((leg) => leg.isLive) && !(await this.featureEnabled('LIVE_BETTING'))) {
+      throw new ApiError('LIVE_BETTING_DISABLED');
+    }
+
     let authoritativeLegs: {
       selectionId: string;
       marketId: string;

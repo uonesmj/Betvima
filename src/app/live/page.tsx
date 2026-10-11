@@ -5,6 +5,7 @@ import { LiveEmptyState } from '@/components/betting/live-empty-state';
 import { createServices } from '@/server/services/container';
 import { serviceRoleContext } from '@/server/context';
 import { serializeMatch } from '@/server/queries/public';
+import { readLiveBettingEnabled, readLiveCatalogue } from '@/server/live-betting';
 
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Live' };
@@ -21,14 +22,13 @@ export default async function LivePage({
   const { league: selectedLeague, sport: selectedSport } = await searchParams;
   const services = createServices();
 
-  const [matches, operations, providerConfigured] = await Promise.all([
-    services.catalog.listLiveMatches(serviceRoleContext, 100),
-    services.admin.operations(),
+  const [liveCatalogue, operationEnabled, providerConfigured] = await Promise.all([
+    readLiveCatalogue(() => services.catalog.listLiveMatches(serviceRoleContext, 100), []),
+    readLiveBettingEnabled(services.admin),
     Promise.resolve(services.providers.sports.configured),
   ]);
-
-  const liveEnabled =
-    operations.find((o) => o.key === 'LIVE_BETTING')?.isEnabled ?? true;
+  const matches = liveCatalogue.value;
+  const liveEnabled = operationEnabled && !liveCatalogue.unavailable;
 
   const visibleMatches = selectedLeague
     ? matches.filter((m) => m.leagueId === selectedLeague)
@@ -45,6 +45,12 @@ export default async function LivePage({
             titleKey="page.noLiveProvider"
             childrenKey="page.noLiveProviderDetail"
           />
+        ) : null}
+        {!liveEnabled ? (
+          <ServiceNotice tone="warning" titleKey="page.liveBettingUnavailable" childrenKey="page.liveBettingUnavailableDetail" />
+        ) : null}
+        {liveCatalogue.unavailable ? (
+          <ServiceNotice tone="warning" titleKey="page.liveCatalogueUnavailable" childrenKey="page.liveCatalogueUnavailableDetail" />
         ) : null}
 
         {matches.length === 0 ? (

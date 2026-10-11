@@ -7,6 +7,7 @@ import { serverEnv } from '@/server/env';
 import { clientIpFromHeaders } from '@/server/utils/hash';
 import { verifyTurnstileToken } from '@/server/security/turnstile';
 import { createServices } from '@/server/services/container';
+import { publicRegistrationOutcome, registrationLogSummary } from '@/server/auth/registration-output';
 
 export const dynamic = 'force-dynamic';
 
@@ -77,7 +78,6 @@ export const POST = withErrorHandling(
     );
 
     let attributionFromCookie: boolean | null = null;
-    let attributionReason: string | null = null;
     const referralCode = (() => {
       const fromBody = input.referralCode?.trim().toUpperCase();
       if (fromBody) return fromBody;
@@ -130,9 +130,6 @@ export const POST = withErrorHandling(
         const giftFound = Boolean(giftAttribution?.gift_code_found);
         if (giftFound) {
           attributionFromCookie = Boolean(giftAttribution?.attributed);
-          if (!attributionFromCookie) {
-            attributionReason = String(giftAttribution?.reason ?? 'GIFT_CODE_ATTRIBUTION_FAILED');
-          }
         } else {
           const attribution = await services.affiliate.attachAttribution({
             userId: data.user.id,
@@ -142,40 +139,27 @@ export const POST = withErrorHandling(
           });
           attributionFromCookie = Boolean(attribution.created);
         }
-      } catch (error) {
+    } catch {
         attributionFromCookie = false;
-        attributionReason = error instanceof Error ? error.message : String(error);
-        console.warn(
-          '[auth.register.attribution]',
-          JSON.stringify({
-            userId: data.user.id,
-            referralCode,
-            error: attributionReason,
-          }),
-        );
+        console.warn('[auth.register.attribution_failed]');
       }
     }
     console.log(
       '[auth.register.result]',
-      JSON.stringify({
-        userId: data.user?.id ?? null,
+      JSON.stringify(registrationLogSummary({
         hasUser: Boolean(data.user),
         hasSession: Boolean(data.session),
         authenticated,
         emailConfirmationRequired,
-      }),
+        attributionAttempted: Boolean(referralCode),
+        attributionFromCookie,
+      })),
     );
 
     const response = NextResponse.json(
       {
         ok: true,
-        data: {
-          userId: data.user?.id ?? null,
-          authenticated,
-          emailConfirmationRequired,
-          attributionFromCookie,
-          attributionReason,
-        },
+        data: publicRegistrationOutcome({ authenticated, emailConfirmationRequired, attributionFromCookie }),
       },
       {
         status: 201,

@@ -398,7 +398,7 @@ export class PostgresAdminRepository implements AdminRepository {
   async operations() {
     const rows = await this.db.query<Row>(`select key, enabled, reason, updated_at from nova.system_operations order by key`);
     return rows.map((r) => ({
-      key: toStr(r.key), isEnabled: toBool(r.enabled, true), reason: toStrOrNull(r.reason), updatedAt: toIso(r.updated_at),
+      key: toStr(r.key), isEnabled: toBool(r.enabled, toStr(r.key) !== 'LIVE_BETTING'), reason: toStrOrNull(r.reason), updatedAt: toIso(r.updated_at),
     }));
   }
 

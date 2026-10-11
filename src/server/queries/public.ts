@@ -6,6 +6,7 @@
 import { createServices } from '@/server/services/container';
 import { serviceRoleContext } from '@/server/context';
 import { logger } from '@/server/logger';
+import { isLiveBettingEnabled, readLiveBettingEnabled } from '@/server/live-betting';
 import type { Match, Market } from '@/lib/types';
 
 /**
@@ -277,10 +278,10 @@ export async function getMatchPageData(id: string) {
   if (!match) return null;
   // No catch here on purpose: markets are the content of the page, so a failing read surfaces as an
   // error page with a retry instead of an empty "no markets" screen during an incident.
-  const [markets, result, operations, liveEvents, liveStats, matchHistory] = await Promise.all([
+  const [markets, result, liveBettingEnabled, liveEvents, liveStats, matchHistory] = await Promise.all([
     services.catalog.listMarkets(serviceRoleContext, match.id, { includeSuspended: true }),
     services.catalog.getResult(match.id),
-    services.admin.operations(),
+    readLiveBettingEnabled(services.admin),
     match.isLive
       ? services.catalog.listMatchEvents(match.id)
       : Promise.resolve([]),
@@ -289,9 +290,6 @@ export async function getMatchPageData(id: string) {
       : Promise.resolve(null),
     loadMatchHistory(services, match),
   ]);
-  const liveBettingEnabled =
-    operations.find((operation) => operation.key === 'LIVE_BETTING')?.isEnabled ?? true;
-
   const liveSnapshot =
     match.isLive && liveStats?.payload && typeof liveStats.payload === 'object'
       ? liveStats.payload as {
@@ -330,6 +328,7 @@ export async function getServiceAvailability() {
     paymentsConfigured: services.providers.payments.configured,
     statuses: statuses.value,
     operations: operations.value,
+    liveBettingEnabled: isLiveBettingEnabled(operations.value),
     degraded: failedSections(['provider_statuses', statuses], ['operations', operations]),
   };
 }

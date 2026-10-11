@@ -10,9 +10,11 @@
  *   node scripts/verify-api-contract.mjs
  */
 import { readFileSync, readdirSync, statSync } from 'node:fs';
-import { join, relative } from 'node:path';
+import { dirname, join, relative, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-const root = new URL('..', import.meta.url).pathname.replace(/\/$/, '');
+const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
+const posixPath = (path) => path.replaceAll('\\', '/');
 
 function walk(dir, filter, out = []) {
   for (const entry of readdirSync(dir)) {
@@ -26,7 +28,7 @@ function walk(dir, filter, out = []) {
 /** route path pattern -> allowed methods */
 const routes = new Map();
 for (const file of walk(join(root, 'src/app/api'), (f) => f.endsWith('route.ts'))) {
-  const url = '/' + relative(join(root, 'src/app'), file).replace(/\/route\.ts$/, '');
+  const url = '/' + posixPath(relative(join(root, 'src/app'), file)).replace(/\/route\.ts$/, '');
   const source = readFileSync(file, 'utf8');
   const methods = new Set([
     ...[...source.matchAll(/export const (GET|POST|PATCH|PUT|DELETE)/g)].map((m) => m[1]),
@@ -69,11 +71,18 @@ function resolveCall(url) {
  * and the happy-path tests. Protected handlers must call withUser/withAdmin first.
  * Public handlers (auth/session, webhooks, ref tracking) are exempt by path.
  */
-const publicPaths = [/\/api\/v1\/auth\//, /\/api\/webhooks\//, /\/api\/v1\/ref\//, /\/api\/health/];
+const publicPaths = [
+  /\/api\/v1\/auth\//,
+  /\/api\/v1\/affiliate\/(?:login|register)(?:\/|$)/,
+  /\/api\/v1\/betslip\/share(?:\/|$)/,
+  /\/api\/webhooks\//,
+  /\/api\/v1\/ref\//,
+  /\/api\/health/,
+];
 const mutating = /export const (POST|PATCH|PUT)\s*=/;
 const orderingProblems = [];
 for (const file of walk(join(root, 'src/app/api'), (f) => f.endsWith('route.ts'))) {
-  const url = '/' + relative(join(root, 'src/app'), file).replace(/\/route\.ts$/, '');
+  const url = '/' + posixPath(relative(join(root, 'src/app'), file)).replace(/\/route\.ts$/, '');
   if (publicPaths.some((re) => re.test(url))) continue;
   const source = readFileSync(file, 'utf8');
   if (!mutating.test(source)) continue;
@@ -86,10 +95,10 @@ for (const file of walk(join(root, 'src/app/api'), (f) => f.endsWith('route.ts')
       ...[body.indexOf('readJson('), body.indexOf('parseJson(')].filter((i) => i !== -1).concat([Number.MAX_SAFE_INTEGER]),
     );
     const guardAt = Math.min(
-      ...[body.indexOf('withUser('), body.indexOf('withAdmin(')].filter((i) => i !== -1).concat([Number.MAX_SAFE_INTEGER]),
+      ...['withUser(', 'withAdmin(', 'withAffiliate('].map((guard) => body.indexOf(guard)).filter((i) => i !== -1).concat([Number.MAX_SAFE_INTEGER]),
     );
     if (validateAt !== Number.MAX_SAFE_INTEGER && validateAt < guardAt) {
-      orderingProblems.push(`${relative(root, file)}: ${name} validates the body before resolving the session`);
+      orderingProblems.push(`${posixPath(relative(root, file))}: ${name} validates the body before resolving the session`);
     }
   }
 }
@@ -97,14 +106,14 @@ for (const file of walk(join(root, 'src/app/api'), (f) => f.endsWith('route.ts')
 const problems = [];
 const checked = [];
 for (const file of walk(join(root, 'src'), (f) => f.endsWith('.tsx') || f.endsWith('.ts'))) {
-  if (file.includes('/api/')) continue;
+  if (posixPath(file).includes('/api/')) continue;
   const text = readFileSync(file, 'utf8');
-  const rel = relative(root, file);
+  const rel = posixPath(relative(root, file));
 
   const calls = [
     // apiRequest(path, { method: 'X', ... }) / apiRequest(path)
     ...[...text.matchAll(/apiRequest(?:<[^>]*>)?\(\s*[`'"]([^`'"\s]+)[`'"]\s*(?:,\s*\{([\s\S]{0,160}?)\})?\s*\)/g)]
-      .map((m) => ({ url: m[1], method: (m[2]?.match(/method:\s*'([A-Z]+)'/)?.[1]) ?? 'GET' })),
+      .map((m) => ({ url: m[1], method: (m[2]?.match(/method:\s*['"]([A-Z]+)['"]/)?.[1]) ?? 'GET' })),
     // adminPost(path, ...) -> POST
     ...[...text.matchAll(/adminPost\(\s*[`'"]([^`'"\s]+)[`'"]/g)].map((m) => ({ url: m[1], method: 'POST' })),
     // useApiQuery<T>(path) -> GET (polls by default)

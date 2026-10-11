@@ -18,6 +18,16 @@ import {
 import { marketRuleFor, marketDisplayOrder } from '@/domain/market-rules';
 import { resolveTeamLogo, resolveLeagueLogo } from "@/server/services/logo-resolver";
 import type { LiveFixture, LiveEvent, LiveStatistics } from '@/lib/ports/live-data-provider';
+import {
+  MATCH_SOURCE_FALLBACK,
+  MATCH_SOURCE_ODDS,
+  attachProviderMatchIdentity,
+  fetchOddsForOwningProvider,
+  fiveDollarProviderEventId,
+  linkCrossProviderMatch,
+  resolveFiveDollarMatchRows,
+  resolveSportsOddsProvider,
+} from "./sports-provider-sync";
 
 const env = serverEnv();
 const WORKER_MODE = String(process.env.ODDS_WORKER_MODE ?? "bulk").trim().toLowerCase();
@@ -757,19 +767,7 @@ async function syncFiveDollarLiveDetails(
   const providerIds = liveMatches.map((m) => m.providerId).filter(Boolean);
   if (!providerIds.length) return;
 
-  const placeholders = providerIds.map((_, index) => `$${index + 2}`).join(", ");
-  const rows = await ctx.services.db.query<{
-    match_id: string;
-    provider_id: string;
-    home_team_id: string | null;
-    away_team_id: string | null;
-  }>(
-    `select id as match_id, provider_id, home_team_id, away_team_id
-       from nova.matches
-      where provider = $1
-        and provider_id in (${placeholders})`,
-    [providerName, ...providerIds],
-  );
+  const rows = await resolveFiveDollarMatchRows(ctx.services.db, providerIds, providerName);
 
   const matchByProvider = new Map(rows.map((row) => [row.provider_id, row]));
 
@@ -780,24 +778,28 @@ async function syncFiveDollarLiveDetails(
 
     const observedAt = new Date().toISOString();
 
-    await ctx.services.db.query(
-      `update nova.matches
-          set status = 'live'::nova.match_status,
-              home_score = coalesce($2, home_score),
-              away_score = coalesce($3, away_score),
-              minute = coalesce($4, minute),
-              period = coalesce($5, period),
-              provider_updated_at = now(),
-              updated_at = now()
-        where id = $1`,
-      [
-        matchId,
-        fixture.homeScore,
-        fixture.awayScore,
-        fixture.minute,
-        fixture.period,
-      ],
-    );
+    // FiveDollar owns live events for every matched game. Keep match state and
+    // score ownership with the provider that supplied the canonical match.
+    if (matchRow.match_provider === providerName) {
+      await ctx.services.db.query(
+        `update nova.matches
+            set status = 'live'::nova.match_status,
+                home_score = coalesce($2, home_score),
+                away_score = coalesce($3, away_score),
+                minute = coalesce($4, minute),
+                period = coalesce($5, period),
+                provider_updated_at = now(),
+                updated_at = now()
+          where id = $1`,
+        [
+          matchId,
+          fixture.homeScore,
+          fixture.awayScore,
+          fixture.minute,
+          fixture.period,
+        ],
+      );
+    }
 
     const rawStats = fixture.liveStats && typeof fixture.liveStats === "object"
       ? fixture.liveStats as Record<string, unknown>
@@ -943,7 +945,7 @@ async function syncFiveDollarLiveDetails(
       const stableIdentity = providerEventIdValue != null
         ? String(providerEventIdValue)
         : `${type}:${minute ?? "na"}:${teamSide ?? "unknown"}:${playerName ?? playerIn ?? directPlayerName ?? ""}:${playerOut ?? ""}:${String(e["count"] ?? "")}`;
-      const providerEventId = `5dollar:${fixture.providerId}:${stableIdentity}`;
+      const providerEventId = fiveDollarProviderEventId(fixture.providerId, stableIdentity);
 
       await ctx.services.db.query(
         `insert into nova.match_events
@@ -1389,60 +1391,6 @@ async function syncApiFootballLiveData(ctx: WorkerContext): Promise<{
       statsSaved++;
 
       if (matched <= API_FOOTBALL_MAX_DETAIL_MATCHES_PER_CYCLE) {
-        const eventsResult = await provider.fetchEvents(fixture.fixtureId);
-        if (eventsResult.ok && eventsResult.value) {
-          const providerName = ctx.services.providers.sports.name;
-          const mappedEvents = await Promise.all(eventsResult.value.map(async (event) => {
-            const mappedTeam = event.teamProviderId
-              ? await ctx.services.db.queryOne<{ internal_id: string }>(
-                  `select internal_id from nova.provider_entities
-                    where provider = $1 and entity_type = 'team' and provider_id = $2
-                    limit 1`,
-                  [providerName, event.teamProviderId],
-                )
-              : null;
-            return { event, teamId: mappedTeam?.internal_id ?? null };
-          }));
-
-          for (const { event, teamId } of mappedEvents) {
-            await ctx.services.db.query(
-              `insert into nova.match_events
-                (match_id, provider_event_id, type, minute, period, team_id, player_name, detail, occurred_at, created_at)
-               values ($1, $2, $3, $4, $5, $6, $7, $8, $9::timestamptz, now())`,
-              [
-                match.match_id,
-                event.providerEventId,
-                event.type,
-                event.minute,
-                event.period,
-                teamId,
-                event.playerName,
-                [
-                  event.teamName ? `Team: ${event.teamName}` : null,
-                  event.detail,
-                  event.comments,
-                  event.assistName ? `Assist: ${event.assistName}` : null,
-                ]
-                  .filter((value): value is string =>
-                    typeof value === "string" &&
-                    Boolean(value.trim()) &&
-                    !/^count\s*:\s*\d+(?:\.\d+)?$/i.test(value.trim())
-                  )
-                  .join(" · ") || null,
-                event.observedAt,
-              ],
-            );
-            eventsSaved++;
-          }
-        } else {
-          failed++;
-          console.error("API_FOOTBALL_EVENTS_FAILED", JSON.stringify({
-            matchId: match.match_id,
-            fixtureId: fixture.fixtureId,
-            error: eventsResult.errorMessage ?? eventsResult.errorCode ?? 'unknown',
-          }));
-        }
-
         const statisticsResult = await provider.fetchStatistics(fixture.fixtureId);
         if (statisticsResult.ok && statisticsResult.value) {
           await ctx.services.db.query(
@@ -1815,20 +1763,32 @@ async function reconcileLiveResults(ctx: WorkerContext): Promise<{ checked: numb
 
   return { checked, finished, liveUpdated, failed };
 }
-const PREMATCH_HORIZON_DAYS =
-  process.env.SPORTS_PROVIDER === "5dollarfootballapi"
-    ? 1
-    : Math.max(
-        14,
-        Number(process.env.ODDS_API_PREMATCH_HORIZON_DAYS ?? 30) || 30,
-      );
+const ODDS_API_PREMATCH_HORIZON_DAYS = Math.max(
+  14,
+  Number(process.env.ODDS_API_PREMATCH_HORIZON_DAYS ?? 30) || 30,
+);
+
 async function syncMatches(
   ctx: WorkerContext,
   providedResult?: Awaited<ReturnType<typeof ctx.services.providers.sports.fetchMatches>>,
   sourceProvider = ctx.services.providers.sports,
 ): Promise<{ synced: number }> {
+  const locked = await ctx.withLock("odds:match-catalog-sync", 900, () =>
+    syncMatchesUnlocked(ctx, providedResult, sourceProvider),
+  );
+  return locked ?? { synced: 0 };
+}
+
+async function syncMatchesUnlocked(
+  ctx: WorkerContext,
+  providedResult?: Awaited<ReturnType<typeof ctx.services.providers.sports.fetchMatches>>,
+  sourceProvider = ctx.services.providers.sports,
+): Promise<{ synced: number }> {
+  const horizonDays = sourceProvider.name === MATCH_SOURCE_FALLBACK
+    ? 1
+    : ODDS_API_PREMATCH_HORIZON_DAYS;
   const from = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-  const to = new Date(Date.now() + PREMATCH_HORIZON_DAYS * 864e5).toISOString();
+  const to = new Date(Date.now() + horizonDays * 864e5).toISOString();
 
     console.log("SYNC_MATCHES_START", JSON.stringify({ from, to }));
   const result =
@@ -1859,6 +1819,68 @@ async function syncMatches(
   for (let batchStart = 0; batchStart < result.value.length; batchStart += syncConcurrency) {
     const batch = result.value.slice(batchStart, batchStart + syncConcurrency);
     await Promise.all(batch.map(async (match) => {
+    if (sourceProvider.name === MATCH_SOURCE_FALLBACK) {
+      const knownMatch = await ctx.services.db.queryOne<{
+        internal_id: string;
+        canonical_provider: string | null;
+      }>(
+        `select pe.internal_id, m.provider as canonical_provider
+           from nova.provider_entities pe
+           join nova.matches m on m.id = pe.internal_id
+          where pe.provider = $1 and pe.entity_type = 'match' and pe.provider_id = $2
+          limit 1`,
+        [sourceProvider.name, match.providerId],
+      );
+      if (knownMatch?.canonical_provider === MATCH_SOURCE_ODDS) {
+        await attachProviderMatchIdentity(ctx.services.db, sourceProvider.name, match.providerId, knownMatch.internal_id);
+        return;
+      }
+
+      const link = await linkCrossProviderMatch(
+        ctx.services.db,
+        match,
+        sourceProvider.name,
+        MATCH_SOURCE_ODDS,
+      );
+      if (link.status !== "not_found") {
+        if (link.status === "linked") {
+          synced += 1;
+          return;
+        }
+        console.warn("MATCH_CROSS_PROVIDER_IDENTITY_CONFLICT", JSON.stringify({
+          provider: sourceProvider.name,
+          providerId: match.providerId,
+          oddsMatchId: link.matchId,
+        }));
+        return;
+      }
+    }
+
+    // A previous run may have created a FiveDollar canonical row before Odds
+    // API was configured. Attach the Odds identity to that row instead of
+    // introducing a duplicate; its canonical provider (and odds authority)
+    // remains unchanged for source consistency.
+    if (sourceProvider.name === MATCH_SOURCE_ODDS) {
+      const link = await linkCrossProviderMatch(
+        ctx.services.db,
+        match,
+        sourceProvider.name,
+        MATCH_SOURCE_FALLBACK,
+      );
+      if (link.status !== "not_found") {
+        if (link.status === "linked") {
+          synced += 1;
+          return;
+        }
+        console.warn("MATCH_CROSS_PROVIDER_IDENTITY_CONFLICT", JSON.stringify({
+          provider: sourceProvider.name,
+          providerId: match.providerId,
+          fallbackMatchId: link.matchId,
+        }));
+        return;
+      }
+    }
+
     const sportRow = await ctx.services.db.queryOne<{ id: string }>(
       `select id from nova.sports where slug = $1 limit 1`,
       [match.sport],
@@ -2046,7 +2068,10 @@ async function syncMatches(
       );
       throw error;
     }
-    if (updated) synced += 1;
+    if (updated) {
+      await attachProviderMatchIdentity(ctx.services.db, sourceProvider.name, match.providerId, updated.id);
+      synced += 1;
+    }
     }));
   }
 
@@ -2069,13 +2094,11 @@ async function syncOdds(
   if (!matchRow?.provider_id || !matchRow.provider) {
     return { updated: 0, rejected: 0 };
   }
-  const sourceProvider =
-    ctx.services.providers.sportsProviders?.find(
-      (provider) => provider.name === matchRow.provider,
-    ) ??
-    (ctx.services.providers.sports.name === matchRow.provider
-      ? ctx.services.providers.sports
-      : null);
+  const sourceProvider = resolveSportsOddsProvider(
+    matchRow.provider,
+    ctx.services.providers.sportsProviders,
+    ctx.services.providers.sports,
+  );
   if (!sourceProvider) {
     ctx.log.warn("ODDS_SYNC_PROVIDER_NOT_REGISTERED", {
       matchId,
@@ -2083,8 +2106,11 @@ async function syncOdds(
     });
     return { updated: 0, rejected: 0 };
   }
-  const providerResult =
-    prefetched ?? await sourceProvider.fetchOdds([matchRow.provider_id]);
+  const providerResult = await fetchOddsForOwningProvider(
+    sourceProvider,
+    matchRow.provider_id,
+    prefetched,
+  );
   if (!providerResult.ok || !providerResult.value) return { updated: 0, rejected: 0 };
   if (
     providerResult.value.some(

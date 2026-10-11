@@ -11,7 +11,7 @@ const SPORT_ICONS = { football: Trophy, basketball: CircleDot, tennis: Target, v
 
 export default async function HomePage() {
   const [data, availability] = await Promise.all([getHomepageData(), getServiceAvailability()]);
-  const liveEnabled = availability.operations.find((o) => o.key === 'LIVE_BETTING')?.isEnabled ?? true;
+  const liveEnabled = availability.liveBettingEnabled;
   const maintenance = availability.operations.find((o) => o.key === 'MAINTENANCE_MODE')?.isEnabled ?? false;
 
   return (
@@ -22,6 +22,9 @@ export default async function HomePage() {
       ) : null}
       {!availability.sportsConfigured ? (
         <ServiceNotice tone="warning" titleKey="page.oddsUnavailable" childrenKey="page.oddsUnavailableDetail" />
+      ) : null}
+      {!liveEnabled ? (
+        <ServiceNotice tone="warning" titleKey="page.liveBettingUnavailable" childrenKey="page.liveBettingUnavailableDetail" />
       ) : null}
       <div dir="ltr" className="w-full">
         <HomeReference

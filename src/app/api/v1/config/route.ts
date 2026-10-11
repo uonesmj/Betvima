@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { publicConfig, serverEnv } from '@/server/env';
 import { createServices } from '@/server/services/container';
 import { currentWeeklyPeriod, normalizeTimezone, settlementWindow, WEEKDAYS } from '@/lib/timezone';
+import { isLiveBettingEnabled } from '@/server/live-betting';
 
 export const dynamic = 'force-dynamic';
 
@@ -9,13 +10,25 @@ export const dynamic = 'force-dynamic';
 export async function GET(): Promise<Response> {
   const config = publicConfig();
   let operations: { key: string; isEnabled: boolean }[] = [];
+  let liveBettingEnabled = false;
   let maintenance = { enabled: false, message: null as string | null };
   try {
     const services = createServices();
-    operations = (await services.admin.operations()).map((o) => ({ key: o.key, isEnabled: o.isEnabled }));
+    const currentOperations = await services.admin.operations();
+    operations = currentOperations.map((o) => ({
+      key: o.key,
+      isEnabled: o.key === 'LIVE_BETTING'
+        ? isLiveBettingEnabled(currentOperations)
+        : o.isEnabled,
+    }));
+    liveBettingEnabled = isLiveBettingEnabled(currentOperations);
+    if (!currentOperations.some((o) => o.key === 'LIVE_BETTING')) {
+      operations.push({ key: 'LIVE_BETTING', isEnabled: false });
+    }
     maintenance = await services.admin.maintenanceMode();
   } catch {
-    operations = [];
+    operations = [{ key: 'LIVE_BETTING', isEnabled: false }];
+    liveBettingEnabled = false;
   }
   const env = serverEnv();
   const schedule = {
@@ -31,7 +44,7 @@ export async function GET(): Promise<Response> {
       ok: true,
       data: {
         ...config,
-        operations, maintenance,
+        operations, maintenance, liveBettingEnabled,
         affiliate: {
           defaultModel: process.env.AFFILIATE_DEFAULT_MODEL ?? 'NON_NEGATIVE_35',
           rateBps: Number(process.env.AFFILIATE_DEFAULT_RATE_BPS ?? 3500),

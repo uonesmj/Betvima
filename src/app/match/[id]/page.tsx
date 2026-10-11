@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { PageShell } from '@/components/layout/page-shell';
+import { ServiceNotice } from '@/components/layout/service-notice';
 import { MarketList } from '@/components/betting/market-list';
 import { LiveMatchCenterClient } from '@/components/betting/live-match-center-client';
 import { getMatchPageData } from '@/server/queries/public';
@@ -81,6 +82,9 @@ export default async function MatchPage({
       }
     >
       <div className="mx-auto max-w-[1120px] space-y-4">
+        {match.isLive && !liveBettingEnabled ? (
+          <ServiceNotice tone="warning" titleKey="page.liveBettingUnavailable" childrenKey="page.liveBettingUnavailableDetail" />
+        ) : null}
 
         {/* Match hero + swipeable information */}
         <LiveMatchCenterClient

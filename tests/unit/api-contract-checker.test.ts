@@ -7,12 +7,13 @@
  * pass forever.
  */
 import { describe, expect, it } from 'vitest';
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-const root = new URL('../..', import.meta.url).pathname.replace(/\/$/, '');
+const root = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const script = join(root, 'scripts/verify-api-contract.mjs');
 
 function run(args: string[] = [], cwd = root, target = script): { code: number; output: string } {
@@ -38,7 +39,7 @@ describe('api contract checker', () => {
     const scratch = mkdtempSync(join(tmpdir(), 'nova-contract-'));
     mkdirSync(join(scratch, 'scripts'), { recursive: true });
     mkdirSync(join(scratch, 'src/app/api/v1/admin/probe'), { recursive: true });
-    writeFileSync(join(scratch, 'scripts/verify-api-contract.mjs'), execFileSync('cat', [script]));
+    writeFileSync(join(scratch, 'scripts/verify-api-contract.mjs'), readFileSync(script));
     writeFileSync(
       join(scratch, 'src/app/api/v1/admin/probe/route.ts'),
       [

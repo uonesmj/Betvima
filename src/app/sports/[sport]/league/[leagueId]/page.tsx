@@ -1,9 +1,11 @@
 import { notFound } from 'next/navigation';
 import { PageShell } from '@/components/layout/page-shell';
+import { ServiceNotice } from '@/components/layout/service-notice';
 import { PrematchFilters } from '@/components/betting/prematch-filters';
 import { createServices } from '@/server/services/container';
 import { serviceRoleContext } from '@/server/context';
 import { serializeMatch } from '@/server/queries/public';
+import { readLiveBettingEnabled } from '@/server/live-betting';
 
 export const dynamic = 'force-dynamic';
 
@@ -19,7 +21,7 @@ export default async function LeaguePage({
   const currentSport = sports.find((item) => item.key === sport);
   if (!currentSport) notFound();
 
-  const [leagues, matches, operations] = await Promise.all([
+  const [leagues, matches, liveBettingEnabled] = await Promise.all([
     services.catalog.listLeagues(serviceRoleContext, {
       sportKey: sport,
       limit: 200,
@@ -32,19 +34,17 @@ export default async function LeaguePage({
       status: ['scheduled'],
       from: new Date().toISOString(),
     }),
-    services.admin.operations(),
+    readLiveBettingEnabled(services.admin),
   ]);
 
   const league = leagues.find((item) => item.id === leagueId);
   if (!league) notFound();
 
-  const liveBettingEnabled =
-    operations.find((operation) => operation.key === 'LIVE_BETTING')?.isEnabled ?? true;
-
   const serializedMatches = matches.items.map(serializeMatch);
 
   return (
     <PageShell>
+      {!liveBettingEnabled ? <ServiceNotice tone="warning" titleKey="page.liveBettingUnavailable" childrenKey="page.liveBettingUnavailableDetail" /> : null}
       <PrematchFilters
         items={serializedMatches}
         liveEnabled={liveBettingEnabled}
