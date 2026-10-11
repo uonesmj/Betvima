@@ -15,6 +15,7 @@
  *   * one-shot backfill: NOVA_WORKER_ONCE=true npm run worker:logo
  */
 
+import { pgArray } from "@/server/db/rows";
 import { createWorker, type JobHandler, type WorkerContext } from "./runtime";
 import {
   readLogoCache,
@@ -87,7 +88,7 @@ async function sweepTeams(ctx: WorkerContext): Promise<{ resolved: number; misse
       group by t.id, t.name, s.slug
       order by ${sportRank("s.slug")}, count(m.id) desc, t.updated_at desc
       limit $1`,
-    [TEAM_BATCH, SKIPPED_SPORTS],
+    [TEAM_BATCH, pgArray(SKIPPED_SPORTS)],
   );
 
   let resolved = 0;
@@ -145,7 +146,7 @@ async function sweepLeagues(ctx: WorkerContext): Promise<{ resolved: number; mis
       group by l.id, l.name, l.slug, s.slug
       order by ${sportRank("s.slug")}, count(m.id) desc, l.updated_at desc
       limit $1`,
-    [LEAGUE_BATCH, SKIPPED_SPORTS],
+    [LEAGUE_BATCH, pgArray(SKIPPED_SPORTS)],
   );
 
   let resolved = 0;
