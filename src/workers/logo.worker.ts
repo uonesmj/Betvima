@@ -31,6 +31,35 @@ const INTERVAL_MS = Math.max(
   Number(process.env.LOGO_WORKER_INTERVAL_MS ?? 10 * 60_000) || 10 * 60_000,
 );
 
+/**
+ * Sports that never get a team badge: their "teams" are individual athletes
+ * (tennis/boxing/MMA singles). Leaving them NULL is honest — the UI shows an
+ * initial instead, and no placeholder is ever invented.
+ */
+const SKIPPED_SPORTS = (process.env.LOGO_SKIP_SPORTS ?? "mma,boxing,tennis,table-tennis")
+  .split(",")
+  .map((s) => s.trim())
+  .filter(Boolean);
+
+/**
+ * Sports ordered by how reliably a real badge exists AND how much the site
+ * shows them. Esports entries are mostly gamer handles ("Mexico (Legion)"),
+ * so they are tried last instead of consuming the whole budget.
+ */
+const SPORT_PRIORITY = [
+  "football",
+  "basketball",
+  "american-football",
+  "ice-hockey",
+  "baseball",
+  "handball",
+  "volleyball",
+  "cricket",
+  "esports",
+];
+const SPORT_RANK_CASE = SPORT_PRIORITY.map((sport, index) => `when '${sport}' then ${index}`).join(" ");
+const sportRank = (column: string) => `case ${column} ${SPORT_RANK_CASE} else ${SPORT_PRIORITY.length} end`;
+
 interface TeamRow {
   id: string;
   name: string;
@@ -54,10 +83,11 @@ async function sweepTeams(ctx: WorkerContext): Promise<{ resolved: number; misse
          on (m.home_team_id = t.id or m.away_team_id = t.id)
         and m.scheduled_at > now() - interval '14 days'
       where t.logo is null
+        and s.slug <> all($2::text[])
       group by t.id, t.name, s.slug
-      order by count(m.id) desc, t.updated_at desc
+      order by ${sportRank("s.slug")}, count(m.id) desc, t.updated_at desc
       limit $1`,
-    [TEAM_BATCH],
+    [TEAM_BATCH, SKIPPED_SPORTS],
   );
 
   let resolved = 0;
@@ -111,10 +141,11 @@ async function sweepLeagues(ctx: WorkerContext): Promise<{ resolved: number; mis
          on m.league_id = l.id
         and m.scheduled_at > now() - interval '14 days'
       where l.logo is null
+        and s.slug <> all($2::text[])
       group by l.id, l.name, l.slug, s.slug
-      order by count(m.id) desc, l.updated_at desc
+      order by ${sportRank("s.slug")}, count(m.id) desc, l.updated_at desc
       limit $1`,
-    [LEAGUE_BATCH],
+    [LEAGUE_BATCH, SKIPPED_SPORTS],
   );
 
   let resolved = 0;

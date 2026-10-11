@@ -65,6 +65,21 @@ describe('matchTeamName', () => {
     expect(matchTeamName('AS', premierLeague)).toBeNull();
   });
 
+  it('never matches when the team name carries extra tokens (wrong-entity guard)', () => {
+    // Esports handles, reserve sides and player entries must stay unmatched:
+    // a wrong badge is worse than no badge.
+    expect(matchTeamName('Mexico (Legion)', ['Mexico'])).toBeNull();
+    expect(matchTeamName('Arsenal (Voodoo)', ['Arsenal'])).toBeNull();
+    expect(matchTeamName('A.Madrid (DANTE)', ['Atletico Madrid'])).toBeNull();
+    expect(matchTeamName('Barcelona B', ['Barcelona'])).toBeNull();
+    expect(matchTeamName('Man City (DART)', ['Manchester City'])).toBeNull();
+  });
+
+  it('still matches abbreviations where the candidate is longer', () => {
+    expect(matchTeamName('Brighton', premierLeague)?.candidate).toBe('Brighton & Hove Albion');
+    expect(matchTeamName('Wolverhampton', premierLeague)?.candidate).toBe('Wolverhampton Wanderers');
+  });
+
   it('builds stable cache keys', () => {
     expect(cacheKeyForName('Man City')).toBe('manchester city');
     expect(cacheKeyForName('FC Koln')).toBe('koln');

@@ -144,20 +144,23 @@ export function matchTeamName(input: string, candidates: string[]): NameMatch | 
     }
   }
 
-  // 3. Token-subset match: every token of the shorter side appears in the
-  // longer side ("brighton" ⊂ "brighton hove albion"). Single-token inputs
-  // must be at least 4 chars to avoid junk matches ("as", "rc", ...).
+  // 3. Token-subset match in ONE direction only: every input token must appear
+  // in the candidate ("brighton" -> "brighton hove albion"). The reverse
+  // direction is deliberately NOT allowed: an input carrying extra tokens is
+  // almost always a different entity — esports handles ("Mexico (Legion)",
+  // "Arsenal (Voodoo)"), reserve sides ("Barcelona B") or player names — and a
+  // wrong badge is worse than no badge.
+  // Single-token inputs must be at least 4 chars to avoid junk matches ("as", "rc").
   const inputTokens = (stripped || norm).split(" ").filter(Boolean);
   if (inputTokens.length === 1 && (inputTokens[0] ?? "").length < 4 && !aliased) {
     return null;
   }
   for (const row of table) {
     const candTokens = (row.cStripped || row.cNorm).split(" ").filter(Boolean);
-    const [shorter, longer] =
-      inputTokens.length <= candTokens.length ? [inputTokens, candTokens] : [candTokens, inputTokens];
-    if (shorter.length === 0) continue;
-    const longerSet = new Set(longer);
-    if (shorter.every((t) => longerSet.has(t))) {
+    if (candTokens.length < inputTokens.length) continue;
+    if (inputTokens.length === 0) continue;
+    const candSet = new Set(candTokens);
+    if (inputTokens.every((t) => candSet.has(t))) {
       return { candidate: row.candidate, confidence: 0.8 };
     }
   }
