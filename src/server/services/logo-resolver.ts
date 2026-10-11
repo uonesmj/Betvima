@@ -243,10 +243,14 @@ export async function writeLogoCache(
   const days = resolved ? POSITIVE_CACHE_DAYS : NEGATIVE_CACHE_DAYS;
   await db
     .query(
+      // Every parameter used inside an expression carries an explicit cast:
+      // PostgreSQL cannot infer the type of a bare $n appearing in a CASE
+      // condition / concatenation and rejects the whole statement otherwise.
       `insert into nova.logo_cache
          (entity_type, sport, name_key, name, logo_url, source, verified_at, expires_at)
-       values ($1, $2, $3, $4, $5, $6, case when $5 is null then null else now() end,
-               now() + ($7 || ' days')::interval)
+       values ($1, $2, $3, $4, $5::text, $6::text,
+               case when $5::text is null then null else now() end,
+               now() + ($7::text || ' days')::interval)
        on conflict (entity_type, sport, name_key)
        do update set
          name = excluded.name,
@@ -257,7 +261,10 @@ export async function writeLogoCache(
          updated_at = now()`,
       [entity, sport, cacheKeyForName(name), name, resolved ? resolved.url : null, resolved ? resolved.source : null, String(days)],
     )
-    .catch(() => undefined);
+    .catch((error: unknown) => {
+      // Never let the logo cache break a sweep — but never hide the failure either.
+      console.warn('LOGO_CACHE_WRITE_FAILED', JSON.stringify({ entity, sport, name, error: (error as Error).message }));
+    });
 }
 
 /**
