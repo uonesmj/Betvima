@@ -1,0 +1,53 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" fill="none">
+  <defs>
+    <radialGradient id="ball" cx="35%" cy="25%" r="75%">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset=".55" stop-color="#f4f6f8"/>
+      <stop offset="1" stop-color="#c9d0d8"/>
+    </radialGradient>
+    <linearGradient id="panel" x1="20" y1="12" x2="105" y2="115" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#202936"/>
+      <stop offset=".5" stop-color="#111923"/>
+      <stop offset="1" stop-color="#050a10"/>
+    </linearGradient>
+    <linearGradient id="green" x1="24" y1="92" x2="103" y2="113" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#18c878"/>
+      <stop offset="1" stop-color="#087f55"/>
+    </linearGradient>
+    <linearGradient id="blue" x1="15" y1="28" x2="34" y2="86" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#35a7ff"/>
+      <stop offset="1" stop-color="#1769ff"/>
+    </linearGradient>
+    <linearGradient id="red" x1="87" y1="23" x2="108" y2="77" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#ff5364"/>
+      <stop offset="1" stop-color="#d51f3d"/>
+    </linearGradient>
+    <filter id="shadow" x="-30%" y="-30%" width="160%" height="170%">
+      <feDropShadow dx="0" dy="6" stdDeviation="5" flood-opacity=".22"/>
+    </filter>
+    <clipPath id="clip">
+      <circle cx="64" cy="62" r="48"/>
+    </clipPath>
+  </defs>
+
+  <g filter="url(#shadow)">
+    <circle cx="64" cy="62" r="51" fill="#d9dee4"/>
+    <circle cx="64" cy="62" r="48" fill="url(#ball)"/>
+    
+    <g clip-path="url(#clip)">
+      <path d="M64 31 84 45 77 68H51L44 45l20-14Z" fill="url(#panel)"/>
+      <path d="m64 31-20 14-22-2 8-27 31-12 3 27Z" fill="url(#blue)" opacity=".95"/>
+      <path d="m84 45 22-2 11 25-19 20-21-20 7-23Z" fill="url(#red)" opacity=".95"/>
+      <path d="m77 68 21 20-14 27-29 4-4-29 26-22Z" fill="url(#green)" opacity=".95"/>
+      <path d="m51 68-26 22-18-20 11-25 26-13 7 36Z" fill="#f7f9fb"/>
+      <path d="m44 45 20-14 20 14-7 23H51l-7-23Z" fill="url(#panel)"/>
+      
+      <path d="M64 31 44 45l7 23h26l7-23-20-14Z" fill="none" stroke="#343e4a" stroke-width="3"/>
+      <path d="M44 45 22 43M51 68 25 90M77 68l21 20M84 45l22-2" stroke="#7d8792" stroke-width="2.5"/>
+      <path d="M64 31 61 5M84 45l15-22M77 68l7 27M51 68l-4 29M44 45 29 24" stroke="#aab2bb" stroke-width="2.5"/>
+    </g>
+
+    <circle cx="64" cy="62" r="48" stroke="#ffffff" stroke-width="2.5"/>
+    <ellipse cx="48" cy="30" rx="20" ry="9" fill="white" opacity=".28" transform="rotate(-25 48 30)"/>
+  </g>
+</svg>

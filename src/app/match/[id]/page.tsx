@@ -1,0 +1,133 @@
+import Link from 'next/link';
+import { notFound } from 'next/navigation';
+import { PageShell } from '@/components/layout/page-shell';
+import { MarketList } from '@/components/betting/market-list';
+import { LiveMatchCenterClient } from '@/components/betting/live-match-center-client';
+import { getMatchPageData } from '@/server/queries/public';
+import { formatRelative } from '@/lib/i18n';
+import { MatchBackButton, MatchMarketsHeader, MatchMobileHelper } from '@/components/betting/match-page-copy';
+
+export const dynamic = 'force-dynamic';
+
+export async function generateMetadata() {
+  return {
+    title: 'Match — NOVA',
+    description: 'Betting markets and odds',
+  };
+}
+function TeamLogo({
+  url,
+  name,
+}: {
+  url: string | null | undefined;
+  name: string;
+}) {
+  if (!url) {
+    return (
+      <div
+        className="grid h-[68px] w-[68px] shrink-0 place-items-center rounded-full border border-[#E0E4E8] bg-[#F3F5F7] text-xl font-black text-[#69717A] sm:h-[82px] sm:w-[82px]"
+        aria-label={name}
+      >
+        {name.slice(0, 1).toUpperCase()}
+      </div>
+    );
+  }
+
+  return (
+    <div className="grid h-[68px] w-[68px] shrink-0 place-items-center rounded-full border border-[#E0E4E8] bg-white p-3 sm:h-[82px] sm:w-[82px]">
+      <img
+        src={url}
+        alt=""
+        className="h-full w-full object-contain"
+        loading="eager"
+      />
+    </div>
+  );
+}
+
+export default async function MatchPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const { id } = await params;
+  const data = await getMatchPageData(id);
+
+  if (!data) notFound();
+
+  const { match, markets, result, liveEvents, liveStats, liveBettingEnabled, matchHistory } = data;
+
+  const matchForDisplay =
+    match.isLive && !liveBettingEnabled
+      ? { ...match, isBettingAvailable: false }
+      : match;
+
+  const home = match.participants.find((p) => p.role === 'HOME');
+  const away = match.participants.find((p) => p.role === 'AWAY');
+
+  const homeName = home?.name ?? 'TBD';
+  const awayName = away?.name ?? 'TBD';
+
+  return (
+    <PageShell
+      title={`${homeName} vs ${awayName}`}
+      subtitle=""
+      actions={
+        <Link
+          href="/sports/football"
+          className="inline-flex items-center gap-1.5 rounded-xl border border-[#DDE1E6] bg-white px-3 py-2 text-xs font-bold text-[#4E5660] transition hover:bg-[#F5F6F8]"
+        >
+        </Link>
+      }
+    >
+      <div className="mx-auto max-w-[1120px] space-y-4">
+
+        {/* Match hero + swipeable information */}
+        <LiveMatchCenterClient
+          matchId={match.id}
+          initialMinute={match.minute}
+          initialPeriod={match.period}
+          initialEvents={liveEvents}
+          initialStats={liveStats}
+          match={match}
+          matchForDisplay={matchForDisplay}
+          home={home}
+          away={away}
+          homeName={homeName}
+          awayName={awayName}
+          liveEvents={liveEvents}
+          liveStats={liveStats}
+          matchHistory={matchHistory}
+        />
+        <section>
+
+          <div className="mb-3 flex items-end justify-between gap-3">
+            <div>
+              <h2 className="text-lg font-black text-[#20242A]">
+                Betting markets
+              </h2>
+
+              <p className="mt-1 text-xs text-[#858C95]">
+                Select an odd to add it to your bet slip
+              </p>
+            </div>
+
+            <span className="shrink-0 rounded-full bg-[#EEF0F3] px-3 py-1.5 text-[10px] font-bold text-[#69717A]">
+              {markets.length} markets
+            </span>
+          </div>
+
+          <MarketList
+            match={matchForDisplay}
+            markets={markets}
+          />
+
+        </section>
+
+        {/* Mobile helper */}
+<MatchMobileHelper />
+
+      </div>
+    </PageShell>
+  );
+}

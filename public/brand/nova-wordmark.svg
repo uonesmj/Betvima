@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 520 150" fill="none">
+  <defs>
+    <linearGradient id="nova" x1="90" y1="20" x2="430" y2="130" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFFFFF"/>
+      <stop offset=".52" stop-color="#DFFBFF"/>
+      <stop offset="1" stop-color="#00E07A"/>
+    </linearGradient>
+  </defs>
+  <text x="260" y="108" text-anchor="middle"
+    font-family="Arial,Helvetica,sans-serif"
+    font-size="108"
+    font-weight="900"
+    font-style="italic"
+    letter-spacing="-7"
+    fill="url(#nova)">NOVA</text>
+</svg>

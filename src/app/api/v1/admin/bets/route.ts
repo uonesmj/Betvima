@@ -1,0 +1,35 @@
+import { z } from 'zod';
+import { withErrorHandling, jsonOk } from '@/lib/errors';
+import { withAdmin } from '@/server/http/guard';
+import { intParam, searchParams } from '@/server/http/request';
+import type { BetFilter } from '@/lib/types';
+import { convertAdminAmountToUsd, getAdminUsdRates } from '@/server/utils/admin-usd';
+
+export const dynamic = 'force-dynamic';
+
+export const GET = withErrorHandling('admin.bets.list', async (ctx, request: Request) => {
+  const { services } = await withAdmin(request, ctx, 'bets.view');
+  const params = searchParams(request);
+  const statusParam = params.get('status');
+  const filter: BetFilter = {
+    userId: params.get('userId') ?? undefined,
+    status: statusParam ? (statusParam.split(',') as BetFilter['status']) : undefined,
+    type: (params.get('type') as BetFilter['type']) ?? undefined,
+    from: params.get('from') ?? undefined, to: params.get('to') ?? undefined,
+    search: params.get('q') ?? undefined,
+    minStakeMinor: params.get('minStake') ? BigInt(z.string().regex(/^\d+$/).parse(params.get('minStake'))) : undefined,
+    page: intParam(params, 'page', 1, 5000), pageSize: intParam(params, 'pageSize', 25, 100),
+    sortBy: (params.get('sortBy') as BetFilter['sortBy']) ?? 'placed_at',
+    sortDirection: (params.get('sortDirection') as 'asc' | 'desc') ?? 'desc',
+  };
+  const page = await services.betting.listBets({ userId: null, role: 'service_role', adminId: null, ip: null, userAgent: null, correlationId: null }, filter);
+  const rates = await getAdminUsdRates(page.items.map((bet) => bet.currency));
+  const items = page.items.map((bet) => ({
+    ...bet,
+    usdStakeMinor: convertAdminAmountToUsd(bet.stakeMinor, bet.currency, rates),
+    usdPotentialPayoutMinor: convertAdminAmountToUsd(bet.potentialPayoutMinor, bet.currency, rates),
+    usdSettledPayoutMinor: bet.settledPayoutMinor === null ? null : convertAdminAmountToUsd(bet.settledPayoutMinor, bet.currency, rates),
+    usdNetResultMinor: bet.netResultMinor === null ? null : convertAdminAmountToUsd(bet.netResultMinor, bet.currency, rates),
+  }));
+  return jsonOk({ ...page, items });
+});

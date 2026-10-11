@@ -1,0 +1,40 @@
+node_modules/
+.next/
+out/
+dist/
+coverage/
+.env
+.env.*
+!.env.example
+*.log
+*.pem
+*.key
+*.secret
+*credentials*
+*private-key*
+*.bak
+*.backup*
+*.zip
+*.tar
+*.tar.gz
+*.tgz
+backups/
+logs/
+.wrangler/
+playwright-report/
+test-results/
+.DS_Store
+tsconfig.tsbuildinfo
+
+# Exclude accidental browser profile data
+/Manchester United/
+/Spartak Moscow/
+public/downloads/affiliate-app/*.lock
+public/downloads/*.idsig
+
+# Exclude historical source backups and generated signing files
+*.before*
+*.nav-backup
+*.profile-fix-backup
+public/downloads/*.idsig
+public/downloads/affiliate-app/*.lock

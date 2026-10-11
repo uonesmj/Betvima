@@ -1,0 +1,2119 @@
+console.log("NOVA_ODDS_WORKER_RUNTIME_MARKER", JSON.stringify({ pid: process.pid, startedAt: new Date().toISOString(), cwd: process.cwd() }));
+/**
+ * ODDS WORKER
+ * Ingests provider odds, writes only changed prices as new versions (with history),
+ * flags anomalies, suspends stale feeds, and queues settlement work when a match ends.
+ * With no sports provider configured it performs NO changes and records the honest
+ * provider status instead of inventing data.
+ */
+import { createWorker, type WorkerContext, type JobHandler } from './runtime';
+import { serverEnv } from '@/server/env';
+import { pgArray } from '@/server/db/rows';
+import { hasRejecting, hasSuspending, detectOddsAnomalies } from '@/domain/odds';
+import { marketRuleFor, marketDisplayOrder } from '@/domain/market-rules';
+import { resolveTeamLogo, resolveLeagueLogo } from "@/server/services/logo-resolver";
+import type { LiveFixture, LiveEvent, LiveStatistics } from '@/lib/ports/live-data-provider';
+
+const env = serverEnv();
+const WORKER_MODE = String(process.env.ODDS_WORKER_MODE ?? "bulk").trim().toLowerCase();
+
+const handlers: JobHandler[] = [
+  {
+    kinds: ['odds.sync'],
+    async handle(job, ctx: WorkerContext) {
+      return syncOdds(ctx, String(job.payload.matchId ?? ''));
+    },
+  },
+  {
+    kinds: ['match.sync'],
+    async handle(_job, ctx: WorkerContext) {
+      return syncMatches(ctx);
+    },
+  },
+];
+
+let lastResultReconciliationAt = 0;
+let lastPrematchNearOddsAt = 0;
+let lastPrematchMidOddsAt = 0;
+let lastPrematchFarOddsAt = 0;
+let lastResultsQuotaErrorAt = 0;
+let lastLiveOddsAt = 0;
+let lastExtendedLiveOddsAt = 0;
+let lastExtendedPrematchNearOddsAt = 0;
+let lastExtendedPrematchFarOddsAt = 0;
+let lastMatchDiscoveryAt = 0;
+let lastApiFootballLiveSyncAt = 0;
+const MATCH_DISCOVERY_INTERVAL_MS = env.sportsProviderEnabled && env.sportsProviderName === "5dollarfootballapi" ? 10 * 60_000 : 5 * 60_000;
+const PREMATCH_NEAR_ODDS_INTERVAL_MS = env.sportsProviderEnabled && env.sportsProviderName === "5dollarfootballapi" ? 60_000 : 30_000;
+const PREMATCH_MID_ODDS_INTERVAL_MS = env.sportsProviderEnabled && env.sportsProviderName === "5dollarfootballapi" ? 5 * 60_000 : 60_000;
+const PREMATCH_FAR_ODDS_INTERVAL_MS = env.sportsProviderEnabled && env.sportsProviderName === "5dollarfootballapi" ? 15 * 60_000 : 5 * 60_000;
+const LIVE_ODDS_INTERVAL_MS = env.sportsProviderEnabled && env.sportsProviderName === "5dollarfootballapi" ? 30_000 : 5_000;
+const EXTENDED_LIVE_ODDS_INTERVAL_MS = env.sportsProviderEnabled && env.sportsProviderName === "5dollarfootballapi" ? 10 * 60_000 : 5 * 60_000;
+const EXTENDED_PREMATCH_NEAR_ODDS_INTERVAL_MS = env.sportsProviderEnabled && env.sportsProviderName === "5dollarfootballapi" ? 10 * 60_000 : 60_000;
+const EXTENDED_PREMATCH_FAR_ODDS_INTERVAL_MS = env.sportsProviderEnabled && env.sportsProviderName === "5dollarfootballapi" ? 15 * 60_000 : 5 * 60_000;
+const EXTENDED_ODDS_MAX_MATCHES_PER_CYCLE = Math.max(
+  1,
+  Number(process.env.ODDS_API_EXTENDED_MAX_MATCHES_PER_CYCLE || 500),
+);
+const LIVE_RESULT_INTERVAL_MS = 10_000;
+const API_FOOTBALL_LIVE_INTERVAL_MS = 30_000;
+const API_FOOTBALL_MAX_DETAIL_MATCHES_PER_CYCLE = 1;
+
+if (WORKER_MODE !== 'live') {
+createWorker({
+  queue: 'odds',
+  handlers,
+  tickIntervalMs: 5_000,
+  pollIntervalMs: 2_000,
+  batchSize: 10,
+  async tick(ctx) {
+      console.log("ODDS_TICK_START", JSON.stringify({
+        sportsProviderEnabled: env.sportsProviderEnabled,
+        provider: ctx.services.providers.sports.name,
+        providerConfigured: ctx.services.providers.sports.configured,
+      }));
+    await ctx.withLock('odds:tick', 180, async () => {
+        console.log("ODDS_TICK_LOCK_CALLBACK_ENTERED");
+      if (!env.sportsProviderEnabled) {
+        // No provider: nothing to ingest. Record the state once per tick, never fake odds.
+        await recordProviderStatus(ctx, 'disabled', 'No sports provider configured');
+        return;
+      }
+        const now = Date.now();
+        const includeLive = now - lastLiveOddsAt >= LIVE_ODDS_INTERVAL_MS;
+        const includeExtendedLive =
+          now - lastExtendedLiveOddsAt >= EXTENDED_LIVE_ODDS_INTERVAL_MS;
+        const includeExtendedPrematchNear =
+          now - lastExtendedPrematchNearOddsAt >= EXTENDED_PREMATCH_NEAR_ODDS_INTERVAL_MS;
+        const includeExtendedPrematchFar =
+          now - lastExtendedPrematchFarOddsAt >= EXTENDED_PREMATCH_FAR_ODDS_INTERVAL_MS;
+
+        if (includeLive) lastLiveOddsAt = now;
+        if (includeExtendedLive) lastExtendedLiveOddsAt = now;
+        if (includeExtendedPrematchNear) lastExtendedPrematchNearOddsAt = now;
+        if (includeExtendedPrematchFar) lastExtendedPrematchFarOddsAt = now;
+
+        const includePrematchNear = now - lastPrematchNearOddsAt >= PREMATCH_NEAR_ODDS_INTERVAL_MS;
+        const includePrematchMid = now - lastPrematchMidOddsAt >= PREMATCH_MID_ODDS_INTERVAL_MS;
+        const includePrematchFar = now - lastPrematchFarOddsAt >= PREMATCH_FAR_ODDS_INTERVAL_MS;
+
+        if (includePrematchNear) lastPrematchNearOddsAt = now;
+        if (includePrematchMid) lastPrematchMidOddsAt = now;
+        if (includePrematchFar) lastPrematchFarOddsAt = now;
+
+        const includePrematch = includePrematchNear || includePrematchMid || includePrematchFar;
+
+        if (includeLive) {
+          console.log("ODDS_LIVE_PRIORITY", JSON.stringify({
+            at: new Date(now).toISOString(),
+            intervalMs: LIVE_ODDS_INTERVAL_MS,
+          }));
+          await runDedicatedLiveTick(ctx);
+        }
+
+        const pending = includePrematch
+          ? await ctx.services.db.query<{
+              match_id: string;
+              provider_id: string | null;
+              status: string;
+              scheduled_at: string;
+            }>(
+              `with scheduled_matches as (
+                 select
+                   m.id as match_id,
+                   m.provider_id,
+                   m.status::text as status,
+                   m.scheduled_at,
+                   case
+                     when m.scheduled_at <= now() + interval '30 minutes' then 0
+                     when m.scheduled_at <= now() + interval '24 hours' then 1
+                     else 2
+                   end as bucket_order,
+                   (
+                     select max(sl.odds_updated_at)
+                     from nova.markets mk
+                     join nova.selections sl on sl.market_id = mk.id
+                     where mk.match_id = m.id
+                   ) as newest_odds_updated_at,
+                   case
+                     when not exists (
+                       select 1
+                       from nova.markets mk
+                       where mk.match_id = m.id
+                     ) then 0
+                     when not exists (
+                       select 1
+                       from nova.selections sl
+                       where sl.match_id = m.id
+                         and sl.odds_scaled > 0
+                     ) then 1
+                     else 2
+                   end as data_priority
+                 from nova.matches m
+                 where m.provider_id is not null
+                   and m.status::text = 'scheduled'
+                   and (
+                     ($1::boolean and m.scheduled_at <= now() + interval '30 minutes')
+                     or ($2::boolean and m.scheduled_at > now() + interval '30 minutes' and m.scheduled_at <= now() + interval '24 hours')
+                     or ($3::boolean and m.scheduled_at > now() + interval '24 hours')
+                   )
+               ),
+               ranked as (
+                 select
+                   sm.*,
+                   row_number() over (
+                     partition by sm.bucket_order
+                     order by
+                       sm.data_priority asc,
+                       sm.newest_odds_updated_at asc nulls first,
+                       sm.scheduled_at asc,
+                       sm.match_id asc
+                   ) as bucket_rank
+                 from scheduled_matches sm
+               )
+               select
+                 match_id,
+                 provider_id,
+                 status,
+                 scheduled_at
+               from ranked
+               where
+                 (bucket_order = 0 and $1::boolean and bucket_rank <= 200)
+                 or (bucket_order = 1 and $2::boolean and bucket_rank <= 200)
+                 or (bucket_order = 2 and $3::boolean and bucket_rank <= 500)
+               order by
+                 bucket_order asc,
+                 bucket_rank asc`,
+              [includePrematchNear, includePrematchMid, includePrematchFar]
+            ).catch(() => [])
+          : [];
+
+        const extendedPending =
+          includeExtendedPrematchNear || includeExtendedPrematchFar
+            ? await ctx.services.db.query<{
+                match_id: string;
+                provider_id: string | null;
+                status: string;
+                scheduled_at: string;
+              }>(
+                `select
+                   m.id as match_id,
+                   m.provider_id,
+                   m.status::text as status,
+                   m.scheduled_at
+                 from nova.matches m
+                 where m.status::text = 'scheduled'
+                   and m.provider_id is not null
+                   and m.scheduled_at > now() + interval '30 minutes'
+                 order by
+                   (
+                     select max(sl.odds_updated_at)
+                     from nova.markets mk
+                     join nova.selections sl on sl.market_id = mk.id
+                     where mk.match_id = m.id
+                   ) asc nulls first,
+                   m.scheduled_at asc,
+                   m.id asc
+                 limit $1`,
+                [EXTENDED_ODDS_MAX_MATCHES_PER_CYCLE],
+              ).catch(() => [])
+            : [];
+
+        const providerIds = pending
+          .filter((row) =>
+            row.status === 'scheduled'
+              ? includePrematch
+              : false
+          )
+          .map((row) => row.provider_id)
+          .filter((id): id is string => Boolean(id));
+
+        const extendedNearProviderIds = includeExtendedPrematchNear
+          ? extendedPending
+              .filter((row) => {
+                if (row.status !== 'scheduled' || !row.provider_id) return false;
+                const scheduledAt = new Date(row.scheduled_at).getTime();
+                return scheduledAt > now && scheduledAt <= now + 30 * 60_000;
+              })
+              .slice(0, EXTENDED_ODDS_MAX_MATCHES_PER_CYCLE)
+              .map((row) => row.provider_id)
+              .filter((id): id is string => Boolean(id))
+          : [];
+
+        const extendedFarProviderIds = includeExtendedPrematchFar
+          ? extendedPending
+              .filter((row) => {
+                if (row.status !== 'scheduled' || !row.provider_id) return false;
+                const scheduledAt = new Date(row.scheduled_at).getTime();
+                return scheduledAt > now + 30 * 60_000;
+              })
+              .slice(0, EXTENDED_ODDS_MAX_MATCHES_PER_CYCLE)
+              .map((row) => row.provider_id)
+              .filter((id): id is string => Boolean(id))
+          : [];
+
+        const extendedProviderIds = [
+          ...new Set([...extendedNearProviderIds, ...extendedFarProviderIds]),
+        ].slice(0, EXTENDED_ODDS_MAX_MATCHES_PER_CYCLE);
+
+        console.log("ODDS_PREMATCH_FETCH_START", JSON.stringify({
+          at: new Date(now).toISOString(),
+          requestedMatches: providerIds.length,
+          includePrematch,
+        }));
+
+        const batchedOdds =
+          providerIds.length > 0
+            ? await ctx.services.providers.sports.fetchOdds(providerIds)
+            : { ok: true, value: [] };
+
+        console.log(
+          "ODDS_BATCH_RESULT",
+          JSON.stringify({
+            requestedMatches: providerIds.length,
+            ok: batchedOdds.ok,
+            bundles: batchedOdds.value?.length ?? 0,
+            errorMessage: batchedOdds.errorMessage ?? null,
+          }),
+        );
+
+        if (extendedProviderIds.length > 0) {
+          void runExtendedPrematchOddsDetached(
+            ctx,
+            extendedPending,
+            extendedProviderIds,
+          );
+        }
+
+        const bundlesByProviderId = new Map<string, import("@/lib/ports/providers").ProviderOddsBundle>();
+
+        for (const bundle of batchedOdds.value ?? []) {
+          bundlesByProviderId.set(bundle.matchProviderId, bundle);
+        }
+
+        const extendedProviderIdSet = new Set(extendedProviderIds);
+
+        const normalSyncPending = pending.filter((row) => {
+          if (!row.provider_id) return false;
+
+          if (extendedProviderIdSet.has(row.provider_id)) {
+            console.log("ODDS_NORMAL_SYNC_SKIPPED_EXTENDED", JSON.stringify({
+              matchId: row.match_id,
+              providerId: row.provider_id,
+            }));
+            return false;
+          }
+
+          return true;
+        });
+
+        const SYNC_CONCURRENCY = 12;
+
+        for (let i = 0; i < normalSyncPending.length; i += SYNC_CONCURRENCY) {
+          const batch = normalSyncPending.slice(i, i + SYNC_CONCURRENCY);
+
+          await Promise.allSettled(
+            batch.map(async (row) => {
+              if (!row.provider_id) return;
+
+              const bundle = bundlesByProviderId.get(row.provider_id);
+              if (!bundle) return;
+
+              const syncStartedAt = Date.now();
+
+              console.log("ODDS_SYNC_START", JSON.stringify({
+                matchId: row.match_id,
+                source: "normal",
+              }));
+
+              try {
+                const result = await syncOdds(
+                  ctx,
+                  row.match_id,
+                  { ok: true, value: [bundle] },
+                );
+
+                console.log("ODDS_SYNC_DONE", JSON.stringify({
+                  matchId: row.match_id,
+                  source: "normal",
+                  ms: Date.now() - syncStartedAt,
+                  ...result,
+                }));
+              } catch (error) {
+                console.error("ODDS_SYNC_FAILED", JSON.stringify({
+                  matchId: row.match_id,
+                  source: "normal",
+                  error: error instanceof Error ? error.message : String(error),
+                }));
+              }
+            }),
+          );
+        }
+
+        console.log("ODDS_CORE_TICK_DONE", JSON.stringify({
+          at: new Date().toISOString(),
+          requestedMatches: providerIds.length,
+          bundles: bundlesByProviderId.size,
+        }));
+
+        void runLiveStateMaintenanceDetached(ctx, now);
+        void runOddsMaintenanceDetached(ctx, now);
+
+    });
+  },
+});
+}
+
+
+let extendedPrematchRunning = false;
+
+async function runExtendedPrematchOddsDetached(
+  ctx: WorkerContext,
+  pending: Array<{
+    match_id: string;
+    provider_id: string | null;
+    status: string;
+  }>,
+  providerIds: string[],
+): Promise<void> {
+  if (extendedPrematchRunning) {
+    console.log("ODDS_EXTENDED_PREMATCH_SKIPPED", JSON.stringify({
+      reason: "already_running",
+      requestedMatches: providerIds.length,
+    }));
+    return;
+  }
+
+  extendedPrematchRunning = true;
+
+  try {
+    console.log("ODDS_EXTENDED_PREMATCH_DETACHED_START", JSON.stringify({
+      at: new Date().toISOString(),
+      requestedMatches: providerIds.length,
+    }));
+
+    await ctx.withLock("odds:extended-prematch", 900, async () => {
+      const startedAt = Date.now();
+
+      const result =
+        await ctx.services.providers.sports.fetchEventOdds(providerIds);
+
+      console.log("ODDS_EVENT_BATCH_RESULT", JSON.stringify({
+        requestedMatches: providerIds.length,
+        ok: result.ok,
+        bundles: result.value?.length ?? 0,
+        errorMessage: result.errorMessage ?? null,
+        ms: Date.now() - startedAt,
+      }));
+
+      if (!result.ok || !result.value || result.value.length === 0) {
+        return;
+      }
+
+      const bundlesByProviderId = new Map(
+        result.value.map((bundle) => [bundle.matchProviderId, bundle]),
+      );
+
+      const targets = pending.filter(
+        (row) => row.provider_id && bundlesByProviderId.has(row.provider_id),
+      );
+
+      const SYNC_CONCURRENCY = 12;
+
+      for (let i = 0; i < targets.length; i += SYNC_CONCURRENCY) {
+        const batch = targets.slice(i, i + SYNC_CONCURRENCY);
+
+        await Promise.allSettled(
+          batch.map(async (row) => {
+            if (!row.provider_id) return;
+
+            const bundle = bundlesByProviderId.get(row.provider_id);
+            if (!bundle) return;
+
+            const syncStartedAt = Date.now();
+
+            try {
+              const syncResult = await syncOdds(
+                ctx,
+                row.match_id,
+                { ok: true, value: [bundle] },
+              );
+
+              console.log("ODDS_EXTENDED_SYNC_DONE", JSON.stringify({
+                matchId: row.match_id,
+                ms: Date.now() - syncStartedAt,
+                ...syncResult,
+              }));
+            } catch (error) {
+              console.error("ODDS_EXTENDED_SYNC_FAILED", JSON.stringify({
+                matchId: row.match_id,
+                error: error instanceof Error ? error.message : String(error),
+              }));
+            }
+          }),
+        );
+      }
+
+      console.log("ODDS_EXTENDED_PREMATCH_DETACHED_DONE", JSON.stringify({
+        requestedMatches: providerIds.length,
+        bundles: result.value.length,
+        syncedTargets: targets.length,
+        ms: Date.now() - startedAt,
+      }));
+    });
+  } catch (error) {
+    console.error("ODDS_EXTENDED_PREMATCH_DETACHED_FAILED", JSON.stringify({
+      error: error instanceof Error ? error.message : String(error),
+    }));
+  } finally {
+    extendedPrematchRunning = false;
+  }
+}
+
+
+let maintenanceRunning = false;
+
+let liveStateMaintenanceRunning = false;
+
+async function runLiveStateMaintenanceDetached(
+  ctx: WorkerContext,
+  scheduledAt: number,
+): Promise<void> {
+  if (liveStateMaintenanceRunning) {
+    console.log("ODDS_LIVE_STATE_SKIPPED", JSON.stringify({
+      reason: "already_running",
+    }));
+    return;
+  }
+
+  const now = Date.now();
+  const sportsDue =
+    now - lastResultReconciliationAt >= LIVE_RESULT_INTERVAL_MS;
+  const apiFootballDue =
+    ctx.services.providers.live.configured &&
+    now - lastApiFootballLiveSyncAt >= API_FOOTBALL_LIVE_INTERVAL_MS;
+
+  if (!sportsDue && !apiFootballDue) {
+    return;
+  }
+
+  liveStateMaintenanceRunning = true;
+
+  try {
+    console.log("ODDS_LIVE_STATE_START", JSON.stringify({
+      at: new Date(now).toISOString(),
+      scheduledAt,
+      sportsDue,
+      apiFootballDue,
+    }));
+
+    await ctx.withLock("odds:live-state", 60, async () => {
+      const liveStartedAt = Date.now();
+
+      if (
+        ctx.services.providers.live.configured &&
+        Date.now() - lastApiFootballLiveSyncAt >=
+          API_FOOTBALL_LIVE_INTERVAL_MS
+      ) {
+        lastApiFootballLiveSyncAt = Date.now();
+
+        try {
+          const liveDataResult = await syncApiFootballLiveData(ctx);
+          console.log(
+            "API_FOOTBALL_LIVE_SYNC",
+            JSON.stringify(liveDataResult),
+          );
+        } catch (error) {
+          console.error(
+            "API_FOOTBALL_LIVE_SYNC_FAILED",
+            JSON.stringify({
+              error: error instanceof Error ? error.message : String(error),
+            }),
+          );
+        }
+      }
+
+      if (
+        Date.now() - lastResultReconciliationAt >=
+        LIVE_RESULT_INTERVAL_MS
+      ) {
+        if (Date.now() - lastResultsQuotaErrorAt < 30_000) {
+          console.log(
+            "ODDS_RESULT_RECONCILIATION_SKIPPED",
+            JSON.stringify({
+              reason: "provider_quota_exhausted",
+              nextInMs: Math.max(
+                0,
+                30_000 - (Date.now() - lastResultsQuotaErrorAt),
+              ),
+            }),
+          );
+        } else {
+          lastResultReconciliationAt = Date.now();
+
+          try {
+            const resultReconciliation =
+              await reconcileLiveResults(ctx);
+
+            console.log(
+              "ODDS_RESULT_RECONCILIATION",
+              JSON.stringify(resultReconciliation),
+            );
+          } catch (error) {
+            console.error(
+              "ODDS_RESULT_RECONCILIATION_FAILED",
+              JSON.stringify({
+                error: error instanceof Error ? error.message : String(error),
+              }),
+            );
+          }
+        }
+      }
+
+      console.log("ODDS_LIVE_STATE_DONE", JSON.stringify({
+        at: new Date().toISOString(),
+        ms: Date.now() - liveStartedAt,
+      }));
+    });
+  } catch (error) {
+    console.error(
+      "ODDS_LIVE_STATE_FAILED",
+      JSON.stringify({
+        error: error instanceof Error ? error.message : String(error),
+      }),
+    );
+  } finally {
+    liveStateMaintenanceRunning = false;
+  }
+}
+
+async function runOddsMaintenanceDetached(
+  ctx: WorkerContext,
+  scheduledAt: number,
+): Promise<void> {
+  if (maintenanceRunning) {
+    console.log("ODDS_MAINTENANCE_SKIPPED", JSON.stringify({
+      reason: "already_running",
+    }));
+    return;
+  }
+
+  maintenanceRunning = true;
+
+  try {
+    console.log("ODDS_MAINTENANCE_DETACHED_START", JSON.stringify({
+      at: new Date().toISOString(),
+      scheduledAt,
+    }));
+
+    await ctx.withLock("odds:maintenance", 900, async () => {
+      const maintenanceNow = Date.now();
+
+      if (maintenanceNow - lastMatchDiscoveryAt >= MATCH_DISCOVERY_INTERVAL_MS) {
+        lastMatchDiscoveryAt = maintenanceNow;
+
+        console.log("ODDS_TICK_AFTER_ODDS_BEFORE_SYNC_MATCHES");
+
+        const result = await syncMatches(ctx);
+
+        console.log("ODDS_TICK_AFTER_SYNC_MATCHES", JSON.stringify(result));
+      } else {
+        console.log("ODDS_MATCH_DISCOVERY_SKIPPED", JSON.stringify({
+          nextInMs: Math.max(
+            0,
+            MATCH_DISCOVERY_INTERVAL_MS -
+              (maintenanceNow - lastMatchDiscoveryAt),
+          ),
+        }));
+      }
+
+      console.log("ODDS_MAINTENANCE_DETACHED_DONE", JSON.stringify({
+        at: new Date().toISOString(),
+        ms: Date.now() - maintenanceNow,
+      }));
+    });
+  } catch (error) {
+    console.error(
+      "ODDS_MAINTENANCE_DETACHED_FAILED",
+      JSON.stringify({
+        error:
+          error instanceof Error
+            ? error.message
+            : String(error),
+      }),
+    );
+  } finally {
+    maintenanceRunning = false;
+  }
+}
+
+const LIVE_DISCOVERY_INTERVAL_MS = Math.max(
+  60_000,
+  Number(process.env.ODDS_LIVE_DISCOVERY_INTERVAL_MS ?? 60_000) || 60_000,
+);
+let lastLiveDiscoveryAt = 0;
+
+async function runDedicatedLiveDiscovery(ctx: WorkerContext): Promise<void> {
+  const now = Date.now();
+  if (now - lastLiveDiscoveryAt < LIVE_DISCOVERY_INTERVAL_MS) {
+    return;
+  }
+  lastLiveDiscoveryAt = now;
+
+  const from = new Date(now - 24 * 60 * 60 * 1000).toISOString();
+  const to = new Date(now + 24 * 60 * 60 * 1000).toISOString();
+
+  console.log("ODDS_LIVE_DISCOVERY_START", JSON.stringify({
+    from,
+    to,
+    intervalMs: LIVE_DISCOVERY_INTERVAL_MS,
+  }));
+
+  try {
+    const result = await ctx.services.providers.sports.fetchLiveMatches();
+    console.log("ODDS_LIVE_DISCOVERY_PROVIDER_RESULT", JSON.stringify({
+      ok: result.ok,
+      matches: result.value?.length ?? 0,
+      errorCode: result.errorCode ?? null,
+      errorMessage: result.errorMessage ?? null,
+    }));
+
+    if (!result.ok || !result.value) return;
+
+    const liveMatches = result.value.filter((match) =>
+      match.status === "live"
+    );
+
+    console.log("ODDS_LIVE_DISCOVERY_LIVE_MATCHES", JSON.stringify({
+      discovered: liveMatches.length,
+      sample: liveMatches.slice(0, 20).map((match) => ({
+        providerId: match.providerId,
+        home: match.homeTeamName,
+        away: match.awayTeamName,
+        status: match.status,
+        sport: match.sport,
+      })),
+    }));
+
+    if (liveMatches.length === 0) return;
+
+    const existing = await ctx.services.db.query<{
+      provider_id: string | null;
+    }>(
+      `select provider_id
+         from nova.matches
+        where provider_id = any($1::text[])`,
+      [liveMatches.map((match) => match.providerId)],
+    );
+
+    const existingIds = new Set(
+      existing
+        .map((row) => row.provider_id)
+        .filter((id): id is string => Boolean(id)),
+    );
+
+    const newLiveMatches = liveMatches.filter(
+      (match) => !existingIds.has(match.providerId),
+    );
+
+    console.log("ODDS_LIVE_DISCOVERY_NEW_MATCHES", JSON.stringify({
+      discovered: liveMatches.length,
+      alreadyKnown: liveMatches.length - newLiveMatches.length,
+      newMatches: newLiveMatches.length,
+    }));
+
+    if (newLiveMatches.length === 0) return;
+
+    const syncResult = await syncMatches(ctx, {
+      ok: true,
+      value: newLiveMatches,
+    });
+    console.log("ODDS_LIVE_DISCOVERY_SYNC_MATCHES_DONE", JSON.stringify(syncResult));
+  } catch (error) {
+    console.error("ODDS_LIVE_DISCOVERY_FAILED", JSON.stringify({
+      error: error instanceof Error ? error.message : String(error),
+    }));
+  }
+}
+
+async function runDedicatedLiveTick(ctx: WorkerContext): Promise<void> {
+  if (!env.sportsProviderEnabled) {
+    return;
+  }
+
+  void runDedicatedLiveDiscovery(ctx);
+
+  const now = Date.now();
+
+  await ctx.withLock('odds:live-priority', 15, async () => {
+    const pending = await ctx.services.db.query<{
+      match_id: string;
+      provider_id: string | null;
+    }>(
+      `select
+         m.id as match_id,
+         m.provider_id
+       from nova.matches m
+       where m.provider_id is not null
+         and m.status::text in ('live','in_play','halftime','break')
+       order by
+         (
+           select max(sl.odds_updated_at)
+           from nova.markets mk
+           join nova.selections sl on sl.market_id = mk.id
+           where mk.match_id = m.id
+         ) asc nulls first,
+         m.scheduled_at asc
+       limit 200`,
+    );
+
+    const providerIds = pending
+      .map((row) => row.provider_id)
+      .filter((id): id is string => Boolean(id));
+
+    console.log("ODDS_LIVE_WORKER_FETCH_START", JSON.stringify({
+      at: new Date(now).toISOString(),
+      requestedMatches: providerIds.length,
+      intervalMs: LIVE_ODDS_INTERVAL_MS,
+    }));
+
+    if (providerIds.length === 0) {
+      console.log("ODDS_LIVE_WORKER_RESULT", JSON.stringify({
+        requestedMatches: 0,
+        bundles: 0,
+      }));
+      return;
+    }
+
+    const result = await ctx.services.providers.sports.fetchOdds(providerIds);
+
+    console.log("ODDS_LIVE_WORKER_PROVIDER_RESULT", JSON.stringify({
+      requestedMatches: providerIds.length,
+      ok: result.ok,
+      bundles: result.value?.length ?? 0,
+      errorCode: result.errorCode ?? null,
+      errorMessage: result.errorMessage ?? null,
+    }));
+
+    if (!result.ok || !result.value) {
+      return;
+    }
+
+    const bundlesByProviderId = new Map(
+      result.value.map((bundle) => [bundle.matchProviderId, bundle]),
+    );
+
+    const SYNC_CONCURRENCY = 12;
+
+    for (let i = 0; i < pending.length; i += SYNC_CONCURRENCY) {
+      const batch = pending.slice(i, i + SYNC_CONCURRENCY);
+
+      await Promise.allSettled(
+        batch.map(async (row) => {
+          if (!row.provider_id) return;
+
+          const bundle = bundlesByProviderId.get(row.provider_id);
+          if (!bundle) return;
+
+          const syncStartedAt = Date.now();
+
+          try {
+            const syncResult = await syncOdds(
+              ctx,
+              row.match_id,
+              { ok: true, value: [bundle] },
+            );
+
+            console.log("ODDS_LIVE_WORKER_SYNC_DONE", JSON.stringify({
+              matchId: row.match_id,
+              ms: Date.now() - syncStartedAt,
+              ...syncResult,
+            }));
+          } catch (error) {
+            console.error("ODDS_LIVE_WORKER_SYNC_FAILED", JSON.stringify({
+              matchId: row.match_id,
+              error: error instanceof Error ? error.message : String(error),
+            }));
+          }
+        }),
+      );
+    }
+
+    console.log("ODDS_LIVE_WORKER_RESULT", JSON.stringify({
+      requestedMatches: providerIds.length,
+      bundles: result.value.length,
+    }));
+  });
+}
+
+if (WORKER_MODE === 'live') {
+createWorker({
+  queue: 'odds-live',
+  handlers: [],
+  tickIntervalMs: LIVE_ODDS_INTERVAL_MS,
+  pollIntervalMs: 1_000,
+  batchSize: 1,
+  async tick(ctx) {
+    await runDedicatedLiveTick(ctx);
+  },
+});
+
+}
+
+function normalizeLiveTeamName(value: string): string {
+  return value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/\b(fc|sc|afc|cf|ac|ec|club|sporting|football|clube|futebol)\b/g, ' ')
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim()
+    .replace(/\s+/g, ' ');
+}
+
+function liveTeamPairMatches(
+  homeA: string,
+  awayA: string,
+  homeB: string,
+  awayB: string,
+): boolean {
+  const ah = normalizeLiveTeamName(homeA);
+  const aa = normalizeLiveTeamName(awayA);
+  const bh = normalizeLiveTeamName(homeB);
+  const ba = normalizeLiveTeamName(awayB);
+  return (ah === bh && aa === ba) || (ah.includes(bh) || bh.includes(ah)) && (aa.includes(ba) || ba.includes(aa));
+}
+
+async function syncApiFootballLiveData(ctx: WorkerContext): Promise<{
+  ok: boolean;
+  liveFixtures: number;
+  matched: number;
+  eventsSaved: number;
+  statsSaved: number;
+  failed: number;
+  errorMessage: string | null;
+}> {
+  const provider = ctx.services.providers.live;
+  console.log("API_FOOTBALL_LIVE_FLOW", JSON.stringify({
+    step: "before_fetchLiveFixtures",
+    pid: process.pid,
+    at: new Date().toISOString(),
+  }));
+  const liveResult = await provider.fetchLiveFixtures();
+  console.log("API_FOOTBALL_LIVE_FLOW", JSON.stringify({
+    step: "after_fetchLiveFixtures",
+    pid: process.pid,
+    at: new Date().toISOString(),
+    ok: liveResult.ok,
+    count: liveResult.value?.length ?? 0,
+    error: liveResult.errorMessage ?? liveResult.errorCode ?? null,
+  }));
+
+  if (!liveResult.ok || !liveResult.value) {
+    return {
+      ok: false,
+      liveFixtures: 0,
+      matched: 0,
+      eventsSaved: 0,
+      statsSaved: 0,
+      failed: 1,
+      errorMessage: liveResult.errorMessage ?? liveResult.errorCode ?? 'API-Football live fixture request failed',
+    };
+  }
+
+  const fixtures = liveResult.value;
+  console.log("API_FOOTBALL_LIVE_FIXTURES_DEBUG", JSON.stringify(
+    fixtures.map((f) => ({
+      fixtureId: f.fixtureId,
+      home: f.homeTeamName,
+      away: f.awayTeamName,
+      status: f.statusShort,
+      minute: f.minute,
+      extraMinute: f.extraMinute,
+    }))
+  ));
+  if (fixtures.length === 0) {
+    return {
+      ok: true,
+      liveFixtures: 0,
+      matched: 0,
+      eventsSaved: 0,
+      statsSaved: 0,
+      failed: 0,
+      errorMessage: null,
+    };
+  }
+
+  console.log("API_FOOTBALL_LIVE_FLOW", JSON.stringify({
+    step: "before_nova_live_matches_query",
+    pid: process.pid,
+    at: new Date().toISOString(),
+  }));
+  const matches = await ctx.services.db.query<{
+    match_id: string;
+    home_team: string;
+    away_team: string;
+  }>(
+    `select m.id as match_id, ht.name as home_team, at.name as away_team
+       from nova.matches m
+       join nova.teams ht on ht.id = m.home_team_id
+       join nova.teams at on at.id = m.away_team_id
+      where m.status in ('live','paused','interrupted')
+      order by m.scheduled_at desc
+      limit 100`,
+  );
+
+  console.log("API_FOOTBALL_LIVE_FLOW", JSON.stringify({
+    step: "after_nova_live_matches_query",
+    pid: process.pid,
+    at: new Date().toISOString(),
+    novaLiveMatches: matches.length,
+  }));
+
+  let matched = 0;
+  let eventsSaved = 0;
+  let statsSaved = 0;
+  let failed = 0;
+
+  for (const fixture of fixtures) {
+    console.log("API_FOOTBALL_MATCH_DEBUG", JSON.stringify({
+      fixtureId: fixture.fixtureId,
+      apiHome: fixture.homeTeamName,
+      apiAway: fixture.awayTeamName,
+      matched: matches.some((row) =>
+        liveTeamPairMatches(
+          fixture.homeTeamName,
+          fixture.awayTeamName,
+          row.home_team,
+          row.away_team,
+        )
+      ),
+    }));
+    const match = matches.find((row) =>
+      liveTeamPairMatches(
+        fixture.homeTeamName,
+        fixture.awayTeamName,
+        row.home_team,
+        row.away_team,
+      )
+    );
+
+    if (!match) continue;
+
+    matched++;
+
+    const snapshot = {
+      source: 'api_football',
+      fixtureId: fixture.fixtureId,
+      status: fixture.status,
+      statusShort: fixture.statusShort,
+      minute: fixture.minute,
+      extraMinute: fixture.extraMinute,
+      period: fixture.period,
+      liveHomeScore: fixture.homeScore,
+      liveAwayScore: fixture.awayScore,
+      homeTeamProviderId: fixture.homeTeamProviderId,
+      awayTeamProviderId: fixture.awayTeamProviderId,
+      observedAt: fixture.observedAt,
+    };
+
+    try {
+      await ctx.services.db.query(
+        `delete from nova.match_stats where match_id = $1`,
+        [match.match_id],
+      );
+
+      await ctx.services.db.query(
+        `insert into nova.match_stats
+          (match_id, payload, provider, updated_at)
+         values ($1, $2::jsonb, $3, now())`,
+        [match.match_id, JSON.stringify(snapshot), 'api_football'],
+      );
+
+      statsSaved++;
+
+      if (matched <= API_FOOTBALL_MAX_DETAIL_MATCHES_PER_CYCLE) {
+        const eventsResult = await provider.fetchEvents(fixture.fixtureId);
+        if (eventsResult.ok && eventsResult.value) {
+          await ctx.services.db.query(
+            `delete from nova.match_events where match_id = $1`,
+            [match.match_id],
+          );
+
+          for (const event of eventsResult.value) {
+            await ctx.services.db.query(
+              `insert into nova.match_events
+                (match_id, provider_event_id, type, minute, period, team_id, player_name, detail, occurred_at, created_at)
+               values ($1, $2, $3, $4, $5, null, $6, $7, $8::timestamptz, now())`,
+              [
+                match.match_id,
+                event.providerEventId,
+                event.type,
+                event.minute,
+                event.period,
+                event.playerName,
+                [event.detail, event.comments, event.assistName ? `Assist: ${event.assistName}` : null]
+                  .filter(Boolean)
+                  .join(' · ') || null,
+                event.observedAt,
+              ],
+            );
+            eventsSaved++;
+          }
+        } else {
+          failed++;
+          console.error("API_FOOTBALL_EVENTS_FAILED", JSON.stringify({
+            matchId: match.match_id,
+            fixtureId: fixture.fixtureId,
+            error: eventsResult.errorMessage ?? eventsResult.errorCode ?? 'unknown',
+          }));
+        }
+
+        const statisticsResult = await provider.fetchStatistics(fixture.fixtureId);
+        if (statisticsResult.ok && statisticsResult.value) {
+          await ctx.services.db.query(
+            `update nova.match_stats
+                set payload = payload || $2::jsonb,
+                    updated_at = now()
+              where match_id = $1`,
+            [
+              match.match_id,
+              JSON.stringify({
+                statistics: statisticsResult.value,
+              }),
+            ],
+          );
+          statsSaved++;
+        } else {
+          failed++;
+          console.error("API_FOOTBALL_STATISTICS_FAILED", JSON.stringify({
+            matchId: match.match_id,
+            fixtureId: fixture.fixtureId,
+            error: statisticsResult.errorMessage ?? statisticsResult.errorCode ?? 'unknown',
+          }));
+        }
+      }
+
+      console.log("API_FOOTBALL_MATCH_SYNCED", JSON.stringify({
+        matchId: match.match_id,
+        fixtureId: fixture.fixtureId,
+        homeTeam: fixture.homeTeamName,
+        awayTeam: fixture.awayTeamName,
+        minute: fixture.minute,
+        extraMinute: fixture.extraMinute,
+        period: fixture.period,
+        liveHomeScore: fixture.homeScore,
+        liveAwayScore: fixture.awayScore,
+      }));
+    } catch (error) {
+      failed++;
+      console.error("API_FOOTBALL_MATCH_SYNC_FAILED", JSON.stringify({
+        matchId: match.match_id,
+        fixtureId: fixture.fixtureId,
+        error: error instanceof Error ? error.message : String(error),
+      }));
+    }
+
+    if (matched >= API_FOOTBALL_MAX_DETAIL_MATCHES_PER_CYCLE) break;
+  }
+
+  return {
+    ok: true,
+    liveFixtures: fixtures.length,
+    matched,
+    eventsSaved,
+    statsSaved,
+    failed,
+    errorMessage: null,
+  };
+}
+
+async function reconcileLiveResults(ctx: WorkerContext): Promise<{ checked: number; finished: number; liveUpdated: number; failed: number }> {
+  const rows = await ctx.services.db.query<{
+    id: string;
+    provider_id: string | null;
+    status: string;
+    home_score: number | null;
+    away_score: number | null;
+  }>(
+    `select
+       id,
+       provider_id,
+       status::text,
+       home_score,
+       away_score
+     from nova.matches
+     where provider_id is not null
+       and (
+         status::text in ('live','in_play','halftime','break')
+         or (
+           status::text = 'scheduled'
+           and scheduled_at <= now() + interval '3 hours'
+           and scheduled_at >= now() - interval '24 hours'
+         )
+       )
+     order by
+       case
+         when status::text in ('live','in_play','halftime','break') then 0
+         else 1
+       end,
+       scheduled_at desc
+     limit 200`,
+  );
+  let finished = 0;
+  let liveUpdated = 0;
+  let failed = 0;
+  if (rows.length === 0) return { checked: 0, finished, liveUpdated, failed };
+  const from = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+  const to = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+  const providerIds = rows
+    .map((row) => row.provider_id)
+    .filter((id): id is string => Boolean(id));
+
+  const providerResult = await ctx.services.providers.sports.fetchResults(
+    from,
+    to,
+    providerIds,
+  );
+  console.log("ODDS_RESULTS_BATCH_RESULT", JSON.stringify({ checked: rows.length, ok: providerResult.ok, snapshots: providerResult.value?.length ?? 0, errorCode: providerResult.errorCode ?? null, errorMessage: providerResult.errorMessage ?? null }));
+  if (!providerResult.ok || !providerResult.value) {
+    if (providerResult.errorCode === "OUT_OF_USAGE_CREDITS" || (providerResult.errorMessage ?? "").includes("OUT_OF_USAGE_CREDITS")) {
+      lastResultsQuotaErrorAt = Date.now();
+      await recordProviderStatus(ctx, "error", providerResult.errorMessage ?? "Sports provider quota exhausted");
+      return { checked: rows.length, finished, liveUpdated, failed: 0 };
+    }
+    await recordProviderStatus(ctx, "error", providerResult.errorMessage ?? providerResult.errorCode ?? "Sports result provider error");
+    return { checked: rows.length, finished, liveUpdated, failed: rows.length };
+  }
+  const resultsByProviderId = new Map(providerResult.value.map((result) => [result.matchProviderId, result]));
+  for (const match of rows) {
+    try {
+      const result = resultsByProviderId.get(match.provider_id!);
+      if (!result) {
+        const ageMs = Date.now() - new Date(
+          (await ctx.services.db.queryOne<{ scheduled_at: string }>(
+            `select scheduled_at from nova.matches where id = $1`,
+            [match.id],
+          ))?.scheduled_at ?? Date.now(),
+        ).getTime();
+        if (ageMs > 6 * 60 * 60 * 1000) {
+          await ctx.services.db.query(
+            `update nova.matches
+                set status = 'abandoned'::nova.match_status,
+                    finished_at = coalesce(finished_at, now()),
+                    provider_updated_at = now(),
+                    updated_at = now()
+              where id = $1
+                and status::text in ('live','in_play','halftime','break')`,
+            [match.id],
+          );
+          await ctx.services.db.query(
+            `update nova.markets
+                set status = 'closed'::nova.market_status,
+                    updated_at = now()
+              where match_id = $1
+                and status::text in ('open','suspended')`,
+            [match.id],
+          );
+          await ctx.services.db.query(
+            `update nova.selections
+                set status = 'closed'::nova.selection_status,
+                    updated_at = now()
+              where match_id = $1
+                and status::text in ('open','suspended')`,
+            [match.id],
+          );
+          finished += 1;
+        }
+        continue;
+      }
+      if (result.status === "finished") {
+        const latest = await ctx.services.db.queryOne<{ revision: number | null; provider_result_id: string | null; authoritative: boolean }>(
+          `select revision, provider_result_id, authoritative from nova.match_results where match_id = $1 order by revision desc limit 1`,
+          [match.id],
+        );
+        if (latest?.authoritative === true && latest.provider_result_id === match.provider_id) {
+          await ctx.services.db.query(
+            `update nova.matches set status = 'finished'::nova.match_status, home_score = $2, away_score = $3, provider_updated_at = now(), updated_at = now() where id = $1`,
+            [match.id, result.homeScore, result.awayScore],
+          );
+          await ctx.services.db.query(
+            `update nova.markets set status = 'closed'::nova.market_status, updated_at = now() where match_id = $1 and status::text in ('open','suspended')`,
+            [match.id],
+          );
+          await ctx.services.db.query(
+            `update nova.selections set status = 'closed'::nova.selection_status, updated_at = now() where match_id = $1 and status::text in ('open','suspended')`,
+            [match.id],
+          );
+          continue;
+        }
+        const revision = (latest?.revision ?? 0) + 1;
+        await ctx.services.db.query(
+          `insert into nova.match_results (match_id, revision, status, home_score, away_score, home_half_score, away_half_score, home_corners, away_corners, home_cards, away_cards, extra_time, penalties, penalty_home, penalty_away, provider, provider_result_id, authoritative, observed_at, created_at)
+           values ($1,$2,'finished',$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,true,$17::timestamptz,now())`,
+          [
+            match.id, revision, result.homeScore, result.awayScore,
+            result.homeHalfScore, result.awayHalfScore,
+            result.homeCorners, result.awayCorners,
+            result.homeCards, result.awayCards,
+            result.extraTime, result.penalties,
+            result.penaltyHome, result.penaltyAway,
+            ctx.services.providers.sports.name, match.provider_id,
+            result.observedAt,
+          ],
+        );
+        await ctx.services.db.query(
+          `update nova.matches set status = 'finished'::nova.match_status, home_score = $2, away_score = $3, provider_updated_at = now(), updated_at = now() where id = $1`,
+          [match.id, result.homeScore, result.awayScore],
+        );
+        await ctx.services.db.query(
+          `update nova.markets set status = 'closed'::nova.market_status, updated_at = now() where match_id = $1 and status::text in ('open','suspended')`,
+          [match.id],
+        );
+        await ctx.services.db.query(
+          `update nova.selections set status = 'closed'::nova.selection_status, updated_at = now() where match_id = $1 and status::text in ('open','suspended')`,
+          [match.id],
+        );
+        await ctx.services.db.query(
+          `select nova.enqueue_match_settlement($1, $2)`,
+          [match.id, `PROVIDER_RESULT_REV_${revision}`],
+        );
+        finished += 1;
+      } else if (result.status === "live") {
+        const scoreChanged =
+          match.home_score !== result.homeScore ||
+          match.away_score !== result.awayScore;
+
+        if (scoreChanged) {
+          await ctx.services.db.query(
+            `update nova.markets
+                set status = 'suspended'::nova.market_status,
+                    suspended_reason = 'LIVE_STATE_CHANGED',
+                    suspended_at = now(),
+                    updated_at = now()
+              where match_id = $1
+                and status::text = 'open'`,
+            [match.id],
+          );
+
+          await ctx.services.db.query(
+            `update nova.selections
+                set status = 'suspended'::nova.selection_status,
+                    anomaly_codes = array_append(
+                      coalesce(anomaly_codes, '{}'::text[]),
+                      'LIVE_STATE_CHANGED'
+                    ),
+                    updated_at = now()
+              where match_id = $1
+                and status::text = 'open'`,
+            [match.id],
+          );
+
+          console.log(
+            "LIVE_MATCH_SUSPENDED",
+            JSON.stringify({
+              matchId: match.id,
+              providerId: match.provider_id,
+              previousScore: [match.home_score, match.away_score],
+              nextScore: [result.homeScore, result.awayScore],
+            }),
+          );
+        }
+
+        await ctx.services.db.query(
+          `update nova.matches
+              set status = 'live'::nova.match_status,
+                  home_score = $2,
+                  away_score = $3,
+                  provider_updated_at = now(),
+                  updated_at = now()
+            where id = $1`,
+          [match.id, result.homeScore, result.awayScore],
+        );
+
+        liveUpdated += 1;
+      }
+    } catch {
+      failed += 1;
+    }
+  }
+  return { checked: rows.length, finished, liveUpdated, failed };
+}
+
+const PREMATCH_HORIZON_DAYS = env.sportsProviderEnabled && env.sportsProviderName === "5dollarfootballapi" ? 3 : Math.max(14, Number(process.env.ODDS_API_PREMATCH_HORIZON_DAYS ?? 30) || 30);
+
+async function syncMatches(
+  ctx: WorkerContext,
+  providedResult?: Awaited<ReturnType<typeof ctx.services.providers.sports.fetchMatches>>,
+): Promise<{ synced: number }> {
+  const from = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+  const to = new Date(Date.now() + PREMATCH_HORIZON_DAYS * 864e5).toISOString();
+
+    console.log("SYNC_MATCHES_START", JSON.stringify({ from, to }));
+  const result =
+    providedResult ??
+    await ctx.services.providers.sports.fetchMatches({ from, to });
+    console.log("SYNC_MATCHES_PROVIDER_RESULT", JSON.stringify({
+      ok: result.ok,
+      valueCount: result.value?.length ?? null,
+      errorCode: result.errorCode ?? null,
+      errorMessage: result.errorMessage ?? null,
+      retryable: result.retryable ?? null,
+    }));
+
+  if (!result.ok || !result.value) {
+    await recordProviderStatus(
+      ctx,
+      "error",
+      result.errorMessage ?? "provider error",
+    );
+    return { synced: 0 };
+  }
+
+  let synced = 0;
+    console.log("SYNC_MATCHES_PROVIDER_EVENTS", result.value.length);
+
+  const syncConcurrency = 6;
+  for (let batchStart = 0; batchStart < result.value.length; batchStart += syncConcurrency) {
+    const batch = result.value.slice(batchStart, batchStart + syncConcurrency);
+    await Promise.all(batch.map(async (match) => {
+    const sportRow = await ctx.services.db.queryOne<{ id: string }>(
+      `select id from nova.sports where slug = $1 limit 1`,
+      [match.sport],
+    );
+
+    if (!sportRow) return;
+
+    const leagueSlug = match.leagueProviderId ?? "unknown";
+
+    const league = await ctx.services.db.queryOne<{ id: string; logo: string | null }>(
+      `insert into nova.leagues
+         (sport_id, slug, name, name_fa, tier, is_active)
+       values ($1, $2, $3, $3, 1, true)
+       on conflict (sport_id, slug)
+       do update set
+         name = excluded.name,
+         is_active = true,
+         updated_at = now()
+       returning id, logo`,
+      [sportRow.id, leagueSlug, match.leagueName ?? leagueSlug],
+    );
+
+    if (!league) return;
+
+    const homeSlug = match.homeTeamName
+      .toLowerCase()
+      .trim()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-|-$/g, "");
+
+    const awaySlug = match.awayTeamName
+      .toLowerCase()
+      .trim()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-|-$/g, "");
+
+    const homeTeam = await ctx.services.db.queryOne<{ id: string; logo: string | null }>(
+      `insert into nova.teams
+         (sport_id, slug, name, name_fa)
+       values ($1, $2, $3, $3)
+       on conflict (sport_id, slug)
+       do update set
+         name = excluded.name,
+         updated_at = now()
+       returning id, logo`,
+      [sportRow.id, homeSlug, match.homeTeamName],
+    );
+
+    const awayTeam = await ctx.services.db.queryOne<{ id: string; logo: string | null }>(
+      `insert into nova.teams
+         (sport_id, slug, name, name_fa)
+       values ($1, $2, $3, $3)
+       on conflict (sport_id, slug)
+       do update set
+         name = excluded.name,
+         updated_at = now()
+       returning id, logo`,
+      [sportRow.id, awaySlug, match.awayTeamName],
+    );
+
+    if (!homeTeam || !awayTeam) return;
+
+      // Logo resolution is kept outside the critical match-sync path.
+      // SportsDB latency must never block match persistence.
+
+    let updated: { id: string } | null = null;
+    try {
+      updated = await ctx.services.db.queryOne<{ id: string }>(
+      `insert into nova.matches
+         (sport_id, league_id, home_team_id, away_team_id,
+          status, home_score, away_score, minute, period,
+          scheduled_at, provider, provider_id, provider_updated_at,
+          started_at)
+       values
+         ($1, $2, $3, $4, $5::nova.match_status,
+          $6, $7, $8, $9, $10::timestamptz,
+          $11, $12, now(),
+          case when $5::text in ('live','in_play','halftime','break')
+               then $10::timestamptz else null end)
+       on conflict (provider, provider_id)
+       where provider is not null and provider_id is not null
+       do update set
+         sport_id = excluded.sport_id,
+         league_id = excluded.league_id,
+         home_team_id = excluded.home_team_id,
+         away_team_id = excluded.away_team_id,
+         status = case
+           when nova.matches.status::text in ('live','paused','interrupted','finished')
+                and excluded.status::text = 'scheduled'
+             then nova.matches.status
+           else excluded.status
+         end,
+         home_score = case
+           when excluded.home_score is null
+             and nova.matches.home_score is not null
+             then nova.matches.home_score
+           else excluded.home_score
+         end,
+         away_score = case
+           when excluded.away_score is null
+             and nova.matches.away_score is not null
+             then nova.matches.away_score
+           else excluded.away_score
+         end,
+         minute = case
+           when nova.matches.status::text in ('live','paused','interrupted','finished')
+                and excluded.status::text = 'scheduled'
+             then nova.matches.minute
+           else excluded.minute
+         end,
+         period = case
+           when nova.matches.status::text in ('live','paused','interrupted','finished')
+                and excluded.status::text = 'scheduled'
+             then nova.matches.period
+           else excluded.period
+         end,
+         scheduled_at = excluded.scheduled_at,
+         provider_updated_at = now(),
+         started_at = coalesce(nova.matches.started_at, excluded.started_at),
+         updated_at = now()
+       returning id`,
+      [
+        sportRow.id,
+        league.id,
+        homeTeam.id,
+        awayTeam.id,
+        match.status,
+        match.homeScore,
+        match.awayScore,
+        match.minute,
+        match.period,
+        match.scheduledAt,
+        ctx.services.providers.sports.name,
+        match.providerId,
+      ],
+    );
+
+    } catch (error) {
+      console.error(
+        "MATCH_PERSISTENCE_FAILED",
+        JSON.stringify({
+          providerId: match.providerId,
+          sport: match.sport,
+          league: match.leagueName,
+          home: match.homeTeamName,
+          away: match.awayTeamName,
+          status: match.status,
+          scheduledAt: match.scheduledAt,
+          error: error instanceof Error ? error.message : String(error),
+        }),
+      );
+      throw error;
+    }
+    if (updated) synced += 1;
+    }));
+  }
+
+  await recordProviderStatus(ctx, "healthy", null);
+  return { synced };
+}
+
+async function syncOdds(
+  ctx: WorkerContext,
+  matchId: string,
+  prefetched?: Awaited<ReturnType<typeof ctx.services.providers.sports.fetchOdds>>,
+): Promise<{ updated: number; rejected: number }> {
+  const matchRow = await ctx.services.db.queryOne<{ provider_id: string | null }>(
+    `select provider_id from nova.matches where id = $1`,
+    [matchId],
+  );
+  if (!matchRow?.provider_id) return { updated: 0, rejected: 0 };
+
+  const providerResult =
+    prefetched ?? await ctx.services.providers.sports.fetchOdds([matchRow.provider_id]);
+  if (!providerResult.ok || !providerResult.value) return { updated: 0, rejected: 0 };
+
+  const locked = await ctx.withLock(
+    `odds:match:${matchId}`,
+    30,
+    async () => syncOddsUnlocked(ctx, matchId, providerResult),
+  );
+
+  if (locked === null) {
+    ctx.log.info("ODDS_SYNC_SKIPPED_MATCH_LOCK", { matchId });
+    return { updated: 0, rejected: 0 };
+  }
+
+  return locked;
+}
+
+
+function normalizeProviderMarket(market: {
+  key: string;
+  type?: string;
+  status: string;
+  specifier?: string | null;
+  isLive: boolean;
+  providerId?: string;
+}) {
+  const key = String(market.key ?? '').trim();
+  const upper = key.toUpperCase();
+  const rule = marketRuleFor(key);
+
+  const supportedProviderMarket =
+    rule !== null &&
+    ![
+      'H2H_LAY',
+      'H2H_3_WAY_LAY',
+      'CORNERS_1X2',
+      'TO_QUALIFY',
+      'ODD_EVEN',
+      'ODD_EVEN_H1',
+      'ALTERNATE_SPREADS_CORNERS',
+      'ALTERNATE_TOTALS_CORNERS',
+      'ALTERNATE_SPREADS_CARDS',
+      'ALTERNATE_TOTALS_CARDS',
+      'ALTERNATE_TEAM_TOTALS_CORNERS',
+      'PLAYER_GOAL_SCORER_ANYTIME',
+      'PLAYER_FIRST_GOAL_SCORER',
+      'PLAYER_LAST_GOAL_SCORER',
+      'PLAYER_TO_RECEIVE_CARD',
+      'PLAYER_TO_RECEIVE_RED_CARD',
+      'PLAYER_SHOTS_ON_TARGET',
+      'PLAYER_SHOTS',
+      'PLAYER_ASSISTS',
+    ].includes(upper);
+
+  const status = supportedProviderMarket
+    ? market.status
+    : 'manual_review';
+
+  const type = supportedProviderMarket
+    ? rule.type
+    : 'OTHER';
+
+  const period =
+    rule?.basis === 'FIRST_HALF'
+      ? 'FIRST_HALF'
+      : rule?.basis === 'SECOND_HALF'
+        ? 'SECOND_HALF'
+        : null;
+
+  const displayOrder = rule ? marketDisplayOrder(rule.type) : 900;
+
+  return {
+    key,
+    type,
+    name: rule?.name ?? key,
+    status,
+    specifier: market.specifier ?? "",
+    period,
+    display_order: displayOrder,
+    is_live: market.isLive,
+    provider_market_id: market.providerId,
+  };
+}
+
+async function syncOddsUnlocked(
+  ctx: WorkerContext,
+  matchId: string,
+  prefetched?: Awaited<ReturnType<typeof ctx.services.providers.sports.fetchOdds>>,
+): Promise<{ updated: number; rejected: number }> {
+  const matchRow = await ctx.services.db.queryOne<{ provider_id: string | null }>(
+    `select provider_id from nova.matches where id = $1`,
+    [matchId],
+  );
+  if (!matchRow?.provider_id) return { updated: 0, rejected: 0 };
+
+  const providerResult =
+    prefetched ?? await ctx.services.providers.sports.fetchOdds([matchRow.provider_id]);
+  if (!providerResult.ok || !providerResult.value) return { updated: 0, rejected: 0 };
+
+  let updated = 0;
+  let rejected = 0;
+  const ticks: Array<Record<string, unknown>> = [];
+  const liveLock = await ctx.services.db.queryOne<{ suspended_at: string | null }>(
+    `select max(suspended_at) as suspended_at
+       from nova.markets
+      where match_id = $1
+        and status::text = 'suspended'
+        and suspended_reason = 'LIVE_STATE_CHANGED'`,
+    [matchId],
+  );
+
+  const marketPayload = providerResult.value.flatMap((bundle) =>
+    bundle.markets.map((market) => {
+      const normalized = normalizeProviderMarket(market);
+      return {
+        ...normalized,
+        provider: ctx.services.providers.sports.name,
+      };
+    }),
+  );
+
+  const h2hLayRuntimeAudit = marketPayload.filter((market) =>
+    String(market.key ?? '').trim().toLowerCase() === 'h2h_lay',
+  );
+  if (h2hLayRuntimeAudit.length > 0) {
+    console.log(
+      'ODDS_H2H_LAY_RUNTIME_AUDIT',
+      JSON.stringify({
+        matchId,
+        workerMode: process.env.ODDS_WORKER_MODE ?? null,
+        count: h2hLayRuntimeAudit.length,
+        markets: h2hLayRuntimeAudit.map((market) => ({
+          key: market.key,
+          status: market.status,
+          type: market.type,
+          name: market.name,
+          specifier: market.specifier,
+          provider: market.provider,
+          providerMarketId: market.provider_market_id,
+          isLive: market.is_live,
+        })),
+      }),
+    );
+  }
+
+  if (marketPayload.length > 0) {
+    console.log("ODDS_NORMALIZED_MARKET_PAYLOAD_AUDIT", JSON.stringify({
+      matchId,
+      providerId: matchRow.provider_id,
+      workerMode: process.env.ODDS_WORKER_MODE ?? null,
+      count: marketPayload.length,
+      sample: marketPayload.slice(0, 30).map((m) => ({
+        key: m.key,
+        type: m.type,
+        name: m.name,
+        status: m.status,
+        specifier: m.specifier,
+        period: m.period,
+        display_order: m.display_order,
+        is_live: m.is_live,
+        provider_market_id: m.provider_market_id,
+      })),
+    }));
+    const marketRows = await ctx.services.db.query<{
+      id: string;
+      key: string;
+      specifier: string | null;
+    }>(
+      `with input as (
+         select *
+         from jsonb_to_recordset($2::jsonb) as x(
+           key text,
+           type text,
+           name text,
+           status text,
+           specifier text,
+           period text,
+           display_order integer,
+           is_live boolean,
+           provider text,
+           provider_market_id text
+         )
+       )
+       insert into nova.markets
+         (match_id, key, type, name, name_fa, status, specifier,
+          period, display_order, is_live, provider, provider_market_id)
+       select
+         $1::uuid,
+         i.key,
+         case
+           when upper(i.key) in ('H2H', 'H2H_3_WAY') then '1X2'
+           when upper(i.key) in ('SPREADS', 'ALTERNATE_SPREADS') then 'ASIAN_HANDICAP'
+           when upper(i.key) in ('TOTALS', 'ALTERNATE_TOTALS') then 'OVER_UNDER'
+           else i.type
+         end,
+         case
+           when upper(i.key) in ('H2H', 'H2H_3_WAY') then 'Match Result'
+           when upper(i.key) in ('SPREADS', 'ALTERNATE_SPREADS') then 'Asian Handicap'
+           when upper(i.key) in ('TOTALS', 'ALTERNATE_TOTALS') then 'Total Goals'
+           else i.name
+         end,
+         null,
+         i.status::nova.market_status,
+         i.specifier,
+         i.period,
+         i.display_order,
+         i.is_live,
+         i.provider,
+         i.provider_market_id
+       from input i
+       on conflict (match_id, key, specifier)
+       do update set
+         type = excluded.type,
+         name = excluded.name,
+         status = case
+           when lower(trim(excluded.key)) in (
+             'h2h_lay',
+             'h2h_3_way_lay',
+             'corners_1x2',
+             'to_qualify',
+             'odd_even',
+             'odd_even_h1',
+             'alternate_spreads_corners',
+             'alternate_totals_corners',
+             'alternate_spreads_cards',
+             'alternate_totals_cards',
+             'alternate_team_totals_corners',
+             'player_goal_scorer_anytime',
+             'player_first_goal_scorer',
+             'player_last_goal_scorer',
+             'player_to_receive_card',
+             'player_to_receive_red_card',
+             'player_shots_on_target',
+             'player_shots',
+             'player_assists'
+           )
+           then 'manual_review'::nova.market_status
+           when excluded.status::text = 'manual_review'
+           then 'manual_review'::nova.market_status
+           when nova.markets.status::text = 'manual_review'
+           then 'manual_review'::nova.market_status
+           when nova.markets.status::text = 'suspended'
+            and nova.markets.suspended_reason = 'LIVE_STATE_CHANGED'
+           then 'suspended'::nova.market_status
+           else excluded.status
+         end,
+         specifier = excluded.specifier,
+         period = excluded.period,
+         display_order = excluded.display_order,
+         is_live = excluded.is_live,
+         provider = excluded.provider,
+         provider_market_id = excluded.provider_market_id,
+         updated_at = now()
+       returning id, key, specifier`,
+      [matchId, JSON.stringify(marketPayload)],
+    );
+
+    const marketIds = new Map<string, string>();
+    for (const row of marketRows) {
+      marketIds.set(`${row.key}:${row.specifier ?? ""}`, row.id);
+    }
+
+    const existingSelections = await ctx.services.db.query<{
+      id: string;
+      market_id: string;
+      code: string;
+      odds_scaled: string | null;
+      provider_selection_id: string | null;
+    }>(
+      `select id, market_id, code, odds_scaled, provider_selection_id
+         from nova.selections
+        where match_id = $1`,
+      [matchId],
+    );
+
+    const existingByKey = new Map(
+      existingSelections.map((row) => [
+        `${row.market_id}:${row.code}`,
+        row,
+      ]),
+    );
+
+    const selectionPayload: Array<Record<string, unknown>> = [];
+
+    for (const bundle of providerResult.value) {
+      for (const market of bundle.markets) {
+        const marketId = marketIds.get(
+          `${market.key}:${market.specifier ?? ""}`,
+        );
+        if (!marketId) continue;
+
+        for (const quote of market.selections) {
+          const participantType =
+            quote.code === "HOME"
+              ? "HOME"
+              : quote.code === "AWAY"
+                ? "AWAY"
+                : quote.code === "DRAW"
+                  ? "DRAW"
+                  : "OTHER";
+
+          selectionPayload.push({
+            market_id: marketId,
+            code: quote.code,
+            name: quote.name,
+            line: quote.line,
+            participant_type: participantType,
+            status: quote.status,
+            odds_scaled: quote.odds,
+            provider: ctx.services.providers.sports.name,
+            provider_selection_id: quote.providerId,
+            provider_timestamp: market.sourceUpdatedAt ?? bundle.updatedAt,
+            is_live: market.isLive,
+          });
+        }
+      }
+    }
+
+    if (selectionPayload.length > 0) {
+      const selectionRows = await ctx.services.db.query<{
+        id: string;
+        market_id: string;
+        code: string;
+      }>(
+        `with input as (
+           select *
+           from jsonb_to_recordset($2::jsonb) as x(
+             market_id uuid,
+             code text,
+             name text,
+             line text,
+             participant_type text,
+             status text,
+             odds_scaled bigint,
+             provider text,
+             provider_selection_id text,
+             provider_timestamp timestamptz,
+             is_live boolean
+           )
+         )
+         insert into nova.selections
+           (market_id, match_id, code, name, name_fa, line,
+            participant_type, status, odds_scaled, provider,
+            provider_selection_id, provider_timestamp, is_live)
+         select
+           i.market_id,
+           $1::uuid,
+           i.code,
+           i.name,
+           null,
+           i.line,
+           i.participant_type,
+           i.status::nova.selection_status,
+           i.odds_scaled,
+           i.provider,
+           i.provider_selection_id,
+           i.provider_timestamp,
+           i.is_live
+         from input i
+         on conflict (market_id, code)
+         do update set
+           name = excluded.name,
+           line = excluded.line,
+           participant_type = excluded.participant_type,
+           status = case
+             when nova.selections.status::text = 'suspended'
+              and 'LIVE_STATE_CHANGED' = any(
+                coalesce(nova.selections.anomaly_codes, '{}'::text[])
+              )
+             then 'suspended'::nova.selection_status
+             else excluded.status
+           end,
+           provider = excluded.provider,
+           provider_selection_id = excluded.provider_selection_id,
+           provider_timestamp = excluded.provider_timestamp,
+           is_live = excluded.is_live,
+           updated_at = now()
+         returning id, market_id, code`,
+        [matchId, JSON.stringify(selectionPayload)],
+      );
+
+      const selectionIds = new Map(
+        selectionRows.map((row) => [
+          `${row.market_id}:${row.code}`,
+          row.id,
+        ]),
+      );
+
+      for (const bundle of providerResult.value) {
+        for (const market of bundle.markets) {
+          const marketId = marketIds.get(
+            `${market.key}:${market.specifier ?? ""}`,
+          );
+          if (!marketId) continue;
+
+          for (const quote of market.selections) {
+            const selectionId = selectionIds.get(
+              `${marketId}:${quote.code}`,
+            );
+            if (!selectionId) continue;
+
+            const existingSelection = existingByKey.get(
+              `${marketId}:${quote.code}`,
+            );
+
+            const sourceChanged =
+              existingSelection !== undefined &&
+              existingSelection.provider_selection_id !== null &&
+              existingSelection.provider_selection_id !== quote.providerId;
+
+            const previous =
+              existingSelection === undefined || sourceChanged
+                ? null
+                : existingSelection.odds_scaled === null
+                  ? null
+                  : BigInt(existingSelection.odds_scaled);
+
+            const current = BigInt(quote.odds);
+
+            const anomalyObjects = detectOddsAnomalies({
+              odds: current,
+              previousOdds: previous,
+              providerTimestamp: new Date(bundle.updatedAt),
+              ingestedAt: new Date(),
+              maxAgeSeconds: 300,
+            });
+
+            const anomalies = anomalyObjects.map((item) => item.code);
+            const rejecting = hasRejecting(anomalyObjects);
+            const suspending = hasSuspending(anomalyObjects);
+            const ingestKey = quote.providerId + ":" + bundle.updatedAt;
+
+            ticks.push({
+              selection_id: selectionId,
+              odds_scaled: current.toString(),
+              provider: ctx.services.providers.sports.name,
+              provider_timestamp: market.sourceUpdatedAt ?? bundle.updatedAt,
+              is_live: market.isLive,
+              ingest_key: ingestKey,
+              anomalies,
+              reject: rejecting,
+              reject_reason: rejecting
+                ? anomalyObjects
+                    .filter((item) => item.severity === "REJECT")
+                    .map((item) => item.code)
+                    .join(",")
+                : null,
+              suspend: rejecting ? false : suspending,
+            });
+          }
+        }
+      }
+    }
+  }
+
+  if (ticks.length > 0) {
+    const result = await ctx.services.db.rpc<{
+      count: number;
+      accepted: number;
+      rejected: number;
+      duplicates: number;
+    }>("publish_odds_tick_batch", { p_ticks: ticks });
+
+    updated = Number(result?.accepted ?? 0);
+    rejected = Number(result?.rejected ?? 0);
+
+
+    const newestBundleTimestamp = providerResult.value.reduce<string | null>(
+      (latest, bundle) =>
+        !latest || new Date(bundle.updatedAt).getTime() > new Date(latest).getTime()
+          ? bundle.updatedAt
+          : latest,
+      null,
+    );
+
+    const hasFreshOddsAfterLock =
+      Boolean(liveLock?.suspended_at) &&
+      Boolean(newestBundleTimestamp) &&
+      new Date(newestBundleTimestamp!).getTime() >
+        new Date(liveLock!.suspended_at!).getTime() &&
+      updated > 0;
+
+    if (hasFreshOddsAfterLock) {
+      await ctx.services.db.query(
+        `update nova.markets
+            set status = 'open'::nova.market_status,
+                suspended_reason = null,
+                suspended_at = null,
+                updated_at = now()
+          where match_id = $1
+            and status::text = 'suspended'
+            and suspended_reason = 'LIVE_STATE_CHANGED'
+            and is_live = true`,
+        [matchId],
+      );
+
+      await ctx.services.db.query(
+        `update nova.selections
+            set status = 'open'::nova.selection_status,
+                anomaly_codes = array_remove(
+                  coalesce(anomaly_codes, '{}'::text[]),
+                  'LIVE_STATE_CHANGED'
+                ),
+                updated_at = now()
+          where match_id = $1
+            and status::text = 'suspended'
+            and is_live = true
+            and 'LIVE_STATE_CHANGED' = any(
+              coalesce(anomaly_codes, '{}'::text[])
+            )`,
+        [matchId],
+      );
+
+      console.log(
+        "LIVE_MATCH_LOCK_RELEASED",
+        JSON.stringify({
+          matchId,
+          acceptedOdds: updated,
+          oddsUpdatedAt: newestBundleTimestamp,
+          lockedAt: liveLock?.suspended_at ?? null,
+        }),
+      );
+    }
+  }
+
+  // Never leave a live/open selection exposed when its odds feed has gone stale.
+  // This must run even when the provider returned zero usable ticks.
+  await ctx.services.db.query(
+    `update nova.selections
+        set status = 'suspended'::nova.selection_status,
+            anomaly_codes = array_append(
+              coalesce(anomaly_codes, '{}'::text[]),
+              'STALE_ODDS'
+            ),
+            updated_at = now()
+      where match_id = $1
+        and status::text = 'open'
+        and (
+          (is_live = true and (
+            odds_updated_at is null
+            or odds_updated_at < now() - interval '45 seconds'
+          ))
+          or
+          (is_live = false and (
+            odds_updated_at is null
+            or odds_updated_at < now() - interval '120 seconds'
+          ))
+        )`,
+    [matchId],
+  );
+
+  return { updated, rejected };
+}
+
+async function recordProviderStatus(ctx: WorkerContext, status: string, error: string | null): Promise<void> {
+  await ctx.services.db.query(
+    `insert into nova.provider_health (provider, kind, status, last_success_at, last_error_at, last_error, updated_at)
+     values ('sports', 'sports', $1, case when $1 = 'healthy' then now() else null end,
+             case when $1 <> 'healthy' then now() else null end, $2, now())
+     on conflict (provider, kind) do update
+       set status = excluded.status,
+           last_success_at = coalesce(excluded.last_success_at, nova.provider_health.last_success_at),
+           last_error_at = coalesce(excluded.last_error_at, nova.provider_health.last_error_at),
+           last_error = excluded.last_error, updated_at = now()`,
+    [status, error],
+  ).catch(() => undefined);
+}

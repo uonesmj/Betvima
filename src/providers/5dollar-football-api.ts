@@ -1,0 +1,693 @@
+import type { ISODateString } from "@/lib/types";
+import type {
+  ProviderMatch,
+  ProviderOddsBundle,
+  ProviderOddsMarket,
+  ProviderOddsSelection,
+  ProviderResult,
+  ProviderResultSnapshot,
+  ProviderStatus,
+  SportsDataProvider,
+} from "@/lib/ports/providers";
+
+const BASE_URL = (process.env.FIVEDOLLAR_API_BASE_URL || (process.env.SPORTS_PROVIDER === "5dollarfootballapi" ? process.env.SPORTS_PROVIDER_BASE_URL : "") || "https://api.5dollarfootballapi.com/v1").replace(/\/+$/, "");
+const API_KEY = (process.env.FIVEDOLLAR_API_KEY || (process.env.SPORTS_PROVIDER === "5dollarfootballapi" ? process.env.SPORTS_PROVIDER_API_KEY : "")) || "";
+
+type Json = Record<string, any>;
+
+const ok = <T>(value: T): ProviderResult<T> => ({ ok: true, value });
+const fail = <T>(message: string, code = "PROVIDER_ERROR"): ProviderResult<T> => ({
+  ok: false,
+  value: null,
+  errorCode: code,
+  errorMessage: message,
+  retryable: true,
+});
+
+function iso(value: unknown): ISODateString {
+  const d = new Date(String(value));
+  return (Number.isFinite(d.getTime()) ? d : new Date()).toISOString();
+}
+
+function numberOrNull(value: unknown): number | null {
+  const n = Number(value);
+  return Number.isFinite(n) ? n : null;
+}
+
+function score(obj: any, side: "home" | "away"): number | null {
+  return numberOrNull(obj?.goals?.[side]);
+}
+
+function isLiveStatus(status: unknown): boolean {
+  return ["live", "in_play", "1h", "2h", "ht", "extra_time", "penalties"].includes(String(status).toLowerCase());
+}
+
+function statusOf(fixture: any): string {
+  const raw = String(fixture?.status || "").toLowerCase();
+  if (isLiveStatus(raw)) return "live";
+  if (raw === "finished" || raw === "ft" || raw === "aet" || raw === "pen") return "finished";
+  if (raw === "scheduled" || raw === "not_started") return "scheduled";
+  if (raw === "cancelled" || raw === "canceled") return "cancelled";
+  if (raw === "postponed") return "postponed";
+  if (raw === "paused" || raw === "break" || raw === "halftime") return "paused";
+  return "scheduled";
+}
+
+function minuteOf(fixture: any): number | null {
+  const direct =
+    numberOrNull(fixture?.minute) ??
+    numberOrNull(fixture?.elapsed) ??
+    numberOrNull(fixture?.status?.elapsed);
+
+  if (direct != null) return direct;
+
+  const events = Array.isArray(fixture?.events) ? fixture.events : [];
+  const minutes = events
+    .map((event: any) => numberOrNull(event?.minute))
+    .filter((minute: number | null): minute is number => minute != null);
+
+  return minutes.length > 0 ? Math.max(...minutes) : null;
+}
+
+function periodOf(fixture: any): string | null {
+  const direct = fixture?.period;
+  if (direct != null && String(direct).trim() !== "") return String(direct);
+
+  const events = Array.isArray(fixture?.events) ? fixture.events : [];
+  for (let index = events.length - 1; index >= 0; index -= 1) {
+    const period = events[index]?.period;
+    if (period != null && String(period).trim() !== "") {
+      return String(period);
+    }
+  }
+
+  const fallback = fixture?.status_reason ?? fixture?.status?.short;
+  return fallback == null ? null : String(fallback);
+}
+
+const REQUEST_INTERVAL_MS = 4000;
+let requestQueue: Promise<void> = Promise.resolve();
+
+async function request<T>(
+  path: string,
+  params?: Record<string, string | number | undefined>,
+): Promise<T> {
+  if (!API_KEY) {
+    throw new Error("SPORTS_PROVIDER_API_KEY is not configured");
+  }
+
+  let release!: () => void;
+  const turn = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+
+  const previous = requestQueue;
+  requestQueue = previous.then(() => turn, () => turn);
+
+  await previous.catch(() => undefined);
+
+  try {
+    await new Promise((resolve) => setTimeout(resolve, REQUEST_INTERVAL_MS));
+
+    const url = new URL(
+      `${BASE_URL}${path.startsWith("/") ? path : `/${path}`}`,
+    );
+
+    for (const [key, value] of Object.entries(params || {})) {
+      if (value !== undefined && value !== "") {
+        url.searchParams.set(key, String(value));
+      }
+    }
+
+    const response = await fetch(url.toString(), {
+      headers: {
+        Authorization: `Bearer ${API_KEY}`,
+        Accept: "application/json",
+      },
+      cache: "no-store",
+    });
+
+    const body = await response.text();
+
+    let json: any = null;
+    try {
+      json = body ? JSON.parse(body) : null;
+    } catch {
+      throw new Error(
+        `5DollarFootballAPI returned invalid JSON (${response.status})`,
+      );
+    }
+
+    if (!response.ok || json?.success !== 1) {
+      const message =
+        json?.error?.message ||
+        json?.message ||
+        `5DollarFootballAPI HTTP ${response.status}`;
+
+      throw new Error(message);
+    }
+
+    return json as T;
+  } finally {
+    release();
+  }
+}
+
+function mapFixture(fixture: any, sport: "football" | "esports" = "football"): ProviderMatch {
+  const live = isLiveStatus(fixture?.status);
+  return {
+    providerId: String(fixture.id),
+    sport,
+    leagueProviderId:
+      fixture?.league?.id == null ? null : String(fixture.league.id),
+    leagueName: fixture?.league?.name ?? null,
+    countryCode: fixture?.league?.country?.code ?? fixture?.country?.code ?? null,
+    homeTeamName: String(fixture?.teams?.home?.name ?? ""),
+    awayTeamName: String(fixture?.teams?.away?.name ?? ""),
+    homeTeamProviderId:
+      fixture?.teams?.home?.id == null ? null : String(fixture.teams.home.id),
+    awayTeamProviderId:
+      fixture?.teams?.away?.id == null ? null : String(fixture.teams.away.id),
+    scheduledAt: iso(fixture?.kickoff_utc),
+    status: live ? "live" : statusOf(fixture),
+    homeScore: score(fixture, "home"),
+    awayScore: score(fixture, "away"),
+    minute: live ? minuteOf(fixture) : null,
+    period: live ? periodOf(fixture) : null,
+    homeHalfScore: numberOrNull(fixture?.goals?.half_time?.home ?? fixture?.half_score?.home),
+    awayHalfScore: numberOrNull(fixture?.goals?.half_time?.away ?? fixture?.half_score?.away),
+    liveEvents: Array.isArray(fixture?.events) ? fixture.events : [],
+    liveStats: {
+      ...(fixture?.statistics && typeof fixture.statistics === "object" ? fixture.statistics : {}),
+      corners: fixture?.corners ?? null,
+      cards: fixture?.cards ?? null,
+    },
+  };
+}
+
+function decimalOdds(value: unknown): string | null {
+  const n = Number(value);
+  if (!Number.isFinite(n) || n <= 1) return null;
+  return n.toFixed(4);
+}
+
+function selection(
+  providerId: string,
+  code: string,
+  name: string,
+  value: unknown,
+  line: unknown = null,
+): ProviderOddsSelection | null {
+  const odds = decimalOdds(value);
+  if (!odds) return null;
+  return {
+    providerId,
+    code,
+    name,
+    line: line == null ? null : String(line),
+    odds,
+    status: "open",
+  };
+}
+
+function addMarket(
+  markets: ProviderOddsMarket[],
+  matchId: string,
+  key: string,
+  type: string,
+  specifier: string | null,
+  live: boolean,
+  selections: Array<ProviderOddsSelection | null>,
+  sourceUpdatedAt: string,
+) {
+  const valid = selections.filter(Boolean) as ProviderOddsSelection[];
+  if (!valid.length) return;
+
+  markets.push({
+    providerId: `bet365:${key}:${specifier ?? "main"}`,
+    key,
+    type,
+    specifier,
+    isLive: live,
+    status: "open",
+    sourceUpdatedAt,
+    selections: valid,
+  });
+}
+
+function latestStage(odds: any): { data: any; live: boolean; updatedAt: string } | null {
+  if (odds?.inplay) return { data: odds.inplay, live: true, updatedAt: new Date().toISOString() };
+  if (odds?.closing) return { data: odds.closing, live: false, updatedAt: new Date().toISOString() };
+  if (odds?.opening) return { data: odds.opening, live: false, updatedAt: new Date().toISOString() };
+  return null;
+}
+
+function mapOdds(matchId: string, payload: any): ProviderOddsBundle {
+  const bookmaker = payload?.data?.bookmakers?.find((b: any) => b.slug === "bet365")
+    ?? payload?.data?.bookmakers?.[0];
+
+  const odds = bookmaker?.odds || {};
+  const markets: ProviderOddsMarket[] = [];
+  const updatedAt = new Date().toISOString();
+
+  const oneX2 = latestStage(odds["1x2"]);
+  if (oneX2) {
+    addMarket(markets, matchId, "1x2", "1x2", null, oneX2.live, [
+      selection(`bet365:1x2:HOME`, "HOME", "Home", oneX2.data.home),
+      selection(`bet365:1x2:DRAW`, "DRAW", "Draw", oneX2.data.draw),
+      selection(`bet365:1x2:AWAY`, "AWAY", "Away", oneX2.data.away),
+    ], oneX2.updatedAt);
+  }
+
+  const asian = latestStage(odds["asian_handicap"]);
+  if (asian) {
+    addMarket(markets, matchId, "asian_handicap", "asian_handicap",
+      asian.data?.line == null ? null : String(asian.data.line), asian.live, [
+        selection(`bet365:asian:${asian.data?.line}:HOME`, "HOME", "Home", asian.data?.home, asian.data?.line),
+        selection(`bet365:asian:${asian.data?.line}:AWAY`, "AWAY", "Away", asian.data?.away, asian.data?.line),
+      ], asian.updatedAt);
+  }
+
+  const goal = latestStage(odds["goal_line"]);
+  if (goal) {
+    addMarket(markets, matchId, "goal_line", "totals",
+      goal.data?.line == null ? null : String(goal.data.line), goal.live, [
+        selection(`bet365:goal:${goal.data?.line}:OVER`, "OVER", "Over", goal.data?.over, goal.data?.line),
+        selection(`bet365:goal:${goal.data?.line}:UNDER`, "UNDER", "Under", goal.data?.under, goal.data?.line),
+      ], goal.updatedAt);
+  }
+
+  const corner = latestStage(odds["corner_line"]);
+  if (corner) {
+    addMarket(markets, matchId, "corner_line", "corner_totals",
+      corner.data?.line == null ? null : String(corner.data.line), corner.live, [
+        selection(`bet365:corner:${corner.data?.line}:OVER`, "OVER", "Over", corner.data?.over, corner.data?.line),
+        selection(`bet365:corner:${corner.data?.line}:UNDER`, "UNDER", "Under", corner.data?.under, corner.data?.line),
+      ], corner.updatedAt);
+  }
+
+  const btts = latestStage(odds["btts"]);
+  if (btts) {
+    addMarket(markets, matchId, "btts", "btts", null, btts.live, [
+      selection(`bet365:btts:YES`, "YES", "Yes", btts.data?.yes),
+      selection(`bet365:btts:NO`, "NO", "No", btts.data?.no),
+    ], btts.updatedAt);
+  }
+
+  const asianHalf = latestStage(odds["asian_handicap_half"]);
+  if (asianHalf) {
+    addMarket(markets, matchId, "asian_handicap_half", "asian_handicap_half",
+      asianHalf.data?.line == null ? null : String(asianHalf.data.line), asianHalf.live, [
+        selection(`bet365:asian_half:${asianHalf.data?.line}:HOME`, "HOME", "Home", asianHalf.data?.home, asianHalf.data?.line),
+        selection(`bet365:asian_half:${asianHalf.data?.line}:AWAY`, "AWAY", "Away", asianHalf.data?.away, asianHalf.data?.line),
+      ], asianHalf.updatedAt);
+  }
+
+  const goalHalf = latestStage(odds["goal_line_half"]);
+  if (goalHalf) {
+    addMarket(markets, matchId, "goal_line_half", "totals_half",
+      goalHalf.data?.line == null ? null : String(goalHalf.data.line), goalHalf.live, [
+        selection(`bet365:goal_half:${goalHalf.data?.line}:OVER`, "OVER", "Over", goalHalf.data?.over, goalHalf.data?.line),
+        selection(`bet365:goal_half:${goalHalf.data?.line}:UNDER`, "UNDER", "Under", goalHalf.data?.under, goalHalf.data?.line),
+      ], goalHalf.updatedAt);
+  }
+
+  const cornerHalf = latestStage(odds["corner_line_half"]);
+  if (cornerHalf) {
+    addMarket(markets, matchId, "corner_line_half", "corner_totals_half",
+      cornerHalf.data?.line == null ? null : String(cornerHalf.data.line), cornerHalf.live, [
+        selection(`bet365:corner_half:${cornerHalf.data?.line}:OVER`, "OVER", "Over", cornerHalf.data?.over, cornerHalf.data?.line),
+        selection(`bet365:corner_half:${cornerHalf.data?.line}:UNDER`, "UNDER", "Under", cornerHalf.data?.under, cornerHalf.data?.line),
+      ], cornerHalf.updatedAt);
+  }
+
+  const fixed = odds["goal_line_fixed"];
+  if (Array.isArray(fixed)) {
+    for (const item of fixed) {
+      const stage = latestStage(item);
+      if (!stage || item?.line == null) continue;
+      addMarket(markets, matchId, "goal_line_fixed", "totals",
+        String(item.line), stage.live, [
+          selection(`bet365:goal_fixed:${item.line}:OVER`, "OVER", "Over", stage.data?.over, item.line),
+          selection(`bet365:goal_fixed:${item.line}:UNDER`, "UNDER", "Under", stage.data?.under, item.line),
+        ], stage.updatedAt);
+    }
+  }
+
+  return {
+    matchProviderId: matchId,
+    markets,
+    updatedAt: updatedAt as ISODateString,
+  };
+}
+
+export class FiveDollarFootballApiSportsProvider implements SportsDataProvider {
+  readonly name = "5dollarfootballapi";
+  readonly configured = Boolean(API_KEY);
+
+  async health(): Promise<ProviderStatus> {
+    const requiredEnv = ["SPORTS_PROVIDER_BASE_URL", "SPORTS_PROVIDER_API_KEY"];
+    if (!API_KEY) {
+      return {
+        provider: this.name,
+        category: "sports",
+        configured: false,
+        enabled: true,
+        reachable: false,
+        lastError: "SPORTS_PROVIDER_API_KEY is not configured",
+        lastSuccessAt: null,
+        requiredEnv,
+        notes: "5DollarFootballAPI is not configured.",
+      };
+    }
+
+    try {
+      await request<any>("/status");
+      return {
+        provider: this.name,
+        category: "sports",
+        configured: true,
+        enabled: true,
+        reachable: true,
+        lastError: null,
+        lastSuccessAt: new Date().toISOString() as ISODateString,
+        requiredEnv,
+        notes: "5DollarFootballAPI is reachable.",
+      };
+    } catch (error) {
+      return {
+        provider: this.name,
+        category: "sports",
+        configured: true,
+        enabled: true,
+        reachable: false,
+        lastError: error instanceof Error ? error.message : String(error),
+        lastSuccessAt: null,
+        requiredEnv,
+        notes: "5DollarFootballAPI is configured but unreachable.",
+      };
+    }
+  }
+
+  async fetchMatches(window: {
+    from: ISODateString;
+    to: ISODateString;
+    sport?: string;
+  }): Promise<ProviderResult<ProviderMatch[]>> {
+    if (
+      window.sport &&
+      window.sport !== "football" &&
+      window.sport !== "soccer" &&
+      window.sport !== "esports"
+    ) {
+      return ok([]);
+    }
+
+    try {
+      const from = new Date(window.from).getTime();
+      const to = new Date(window.to).getTime();
+      if (!Number.isFinite(from) || !Number.isFinite(to) || to <= from) {
+        return fail("Invalid match window", "INVALID_WINDOW");
+      }
+
+      const result: ProviderMatch[] = [];
+      const seen = new Set<string>();
+
+      const fetchFeed = async (
+        esports: boolean,
+        sport: "football" | "esports",
+      ) => {
+        let cursor = from;
+
+        while (cursor < to) {
+          const end = Math.min(cursor + 24 * 60 * 60 * 1000, to);
+          let page = 1;
+
+          while (page <= 10) {
+            const payload = await request<any>("/fixtures", {
+              status: "all",
+              start_time: Math.floor(cursor / 1000),
+              end_time: Math.floor(end / 1000),
+              page,
+              per_page: 100,
+              ...(esports ? { esports: "true" } : {}),
+            });
+
+            for (const fixture of payload?.data || []) {
+              const mapped = mapFixture(fixture, sport);
+              const key = `${sport}:${mapped.providerId}`;
+              if (!seen.has(key)) {
+                seen.add(key);
+                result.push(mapped);
+              }
+            }
+
+            if (!payload?.pagination?.has_more) break;
+
+            const nextPage = Number(payload?.pagination?.page ?? page) + 1;
+            if (!Number.isFinite(nextPage) || nextPage <= page) break;
+            page = nextPage;
+          }
+
+          cursor = end;
+        }
+      };
+
+      if (!window.sport || window.sport === "football" || window.sport === "soccer") {
+        await fetchFeed(false, "football");
+      }
+
+      if (!window.sport || window.sport === "esports") {
+        await fetchFeed(true, "esports");
+      }
+
+      return ok(result);
+    } catch (error) {
+      return fail(error instanceof Error ? error.message : String(error));
+    }
+  }
+
+  async fetchLiveMatches(sport?: string): Promise<ProviderResult<ProviderMatch[]>> {
+    if (
+      sport &&
+      sport !== "football" &&
+      sport !== "soccer" &&
+      sport !== "esports"
+    ) {
+      return ok([]);
+    }
+
+    try {
+      const result: ProviderMatch[] = [];
+      const seen = new Set<string>();
+
+      const fetchLiveFeed = async (
+        esports: boolean,
+        mappedSport: "football" | "esports",
+      ) => {
+        const payload = await request<any>("/fixtures", {
+          status: "live",
+          per_page: 500,
+          include: "events,stats",
+          ...(esports ? { esports: "true" } : {}),
+        });
+
+        for (const fixture of payload?.data || []) {
+          const mapped = {
+            ...mapFixture(fixture, mappedSport),
+            status: "live" as const,
+          };
+          const key = `${mappedSport}:${mapped.providerId}`;
+          if (!seen.has(key)) {
+            seen.add(key);
+            result.push(mapped);
+          }
+        }
+      };
+
+      if (!sport || sport === "football" || sport === "soccer") {
+        await fetchLiveFeed(false, "football");
+      }
+
+      if (!sport || sport === "esports") {
+        await fetchLiveFeed(true, "esports");
+      }
+
+      return ok(result);
+    } catch (error) {
+      return fail(error instanceof Error ? error.message : String(error));
+    }
+  }
+
+  private async oddsFor(matchProviderId: string): Promise<ProviderOddsBundle | null> {
+    const payload = await request<any>(`/fixtures/${encodeURIComponent(matchProviderId)}/odds`);
+    return mapOdds(matchProviderId, payload);
+  }
+
+  async fetchOdds(matchProviderIds: string[]): Promise<ProviderResult<ProviderOddsBundle[]>> {
+    try {
+      const ids = [...new Set(matchProviderIds)].slice(0, 20);
+      const bundles: ProviderOddsBundle[] = [];
+      const CONCURRENCY = 4;
+
+      for (let i = 0; i < ids.length; i += CONCURRENCY) {
+        const batch = ids.slice(i, i + CONCURRENCY);
+        const results = await Promise.all(
+          batch.map(async (id) => {
+            try {
+              return await this.oddsFor(id);
+            } catch (error) {
+              console.warn("5DOLLAR_ODDS_SKIP", JSON.stringify({
+                matchProviderId: id,
+                error: error instanceof Error ? error.message : String(error),
+              }));
+              return null;
+            }
+          }),
+        );
+
+        for (const bundle of results) {
+          if (bundle && bundle.markets.length) bundles.push(bundle);
+        }
+      }
+
+      return ok(bundles);
+    } catch (error) {
+      return fail(error instanceof Error ? error.message : String(error));
+    }
+  }
+
+  async fetchEventOdds(matchProviderIds: string[]): Promise<ProviderResult<ProviderOddsBundle[]>> {
+    return this.fetchOdds(matchProviderIds);
+  }
+
+  async fetchFixture(matchProviderId: string): Promise<ProviderResult<ProviderMatch>> {
+    try {
+      const fixtureId = String(matchProviderId).trim();
+      if (!fixtureId) return fail("Match provider ID is required", "INVALID_MATCH_ID");
+
+      const payload = await request<any>(
+        `/fixtures/${encodeURIComponent(fixtureId)}`,
+      );
+      const fixture = payload?.data;
+      if (!fixture) return fail("Fixture not found", "FIXTURE_NOT_FOUND");
+
+      return ok(mapFixture(fixture, fixture?.esports ? "esports" : "football"));
+    } catch (error) {
+      return fail(
+        error instanceof Error ? error.message : String(error),
+        "FIXTURE_FETCH_FAILED",
+      );
+    }
+  }
+
+  async fetchTeamFixtures(
+    teamProviderId: string,
+    options?: { page?: number; perPage?: number },
+  ): Promise<ProviderResult<ProviderMatch[]>> {
+    try {
+      const teamId = String(teamProviderId).trim();
+      if (!teamId) return fail("Team provider ID is required", "INVALID_TEAM_ID");
+
+      const page = Math.max(1, Number(options?.page ?? 1));
+      const perPage = Math.min(100, Math.max(1, Number(options?.perPage ?? 20)));
+
+      const payload = await request<any>(
+        `/teams/${encodeURIComponent(teamId)}/fixtures`,
+        { page, per_page: perPage },
+      );
+
+      const fixtures = Array.isArray(payload?.data) ? payload.data : [];
+      return ok(
+        fixtures.map((fixture: any) =>
+          mapFixture(fixture, fixture?.esports ? "esports" : "football"),
+        ),
+      );
+    } catch (error) {
+      return fail(
+        error instanceof Error ? error.message : String(error),
+        "TEAM_FIXTURES_FETCH_FAILED",
+      );
+    }
+  }
+
+  async fetchResult(matchProviderId: string): Promise<ProviderResult<ProviderResultSnapshot>> {
+    try {
+      const payload = await request<any>(`/fixtures/${encodeURIComponent(matchProviderId)}`);
+      const fixture = payload?.data;
+      if (!fixture) return fail("Fixture not found", "EVENT_NOT_FOUND");
+
+      return ok({
+        matchProviderId,
+        status: statusOf(fixture),
+        homeScore: score(fixture, "home"),
+        awayScore: score(fixture, "away"),
+        homeHalfScore: numberOrNull(fixture?.goals?.half_time?.home),
+        awayHalfScore: numberOrNull(fixture?.goals?.half_time?.away),
+        homeCorners: numberOrNull(fixture?.corners?.home),
+        awayCorners: numberOrNull(fixture?.corners?.away),
+        homeCards: (() => {
+          const yellow = numberOrNull(fixture?.cards?.home?.yellow) ?? 0;
+          const red = numberOrNull(fixture?.cards?.home?.red) ?? 0;
+          return yellow + red || null;
+        })(),
+        awayCards: (() => {
+          const yellow = numberOrNull(fixture?.cards?.away?.yellow) ?? 0;
+          const red = numberOrNull(fixture?.cards?.away?.red) ?? 0;
+          return yellow + red || null;
+        })(),
+        extraTime: false,
+        penalties: false,
+        penaltyHome: null,
+        penaltyAway: null,
+        revision: 1,
+        observedAt: new Date().toISOString() as ISODateString,
+        authoritative: true,
+      });
+    } catch (error) {
+      return fail(error instanceof Error ? error.message : String(error), "RESULT_FETCH_FAILED");
+    }
+  }
+
+  async fetchResults(
+    from: ISODateString,
+    to: ISODateString,
+    matchProviderIds?: string[],
+  ): Promise<ProviderResult<ProviderResultSnapshot[]>> {
+    try {
+      const allowed = matchProviderIds?.length ? new Set(matchProviderIds) : null;
+      const matches = await this.fetchMatches({ from, to, sport: "football" });
+      if (!matches.ok || !matches.value) return fail(matches.errorMessage || "Failed to fetch matches");
+
+      const results: ProviderResultSnapshot[] = [];
+      for (const match of matches.value) {
+        if (allowed && !allowed.has(match.providerId)) continue;
+        if (match.status !== "finished" && match.status !== "live") continue;
+
+        results.push({
+          matchProviderId: match.providerId,
+          status: match.status,
+          homeScore: match.homeScore,
+          awayScore: match.awayScore,
+          homeHalfScore: match.homeHalfScore ?? null,
+          awayHalfScore: match.awayHalfScore ?? null,
+          homeCorners: null,
+          awayCorners: null,
+          homeCards: null,
+          awayCards: null,
+          extraTime: false,
+          penalties: false,
+          penaltyHome: null,
+          penaltyAway: null,
+          revision: 1,
+          observedAt: new Date().toISOString() as ISODateString,
+          authoritative: true,
+        });
+      }
+
+      return ok(results);
+    } catch (error) {
+      return fail(error instanceof Error ? error.message : String(error));
+    }
+  }
+}

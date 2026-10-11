@@ -1,0 +1,868 @@
+import type { Db } from '@/lib/ports/db';
+import type { CreatePaymentIntentInput, PaymentRepository } from '@/lib/ports/repositories';
+import type { Currency, Paginated, PaymentIntent, PaymentMethod, UUID } from '@/lib/types';
+import { ApiError } from '@/lib/errors';
+import { convertIrrMinorToUsdMinor, convertUsdMinorToIrrMinor, convertUsdMinorToIrtMinor, getUsdIrtRate } from '@/server/providers/arzhaam/client';
+import { type Row, toBig, toIso, toIsoOrNull, toJson, toNum, toStr, toStrOrNull } from '@/server/db/rows';
+import { getEstimate } from '@/server/providers/nowpayments/client';
+
+function decimalToScaledBigInt(value: number | string, scale: number): bigint {
+  const text = String(value).trim();
+  if (!/^\d+(?:\.\d+)?$/.test(text)) throw new Error(`INVALID_DECIMAL_VALUE: ${text}`);
+  const parts = text.split('.');
+  const whole = parts[0] ?? '0';
+  const fraction = parts[1] ?? '';
+  const padded = (fraction + '0'.repeat(scale)).slice(0, scale);
+  const nextDigit = fraction.length > scale ? Number(fraction[scale]) : 0;
+  let result = BigInt(whole) * (10n ** BigInt(scale)) + BigInt(padded || '0');
+  if (nextDigit >= 5) result += 1n;
+  return result;
+}
+
+function formatScaledDecimal(value: bigint, scale: number): string {
+  const negative = value < 0n;
+  const absolute = negative ? -value : value;
+  const base = 10n ** BigInt(scale);
+  const whole = absolute / base;
+  const fraction = absolute % base;
+  if (fraction === 0n) return `${negative ? '-' : ''}${whole}`;
+  const fractionText = fraction.toString().padStart(scale, '0').replace(/0+$/, '');
+  return `${negative ? '-' : ''}${whole}.${fractionText}`;
+}
+
+async function convertCryptoToUsdMinor(amount: number | string, currency: string): Promise<{ usdMinor: bigint; rate: string }> {
+  const normalizedCurrency = currency.trim().toLowerCase();
+  if (!normalizedCurrency) throw new Error('CRYPTO_CURRENCY_MISSING');
+
+  const cryptoAmountScaled = decimalToScaledBigInt(amount, 18);
+  if (cryptoAmountScaled <= 0n) throw new Error('CRYPTO_AMOUNT_INVALID');
+
+  const estimate = await getEstimate({
+    amount: Number(amount),
+    currencyFrom: normalizedCurrency,
+    currencyTo: 'usd',
+  });
+
+  // NOWPayments estimated_amount is the TOTAL USD value for the requested amount,
+  // not the USD value of one unit of the crypto currency.
+  const estimatedUsdScaled = decimalToScaledBigInt(
+    String(estimate.estimated_amount).trim(),
+    18,
+  );
+
+  // Convert the total estimated USD directly to USD cents.
+  const usdMinor = (estimatedUsdScaled * 100n + 10n ** 17n) / 10n ** 18n;
+
+  // Store a unit USD/crypto rate separately for audit/display purposes.
+  const unitRateScaled =
+    (estimatedUsdScaled * 10n ** 18n + cryptoAmountScaled / 2n) /
+    cryptoAmountScaled;
+
+  return {
+    usdMinor,
+    rate: formatScaledDecimal(unitRateScaled, 18),
+  };
+}
+
+function mapIntent(row: Row): PaymentIntent {
+  const amount = toBig(row.amount_minor);
+  const fee = toBig(row.fee_minor);
+  return {
+    id: toStr(row.id), publicId: toStr(row.public_id), userId: toStr(row.user_id),
+    direction: toStr(row.type, 'deposit') as PaymentIntent['direction'],
+    status: toStr(row.status, 'initiated') as PaymentIntent['status'],
+    currency: toStr(row.currency, 'IRT') as Currency, amountMinor: amount, feeMinor: fee, netAmountMinor: amount - fee,
+    provider: toStr(row.provider, 'disabled'), methodId: toStrOrNull(row.method),
+    providerReference: toStrOrNull(row.provider_reference),
+    providerMetadata: toJson<Record<string, unknown>>(row.provider_metadata, {}),
+    redirectUrl: toStrOrNull(toJson<Row>(row.raw_request, {}).redirect_url),
+    failureCode: toStrOrNull(row.failure_reason), failureMessage: toStrOrNull(row.failure_reason),
+    expiresAt: toIsoOrNull(row.expires_at), createdAt: toIso(row.created_at), completedAt: toIsoOrNull(row.completed_at),
+    reviewReason: toStrOrNull(row.failure_reason), idempotencyKey: toStr(row.idempotency_key),
+  };
+}
+
+export class PostgresPaymentRepository implements PaymentRepository {
+  constructor(readonly db: Db) {}
+
+  /**
+   * The method catalogue is authoritative in the database. Methods with
+   * `is_enabled = false` are returned with an explicit `unavailableReason` so the UI can
+   * say "unavailable" instead of pretending a payment could succeed.
+   */
+  async listMethods(input: { direction?: 'deposit' | 'withdrawal'; currency?: Currency }): Promise<PaymentMethod[]> {
+    const rows = await this.db.query<Row>(
+      `select * from nova.payment_methods
+        where ($1::text is null or direction = $1 or direction = 'both')
+          and ($2::text is null or $2 = any(currencies))
+        order by display_order`,
+      [input.direction ?? null, input.currency ?? null],
+    );
+    return rows.map((r) => ({
+      id: toStr(r.id), provider: toStr(r.provider, 'disabled'), kind: toStr(r.kind) as PaymentMethod['kind'],
+      direction: (toStr(r.direction, 'both') === 'both' ? (input.direction ?? 'deposit') : toStr(r.direction)) as PaymentMethod['direction'],
+      nameEn: toStr(r.name_en), nameFa: toStr(r.name_fa), icon: toStrOrNull(r.icon),
+      minAmountMinor: toBig(r.min_amount_minor), maxAmountMinor: toBig(r.max_amount_minor),
+      currencies: Array.isArray(r.currencies) ? (r.currencies as unknown[]).map((c) => toStr(c) as Currency) : ['IRT'],
+      feeBps: toNum(r.fee_bps), fixedFeeMinor: toBig(r.fixed_fee_minor),
+      estimatedSeconds: r.estimated_seconds === null ? null : toNum(r.estimated_seconds),
+      isAvailable: Boolean(r.is_enabled),
+      ...(r.is_enabled ? {} : { unavailableReason: toStr(r.unavailable_reason, 'PAYMENT_PROVIDER_DISABLED') }),
+    }));
+  }
+
+  async createIntent(input: CreatePaymentIntentInput): Promise<PaymentIntent> {
+    const method = await this.db.queryOne<Row>(`select * from nova.payment_methods where id = $1`, [input.methodId]);
+    if (!method) throw new ApiError('NOT_FOUND', 'Payment method not found');
+    if (!method.is_enabled) throw new ApiError('PAYMENT_METHOD_UNAVAILABLE', 'This payment method is not available');
+    const supportedCurrencies = Array.isArray(method.currencies) ? method.currencies.map((currency) => String(currency)) : [];
+    if (!supportedCurrencies.includes(input.currency)) {
+      throw new ApiError('BAD_REQUEST', `Payment method ${input.methodId} does not support currency ${input.currency}`);
+    }
+    const amount = BigInt(input.amountMinor);
+    const fee = toBig(method.fixed_fee_minor);
+    const isVoucherWithdrawal = input.direction === "withdrawal" && (input.methodId === "voucher_uvoucher" || input.methodId === "voucher_hotvoucher");
+    const isCryptoWithdrawal = input.direction === "withdrawal" && input.methodId === "crypto_withdrawal";
+    if (!isCryptoWithdrawal && amount < toBig(method.min_amount_minor)) throw new ApiError('PAYMENT_AMOUNT_BELOW_MINIMUM');
+    if (toBig(method.max_amount_minor) > 0n && amount > toBig(method.max_amount_minor)) throw new ApiError('PAYMENT_AMOUNT_ABOVE_MAXIMUM');
+    const resolveWithdrawalWallet = async (amountMinor: bigint, providerMetadata?: Record<string, unknown> | null) => {
+      if (!isVoucherWithdrawal && !isCryptoWithdrawal) {
+        return { currency: input.currency, amountMinor, metadata: {} };
+      }
+
+      const requestedCurrency =
+        typeof providerMetadata?.targetWalletCurrency === "string"
+          ? providerMetadata.targetWalletCurrency
+          : null;
+
+      if (isCryptoWithdrawal && input.currency === "IRR") {
+        const walletCurrency = "IRR" as Currency;
+        const rate = await getUsdIrtRate();
+        const usdAmountMinor = convertIrrMinorToUsdMinor(amountMinor, rate.value);
+
+        if (usdAmountMinor < 2000n) {
+          throw new ApiError('BAD_REQUEST', 'Minimum crypto withdrawal is $20.00 equivalent in IRR');
+        }
+
+        return {
+          currency: walletCurrency,
+          amountMinor,
+          metadata: {
+            targetWalletCurrency: walletCurrency,
+            payoutUsdAmountMinor: usdAmountMinor.toString(),
+            fx: {
+              source: "arzhaam",
+              symbol: "usd",
+              rate: rate.value,
+              rateTimestamp: rate.timestamp,
+              paymentCurrency: "USD",
+              paymentAmountMinor: usdAmountMinor.toString(),
+              walletCurrency,
+              walletAmountMinor: amountMinor.toString(),
+            },
+          },
+        };
+      }
+
+      const walletCurrency = (requestedCurrency ?? "IRR") as Currency;
+
+      if (walletCurrency !== "IRT" && walletCurrency !== "IRR") {
+        throw new ApiError(
+          "BAD_REQUEST",
+          `${isCryptoWithdrawal ? "Crypto" : "Voucher"} withdrawals require an IRT or IRR wallet (got ${walletCurrency})`,
+        );
+      }
+
+      const rate = await getUsdIrtRate();
+      const walletAmountMinor =
+        walletCurrency === "IRT"
+          ? convertUsdMinorToIrtMinor(amountMinor, rate.value)
+          : convertUsdMinorToIrrMinor(amountMinor, rate.value);
+
+      return {
+        currency: walletCurrency,
+        amountMinor: walletAmountMinor,
+        metadata: {
+          fx: {
+            source: "arzhaam",
+            symbol: "usd",
+            rate: rate.value,
+            rateTimestamp: rate.timestamp,
+            paymentCurrency: "USD",
+            paymentAmountMinor: amountMinor.toString(),
+            walletCurrency,
+            walletAmountMinor: walletAmountMinor.toString(),
+          },
+        },
+      };
+    };
+    const existing = await this.db.queryOne<Row>(
+      `select * from nova.payment_transactions where idempotency_key = $1`, [input.idempotencyKey],
+    );
+    if (existing) {
+      const existingIntent = mapIntent(existing);
+      if (existingIntent.direction === 'withdrawal' && !['succeeded', 'failed', 'cancelled', 'refunded', 'reversed'].includes(existingIntent.status)) {
+        const hold = await this.db.queryOne<Row>(
+          `select id from nova.wallet_withdrawal_holds where payment_transaction_id = $1 and status = 'held'`,
+          [existingIntent.id],
+        );
+        if (!hold) {
+          const providerMetadata = toJson<Record<string, unknown>>(existing.provider_metadata, {});
+          const resolved = await resolveWithdrawalWallet(existingIntent.amountMinor, providerMetadata);
+          await this.db.rpc<Row>('reserve_wallet_withdrawal', {
+            p_user_id: existingIntent.userId,
+            p_currency: resolved.currency,
+            p_amount_minor: resolved.amountMinor.toString(),
+            p_payment_transaction_id: existingIntent.id,
+            p_idempotency_key: `withdrawal-hold:${existingIntent.publicId}`,
+            p_reason: 'Withdrawal funds reserved',
+            p_metadata: {
+              public_id: existingIntent.publicId,
+              method: existingIntent.methodId,
+              payment_currency: existingIntent.currency,
+              payment_amount_minor: existingIntent.amountMinor.toString(),
+              wallet_currency: resolved.currency,
+              wallet_amount_minor: resolved.amountMinor.toString(),
+              ...resolved.metadata,
+            },
+          });
+        }
+      }
+      return existingIntent;
+    }
+    const row = await this.db.queryOne<Row>(
+      `insert into nova.payment_transactions (public_id, user_id, type, provider, status, amount_minor, fee_minor, currency,
+          idempotency_key, method, expires_at, raw_request, provider_metadata)
+       values ('NP-' || upper(substr(md5(random()::text), 1, 10)), $1, $2, $3, 'initiated', $4, $5, $6, $7, $8, now() + interval '30 minutes', $9::jsonb, $10::jsonb)
+       returning *`,
+      [input.userId, input.direction, toStr(method.provider, 'disabled'), amount.toString(), fee.toString(),
+        input.currency, input.idempotencyKey, input.methodId,
+        JSON.stringify({
+          return_url: input.returnUrl ?? null,
+          destination: input.destination ?? null,
+        }),
+        JSON.stringify(input.providerMetadata ?? {})],
+    );
+    const intent = mapIntent(row!);
+    if (intent.direction === 'withdrawal') {
+      try {
+        const resolved = await resolveWithdrawalWallet(intent.amountMinor, input.providerMetadata ?? null);
+          await this.db.query(
+            `update nova.payment_transactions
+                set provider_metadata = coalesce(provider_metadata, '{}'::jsonb) || $2::jsonb,
+                    updated_at = now()
+              where id = $1`,
+            [intent.id, JSON.stringify(resolved.metadata ?? {})],
+          );
+        await this.db.rpc<Row>('reserve_wallet_withdrawal', {
+          p_user_id: intent.userId,
+          p_currency: resolved.currency,
+          p_amount_minor: resolved.amountMinor.toString(),
+          p_payment_transaction_id: intent.id,
+          p_idempotency_key: `withdrawal-hold:${intent.publicId}`,
+          p_reason: 'Withdrawal funds reserved',
+          p_metadata: {
+            public_id: intent.publicId,
+            method: intent.methodId,
+            payment_currency: intent.currency,
+            payment_amount_minor: intent.amountMinor.toString(),
+            wallet_currency: resolved.currency,
+            wallet_amount_minor: resolved.amountMinor.toString(),
+            ...resolved.metadata,
+          },
+        });
+      } catch (error) {
+        await this.db.query(
+          `update nova.payment_transactions
+              set status = 'failed', failure_reason = $2, completed_at = now()
+            where id = $1 and status = 'initiated'`,
+          [intent.id, error instanceof Error ? error.message : 'Unable to reserve withdrawal funds'],
+        );
+        throw error;
+      }
+    }
+    return intent;
+  }
+
+  async getIntent(input: { intentId?: UUID; publicId?: string; userId?: UUID }): Promise<PaymentIntent | null> {
+    const row = await this.db.queryOne<Row>(
+      `select * from nova.payment_transactions
+        where ($1::uuid is null or id = $1) and ($2::text is null or public_id = $2) and ($3::uuid is null or user_id = $3)
+        limit 1`,
+      [input.intentId ?? null, input.publicId ?? null, input.userId ?? null],
+    );
+    return row ? mapIntent(row) : null;
+  }
+
+  async updateIntentAmount(input: { publicId: string; amountMinor: string; providerMetadata?: Record<string, unknown> }): Promise<PaymentIntent> {
+    const amount = BigInt(input.amountMinor);
+    if (amount <= 0n) throw new ApiError('BAD_REQUEST', 'Payment amount must be positive');
+    const row = await this.db.queryOne<Row>(
+      `update nova.payment_transactions
+          set amount_minor = $2,
+              provider_metadata = coalesce(provider_metadata, '{}'::jsonb) || $3::jsonb,
+              updated_at = now()
+        where public_id = $1
+          and status not in ('succeeded','refunded','reversed')
+      returning *`,
+      [input.publicId, amount.toString(), JSON.stringify(input.providerMetadata ?? {})],
+    );
+    if (!row) throw new ApiError('PAYMENT_INTENT_NOT_FOUND');
+    return mapIntent(row);
+  }
+
+  async getIntentByProviderReference(input: { providerReference: string }): Promise<PaymentIntent | null> {
+    const row = await this.db.queryOne<Row>(
+      `select * from nova.payment_transactions
+       where provider_reference = $1
+       limit 1`,
+      [input.providerReference],
+    );
+    return row ? mapIntent(row) : null;
+  }
+
+  async listIntents(filter: { userId?: UUID; direction?: string; status?: string; from?: string; to?: string; page?: number; pageSize?: number }): Promise<Paginated<PaymentIntent>> {
+    const page = Math.max(1, filter.page ?? 1);
+    const pageSize = Math.min(100, Math.max(1, filter.pageSize ?? 25));
+    const params = [filter.userId ?? null, filter.direction ?? null, filter.status ?? null, filter.from ?? null, filter.to ?? null, pageSize, (page - 1) * pageSize];
+    const where = `where ($1::uuid is null or user_id = $1) and ($2::text is null or type::text = $2::text) and ($3::text is null or status::text = $3::text)
+        and ($4::timestamptz is null or created_at >= $4) and ($5::timestamptz is null or created_at <= $5)`;
+    const rows = await this.db.query<Row>(`select * from nova.payment_transactions ${where} order by created_at desc limit $6 offset $7`, params);
+    const count = await this.db.queryOne<Row>(`select count(*) as total from nova.payment_transactions ${where}`, params.slice(0, 5));
+    const total = toNum(count?.total);
+    return { items: rows.map(mapIntent), total, page, pageSize, hasMore: page * pageSize < total };
+  }
+
+  async getCryptoPayoutAttempt(input: { publicId: string }): Promise<import('@/lib/ports/repositories').CryptoPayoutAttempt | null> {
+    const row = await this.db.queryOne<Row>(
+      `select a.*
+         from nova.crypto_payout_attempts a
+         join nova.payment_transactions p on p.id = a.payment_transaction_id
+        where p.public_id = $1`,
+      [input.publicId],
+    );
+    if (!row) return null;
+    return this.mapCryptoPayoutAttempt(row);
+  }
+
+  async prepareCryptoPayoutAttempt(input: import('@/lib/ports/repositories').PrepareCryptoPayoutAttemptInput): Promise<import('@/lib/ports/repositories').CryptoPayoutAttempt> {
+    const intent = await this.getIntent({ publicId: input.publicId });
+    if (!intent) throw new ApiError('PAYMENT_INTENT_NOT_FOUND');
+    if (intent.direction !== 'withdrawal') throw new ApiError('BAD_REQUEST', 'Not a withdrawal');
+
+    await this.db.query(
+      `insert into nova.crypto_payout_attempts
+        (payment_transaction_id, status, provider, attempt_no, destination, payout_currency, amount_minor)
+       values ($1, 'prepared', $2, 1, $3, $4, $5)
+       on conflict (payment_transaction_id) do nothing`,
+      [
+        intent.id,
+        input.provider ?? 'nowpayments',
+        input.destination,
+        input.payoutCurrency,
+        input.amountMinor.toString(),
+      ],
+    );
+
+    const row = await this.db.queryOne<Row>(
+      `select * from nova.crypto_payout_attempts where payment_transaction_id = $1`,
+      [intent.id],
+    );
+    if (!row) throw new ApiError('INTERNAL_ERROR', 'Unable to prepare crypto payout attempt');
+    return this.mapCryptoPayoutAttempt(row);
+  }
+
+  async claimCryptoPayoutAttempt(input: { publicId: string }): Promise<import('@/lib/ports/repositories').CryptoPayoutAttempt> {
+    return this.db.transaction(async (tx) => {
+      const row = await tx.queryOne<Row>(
+        `select a.*
+           from nova.crypto_payout_attempts a
+           join nova.payment_transactions p on p.id = a.payment_transaction_id
+          where p.public_id = $1
+          for update of a`,
+        [input.publicId],
+      );
+      if (!row) throw new ApiError('PAYMENT_INTENT_NOT_FOUND');
+
+      if (toStr(row.status, '') === 'prepared') {
+        const claimed = await tx.queryOne<Row>(
+          `update nova.crypto_payout_attempts
+              set status = 'submitting',
+                  request_started_at = coalesce(request_started_at, now()),
+                  last_error = null
+            where id = $1 and status = 'prepared'
+          returning *`,
+          [row.id as import('@/lib/ports/db').SqlParam],
+        );
+        if (!claimed) throw new ApiError('CONFLICT', 'Crypto payout attempt is no longer claimable');
+        return this.mapCryptoPayoutAttempt(claimed);
+      }
+
+      return this.mapCryptoPayoutAttempt(row);
+    });
+  }
+
+  async updateCryptoPayoutAttempt(input: {
+    publicId: string;
+    status: import('@/lib/ports/repositories').CryptoPayoutAttemptStatus;
+    providerReference?: string | null;
+    lastError?: string | null;
+    metadata?: Record<string, unknown> | null;
+  }): Promise<import('@/lib/ports/repositories').CryptoPayoutAttempt> {
+    const row = await this.db.queryOne<Row>(
+      `update nova.crypto_payout_attempts a
+          set status = $2,
+              provider_reference = coalesce($3, a.provider_reference),
+              provider_created_at = case
+                when coalesce($3, a.provider_reference) is not null
+                  then coalesce(a.provider_created_at, now())
+                else a.provider_created_at
+              end,
+              last_checked_at = now(),
+              completed_at = case
+                when $2 in ('succeeded', 'failed') then coalesce(a.completed_at, now())
+                else a.completed_at
+              end,
+              manual_review_at = case
+                when $2 = 'manual_review' then coalesce(a.manual_review_at, now())
+                else a.manual_review_at
+              end,
+              last_error = $4,
+              metadata = case
+                when $5::jsonb is null then a.metadata
+                else coalesce(a.metadata, '{}'::jsonb) || $5::jsonb
+              end
+        from nova.payment_transactions p
+       where a.payment_transaction_id = p.id
+         and p.public_id = $1
+       returning a.*`,
+      [
+        input.publicId,
+        input.status,
+        input.providerReference ?? null,
+        input.lastError ?? null,
+        input.metadata == null ? null : JSON.stringify(input.metadata),
+      ],
+    );
+    if (!row) throw new ApiError('PAYMENT_INTENT_NOT_FOUND');
+    return this.mapCryptoPayoutAttempt(row);
+  }
+
+  private mapCryptoPayoutAttempt(row: Row): import('@/lib/ports/repositories').CryptoPayoutAttempt {
+    return {
+      id: toStr(row.id) as import('@/lib/types').UUID,
+      paymentTransactionId: toStr(row.payment_transaction_id) as import('@/lib/types').UUID,
+      status: toStr(row.status) as import('@/lib/ports/repositories').CryptoPayoutAttemptStatus,
+      provider: toStr(row.provider, 'nowpayments'),
+      providerReference: toStrOrNull(row.provider_reference),
+      attemptNo: toNum(row.attempt_no),
+      destination: toStrOrNull(row.destination),
+      payoutCurrency: toStrOrNull(row.payout_currency),
+      amountMinor: toBig(row.amount_minor),
+      requestStartedAt: toIsoOrNull(row.request_started_at),
+      providerCreatedAt: toIsoOrNull(row.provider_created_at),
+      lastCheckedAt: toIsoOrNull(row.last_checked_at),
+      completedAt: toIsoOrNull(row.completed_at),
+      manualReviewAt: toIsoOrNull(row.manual_review_at),
+      lastError: toStrOrNull(row.last_error),
+      metadata: (toJson(row.metadata, {}) as Record<string, unknown>),
+      createdAt: toIso(row.created_at),
+      updatedAt: toIso(row.updated_at),
+    };
+  }
+
+  async completeIntent(input: { publicId: string; status: 'succeeded' | 'failed' | 'pending' | 'cancelled'; providerReference?: string | null; failureCode?: string | null; failureMessage?: string | null; raw?: Record<string, unknown> }): Promise<{ intent: PaymentIntent; walletEntryId: UUID | null }> {
+    const intent = await this.getIntent({ publicId: input.publicId });
+    if (!intent) throw new ApiError('PAYMENT_INTENT_NOT_FOUND');
+    if (intent.status === 'succeeded' && input.status === 'succeeded') {
+      if (intent.direction === 'deposit') {
+        try {
+          await this.db.rpc<Row>('grant_deposit_bonus', {
+            p_payment_transaction_id: intent.id,
+          });
+        } catch (error) {
+          console.error('Deposit bonus grant retry failed', {
+            publicId: intent.publicId,
+            paymentTransactionId: intent.id,
+            error: error instanceof Error ? error.message : String(error),
+          });
+        }
+      }
+      return { intent, walletEntryId: null };  // duplicate completion: no second credit
+    }
+    if (['refunded', 'reversed'].includes(intent.status)) throw new ApiError('PAYMENT_ALREADY_REFUNDED');
+    let walletEntryId: string | null = null;
+    if (input.status === 'succeeded' && intent.direction === 'deposit') {
+      walletEntryId = await this.db.transaction(async (tx) => {
+        const locked = await tx.queryOne<Row>(
+          `select id, status, currency, amount_minor, wallet_transaction_id, provider_metadata
+             from nova.payment_transactions
+            where id = $1
+            for update`,
+          [intent.id],
+        );
+
+        if (!locked) {
+          throw new ApiError('PAYMENT_INTENT_NOT_FOUND');
+        }
+
+        if (toStr(locked.status, '') === 'succeeded') {
+          return toStrOrNull(locked.wallet_transaction_id);
+        }
+
+        const paymentCurrency = toStr(locked.currency, intent.currency) as Currency;
+        const paymentAmountMinor = toBig(locked.amount_minor);
+        const metadata = toJson<Record<string, unknown>>(locked.provider_metadata, {});
+        const targetWalletCurrency =
+          typeof metadata.targetWalletCurrency === 'string'
+            ? metadata.targetWalletCurrency as Currency
+            : paymentCurrency;
+
+        let walletCurrency: Currency = targetWalletCurrency;
+        let walletAmountMinor = paymentAmountMinor;
+        let fx: Record<string, unknown> | null = null;
+        let cryptoSettlement: Record<string, unknown> | null = null;
+
+        const raw = input.raw ?? {};
+        const isCryptoDeposit = intent.methodId === 'crypto_usdt';
+
+        if (
+          isCryptoDeposit &&
+          paymentCurrency === 'USD' &&
+          (targetWalletCurrency === 'IRR' || targetWalletCurrency === 'IRT')
+        ) {
+          const actuallyPaidRaw = raw.actually_paid;
+          const payCurrencyRaw = raw.pay_currency ?? metadata.payCurrency;
+
+          if (
+            (typeof actuallyPaidRaw !== 'number' && typeof actuallyPaidRaw !== 'string') ||
+            !String(actuallyPaidRaw).trim()
+          ) {
+            throw new Error(`NOWPAYMENTS_ACTUALLY_PAID_MISSING: ${intent.publicId}`);
+          }
+
+          if (typeof payCurrencyRaw !== 'string' || !payCurrencyRaw.trim()) {
+            throw new Error(`NOWPAYMENTS_PAY_CURRENCY_MISSING: ${intent.publicId}`);
+          }
+
+          const actuallyPaid = String(actuallyPaidRaw).trim();
+          const payCurrency = payCurrencyRaw.trim().toLowerCase();
+
+          const cryptoUsd = await convertCryptoToUsdMinor(
+            actuallyPaid,
+            payCurrency,
+          );
+
+          const usdIrtRate = await getUsdIrtRate();
+
+          walletCurrency = targetWalletCurrency;
+
+          if (targetWalletCurrency === 'IRT') {
+            walletAmountMinor = convertUsdMinorToIrtMinor(
+              cryptoUsd.usdMinor,
+              usdIrtRate.value,
+            );
+          } else {
+            walletAmountMinor = convertUsdMinorToIrrMinor(
+              cryptoUsd.usdMinor,
+              usdIrtRate.value,
+            );
+          }
+
+          fx = {
+            source: 'arzhaam',
+            symbol: 'usd',
+            rate: usdIrtRate.value,
+            rateTimestamp: usdIrtRate.timestamp,
+            paymentCurrency: 'USD',
+            paymentAmountMinor: paymentAmountMinor.toString(),
+            walletCurrency: targetWalletCurrency,
+            walletAmountMinor: walletAmountMinor.toString(),
+          };
+
+          cryptoSettlement = {
+            source: 'nowpayments',
+            payCurrency,
+            actuallyPaid,
+            cryptoUsdRate: cryptoUsd.rate,
+            usdAmountMinor: cryptoUsd.usdMinor.toString(),
+            outcomeAmount:
+              raw.outcome_amount === undefined
+                ? null
+                : String(raw.outcome_amount),
+            outcomeCurrency:
+              raw.outcome_currency === undefined
+                ? null
+                : String(raw.outcome_currency),
+          };
+        } else if (
+          paymentCurrency === 'USD' &&
+          (targetWalletCurrency === 'IRR' || targetWalletCurrency === 'IRT')
+        ) {
+          const rate = await getUsdIrtRate();
+          walletCurrency = targetWalletCurrency;
+
+          if (targetWalletCurrency === 'IRT') {
+            walletAmountMinor = convertUsdMinorToIrtMinor(
+              paymentAmountMinor,
+              rate.value,
+            );
+          } else {
+            walletAmountMinor = convertUsdMinorToIrrMinor(
+              paymentAmountMinor,
+              rate.value,
+            );
+          }
+
+          fx = {
+            source: 'arzhaam',
+            symbol: 'usd',
+            rate: rate.value,
+            rateTimestamp: rate.timestamp,
+            paymentCurrency: 'USD',
+            paymentAmountMinor: paymentAmountMinor.toString(),
+            walletCurrency: targetWalletCurrency,
+            walletAmountMinor: walletAmountMinor.toString(),
+          };
+        }
+        const walletMetadata = {
+          public_id: intent.publicId,
+          method: intent.methodId,
+          payment_currency: paymentCurrency,
+          payment_amount_minor: paymentAmountMinor.toString(),
+          wallet_currency: walletCurrency,
+          wallet_amount_minor: walletAmountMinor.toString(),
+          ...(fx ? { fx } : {}),
+          ...(cryptoSettlement ? { crypto_settlement: cryptoSettlement } : {}),
+        };
+
+        const entry = await tx.rpc<Row>('credit_wallet', {
+          p_user_id: intent.userId,
+          p_type: 'deposit',
+          p_amount_minor: walletAmountMinor.toString(),
+          p_currency: walletCurrency,
+          p_idempotency_key: `payment:${intent.publicId}`,
+          p_reference: input.providerReference ?? intent.publicId,
+          p_payment_transaction_id: intent.id,
+          p_reason: 'Deposit confirmed by provider',
+          p_metadata: walletMetadata,
+        });
+
+        await tx.query(
+          `update nova.payment_transactions
+              set status = 'succeeded',
+                  provider_reference = coalesce($2, provider_reference),
+                  wallet_transaction_id = $3::uuid,
+                  provider_metadata = coalesce(provider_metadata, '{}'::jsonb) || $4::jsonb,
+                  completed_at = coalesce(completed_at, now()),
+                  updated_at = now()
+            where id = $1`,
+          [
+            intent.id,
+            input.providerReference ?? null,
+            toStr(entry.transaction_id),
+            JSON.stringify({
+              targetWalletCurrency: walletCurrency,
+              ...(fx ? { fx } : {}),
+              ...(cryptoSettlement ? { crypto_settlement: cryptoSettlement } : {}),
+            }),
+          ],
+        );
+
+        return toStr(entry.transaction_id);
+      });
+    }
+    if (intent.direction === 'withdrawal' && input.status === 'succeeded') {
+      const entry = await this.db.rpc<Row>('capture_wallet_withdrawal', {
+        p_hold_id: await this.withdrawalHoldId(intent.id),
+        p_idempotency_key: `withdrawal-capture:${intent.publicId}`,
+        p_reference: input.providerReference ?? intent.publicId,
+        p_reason: 'Withdrawal paid by provider',
+        p_metadata: { public_id: intent.publicId, provider_reference: input.providerReference ?? null },
+      });
+      walletEntryId = toStr(entry.wallet_transaction_id ?? entry.transaction_id);
+    }
+
+    if (intent.direction === 'withdrawal' && ['failed', 'cancelled'].includes(input.status)) {
+      const holdId = await this.withdrawalHoldIdOrNull(intent.id);
+      if (holdId) {
+        await this.db.rpc<Row>('release_wallet_withdrawal', {
+          p_hold_id: holdId,
+          p_idempotency_key: `withdrawal-release:${intent.publicId}:${input.status}`,
+        });
+      }
+    }
+    const row = await this.db.queryOne<Row>(
+      `update nova.payment_transactions
+          set status = $2::nova.payment_tx_status, provider_reference = coalesce($3, provider_reference),
+              failure_reason = coalesce($4, failure_reason), completed_at = case when $2::nova.payment_tx_status in ('succeeded','failed','cancelled') then now() else completed_at end,
+              wallet_transaction_id = coalesce($5::uuid, wallet_transaction_id),
+              raw_callback = coalesce($6::jsonb, raw_callback), provider_metadata = case when $6::jsonb is null then provider_metadata else coalesce(provider_metadata, '{}'::jsonb) || $6::jsonb end, signature_verified = coalesce(($6::jsonb) is not null, signature_verified)
+        where public_id = $1 returning *`,
+      [input.publicId, input.status, input.providerReference ?? null,
+        input.failureMessage ?? input.failureCode ?? null, walletEntryId,
+        input.raw ? JSON.stringify(input.raw) : null],
+    );
+    const completedIntent = mapIntent(row!);
+
+    if (completedIntent.direction === 'deposit' && completedIntent.status === 'succeeded') {
+      try {
+        await this.db.rpc<Row>('grant_deposit_bonus', {
+          p_payment_transaction_id: completedIntent.id,
+        });
+      } catch (error) {
+        // Wallet/payment completion remains authoritative. The idempotent
+        // bonus grant can be repaired by a later provider retry.
+        console.error('Deposit bonus grant failed after successful payment', {
+          publicId: completedIntent.publicId,
+          paymentTransactionId: completedIntent.id,
+          error: error instanceof Error ? error.message : String(error),
+        });
+      }
+    }
+
+    return { intent: completedIntent, walletEntryId };
+  }
+
+  async recordWebhook(input: { provider: string; eventId: string; eventType: string; signatureValid: boolean; payload: Record<string, unknown>; raw: string; ip?: string | null }) {
+    const existing = await this.db.queryOne<Row>(
+      `select id, processed from nova.webhook_receipts where provider = $1 and provider_event_id = $2`, [input.provider, input.eventId],
+    );
+    if (existing) {
+      return { receiptId: toStr(existing.id), isDuplicate: Boolean(existing.processed), processed: Boolean(existing.processed) };
+    }
+    const row = await this.db.queryOne<Row>(
+      `insert into nova.webhook_receipts (provider, provider_event_id, signature, payload_hash, processed, processing_result, event_type)
+       values ($1,$2,$3, encode(digest($4, 'sha256'), 'hex'), false, 'received', $5) returning id`,
+      [input.provider, input.eventId, input.signatureValid ? 'valid' : 'invalid', input.raw, input.eventType],
+    );
+    return { receiptId: toStr(row!.id), isDuplicate: false, processed: false };
+  }
+
+  async markWebhookProcessed(input: { receiptId: UUID; result: string }): Promise<void> {
+    await this.db.query(
+      `update nova.webhook_receipts
+          set processed = true, processing_result = $2
+        where id = $1 and processed = false`,
+      [input.receiptId, input.result],
+    );
+  }
+
+  async reviewWithdrawal(input: { publicId: string; decision: 'approve' | 'reject'; actorId: UUID; reason?: string }): Promise<PaymentIntent> {
+    const intent = await this.getIntent({ publicId: input.publicId });
+    if (!intent) throw new ApiError('PAYMENT_INTENT_NOT_FOUND');
+    if (intent.direction !== 'withdrawal') throw new ApiError('BAD_REQUEST', 'Not a withdrawal');
+    if (!['initiated', 'pending', 'requires_action'].includes(intent.status)) {
+      throw new ApiError('CONFLICT', `Withdrawal is already ${intent.status}`);
+    }
+    const row = await this.db.queryOne<Row>(
+      `update nova.payment_transactions
+          set status = $2::nova.payment_tx_status, failure_reason = $3,
+              completed_at = case when $2::nova.payment_tx_status = 'cancelled'::nova.payment_tx_status then now() else completed_at end
+        where public_id = $1 returning *`,
+      [input.publicId, input.decision === 'approve' ? 'requires_action' : 'cancelled', input.reason ?? null],
+    );
+    if (input.decision === 'reject') {
+      const holdId = await this.withdrawalHoldIdOrNull(intent.id);
+      if (holdId) {
+        await this.db.rpc<Row>('release_wallet_withdrawal', {
+          p_hold_id: holdId,
+          p_idempotency_key: `withdrawal-release:${intent.publicId}:reject`,
+        });
+      }
+    }
+    else {
+      try {
+        await this.db.rpc<Record<string, unknown>>('enqueue_job', {
+          p_queue: 'crypto_payout',
+          p_job_key: 'crypto.payout_execute',
+          p_payload: { publicId: input.publicId },
+          p_idempotency_key: `crypto-payout:${input.publicId}`,
+          p_run_at: null,
+          p_max_attempts: 8,
+        });
+      } catch (error) {
+        await this.db.queryOne<Row>(
+          `update nova.payment_transactions
+              set status = 'pending', failure_reason = $2, completed_at = null
+            where public_id = $1`,
+          [input.publicId, 'CRYPTO_PAYOUT_JOB_ENQUEUE_FAILED'],
+        );
+
+        throw new ApiError(
+          'INTERNAL_ERROR',
+          `Crypto payout job could not be queued: ${
+            error instanceof Error ? error.message : String(error)
+          }`,
+        );
+      }
+    }
+    await this.db.rpc('audit_event', {
+      p_actor_id: input.actorId, p_action: `payment.withdrawal.${input.decision}`, p_target_type: 'payment', p_target_id: input.publicId,
+      p_before: { status: intent.status }, p_after: { status: toStr(row!.status) }, p_reason: input.reason ?? null,
+    });
+    return mapIntent(row!);
+  }
+
+  private async withdrawalHoldId(paymentTransactionId: UUID): Promise<string> {
+    const hold = await this.db.queryOne<Row>(
+      `select id from nova.wallet_withdrawal_holds
+        where payment_transaction_id = $1 and status = 'held'
+        limit 1`,
+      [paymentTransactionId],
+    );
+    if (!hold) throw new ApiError('PAYMENT_INTENT_NOT_FOUND', 'Withdrawal funds are not reserved');
+    return toStr(hold.id);
+  }
+
+  private async withdrawalHoldIdOrNull(paymentTransactionId: UUID): Promise<string | null> {
+    const hold = await this.db.queryOne<Row>(
+      `select id from nova.wallet_withdrawal_holds
+        where payment_transaction_id = $1 and status = 'held'
+        limit 1`,
+      [paymentTransactionId],
+    );
+    return hold ? toStr(hold.id) : null;
+  }
+
+  async markPaid(input: { publicId: string; actorId: UUID; providerReference?: string; evidenceUrl?: string }): Promise<PaymentIntent> {
+    const result = await this.completeIntent({ publicId: input.publicId, status: 'succeeded', providerReference: input.providerReference ?? null });
+    await this.db.rpc('audit_event', {
+      p_actor_id: input.actorId, p_action: 'payment.withdrawal.paid', p_target_type: 'payment', p_target_id: input.publicId,
+      p_before: null, p_after: { evidence: input.evidenceUrl ?? null }, p_reason: 'withdrawal marked paid',
+    });
+    return result.intent;
+  }
+
+  async refund(input: { intentId: UUID; amountMinor: string; reason: string; actorId: UUID; idempotencyKey: string }) {
+    const original = await this.getIntent({ intentId: input.intentId });
+    if (!original) throw new ApiError('PAYMENT_INTENT_NOT_FOUND');
+    if (original.status !== 'succeeded') throw new ApiError('PAYMENT_REFUND_NOT_ALLOWED', 'Only successful payments can be refunded');
+    const amount = BigInt(input.amountMinor);
+    if (amount > original.amountMinor) throw new ApiError('PAYMENT_REFUND_NOT_ALLOWED', 'Refund exceeds the original amount');
+    const entry = await this.db.rpc<Row>('debit_wallet', {
+      p_user_id: original.userId, p_type: 'adjustment', p_amount_minor: amount.toString(), p_currency: original.currency,
+      p_idempotency_key: `refund:${input.idempotencyKey}`, p_balance_floor: '0',
+      p_reference: `refund:${original.publicId}`, p_reason: input.reason, p_actor_id: input.actorId,
+    });
+    // Only two authoritative outcomes exist: a full refund, or a partial reversal.
+    const partial = amount < original.amountMinor;
+    const row = await this.db.queryOne<Row>(
+      `update nova.payment_transactions
+          set status = case when $2 then 'reversed' else 'refunded' end, completed_at = now(),
+              raw_callback = coalesce(raw_callback, '{}'::jsonb) || jsonb_build_object('refund_minor', $3::text, 'refund_reason', $4::text)
+        where id = $1 returning *`, [input.intentId, partial, amount.toString(), input.reason],
+    );
+    return { refundIntent: mapIntent(row!), walletEntryId: toStr(entry.transaction_id) };
+  }
+
+  async dailyDeposits(userId: UUID, currency: Currency, dayKey: string): Promise<bigint> {
+    const row = await this.db.queryOne<Row>(
+      `select coalesce(sum(amount_minor),0) as total from nova.payment_transactions
+        where user_id = $1 and currency = $2 and type = 'deposit' and status = 'succeeded'
+          and completed_at >= $3::date and completed_at < ($3::date + interval '1 day')`,
+      [userId, currency, dayKey],
+    );
+    return toBig(row?.total);
+  }
+}
