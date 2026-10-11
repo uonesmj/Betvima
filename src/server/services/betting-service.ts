@@ -19,6 +19,7 @@ import { accumulatorOddsScaled, oddsToDisplayString, type OddsScaled } from '@/d
 import { money, compare } from '@/domain/money';
 import { signQuote, verifyQuote, type QuotePayload } from '@/server/utils/hash';
 import { createLogger } from '@/server/logger';
+import { isLiveMatchStatus } from '@/lib/match-state';
 
 const log = createLogger({ component: 'betting-service' });
 
@@ -359,7 +360,7 @@ export class BettingService {
           matchLabel: snapshot.matchLabel, marketKey: snapshot.marketKey, marketName: snapshot.marketName,
           selectionName: snapshot.selectionName, marketStatus: snapshot.marketStatus,
           selectionStatus: snapshot.selectionStatus, matchStatus: snapshot.matchStatus,
-          isLive: snapshot.isLive, scheduledAt: snapshot.scheduledAt, oddsUpdatedAt: snapshot.oddsUpdatedAt, oddsScaled: snapshot.oddsScaled,
+          isLive: snapshot.isLive || isLiveMatchStatus(snapshot.matchStatus), scheduledAt: snapshot.scheduledAt, oddsUpdatedAt: snapshot.oddsUpdatedAt, oddsScaled: snapshot.oddsScaled,
           oddsVersion: snapshot.oddsVersion, clientOddsScaled: requestedLeg.clientOddsScaled,
           acceptOddsChange: requestedLeg.acceptOddsChange,
         });

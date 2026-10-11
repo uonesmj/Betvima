@@ -1,4 +1,5 @@
 import { rankUpcomingMatches } from '@/lib/upcoming-ranking';
+import { LIVE_MATCH_STATUSES as LIVE_STATUSES, isLiveMatchStatus } from '@/lib/match-state';
 import type { Db, ActorContext, SqlParam } from '@/lib/ports/db';
 import type { CatalogRepository, MatchFilter, SelectionSnapshot } from '@/lib/ports/repositories';
 import type {
@@ -35,7 +36,6 @@ const asSportKey = (value: unknown): SportKey => {
 };
 
 /** Only these matches may be shown as "live" and only these can be bet in-play. */
-const LIVE_STATUSES = ['live', 'in_play', 'paused', 'break', 'halftime', 'extra_time', 'penalties'];
 const BETTABLE_STATUSES = ['scheduled', 'live', 'in_play', 'paused', 'break', 'halftime', 'extra_time', 'penalties'];
 
 const MATCH_SELECT = `
@@ -271,16 +271,16 @@ export class PostgresCatalogRepository implements CatalogRepository {
       `select sel.*
          from nova.selections sel
          join nova.markets mk on mk.id = sel.market_id
+         join nova.matches fixture on fixture.id = mk.match_id
         where sel.market_id = any($1::uuid[])
-          and (
-            coalesce(mk.is_live, false) = false
-            or (
-              sel.odds_updated_at is not null
-              and sel.odds_updated_at >= now() - interval '45 seconds'
-            )
-          )
+          and sel.odds_updated_at is not null
+          and sel.odds_updated_at >= now() - case
+            when coalesce(mk.is_live, false) or fixture.status::text = any($2::text[])
+              then interval '45 seconds'
+            else interval '300 seconds'
+          end
         order by sel.participant_type, sel.code`,
-      [pgArray(rows.map((r) => toStr(r.id)))],
+      [pgArray(rows.map((r) => toStr(r.id))), pgArray(LIVE_STATUSES)],
     );
     const byMarket = new Map<string, Selection[]>();
     for (const row of selections) {
@@ -325,7 +325,7 @@ export class PostgresCatalogRepository implements CatalogRepository {
       oddsUpdatedAt: r.odds_updated_at == null ? null : toIso(r.odds_updated_at),
       line: r.line === null || r.line === undefined ? null : String(r.line),
       matchStatus: toStr(r.match_status), scheduledAt: toIso(r.scheduled_at),
-      isLive: toBool(r.is_live), maxStakeMinor: null,
+      isLive: toBool(r.is_live) || isLiveMatchStatus(toStr(r.match_status)), maxStakeMinor: null,
       selectionName: toStr(r.selection_name),
       marketName: toStr(r.market_name_fa) || toStr(r.market_name, toStr(r.market_key)),
       matchLabel: `${toStr(r.home_name)} - ${toStr(r.away_name)}`,
@@ -465,27 +465,28 @@ export class PostgresCatalogRepository implements CatalogRepository {
         from (
           select
             m.*,
+            case
+              when coalesce(m.is_live, false) or fixture.status::text = any($2::text[])
+                then interval '45 seconds'
+              else interval '300 seconds'
+            end as maximum_quote_age,
             row_number() over (
               partition by m.match_id
               order by m.is_live desc, m.display_order, m.key
             ) as market_rank
           from nova.markets m
+          join nova.matches fixture on fixture.id = m.match_id
           where m.match_id = any($1::uuid[])
             and m.status = 'open'
         ) mk
         left join nova.selections sel
           on sel.market_id = mk.id
          and sel.status = 'open'
-         and (
-           coalesce(mk.is_live, false) = false
-           or (
-             sel.odds_updated_at is not null
-             and sel.odds_updated_at >= now() - interval '45 seconds'
-           )
-         )
+         and sel.odds_updated_at is not null
+         and sel.odds_updated_at >= now() - mk.maximum_quote_age
         where mk.market_rank <= 3
         order by mk.match_id, mk.market_rank, sel.participant_type, sel.code`,
-      [pgArray(matchIds)],
+      [pgArray(matchIds), pgArray(LIVE_STATUSES)],
     );
 
     const marketsByMatch = new Map<string, MarketSummary[]>();
@@ -538,6 +539,6 @@ export class PostgresCatalogRepository implements CatalogRepository {
       }
     }
 
-    return rows.map((r) => mapMatch(r, marketsByMatch.get(toStr(r.id)) ?? []));
+    return rows.map((r) => mapMatch(r, (marketsByMatch.get(toStr(r.id)) ?? []).filter((market) => market.selections.length > 0)));
   }
 }

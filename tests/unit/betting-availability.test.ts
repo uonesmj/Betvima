@@ -44,6 +44,7 @@ describe('isolated Live and Prematch quote availability', () => {
 
   it.each([
     ['stale Live', { isLive: true, oddsUpdatedAt: new Date(Date.now() - 46_000).toISOString() }, 'STALE_ODDS'],
+    ['live match with old prematch market flag', { isLive: false, matchStatus: 'live', oddsUpdatedAt: new Date(Date.now() - 60_000).toISOString() }, 'STALE_ODDS'],
     ['stale Prematch', { oddsUpdatedAt: new Date(Date.now() - 301_000).toISOString() }, 'STALE_ODDS'],
     ['suspended market', { marketStatus: 'suspended' }, 'MARKET_SUSPENDED'],
     ['suspended selection', { selectionStatus: 'suspended' }, 'MARKET_SUSPENDED'],
@@ -59,6 +60,12 @@ describe('isolated Live and Prematch quote availability', () => {
 
   it('fails closed when the live operation is missing', async () => {
     const { service, input, placeBet } = fixture({ isLive: true, matchStatus: 'live' }, false);
+    await expect(service.quote(input)).rejects.toMatchObject({ code: 'LIVE_BETTING_DISABLED' });
+    expect(placeBet).not.toHaveBeenCalled();
+  });
+
+  it('requires the live operation even when a live match still has a prematch market flag', async () => {
+    const { service, input, placeBet } = fixture({ isLive: false, matchStatus: 'live' }, false);
     await expect(service.quote(input)).rejects.toMatchObject({ code: 'LIVE_BETTING_DISABLED' });
     expect(placeBet).not.toHaveBeenCalled();
   });
