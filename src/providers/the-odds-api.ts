@@ -7,7 +7,9 @@ import type {
 } from "@/lib/ports/providers";
 
 const BASE_URL =
-  process.env.ODDS_API_BASE_URL || process.env.SPORTS_PROVIDER_BASE_URL || "https://api.the-odds-api.com";
+  process.env.ODDS_API_BASE_URL ||
+  (process.env.SPORTS_PROVIDER === "the_odds_api" ? process.env.SPORTS_PROVIDER_BASE_URL : "") ||
+  "https://api.the-odds-api.com";
 
 const API_KEY = process.env.ODDS_API_KEY || (process.env.SPORTS_PROVIDER === "the_odds_api" ? process.env.SPORTS_PROVIDER_API_KEY : "") || "";
 
