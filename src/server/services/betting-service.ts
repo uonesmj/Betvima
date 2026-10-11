@@ -380,14 +380,15 @@ export class BettingService {
       if (['closed', 'settled', 'void'].includes(leg.marketStatus)) {
         throw new ApiError('MARKET_CLOSED', `${leg.marketName} is closed`);
       }
-      if (leg.marketStatus === 'suspended') throw new ApiError('MARKET_SUSPENDED', `${leg.marketName} is suspended`);
+      if (leg.marketStatus !== 'open') throw new ApiError('MARKET_SUSPENDED', `${leg.marketName} is not open for betting`);
       if (leg.selectionStatus !== 'open') {
         throw new ApiError('MARKET_SUSPENDED', `${leg.selectionName} is not open for betting`);
       }
       const maxOddsAgeSeconds = leg.isLive ? 45 : 300;
+      const oddsUpdatedAtMs = leg.oddsUpdatedAt ? Date.parse(leg.oddsUpdatedAt) : Number.NaN;
       if (
-        !leg.oddsUpdatedAt ||
-        Date.now() - new Date(leg.oddsUpdatedAt).getTime() > maxOddsAgeSeconds * 1000
+        !Number.isFinite(oddsUpdatedAtMs) ||
+        Date.now() - oddsUpdatedAtMs > maxOddsAgeSeconds * 1000
       ) {
         throw new ApiError('STALE_ODDS', `${leg.selectionName}: odds feed is stale`);
       }
