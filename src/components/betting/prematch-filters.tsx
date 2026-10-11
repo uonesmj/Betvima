@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { MatchListClient } from '@/components/betting/match-list-client';
 import type { MatchView } from '@/components/betting/match-card';
+import { LeagueLogo } from '@/components/ui/logo';
 
 type League = {
   id: string;
@@ -512,15 +513,13 @@ export function PrematchFilters({
                                     className="group flex items-center gap-3 rounded-[11px] border border-transparent bg-[#071522] px-3 py-2.5 transition-all duration-150 hover:border-[#2B5277] hover:bg-[#102943]"
                                   >
                                     <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[9px] bg-[#102238]">
-                                      {league.logoUrl ? (
-                                        <img
-                                          src={league.logoUrl}
-                                          alt=""
-                                          className="h-7 w-7 object-contain"
-                                        />
-                                      ) : (
-                                        <span className="text-[17px]">⚽</span>
-                                      )}
+                                      <LeagueLogo
+                                        url={league.logoUrl}
+                                        name={league.nameEn}
+                                        sportKey={league.sportKey}
+                                        size={28}
+                                        theme="dark"
+                                      />
                                     </div>
 
                                     <div className="min-w-0 flex-1">

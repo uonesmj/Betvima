@@ -8,6 +8,7 @@ import { useApp } from '@/components/layout/providers';
 import { Skeleton, ErrorNote } from '@/components/ui/primitives';
 import { apiRequest, useApiQuery } from '@/lib/hooks/useApi';
 import { formatDateTime, formatMinor, formatOddsScaled } from '@/lib/i18n';
+import { TeamLogo } from '@/components/ui/logo';
 
 interface MatchInfo {
   leagueName: string | null;
@@ -113,16 +114,7 @@ function resultClass(value: string | null) {
   return 'text-nova-text';
 }
 
-function TeamLogo({ url, name }: { url: string | null; name: string }) {
-  if (url) {
-    return <img src={url} alt="" loading="lazy" className="h-10 w-10 shrink-0 object-contain" />;
-  }
-  return (
-    <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-[#F0F2F4] text-xs font-black text-[#8A929B] dark:bg-white/10">
-      {name.slice(0, 1).toUpperCase()}
-    </span>
-  );
-}
+
 
 function matchState(match: MatchInfo) {
   const status = normalize(match.status);
@@ -558,7 +550,7 @@ export function MyBetsClient() {
 
                         <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-1.5 sm:gap-4">
                           <div className="flex min-w-0 items-center gap-2">
-                            <TeamLogo url={match.homeTeamLogoUrl} name={match.homeTeamName ?? 'H'} />
+                            <TeamLogo url={match.homeTeamLogoUrl} name={match.homeTeamName ?? 'H'} size={40} theme="dark" />
                             <div className="min-w-0">
                               <div className="truncate text-sm font-extrabold text-white">{match.homeTeamName ?? 'Home'}</div>
                               {match.homeScore != null ? <div className="text-base font-black">{match.homeScore}</div> : null}
@@ -575,7 +567,7 @@ export function MyBetsClient() {
                               <div className="truncate text-sm font-extrabold text-white">{match.awayTeamName ?? 'Away'}</div>
                               {match.awayScore != null ? <div className="text-base font-black">{match.awayScore}</div> : null}
                             </div>
-                            <TeamLogo url={match.awayTeamLogoUrl} name={match.awayTeamName ?? 'A'} />
+                            <TeamLogo url={match.awayTeamLogoUrl} name={match.awayTeamName ?? 'A'} size={40} theme="dark" />
                           </div>
                         </div>
 
@@ -744,7 +736,7 @@ export function MyBetsClient() {
                             <div key={leg.id} className="rounded-2xl border border-white/10 bg-white/[0.025] p-3">
                               <div className="flex flex-wrap items-center justify-between gap-2">
                                 <div className="flex min-w-0 items-center gap-2">
-                                  <TeamLogo url={match.homeTeamLogoUrl} name={match.homeTeamName ?? 'H'} />
+                                  <TeamLogo url={match.homeTeamLogoUrl} name={match.homeTeamName ?? 'H'} size={40} theme="dark" />
                                   <div className="min-w-0">
                                     <div className="truncate text-xs font-extrabold text-white">
                                       {match.homeTeamName ?? 'Home'} <span className="px-1 text-slate-600">vs</span> {match.awayTeamName ?? 'Away'}
@@ -753,7 +745,7 @@ export function MyBetsClient() {
                                       {match.leagueName ?? 'Sports'} · {leg.marketLabel}
                                     </div>
                                   </div>
-                                  <TeamLogo url={match.awayTeamLogoUrl} name={match.awayTeamName ?? 'A'} />
+                                  <TeamLogo url={match.awayTeamLogoUrl} name={match.awayTeamName ?? 'A'} size={40} theme="dark" />
                                 </div>
                                 <span className={`rounded-full border px-2.5 py-1 text-[10px] font-black ${gradeTone}`}>
                                   {legStateIcon(leg.grade ?? leg.status)} {gradeLabel(leg.grade ?? leg.status)}

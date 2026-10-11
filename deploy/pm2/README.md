@@ -7,6 +7,7 @@
 | `nova-worker-settlement` | 1 | Result sweep, bet settlement, regrade |
 | `nova-worker-affiliate` | 1 | Commission accrual, Friday period settlement, payouts |
 | `nova-worker-notification` | 1 | Notification outbox delivery (in-app + configured channels) |
+| `nova-worker-logo` | 1 | Real team/league badge backfill (ESPN + sport-verified TheSportsDB) |
 
 Workers are single-instance on purpose. The queue itself is safe for many workers
 (`for update skip locked`), but a single odds sync and a single settlement sweep per cycle is

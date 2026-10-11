@@ -14,6 +14,7 @@ const SECTIONS: { group: string; items: { href: string; label: string }[] }[] = 
       { href: '/admin/health', label: 'System health' },
       { href: '/admin/workers', label: 'Workers & jobs' },
       { href: '/admin/providers', label: 'Providers' },
+      { href: '/admin/logos', label: 'Logos' },
     ],
   },
   {

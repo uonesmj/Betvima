@@ -16,7 +16,7 @@ import {
   oddsFromDecimalString,
 } from '@/domain/odds';
 import { marketRuleFor, marketDisplayOrder } from '@/domain/market-rules';
-import { resolveTeamLogo, resolveLeagueLogo } from "@/server/services/logo-resolver";
+import { attachCachedLogo } from "@/server/services/logo-resolver";
 import type { LiveFixture, LiveEvent, LiveStatistics } from '@/lib/ports/live-data-provider';
 import {
   MATCH_SOURCE_FALLBACK,
@@ -1942,6 +1942,24 @@ async function syncMatchesUnlocked(
     );
 
     if (!homeTeam || !awayTeam) return;
+
+    // Attach already-cached logos (cache reads only — fire-and-forget, never
+    // blocks ingestion). The logo worker resolves + verifies new names.
+    if (!league?.logo && league?.id) {
+      void attachCachedLogo(
+        ctx.services.db, "league", league.id, match.sport, match.leagueName ?? leagueSlug,
+      ).catch(() => undefined);
+    }
+    if (!homeTeam.logo) {
+      void attachCachedLogo(
+        ctx.services.db, "team", homeTeam.id, match.sport, match.homeTeamName,
+      ).catch(() => undefined);
+    }
+    if (!awayTeam.logo) {
+      void attachCachedLogo(
+        ctx.services.db, "team", awayTeam.id, match.sport, match.awayTeamName,
+      ).catch(() => undefined);
+    }
 
     if (match.homeTeamProviderId) {
       await ctx.services.db.query(

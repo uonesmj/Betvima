@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { MatchCard, type MatchView } from './match-card';
+import { LeagueLogo } from '@/components/ui/logo';
 
 function sportLabel(sportKey: string) {
   const labels: Record<string, string> = {
@@ -22,27 +23,6 @@ function sportLabel(sportKey: string) {
     esports: 'Esports',
   };
   return labels[sportKey] ?? sportKey.replace(/[-_]/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
-}
-
-function sportIcon(sportKey: string) {
-  const icons: Record<string, string> = {
-    football: '⚽',
-    basketball: '🏀',
-    tennis: '🎾',
-    volleyball: '🏐',
-    'ice-hockey': '🏒',
-    hockey: '🏒',
-    'table-tennis': '🏓',
-    'ice_hockey': '🏒',
-    baseball: '⚾',
-    handball: '🤾',
-    cricket: '🏏',
-    boxing: '🥊',
-    mma: '🥊',
-    'american-football': '🏈',
-    esports: '🎮',
-  };
-  return icons[sportKey] ?? '🏅';
 }
 
 function groupByLeague(matches: MatchView[]) {
@@ -482,18 +462,12 @@ export function MatchListClient({
             <header className="flex min-h-[58px] items-center justify-between gap-3 border-b border-[#E8EAED] bg-white px-3.5 py-2.5">
               <div className="flex min-w-0 items-center gap-2.5">
                 <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[9px] border border-[#E6E9ED] bg-[#F7F8FA]">
-                  {group.logo ? (
-          <img
-            src={group.logo}
-            alt=""
-            className="h-6 w-6 object-contain"
-            loading="lazy"
-          />
-        ) : (
-          <span className="text-[15px]" aria-hidden="true">
-            {sportIcon(group.sportKey)}
-          </span>
-        )}
+                  <LeagueLogo
+                    url={group.logo}
+                    name={group.title}
+                    sportKey={group.sportKey}
+                    size={24}
+                  />
                 </div>
 
                 <div className="min-w-0">

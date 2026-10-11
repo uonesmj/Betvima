@@ -52,6 +52,15 @@ module.exports = {
       interpreter: "bash",
       env: { NODE_ENV: "production" },
       env_file: "/var/www/nova/.env.production"
+    },
+    {
+      name: "nova-worker-logo",
+      cwd: "/var/www/nova",
+      script: "/var/www/nova/scripts/run-logo-worker.sh",
+      args: "",
+      interpreter: "bash",
+      env: { NODE_ENV: "production" },
+      env_file: "/var/www/nova/.env.production"
     }
   ]
 };

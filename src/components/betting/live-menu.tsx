@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { LeagueLogo } from '@/components/ui/logo';
 
 export type LiveLeague = {
   sportKey: string;
@@ -108,10 +109,11 @@ export function LiveMenu({ leagues }: { leagues: LiveLeague[] }) {
               return (
                 <button key={id} type="button" onClick={() => selectLeague(league)}
                   className="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left hover:bg-slate-50">
-                  <img
-                    src={league.leagueLogoUrl ?? `/sports-new/svg/${league.sportKey}.svg`}
-                    className="h-8 w-8 object-contain"
-                    alt=""
+                  <LeagueLogo
+                    url={league.leagueLogoUrl}
+                    name={league.leagueName}
+                    sportKey={league.sportKey}
+                    size={32}
                   />
                   <span className="flex-1 text-sm font-bold">
                     {league.leagueName ?? league.sportKey}

@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { ChevronLeft, ChevronRight, Clock3, Trophy, X } from 'lucide-react';
+import { LeagueLogo } from '@/components/ui/logo';
 
 type League = {
   id: string;
@@ -478,18 +479,12 @@ export function TournamentPicker({ sport }: { sport: string }) {
                               onClick={close}
                               className="flex min-h-[72px] items-center gap-4 px-5 transition hover:bg-[#E7E9ED]"
                             >
-                              {row.logoUrl ? (
-                                <img
-                                  src={row.logoUrl}
-                                  alt=""
-                                  className="h-9 w-9 shrink-0 object-contain"
-                                  loading="lazy"
-                                />
-                              ) : (
-                                <span className="grid h-9 w-9 shrink-0 place-items-center text-[25px]">
-                                  🏆
-                                </span>
-                              )}
+                              <LeagueLogo
+                                url={row.logoUrl}
+                                name={row.title}
+                                sportKey={row.league?.sportKey ?? sport}
+                                size={36}
+                              />
 
                               <span className="min-w-0 flex-1 truncate text-[17px] font-extrabold text-[#20242A]">
                                 {row.title}

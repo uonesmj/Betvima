@@ -30,7 +30,8 @@
     "i18n:check": "node scripts/i18n-check.mjs",
     "worker:crypto-payout": "node --import tsx src/workers/entrypoints/crypto-payout.worker.ts",
     "worker:odds-live": "node --import tsx src/workers/entrypoints/odds.worker.ts",
-    "worker:payment": "node --import tsx src/workers/entrypoints/payment.worker.ts"
+    "worker:payment": "node --import tsx src/workers/entrypoints/payment.worker.ts",
+    "worker:logo": "node --import tsx src/workers/entrypoints/logo.worker.ts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.5.2",
