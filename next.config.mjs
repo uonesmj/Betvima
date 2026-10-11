@@ -9,6 +9,8 @@ const securityHeaders = [
 ];
 
 const nextConfig = {
+  // Dedicated, isolated preview development server; production paths stay unchanged.
+  basePath: process.env.NODE_ENV === 'development' && process.env.BETVIMA_PREVIEW_DEV === '1' ? '/dev' : '',
   reactStrictMode: true,
   poweredByHeader: false,
   experimental: { serverActions: { bodySizeLimit: '1mb' } },

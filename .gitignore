@@ -25,6 +25,8 @@ playwright-report/
 test-results/
 .DS_Store
 tsconfig.tsbuildinfo
+__pycache__/
+*.pyc
 
 # Exclude accidental browser profile data
 /Manchester United/
