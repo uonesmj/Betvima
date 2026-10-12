@@ -45,11 +45,14 @@ export const POST = withErrorHandling('admin.matches.result', async (ctx, reques
       throw new ApiError('BAD_REQUEST', 'Full-time scores are required');
     }
     const saved = await services.db.transaction(async (tx) => {
-      const match = await tx.queryOne<{ id: string; provider_id: string | null; status: string }>(
-        'select id, provider_id, status::text from nova.matches where id = $1 and provider = $2 for update',
+      const match = await tx.queryOne<{ id: string; provider_id: string | null; status: string; scheduled_at: string }>(
+        'select id, provider_id, status::text, scheduled_at from nova.matches where id = $1 and provider = $2 for update',
         [id, 'manual'],
       );
       if (!match || !match.provider_id) throw new ApiError('NOT_FOUND', 'Manual fixture missing provider identity');
+      if (body.status === 'finished' && Date.now() < new Date(match.scheduled_at).getTime()) {
+        throw new ApiError('BAD_REQUEST', 'Cannot finish a manual fixture before kick-off');
+      }
       const finalAlready = await tx.queryOne<{ id: string }>(
         `select id from nova.match_results where match_id = $1 and authoritative = true
          and status in ('finished','cancelled','abandoned') order by revision desc limit 1`, [id],
