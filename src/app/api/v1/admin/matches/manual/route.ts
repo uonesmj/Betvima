@@ -117,12 +117,22 @@ export const POST = withErrorHandling('admin.matches.manual.create', async (ctx,
     ];
     for (let i = 0; i < options.length; i++) {
       const option = options[i]!;
-      await tx.query(
+      const selection = await tx.queryOne<{ id: string }>(
         `insert into nova.selections
           (market_id, match_id, code, name, participant_type, status,
            odds_scaled, odds_version, odds_updated_at, provider, is_live)
-         values ($1,$2,$3,$4,$5,'open'::nova.selection_status,$6,1,now(),'manual',false)`,
+         values ($1,$2,$3,$4,$5,'open'::nova.selection_status,$6,1,now(),'manual',false)
+         returning id`,
         [market.id, created.id, option.code, option.name, option.kind, prices[i]!.toString()],
+      );
+      if (!selection) throw new ApiError('NOT_FOUND', 'Unable to create selection');
+      // Keep a complete first-price audit trail, in the same transaction.
+      await tx.query(
+        `insert into nova.odds_history (
+           selection_id, provider, odds_scaled, previous_odds_scaled,
+           odds_version, status, is_live, provider_timestamp, ingest_key
+         ) values ($1,'manual',$2,null,1,'manual_creation',false,now(),$3)`,
+        [selection.id, prices[i]!.toString(), `manual:create:${selection.id}`],
       );
     }
     return created.id;
