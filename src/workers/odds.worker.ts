@@ -9,6 +9,7 @@ console.log("NOVA_ODDS_WORKER_RUNTIME_MARKER", JSON.stringify({ pid: process.pid
 import { createWorker, type WorkerContext, type JobHandler } from './runtime';
 import { serverEnv } from '@/server/env';
 import { pgArray } from '@/server/db/rows';
+import { selectLegacyResultWindow } from "./legacy-results-window";
 import {
   hasRejecting,
   hasSuspending,
@@ -32,6 +33,9 @@ import {
 
 const env = serverEnv();
 const WORKER_MODE = String(process.env.ODDS_WORKER_MODE ?? "bulk").trim().toLowerCase();
+if (!["bulk", "live", "legacy-results"].includes(WORKER_MODE)) {
+  throw new Error(`Unsupported ODDS_WORKER_MODE: ${WORKER_MODE}`);
+}
 
 const handlers: JobHandler[] = [
   {
@@ -49,6 +53,11 @@ const handlers: JobHandler[] = [
 ];
 
 let lastResultReconciliationAt = 0;
+let legacyResultsWindowCursor = 0;
+const LEGACY_RESULTS_LOOKBACK_DAYS = Math.max(
+  1,
+  Math.min(365, Number(process.env.LEGACY_RESULTS_LOOKBACK_DAYS) || 365),
+);
 let lastPrematchNearOddsAt = 0;
 let lastPrematchMidOddsAt = 0;
 let lastPrematchFarOddsAt = 0;
@@ -75,7 +84,7 @@ const LIVE_RESULT_INTERVAL_MS = 10_000;
 const API_FOOTBALL_LIVE_INTERVAL_MS = 30_000;
 const API_FOOTBALL_MAX_DETAIL_MATCHES_PER_CYCLE = 1;
 
-if (WORKER_MODE !== 'live') {
+if (WORKER_MODE === 'bulk') {
 createWorker({
   queue: 'odds',
   handlers,
@@ -1205,6 +1214,33 @@ async function runDedicatedLiveTick(ctx: WorkerContext): Promise<void> {
   });
 }
 
+if (WORKER_MODE === "legacy-results") {
+  // This is a separate process with its own FiveDollar credential. The normal
+  // Odds API worker runs with FIVEDOLLAR_API_KEY unset and never contacts it.
+  // Do not register job handlers here: a legacy process must not ingest odds.
+  createWorker({
+    queue: "legacy-results",
+    handlers: [],
+    tickIntervalMs: 10 * 60_000,
+    pollIntervalMs: 5_000,
+    batchSize: 1,
+    async tick(ctx) {
+      const legacyProvider = ctx.services.providers.sportsProviders?.find(
+        (provider) => provider.name === MATCH_SOURCE_FALLBACK && provider.configured,
+      );
+      if (!legacyProvider) {
+        ctx.log.warn("LEGACY_RESULTS_DISABLED_NO_PROVIDER_KEY");
+        return;
+      }
+
+      await ctx.withLock("legacy-results:reconcile", 600, async () => {
+        const result = await reconcileLiveResults(ctx, true);
+        console.log("LEGACY_RESULTS_RECONCILIATION", JSON.stringify(result));
+      });
+    },
+  });
+}
+
 if (WORKER_MODE === 'live') {
 createWorker({
   queue: 'odds-live',
@@ -1451,13 +1487,14 @@ async function syncApiFootballLiveData(ctx: WorkerContext): Promise<{
   };
 }
 
-async function reconcileLiveResults(ctx: WorkerContext): Promise<{ checked: number; finished: number; liveUpdated: number; failed: number }> {
+async function reconcileLiveResults(ctx: WorkerContext, legacyResultsOnly = false): Promise<{ checked: number; finished: number; liveUpdated: number; failed: number }> {
   const providers = (
     ctx.services.providers.sportsProviders?.length
       ? ctx.services.providers.sportsProviders
       : [ctx.services.providers.sports]
   ).filter((provider, index, all) =>
     provider.configured &&
+    (!legacyResultsOnly || provider.name === MATCH_SOURCE_FALLBACK) &&
     all.findIndex((item) => item.name === provider.name) === index
   );
 
@@ -1467,36 +1504,79 @@ async function reconcileLiveResults(ctx: WorkerContext): Promise<{ checked: numb
   let failed = 0;
 
   for (const sourceProvider of providers) {
-    const rows = await ctx.services.db.query<{
+    // Legacy mode is result-only: query *existing provider-owned matches* with
+    // unsettled bets. It never invokes fetchMatches for catalog ingestion or
+    // fetchOdds, and it never creates a match, market, or selection.
+    let rows = await ctx.services.db.query<{
       id: string;
       provider_id: string | null;
       status: string;
       home_score: number | null;
       away_score: number | null;
+      scheduled_at: string;
     }>(
-      `select id, provider_id, status::text, home_score, away_score
-         from nova.matches
-        where provider = $1
-          and provider_id is not null
-          and (
-            status::text = any($2::text[])
-            or (
-              status::text = 'scheduled'
-              and scheduled_at <= now() + interval '3 hours'
-              and scheduled_at >= now() - interval '24 hours'
-            )
-          )
-        order by
-          case when status::text = any($2::text[]) then 0 else 1 end,
-          scheduled_at desc
-        limit 200`,
-      [sourceProvider.name, pgArray(LIVE_MATCH_STATUSES)],
+      legacyResultsOnly
+        ? `select m.id, m.provider_id, m.status::text,
+                  m.home_score, m.away_score, m.scheduled_at
+             from nova.matches m
+            where m.provider = $1
+              and m.provider_id is not null
+              and m.status::text in ('scheduled', 'live', 'finished')
+              and m.scheduled_at <= now() + interval '3 hours'
+              and m.scheduled_at >= now() - ($2::int * interval '1 day')
+              and exists (
+                select 1 from nova.bet_legs l
+                join nova.bets b on b.id = l.bet_id
+                where l.match_id = m.id
+                  and b.status::text in ('accepted', 'partially_settled')
+              )
+              and not exists (
+                select 1 from nova.match_results r
+                where r.match_id = m.id
+                  and r.authoritative = true
+                  and r.status = 'finished'
+              )
+            order by m.scheduled_at desc
+            limit 1000`
+        : `select id, provider_id, status::text, home_score, away_score,
+                  scheduled_at
+             from nova.matches
+            where provider = $1
+              and provider_id is not null
+              and (
+                status::text = any($2::text[])
+                or (
+                  status::text = 'scheduled'
+                  and scheduled_at <= now() + interval '3 hours'
+                  and scheduled_at >= now() - interval '24 hours'
+                )
+              )
+            order by
+              case when status::text = any($2::text[]) then 0 else 1 end,
+              scheduled_at desc
+            limit 200`,
+      legacyResultsOnly
+        ? [sourceProvider.name, LEGACY_RESULTS_LOOKBACK_DAYS]
+        : [sourceProvider.name, pgArray(LIVE_MATCH_STATUSES)],
     );
+
+    let from = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+    let to = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+    if (legacyResultsOnly) {
+      const window = selectLegacyResultWindow(rows, legacyResultsWindowCursor++);
+      if (!window) continue;
+      rows = window.matches;
+      from = window.from;
+      to = window.to;
+      console.log("LEGACY_RESULTS_EXISTING_MATCH_WINDOW", JSON.stringify({
+        day: window.day,
+        daysInBacklog: window.daysInBacklog,
+        existingMatches: rows.length,
+      }));
+    }
+
     checked += rows.length;
     if (rows.length === 0) continue;
-
-    const from = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-    const to = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
     const requestedIds = new Set(
       rows.map((row) => row.provider_id).filter((id): id is string => Boolean(id)),
     );
