@@ -95,6 +95,9 @@ describe('real-money bet placement preconditions', () => {
     const { service, input, snapshot, placeBet } = makeScenario();
     snapshot.oddsScaled = 27000n;
     snapshot.oddsVersion = 2;
+    // The quote endpoint explicitly allows reporting a moved price; placing
+    // must still verify the user's signed approval before any debit.
+    input.slip.legs[0]!.acceptOddsChange = true;
     const quote = await service.quote(input);
     expect(quote.oddsChanges).toMatchObject([{
       previousOddsScaled: 25000n,
