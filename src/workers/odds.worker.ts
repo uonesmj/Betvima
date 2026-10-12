@@ -2546,7 +2546,7 @@ async function syncOddsUnlocked(
            i.odds_scaled,
            i.provider,
            i.provider_selection_id,
-           i.provider_timestamp,
+           NULL::timestamptz,
            i.is_live
          from input i
          on conflict (market_id, code)
@@ -2561,7 +2561,6 @@ async function syncOddsUnlocked(
             end,
            provider = excluded.provider,
            provider_selection_id = excluded.provider_selection_id,
-           provider_timestamp = excluded.provider_timestamp,
            is_live = excluded.is_live,
            updated_at = now()
          returning id, market_id, code`,
