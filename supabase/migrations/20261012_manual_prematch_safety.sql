@@ -27,7 +27,7 @@ BEGIN
     END IF;
 
     IF definition !~ freshness_pattern OR position(market_anchor IN definition) = 0
-       OR position('v_match.provider' IN definition) > 0 THEN
+       OR position('v_match.provider IS DISTINCT FROM' IN definition) > 0 THEN
       RAISE EXCEPTION 'Refusing unexpected nova.place_bet definition (oid %)', rec.oid;
     END IF;
 
