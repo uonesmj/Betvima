@@ -11,6 +11,10 @@ on:
       - 'src/server/adapters/postgres/catalog.ts'
       - 'src/server/services/betting-service.ts'
       - 'src/lib/ports/repositories.ts'
+      - 'src/workers/odds.worker.ts'
+      - 'src/workers/legacy-results-window.ts'
+      - 'tests/unit/legacy-results-window.test.ts'
+      - 'package.json'
       - 'supabase/migrations/20261012_manual_prematch_safety.sql'
       - '.github/workflows/manual-prematch-ci.yml'
 
