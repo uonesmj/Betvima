@@ -114,8 +114,8 @@ export function BetSlipRail() {
   }, []);
   const slip = useBetSlip();
   const currentContext = quoteContextFingerprint({
-    userId: session.user?.id ?? null,
-    currency: session.user?.currency ?? 'USD',
+    userId: session?.user?.id ?? null,
+    currency: session?.user?.currency ?? 'USD',
     stakeMinor: slip.stakeMinor,
     fundingSource: slip.fundingSource,
     bonusGrantId: slip.bonusGrantId,
@@ -163,8 +163,8 @@ export function BetSlipRail() {
     const scoped = quote ? {
       ...quote,
       contextKey: quoteContextFingerprint({
-        userId: session.user?.id ?? null,
-        currency: session.user?.currency ?? 'USD',
+        userId: session?.user?.id ?? null,
+        currency: session?.user?.currency ?? 'USD',
         stakeMinor: current.stakeMinor,
         fundingSource: current.fundingSource,
         bonusGrantId: current.bonusGrantId,
@@ -173,7 +173,7 @@ export function BetSlipRail() {
     } : null;
     setPendingQuoteState(scoped);
     persistPendingQuote(scoped);
-  }, [session.user?.id, session.user?.currency]);
+  }, [session?.user?.id, session?.user?.currency]);
   const pendingQuote = isCurrentQuote(pendingQuoteState, currentContext)
     ? pendingQuoteState : null;
 
@@ -214,7 +214,7 @@ export function BetSlipRail() {
       checking = true;
 
       try {
-        const currency = session.user?.currency ?? 'USD';
+        const currency = session?.user?.currency ?? 'USD';
         const type = slip.items.length > 1 ? 'MULTIPLE' : 'SINGLE';
 
         const result = await apiRequest<QuoteResponse>('/api/v1/bets/quote', {
@@ -238,8 +238,8 @@ export function BetSlipRail() {
         if (cancelled) return;
         const current = useBetSlip.getState();
         if (quoteContextFingerprint({
-          userId: session.user?.id ?? null,
-          currency: session.user?.currency ?? 'USD',
+          userId: session?.user?.id ?? null,
+          currency: session?.user?.currency ?? 'USD',
           stakeMinor: current.stakeMinor,
           fundingSource: current.fundingSource,
           bonusGrantId: current.bonusGrantId,
@@ -299,7 +299,7 @@ export function BetSlipRail() {
     slip.setSubmitting(true);
     setQuoteError(null);
 
-    const currency = session.user?.currency ?? 'USD';
+    const currency = session?.user?.currency ?? 'USD';
     const type = slip.items.length > 1 ? 'MULTIPLE' : 'SINGLE';
     const contextAtStart = currentContext;
 
@@ -413,7 +413,7 @@ export function BetSlipRail() {
 
       const current = useBetSlip.getState();
       const fingerprintInput = {
-        userId: session.user?.id ?? null,
+        userId: session?.user?.id ?? null,
         currency,
         stakeMinor: current.stakeMinor,
         fundingSource: current.fundingSource,
@@ -663,7 +663,7 @@ function BetSlipBody({
   const [stakeInput, setStakeInput] = useState(() => moneyInputFromMinor(slip.stakeMinor, currency));
 
   const loadBalance = useCallback(async () => {
-    if (!session?.authenticated || !session.user?.currency) {
+    if (!session?.authenticated || !session?.user?.currency) {
       setBalanceMinor(null);
       return;
     }
@@ -708,7 +708,7 @@ function BetSlipBody({
     let cancelled = false;
 
     const loadBonuses = async () => {
-      if (!session?.authenticated || !session.user?.currency) {
+      if (!session?.authenticated || !session?.user?.currency) {
         setBonusItems([]);
         setBonusLoading(false);
         return;
@@ -735,7 +735,7 @@ function BetSlipBody({
           item.status === 'active' &&
           BigInt(item.remainingAmountMinor || '0') > 0n &&
           new Date(item.expiresAt).getTime() > now &&
-          item.currency === session.user?.currency
+          item.currency === session?.user?.currency
         ));
 
         if (!cancelled) {
