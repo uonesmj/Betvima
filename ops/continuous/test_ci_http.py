@@ -23,6 +23,26 @@ class TransportTests(unittest.TestCase):
         self.assertEqual(report['status'],'blocked_or_failed')
         self.assertNotIn('private output',json.dumps(report))
 
+    def test_failed_release_reports_only_fixed_safe_phase_and_reason(self):
+        value={'status':'blocked_or_failed','stage':'migration_registry',
+               'reason':'verified_migration_registry_required',
+               'private':'DB_PASSWORD=dont-leak'}
+        report=self.invoke(subprocess.CompletedProcess([],1,
+            json.dumps(value).encode(),b'DB_PASSWORD=dont-leak'))
+        self.assertEqual(report,{
+            'status':'blocked_or_failed',
+            'stage':'migration_registry',
+            'reason':'verified_migration_registry_required'})
+        self.assertNotIn('dont-leak',json.dumps(report))
+
+    def test_unknown_failures_never_leak_through_ticket(self):
+        value={'status':'blocked_or_failed','stage':'API_KEY=secret',
+               'reason':'POSTGRES=private'}
+        report=self.invoke(subprocess.CompletedProcess([],1,json.dumps(value).encode(),b''))
+        self.assertEqual(report,{
+            'status':'blocked_or_failed','stage':'unknown',
+            'reason':'details_suppressed'})
+
     def test_invalid_success_cannot_be_reported_as_verified(self):
         report=self.invoke(subprocess.CompletedProcess([],0,b'{"status":"running"}',b''))
         self.assertEqual(report['status'],'blocked_or_failed')
