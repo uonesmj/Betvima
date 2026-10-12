@@ -39,10 +39,10 @@ export const POST = withErrorHandling('admin.matches.result', async (ctx, reques
   );
   if (owner?.provider === 'manual') {
     if (!['finished', 'cancelled', 'abandoned'].includes(body.status)) {
-      throw new ApiError('VALIDATION_ERROR', 'For manual fixtures, enter a final result or cancellation');
+      throw new ApiError('BAD_REQUEST', 'For manual fixtures, enter a final result or cancellation');
     }
     if (body.status === 'finished' && (body.homeScore == null || body.awayScore == null)) {
-      throw new ApiError('VALIDATION_ERROR', 'Full-time scores are required');
+      throw new ApiError('BAD_REQUEST', 'Full-time scores are required');
     }
     const saved = await services.db.transaction(async (tx) => {
       const match = await tx.queryOne<{ id: string; provider_id: string | null; status: string }>(
@@ -55,7 +55,7 @@ export const POST = withErrorHandling('admin.matches.result', async (ctx, reques
          and status in ('finished','cancelled','abandoned') order by revision desc limit 1`, [id],
       );
       if (finalAlready) {
-        throw new ApiError('VALIDATION_ERROR', 'Final result already exists; use the controlled regrade process for corrections');
+        throw new ApiError('BAD_REQUEST', 'Final result already exists; use the controlled regrade process for corrections');
       }
       const result = await tx.queryOne<{ id: string; revision: number; status: string }>(
         `insert into nova.match_results (
