@@ -9,7 +9,8 @@ console.log("NOVA_ODDS_WORKER_RUNTIME_MARKER", JSON.stringify({ pid: process.pid
 import { createWorker, type WorkerContext, type JobHandler } from './runtime';
 import { serverEnv } from '@/server/env';
 import { pgArray } from '@/server/db/rows';
-import { PREMATCH_REFRESH_LIMITS, extendedRefreshBudget } from './odds-refresh-budget';
+import { extendedRefreshBudget } from './odds-refresh-budget';
+import { duePrematchRefreshes, prematchRefreshCadence, type PrematchRefreshClock } from './prematch-refresh-cadence';
 import {
   hasRejecting,
   hasSuspending,
@@ -51,24 +52,16 @@ const handlers: JobHandler[] = [
 ];
 
 let lastResultReconciliationAt = 0;
-let lastPrematchNearOddsAt = 0;
-let lastPrematchMidOddsAt = 0;
-let lastPrematchFarOddsAt = 0;
+// Separate clocks prevent an unrelated/legacy provider from throttling The Odds API.
+const lastPrematchByProvider = new Map<string, PrematchRefreshClock>();
 let lastResultsQuotaErrorAt = 0;
 let lastLiveOddsAt = 0;
 let lastExtendedLiveOddsAt = 0;
-let lastExtendedPrematchNearOddsAt = 0;
-let lastExtendedPrematchFarOddsAt = 0;
 let lastMatchDiscoveryAt = 0;
 let lastApiFootballLiveSyncAt = 0;
 const MATCH_DISCOVERY_INTERVAL_MS = process.env.SPORTS_PROVIDER === "5dollarfootballapi" ? 10 * 60_000 : 5 * 60_000;
-const PREMATCH_NEAR_ODDS_INTERVAL_MS = process.env.SPORTS_PROVIDER === "5dollarfootballapi" ? 60_000 : 30_000;
-const PREMATCH_MID_ODDS_INTERVAL_MS = process.env.SPORTS_PROVIDER === "5dollarfootballapi" ? 5 * 60_000 : 60_000;
-const PREMATCH_FAR_ODDS_INTERVAL_MS = process.env.SPORTS_PROVIDER === "5dollarfootballapi" ? 15 * 60_000 : 5 * 60_000;
 const LIVE_ODDS_INTERVAL_MS = process.env.SPORTS_PROVIDER === "5dollarfootballapi" ? 30_000 : 5_000;
 const EXTENDED_LIVE_ODDS_INTERVAL_MS = process.env.SPORTS_PROVIDER === "5dollarfootballapi" ? 10 * 60_000 : 5 * 60_000;
-const EXTENDED_PREMATCH_NEAR_ODDS_INTERVAL_MS = process.env.SPORTS_PROVIDER === "5dollarfootballapi" ? 10 * 60_000 : 60_000;
-const EXTENDED_PREMATCH_FAR_ODDS_INTERVAL_MS = process.env.SPORTS_PROVIDER === "5dollarfootballapi" ? 15 * 60_000 : 5 * 60_000;
 const EXTENDED_ODDS_MAX_MATCHES_PER_CYCLE = extendedRefreshBudget(process.env.ODDS_API_EXTENDED_MAX_MATCHES_PER_CYCLE);
 const LIVE_RESULT_INTERVAL_MS = 10_000;
 const API_FOOTBALL_LIVE_INTERVAL_MS = 30_000;
@@ -98,25 +91,8 @@ createWorker({
         const includeLive = now - lastLiveOddsAt >= LIVE_ODDS_INTERVAL_MS;
         const includeExtendedLive =
           now - lastExtendedLiveOddsAt >= EXTENDED_LIVE_ODDS_INTERVAL_MS;
-        const includeExtendedPrematchNear =
-          now - lastExtendedPrematchNearOddsAt >= EXTENDED_PREMATCH_NEAR_ODDS_INTERVAL_MS;
-        const includeExtendedPrematchFar =
-          now - lastExtendedPrematchFarOddsAt >= EXTENDED_PREMATCH_FAR_ODDS_INTERVAL_MS;
-
         if (includeLive) lastLiveOddsAt = now;
         if (includeExtendedLive) lastExtendedLiveOddsAt = now;
-        if (includeExtendedPrematchNear) lastExtendedPrematchNearOddsAt = now;
-        if (includeExtendedPrematchFar) lastExtendedPrematchFarOddsAt = now;
-
-        const includePrematchNear = now - lastPrematchNearOddsAt >= PREMATCH_NEAR_ODDS_INTERVAL_MS;
-        const includePrematchMid = now - lastPrematchMidOddsAt >= PREMATCH_MID_ODDS_INTERVAL_MS;
-        const includePrematchFar = now - lastPrematchFarOddsAt >= PREMATCH_FAR_ODDS_INTERVAL_MS;
-
-        if (includePrematchNear) lastPrematchNearOddsAt = now;
-        if (includePrematchMid) lastPrematchMidOddsAt = now;
-        if (includePrematchFar) lastPrematchFarOddsAt = now;
-
-        const includePrematch = includePrematchNear || includePrematchMid || includePrematchFar;
 
         if (includeLive) {
           console.log("ODDS_LIVE_PRIORITY", JSON.stringify({
@@ -136,6 +112,22 @@ createWorker({
         );
 
         for (const sourceProvider of configuredPrematchProviders) {
+        const cadence = prematchRefreshCadence(
+          sourceProvider.name,
+          EXTENDED_ODDS_MAX_MATCHES_PER_CYCLE,
+        );
+        const last = lastPrematchByProvider.get(sourceProvider.name) ?? {
+          near: 0, mid: 0, far: 0, extendedNear: 0, extendedFar: 0,
+        };
+        const due = duePrematchRefreshes(now, last, cadence);
+        const includePrematchNear = due.near;
+        const includePrematchMid = due.mid;
+        const includePrematchFar = due.far;
+        const includeExtendedPrematchNear = due.extendedNear;
+        const includeExtendedPrematchFar = due.extendedFar;
+        const includePrematch = includePrematchNear || includePrematchMid || includePrematchFar;
+        lastPrematchByProvider.set(sourceProvider.name, due.next);
+
         const pending = includePrematch
           ? await ctx.services.db.query<{
               match_id: string;
@@ -216,9 +208,9 @@ createWorker({
                 includePrematchMid,
                 includePrematchFar,
                 sourceProvider.name,
-                PREMATCH_REFRESH_LIMITS.near,
-                PREMATCH_REFRESH_LIMITS.mid,
-                PREMATCH_REFRESH_LIMITS.far,
+                cadence.nearLimit,
+                cadence.midLimit,
+                cadence.farLimit,
               ]
             ).catch(() => [])
           : [];
@@ -240,8 +232,13 @@ createWorker({
                  where m.provider = $2
                    and m.status::text = 'scheduled'
                    and m.provider_id is not null
-                   and m.scheduled_at > now() + interval '30 minutes'
+                   and m.scheduled_at > now()
+                   and (
+                     ($3::boolean and m.scheduled_at <= now() + interval '30 minutes')
+                     or ($4::boolean and m.scheduled_at > now() + interval '30 minutes')
+                   )
                  order by
+                   case when m.scheduled_at <= now() + interval '30 minutes' then 0 else 1 end,
                    (
                      select max(sl.odds_updated_at)
                      from nova.markets mk
@@ -252,8 +249,10 @@ createWorker({
                    m.id asc
                  limit $1`,
                 [
-                  EXTENDED_ODDS_MAX_MATCHES_PER_CYCLE,
+                  cadence.extendedLimit,
                   sourceProvider.name,
+                  includeExtendedPrematchNear,
+                  includeExtendedPrematchFar,
                 ],
               ).catch(() => [])
             : [];
@@ -274,7 +273,7 @@ createWorker({
                 const scheduledAt = new Date(row.scheduled_at).getTime();
                 return scheduledAt > now && scheduledAt <= now + 30 * 60_000;
               })
-              .slice(0, EXTENDED_ODDS_MAX_MATCHES_PER_CYCLE)
+              .slice(0, cadence.extendedLimit)
               .map((row) => row.provider_id)
               .filter((id): id is string => Boolean(id))
           : [];
@@ -286,14 +285,14 @@ createWorker({
                 const scheduledAt = new Date(row.scheduled_at).getTime();
                 return scheduledAt > now + 30 * 60_000;
               })
-              .slice(0, EXTENDED_ODDS_MAX_MATCHES_PER_CYCLE)
+              .slice(0, cadence.extendedLimit)
               .map((row) => row.provider_id)
               .filter((id): id is string => Boolean(id))
           : [];
 
         const extendedProviderIds = [
           ...new Set([...extendedNearProviderIds, ...extendedFarProviderIds]),
-        ].slice(0, EXTENDED_ODDS_MAX_MATCHES_PER_CYCLE);
+        ].slice(0, cadence.extendedLimit);
 
         console.log("ODDS_PREMATCH_FETCH_START", JSON.stringify({
           at: new Date(now).toISOString(),
@@ -316,15 +315,6 @@ createWorker({
           }),
         );
 
-        if (extendedProviderIds.length > 0) {
-          void runExtendedPrematchOddsDetached(
-            ctx,
-            extendedPending,
-            extendedProviderIds,
-            sourceProvider,
-          );
-        }
-
         const requestedNormalProviderIds = new Set(providerIds);
         const bundlesByProviderId = new Map<
           string,
@@ -342,21 +332,8 @@ createWorker({
           bundlesByProviderId.set(bundle.matchProviderId, bundle);
         }
 
-        const extendedProviderIdSet = new Set(extendedProviderIds);
-
-        const normalSyncPending = pending.filter((row) => {
-          if (!row.provider_id) return false;
-
-          if (extendedProviderIdSet.has(row.provider_id)) {
-            console.log("ODDS_NORMAL_SYNC_SKIPPED_EXTENDED", JSON.stringify({
-              matchId: row.match_id,
-              providerId: row.provider_id,
-            }));
-            return false;
-          }
-
-          return true;
-        });
+        // An extended fetch must not suppress a fresh core-price publication.
+        const normalSyncPending = pending.filter((row) => Boolean(row.provider_id));
 
         const SYNC_CONCURRENCY = 12;
 
@@ -401,8 +378,20 @@ createWorker({
           );
         }
 
+        // Extended per-event discovery is lower priority than fresh base prices.
+        // Bound its batch size to avoid starving the short prematch quote window.
+        if (extendedProviderIds.length > 0) {
+          void runExtendedPrematchOddsDetached(
+            ctx,
+            extendedPending,
+            extendedProviderIds,
+            sourceProvider,
+          );
+        }
+
         console.log("ODDS_CORE_TICK_DONE", JSON.stringify({
           at: new Date().toISOString(),
+          provider: sourceProvider.name,
           requestedMatches: providerIds.length,
           bundles: bundlesByProviderId.size,
         }));

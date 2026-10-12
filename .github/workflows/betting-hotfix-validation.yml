@@ -10,6 +10,8 @@ on:
       - 'src/server/services/betting-service.ts'
       - 'src/workers/odds.worker.ts'
       - 'src/workers/odds-refresh-budget.ts'
+      - 'src/workers/prematch-refresh-cadence.ts'
+      - 'tests/unit/prematch-refresh-cadence.test.ts'
       - 'src/lib/bet-placement-fingerprint.ts'
       - 'tests/unit/bet-placement-fingerprint.test.ts'
       - 'tests/unit/betting-service-placement.test.ts'
@@ -70,8 +72,24 @@ jobs:
           assert 'ODDS_FUNCTION_DRIFTED_ABORT' in sql
           assert 'm.status::text = \'scheduled\'' in sql
           assert 'v_market.status::text = \'open\'' in sql
-          assert 'PREMATCH_REFRESH_LIMITS.near' in worker
-          assert 'PREMATCH_REFRESH_LIMITS.mid' in worker
-          assert 'PREMATCH_REFRESH_LIMITS.far' in worker
+          cadence = Path('src/workers/prematch-refresh-cadence.ts').read_text()
+          budget = Path('src/workers/odds-refresh-budget.ts').read_text()
+          assert 'prematchRefreshCadence(' in worker
+          assert 'duePrematchRefreshes(' in worker
+          assert 'lastPrematchByProvider' in worker
+          assert 'cadence.nearLimit' in worker
+          assert 'cadence.midLimit' in worker
+          assert 'cadence.farLimit' in worker
+          assert 'cadence.extendedLimit' in worker
+          assert 'nearLimit: 16' in cadence
+          assert 'midLimit: 12' in cadence
+          assert 'farLimit: 12' in cadence
+          assert 'extendedLimit: Math.max(1, Math.min(configuredExtendedLimit, 8))' in cadence
+          assert 'maxPerCoreTick: 40' in budget
+          assert 'sourceOddsMaxAgeSeconds(market.isLive)' in worker
+          assert 'ODDS_NORMAL_SYNC_SKIPPED_EXTENDED' not in worker
+          assert 'const normalSyncPending = pending.filter((row) => Boolean(row.provider_id))' in worker
+          assert 'includeExtendedPrematchNear,' in worker
+          assert 'includeExtendedPrematchFar,' in worker
           assert 'acceptOddsChange: false' in service
           PY
