@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { withErrorHandling, jsonOk } from '@/lib/errors';
+import { withErrorHandling, jsonOk, ApiError } from '@/lib/errors';
 import { readJson } from '@/server/http/request';
 import { withAdmin } from '@/server/http/guard';
 import { logger } from '@/server/logger';
@@ -31,6 +31,79 @@ export const POST = withErrorHandling('admin.matches.result', async (ctx, reques
   const { id } = await params.params;
   const { services, user, actor } = await withAdmin(request, ctx, 'matches.manage');
   const body = await readJson(request, schema, ctx);
+
+  // Manual fixture results must retain exact match ownership. The settlement
+  // service refuses results with mismatched or missing provider_result_id.
+  const owner = await services.db.queryOne<{ provider: string | null }>(
+    'select provider from nova.matches where id = $1', [id],
+  );
+  if (owner?.provider === 'manual') {
+    if (!['finished', 'cancelled', 'abandoned'].includes(body.status)) {
+      throw new ApiError('VALIDATION_ERROR', 'For manual fixtures, enter a final result or cancellation');
+    }
+    if (body.status === 'finished' && (body.homeScore == null || body.awayScore == null)) {
+      throw new ApiError('VALIDATION_ERROR', 'Full-time scores are required');
+    }
+    const saved = await services.db.transaction(async (tx) => {
+      const match = await tx.queryOne<{ id: string; provider_id: string | null; status: string }>(
+        'select id, provider_id, status::text from nova.matches where id = $1 and provider = $2 for update',
+        [id, 'manual'],
+      );
+      if (!match || !match.provider_id) throw new ApiError('NOT_FOUND', 'Manual fixture missing provider identity');
+      const finalAlready = await tx.queryOne<{ id: string }>(
+        `select id from nova.match_results where match_id = $1 and authoritative = true
+         and status in ('finished','cancelled','abandoned') order by revision desc limit 1`, [id],
+      );
+      if (finalAlready) {
+        throw new ApiError('VALIDATION_ERROR', 'Final result already exists; use the controlled regrade process for corrections');
+      }
+      const result = await tx.queryOne<{ id: string; revision: number; status: string }>(
+        `insert into nova.match_results (
+          match_id, revision, status, home_score, away_score,
+          home_half_score, away_half_score, home_corners, away_corners,
+          home_cards, away_cards, extra_time, penalties, penalty_home, penalty_away,
+          provider, provider_result_id, authoritative, observed_at, created_by
+        )
+        select $1, coalesce(max(revision),0)+1, $2, $3, $4, $5, $6, $7, $8,
+               $9, $10, $11, $12, $13, $14, 'manual', $15, true, now(), $16
+        from nova.match_results where match_id = $1
+        returning id, revision, status`,
+        [id, body.status, body.homeScore ?? null, body.awayScore ?? null,
+          body.homeHalfScore ?? null, body.awayHalfScore ?? null,
+          body.homeCorners ?? null, body.awayCorners ?? null,
+          body.homeCards ?? null, body.awayCards ?? null,
+          body.extraTime, body.penalties, body.penaltyHome ?? null, body.penaltyAway ?? null,
+          match.provider_id, user.id],
+      );
+      await tx.query(
+        `update nova.matches set status = $2::nova.match_status,
+          home_score = $3, away_score = $4, finished_at = now(),
+          result_revision = $5, updated_at = now()
+         where id = $1 and provider = 'manual'`,
+        [id, body.status, body.homeScore ?? null, body.awayScore ?? null, result?.revision ?? 1],
+      );
+      await tx.query(
+        `update nova.markets set status = 'closed'::nova.market_status, updated_at = now()
+         where match_id = $1 and status::text in ('open','suspended')`, [id],
+      );
+      await tx.query(
+        `update nova.selections set status = 'closed'::nova.selection_status, updated_at = now()
+         where match_id = $1 and status::text in ('open','suspended')`, [id],
+      );
+      // A queue failure must roll back the result rather than silently leave
+      // users waiting with a successful operator response.
+      await tx.query('select nova.enqueue_match_settlement($1, $2)', [
+        id, `MANUAL_RESULT_REV_${result?.revision ?? 1}`,
+      ]);
+      return result;
+    });
+    await services.admin.writeAudit({
+      actorId: user.id, action: 'match.result_recorded', entityType: 'match', entityId: id,
+      after: { ...body, revision: saved?.revision, provider: 'manual' },
+      reason: body.note ?? 'manual result entry', correlationId: actor.correlationId,
+    });
+    return jsonOk({ result: saved, settlementQueued: true });
+  }
   const row = await services.db.queryOne<Record<string, unknown>>(
     `insert into nova.match_results
        (match_id, revision, status, home_score, away_score, home_half_score, away_half_score, home_corners, away_corners,
