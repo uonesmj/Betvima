@@ -22,6 +22,7 @@ SAFE_FAILURE_CODES = frozenset((
     'invalid_invocation','active_web_not_identified','existing_pm2_required',
     'previous_release_still_owned','candidate_release_still_running',
     'private_value_in_browser_assets','verified_migration_registry_required',
+    'backup_session_pooler_required','backup_session_policy_not_verified',
 ))
 CURRENT_STAGE = 'preflight'
 CURRENT_REVISION = None
@@ -108,6 +109,35 @@ def connection(values):
     env.update(PGSSLMODE='verify-full',PGSSLROOTCERT='/root/betvima-public-ca.crt',PGOPTIONS='-c default_transaction_read_only=on -c statement_timeout=0 -c lock_timeout=3000')
     return env
 
+def backup_connection(values):
+    """Use Supabase's *session* pooler, never the short-lived transaction port.
+
+    The normal web app stays on 6543. A whole-database COPY may exceed the
+    transaction pooler's per-statement lifetime, which produced incomplete
+    dumps and a Postgres 57014 error during two production deployments.
+    Preserve the verified database identity, user, SSL and credentials; only
+    switch to the already-available port 5432 for this one backup process.
+    """
+    raw=values.get('SUPABASE_DB_URL') or values.get('DATABASE_URL')
+    if not raw:raise ValueError('backup_session_pooler_required')
+    parsed=urllib.parse.urlsplit(raw)
+    host=(parsed.hostname or '').lower()
+    if (parsed.scheme not in ('postgres','postgresql')
+            or not host.endswith('.pooler.supabase.com')
+            or parsed.port!=6543
+            or not (parsed.username or '').startswith('postgres.')):
+        raise ValueError('backup_session_pooler_required')
+    env=connection(values)
+    if (str(env.get('PGHOST','')).lower()!=host
+            or str(env.get('PGPORT',''))!='6543'
+            or env.get('PGSSLMODE')!='verify-full'
+            or not env.get('PGSSLROOTCERT')
+            or 'statement_timeout=0' not in env.get('PGOPTIONS','')):
+        raise ValueError('backup_session_pooler_required')
+    env['PGPORT']='5432'
+    env['PGAPPNAME']='betvima_pre_release_verified_backup'
+    return env
+
 def backup(values):
     parent=pathlib.Path('/root/betvima-backups')
     for report in sorted(parent.glob('*/verification.json'),reverse=True):
@@ -118,7 +148,13 @@ def backup(values):
                 if h==data.get('sha256'):return report.parent
         except Exception:pass
     path=parent/('auto-pre-release-'+time.strftime('%Y%m%dT%H%M%SZ',time.gmtime()));path.mkdir(mode=0o700)
-    partial=path/'database.dump.partial';env=connection(values)
+    partial=path/'database.dump.partial';env=backup_connection(values)
+    # Verify session-level long-running COPY policy, without touching data.
+    # A transaction-pooler connection must never silently be used as fallback.
+    sql="BEGIN READ ONLY; SELECT current_setting('statement_timeout'),current_setting('default_transaction_read_only'); ROLLBACK;"
+    state=c.run(['/usr/bin/psql','-X','--no-password','-qAt',
+                 '-v','ON_ERROR_STOP=1'],input=sql.encode(),env=env,timeout=30).strip()
+    if state!=b'0|on':raise ValueError('backup_session_policy_not_verified')
     c.run(['/usr/bin/pg_dump','--no-password','--format=custom','--compress=1','--no-owner','--no-privileges','--file='+str(partial)],env=env,timeout=3600)
     c.run(['/usr/bin/pg_restore','--file=/dev/null',str(partial)],timeout=1200)
     dump=path/'database.dump';partial.rename(dump)
