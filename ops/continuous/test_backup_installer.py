@@ -102,4 +102,36 @@ class RoutedWebSelection(unittest.TestCase):
         with self.assertRaisesRegex(SystemExit,'Protected worker'):
             installer.app_env()
 
+class SessionPreflightVerification(unittest.TestCase):
+    def setUp(self):
+        self.conn={
+            'PGPORT':'5432','PGSSLMODE':'verify-full',
+            'PGHOST':'fake.pooler.supabase.com',
+            'PGOPTIONS':'-c statement_timeout=0',
+        }
+
+    def test_session_defaults_may_be_two_minutes_but_set_verifies_zero(self):
+        with patch.object(installer,'derive_backup_env',return_value=self.conn), \
+             patch.object(installer,'run',return_value=subprocess.CompletedProcess(
+                 [],0,'0|on|on\n','')) as runner:
+            installer.test_safe_session(b'fixture',{'SUPABASE_DB_URL':'redacted'})
+        self.assertEqual(runner.call_count,1)
+        args,kwargs=runner.call_args
+        self.assertIn('SET statement_timeout TO 0;',kwargs['input'])
+        self.assertIn('SET default_transaction_read_only TO on;',kwargs['input'])
+        self.assertIn('BEGIN READ ONLY;',kwargs['input'])
+        self.assertIn("current_setting('transaction_read_only')",kwargs['input'])
+        self.assertNotIn('-c',args[0])
+        self.assertEqual(kwargs['env']['PGPORT'],'5432')
+
+    def test_failed_or_unsafe_policy_never_allows_installation(self):
+        for code,output in ((1,''),(0,'2min|off|off\n'),
+                            (0,'0|off|off\n'),(0,'0|on|off\n')):
+            with patch.object(installer,'derive_backup_env',return_value=self.conn), \
+                 patch.object(installer,'run',return_value=subprocess.CompletedProcess(
+                     [],code,output,'')):
+                with self.subTest(code=code,output=output),self.assertRaisesRegex(
+                    SystemExit,'not verified'):
+                    installer.test_safe_session(b'fixture',{})
+
 if __name__=='__main__':unittest.main()
