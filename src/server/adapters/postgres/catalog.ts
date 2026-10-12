@@ -465,9 +465,9 @@ export class PostgresCatalogRepository implements CatalogRepository {
         from (
           select
             m.*,
-            fixture.provider as provider,
-            fixture.status::text as match_status,
-            fixture.scheduled_at,
+            fixture.provider as fixture_provider,
+            fixture.status::text as fixture_status,
+            fixture.scheduled_at as fixture_scheduled_at,
             case
               when coalesce(m.is_live, false) or fixture.status::text = any($2::text[])
                 then interval '45 seconds'
@@ -486,7 +486,7 @@ export class PostgresCatalogRepository implements CatalogRepository {
           on sel.market_id = mk.id
          and sel.status = 'open'
          and sel.odds_updated_at is not null
-         and ((mk.provider = 'manual' and mk.match_status = 'scheduled' and mk.scheduled_at > now()) or sel.odds_updated_at >= now() - mk.maximum_quote_age)
+         and ((mk.fixture_provider = 'manual' and mk.fixture_status = 'scheduled' and mk.fixture_scheduled_at > now()) or sel.odds_updated_at >= now() - mk.maximum_quote_age)
         where mk.market_rank <= 3
         order by mk.match_id, mk.market_rank, sel.participant_type, sel.code`,
       [pgArray(matchIds), pgArray(LIVE_STATUSES)],
