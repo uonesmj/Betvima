@@ -80,7 +80,8 @@ function mapMatch(row: Row, topMarkets: MarketSummary[] = []): Match {
     homeHalfScore: toNumOrNull(row.home_half_score), awayHalfScore: toNumOrNull(row.away_half_score),
     participants, provider: toStrOrNull(row.provider),
     isLive: LIVE_STATUSES.includes(status),
-    isBettingAvailable: BETTABLE_STATUSES.includes(status) && !['settled', 'cancelled', 'abandoned'].includes(status),
+    isBettingAvailable: BETTABLE_STATUSES.includes(status) && !['settled', 'cancelled', 'abandoned'].includes(status)
+      && !(toStr(row.provider) === 'manual' && (status !== 'scheduled' || Date.now() >= new Date(toIso(row.scheduled_at)).getTime())),
     hasLiveStream: toBool(row.has_live_stream), updatedAt: toIso(row.updated_at),
     marketsCount: toNumOrNull(row.markets_count) ?? undefined,
     topMarkets: topMarkets.length > 0 ? topMarkets : undefined,
@@ -274,7 +275,7 @@ export class PostgresCatalogRepository implements CatalogRepository {
          join nova.matches fixture on fixture.id = mk.match_id
         where sel.market_id = any($1::uuid[])
           and sel.odds_updated_at is not null
-          and (fixture.provider <> 'manual' or (fixture.status::text = 'scheduled' and fixture.scheduled_at > now()))
+          and (fixture.provider is distinct from 'manual' or (fixture.status::text = 'scheduled' and fixture.scheduled_at > now()))
           and (fixture.provider = 'manual' or sel.odds_updated_at >= now() - case
             when coalesce(mk.is_live, false) or fixture.status::text = any($2::text[])
               then interval '45 seconds'
@@ -487,7 +488,7 @@ export class PostgresCatalogRepository implements CatalogRepository {
           on sel.market_id = mk.id
          and sel.status = 'open'
          and sel.odds_updated_at is not null
-         and (mk.fixture_provider <> 'manual' or (mk.fixture_status = 'scheduled' and mk.fixture_scheduled_at > now()))
+         and (mk.fixture_provider is distinct from 'manual' or (mk.fixture_status = 'scheduled' and mk.fixture_scheduled_at > now()))
          and (mk.fixture_provider = 'manual' or sel.odds_updated_at >= now() - mk.maximum_quote_age)
         where mk.market_rank <= 3
         order by mk.match_id, mk.market_rank, sel.participant_type, sel.code`,
