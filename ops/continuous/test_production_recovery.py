@@ -10,6 +10,7 @@ import re
 import tempfile
 import time
 import unittest
+import urllib.parse
 from unittest.mock import Mock
 
 SOURCE=pathlib.Path(__file__).with_name('production.py').read_text()
@@ -115,7 +116,7 @@ class SessionBackupConnectionTests(unittest.TestCase):
             'PGPASSWORD':'NOT-A-REAL-PASSWORD'
         })
         scope['connection']=self.mock
-        scope['urllib']=__import__('urllib')
+        scope['urllib']=urllib
 
     def tearDown(self):
         scope['connection']=self._connection
@@ -145,13 +146,14 @@ class SessionBackupConnectionTests(unittest.TestCase):
         self.mock.assert_not_called()
 
     def test_tls_or_transaction_mode_cannot_be_bypassed(self):
+        baseline=self.mock.return_value.copy()
         for field,value in (
             ('PGSSLMODE','require'),
             ('PGPORT','5432'),
             ('PGHOST','attacker.test'),
             ('PGOPTIONS','-c statement_timeout=300000'),
         ):
-            safe=self.mock.return_value.copy()
+            safe=baseline.copy()
             safe[field]=value
             self.mock.return_value=safe
             with self.subTest(field=field),self.assertRaisesRegex(ValueError,'backup_session_pooler_required'):
