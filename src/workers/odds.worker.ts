@@ -1225,14 +1225,6 @@ if (WORKER_MODE === "legacy-results") {
     pollIntervalMs: 5_000,
     batchSize: 1,
     async tick(ctx) {
-      const legacyProvider = ctx.services.providers.sportsProviders?.find(
-        (provider) => provider.name === MATCH_SOURCE_FALLBACK && provider.configured,
-      );
-      if (!legacyProvider) {
-        ctx.log.warn("LEGACY_RESULTS_DISABLED_NO_PROVIDER_KEY");
-        return;
-      }
-
       // Fail closed on production: count outstanding legacy bets first.
       // Settlement requires a separate, explicit operator enablement.
       if (process.env.LEGACY_RESULTS_WRITE_ENABLED !== "true") {
@@ -1257,6 +1249,16 @@ if (WORKER_MODE === "legacy-results") {
           rows,
           enabled: false,
         }));
+        return;
+      }
+
+      // Only the explicitly enabled results-only process needs FiveDollar
+      // credentials; read-only backlog audits work without an API key.
+      const legacyProvider = ctx.services.providers.sportsProviders?.find(
+        (provider) => provider.name === MATCH_SOURCE_FALLBACK && provider.configured,
+      );
+      if (!legacyProvider) {
+        ctx.log.warn("LEGACY_RESULTS_DISABLED_NO_PROVIDER_KEY");
         return;
       }
 
