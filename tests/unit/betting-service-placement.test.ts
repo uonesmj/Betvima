@@ -94,4 +94,18 @@ describe('real-money bet placement preconditions', () => {
     })).rejects.toMatchObject({ code: 'ODDS_EXPIRED' });
     expect(placeBet).not.toHaveBeenCalled();
   });
+  it('blocks a stale scheduled fixture that has already kicked off', async () => {
+    const { service, input, snapshot, placeBet } = makeScenario();
+    snapshot.scheduledAt = new Date(Date.now() - 5000).toISOString();
+    await expect(service.quote(input)).rejects.toMatchObject({ code: 'MATCH_FINISHED' });
+    expect(placeBet).not.toHaveBeenCalled();
+  });
+
+  it('never prices a selection claimed under a different market ID', async () => {
+    const { service, input, placeBet } = makeScenario();
+    input.slip.legs[0]!.marketId = '44444444-4444-4444-8444-444444444444';
+    await expect(service.quote(input)).rejects.toMatchObject({ code: 'VALIDATION_FAILED' });
+    expect(placeBet).not.toHaveBeenCalled();
+  });
+
 });
