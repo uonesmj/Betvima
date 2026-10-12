@@ -1105,7 +1105,12 @@ async function runDedicatedLiveDiscovery(ctx: WorkerContext): Promise<void> {
 async function runDedicatedLiveTick(ctx: WorkerContext): Promise<void> {
   if (!env.sportsProviderEnabled) return;
 
-  void runDedicatedLiveDiscovery(ctx);
+  // The bulk worker already owns the full sports catalog. A separate live
+  // price-only process must not queue hundreds of cross-sport discovery API
+  // requests ahead of its 5-second priority odds requests.
+  if (process.env.ODDS_LIVE_DISCOVERY_ENABLED !== "false") {
+    void runDedicatedLiveDiscovery(ctx);
+  }
 
   const providers = (
     ctx.services.providers.sportsProviders?.length
