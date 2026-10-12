@@ -149,12 +149,22 @@ def backup(values):
         except Exception:pass
     path=parent/('auto-pre-release-'+time.strftime('%Y%m%dT%H%M%SZ',time.gmtime()));path.mkdir(mode=0o700)
     partial=path/'database.dump.partial';env=backup_connection(values)
-    # Verify session-level long-running COPY policy, without touching data.
-    # A transaction-pooler connection must never silently be used as fallback.
-    sql="BEGIN READ ONLY; SELECT current_setting('statement_timeout'),current_setting('default_transaction_read_only'); ROLLBACK;"
+    # Supavisor may ignore libpq PGOPTIONS startup parameters: newly opened
+    # sessions have the database defaults (e.g. '2min|off|off'). Session mode
+    # supports SET and keeps these settings *only in this connection*.
+    # Probe with explicit, separate session statements, never ALTER DATABASE
+    # or ALTER ROLE. pg_dump 17 independently starts its own connection and
+    # issues SET statement_timeout = 0 before its first COPY.
+    sql=("SET statement_timeout TO 0;\n"
+         "SET default_transaction_read_only TO on;\n"
+         "BEGIN READ ONLY;\n"
+         "SELECT current_setting('statement_timeout'),"
+         "current_setting('default_transaction_read_only'),"
+         "current_setting('transaction_read_only');\n"
+         "ROLLBACK;\n")
     state=c.run(['/usr/bin/psql','-X','--no-password','-qAt',
                  '-v','ON_ERROR_STOP=1'],input=sql.encode(),env=env,timeout=30).strip()
-    if state!=b'0|on':raise ValueError('backup_session_policy_not_verified')
+    if state!=b'0|on|on':raise ValueError('backup_session_policy_not_verified')
     c.run(['/usr/bin/pg_dump','--no-password','--format=custom','--compress=1','--no-owner','--no-privileges','--file='+str(partial)],env=env,timeout=3600)
     c.run(['/usr/bin/pg_restore','--file=/dev/null',str(partial)],timeout=1200)
     dump=path/'database.dump';partial.rename(dump)
