@@ -132,7 +132,7 @@ createWorker({
             ? ctx.services.providers.sportsProviders
             : [ctx.services.providers.sports]
         ).filter((provider, index, all) =>
-          provider.configured &&
+          provider.configured && provider.name === MATCH_SOURCE_ODDS &&
           all.findIndex((item) => item.name === provider.name) === index
         );
 
@@ -683,7 +683,7 @@ async function runOddsMaintenanceDetached(
             ? ctx.services.providers.sportsProviders
             : [ctx.services.providers.sports]
         ).filter((provider, index, all) =>
-          provider.configured &&
+          provider.configured && provider.name === MATCH_SOURCE_ODDS &&
           all.findIndex((item) => item.name === provider.name) === index
         );
 
@@ -1013,7 +1013,7 @@ async function runDedicatedLiveDiscovery(ctx: WorkerContext): Promise<void> {
       ? ctx.services.providers.sportsProviders
       : [ctx.services.providers.sports]
   ).filter((provider, index, all) =>
-    provider.configured &&
+    provider.configured && provider.name === MATCH_SOURCE_ODDS &&
     all.findIndex((item) => item.name === provider.name) === index
   );
 
@@ -1109,7 +1109,7 @@ async function runDedicatedLiveTick(ctx: WorkerContext): Promise<void> {
       ? ctx.services.providers.sportsProviders
       : [ctx.services.providers.sports]
   ).filter((provider, index, all) =>
-    provider.configured &&
+    provider.configured && provider.name === MATCH_SOURCE_ODDS &&
     all.findIndex((item) => item.name === provider.name) === index
   );
 
