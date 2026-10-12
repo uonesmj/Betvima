@@ -2,6 +2,10 @@ name: Betvima Continuous Preview and Approved Production
 on:
   push:
     branches: [main, 'codex/**']
+  pull_request:
+    paths:
+      - 'ops/continuous/**'
+      - '.github/workflows/continuous.yml'
   workflow_dispatch:
     inputs:
       approve_production:
@@ -42,7 +46,7 @@ jobs:
     concurrency:
       group: betvima-server-publication
       cancel-in-progress: false
-    if: github.event_name == 'push' || !inputs.approve_production
+    if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && !inputs.approve_production)
     runs-on: ubuntu-24.04
     timeout-minutes: 40
     permissions:
