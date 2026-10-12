@@ -159,8 +159,14 @@ def main(sha):
     if len(current)!=1:raise ValueError('ambiguous_current_upstream')
     oldport=int(next(iter(current)))
     apps=json.loads(pm2(['jlist']))
-    old=next((a for a in apps if int(a.get('pm2_env',{}).get('PORT',0) or 0)==oldport and a['pm2_env'].get('status')=='online'),None)
-    if not old:raise ValueError('active_web_not_identified')
+    # Financial workers may inherit PORT from the web environment; identify
+    # the actual routed web process by its unique process name, never by port alone.
+    websites=[a for a in apps
+              if a.get('name','').startswith('nova-cd-')
+              and a.get('pm2_env',{}).get('status')=='online'
+              and int(a.get('pm2_env',{}).get('PORT',0) or 0)==oldport]
+    if len(websites)!=1:raise ValueError('active_web_not_identified')
+    old=websites[0]
     olddir=pathlib.Path(old['pm2_env']['pm_cwd'])
     if olddir.parent!=pathlib.Path('/opt/nova-releases'):raise ValueError('unexpected_active_release')
     values={k:str(v) for k,v in old['pm2_env'].items() if re.fullmatch('[A-Z][A-Z0-9_]*',k) and isinstance(v,(str,int))}
