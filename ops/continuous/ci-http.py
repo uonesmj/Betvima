@@ -8,10 +8,30 @@ def execute(ticket,data):
     report={'status':'blocked_or_failed','details':'private_server_diagnostics'}
     try:
         result=subprocess.run(['/usr/bin/sudo','-n','/usr/local/sbin/betvima-ci'],input=data,capture_output=True,timeout=5500)
-        if result.returncode==0:
-            value=json.loads(result.stdout)
-            if value.get('status')=='verified':
+        # The fixed root controller may report a *safe* failure classification.
+        # The ticket is opaque and accepted only from the authenticated OIDC
+        # admission flow. Never return raw logs or arbitrary exception strings.
+        try:
+            value=json.loads(result.stdout.decode().splitlines()[-1])
+            if result.returncode==0 and value.get('status')=='verified':
                 report={k:value[k] for k in ('status','deploy','revision')}
+            elif result.returncode!=0 and value.get('status')=='blocked_or_failed':
+                allowed_stages={'preflight','recover_previous','extract_source','migration_registry',
+                                'backup','registry_check','dependencies','unit_tests','typecheck',
+                                'lint','build','asset_security','copy_release','start_candidate',
+                                'candidate_health','switch_route','public_health','persist','complete'}
+                allowed_reasons={'previous_attempt_requires_inspection',
+                                 'migration_change_requires_separate_approval',
+                                 'approved_0195_required','runtime_configuration_incomplete',
+                                 'command_failed_output_suppressed','health_failed','not_ready',
+                                 'financial_auth_guard_failed','identity_failed','release_already_exists',
+                                 'invalid_invocation','active_web_not_identified','existing_pm2_required',
+                                 'previous_release_still_owned','candidate_release_still_running',
+                                 'private_value_in_browser_assets','verified_migration_registry_required'}
+                report={'status':'blocked_or_failed',
+                        'stage':value.get('stage') if value.get('stage') in allowed_stages else 'unknown',
+                        'reason':value.get('reason') if value.get('reason') in allowed_reasons else 'details_suppressed'}
+        except Exception:pass
     except Exception:pass
     finally:
         with TASKS_LOCK:TASKS[ticket]={'created':time.monotonic(),'report':report}
