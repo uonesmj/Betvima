@@ -377,6 +377,9 @@ export class BettingService {
       for (const requestedLeg of requested.filter((l) => l.matchId === matchId)) {
         const snapshot = snapshots.find((s) => s.selectionId === requestedLeg.selectionId);
         if (!snapshot) throw new ApiError('NOT_FOUND', 'One or more selections no longer exist');
+        if (snapshot.matchId !== requestedLeg.matchId || snapshot.marketId !== requestedLeg.marketId) {
+          throw new ApiError('VALIDATION_FAILED', 'The selected outcome no longer belongs to this market');
+        }
         loaded.push({
           selectionId: snapshot.selectionId, marketId: snapshot.marketId, matchId: snapshot.matchId,
           matchLabel: snapshot.matchLabel, marketKey: snapshot.marketKey, marketName: snapshot.marketName,
@@ -394,6 +397,10 @@ export class BettingService {
   /** State, market and correlation rules - evaluated before any money is touched. */
   private assertLegSet(slip: BetSlipInput, legs: LoadedLeg[]): void {
     for (const leg of legs) {
+      // A stale scheduled fixture must never remain bettable after kickoff.
+      if (leg.matchStatus === 'scheduled' && Date.parse(leg.scheduledAt) <= Date.now()) {
+        throw new ApiError('MATCH_FINISHED', `${leg.matchLabel} has already started`);
+      }
       if (['finished', 'cancelled', 'abandoned'].includes(leg.matchStatus)) {
         throw new ApiError('MATCH_FINISHED', `${leg.matchLabel} is no longer available for betting`);
       }
