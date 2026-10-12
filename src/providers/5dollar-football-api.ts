@@ -34,8 +34,16 @@ function numberOrNull(value: unknown): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
-function score(obj: any, side: "home" | "away"): number | null {
-  return numberOrNull(obj?.goals?.[side]);
+/**
+ * Missing goals must remain unknown, never 0-0. A missing result must not
+ * become an authoritative final score and trigger a real-money settlement.
+ */
+export function score(obj: any, side: "home" | "away"): number | null {
+  const raw = obj?.goals?.[side];
+  if (raw == null || (typeof raw === "string" && raw.trim() === "")) return null;
+  if (typeof raw !== "string" && typeof raw !== "number") return null;
+  const value = Number(raw);
+  return Number.isSafeInteger(value) && value >= 0 ? value : null;
 }
 
 function isLiveStatus(status: unknown): boolean {

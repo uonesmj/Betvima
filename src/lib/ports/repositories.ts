@@ -41,7 +41,7 @@ export interface MatchFilter {
 export interface SelectionSnapshot {
   selectionId: UUID; marketId: UUID; matchId: UUID; marketKey: string; marketStatus: string;
   selectionStatus: string; oddsScaled: bigint; oddsVersion: number; line: string | null;
-  matchStatus: string; scheduledAt: ISODateString; isLive: boolean; maxStakeMinor: bigint | null;
+  matchStatus: string; matchProvider?: string | null; scheduledAt: ISODateString; isLive: boolean; maxStakeMinor: bigint | null;
   oddsUpdatedAt: ISODateString | null;
   selectionName: string; marketName: string; matchLabel: string;
 }

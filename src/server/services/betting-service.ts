@@ -33,7 +33,7 @@ export interface QuoteInput { actor: ActorContext; userId: UUID; slip: BetSlipIn
 interface LoadedLeg {
   selectionId: UUID; marketId: UUID; matchId: UUID; matchLabel: string; marketKey: string; marketName: string;
   selectionName: string; marketStatus: string; selectionStatus: string; matchStatus: string;
-  isLive: boolean; scheduledAt: string; oddsUpdatedAt: string | null; oddsScaled: OddsScaled; oddsVersion: number;
+  isLive: boolean; isManualPrematch: boolean; scheduledAt: string; oddsUpdatedAt: string | null; oddsScaled: OddsScaled; oddsVersion: number;
   clientOddsScaled: OddsScaled | null; acceptOddsChange: boolean;
 }
 
@@ -360,7 +360,7 @@ export class BettingService {
           matchLabel: snapshot.matchLabel, marketKey: snapshot.marketKey, marketName: snapshot.marketName,
           selectionName: snapshot.selectionName, marketStatus: snapshot.marketStatus,
           selectionStatus: snapshot.selectionStatus, matchStatus: snapshot.matchStatus,
-          isLive: snapshot.isLive || isLiveMatchStatus(snapshot.matchStatus), scheduledAt: snapshot.scheduledAt, oddsUpdatedAt: snapshot.oddsUpdatedAt, oddsScaled: snapshot.oddsScaled,
+          isLive: snapshot.isLive || isLiveMatchStatus(snapshot.matchStatus), isManualPrematch: snapshot.matchProvider === 'manual' && !snapshot.isLive && snapshot.matchStatus === 'scheduled', scheduledAt: snapshot.scheduledAt, oddsUpdatedAt: snapshot.oddsUpdatedAt, oddsScaled: snapshot.oddsScaled,
           oddsVersion: snapshot.oddsVersion, clientOddsScaled: requestedLeg.clientOddsScaled,
           acceptOddsChange: requestedLeg.acceptOddsChange,
         });
@@ -385,11 +385,16 @@ export class BettingService {
       if (leg.selectionStatus !== 'open') {
         throw new ApiError('MARKET_SUSPENDED', `${leg.selectionName} is not open for betting`);
       }
+      // Manual pre-match prices are intentionally fixed until kick-off.
+      // Keep the hard kick-off cut-off in BOTH the API and nova.place_bet.
+      if (leg.isManualPrematch && Date.now() >= Date.parse(leg.scheduledAt)) {
+        throw new ApiError('MARKET_CLOSED', `${leg.matchLabel}: kick-off reached`);
+      }
       const maxOddsAgeSeconds = leg.isLive ? 45 : 300;
       const oddsUpdatedAtMs = leg.oddsUpdatedAt ? Date.parse(leg.oddsUpdatedAt) : Number.NaN;
       if (
         !Number.isFinite(oddsUpdatedAtMs) ||
-        Date.now() - oddsUpdatedAtMs > maxOddsAgeSeconds * 1000
+        (!leg.isManualPrematch && Date.now() - oddsUpdatedAtMs > maxOddsAgeSeconds * 1000)
       ) {
         throw new ApiError('STALE_ODDS', `${leg.selectionName}: odds feed is stale`);
       }

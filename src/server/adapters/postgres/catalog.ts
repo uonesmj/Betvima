@@ -80,7 +80,8 @@ function mapMatch(row: Row, topMarkets: MarketSummary[] = []): Match {
     homeHalfScore: toNumOrNull(row.home_half_score), awayHalfScore: toNumOrNull(row.away_half_score),
     participants, provider: toStrOrNull(row.provider),
     isLive: LIVE_STATUSES.includes(status),
-    isBettingAvailable: BETTABLE_STATUSES.includes(status) && !['settled', 'cancelled', 'abandoned'].includes(status),
+    isBettingAvailable: BETTABLE_STATUSES.includes(status) && !['settled', 'cancelled', 'abandoned'].includes(status)
+      && !(toStr(row.provider) === 'manual' && (status !== 'scheduled' || Date.now() >= new Date(toIso(row.scheduled_at)).getTime())),
     hasLiveStream: toBool(row.has_live_stream), updatedAt: toIso(row.updated_at),
     marketsCount: toNumOrNull(row.markets_count) ?? undefined,
     topMarkets: topMarkets.length > 0 ? topMarkets : undefined,
@@ -274,11 +275,12 @@ export class PostgresCatalogRepository implements CatalogRepository {
          join nova.matches fixture on fixture.id = mk.match_id
         where sel.market_id = any($1::uuid[])
           and sel.odds_updated_at is not null
-          and sel.odds_updated_at >= now() - case
+          and (fixture.provider is distinct from 'manual' or (fixture.status::text = 'scheduled' and fixture.scheduled_at > now()))
+          and (fixture.provider = 'manual' or sel.odds_updated_at >= now() - case
             when coalesce(mk.is_live, false) or fixture.status::text = any($2::text[])
               then interval '45 seconds'
             else interval '300 seconds'
-          end
+          end)
         order by sel.participant_type, sel.code`,
       [pgArray(rows.map((r) => toStr(r.id))), pgArray(LIVE_STATUSES)],
     );
@@ -307,7 +309,7 @@ export class PostgresCatalogRepository implements CatalogRepository {
               sel.status as selection_status, sel.name as selection_name,
               mk.key as market_key, mk.name as market_name, mk.name_fa as market_name_fa,
               mk.status as market_status, mk.is_live,
-              m.status as match_status, m.scheduled_at,
+              m.status as match_status, m.provider as match_provider, m.scheduled_at,
               coalesce(ht.name, 'TBD') as home_name, coalesce(at.name, 'TBD') as away_name
          from nova.selections sel
          join nova.markets mk on mk.id = sel.market_id
@@ -324,7 +326,7 @@ export class PostgresCatalogRepository implements CatalogRepository {
       oddsVersion: toNum(r.odds_version, 1),
       oddsUpdatedAt: r.odds_updated_at == null ? null : toIso(r.odds_updated_at),
       line: r.line === null || r.line === undefined ? null : String(r.line),
-      matchStatus: toStr(r.match_status), scheduledAt: toIso(r.scheduled_at),
+      matchStatus: toStr(r.match_status), matchProvider: toStrOrNull(r.match_provider), scheduledAt: toIso(r.scheduled_at),
       isLive: toBool(r.is_live) || isLiveMatchStatus(toStr(r.match_status)), maxStakeMinor: null,
       selectionName: toStr(r.selection_name),
       marketName: toStr(r.market_name_fa) || toStr(r.market_name, toStr(r.market_key)),
@@ -465,6 +467,9 @@ export class PostgresCatalogRepository implements CatalogRepository {
         from (
           select
             m.*,
+            fixture.provider as fixture_provider,
+            fixture.status::text as fixture_status,
+            fixture.scheduled_at as fixture_scheduled_at,
             case
               when coalesce(m.is_live, false) or fixture.status::text = any($2::text[])
                 then interval '45 seconds'
@@ -483,7 +488,8 @@ export class PostgresCatalogRepository implements CatalogRepository {
           on sel.market_id = mk.id
          and sel.status = 'open'
          and sel.odds_updated_at is not null
-         and sel.odds_updated_at >= now() - mk.maximum_quote_age
+         and (mk.fixture_provider is distinct from 'manual' or (mk.fixture_status = 'scheduled' and mk.fixture_scheduled_at > now()))
+         and (mk.fixture_provider = 'manual' or sel.odds_updated_at >= now() - mk.maximum_quote_age)
         where mk.market_rank <= 3
         order by mk.match_id, mk.market_rank, sel.participant_type, sel.code`,
       [pgArray(matchIds), pgArray(LIVE_STATUSES)],

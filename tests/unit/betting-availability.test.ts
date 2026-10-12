@@ -99,3 +99,42 @@ describe('isolated Live and Prematch quote availability', () => {
     expect(placeBet).not.toHaveBeenCalled();
   });
 });
+
+
+describe('manual prematch selection safeguards', () => {
+  it('accepts fixed operator odds older than five minutes while scheduled in the future', async () => {
+    const kickoff = new Date(Date.now() + 60 * 60_000).toISOString();
+    const { service, input, placeBet } = fixture({
+      matchProvider: 'manual',
+      scheduledAt: kickoff,
+      matchStatus: 'scheduled',
+      isLive: false,
+      oddsUpdatedAt: new Date(Date.now() - 24 * 60 * 60_000).toISOString(),
+    });
+    const quote = await service.quote(input);
+    expect(quote.combinedOddsScaled).toBe(20_000n);
+    expect(placeBet).not.toHaveBeenCalled();
+  });
+
+  it('rejects manual odds at or after scheduled kick-off even when recently updated', async () => {
+    const { service, input, placeBet } = fixture({
+      matchProvider: 'manual',
+      scheduledAt: new Date(Date.now() - 60_000).toISOString(),
+      matchStatus: 'scheduled',
+      isLive: false,
+      oddsUpdatedAt: new Date().toISOString(),
+    });
+    await expect(service.quote(input)).rejects.toMatchObject({ code: 'MARKET_CLOSED' });
+    expect(placeBet).not.toHaveBeenCalled();
+  });
+
+  it('keeps normal expiry enforcement for The Odds API fixtures', async () => {
+    const { service, input, placeBet } = fixture({
+      matchProvider: 'the_odds_api',
+      scheduledAt: new Date(Date.now() + 60 * 60_000).toISOString(),
+      oddsUpdatedAt: new Date(Date.now() - 301_000).toISOString(),
+    });
+    await expect(service.quote(input)).rejects.toMatchObject({ code: 'STALE_ODDS' });
+    expect(placeBet).not.toHaveBeenCalled();
+  });
+});
