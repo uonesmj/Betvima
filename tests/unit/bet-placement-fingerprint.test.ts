@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { isCurrentQuote, placementIntentFingerprint, quoteContextFingerprint } from '@/lib/bet-placement-fingerprint';
+import { isCurrentQuote, placementIntentFingerprint, quoteContextFingerprint, type PlacementFingerprintInput } from '@/lib/bet-placement-fingerprint';
 
-const base = {
+const base: PlacementFingerprintInput = {
   userId: 'u1', currency: 'USD', stakeMinor: '100',
   fundingSource: 'main', bonusGrantId: null,
   items: [
@@ -21,8 +21,8 @@ describe('bet placement client context and retry safety', () => {
       { ...base, userId: 'u2' },
       { ...base, fundingSource: 'bonus', bonusGrantId: 'g1' },
       { ...base, items: base.items.slice(0, 1) },
-      { ...base, items: [{ ...base.items[0], oddsVersionSeen: 3 }, base.items[1]] },
-      { ...base, items: [{ ...base.items[0], oddsScaled: '26000' }, base.items[1]] },
+      { ...base, items: [{ ...base.items[0]!, oddsVersionSeen: 3 }, base.items[1]!] },
+      { ...base, items: [{ ...base.items[0]!, oddsScaled: '26000' }, base.items[1]!] },
     ]) {
       expect(isCurrentQuote({ contextKey: original, expiresAt }, quoteContextFingerprint(different))).toBe(false);
     }
@@ -32,7 +32,7 @@ describe('bet placement client context and retry safety', () => {
   it('deduplicates retries even when provider prices move, but not different stakes or picks', () => {
     const original = placementIntentFingerprint(base);
     expect(placementIntentFingerprint({...base,items: [...base.items].reverse()})).toBe(original);
-    expect(placementIntentFingerprint({...base,items:[{...base.items[0],oddsScaled:'27000'},base.items[1]]})).toBe(original);
+    expect(placementIntentFingerprint({...base,items:[{...base.items[0]!,oddsScaled:'27000'},base.items[1]!]})).toBe(original);
     expect(placementIntentFingerprint({...base,stakeMinor:'300'})).not.toBe(original);
     expect(placementIntentFingerprint({...base,items:base.items.slice(0,1)})).not.toBe(original);
   });
