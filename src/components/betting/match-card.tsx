@@ -229,6 +229,7 @@ export function OddsButton({
       data-locked={locked}
       data-testid="odds-button"
       disabled={locked}
+      title={locked ? 'Odds paused — waiting for a valid current price' : 'Add to bet slip'}
       aria-pressed={selected}
       onClick={() => {
         addSelection(item);
@@ -240,7 +241,7 @@ export function OddsButton({
       </span>
 
       <span className="block text-sm font-extrabold tabular-nums text-[#20242A]">
-        {formatOddsScaled(selection.oddsScaled)}
+        {locked ? 'Paused' : formatOddsScaled(selection.oddsScaled)}
       </span>
     </button>
   );

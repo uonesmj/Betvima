@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   accumulatorOddsScaled, classifyMovement, detectOddsAnomalies, hasRejecting, hasSuspending,
   impliedProbabilityBps, isSaneOdds, oddsFromDecimalString, oddsMovementBps, oddsToDecimalString,
-  overroundBps, ODDS_SCALE,
+  overroundBps, ODDS_SCALE, sourceOddsMaxAgeSeconds,
 } from '@/domain/odds';
 import { potentialPayout, payoutRational } from '@/domain/betslip';
 import { money } from '@/domain/money';
@@ -86,5 +86,35 @@ describe('odds: movement + anomaly detection', () => {
       odds: 25_000n, providerTimestamp: new Date(now.getTime() + 10 * 60_000), ingestedAt: now, maxAgeSeconds: 45,
     });
     expect(future.map((a) => a.code)).toContain('FUTURE_TIMESTAMP');
+  });
+});
+
+describe('in-play bookmaker quote freshness', () => {
+  it('rejects the stale Swedish-game-style 2 minute quote for live betting', () => {
+    const now = new Date('2026-10-12T18:48:46Z');
+    const oldBookmakerPrice = new Date('2026-10-12T18:46:16Z');
+    const anomalies = detectOddsAnomalies({
+      odds: 30_000n,
+      providerTimestamp: oldBookmakerPrice,
+      ingestedAt: now,
+      maxAgeSeconds: sourceOddsMaxAgeSeconds(true),
+    });
+    expect(sourceOddsMaxAgeSeconds(true)).toBe(45);
+    expect(anomalies.map(x => x.code)).toContain('STALE_TIMESTAMP');
+    expect(hasSuspending(anomalies)).toBe(true);
+  });
+
+  it('accepts a current safe 40 second live quote and preserves the prematch 5 minute window', () => {
+    const now = new Date('2026-10-12T18:48:46Z');
+    const recentBookmakerPrice = new Date(now.getTime() - 40_000);
+    const input = { odds: 18_500n, providerTimestamp: recentBookmakerPrice, ingestedAt: now };
+    expect(sourceOddsMaxAgeSeconds(false)).toBe(300);
+    expect(detectOddsAnomalies({ ...input, maxAgeSeconds: sourceOddsMaxAgeSeconds(true) })).toEqual([]);
+    expect(detectOddsAnomalies({ ...input, maxAgeSeconds: sourceOddsMaxAgeSeconds(false) })).toEqual([]);
+    expect(hasSuspending(detectOddsAnomalies({
+      ...input,
+      providerTimestamp: new Date(now.getTime() - 46_000),
+      maxAgeSeconds: sourceOddsMaxAgeSeconds(true),
+    }))).toBe(true);
   });
 });

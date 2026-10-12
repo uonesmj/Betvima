@@ -1434,6 +1434,10 @@ function MarketSelectionButton({
       key={`${selection.id}-${selection.oddsVersion}`}
       type="button"
       disabled={locked}
+      title={locked ? 'Odds paused — waiting for a valid current price' : 'Add this selection to your bet slip'}
+      aria-label={locked
+        ? `${getSelectionDisplayName(match, selection)} — odds temporarily unavailable`
+        : `${getSelectionDisplayName(match, selection)} — ${formatOddsScaled(selection.oddsScaled)}. Add to bet slip`}
       aria-pressed={selected}
       data-selected={selected}
       data-locked={locked}
@@ -1487,7 +1491,7 @@ function MarketSelectionButton({
         ) : null}
 
         <span className="text-[15px] font-black leading-none tabular-nums tracking-[-0.02em]">
-          {formatOddsScaled(selection.oddsScaled)}
+          {locked ? 'Paused' : formatOddsScaled(selection.oddsScaled)}
         </span>
       </span>
     </button>
@@ -1539,7 +1543,9 @@ function MarketCard({
           <span
             className={[
               'h-2 w-2 shrink-0 rounded-full',
-              market.status === 'open'
+              market.status === 'open' &&
+              match.isBettingAvailable &&
+              market.selections.some((selection) => selection.status === 'open')
                 ? 'bg-[#08B86A]'
                 : 'bg-[#C7CDD3]',
             ].join(' ')}

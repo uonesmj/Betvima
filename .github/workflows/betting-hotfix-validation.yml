@@ -39,6 +39,27 @@ jobs:
           APP_ENV: test
           NEXT_PUBLIC_SITE_URL: https://preview.betvima.com
           NEXT_TELEMETRY_DISABLED: '1'
+      - name: Validate dedicated live odds activation
+        run: |
+          python3 -m py_compile ops/hotfixes/activate-live-odds-worker.py
+          python3 - <<'PY'
+          from pathlib import Path
+          worker = Path('src/workers/odds.worker.ts').read_text()
+          domain = Path('src/domain/odds.ts').read_text()
+          recovery = Path('ops/hotfixes/20261012_reopen_fresh_live_odds.sql').read_text()
+          wager_guard = Path('ops/hotfixes/20261012_live_place_bet_source_freshness.sql').read_text()
+          activate = Path('ops/hotfixes/activate-live-odds-worker.py').read_text()
+          assert 'sourceOddsMaxAgeSeconds(market.isLive)' in worker
+          assert 'ODDS_LIVE_DISCOVERY_ENABLED' in worker
+          assert 'LIVE_ODDS_SOURCE_MAX_AGE_SECONDS = 45' in domain
+          assert "p_provider_timestamp >= now() - interval '45 seconds'" in recovery
+          assert "nova.operation_enabled('LIVE_BETTING')" in recovery
+          assert "m.status::text IN ('live', 'in_play')" in recovery
+          assert 'v_sel.provider_timestamp' in wager_guard
+          assert 'PLACE_BET_FUNCTION_DRIFTED_ABORT' in wager_guard
+          assert 'betvima-live-odds-worker' in activate
+          assert 'FIVEDOLLAR_API_KEY' in activate
+          PY
       - name: Guard real-money odds publication
         run: |
           python3 - <<'PY'

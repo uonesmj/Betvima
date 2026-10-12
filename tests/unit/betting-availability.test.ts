@@ -10,7 +10,7 @@ const snapshot = (overrides: Partial<SelectionSnapshot> = {}): SelectionSnapshot
   selectionId: 'selection-test', marketId: 'market-test', matchId: 'match-test',
   matchLabel: 'Test Home - Test Away', marketKey: 'h2h', marketName: 'Winner', selectionName: 'Home',
   marketStatus: 'open', selectionStatus: 'open', matchStatus: 'scheduled',
-  isLive: false, scheduledAt: '2026-10-12T19:00:00Z',
+  isLive: false, scheduledAt: new Date(Date.now() + 24 * 60 * 60_000).toISOString(),
   oddsUpdatedAt: new Date().toISOString(), oddsScaled: 20_000n, oddsVersion: 7,
   line: null, maxStakeMinor: null, ...overrides,
 });

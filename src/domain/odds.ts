@@ -11,6 +11,14 @@ export const ODDS_SCALE = 10_000n;
 export const MIN_DECIMAL_ODDS = 10_100n; // 1.01 (a price of 1.00 or below is not a valid bet)
 export const MAX_DECIMAL_ODDS = 10_000_000n; // 1000.00
 
+export const LIVE_ODDS_SOURCE_MAX_AGE_SECONDS = 45;
+export const PREMATCH_ODDS_SOURCE_MAX_AGE_SECONDS = 300;
+
+/** Time since the bookmaker quote, NOT since our worker last fetched it. */
+export function sourceOddsMaxAgeSeconds(isLive: boolean): number {
+  return isLive ? LIVE_ODDS_SOURCE_MAX_AGE_SECONDS : PREMATCH_ODDS_SOURCE_MAX_AGE_SECONDS;
+}
+
 export type OddsScaled = bigint;
 
 export class OddsError extends Error {

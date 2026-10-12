@@ -14,6 +14,7 @@ import {
   hasRejecting,
   hasSuspending,
   detectOddsAnomalies,
+  sourceOddsMaxAgeSeconds,
   oddsFromDecimalString,
 } from '@/domain/odds';
 import { marketRuleFor, marketDisplayOrder } from '@/domain/market-rules';
@@ -1104,7 +1105,12 @@ async function runDedicatedLiveDiscovery(ctx: WorkerContext): Promise<void> {
 async function runDedicatedLiveTick(ctx: WorkerContext): Promise<void> {
   if (!env.sportsProviderEnabled) return;
 
-  void runDedicatedLiveDiscovery(ctx);
+  // The bulk worker already owns the full sports catalog. A separate live
+  // price-only process must not queue hundreds of cross-sport discovery API
+  // requests ahead of its 5-second priority odds requests.
+  if (process.env.ODDS_LIVE_DISCOVERY_ENABLED !== "false") {
+    void runDedicatedLiveDiscovery(ctx);
+  }
 
   const providers = (
     ctx.services.providers.sportsProviders?.length
@@ -2623,7 +2629,10 @@ async function syncOddsUnlocked(
               previousOdds: previous,
               providerTimestamp: new Date(market.sourceUpdatedAt ?? bundle.updatedAt),
               ingestedAt: new Date(),
-              maxAgeSeconds: 300,
+              // The Odds API bookmaker timestamp is authoritative for live
+              // prices. A newly ingested *old* live quote must never be sold
+              // as a fresh in-play price just because it was polled now.
+              maxAgeSeconds: sourceOddsMaxAgeSeconds(market.isLive),
             });
 
             const anomalies = anomalyObjects.map((item) => item.code);
