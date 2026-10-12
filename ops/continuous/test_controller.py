@@ -46,6 +46,19 @@ class SnapshotSafety(unittest.TestCase):
         for marker in ('PrivateNetwork=yes','ProtectSystem=strict','ProtectProc=invisible','CPUQuota=50%','MemoryMax=1800M','auth_basic_user_file','return 403','return 405','127.0.0.1:'):
             self.assertIn(marker,text)
         self.assertNotIn('restart nginx',text)
+    def test_reviewed_controller_updater_is_syntactically_valid_and_scoped(self):
+        path=pathlib.Path(__file__).with_name('upgrade-installed-controller.py')
+        text=path.read_text()
+        compile(text,str(path),'exec')
+        for name in ('controller.py','production.py','ci-http.py'):
+            self.assertIn(name,text)
+        self.assertIn('blob_sha(data)',text)
+        self.assertIn('replacements={name:download(',text)
+        self.assertIn("SERVICE = 'betvima-ci-http.service'",text)
+        self.assertNotIn("pm2 restart",text)
+        self.assertNotIn("pm2 delete",text)
+        self.assertNotIn("do-release-upgrade",text)
+
     def test_production_has_no_migration_or_worker_execution(self):
         text=pathlib.Path(__file__).with_name('production.py').read_text()
         self.assertIn('migration_change_requires_separate_approval',text)

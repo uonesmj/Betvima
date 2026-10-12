@@ -290,7 +290,37 @@ def ci():
         else:
             # Administrator-installed production controller, never an executable from the candidate tree.
             atomic(STATE/'production-source.tar',data)
-            run(['/usr/bin/python3',str(LIB/'production.py'),claims['sha']],timeout=3600)
+            try:
+                run(['/usr/bin/python3',str(LIB/'production.py'),claims['sha']],timeout=3600)
+            except Exception:
+                # Release progress is a fixed-vocabulary, root-private file.
+                # Only the phase and an explicitly allowlisted code can be
+                # shared with the signed requesting CI job. Never return raw
+                # subprocess logs, exceptions, DB addresses or credentials.
+                report={'status':'blocked_or_failed','stage':'unknown','reason':'details_suppressed'}
+                try:
+                    info_path=STATE/'production-progress.json'
+                    info=json.loads(info_path.read_text())
+                    stages={'preflight','recover_previous','extract_source','migration_registry',
+                            'backup','registry_check','dependencies','unit_tests','typecheck',
+                            'lint','build','asset_security','copy_release','start_candidate',
+                            'candidate_health','switch_route','public_health','persist','complete'}
+                    reasons={'previous_attempt_requires_inspection',
+                             'migration_change_requires_separate_approval',
+                             'approved_0195_required','runtime_configuration_incomplete',
+                             'command_failed_output_suppressed','health_failed','not_ready',
+                             'financial_auth_guard_failed','identity_failed','release_already_exists',
+                             'invalid_invocation','active_web_not_identified','existing_pm2_required',
+                             'previous_release_still_owned','candidate_release_still_running',
+                             'private_value_in_browser_assets','verified_migration_registry_required'}
+                    if info.get('revision')==claims['sha'] and abs(time.time()-info.get('at',0))<7200:
+                        if info.get('stage') in stages:
+                            report['stage']=info['stage']
+                        if info.get('reason') in reasons:
+                            report['reason']=info['reason']
+                except Exception:pass
+                print(json.dumps(report),flush=True)
+                raise SystemExit(1)
         print(json.dumps({'deploy':mode,'revision':claims['sha'],'status':'verified'}),flush=True)
 
 if __name__=='__main__':
