@@ -20,6 +20,7 @@
     "test:e2e": "playwright test",
     "test:sql": "bash scripts/run-sql-tests.sh",
     "worker:odds": "node --import tsx src/workers/entrypoints/odds.worker.ts",
+    "worker:legacy-results": "ODDS_WORKER_MODE=legacy-results node --import tsx src/workers/entrypoints/odds.worker.ts",
     "worker:settlement": "node --import tsx src/workers/entrypoints/settlement.worker.ts",
     "worker:affiliate": "node --import tsx src/workers/entrypoints/affiliate.worker.ts",
     "worker:notification": "node --import tsx src/workers/entrypoints/notification.worker.ts",
