@@ -2,6 +2,7 @@ import { withErrorHandling, jsonOk } from '@/lib/errors';
 import { ApiError } from '@/lib/errors';
 import { createServices } from '@/server/services/container';
 import { publicActor } from '@/server/http/guard';
+import { effectiveSelectionStatus } from '@/lib/live-odds-availability';
 
 export const dynamic = 'force-dynamic';
 
@@ -41,6 +42,7 @@ export const GET = withErrorHandling(
                    'key', mk.key,
                    'status', mk.status,
                    'specifier', mk.specifier,
+                    'isLive', mk.is_live,
                    'selections',
                    coalesce(
                      (
@@ -52,7 +54,10 @@ export const GET = withErrorHandling(
                            'oddsScaled', sel.odds_scaled,
                            'previousOddsScaled', sel.previous_odds_scaled,
                            'status', sel.status,
-                           'version', sel.odds_version
+                           'version', sel.odds_version,
+                          'oddsUpdatedAt', sel.odds_updated_at,
+                          'providerTimestamp', sel.provider_timestamp,
+                          'provider', sel.provider
                          )
                          order by sel.participant_type, sel.code
                        )
@@ -97,7 +102,12 @@ export const GET = withErrorHandling(
                 selection.previousOddsScaled == null
                   ? null
                   : String(selection.previousOddsScaled),
-              status: selection.status ?? 'open',
+              status: effectiveSelectionStatus({
+                status: String(selection.status ?? 'open'),
+                oddsUpdatedAt: selection.oddsUpdatedAt == null ? null : String(selection.oddsUpdatedAt),
+                providerTimestamp: selection.providerTimestamp == null ? null : String(selection.providerTimestamp),
+                provider: selection.provider == null ? null : String(selection.provider),
+              }, String(row.status), Boolean(market.isLive)),
               movement: (() => {
                 const nextOdds = String(selection.oddsScaled ?? '0');
                 const previous =
@@ -167,6 +177,7 @@ export const GET = withErrorHandling(
                  'key', mk.key,
                  'status', mk.status,
                  'specifier', mk.specifier,
+                    'isLive', mk.is_live,
                  'selections',
                  coalesce(
                    (
@@ -178,7 +189,10 @@ export const GET = withErrorHandling(
                          'oddsScaled', sel.odds_scaled,
                          'previousOddsScaled', sel.previous_odds_scaled,
                          'status', sel.status,
-                         'version', sel.odds_version
+                         'version', sel.odds_version,
+                          'oddsUpdatedAt', sel.odds_updated_at,
+                          'providerTimestamp', sel.provider_timestamp,
+                          'provider', sel.provider
                        )
                        order by sel.participant_type, sel.code
                      )
@@ -232,7 +246,12 @@ export const GET = withErrorHandling(
               if (previous == null || previous === next) return 'STABLE';
               return Number(next) > Number(previous) ? 'UP' : 'DOWN';
             })(),
-            status: selection.status ?? 'open',
+            status: effectiveSelectionStatus({
+                status: String(selection.status ?? 'open'),
+                oddsUpdatedAt: selection.oddsUpdatedAt == null ? null : String(selection.oddsUpdatedAt),
+                providerTimestamp: selection.providerTimestamp == null ? null : String(selection.providerTimestamp),
+                provider: selection.provider == null ? null : String(selection.provider),
+              }, String(row.status), Boolean(market.isLive)),
             version: Number(selection.version ?? 0),
           }))
         : [],
