@@ -14,6 +14,7 @@ import {
   hasRejecting,
   hasSuspending,
   detectOddsAnomalies,
+  sourceOddsMaxAgeSeconds,
   oddsFromDecimalString,
 } from '@/domain/odds';
 import { marketRuleFor, marketDisplayOrder } from '@/domain/market-rules';
@@ -2626,7 +2627,7 @@ async function syncOddsUnlocked(
               // The Odds API bookmaker timestamp is authoritative for live
               // prices. A newly ingested *old* live quote must never be sold
               // as a fresh in-play price just because it was polled now.
-              maxAgeSeconds: market.isLive ? 45 : 300,
+              maxAgeSeconds: sourceOddsMaxAgeSeconds(market.isLive),
             });
 
             const anomalies = anomalyObjects.map((item) => item.code);
