@@ -19,6 +19,7 @@ export function MatchesClient() {
   const { t, locale } = useApp();
   const router = useRouter();
   const [filters, setFilters] = useState({ q: '', sport: '', live: false, page: 1 });
+  const [manualOnly, setManualOnly] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
@@ -50,7 +51,8 @@ export function MatchesClient() {
   if (filters.q) query.set('q', filters.q);
   if (filters.sport) query.set('sport', filters.sport);
   if (filters.live) query.set('live', 'true');
-  const { data, loading, error, reload } = useApiQuery<{ items: MatchRow[]; total: number }>(`/api/v1/matches?${query.toString()}`, { pollMs: 60_000 });
+  const endpoint = manualOnly ? '/api/v1/admin/matches/manual' : '/api/v1/matches';
+  const { data, loading, error, reload } = useApiQuery<{ items: MatchRow[]; total: number }>(`${endpoint}?${query.toString()}`, { pollMs: 60_000 });
 
   const score = (match: MatchRow) => (
     match.homeScore === null && match.awayScore === null
@@ -112,6 +114,10 @@ export function MatchesClient() {
         </Card>
       ) : null}
       <div className="flex flex-wrap gap-2">
+        <button type="button" className={`nova-tab ${manualOnly ? "nova-tab-active" : ""}`}
+          onClick={() => { setManualOnly((value) => !value); setFilters((value) => ({ ...value, live: false, page: 1 })); }}>
+          {manualOnly ? "All upcoming matches" : "Manual match history"}
+        </button>
         <input
           className="nova-input !w-auto flex-1 sm:max-w-xs" placeholder="Search team or league"
           value={filters.q} onChange={(event) => setFilters({ ...filters, q: event.target.value, page: 1 })}
@@ -122,7 +128,7 @@ export function MatchesClient() {
             <option key={sport} value={sport}>{sport}</option>
           ))}
         </select>
-        <button type="button" className={`nova-tab ${filters.live ? 'nova-tab-active' : ''}`} onClick={() => setFilters({ ...filters, live: !filters.live, page: 1 })}>Live only</button>
+        {!manualOnly ? <button type="button" className={`nova-tab ${filters.live ? 'nova-tab-active' : ''}`} onClick={() => setFilters({ ...filters, live: !filters.live, page: 1 })}>Live only</button> : null}
         <button type="button" className="nova-btn-ghost !py-1.5 text-xs" onClick={() => void reload()}>Refresh</button>
       </div>
 
@@ -132,7 +138,7 @@ export function MatchesClient() {
           <DataTable<MatchRow>
             rows={data?.items ?? []}
             rowKey={(row) => row.id}
-            empty="No matches. With no sports provider configured, matches must be created by an operator or imported from a provider feed."
+            empty={manualOnly ? "No manually created matches." : "No upcoming matches."}
             onRowClick={(row) => router.push(`/admin/matches/${row.id}`)}
             columns={[
               { key: 'kickoff', header: 'Kick-off', render: (row) => <span className="whitespace-nowrap text-xs nova-muted">{formatDateTime(row.scheduledAt, locale)}</span> },
