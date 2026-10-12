@@ -7,6 +7,83 @@ LIB=pathlib.Path('/usr/local/lib/betvima-continuous')
 spec=importlib.util.spec_from_file_location('trusted_controller',LIB/'controller.py');c=importlib.util.module_from_spec(spec);spec.loader.exec_module(c)
 ROUTE=pathlib.Path('/etc/nginx/sites-enabled/betvima.com')
 STATIC=pathlib.Path('/etc/nginx/snippets/betvima-static-compat.conf')
+PRODUCTION_STAGES = frozenset((
+    'preflight','recover_previous','extract_source','migration_registry',
+    'backup','registry_check','dependencies','unit_tests','typecheck',
+    'lint','build','asset_security','copy_release','start_candidate',
+    'candidate_health','switch_route','public_health','persist','complete'
+))
+SAFE_FAILURE_CODES = frozenset((
+    'previous_attempt_requires_inspection',
+    'migration_change_requires_separate_approval',
+    'approved_0195_required','runtime_configuration_incomplete',
+    'command_failed_output_suppressed','health_failed','not_ready',
+    'financial_auth_guard_failed','identity_failed','release_already_exists',
+    'invalid_invocation','active_web_not_identified','existing_pm2_required',
+    'previous_release_still_owned','candidate_release_still_running',
+    'private_value_in_browser_assets','verified_migration_registry_required',
+))
+CURRENT_STAGE = 'preflight'
+
+def progress(stage, state='running', failure=None):
+    """Root-private, fixed-vocabulary progress; never include credentials/logs."""
+    global CURRENT_STAGE
+    if stage not in PRODUCTION_STAGES: raise ValueError('invalid_progress_stage')
+    CURRENT_STAGE = stage
+    content = {'stage':stage, 'state':state, 'at':int(time.time())}
+    if failure is not None:
+        code = str(failure)
+        content['reason'] = code if code in SAFE_FAILURE_CODES else 'details_suppressed'
+    c.atomic(c.STATE/'production-progress.json', json.dumps(content).encode(), 0o600)
+
+def quarantine_failed(directory, root, apps, *, removable_stopped_process=None):
+    """Preserve failed attempts rather than blocking the next owner-approved run."""
+    if not directory.exists(): return False
+    if directory.is_symlink() or not directory.is_dir() or directory.parent != root:
+        raise ValueError('previous_attempt_requires_inspection')
+    for app in apps:
+        e = app.get('pm2_env',{})
+        if e.get('pm_cwd') != str(directory): continue
+        if (removable_stopped_process is not None
+                and app.get('name') == removable_stopped_process
+                and e.get('status') != 'online'):
+            continue
+        raise ValueError('candidate_release_still_running')
+    archive = root.parent/('failed-'+root.name)
+    archive.mkdir(mode=0o700,exist_ok=True)
+    archive.chmod(0o700)
+    target = archive/(directory.name+'-'+str(time.time_ns()))
+    directory.rename(target)
+    return True
+
+def verify_applied_migrations(candidate, active, values):
+    """Read-only registry approval for ADDED migration files only.
+
+    SQL files are never executed by this web deployer. Every added migration
+    must already be registered non-baseline with its exact SHA-256.
+    Changed or deleted previously approved SQL remains a hard blocker.
+    """
+    before, after = files_digest(active), files_digest(candidate)
+    if before == after: return
+    if any(after.get(name)!=sha for name,sha in before.items()):
+        raise ValueError('migration_change_requires_separate_approval')
+    added = {name:sha for name,sha in after.items() if name not in before}
+    if not added or len(added)>12 or not all(re.fullmatch(r'[0-9]{4}_[a-z0-9_]+\\.sql',name) for name in added):
+        raise ValueError('migration_change_requires_separate_approval')
+    quoted = ','.join("'"+name+"'" for name in sorted(added))
+    sql = ("BEGIN READ ONLY; SELECT filename,checksum,baseline "
+           "FROM nova.migrations WHERE filename IN ("+quoted+"); ROLLBACK;")
+    output = c.run(['/usr/bin/psql','-X','--no-password','-qAt',
+                    '-v','ON_ERROR_STOP=1'],input=sql.encode(),env=connection(values))
+    verified = {}
+    for row in output.decode().splitlines():
+        pieces = row.split('|')
+        if len(pieces)!=3: raise ValueError('verified_migration_registry_required')
+        filename,digest,baseline = pieces
+        if baseline!='f' or filename in verified: raise ValueError('verified_migration_registry_required')
+        verified[filename] = digest
+    if verified!=added: raise ValueError('verified_migration_registry_required')
+
 
 def pm2(args,env=None):
     account=pwd.getpwnam('novaadmin')
@@ -73,6 +150,7 @@ def wait_health(base,build):
 def main(sha):
     os.umask(0o077)
     if os.geteuid()!=0 or not re.fullmatch('[0-9a-f]{40}',sha):raise ValueError('invalid_invocation')
+    progress('preflight')
     route=ROUTE.read_text();snippet=STATIC.read_text()
     current=set(re.findall(r'proxy_pass http://127\.0\.0\.1:(\d+);',route))
     if len(current)!=1:raise ValueError('ambiguous_current_upstream')
@@ -87,27 +165,53 @@ def main(sha):
         if k in ('NODE_OPTIONS','LD_PRELOAD','LD_LIBRARY_PATH','BASH_ENV','ENV','NODE_TLS_REJECT_UNAUTHORIZED') or k.startswith(('DYLD_','LD_')):values.pop(k)
     values.update(NODE_ENV='production',APP_ENV='production',NODE_EXTRA_CA_CERTS='/etc/betvima/certs/supabase-root-2021.crt',NEXT_TELEMETRY_DISABLED='1')
     if not all(values.get(k) for k in ('SUPABASE_DB_URL','NEXT_PUBLIC_SUPABASE_URL','NEXT_PUBLIC_SUPABASE_ANON_KEY','SUPABASE_SERVICE_ROLE_KEY')):raise ValueError('runtime_configuration_incomplete')
+    progress('recover_previous')
     directory=c.ROOT/'releases'/('production-'+sha)
-    if directory.exists():raise ValueError('previous_attempt_requires_inspection')
+    # Every new GitHub run still needs the owner's OIDC approval. Only failed
+    # artifacts for that exact revision are archived, never deleted or reused.
+    quarantine_failed(directory,c.ROOT/'releases',apps)
+    progress('extract_source')
     directory.mkdir(mode=0o755);directory.chmod(0o755)
     c.unpack((c.STATE/'production-source.tar').read_bytes(),directory)
-    if files_digest(directory/'supabase/migrations')!=files_digest(olddir/'supabase/migrations'):raise ValueError('migration_change_requires_separate_approval')
+    progress('migration_registry')
+    verify_applied_migrations(directory/'supabase/migrations',
+                              olddir/'supabase/migrations',values)
+    progress('backup')
     backupdir=backup(values)
+    progress('registry_check')
     # Registry check is SELECT only; no migration runner is invoked.
     sql="BEGIN READ ONLY; SELECT EXISTS(SELECT 1 FROM nova.migrations WHERE filename='0195_live_betting_missing_switch_fails_closed.sql' AND checksum='55ec6c22d1a09b84423ec1c290212d9bc717ce2d9a96edac47a0a678164fd4b7' AND NOT baseline); ROLLBACK;"
     if c.run(['/usr/bin/psql','-X','--no-password','-qAt','-v','ON_ERROR_STOP=1'],input=sql.encode(),env=connection(values)).strip()!=b't':raise ValueError('approved_0195_required')
+    progress('dependencies')
     (directory/'node_modules').symlink_to(c.ensure_dependencies(directory),target_is_directory=True)
     account=pwd.getpwnam('betvima_build')
     for folder,dirs,files in os.walk(directory,followlinks=False):
         os.chown(folder,account.pw_uid,account.pw_gid)
         for name in files:os.chown(pathlib.Path(folder)/name,account.pw_uid,account.pw_gid,follow_symlinks=False)
-    for args in (['/usr/bin/node','node_modules/vitest/vitest.mjs','run','tests/unit','--no-cache'],['/usr/bin/node','node_modules/typescript/bin/tsc','--noEmit'],['/usr/bin/node','node_modules/next/dist/bin/next','lint']):c.sandbox(directory,args,c.PREVIEW_ENV)
+    for label,args in (
+        ('unit_tests',['/usr/bin/node','node_modules/vitest/vitest.mjs','run','tests/unit','--no-cache']),
+        ('typecheck',['/usr/bin/node','node_modules/typescript/bin/tsc','--noEmit']),
+        ('lint',['/usr/bin/node','node_modules/next/dist/bin/next','lint'])
+    ):
+        progress(label)
+        c.sandbox(directory,args,c.PREVIEW_ENV)
+    progress('build')
     c.sandbox(directory,['/usr/bin/node','node_modules/next/dist/bin/next','build'],values)
+    progress('asset_security')
     private=[v.encode() for k,v in values.items() if not k.startswith('NEXT_PUBLIC_') and len(v)>20 and any(w in k for w in ('KEY','TOKEN','PASSWORD','SECRET','DATABASE_URL','DB_URL'))]
     for file in (directory/'.next/static').rglob('*'):
         if file.is_file() and any(secret in file.read_bytes() for secret in private):raise ValueError('private_value_in_browser_assets')
+    progress('copy_release')
     release=pathlib.Path('/opt/nova-releases')/sha
-    if release.exists():raise ValueError('release_already_exists')
+    if release.exists():
+        if release==olddir: raise ValueError('previous_release_still_owned')
+        current_apps=json.loads(pm2(['jlist']))
+        by_cwd=[a for a in current_apps if a.get('pm2_env',{}).get('pm_cwd')==str(release)]
+        if any(a.get('name')!='nova-cd-'+sha[:12] or a.get('pm2_env',{}).get('status')=='online' for a in by_cwd):
+            raise ValueError('candidate_release_still_running')
+        # Only a STOPPED web candidate from this exact revision may be removed.
+        if by_cwd: pm2(['delete','nova-cd-'+sha[:12]])
+        quarantine_failed(release,release.parent,[],removable_stopped_process=None)
     shutil.copytree(directory,release,symlinks=False)
     for apk in (olddir/'public/downloads').glob('*.apk'):
         target=release/'public/downloads'/apk.name;target.parent.mkdir(parents=True,exist_ok=True);shutil.copyfile(apk,target)
@@ -127,8 +231,11 @@ def main(sha):
     c.atomic(state/'nginx.before.conf',route.encode());c.atomic(state/'static.before.conf',snippet.encode());c.atomic(state/'pm2.before.json',json.dumps(apps).encode())
     switched=False
     try:
+        progress('start_candidate')
         pm2(['start',str(release/'node_modules/next/dist/bin/next'),'--name',name,'--cwd',str(release),'--interpreter','/usr/bin/node','--','start','--hostname','127.0.0.1','-p',str(port)],values)
+        progress('candidate_health')
         wait_health('http://127.0.0.1:'+str(port),build)
+        progress('switch_route')
         changed=route.replace('proxy_pass http://127.0.0.1:'+str(oldport)+';','proxy_pass http://127.0.0.1:'+str(port)+';')
         # Preserve previous-version immutable assets and the original APK aliases.
         first=True
@@ -139,9 +246,12 @@ def main(sha):
         if first:raise ValueError('static_fallback_missing')
         c.atomic(ROUTE,changed.encode(),0o644);c.atomic(STATIC,updated.encode(),0o644)
         c.run(['/usr/sbin/nginx','-t']);c.run(['systemctl','reload','nginx']);switched=True
+        progress('public_health')
         wait_health('https://betvima.com',build)
+        progress('persist')
         pm2(['save'])
         c.atomic(c.STATE/'production-status.json',json.dumps({'revision':sha,'build':build,'state':'healthy','rollback_directory':str(state),'backup_directory':str(backupdir),'workers_changed':False,'migration_run':False}).encode(),0o644)
+        progress('complete','verified')
     except Exception:
         c.atomic(ROUTE,route.encode(),0o644);c.atomic(STATIC,snippet.encode(),0o644)
         c.run(['/usr/sbin/nginx','-t']);c.run(['systemctl','reload','nginx']);wait_health('https://betvima.com',oldbuild)
@@ -151,4 +261,10 @@ def main(sha):
 
 if __name__=='__main__':
     try:main(sys.argv[1])
-    except Exception:print('production_deploy_blocked_or_rolled_back_details_suppressed');sys.exit(1)
+    except Exception as error:
+        # The reason is allowlisted; untrusted exception strings and financial
+        # logs remain root-private and never enter GitHub Actions output.
+        try:progress(CURRENT_STAGE,'failed',error)
+        except Exception:pass
+        print('production_deploy_blocked_or_rolled_back_details_suppressed')
+        sys.exit(1)
