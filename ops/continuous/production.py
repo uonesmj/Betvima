@@ -24,13 +24,14 @@ SAFE_FAILURE_CODES = frozenset((
     'private_value_in_browser_assets','verified_migration_registry_required',
 ))
 CURRENT_STAGE = 'preflight'
+CURRENT_REVISION = None
 
 def progress(stage, state='running', failure=None):
     """Root-private, fixed-vocabulary progress; never include credentials/logs."""
     global CURRENT_STAGE
     if stage not in PRODUCTION_STAGES: raise ValueError('invalid_progress_stage')
     CURRENT_STAGE = stage
-    content = {'stage':stage, 'state':state, 'at':int(time.time())}
+    content = {'stage':stage, 'state':state, 'revision':CURRENT_REVISION, 'at':int(time.time())}
     if failure is not None:
         code = str(failure)
         content['reason'] = code if code in SAFE_FAILURE_CODES else 'details_suppressed'
@@ -68,7 +69,7 @@ def verify_applied_migrations(candidate, active, values):
     if any(after.get(name)!=sha for name,sha in before.items()):
         raise ValueError('migration_change_requires_separate_approval')
     added = {name:sha for name,sha in after.items() if name not in before}
-    if not added or len(added)>12 or not all(re.fullmatch(r'[0-9]{4}_[a-z0-9_]+\\.sql',name) for name in added):
+    if not added or len(added)>12 or not all(re.fullmatch(r'[0-9]{4}_[a-z0-9_]+\.sql',name) for name in added):
         raise ValueError('migration_change_requires_separate_approval')
     quoted = ','.join("'"+name+"'" for name in sorted(added))
     sql = ("BEGIN READ ONLY; SELECT filename,checksum,baseline "
@@ -148,6 +149,8 @@ def wait_health(base,build):
     raise ValueError('health_failed')
 
 def main(sha):
+    global CURRENT_REVISION
+    CURRENT_REVISION = sha
     os.umask(0o077)
     if os.geteuid()!=0 or not re.fullmatch('[0-9a-f]{40}',sha):raise ValueError('invalid_invocation')
     progress('preflight')
