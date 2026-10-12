@@ -19,6 +19,31 @@ class DispatchTests(unittest.TestCase):
         self.assertEqual(posts[:2],[{'mode':'preview','token':'mock-first'},{'mode':'preview','token':'mock-second'}])
         self.assertEqual(posts[2:],[{'ticket':'mock-handle'},{'ticket':'mock-handle'}])
 
+    def test_explicit_safe_stage_surfaces_without_server_secrets(self):
+        responses=[response({'value':'mock-identity'}),response({
+            'status':'blocked_or_failed','stage':'build',
+            'reason':'command_failed_output_suppressed','secret':'must-not-leak'})]
+        with patch.dict(dispatch.os.environ,{
+            'ACTIONS_ID_TOKEN_REQUEST_URL':'https://identity.test?request=1',
+            'ACTIONS_ID_TOKEN_REQUEST_TOKEN':'mock-runner'
+        }),patch.object(dispatch.urllib.request,'urlopen',side_effect=responses):
+            with self.assertRaisesRegex(RuntimeError,
+                'deployment_not_verified: stage=build reason=command_failed_output_suppressed') as error:
+                dispatch.main('production')
+        self.assertNotIn('must-not-leak',str(error.exception))
+
+    def test_untrusted_failure_stage_is_redacted(self):
+        responses=[response({'value':'mock-identity'}),response({
+            'status':'blocked_or_failed',
+            'stage':'TOKEN_from_credential','reason':'password=secret'})]
+        with patch.dict(dispatch.os.environ,{
+            'ACTIONS_ID_TOKEN_REQUEST_URL':'https://identity.test?request=1',
+            'ACTIONS_ID_TOKEN_REQUEST_TOKEN':'mock-runner'
+        }),patch.object(dispatch.urllib.request,'urlopen',side_effect=responses):
+            with self.assertRaisesRegex(RuntimeError,
+                'stage=unknown reason=details_suppressed'):
+                dispatch.main('production')
+
     def test_authorization_failure_is_not_retried(self):
         with patch.dict(dispatch.os.environ,{'ACTIONS_ID_TOKEN_REQUEST_URL':'https://identity.test?request=1','ACTIONS_ID_TOKEN_REQUEST_TOKEN':'mock-runner'}),patch.object(dispatch.urllib.request,'urlopen',side_effect=[response({'value':'mock'}),urllib.error.HTTPError('https://example.test',403,'blocked',{},None)]) as request,patch('sys.stdout',io.StringIO()):
             with self.assertRaises(urllib.error.HTTPError):dispatch.main('production')
