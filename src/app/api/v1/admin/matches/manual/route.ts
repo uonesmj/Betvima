@@ -28,10 +28,10 @@ export const POST = withErrorHandling('admin.matches.manual.create', async (ctx,
   const body = await readJson(request, schema, ctx);
   const kickoff = new Date(body.scheduledAt);
   if (kickoff.getTime() < Date.now() + 10 * 60_000) {
-    throw new ApiError('VALIDATION_ERROR', 'Kick-off must be at least 10 minutes in the future');
+    throw new ApiError('BAD_REQUEST', 'Kick-off must be at least 10 minutes in the future');
   }
   if (body.homeTeam.toLocaleLowerCase() === body.awayTeam.toLocaleLowerCase()) {
-    throw new ApiError('VALIDATION_ERROR', 'The home and away teams must differ');
+    throw new ApiError('BAD_REQUEST', 'The home and away teams must differ');
   }
   const prices = [body.homeOdds, body.drawOdds, body.awayOdds].map((value) => oddsFromDecimalString(value));
   if (prices.some((value) => value < MIN_DECIMAL_ODDS || value > MAX_DECIMAL_ODDS)) {
@@ -62,7 +62,7 @@ export const POST = withErrorHandling('admin.matches.manual.create', async (ctx,
        limit 1`,
       [sport.id, body.homeTeam, body.awayTeam, kickoff.toISOString()],
     );
-    if (duplicate) throw new ApiError('VALIDATION_ERROR', 'A matching fixture already exists');
+    if (duplicate) throw new ApiError('BAD_REQUEST', 'A matching fixture already exists');
 
     const leagueSlug = 'manual-' + slug(body.league);
     const league = await tx.queryOne<{ id: string }>(
