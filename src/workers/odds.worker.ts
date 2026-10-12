@@ -1233,6 +1233,33 @@ if (WORKER_MODE === "legacy-results") {
         return;
       }
 
+      // Fail closed on production: count outstanding legacy bets first.
+      // Settlement requires a separate, explicit operator enablement.
+      if (process.env.LEGACY_RESULTS_WRITE_ENABLED !== "true") {
+        const rows = await ctx.services.db.query<{
+          status: string;
+          pending_matches: string;
+          pending_bets: string;
+        }>(
+          `select m.status::text as status,
+                  count(distinct m.id)::text as pending_matches,
+                  count(distinct b.id)::text as pending_bets
+             from nova.matches m
+             join nova.bet_legs l on l.match_id = m.id
+             join nova.bets b on b.id = l.bet_id
+            where m.provider = $1
+              and b.status::text in ('accepted', 'partially_settled')
+            group by m.status::text`,
+          [MATCH_SOURCE_FALLBACK],
+        );
+        console.log("LEGACY_RESULTS_AUDIT_ONLY", JSON.stringify({
+          provider: MATCH_SOURCE_FALLBACK,
+          rows,
+          enabled: false,
+        }));
+        return;
+      }
+
       await ctx.withLock("legacy-results:reconcile", 600, async () => {
         const result = await reconcileLiveResults(ctx, true);
         console.log("LEGACY_RESULTS_RECONCILIATION", JSON.stringify(result));
