@@ -1,0 +1,56 @@
+name: Bet placement hotfix validation
+
+on:
+  push:
+    branches:
+      - codex/bet-placement-odds-resume-20261012
+  pull_request:
+    paths:
+      - 'src/components/betting/**'
+      - 'src/server/services/betting-service.ts'
+      - 'src/workers/odds.worker.ts'
+      - 'src/workers/odds-refresh-budget.ts'
+      - 'src/lib/bet-placement-fingerprint.ts'
+      - 'tests/unit/bet-placement-fingerprint.test.ts'
+      - 'tests/unit/betting-service-placement.test.ts'
+      - 'tests/unit/odds-refresh-budget.test.ts'
+      - 'ops/hotfixes/**'
+      - '.github/workflows/betting-hotfix-validation.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  bet-placement-safety:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - run: npm run typecheck
+      - run: npm run test:unit
+      - run: npm run lint
+      - run: npm run build
+        env:
+          APP_ENV: test
+          NEXT_PUBLIC_SITE_URL: https://preview.betvima.com
+          NEXT_TELEMETRY_DISABLED: '1'
+      - name: Guard real-money odds publication
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          sql = Path('ops/hotfixes/20261012_resume_clean_prematch_quotes.sql').read_text()
+          worker = Path('src/workers/odds.worker.ts').read_text()
+          service = Path('src/server/services/betting-service.ts').read_text()
+          assert 'ODDS_FUNCTION_DRIFTED_ABORT' in sql
+          assert 'm.status::text = \'scheduled\'' in sql
+          assert 'v_market.status::text = \'open\'' in sql
+          assert 'PREMATCH_REFRESH_LIMITS.near' in worker
+          assert 'PREMATCH_REFRESH_LIMITS.mid' in worker
+          assert 'PREMATCH_REFRESH_LIMITS.far' in worker
+          assert 'acceptOddsChange: false' in service
+          PY
