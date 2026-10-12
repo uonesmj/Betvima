@@ -200,6 +200,7 @@ export function BetSlipRail() {
     if (
       !slip.isOpen ||
       !session?.authenticated ||
+      slip.isSubmitting ||
       slip.items.length === 0 ||
       pendingQuote
     ) {
@@ -210,7 +211,7 @@ export function BetSlipRail() {
     let checking = false;
 
     const checkForOddsChanges = async () => {
-      if (cancelled || checking) return;
+      if (cancelled || checking || useBetSlip.getState().isSubmitting) return;
       checking = true;
 
       try {
@@ -276,6 +277,7 @@ export function BetSlipRail() {
     };
   }, [
     slip.isOpen,
+    slip.isSubmitting,
     slip.items.length,
     slip.stakeMinor,
     session?.authenticated,
@@ -430,6 +432,22 @@ export function BetSlipRail() {
       const idempotencyKey = previous?.intent === intent ? previous.key : crypto.randomUUID();
       lastPlacementRef.current = { intent, key: idempotencyKey };
 
+      // The button now means the user's explicit acceptance is remembered.
+      // If the POST rejects because the price *really* moved again, the next
+      // quote compares against the last price they approved rather than the
+      // original stale selection; never silently accept the next movement.
+      if (pendingQuote?.oddsChanges?.length) {
+        const store = useBetSlip.getState();
+        for (const change of quote.oddsChanges ?? []) {
+          store.applyAcceptedOdds(
+            change.selectionId,
+            change.currentOddsScaled,
+            change.currentOddsVersion,
+          );
+        }
+        setPendingQuote(null);
+      }
+
       const result = await apiRequest<{ bet: { publicId: string }; balanceAfterMinor: string }>('/api/v1/bets', {
         method: 'POST',
         json: payload,
@@ -465,13 +483,14 @@ export function BetSlipRail() {
           slip.setError(t('betslip.oddsChanged'));
         } else {
           try {
+            const latestSlip = useBetSlip.getState();
             const refreshedQuoteResult = await apiRequest<QuoteResponse>('/api/v1/bets/quote', {
               method: 'POST',
               json: {
-                type,
-                stakeMinor: slip.stakeMinor,
+                type: latestSlip.items.length > 1 ? 'MULTIPLE' : 'SINGLE',
+                stakeMinor: latestSlip.stakeMinor,
                 currency,
-                legs: slip.items.map((item) => ({
+                legs: latestSlip.items.map((item) => ({
                   matchId: item.matchId,
                   marketId: item.marketId,
                   selectionId: item.selectionId,

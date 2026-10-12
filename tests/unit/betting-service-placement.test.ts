@@ -72,6 +72,53 @@ describe('real-money bet placement preconditions', () => {
     }]);
   });
 
+
+  it('preserves an accepted signed price when a no-change provider refresh only increments odds_version', async () => {
+    const { service, input, snapshot, placeBet } = makeScenario();
+    const quote = await service.quote(input);
+    snapshot.oddsVersion = 12; // The bookmaker price remains exactly 2.50.
+    await service.place({
+      ...input,
+      idempotencyKey: 'stable-quote-refresh',
+      quoteToken: quote.quoteToken,
+    });
+    expect(placeBet).toHaveBeenCalledTimes(1);
+    const submitted = placeBet.mock.calls[0]?.[0] as any;
+    expect(submitted.payload.legs).toMatchObject([{
+      clientOddsScaled: '25000',
+      marketVersion: 12,
+      acceptOddsChange: false,
+    }]);
+  });
+
+  it('commits only the exact new price that the user explicitly approved', async () => {
+    const { service, input, snapshot, placeBet } = makeScenario();
+    snapshot.oddsScaled = 27000n;
+    snapshot.oddsVersion = 2;
+    // The quote endpoint explicitly allows reporting a moved price; placing
+    // must still verify the user's signed approval before any debit.
+    input.slip.legs[0]!.acceptOddsChange = true;
+    const quote = await service.quote(input);
+    expect(quote.oddsChanges).toMatchObject([{
+      previousOddsScaled: 25000n,
+      currentOddsScaled: 27000n,
+    }]);
+    snapshot.oddsVersion = 3; // Source refresh without a second price change.
+    await service.place({
+      ...input,
+      idempotencyKey: 'approved-new-price',
+      quoteToken: quote.quoteToken,
+      acceptedOdds: { [snapshot.selectionId]: '27000' },
+    });
+    expect(placeBet).toHaveBeenCalledTimes(1);
+    const submitted = placeBet.mock.calls[0]?.[0] as any;
+    expect(submitted.payload.legs).toMatchObject([{
+      clientOddsScaled: '27000',
+      marketVersion: 3,
+      acceptOddsChange: false,
+    }]);
+  });
+
   it('does not attempt a debit for suspended selections or stale pricing', async () => {
     const { service, input, snapshot, placeBet } = makeScenario();
     snapshot.selectionStatus = 'suspended';
