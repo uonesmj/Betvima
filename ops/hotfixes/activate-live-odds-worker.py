@@ -48,7 +48,7 @@ def apps():
 
 def blobsha(data):
     return hashlib.sha1(
-        b"blob " + str(len(data)).encode() + b"\\0" + data
+        b"blob " + str(len(data)).encode() + bytes((0,)) + data
     ).hexdigest()
 
 def pinned_file(path, sha):
