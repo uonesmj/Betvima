@@ -232,8 +232,13 @@ createWorker({
                  where m.provider = $2
                    and m.status::text = 'scheduled'
                    and m.provider_id is not null
-                   and m.scheduled_at > now() + interval '30 minutes'
+                   and m.scheduled_at > now()
+                   and (
+                     ($3::boolean and m.scheduled_at <= now() + interval '30 minutes')
+                     or ($4::boolean and m.scheduled_at > now() + interval '30 minutes')
+                   )
                  order by
+                   case when m.scheduled_at <= now() + interval '30 minutes' then 0 else 1 end,
                    (
                      select max(sl.odds_updated_at)
                      from nova.markets mk
@@ -246,6 +251,8 @@ createWorker({
                 [
                   cadence.extendedLimit,
                   sourceProvider.name,
+                  includeExtendedPrematchNear,
+                  includeExtendedPrematchFar,
                 ],
               ).catch(() => [])
             : [];
@@ -325,21 +332,8 @@ createWorker({
           bundlesByProviderId.set(bundle.matchProviderId, bundle);
         }
 
-        const extendedProviderIdSet = new Set(extendedProviderIds);
-
-        const normalSyncPending = pending.filter((row) => {
-          if (!row.provider_id) return false;
-
-          if (extendedProviderIdSet.has(row.provider_id)) {
-            console.log("ODDS_NORMAL_SYNC_SKIPPED_EXTENDED", JSON.stringify({
-              matchId: row.match_id,
-              providerId: row.provider_id,
-            }));
-            return false;
-          }
-
-          return true;
-        });
+        // An extended fetch must not suppress a fresh core-price publication.
+        const normalSyncPending = pending.filter((row) => Boolean(row.provider_id));
 
         const SYNC_CONCURRENCY = 12;
 
