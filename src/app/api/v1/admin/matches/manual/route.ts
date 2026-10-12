@@ -145,3 +145,52 @@ export const POST = withErrorHandling('admin.matches.manual.create', async (ctx,
   });
   return jsonOk({ matchId });
 });
+
+/** Admin history includes manually created matches after kick-off. */
+export const GET = withErrorHandling('admin.matches.manual.list', async (ctx, request: Request) => {
+  const { services } = await withAdmin(request, ctx, 'matches.manage');
+  const params = new URL(request.url).searchParams;
+  const page = Math.max(1, Math.min(5000, Number(params.get('page')) || 1));
+  const pageSize = Math.max(1, Math.min(50, Number(params.get('pageSize')) || 25));
+  const q = params.get('q')?.trim().slice(0, 120) || null;
+  const baseSql = `
+    from nova.matches m
+    join nova.sports sport on sport.id = m.sport_id
+    join nova.leagues league on league.id = m.league_id
+    join nova.teams ht on ht.id = m.home_team_id
+    join nova.teams at on at.id = m.away_team_id
+    where m.provider = 'manual'
+      and ($1::text is null
+        or ht.name ilike '%' || $1 || '%'
+        or at.name ilike '%' || $1 || '%'
+        or league.name ilike '%' || $1 || '%')
+  `;
+  const [rows, count] = await Promise.all([
+    services.db.query<{
+      id: string; sportKey: string; leagueName: string; status: string;
+      scheduledAt: string; homeScore: number | null; awayScore: number | null;
+      isLive: boolean; isBettingAvailable: boolean; participants: {role: string; name: string}[];
+      marketsCount: number; provider: string;
+    }>(`
+      select m.id, sport.slug as "sportKey", league.name as "leagueName",
+        m.status::text as status, m.scheduled_at as "scheduledAt",
+        m.home_score as "homeScore", m.away_score as "awayScore",
+        false as "isLive",
+        (m.status::text = 'scheduled' and m.scheduled_at > now()) as "isBettingAvailable",
+        jsonb_build_array(
+          jsonb_build_object('role','HOME','name',ht.name),
+          jsonb_build_object('role','AWAY','name',at.name)
+        ) as participants,
+        (select count(*)::int from nova.markets mk where mk.match_id = m.id) as "marketsCount",
+        m.provider
+      ${baseSql}
+      order by
+        case when m.status::text = 'scheduled' and m.scheduled_at <= now() then 0
+             when m.status::text = 'scheduled' then 1 else 2 end,
+        m.scheduled_at desc, m.id desc
+      limit $2 offset $3
+    `, [q, pageSize, (page - 1) * pageSize]),
+    services.db.queryOne<{ total: number }>(`select count(*)::int as total ${baseSql}`, [q]),
+  ]);
+  return jsonOk({ items: rows, total: count?.total ?? 0, page, pageSize });
+});
