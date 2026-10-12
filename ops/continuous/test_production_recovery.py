@@ -10,11 +10,12 @@ import re
 import tempfile
 import time
 import unittest
+import urllib.parse
 from unittest.mock import Mock
 
 SOURCE=pathlib.Path(__file__).with_name('production.py').read_text()
 AST=ast.parse(SOURCE)
-NAMES={'files_digest','quarantine_failed','verify_applied_migrations'}
+NAMES={'files_digest','quarantine_failed','verify_applied_migrations','backup_connection'}
 NODES=[n for n in AST.body if isinstance(n,ast.FunctionDef) and n.name in NAMES]
 assert len(NODES)==len(NAMES)
 scope={'pathlib':pathlib,'re':re,'time':time,'hashlib':hashlib,
@@ -99,5 +100,64 @@ class AppliedMigrationTests(unittest.TestCase):
                 scope['verify_applied_migrations'](new,active,{})
             scope['c'].run.reset_mock()
             scope['c'].run.assert_not_called()
+
+class SessionBackupConnectionTests(unittest.TestCase):
+    POOLER='aws-0-eu-west-1.pooler.supabase.com'
+    VALID_URL='postgresql://postgres.mqygiufkubxxxjodsycu:REDACTED@'+POOLER+':6543/postgres'
+
+    def setUp(self):
+        self._connection=scope.get('connection')
+        self.mock=Mock(return_value={
+            'PGHOST':self.POOLER,'PGPORT':'6543',
+            'PGSSLMODE':'verify-full',
+            'PGSSLROOTCERT':'/root/betvima-public-ca.crt',
+            'PGOPTIONS':'-c default_transaction_read_only=on -c statement_timeout=0 -c lock_timeout=3000',
+            'PGUSER':'postgres.mqygiufkubxxxjodsycu',
+            'PGPASSWORD':'NOT-A-REAL-PASSWORD'
+        })
+        scope['connection']=self.mock
+        scope['urllib']=urllib
+
+    def tearDown(self):
+        scope['connection']=self._connection
+
+    def test_backup_uses_session_pooler_only_without_mutating_live_web_credentials(self):
+        values={'SUPABASE_DB_URL':self.VALID_URL}
+        conn=scope['backup_connection'](values)
+        self.assertEqual(conn['PGPORT'],'5432')
+        self.assertEqual(conn['PGHOST'],self.POOLER)
+        self.assertEqual(conn['PGSSLMODE'],'verify-full')
+        self.assertEqual(conn['PGPASSWORD'],'NOT-A-REAL-PASSWORD')
+        self.assertEqual(conn['PGSSLROOTCERT'],'/root/betvima-public-ca.crt')
+        self.assertIn('statement_timeout=0',conn['PGOPTIONS'])
+        self.assertEqual(conn['PGAPPNAME'],'betvima_pre_release_verified_backup')
+        self.assertEqual(values['SUPABASE_DB_URL'],self.VALID_URL)
+        self.mock.assert_called_once_with(values)
+
+    def test_direct_or_wrong_pooler_identity_rejected_without_connection(self):
+        for url in (
+            'postgresql://postgres:REDACTED@db.mqygiufkubxxxjodsycu.supabase.co:5432/postgres',
+            'postgresql://postgres.mqygiufkubxxxjodsycu:REDACTED@'+self.POOLER+':5432/postgres',
+            'postgresql://postgres.mqygiufkubxxxjodsycu:REDACTED@evil.pooler.supabase.com.attacker.test:6543/postgres',
+            'postgresql://wrong:REDACTED@'+self.POOLER+':6543/postgres',
+        ):
+            with self.subTest(url=url),self.assertRaisesRegex(ValueError,'backup_session_pooler_required'):
+                scope['backup_connection']({'SUPABASE_DB_URL':url})
+        self.mock.assert_not_called()
+
+    def test_tls_or_transaction_mode_cannot_be_bypassed(self):
+        baseline=self.mock.return_value.copy()
+        for field,value in (
+            ('PGSSLMODE','require'),
+            ('PGPORT','5432'),
+            ('PGHOST','attacker.test'),
+            ('PGOPTIONS','-c statement_timeout=300000'),
+        ):
+            safe=baseline.copy()
+            safe[field]=value
+            self.mock.return_value=safe
+            with self.subTest(field=field),self.assertRaisesRegex(ValueError,'backup_session_pooler_required'):
+                scope['backup_connection']({'SUPABASE_DB_URL':self.VALID_URL})
+            self.mock.reset_mock()
 
 if __name__=='__main__':unittest.main()

@@ -46,6 +46,22 @@ class SnapshotSafety(unittest.TestCase):
         for marker in ('PrivateNetwork=yes','ProtectSystem=strict','ProtectProc=invisible','CPUQuota=50%','MemoryMax=1800M','auth_basic_user_file','return 403','return 405','127.0.0.1:'):
             self.assertIn(marker,text)
         self.assertNotIn('restart nginx',text)
+    def test_session_backup_updater_is_pinned_and_does_not_restart_financial_services(self):
+        source=pathlib.Path(__file__).with_name('install-backup-session-patch.py')
+        code=source.read_text()
+        compile(code,str(source),'exec')
+        self.assertIn('ORIGINAL_BLOB=',code)
+        self.assertIn('REPLACEMENT_BLOB=',code)
+        self.assertIn("import fcntl",code)
+        self.assertIn("fcntl.LOCK_EX|fcntl.LOCK_NB",code)
+        self.assertIn("test_safe_session(new,env)",code)
+        self.assertIn("backup_connection",code)
+        self.assertIn("PGSSLMODE",code)
+        self.assertIn("statement_timeout",code)
+        self.assertNotIn("pm2(['restart'",code)
+        self.assertNotIn("systemctl','restart'",code)
+        self.assertNotIn("DELETE FROM nova",code)
+
     def test_reviewed_controller_updater_is_syntactically_valid_and_scoped(self):
         path=pathlib.Path(__file__).with_name('upgrade-installed-controller.py')
         text=path.read_text()
