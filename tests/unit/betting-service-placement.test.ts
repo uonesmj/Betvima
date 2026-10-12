@@ -14,7 +14,7 @@ function makeScenario() {
     oddsUpdatedAt: new Date().toISOString(), oddsScaled: 25000n, oddsVersion: 1,
   };
   const getSelectionsForPlacement = vi.fn(async () => [snapshot]);
-  const placeBet = vi.fn(async () => ({ status: 'accepted', bet: {}, balanceAfterMinor: 9900n, quote: {} }));
+  const placeBet = vi.fn(async (_input: unknown) => ({ status: 'accepted', bet: {}, balanceAfterMinor: 9900n, quote: {} }));
   const deps = {
     catalog: { getSelectionsForPlacement },
     betting: { placeBet },
