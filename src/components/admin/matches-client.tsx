@@ -2,7 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import { adminPost } from '@/components/admin/admin-table';
-import { useState } from 'react';
+import { useState, type FormEvent } from 'react';
 import { useApp } from '@/components/layout/providers';
 import { Card, DataTable, ErrorNote, Skeleton, StatusPill } from '@/components/ui/primitives';
 import { useApiQuery } from '@/lib/hooks/useApi';
@@ -26,7 +26,7 @@ export function MatchesClient() {
     league: '', homeTeam: '', awayTeam: '', scheduledAt: '',
     homeOdds: '', drawOdds: '', awayOdds: '',
   });
-  const createFixture = async (event: React.FormEvent<HTMLFormElement>) => {
+  const createFixture = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (creating) return;
     setCreating(true);
@@ -104,7 +104,7 @@ export function MatchesClient() {
                 </label>
               ))}
             </div>
-            {createError ? <ErrorNote message={createError} /> : null}
+            {createError ? <ErrorNote message={createError} retryLabel="Retry" /> : null}
             <button className="nova-btn-primary" type="submit" disabled={creating}>
               {creating ? 'Creating…' : 'Create manual fixture'}
             </button>
