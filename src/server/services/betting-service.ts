@@ -106,6 +106,7 @@ export class BettingService {
     acceptedOdds?: Record<string, string>;
   }): Promise<PlaceBetResult> {
     const placementLegs = await this.loadLegs(input);
+    this.assertLegSet(input.slip, placementLegs);
     if (placementLegs.some((leg) => leg.isLive) && !(await this.featureEnabled('LIVE_BETTING'))) {
       throw new ApiError('LIVE_BETTING_DISABLED');
     }
@@ -178,6 +179,9 @@ export class BettingService {
       }
 
       const acceptedOdds = input.acceptedOdds ?? {};
+      const currentBySelection = new Map(
+        placementLegs.map((leg) => [String(leg.selectionId), leg]),
+      );
 
       for (const leg of input.slip.legs) {
         const signed = payloadBySelection.get(String(leg.selectionId));
@@ -186,6 +190,22 @@ export class BettingService {
           throw new ApiError(
             'ODDS_EXPIRED',
             'The signed price quote is missing a selection',
+          );
+        }
+
+        const current = currentBySelection.get(String(leg.selectionId));
+        if (!current ||
+          current.oddsVersion !== signed.oddsVersion ||
+          current.oddsScaled.toString() !== signed.oddsScaled) {
+          throw new ApiError('ODDS_CHANGED',
+            'The market moved after the signed quote; request an updated price',
+            {
+              details: {
+                selectionId: String(leg.selectionId),
+                currentOddsScaled: current?.oddsScaled.toString() ?? null,
+                currentOddsVersion: current?.oddsVersion ?? null,
+              },
+            },
           );
         }
 
@@ -230,7 +250,9 @@ export class BettingService {
           matchId: String(leg.matchId),
           clientOddsScaled: signed.oddsScaled,
           marketVersion: signed.oddsVersion,
-          acceptOddsChange: true,
+          // A signed, explicitly accepted quote is the final permitted price.
+          // Any later movement must fail in the atomic DB transaction.
+          acceptOddsChange: false,
         };
       });
     } else {
@@ -260,11 +282,11 @@ export class BettingService {
       }
 
       const quotedBySelection = new Map(
-        input.slip.legs.map((leg) => [
+        placementLegs.map((leg) => [
           String(leg.selectionId),
           {
-            oddsScaled: String(leg.clientOddsScaled ?? 0n),
-            oddsVersion: Number(leg.marketVersion ?? 0),
+            oddsScaled: leg.oddsScaled.toString(),
+            oddsVersion: leg.oddsVersion,
           },
         ]),
       );
@@ -285,7 +307,7 @@ export class BettingService {
           matchId: String(leg.matchId),
           clientOddsScaled: quoted.oddsScaled,
           marketVersion: quoted.oddsVersion,
-          acceptOddsChange: true,
+          acceptOddsChange: false,
         };
       });
     }
@@ -355,6 +377,9 @@ export class BettingService {
       for (const requestedLeg of requested.filter((l) => l.matchId === matchId)) {
         const snapshot = snapshots.find((s) => s.selectionId === requestedLeg.selectionId);
         if (!snapshot) throw new ApiError('NOT_FOUND', 'One or more selections no longer exist');
+        if (snapshot.matchId !== requestedLeg.matchId || snapshot.marketId !== requestedLeg.marketId) {
+          throw new ApiError('VALIDATION_FAILED', 'The selected outcome no longer belongs to this market');
+        }
         loaded.push({
           selectionId: snapshot.selectionId, marketId: snapshot.marketId, matchId: snapshot.matchId,
           matchLabel: snapshot.matchLabel, marketKey: snapshot.marketKey, marketName: snapshot.marketName,
@@ -372,6 +397,10 @@ export class BettingService {
   /** State, market and correlation rules - evaluated before any money is touched. */
   private assertLegSet(slip: BetSlipInput, legs: LoadedLeg[]): void {
     for (const leg of legs) {
+      // A stale scheduled fixture must never remain bettable after kickoff.
+      if (leg.matchStatus === 'scheduled' && Date.parse(leg.scheduledAt) <= Date.now()) {
+        throw new ApiError('MATCH_FINISHED', `${leg.matchLabel} has already started`);
+      }
       if (['finished', 'cancelled', 'abandoned'].includes(leg.matchStatus)) {
         throw new ApiError('MATCH_FINISHED', `${leg.matchLabel} is no longer available for betting`);
       }

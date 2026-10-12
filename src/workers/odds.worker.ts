@@ -9,6 +9,7 @@ console.log("NOVA_ODDS_WORKER_RUNTIME_MARKER", JSON.stringify({ pid: process.pid
 import { createWorker, type WorkerContext, type JobHandler } from './runtime';
 import { serverEnv } from '@/server/env';
 import { pgArray } from '@/server/db/rows';
+import { PREMATCH_REFRESH_LIMITS, extendedRefreshBudget } from './odds-refresh-budget';
 import {
   hasRejecting,
   hasSuspending,
@@ -67,10 +68,7 @@ const LIVE_ODDS_INTERVAL_MS = process.env.SPORTS_PROVIDER === "5dollarfootballap
 const EXTENDED_LIVE_ODDS_INTERVAL_MS = process.env.SPORTS_PROVIDER === "5dollarfootballapi" ? 10 * 60_000 : 5 * 60_000;
 const EXTENDED_PREMATCH_NEAR_ODDS_INTERVAL_MS = process.env.SPORTS_PROVIDER === "5dollarfootballapi" ? 10 * 60_000 : 60_000;
 const EXTENDED_PREMATCH_FAR_ODDS_INTERVAL_MS = process.env.SPORTS_PROVIDER === "5dollarfootballapi" ? 15 * 60_000 : 5 * 60_000;
-const EXTENDED_ODDS_MAX_MATCHES_PER_CYCLE = Math.max(
-  1,
-  Number(process.env.ODDS_API_EXTENDED_MAX_MATCHES_PER_CYCLE || 500),
-);
+const EXTENDED_ODDS_MAX_MATCHES_PER_CYCLE = extendedRefreshBudget(process.env.ODDS_API_EXTENDED_MAX_MATCHES_PER_CYCLE);
 const LIVE_RESULT_INTERVAL_MS = 10_000;
 const API_FOOTBALL_LIVE_INTERVAL_MS = 30_000;
 const API_FOOTBALL_MAX_DETAIL_MATCHES_PER_CYCLE = 1;
@@ -179,6 +177,7 @@ createWorker({
                  where m.provider = $4
                    and m.provider_id is not null
                    and m.status::text = 'scheduled'
+                   and m.scheduled_at > now()
                    and (
                      ($1::boolean and m.scheduled_at <= now() + interval '30 minutes')
                      or ($2::boolean and m.scheduled_at > now() + interval '30 minutes' and m.scheduled_at <= now() + interval '24 hours')
@@ -205,9 +204,9 @@ createWorker({
                  scheduled_at
                from ranked
                where
-                 (bucket_order = 0 and $1::boolean and bucket_rank <= 200)
-                 or (bucket_order = 1 and $2::boolean and bucket_rank <= 200)
-                 or (bucket_order = 2 and $3::boolean and bucket_rank <= 500)
+                 (bucket_order = 0 and $1::boolean and bucket_rank <= $5::int)
+                 or (bucket_order = 1 and $2::boolean and bucket_rank <= $6::int)
+                 or (bucket_order = 2 and $3::boolean and bucket_rank <= $7::int)
                order by
                  bucket_order asc,
                  bucket_rank asc`,
@@ -216,6 +215,9 @@ createWorker({
                 includePrematchMid,
                 includePrematchFar,
                 sourceProvider.name,
+                PREMATCH_REFRESH_LIMITS.near,
+                PREMATCH_REFRESH_LIMITS.mid,
+                PREMATCH_REFRESH_LIMITS.far,
               ]
             ).catch(() => [])
           : [];
@@ -2546,7 +2548,7 @@ async function syncOddsUnlocked(
            i.odds_scaled,
            i.provider,
            i.provider_selection_id,
-           i.provider_timestamp,
+           NULL::timestamptz,
            i.is_live
          from input i
          on conflict (market_id, code)
@@ -2561,7 +2563,6 @@ async function syncOddsUnlocked(
             end,
            provider = excluded.provider,
            provider_selection_id = excluded.provider_selection_id,
-           provider_timestamp = excluded.provider_timestamp,
            is_live = excluded.is_live,
            updated_at = now()
          returning id, market_id, code`,
@@ -2620,7 +2621,7 @@ async function syncOddsUnlocked(
             const anomalyObjects = detectOddsAnomalies({
               odds: current,
               previousOdds: previous,
-              providerTimestamp: new Date(bundle.updatedAt),
+              providerTimestamp: new Date(market.sourceUpdatedAt ?? bundle.updatedAt),
               ingestedAt: new Date(),
               maxAgeSeconds: 300,
             });
@@ -2645,7 +2646,7 @@ async function syncOddsUnlocked(
                     .map((item) => item.code)
                     .join(",")
                 : null,
-              suspend: rejecting ? false : suspending,
+              suspend: rejecting ? false : (suspending || quote.status !== 'open'),
             });
           }
         }

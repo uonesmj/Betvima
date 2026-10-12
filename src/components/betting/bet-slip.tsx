@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { useApp } from '@/components/layout/providers';
 import { useBetSlip } from '@/lib/store/betslip';
+import { isCurrentQuote, placementIntentFingerprint, quoteContextFingerprint } from '@/lib/bet-placement-fingerprint';
 import { formatMinor, formatOddsScaled } from '@/lib/i18n';
 import { ApiClientError, apiRequest } from '@/lib/hooks/useApi';
 
@@ -22,7 +23,7 @@ interface QuoteResponse {
   quote: {
     combinedOddsScaled: string; potentialPayoutMinor: string; warnings: string[];
     oddsChanges: { selectionId: string; previousOddsScaled: string; currentOddsScaled: string; currentOddsVersion: number; direction: 'UP' | 'DOWN' }[];
-    quoteToken: string; expiresAt: string;
+    quoteToken: string; expiresAt: string; contextKey?: string;
   };
 }
 
@@ -112,6 +113,16 @@ export function BetSlipRail() {
     setBetSlipHydrated(true);
   }, []);
   const slip = useBetSlip();
+  const currentContext = quoteContextFingerprint({
+    userId: session?.user?.id ?? null,
+    currency: session?.user?.currency ?? 'USD',
+    stakeMinor: slip.stakeMinor,
+    fundingSource: slip.fundingSource,
+    bonusGrantId: slip.bonusGrantId,
+    items: slip.items,
+  });
+  const submittingRef = useRef(false);
+  const lastPlacementRef = useRef<{ intent: string; key: string } | null>(null);
   const pathname = usePathname();
   const showFloatingBetslip = pathname === "/" || pathname === "/live" || pathname === "/topbets" || pathname === "/search" || pathname.startsWith("/sports/") || pathname.startsWith("/match/");
   const [overlayOpen, setOverlayOpen] = useState(false);
@@ -147,10 +158,24 @@ export function BetSlipRail() {
     readStoredPendingQuote,
   );
   const setPendingQuote = useCallback((quote: QuoteResponse['quote'] | null) => {
-    setPendingQuoteState(quote);
-    persistPendingQuote(quote);
-  }, []);
-  const pendingQuote = pendingQuoteState;
+    // Re-evaluate against the current store, not a stale render closure.
+    const current = useBetSlip.getState();
+    const scoped = quote ? {
+      ...quote,
+      contextKey: quoteContextFingerprint({
+        userId: session?.user?.id ?? null,
+        currency: session?.user?.currency ?? 'USD',
+        stakeMinor: current.stakeMinor,
+        fundingSource: current.fundingSource,
+        bonusGrantId: current.bonusGrantId,
+        items: current.items,
+      }),
+    } : null;
+    setPendingQuoteState(scoped);
+    persistPendingQuote(scoped);
+  }, [session?.user?.id, session?.user?.currency]);
+  const pendingQuote = isCurrentQuote(pendingQuoteState, currentContext)
+    ? pendingQuoteState : null;
 
   const stake = BigInt(slip.stakeMinor || '0');
 
@@ -189,7 +214,7 @@ export function BetSlipRail() {
       checking = true;
 
       try {
-        const currency = session.user?.currency ?? 'USD';
+        const currency = session?.user?.currency ?? 'USD';
         const type = slip.items.length > 1 ? 'MULTIPLE' : 'SINGLE';
 
         const result = await apiRequest<QuoteResponse>('/api/v1/bets/quote', {
@@ -211,6 +236,15 @@ export function BetSlipRail() {
         });
 
         if (cancelled) return;
+        const current = useBetSlip.getState();
+        if (quoteContextFingerprint({
+          userId: session?.user?.id ?? null,
+          currency: session?.user?.currency ?? 'USD',
+          stakeMinor: current.stakeMinor,
+          fundingSource: current.fundingSource,
+          bonusGrantId: current.bonusGrantId,
+          items: current.items,
+        }) !== currentContext) return;
 
         const freshQuote = result.quote;
 
@@ -246,6 +280,8 @@ export function BetSlipRail() {
     slip.stakeMinor,
     session?.authenticated,
     session?.user?.currency,
+    session?.user?.id,
+    currentContext,
     pendingQuote,
     setPendingQuote,
     slip,
@@ -253,16 +289,19 @@ export function BetSlipRail() {
   ]);
 
   const place = useCallback(async () => {
+    if (submittingRef.current) return;
     if (!session?.authenticated) {
       window.location.href = '/auth/login';
       return;
     }
 
+    submittingRef.current = true;
     slip.setSubmitting(true);
     setQuoteError(null);
 
-    const currency = session.user?.currency ?? 'USD';
+    const currency = session?.user?.currency ?? 'USD';
     const type = slip.items.length > 1 ? 'MULTIPLE' : 'SINGLE';
+    const contextAtStart = currentContext;
 
     try {
       let quote = pendingQuote;
@@ -343,11 +382,8 @@ export function BetSlipRail() {
       for (const change of quote.oddsChanges ?? []) {
         acceptedOdds[change.selectionId] = change.currentOddsScaled;
         acceptedChanges.set(change.selectionId, change.currentOddsScaled);
-        slip.applyAcceptedOdds(
-          change.selectionId,
-          change.currentOddsScaled,
-          change.currentOddsVersion,
-        );
+        // Never overwrite the original user-visible quote before commit.
+        // A failed request must preserve the odds that require acceptance.
       }
 
       const payload = {
@@ -375,12 +411,32 @@ export function BetSlipRail() {
         acceptWarnings: true,
       };
 
+      const current = useBetSlip.getState();
+      const fingerprintInput = {
+        userId: session?.user?.id ?? null,
+        currency,
+        stakeMinor: current.stakeMinor,
+        fundingSource: current.fundingSource,
+        bonusGrantId: current.bonusGrantId,
+        items: current.items,
+      };
+      if (quoteContextFingerprint(fingerprintInput) !== contextAtStart) {
+        throw new ApiClientError('BETSLIP_CHANGED', 'Your bet slip changed while pricing; please try again.', 409);
+      }
+      const intent = placementIntentFingerprint(fingerprintInput);
+      // Keep the same Idempotency-Key when a network request may have
+      // committed successfully but its response was lost.
+      const previous = lastPlacementRef.current;
+      const idempotencyKey = previous?.intent === intent ? previous.key : crypto.randomUUID();
+      lastPlacementRef.current = { intent, key: idempotencyKey };
+
       const result = await apiRequest<{ bet: { publicId: string }; balanceAfterMinor: string }>('/api/v1/bets', {
         method: 'POST',
         json: payload,
-        idempotencyKey: crypto.randomUUID(),
+        idempotencyKey,
       });
 
+      lastPlacementRef.current = null;
       slip.setSuccess(t('betslip.accepted'));
       slip.clear();
       setPendingQuote(null);
@@ -463,8 +519,10 @@ export function BetSlipRail() {
         slip.setError(t('common.error'));
       }
       slip.setSubmitting(false);
+    } finally {
+      submittingRef.current = false;
     }
-  }, [pendingQuote, session, setPendingQuote, slip, t]);
+  }, [pendingQuote, session, setPendingQuote, slip, t, currentContext]);
   // The mobile sheet renders whenever the slip is open - an empty slip shows its own empty
   // state instead of the control appearing to do nothing on a phone.
   const isMobileSheet = slip.isOpen;
@@ -586,7 +644,7 @@ function BetSlipBody({
   const { t, locale, session } = useApp();
   const slip = useBetSlip();
   const currency = session?.user?.currency ?? 'USD';
-  const minStakeMinor = currency === 'USD' || currency === 'EUR' || currency === 'GBP' ? 10n : 10000n;
+  const minStakeMinor = currency === 'USD' || currency === 'EUR' || currency === 'GBP' ? 10n : currency === 'IRR' ? 100000n : 10000n;
   const stakeBelowMinimum = BigInt(slip.stakeMinor || '0') > 0n && BigInt(slip.stakeMinor || '0') < minStakeMinor;
   const minStakeLabel = formatMinor(minStakeMinor, currency, locale);
   const [balanceMinor, setBalanceMinor] = useState<string | null>(null);
@@ -605,7 +663,7 @@ function BetSlipBody({
   const [stakeInput, setStakeInput] = useState(() => moneyInputFromMinor(slip.stakeMinor, currency));
 
   const loadBalance = useCallback(async () => {
-    if (!session?.authenticated || !session.user?.currency) {
+    if (!session?.authenticated || !session?.user?.currency) {
       setBalanceMinor(null);
       return;
     }
@@ -650,7 +708,7 @@ function BetSlipBody({
     let cancelled = false;
 
     const loadBonuses = async () => {
-      if (!session?.authenticated || !session.user?.currency) {
+      if (!session?.authenticated || !session?.user?.currency) {
         setBonusItems([]);
         setBonusLoading(false);
         return;
@@ -677,7 +735,7 @@ function BetSlipBody({
           item.status === 'active' &&
           BigInt(item.remainingAmountMinor || '0') > 0n &&
           new Date(item.expiresAt).getTime() > now &&
-          item.currency === session.user?.currency
+          item.currency === session?.user?.currency
         ));
 
         if (!cancelled) {
