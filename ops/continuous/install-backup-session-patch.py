@@ -25,7 +25,7 @@ LIB=pathlib.Path('/usr/local/lib/betvima-continuous')
 STATE=pathlib.Path('/var/lib/betvima-continuous')
 TARGET=LIB/'production.py'
 ORIGINAL_BLOB='f5eca460b7ecbf201e24222632cfdda82af9edb0'
-REPLACEMENT_BLOB='f799e72833ffa61e4962d49c40f8fadc0c1fe8ec'
+REPLACEMENT_BLOB='17837810f3d8848f0694aab412bdb645220c7d95'
 WEB_PREFIX='nova-cd-'
 NGINX_ROUTE=pathlib.Path('/etc/nginx/sites-enabled/betvima.com')
 PRODUCTION_STATUS=STATE/'production-status.json'
@@ -118,13 +118,21 @@ def test_safe_session(source, values):
         stop('Session Pooler validation failed (credentials and URLs hidden)')
     if env.get('PGPORT')!='5432' or env.get('PGSSLMODE')!='verify-full':
         stop('Session Pooler port or TLS policy mismatch')
-    cmd=['/usr/bin/psql','-X','--no-password','-qAt','-v','ON_ERROR_STOP=1',
-         '-c',("BEGIN READ ONLY; SELECT current_setting('statement_timeout'),"
-               " current_setting('default_transaction_read_only'); ROLLBACK;")]
-    try:r=run(cmd,env=env,timeout=35)
+    # Supavisor ignores PGOPTIONS startup GUCs (observed 2min|off|off).
+    # On session port 5432 explicit SET commands persist only for this
+    # connection; no global database or financial runtime settings change.
+    sql=("SET statement_timeout TO 0;\n"
+         "SET default_transaction_read_only TO on;\n"
+         "BEGIN READ ONLY;\n"
+         "SELECT current_setting('statement_timeout'),"
+         "current_setting('default_transaction_read_only'),"
+         "current_setting('transaction_read_only');\n"
+         "ROLLBACK;\n")
+    cmd=['/usr/bin/psql','-X','--no-password','-qAt','-v','ON_ERROR_STOP=1']
+    try:r=run(cmd,env=env,input=sql,timeout=35)
     except Exception:stop('Session Pooler connection timed out')
-    if r.returncode!=0 or r.stdout.strip()!='0|on':
-        stop('Session Pooler test failed; no system files changed')
+    if r.returncode!=0 or r.stdout.strip()!='0|on|on':
+        stop('Session Pooler policy not verified; no system files changed')
     print('SUPABASE_SESSION_POOLER_5432: CONNECTED',flush=True)
     print('SSL_VERIFY_FULL: ENABLED',flush=True)
     print('READ_ONLY_AND_NO_STATEMENT_TIMEOUT: VERIFIED',flush=True)
