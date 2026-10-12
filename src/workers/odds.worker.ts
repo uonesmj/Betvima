@@ -2623,7 +2623,10 @@ async function syncOddsUnlocked(
               previousOdds: previous,
               providerTimestamp: new Date(market.sourceUpdatedAt ?? bundle.updatedAt),
               ingestedAt: new Date(),
-              maxAgeSeconds: 300,
+              // The Odds API bookmaker timestamp is authoritative for live
+              // prices. A newly ingested *old* live quote must never be sold
+              // as a fresh in-play price just because it was polled now.
+              maxAgeSeconds: market.isLive ? 45 : 300,
             });
 
             const anomalies = anomalyObjects.map((item) => item.code);
