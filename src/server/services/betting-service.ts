@@ -194,8 +194,11 @@ export class BettingService {
         }
 
         const current = currentBySelection.get(String(leg.selectionId));
+        // The signed price is authoritative. A provider refresh that left
+        // the displayed price unchanged must not invalidate a customer's
+        // explicit approval solely due to a newer internal odds_version.
+        // Real price movement still fails closed and requires another quote.
         if (!current ||
-          current.oddsVersion !== signed.oddsVersion ||
           current.oddsScaled.toString() !== signed.oddsScaled) {
           throw new ApiError('ODDS_CHANGED',
             'The market moved after the signed quote; request an updated price',
@@ -249,7 +252,7 @@ export class BettingService {
           marketId: String(leg.marketId),
           matchId: String(leg.matchId),
           clientOddsScaled: signed.oddsScaled,
-          marketVersion: signed.oddsVersion,
+          marketVersion: currentBySelection.get(String(leg.selectionId))!.oddsVersion,
           // A signed, explicitly accepted quote is the final permitted price.
           // Any later movement must fail in the atomic DB transaction.
           acceptOddsChange: false,
