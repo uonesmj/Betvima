@@ -27,6 +27,8 @@ TARGET=LIB/'production.py'
 ORIGINAL_BLOB='f5eca460b7ecbf201e24222632cfdda82af9edb0'
 REPLACEMENT_BLOB='f799e72833ffa61e4962d49c40f8fadc0c1fe8ec'
 WEB_PREFIX='nova-cd-'
+NGINX_ROUTE=pathlib.Path('/etc/nginx/sites-enabled/betvima.com')
+PRODUCTION_STATUS=STATE/'production-status.json'
 DATABASE_KEYS=('SUPABASE_DB_URL','DATABASE_URL')
 
 def stop(reason):
@@ -47,12 +49,35 @@ def app_env():
     if r.returncode:stop('PM2 unavailable')
     try:apps=json.loads(r.stdout)
     except ValueError:stop('PM2 invalid response')
-    web=[a for a in apps if a.get('name','').startswith(WEB_PREFIX) and
-         a.get('pm2_env',{}).get('status')=='online']
-    if len(web)!=1:stop('Expected exactly one online production website')
+    # Failed deployment candidates and older web releases may remain online.
+    # Never take the first nova-cd-* process: select only the revision and
+    # localhost port actually routed by Nginx and verified in release state.
+    try:
+        route=NGINX_ROUTE.read_text()
+        ports=set(re.findall(r'proxy_pass\\s+http://127\\.0\\.0\\.1:(\\d+);',route))
+        state=json.loads(PRODUCTION_STATUS.read_text())
+        revision=state.get('revision')
+        if len(ports)!=1 or not re.fullmatch(r'[0-9a-f]{40}',revision or ''):
+            stop('Ambiguous active website route or revision')
+        if state.get('state')!='healthy':
+            stop('Active production release not healthy')
+        routed_port=next(iter(ports))
+    except (OSError,ValueError,TypeError):
+        stop('Unable to verify active website routing')
+
+    expected_name=WEB_PREFIX+revision[:12]
+    expected_cwd='/opt/nova-releases/'+revision
+    web=[a for a in apps
+         if a.get('name')==expected_name
+         and a.get('pm2_env',{}).get('status')=='online'
+         and a.get('pm2_env',{}).get('pm_cwd')==expected_cwd
+         and str(a.get('pm2_env',{}).get('PORT'))==routed_port]
+    if len(web)!=1:
+        stop('Active routed production website identity mismatch')
     for name in ('betvima-settlement-worker','betvima-odds-worker'):
         if not any(a.get('name')==name and a.get('pm2_env',{}).get('status')=='online' for a in apps):
             stop('Protected worker is not online: '+name)
+    print('ROUTED_SITE_RELEASE_VERIFIED:',revision[:12],flush=True)
     return web[0]['pm2_env']
 
 def load_installed_connection():
