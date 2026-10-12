@@ -87,5 +87,9 @@ jobs:
           assert 'extendedLimit: Math.max(1, Math.min(configuredExtendedLimit, 8))' in cadence
           assert 'maxPerCoreTick: 40' in budget
           assert 'sourceOddsMaxAgeSeconds(market.isLive)' in worker
+          assert 'ODDS_NORMAL_SYNC_SKIPPED_EXTENDED' not in worker
+          assert 'const normalSyncPending = pending.filter((row) => Boolean(row.provider_id))' in worker
+          assert 'includeExtendedPrematchNear,' in worker
+          assert 'includeExtendedPrematchFar,' in worker
           assert 'acceptOddsChange: false' in service
           PY
