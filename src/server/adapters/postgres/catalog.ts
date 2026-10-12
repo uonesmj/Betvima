@@ -274,7 +274,8 @@ export class PostgresCatalogRepository implements CatalogRepository {
          join nova.matches fixture on fixture.id = mk.match_id
         where sel.market_id = any($1::uuid[])
           and sel.odds_updated_at is not null
-          and (fixture.provider = 'manual' and fixture.status::text = 'scheduled' and fixture.scheduled_at > now() or sel.odds_updated_at >= now() - case
+          and (fixture.provider <> 'manual' or (fixture.status::text = 'scheduled' and fixture.scheduled_at > now()))
+          and (fixture.provider = 'manual' or sel.odds_updated_at >= now() - case
             when coalesce(mk.is_live, false) or fixture.status::text = any($2::text[])
               then interval '45 seconds'
             else interval '300 seconds'
@@ -486,7 +487,8 @@ export class PostgresCatalogRepository implements CatalogRepository {
           on sel.market_id = mk.id
          and sel.status = 'open'
          and sel.odds_updated_at is not null
-         and ((mk.fixture_provider = 'manual' and mk.fixture_status = 'scheduled' and mk.fixture_scheduled_at > now()) or sel.odds_updated_at >= now() - mk.maximum_quote_age)
+         and (mk.fixture_provider <> 'manual' or (mk.fixture_status = 'scheduled' and mk.fixture_scheduled_at > now()))
+         and (mk.fixture_provider = 'manual' or sel.odds_updated_at >= now() - mk.maximum_quote_age)
         where mk.market_rank <= 3
         order by mk.match_id, mk.market_rank, sel.participant_type, sel.code`,
       [pgArray(matchIds), pgArray(LIVE_STATUSES)],
