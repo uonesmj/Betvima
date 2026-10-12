@@ -9,6 +9,8 @@ do $$
 declare
   v_user uuid; v_match uuid; v_bet jsonb; v_balance bigint; v_count int; v_payout bigint;
   v_result jsonb; v_legs jsonb; v_blocked boolean; v_sel uuid; v_odds bigint;
+  v_live_user uuid; v_live_match uuid; v_live_bet jsonb; v_live_balance bigint;
+  v_live_enabled boolean; v_prematch_enabled boolean; v_live_bet_count int; v_live_debit_count int;
 begin
   ------------------------------------------------------------------ rounding helpers
   perform tests.assert(nova.round_div(5, 2) = 3, 'round half up away from zero (5/2=3)');
@@ -121,6 +123,65 @@ begin
     format('select tests.place_single(%L::uuid, %L::uuid, %L, 50000, %L)', v_user, v_match, 'HOME', 'test-stale-0001'),
     'STALE_ODDS', 'stale odds blocked');
   update nova.selections set odds_updated_at = now() where id = v_sel;
+
+  ------------------------------------------------------------------ live status overrides a stale prematch market flag
+  select enabled into v_live_enabled from nova.system_operations where key = 'LIVE_BETTING';
+  select enabled into v_prematch_enabled from nova.system_operations where key = 'PREMATCH_BETTING';
+  insert into nova.system_operations (key, enabled, reason) values
+    ('LIVE_BETTING', true, 'SQL test'), ('PREMATCH_BETTING', false, 'SQL test')
+  on conflict (key) do update set enabled = excluded.enabled, reason = excluded.reason;
+
+  v_live_user := tests.make_user('live-status-bet@test.local', 'user', 'active', true, 'IRT', 500000);
+  v_live_match := tests.make_match(25000);
+  update nova.matches set status = 'live' where id = v_live_match;
+  -- Market/selection is_live remains false; the match status must classify the bet as live.
+  v_live_bet := tests.place_single(v_live_user, v_live_match, 'HOME', 50000, 'test-live-status-0001');
+  perform tests.assert((v_live_bet->>'ok')::boolean, 'live match with prematch market flag uses LIVE_BETTING and places');
+  select balance_minor into v_live_balance from nova.wallets where user_id = v_live_user and currency = 'IRT';
+  perform tests.assert(v_live_balance = 450000, 'live placement debits the stake exactly once');
+  select count(*) into v_live_bet_count from nova.bets where user_id = v_live_user;
+  select count(*) into v_live_debit_count from nova.wallet_transactions where user_id = v_live_user and type = 'bet_debit';
+  perform tests.assert(v_live_bet_count = 1 and v_live_debit_count = 1, 'live placement commits one bet and one debit atomically');
+
+  v_live_user := tests.make_user('stale-live-status-bet@test.local', 'user', 'active', true, 'IRT', 500000);
+  v_live_match := tests.make_match(25000);
+  update nova.matches set status = 'live' where id = v_live_match;
+  update nova.selections set odds_updated_at = now() - interval '60 seconds' where match_id = v_live_match;
+  perform tests.assert_raises(
+    format('select tests.place_single(%L::uuid, %L::uuid, %L, 50000, %L)', v_live_user, v_live_match, 'HOME', 'test-live-status-stale-0001'),
+    'STALE_ODDS', 'live match uses the 45 second freshness limit despite prematch market flag');
+  select balance_minor into v_live_balance from nova.wallets where user_id = v_live_user and currency = 'IRT';
+  select count(*) into v_live_bet_count from nova.bets where user_id = v_live_user;
+  select count(*) into v_live_debit_count from nova.wallet_transactions where user_id = v_live_user and type = 'bet_debit';
+  perform tests.assert(v_live_balance = 500000 and v_live_bet_count = 0 and v_live_debit_count = 0,
+    'rejected stale live placement leaves wallet, bet rows, and ledger unchanged');
+
+  update nova.system_operations set enabled = false, reason = 'SQL test', updated_at = now() where key = 'LIVE_BETTING';
+  update nova.system_operations set enabled = true, reason = 'SQL test', updated_at = now() where key = 'PREMATCH_BETTING';
+  v_live_user := tests.make_user('prematch-status-bet@test.local', 'user', 'active', true, 'IRT', 500000);
+  v_live_match := tests.make_match(25000);
+  v_live_bet := tests.place_single(v_live_user, v_live_match, 'HOME', 50000, 'test-prematch-status-0001');
+  perform tests.assert((v_live_bet->>'ok')::boolean, 'scheduled match with prematch market flag uses PREMATCH_BETTING and places');
+  select balance_minor into v_live_balance from nova.wallets where user_id = v_live_user and currency = 'IRT';
+  select count(*) into v_live_bet_count from nova.bets where user_id = v_live_user;
+  select count(*) into v_live_debit_count from nova.wallet_transactions where user_id = v_live_user and type = 'bet_debit';
+  perform tests.assert(v_live_balance = 450000 and v_live_bet_count = 1 and v_live_debit_count = 1,
+    'prematch placement commits one bet and one debit atomically');
+
+  v_live_user := tests.make_user('stale-prematch-status-bet@test.local', 'user', 'active', true, 'IRT', 500000);
+  v_live_match := tests.make_match(25000);
+  update nova.selections set odds_updated_at = now() - interval '301 seconds' where match_id = v_live_match;
+  perform tests.assert_raises(
+    format('select tests.place_single(%L::uuid, %L::uuid, %L, 50000, %L)', v_live_user, v_live_match, 'HOME', 'test-prematch-status-stale-0001'),
+    'STALE_ODDS', 'prematch placement rejects odds older than 300 seconds');
+  select balance_minor into v_live_balance from nova.wallets where user_id = v_live_user and currency = 'IRT';
+  select count(*) into v_live_bet_count from nova.bets where user_id = v_live_user;
+  select count(*) into v_live_debit_count from nova.wallet_transactions where user_id = v_live_user and type = 'bet_debit';
+  perform tests.assert(v_live_balance = 500000 and v_live_bet_count = 0 and v_live_debit_count = 0,
+    'rejected stale prematch placement leaves wallet, bet rows, and ledger unchanged');
+
+  update nova.system_operations set enabled = coalesce(v_live_enabled, false), updated_at = now() where key = 'LIVE_BETTING';
+  update nova.system_operations set enabled = coalesce(v_prematch_enabled, true), updated_at = now() where key = 'PREMATCH_BETTING';
 
   ------------------------------------------------------------------ stake limits
   perform tests.assert_raises(

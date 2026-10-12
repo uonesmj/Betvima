@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { MatchCard, type MatchView } from './match-card';
 import { LeagueLogo } from '@/components/ui/logo';
+import { isLiveMatchStatus } from '@/lib/match-state';
 
 function sportLabel(sportKey: string) {
   const labels: Record<string, string> = {
@@ -120,7 +121,7 @@ export function MatchListClient({
       if (
         !match ||
         match.isLive ||
-        String(match.status).toLowerCase() === "live"
+        isLiveMatchStatus(String(match.status).toLowerCase())
       ) {
         return;
       }
@@ -189,7 +190,7 @@ export function MatchListClient({
           homeScore: data.homeScore ?? match.homeScore,
           awayScore: data.awayScore ?? match.awayScore,
           isLive:
-            String(data.status ?? match.status).toLowerCase() === "live" ||
+            isLiveMatchStatus(String(data.status ?? match.status).toLowerCase()) ||
             match.isLive,
           topMarkets: nextMarkets,
         };
@@ -227,7 +228,7 @@ export function MatchListClient({
     const targets = liveMatchesRef.current.filter(
       (match) =>
         !match.isLive &&
-        String(match.status).toLowerCase() !== "live",
+        !isLiveMatchStatus(String(match.status).toLowerCase()),
     );
 
     for (const match of targets) {
@@ -272,7 +273,7 @@ export function MatchListClient({
 
       if (
         !match ||
-        (!match.isLive && String(match.status).toLowerCase() !== 'live')
+        (!match.isLive && !isLiveMatchStatus(String(match.status).toLowerCase()))
       ) {
         return;
       }
@@ -353,7 +354,7 @@ export function MatchListClient({
           homeScore: data.homeScore ?? match.homeScore,
           awayScore: data.awayScore ?? match.awayScore,
           isLive:
-            String(data.status ?? match.status).toLowerCase() === 'live' ||
+            isLiveMatchStatus(String(data.status ?? match.status).toLowerCase()) ||
             match.isLive,
           ...(nextMarkets
             ? { topMarkets: nextMarkets }
@@ -394,7 +395,7 @@ export function MatchListClient({
     const liveTargets = liveMatchesRef.current.filter(
       (match) =>
         match.isLive ||
-        String(match.status).toLowerCase() === 'live',
+        isLiveMatchStatus(String(match.status).toLowerCase()),
     );
 
     for (const match of liveTargets) {

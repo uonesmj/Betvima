@@ -17,6 +17,7 @@ import {
 } from '@/domain/odds';
 import { marketRuleFor, marketDisplayOrder } from '@/domain/market-rules';
 import { attachCachedLogo } from "@/server/services/logo-resolver";
+import { LIVE_MATCH_STATUSES } from '@/lib/match-state';
 import type { LiveFixture, LiveEvent, LiveStatistics } from '@/lib/ports/live-data-provider';
 import {
   MATCH_SOURCE_FALLBACK,
@@ -1123,7 +1124,7 @@ async function runDedicatedLiveTick(ctx: WorkerContext): Promise<void> {
              from nova.matches m
             where m.provider = $1
               and m.provider_id is not null
-              and m.status::text in ('live','in_play','halftime','break')
+              and m.status::text = any($2::text[])
             order by
               (select max(sl.odds_updated_at)
                  from nova.markets mk
@@ -1131,7 +1132,7 @@ async function runDedicatedLiveTick(ctx: WorkerContext): Promise<void> {
                 where mk.match_id = m.id) asc nulls first,
               m.scheduled_at asc
             limit 200`,
-          [sourceProvider.name],
+          [sourceProvider.name, pgArray(LIVE_MATCH_STATUSES)],
         );
 
         const providerIds = pending
@@ -1478,7 +1479,7 @@ async function reconcileLiveResults(ctx: WorkerContext): Promise<{ checked: numb
         where provider = $1
           and provider_id is not null
           and (
-            status::text in ('live','in_play','halftime','break')
+            status::text = any($2::text[])
             or (
               status::text = 'scheduled'
               and scheduled_at <= now() + interval '3 hours'
@@ -1486,10 +1487,10 @@ async function reconcileLiveResults(ctx: WorkerContext): Promise<{ checked: numb
             )
           )
         order by
-          case when status::text in ('live','in_play','halftime','break') then 0 else 1 end,
+          case when status::text = any($2::text[]) then 0 else 1 end,
           scheduled_at desc
         limit 200`,
-      [sourceProvider.name],
+      [sourceProvider.name, pgArray(LIVE_MATCH_STATUSES)],
     );
     checked += rows.length;
     if (rows.length === 0) continue;
@@ -2752,7 +2753,7 @@ async function syncOddsUnlocked(
           or
           (is_live = false and (
             odds_updated_at is null
-            or odds_updated_at < now() - interval '120 seconds'
+            or odds_updated_at < now() - interval '300 seconds'
           ))
         )`,
     [matchId],

@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { BettingService, type QuoteInput } from '@/server/services/betting-service';
 import type { Services } from '@/server/services/container';
 import type { SelectionSnapshot } from '@/lib/ports/repositories';
+import { verifyQuote } from '@/server/utils/hash';
 
 vi.mock('@/server/utils/hash', () => ({ signQuote: () => 'isolated-mock-quote', verifyQuote: vi.fn() }));
 
@@ -40,6 +41,34 @@ describe('isolated Live and Prematch quote availability', () => {
     expect(quote.combinedOddsScaled).toBe(20_000n);
     expect(quote.potentialPayoutMinor).toBe(20_000n);
     expect(placeBet).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ['Live', true], ['Prematch', false],
+  ] as const)('passes a fresh %s quote through to bet placement', async (_label, isLive) => {
+    const { service, input, placeBet } = fixture({ isLive, matchStatus: isLive ? 'live' : 'scheduled' });
+    const quote = await service.quote(input);
+    vi.mocked(verifyQuote).mockReturnValue({
+      userId: input.userId,
+      type: input.slip.type,
+      stakeMinor: input.slip.stakeMinor.toString(),
+      currency: input.currency,
+      legs: [{ selectionId: 'selection-test', oddsVersion: 7, oddsScaled: '20000' }],
+    });
+
+    await service.place({ ...input, idempotencyKey: 'local-test-key', quoteToken: quote.quoteToken });
+
+    expect(placeBet).toHaveBeenCalledWith(expect.objectContaining({
+      userId: input.userId,
+      idempotencyKey: 'local-test-key',
+      payload: expect.objectContaining({
+        legs: [expect.objectContaining({
+          selectionId: 'selection-test',
+          clientOddsScaled: '20000',
+          marketVersion: 7,
+        })],
+      }),
+    }));
   });
 
   it.each([
