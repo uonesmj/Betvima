@@ -54,7 +54,7 @@ def app_env():
     # localhost port actually routed by Nginx and verified in release state.
     try:
         route=NGINX_ROUTE.read_text()
-        ports=set(re.findall(r'proxy_pass\\s+http://127\\.0\\.0\\.1:(\\d+);',route))
+        ports=set(re.findall(r'proxy_pass\s+http://127\.0\.0\.1:(\d+);',route))
         state=json.loads(PRODUCTION_STATUS.read_text())
         revision=state.get('revision')
         if len(ports)!=1 or not re.fullmatch(r'[0-9a-f]{40}',revision or ''):
