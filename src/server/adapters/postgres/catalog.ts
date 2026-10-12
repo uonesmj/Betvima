@@ -279,6 +279,12 @@ export class PostgresCatalogRepository implements CatalogRepository {
               then interval '45 seconds'
             else interval '300 seconds'
           end
+          -- A newly re-ingested cached bookmaker quote is not a fresh live price.
+          and (
+            sel.provider is distinct from 'the_odds_api'
+            or not (coalesce(mk.is_live, false) or fixture.status::text = any($2::text[]))
+            or (sel.provider_timestamp between now() - interval '45 seconds' and now() + interval '15 seconds')
+          )
         order by sel.participant_type, sel.code`,
       [pgArray(rows.map((r) => toStr(r.id))), pgArray(LIVE_STATUSES)],
     );
@@ -470,9 +476,27 @@ export class PostgresCatalogRepository implements CatalogRepository {
                 then interval '45 seconds'
               else interval '300 seconds'
             end as maximum_quote_age,
+            (coalesce(m.is_live, false) or fixture.status::text = any($2::text[])) as in_play_quote,
             row_number() over (
               partition by m.match_id
-              order by m.is_live desc, m.display_order, m.key
+              order by
+                -- Rank genuinely bookable markets first, not stale empty 1X2 blocks.
+                case when exists (
+                  select 1 from nova.selections candidate
+                   where candidate.market_id = m.id
+                     and candidate.status = 'open'
+                     and candidate.odds_updated_at >= now() - case
+                       when coalesce(m.is_live, false) or fixture.status::text = any($2::text[])
+                         then interval '45 seconds'
+                       else interval '300 seconds'
+                     end
+                     and (
+                       candidate.provider is distinct from 'the_odds_api'
+                       or not (coalesce(m.is_live, false) or fixture.status::text = any($2::text[]))
+                       or candidate.provider_timestamp between now() - interval '45 seconds' and now() + interval '15 seconds'
+                     )
+                ) then 0 else 1 end,
+                m.is_live desc, m.display_order, m.key
             ) as market_rank
           from nova.markets m
           join nova.matches fixture on fixture.id = m.match_id
@@ -484,6 +508,11 @@ export class PostgresCatalogRepository implements CatalogRepository {
          and sel.status = 'open'
          and sel.odds_updated_at is not null
          and sel.odds_updated_at >= now() - mk.maximum_quote_age
+         and (
+           sel.provider is distinct from 'the_odds_api'
+           or not mk.in_play_quote
+           or sel.provider_timestamp between now() - interval '45 seconds' and now() + interval '15 seconds'
+         )
         where mk.market_rank <= 3
         order by mk.match_id, mk.market_rank, sel.participant_type, sel.code`,
       [pgArray(matchIds), pgArray(LIVE_STATUSES)],

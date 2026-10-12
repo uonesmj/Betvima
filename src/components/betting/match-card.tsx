@@ -6,6 +6,7 @@ import { useApp } from '@/components/layout/providers';
 import { formatOddsScaled, formatRelative } from '@/lib/i18n';
 import { useBetSlip, type SlipItem } from '@/lib/store/betslip';
 import { TeamLogo } from '@/components/ui/logo';
+import { primaryBettingMarket } from '@/lib/primary-betting-market';
 
 export interface SelectionView {
   id: string;
@@ -61,17 +62,7 @@ export function MatchCard({
   onSelectionAdded?: () => void;
 }) {
   const { t } = useApp();
-  const market = match.isLive
-    ? match.topMarkets?.find((item) => item.key === 'h2h')
-      ?? match.topMarkets?.find((item) => item.key !== 'h2h_lay' && !item.key.startsWith('alternate_'))
-      ?? match.topMarkets?.find((item) => item.key !== 'h2h_lay')
-      ?? match.topMarkets?.[0]
-    : match.topMarkets?.find((item) => item.key === 'h2h')
-      ?? match.topMarkets?.find((item) => item.key === 'totals')
-      ?? match.topMarkets?.find((item) => item.key === 'spreads')
-      ?? match.topMarkets?.find((item) => item.key === 'btts')
-      ?? match.topMarkets?.find((item) => item.key !== 'h2h_lay')
-      ?? match.topMarkets?.[0];
+  const market = primaryBettingMarket(match.topMarkets, match.isLive);
   const home = match.participants.find((p) => p.role === 'HOME');
   const away = match.participants.find((p) => p.role === 'AWAY');
 
