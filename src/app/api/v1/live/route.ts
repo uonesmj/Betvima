@@ -22,8 +22,7 @@ export const GET = withErrorHandling('matches.live', async (ctx, request: Reques
     liveBettingEnabled,
     providerConfigured: services.providers.sports.configured,
     catalogueUnavailable,
-    // Harmless public version marker; guarded odds-worker rollout requires
-    // the web catalogue to enforce authentic live bookmaker timestamps first.
-    oddsCatalogueIntegrityVersion: 'fivedollar-authenticated-45s-v1',
+    // Read-only public rollout guard: exactly one active sports source.
+    sportsSourceRevision: 'the-odds-api-only-v1',
   });
 });
