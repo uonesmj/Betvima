@@ -128,8 +128,12 @@ export function resolveSportsOddsProvider(
   sportsProviders: SportsDataProvider[] | undefined,
   primaryProvider: SportsDataProvider,
 ): SportsDataProvider | null {
-  return sportsProviders?.find((provider) => provider.name === matchProvider) ??
-    (primaryProvider.name === matchProvider ? primaryProvider : null);
+  // FiveDollar provides fixture identity, kickoff, results, events and stats
+  // only. A 5Dollar-owned match is not quotable unless separately linked to
+  // a genuine The Odds API event. Never pass a FiveDollar ID into odds sync.
+  if (matchProvider !== MATCH_SOURCE_ODDS) return null;
+  return sportsProviders?.find((provider) => provider.name === MATCH_SOURCE_ODDS) ??
+    (primaryProvider.name === MATCH_SOURCE_ODDS ? primaryProvider : null);
 }
 
 export function fiveDollarProviderEventId(fixtureProviderId: string, eventIdentity: string): string {
@@ -141,6 +145,15 @@ export async function fetchOddsForOwningProvider(
   providerId: string,
   prefetched?: ProviderResult<ProviderOddsBundle[]>,
 ): Promise<ProviderResult<ProviderOddsBundle[]>> {
+  if (provider.name !== MATCH_SOURCE_ODDS) {
+    return {
+      ok: false,
+      value: null,
+      errorCode: "ODDS_PROVIDER_NOT_AUTHORIZED",
+      errorMessage: "BetVima betting odds are exclusively sourced from The Odds API",
+      retryable: false,
+    };
+  }
   return prefetched ?? provider.fetchOdds([providerId]);
 }
 

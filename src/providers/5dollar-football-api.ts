@@ -2,8 +2,6 @@ import type { ISODateString } from "@/lib/types";
 import type {
   ProviderMatch,
   ProviderOddsBundle,
-  ProviderOddsMarket,
-  ProviderOddsSelection,
   ProviderResult,
   ProviderResultSnapshot,
   ProviderStatus,
@@ -30,6 +28,8 @@ function iso(value: unknown): ISODateString {
 }
 
 function numberOrNull(value: unknown): number | null {
+  // Missing score or match statistics must never be manufactured as zero.
+  if (value === null || value === undefined || value === "") return null;
   const n = Number(value);
   return Number.isFinite(n) ? n : null;
 }
@@ -185,161 +185,8 @@ function mapFixture(fixture: any, sport: "football" | "esports" = "football"): P
   };
 }
 
-function decimalOdds(value: unknown): string | null {
-  const n = Number(value);
-  if (!Number.isFinite(n) || n <= 1) return null;
-  return n.toFixed(4);
-}
-
-function selection(
-  providerId: string,
-  code: string,
-  name: string,
-  value: unknown,
-  line: unknown = null,
-): ProviderOddsSelection | null {
-  const odds = decimalOdds(value);
-  if (!odds) return null;
-  return {
-    providerId,
-    code,
-    name,
-    line: line == null ? null : String(line),
-    odds,
-    status: "open",
-  };
-}
-
-function addMarket(
-  markets: ProviderOddsMarket[],
-  matchId: string,
-  key: string,
-  type: string,
-  specifier: string | null,
-  live: boolean,
-  selections: Array<ProviderOddsSelection | null>,
-  sourceUpdatedAt: string,
-) {
-  const valid = selections.filter(Boolean) as ProviderOddsSelection[];
-  if (!valid.length) return;
-
-  markets.push({
-    providerId: `bet365:${key}:${specifier ?? "main"}`,
-    key,
-    type,
-    specifier,
-    isLive: live,
-    status: "open",
-    sourceUpdatedAt,
-    selections: valid,
-  });
-}
-
-function latestStage(odds: any): { data: any; live: boolean; updatedAt: string } | null {
-  if (odds?.inplay) return { data: odds.inplay, live: true, updatedAt: new Date().toISOString() };
-  if (odds?.closing) return { data: odds.closing, live: false, updatedAt: new Date().toISOString() };
-  if (odds?.opening) return { data: odds.opening, live: false, updatedAt: new Date().toISOString() };
-  return null;
-}
-
-function mapOdds(matchId: string, payload: any): ProviderOddsBundle {
-  const bookmaker = payload?.data?.bookmakers?.find((b: any) => b.slug === "bet365")
-    ?? payload?.data?.bookmakers?.[0];
-
-  const odds = bookmaker?.odds || {};
-  const markets: ProviderOddsMarket[] = [];
-  const updatedAt = new Date().toISOString();
-
-  const oneX2 = latestStage(odds["1x2"]);
-  if (oneX2) {
-    addMarket(markets, matchId, "1x2", "1x2", null, oneX2.live, [
-      selection(`bet365:1x2:HOME`, "HOME", "Home", oneX2.data.home),
-      selection(`bet365:1x2:DRAW`, "DRAW", "Draw", oneX2.data.draw),
-      selection(`bet365:1x2:AWAY`, "AWAY", "Away", oneX2.data.away),
-    ], oneX2.updatedAt);
-  }
-
-  const asian = latestStage(odds["asian_handicap"]);
-  if (asian) {
-    addMarket(markets, matchId, "asian_handicap", "asian_handicap",
-      asian.data?.line == null ? null : String(asian.data.line), asian.live, [
-        selection(`bet365:asian:${asian.data?.line}:HOME`, "HOME", "Home", asian.data?.home, asian.data?.line),
-        selection(`bet365:asian:${asian.data?.line}:AWAY`, "AWAY", "Away", asian.data?.away, asian.data?.line),
-      ], asian.updatedAt);
-  }
-
-  const goal = latestStage(odds["goal_line"]);
-  if (goal) {
-    addMarket(markets, matchId, "goal_line", "totals",
-      goal.data?.line == null ? null : String(goal.data.line), goal.live, [
-        selection(`bet365:goal:${goal.data?.line}:OVER`, "OVER", "Over", goal.data?.over, goal.data?.line),
-        selection(`bet365:goal:${goal.data?.line}:UNDER`, "UNDER", "Under", goal.data?.under, goal.data?.line),
-      ], goal.updatedAt);
-  }
-
-  const corner = latestStage(odds["corner_line"]);
-  if (corner) {
-    addMarket(markets, matchId, "corner_line", "corner_totals",
-      corner.data?.line == null ? null : String(corner.data.line), corner.live, [
-        selection(`bet365:corner:${corner.data?.line}:OVER`, "OVER", "Over", corner.data?.over, corner.data?.line),
-        selection(`bet365:corner:${corner.data?.line}:UNDER`, "UNDER", "Under", corner.data?.under, corner.data?.line),
-      ], corner.updatedAt);
-  }
-
-  const btts = latestStage(odds["btts"]);
-  if (btts) {
-    addMarket(markets, matchId, "btts", "btts", null, btts.live, [
-      selection(`bet365:btts:YES`, "YES", "Yes", btts.data?.yes),
-      selection(`bet365:btts:NO`, "NO", "No", btts.data?.no),
-    ], btts.updatedAt);
-  }
-
-  const asianHalf = latestStage(odds["asian_handicap_half"]);
-  if (asianHalf) {
-    addMarket(markets, matchId, "asian_handicap_half", "asian_handicap_half",
-      asianHalf.data?.line == null ? null : String(asianHalf.data.line), asianHalf.live, [
-        selection(`bet365:asian_half:${asianHalf.data?.line}:HOME`, "HOME", "Home", asianHalf.data?.home, asianHalf.data?.line),
-        selection(`bet365:asian_half:${asianHalf.data?.line}:AWAY`, "AWAY", "Away", asianHalf.data?.away, asianHalf.data?.line),
-      ], asianHalf.updatedAt);
-  }
-
-  const goalHalf = latestStage(odds["goal_line_half"]);
-  if (goalHalf) {
-    addMarket(markets, matchId, "goal_line_half", "totals_half",
-      goalHalf.data?.line == null ? null : String(goalHalf.data.line), goalHalf.live, [
-        selection(`bet365:goal_half:${goalHalf.data?.line}:OVER`, "OVER", "Over", goalHalf.data?.over, goalHalf.data?.line),
-        selection(`bet365:goal_half:${goalHalf.data?.line}:UNDER`, "UNDER", "Under", goalHalf.data?.under, goalHalf.data?.line),
-      ], goalHalf.updatedAt);
-  }
-
-  const cornerHalf = latestStage(odds["corner_line_half"]);
-  if (cornerHalf) {
-    addMarket(markets, matchId, "corner_line_half", "corner_totals_half",
-      cornerHalf.data?.line == null ? null : String(cornerHalf.data.line), cornerHalf.live, [
-        selection(`bet365:corner_half:${cornerHalf.data?.line}:OVER`, "OVER", "Over", cornerHalf.data?.over, cornerHalf.data?.line),
-        selection(`bet365:corner_half:${cornerHalf.data?.line}:UNDER`, "UNDER", "Under", cornerHalf.data?.under, cornerHalf.data?.line),
-      ], cornerHalf.updatedAt);
-  }
-
-  const fixed = odds["goal_line_fixed"];
-  if (Array.isArray(fixed)) {
-    for (const item of fixed) {
-      const stage = latestStage(item);
-      if (!stage || item?.line == null) continue;
-      addMarket(markets, matchId, "goal_line_fixed", "totals",
-        String(item.line), stage.live, [
-          selection(`bet365:goal_fixed:${item.line}:OVER`, "OVER", "Over", stage.data?.over, item.line),
-          selection(`bet365:goal_fixed:${item.line}:UNDER`, "UNDER", "Under", stage.data?.under, item.line),
-        ], stage.updatedAt);
-    }
-  }
-
-  return {
-    matchProviderId: matchId,
-    markets,
-    updatedAt: updatedAt as ISODateString,
-  };
-}
+// No betting-market or bookmaker-price parser is defined in this adapter.
+// FiveDollar is exclusively a fixture, event, result and match-statistics feed.
 
 export class FiveDollarFootballApiSportsProvider implements SportsDataProvider {
   readonly name = "5dollarfootballapi";
@@ -397,8 +244,7 @@ export class FiveDollarFootballApiSportsProvider implements SportsDataProvider {
     if (
       window.sport &&
       window.sport !== "football" &&
-      window.sport !== "soccer" &&
-      window.sport !== "esports"
+      window.sport !== "soccer"
     ) {
       return ok([]);
     }
@@ -413,10 +259,7 @@ export class FiveDollarFootballApiSportsProvider implements SportsDataProvider {
       const result: ProviderMatch[] = [];
       const seen = new Set<string>();
 
-      const fetchFeed = async (
-        esports: boolean,
-        sport: "football" | "esports",
-      ) => {
+      const fetchFootballFixtures = async () => {
         let cursor = from;
 
         while (cursor < to) {
@@ -430,12 +273,11 @@ export class FiveDollarFootballApiSportsProvider implements SportsDataProvider {
               end_time: Math.floor(end / 1000),
               page,
               per_page: 100,
-              ...(esports ? { esports: "true" } : {}),
             });
 
             for (const fixture of payload?.data || []) {
-              const mapped = mapFixture(fixture, sport);
-              const key = `${sport}:${mapped.providerId}`;
+              const mapped = mapFixture(fixture, "football");
+              const key = `football:${mapped.providerId}`;
               if (!seen.has(key)) {
                 seen.add(key);
                 result.push(mapped);
@@ -453,13 +295,8 @@ export class FiveDollarFootballApiSportsProvider implements SportsDataProvider {
         }
       };
 
-      if (!window.sport || window.sport === "football" || window.sport === "soccer") {
-        await fetchFeed(false, "football");
-      }
-
-      if (!window.sport || window.sport === "esports") {
-        await fetchFeed(true, "esports");
-      }
+      // Past/current/future football fixtures; no esports or bookmaker feed.
+      await fetchFootballFixtures();
 
       return ok(result);
     } catch (error) {
@@ -471,8 +308,7 @@ export class FiveDollarFootballApiSportsProvider implements SportsDataProvider {
     if (
       sport &&
       sport !== "football" &&
-      sport !== "soccer" &&
-      sport !== "esports"
+      sport !== "soccer"
     ) {
       return ok([]);
     }
@@ -481,23 +317,19 @@ export class FiveDollarFootballApiSportsProvider implements SportsDataProvider {
       const result: ProviderMatch[] = [];
       const seen = new Set<string>();
 
-      const fetchLiveFeed = async (
-        esports: boolean,
-        mappedSport: "football" | "esports",
-      ) => {
+      const fetchLiveFootball = async () => {
         const payload = await request<any>("/fixtures", {
           status: "live",
           per_page: 500,
           include: "events,stats",
-          ...(esports ? { esports: "true" } : {}),
         });
 
         for (const fixture of payload?.data || []) {
           const mapped = {
-            ...mapFixture(fixture, mappedSport),
+            ...mapFixture(fixture, "football"),
             status: "live" as const,
           };
-          const key = `${mappedSport}:${mapped.providerId}`;
+          const key = `football:${mapped.providerId}`;
           if (!seen.has(key)) {
             seen.add(key);
             result.push(mapped);
@@ -505,13 +337,7 @@ export class FiveDollarFootballApiSportsProvider implements SportsDataProvider {
         }
       };
 
-      if (!sport || sport === "football" || sport === "soccer") {
-        await fetchLiveFeed(false, "football");
-      }
-
-      if (!sport || sport === "esports") {
-        await fetchLiveFeed(true, "esports");
-      }
+      await fetchLiveFootball();
 
       return ok(result);
     } catch (error) {
@@ -519,46 +345,20 @@ export class FiveDollarFootballApiSportsProvider implements SportsDataProvider {
     }
   }
 
-  private async oddsFor(matchProviderId: string): Promise<ProviderOddsBundle | null> {
-    const payload = await request<any>(`/fixtures/${encodeURIComponent(matchProviderId)}/odds`);
-    return mapOdds(matchProviderId, payload);
+  async fetchOdds(_matchProviderIds: string[]): Promise<ProviderResult<ProviderOddsBundle[]>> {
+    return {
+      ok: false, value: null, errorCode: "ODDS_NOT_SUPPORTED",
+      errorMessage: "FiveDollar supplies fixtures and statistics only; betting odds must come from The Odds API",
+      retryable: false,
+    };
   }
 
-  async fetchOdds(matchProviderIds: string[]): Promise<ProviderResult<ProviderOddsBundle[]>> {
-    try {
-      const ids = [...new Set(matchProviderIds)].slice(0, 20);
-      const bundles: ProviderOddsBundle[] = [];
-      const CONCURRENCY = 4;
-
-      for (let i = 0; i < ids.length; i += CONCURRENCY) {
-        const batch = ids.slice(i, i + CONCURRENCY);
-        const results = await Promise.all(
-          batch.map(async (id) => {
-            try {
-              return await this.oddsFor(id);
-            } catch (error) {
-              console.warn("5DOLLAR_ODDS_SKIP", JSON.stringify({
-                matchProviderId: id,
-                error: error instanceof Error ? error.message : String(error),
-              }));
-              return null;
-            }
-          }),
-        );
-
-        for (const bundle of results) {
-          if (bundle && bundle.markets.length) bundles.push(bundle);
-        }
-      }
-
-      return ok(bundles);
-    } catch (error) {
-      return fail(error instanceof Error ? error.message : String(error));
-    }
-  }
-
-  async fetchEventOdds(matchProviderIds: string[]): Promise<ProviderResult<ProviderOddsBundle[]>> {
-    return this.fetchOdds(matchProviderIds);
+  async fetchEventOdds(_matchProviderIds: string[]): Promise<ProviderResult<ProviderOddsBundle[]>> {
+    return {
+      ok: false, value: null, errorCode: "ODDS_NOT_SUPPORTED",
+      errorMessage: "FiveDollar does not supply betting markets or prices",
+      retryable: false,
+    };
   }
 
   async fetchFixture(matchProviderId: string): Promise<ProviderResult<ProviderMatch>> {
@@ -568,11 +368,12 @@ export class FiveDollarFootballApiSportsProvider implements SportsDataProvider {
 
       const payload = await request<any>(
         `/fixtures/${encodeURIComponent(fixtureId)}`,
+        { include: "events,stats" },
       );
       const fixture = payload?.data;
       if (!fixture) return fail("Fixture not found", "FIXTURE_NOT_FOUND");
 
-      return ok(mapFixture(fixture, fixture?.esports ? "esports" : "football"));
+      return ok(mapFixture(fixture, "football"));
     } catch (error) {
       return fail(
         error instanceof Error ? error.message : String(error),
@@ -599,8 +400,8 @@ export class FiveDollarFootballApiSportsProvider implements SportsDataProvider {
 
       const fixtures = Array.isArray(payload?.data) ? payload.data : [];
       return ok(
-        fixtures.map((fixture: any) =>
-          mapFixture(fixture, fixture?.esports ? "esports" : "football"),
+        fixtures.filter((fixture: any) => !fixture?.esports).map((fixture: any) =>
+          mapFixture(fixture, "football"),
         ),
       );
     } catch (error) {
