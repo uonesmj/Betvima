@@ -45,5 +45,24 @@ class CustomizedLiveOddsSafetyTests(unittest.TestCase):
             with self.subTest(expected=expected):
                 self.assertIn(expected,source)
 
+
+    def test_complete_typecheck_dependencies_are_included(self):
+        patched = pathlib.Path(__file__).parents[1] / 'hotfixes' / 'rollout_fivedollar_live_active_0dcade_deps_20261013.py'
+        source = patched.read_text(encoding='utf8')
+        ast.parse(source)
+        for expected in (
+            "src/workers/prematch-refresh-cadence.ts",
+            "src/workers/prematch-selection-fairness.ts",
+            "ec4bc6ed176000b9630d4955529aebe2df373b30",
+            "12af303a0bac2046add4b81ea84cbbe9a3a12537",
+            "SCHEDULING_DEPENDENCIES_VERIFIED",
+            "WEB_CATALOGUE_INTEGRITY_VERIFIED",
+            "SOURCE_ROLLBACK_COMPLETED",
+            "TYPESCRIPT_VALIDATION_FAILED",
+            "LIVE_WORKER_ENTRYPOINT_UNEXPECTED",
+        ):
+            with self.subTest(expected=expected):
+                self.assertIn(expected, source)
+
 if __name__ == '__main__':
     unittest.main()
