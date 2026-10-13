@@ -28,6 +28,8 @@ function iso(value: unknown): ISODateString {
 }
 
 function numberOrNull(value: unknown): number | null {
+  // Missing score or match statistics must never be manufactured as zero.
+  if (value === null || value === undefined || value === "") return null;
   const n = Number(value);
   return Number.isFinite(n) ? n : null;
 }
