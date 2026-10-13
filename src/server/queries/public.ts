@@ -4,7 +4,6 @@
  * one place where serialization (bigint -> string) happens.
  */
 import { createServices } from '@/server/services/container';
-import { isFreshFiveDollarClock } from '@/lib/live-match-minute';
 import { serviceRoleContext } from '@/server/context';
 import { logger } from '@/server/logger';
 import { isLiveBettingEnabled, readLiveBettingEnabled } from '@/server/live-betting';
@@ -291,25 +290,8 @@ export async function getMatchPageData(id: string) {
       : Promise.resolve(null),
     loadMatchHistory(services, match),
   ]);
-  const liveSnapshot =
-    match.isLive && liveStats?.payload && typeof liveStats.payload === 'object' &&
-    isFreshFiveDollarClock(liveStats.provider, liveStats.updatedAt)
-      ? liveStats.payload as {
-          minute?: number | null;
-          period?: string | null;
-        }
-      : null;
-
-  const displayMatch = liveSnapshot
-    ? {
-        ...match,
-        minute: liveSnapshot.minute ?? match.minute,
-        period: liveSnapshot.period ?? match.period,
-      }
-    : match;
-
   return {
-    match: serializeMatch(displayMatch),
+    match: serializeMatch(match),
     markets: markets.map(serializeMarket),
     result,
     liveEvents,
