@@ -30,6 +30,7 @@ beforeEach(() => {
   vi.stubEnv('NODE_ENV', 'test');
   vi.stubEnv('APP_ENV', 'test');
   vi.stubEnv('UWALLET_TOKEN', 'test-token-not-real');
+  vi.stubEnv('SUPABASE_SERVICE_ROLE_KEY', 'example-fixture-for-hmac-only-do-not-deploy');
   vi.stubEnv('UWALLET_UVOUCHER_COIN', 'UUSD');
   vi.stubEnv('UWALLET_HOTVOUCHER_COIN', 'HV');
   activateVoucherMock.mockReset();
@@ -144,6 +145,28 @@ describe('voucher money safety and email availability', () => {
     expect(createVoucherMock).not.toHaveBeenCalled();
   });
 
+  it('refuses a forged signed rate without calling voucher API or reserving funds', async () => {
+    const createIntent=vi.fn();
+    const svc=await paymentService({
+      providers:{email:{configured:true}},
+      db:{queryOne:vi.fn().mockResolvedValue({ready:true})},
+      users:{getProfile:vi.fn().mockResolvedValue({preferredCurrency:'IRT'})},
+      payments:{createIntent},
+    });
+    await expect(svc.createWithdrawal({
+      userId:intent.userId,amountMinor:949n,currency:'USD',methodId:'voucher_uvoucher',
+      destination:'test@example.com',idempotencyKey:'forged-quote',ip:null,
+      voucherQuote:{
+        rateIrrPerUsd:'2527062.20000000',
+        quotedAt:new Date().toISOString(),
+        requestedWalletAmountMinor:'2400000',
+        signature:'a'.repeat(64),
+      },
+    })).rejects.toThrow('modified');
+    expect(createIntent).not.toHaveBeenCalled();
+    expect(createVoucherMock).not.toHaveBeenCalled();
+  });
+
   it('holds exactly the provider quoted IRR value and rejects a forged cent amount', async () => {
     const createIntent=vi.fn().mockResolvedValue({...intent,status:'initiated',direction:'withdrawal'});
     const db={queryOne:vi.fn()
@@ -156,7 +179,12 @@ describe('voucher money safety and email availability', () => {
       payments:{createIntent},
       notifications:{findByDedupeKey:vi.fn().mockResolvedValue(null)},
     });
-    const quote={rateIrrPerUsd:'2527062.20000000',quotedAt:new Date().toISOString(),requestedWalletAmountMinor:'24000000'};
+    const quotedAt=new Date().toISOString();
+    const {signUwalletVoucherQuote}=await import('@/server/providers/uwallet/voucher-quote');
+    const quote={
+      rateIrrPerUsd:'2527062.20000000',quotedAt,requestedWalletAmountMinor:'24000000',
+      signature:signUwalletVoucherQuote(intent.userId,'2527062.20000000',quotedAt),
+    };
     const r=await svc.createWithdrawal({
       userId:intent.userId,amountMinor:949n,currency:'USD',methodId:'voucher_uvoucher',
       destination:'test@example.com',idempotencyKey:'rate-quote',ip:null,voucherQuote:quote,
