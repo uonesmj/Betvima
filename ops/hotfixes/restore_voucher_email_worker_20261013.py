@@ -31,7 +31,13 @@ def command(*args, extra_env=None):
         env.update(extra_env)
     # runuser -p preserves the inherited environment WITHOUT putting any
     # provider/DB credentials into the command line or terminal history.
-    cmd = ["runuser", "-p", "-u", "novaadmin", "--", "pm2", *args]
+    # PM2 process environments can replace PATH, so pin trusted executables.
+    runuser = "/usr/sbin/runuser"
+    pm2 = "/usr/bin/pm2"
+    if not (pathlib.Path(runuser).is_file() and pathlib.Path(pm2).is_file()):
+        stop("PM2_EXECUTABLE_PATH_MISSING")
+    env["PATH"] = "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+    cmd = [runuser, "-p", "-u", "novaadmin", "--", pm2, *args]
     r = subprocess.run(cmd, env=env, text=True, capture_output=True, timeout=90)
     if r.returncode:
         stop("PM2_COMMAND_FAILED")
