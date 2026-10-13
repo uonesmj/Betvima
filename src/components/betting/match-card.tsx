@@ -7,6 +7,7 @@ import { formatOddsScaled, formatRelative } from '@/lib/i18n';
 import { useBetSlip, type SlipItem } from '@/lib/store/betslip';
 import { TeamLogo } from '@/components/ui/logo';
 import { primaryBettingMarket } from '@/lib/primary-betting-market';
+import { matchMinuteLabel } from '@/lib/live-match-minute';
 
 export interface SelectionView {
   id: string;
@@ -38,6 +39,7 @@ export interface MatchView {
   status: string;
   scheduledAt: string;
   minute: number | null;
+  period?: string | null;
   homeScore: number | null;
   awayScore: number | null;
   participants: {
@@ -81,7 +83,7 @@ export function MatchCard({
           {match.isLive ? (
             <>
               <span className="text-[11px] font-extrabold leading-4 text-[#F04A63]">
-                {match.minute !== null ? `${match.minute}'` : 'LIVE'}
+                {matchMinuteLabel(match.minute, match.period)}
               </span>
             </>
           ) : (
