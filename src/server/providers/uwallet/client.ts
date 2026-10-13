@@ -13,16 +13,16 @@ export type UWalletVoucherCreation = {
 export type UWalletVoucherActivation = {
   transactionId?: string;
   status?: string;
-  receive?: number;
+  receive?: number | string;
   batchId?: number;
 };
 
 export type UWalletTransaction = {
   id?: string;
   coin?: string;
-  amount?: number;
+  amount?: number | string;
   fee?: number;
-  receive?: number;
+  receive?: number | string;
   status?: string;
   side?: string;
   type?: string;
@@ -156,7 +156,7 @@ export async function getTransaction(
 
 export type UWalletSwap = {
   coin?: string;
-  percent?: number;
+  percent?: number | string;
 };
 export type UWalletCoin = {
   coin?: string;
