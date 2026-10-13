@@ -94,12 +94,37 @@ def main():
    stop('Reviewed query did not include 404 eligibility fix')
   original=SOURCE.read_bytes()
   local=original.decode('utf8')
-  if local.count(newfrag)==1:
+  # The currently running server retains a short v4-formatted SQL predicate:
+  # `and (($3::boolean ... ) or ($4::boolean ...))`. The reviewed repo
+  # has the same predicate split across lines. Both are equivalent; leave the
+  # server-only formatting and all other hotfixes untouched.
+  common=('                 where m.provider = $2\n'
+          "                   and m.status::text = 'scheduled'\n"
+          '                   and m.provider_id is not null\n'
+          '                   and m.scheduled_at > now()\n')
+  short_boolean=("                   and (($3::boolean and m.scheduled_at <= now() + interval '30 minutes') "
+                 "or ($4::boolean and m.scheduled_at > now() + interval '30 minutes'))\n")
+  if not oldfrag.startswith(common) or not newfrag.startswith(common):
+   stop('Reviewed extended query common prefix mismatched')
+  extended_addition=newfrag[len(common):]
+  if not extended_addition.endswith('                   and (\n'):
+   stop('Reviewed extended query suffix changed')
+  filter_only=extended_addition[:-len('                   and (\n')]
+  if "primary_market.key in ('h2h', 'spreads', 'totals')" not in filter_only:
+   stop('Reviewed eligibility check missing')
+  server_before=common+short_boolean
+  server_after=common+filter_only+short_boolean
+  if local.count(server_after)==1 or local.count(newfrag)==1:
    print('ALREADY_DEPLOYED: 404 extended query filter',flush=True)
    return
-  if local.count(oldfrag)!=1 or 'ODDS_BULK_LIVE_SKIP' not in local or 'prematchRefreshCadence(' not in local:
-   stop('Unexpected locally customized bulk worker; no changes')
-  candidate=local.replace(oldfrag,newfrag,1).encode('utf8')
+  if 'ODDS_BULK_LIVE_SKIP' not in local or 'prematchRefreshCadence(' not in local:
+   stop('Expected previously tested server safeguards missing')
+  if local.count(server_before)==1:
+   candidate=local.replace(server_before,server_after,1).encode('utf8')
+  elif local.count(oldfrag)==1:
+   candidate=local.replace(oldfrag,newfrag,1).encode('utf8')
+  else:
+   stop('Unexpected locally customized extended query; no changes')
   compiler=ROOT/'node_modules/typescript/bin/tsc'
   check=run('/usr/sbin/runuser','-u','novaadmin','--','/usr/bin/node',str(compiler),'--version',cwd=str(ROOT))
   if check.returncode!=0 or not check.stdout.strip().startswith('Version '):
