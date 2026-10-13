@@ -56,6 +56,11 @@ let lastResultReconciliationAt = 0;
 const lastPrematchByProvider = new Map<string, PrematchRefreshClock>();
 let lastResultsQuotaErrorAt = 0;
 let lastLiveOddsAt = 0;
+// The dedicated live-price process has its own source and PM2 lifecycle.
+// Cache its heartbeat briefly so the bulk worker can stand in only when
+// that process actually disappears; never double-spend the API budget.
+let lastDedicatedLiveHeartbeatCheckAt = 0;
+let dedicatedLiveHeartbeatPresent = false;
 let lastExtendedLiveOddsAt = 0;
 let lastMatchDiscoveryAt = 0;
 let lastApiFootballLiveSyncAt = 0;
@@ -95,11 +100,36 @@ createWorker({
         if (includeExtendedLive) lastExtendedLiveOddsAt = now;
 
         if (includeLive) {
-          console.log("ODDS_LIVE_PRIORITY", JSON.stringify({
-            at: new Date(now).toISOString(),
-            intervalMs: LIVE_ODDS_INTERVAL_MS,
-          }));
-          await runDedicatedLiveTick(ctx);
+          if (now - lastDedicatedLiveHeartbeatCheckAt >= 15_000) {
+            lastDedicatedLiveHeartbeatCheckAt = now;
+            try {
+              const dedicatedLive = await ctx.services.db.queryOne<{ worker_id: string }>(
+                `select worker_id from nova.worker_heartbeats
+                  where worker = 'odds-live' and worker_id <> $1
+                    and last_seen_at >= now() - interval '45 seconds'
+                  order by last_seen_at desc limit 1`,
+                [ctx.workerId],
+              );
+              dedicatedLiveHeartbeatPresent = Boolean(dedicatedLive);
+            } catch (error) {
+              // If the heartbeat probe fails, retain the legacy fallback:
+              // availability of live prices takes priority over optimization.
+              dedicatedLiveHeartbeatPresent = false;
+              console.warn("ODDS_DEDICATED_LIVE_PROBE_FAILED", JSON.stringify({
+                error: error instanceof Error ? error.message : String(error),
+              }));
+            }
+          }
+          if (dedicatedLiveHeartbeatPresent) {
+            console.log("ODDS_BULK_LIVE_SKIP", JSON.stringify({
+              reason: "dedicated_live_worker_healthy",
+            }));
+          } else {
+            console.log("ODDS_BULK_LIVE_FALLBACK", JSON.stringify({
+              reason: "dedicated_live_worker_not_healthy",
+            }));
+            await runDedicatedLiveTick(ctx);
+          }
         }
 
         const configuredPrematchProviders = (
