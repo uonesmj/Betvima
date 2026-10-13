@@ -163,7 +163,7 @@ export function MatchCard({
           </div>
         ) : (
           <div className={`flex items-center justify-center rounded-[10px] border border-[#E5E8EC] bg-[#F5F6F8] text-[11px] font-semibold text-[#969CA5] max-md:col-span-2 ${compact ? "h-9" : "h-[46px]"}`}>
-            {t('home.oddsUnavailable')}
+            {locale === 'fa' ? translateVisibleText('Odds unavailable') : 'Odds unavailable'}
           </div>
         )}
       </div>

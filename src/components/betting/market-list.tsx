@@ -1517,7 +1517,7 @@ function MarketCard({
 }) {
   const { locale } = useApp();
   const marketTitleEn = translateMarketDisplayLabel(getMarketTitle(market, match.sportKey));
-  const marketTitle = locale === 'fa' ? translateVisibleText(marketTitleEn) : marketTitleEn;
+  const marketTitle = locale === 'fa' ? translateVisibleText(marketTitleEn ?? '') : marketTitleEn;
 
   return (
     <section

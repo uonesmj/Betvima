@@ -27,3 +27,25 @@ describe('Persian display localization with English canonical layout', () => {
     expect(translateVisibleText('BetVimaSupport@gmail.com')).toBe('BetVimaSupport@gmail.com');
   });
 });
+
+
+describe('end-to-end translation vocabulary checks', () => {
+  it('covers important newly localized sections', () => {
+    expect(translateVisibleText('Primary referral link')).toBe('لینک معرفی اصلی');
+    expect(translateVisibleText('Live match center')).toBe('مرکز مسابقه زنده');
+    expect(translateVisibleText('No active bonuses')).toBe('بونوس فعالی وجود ندارد');
+    expect(translateVisibleText('Responsible gaming')).toBe('بازی مسئولانه');
+  });
+  it('covers provider team/league names with meaningful Persian spellings', () => {
+    expect(translateSportName('Celta Vigo')).toBe('سلتاویگو');
+    expect(translateSportName('Manchester City')).toBe('منچستر سیتی');
+    expect(translateSportName('UEFA Europa Conference League')).toBe('لیگ کنفرانس اروپا');
+    expect(translateVisibleText('Brighton and Hove Albion', true)).toBe('برایتون اند هوو آلبیون');
+  });
+  it('never changes English usernames, URLs, wallet tokens or numeric odds', () => {
+    expect(translateVisibleText('support@example.com')).toBe('support@example.com');
+    expect(translateVisibleText('https://betvima.com')).toBe('https://betvima.com');
+    expect(translateVisibleText('USD 11.25')).toBe('USD 11.25');
+    expect(translateVisibleText('1.95')).toBe('1.95');
+  });
+});
