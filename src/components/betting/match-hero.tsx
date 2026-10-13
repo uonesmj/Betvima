@@ -20,6 +20,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import type { MatchView } from './match-card';
 import { formatRelative } from '@/lib/i18n';
 import { LivePitchVisualization } from "./live-pitch-visualization";
+import { matchMinuteLabel } from "@/lib/live-match-minute";
 import { LeagueLogo, TeamLogo } from '@/components/ui/logo';
 
 function formatExactDate(value: string) {
@@ -215,21 +216,8 @@ export function MatchHero({
 }) {
   const sliderRef = useRef<HTMLDivElement>(null);
   const [slide, setSlide] = useState(0);
-  const [liveSeconds, setLiveSeconds] = useState(
-    match.minute == null ? 0 : Math.max(0, match.minute) * 60,
-  );
-
-  useEffect(() => {
-    if (!match.isLive || match.minute == null) return;
-
-    setLiveSeconds(Math.max(0, match.minute) * 60);
-
-    const timer = window.setInterval(() => {
-      setLiveSeconds((seconds) => seconds + 1);
-    }, 1000);
-
-    return () => window.clearInterval(timer);
-  }, [match.isLive, match.minute]);
+  // Render the provider-reported minute, not a locally invented stopwatch.
+  const liveMinute = matchMinuteLabel(match.minute, match.period);
 
   const statsPayload = liveStats?.payload as {
     statistics?: {
@@ -425,8 +413,7 @@ export function MatchHero({
               data-live-minute
               className="border-l border-[#EFC3C9] pl-2 text-[10px] font-black tabular-nums text-[#20242A]"
             >
-              {Math.floor(liveSeconds / 60)}:
-              {String(liveSeconds % 60).padStart(2, '0')}
+              {liveMinute}
             </span>
           </div>
         ) : (
@@ -501,7 +488,7 @@ export function MatchHero({
 
                   <div className="mt-3 flex items-center gap-2 text-[9px] font-bold text-white/45">
                     <Clock3 size={11} />
-                    {match.isLive ? `${Math.floor(liveSeconds / 60)}:${String(liveSeconds % 60).padStart(2, '0')}` : /^(finished|complete|completed|ft)$/i.test(match.status) ? 'FT' : formatRelative(match.scheduledAt)}
+                    {match.isLive ? liveMinute : /^(finished|complete|completed|ft)$/i.test(match.status) ? 'FT' : formatRelative(match.scheduledAt)}
                   </div>
                 </div>
 
@@ -534,7 +521,7 @@ export function MatchHero({
                 dangerousAway={stats.dangerousAway}
                 homeScore={match.homeScore ?? 0}
                 awayScore={match.awayScore ?? 0}
-                minute={Math.floor(liveSeconds / 60)}
+                minute={match.minute ?? 0}
                 latestEvent={latestEvent}
                 isLive={match.isLive}
                 status={match.status}
