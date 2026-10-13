@@ -66,3 +66,32 @@ export function selectFairPrematchRefreshes<T extends PrematchRefreshCandidate>(
 
   return output;
 }
+
+/**
+ * The per-event extended markets path can discover unavailable events; ensure
+ * those 404/no-offer fixtures never consume all 8 slots on each retry.
+ * Returning a fixture means an *attempt*, not a promise of available prices.
+ */
+export function selectFairExtendedRefreshes<T extends PrematchRefreshCandidate>(
+  candidates: readonly T[],
+  now: number,
+  limit: number,
+  lastAttemptedAt: Map<string, number>,
+): T[] {
+  const eligible = candidates
+    .filter((item) => item.status === 'scheduled' && Boolean(item.provider_id)
+      && Number.isFinite(Date.parse(item.scheduled_at))
+      && Date.parse(item.scheduled_at) > now)
+    .sort((a, b) =>
+      (lastAttemptedAt.get(a.match_id) ?? 0) - (lastAttemptedAt.get(b.match_id) ?? 0)
+      || Date.parse(a.scheduled_at) - Date.parse(b.scheduled_at)
+      || a.match_id.localeCompare(b.match_id),
+    );
+  const chosen = eligible.slice(0, Math.max(0, Math.floor(limit)));
+  for (const item of chosen) lastAttemptedAt.set(item.match_id, now);
+  if (lastAttemptedAt.size > 5000) {
+    const active = new Set(candidates.map(c => c.match_id));
+    for (const id of lastAttemptedAt.keys()) if (!active.has(id)) lastAttemptedAt.delete(id);
+  }
+  return chosen;
+}
