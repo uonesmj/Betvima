@@ -1,7 +1,7 @@
 import { TheOddsApiSportsProvider } from "./the-odds-api";
 import { FiveDollarFootballApiSportsProvider } from "./5dollar-football-api";
 import { NowPaymentsProvider } from "./nowpayments";
-import { ApiFootballLiveProvider } from "./api-football";import { ResendEmailProvider } from './resend-email';
+import { FiveDollarLiveDataProvider } from "./5dollar-live-data";import { ResendEmailProvider } from './resend-email';
 /**
  * NULL / DISABLED PROVIDERS (spec §7/§8 - "no provider configured is a first-class state").
  *
@@ -119,8 +119,10 @@ export function providers(): ProviderRegistryLike {
   const env = serverEnv();
   const oddsProvider = new TheOddsApiSportsProvider();
   const fiveDollarProvider = new FiveDollarFootballApiSportsProvider();
-  // Odds API is the catalog/odds authority whenever configured. FiveDollar is
-  // deliberately second so it can fill catalog gaps without replacing Odds data.
+  // The Odds API is the sole bookmaker prices/markets authority.
+  // FiveDollar supplies football fixtures, kickoff times, results, events and
+  // statistics only. It may fill unmatched fixture catalog gaps; it never
+  // supplies prices to the betting engine.
   const sportsProviders = [oddsProvider, fiveDollarProvider].filter(
     (provider, index, all) =>
       provider.configured &&
@@ -131,7 +133,7 @@ export function providers(): ProviderRegistryLike {
   registry = {
     sports: primarySportsProvider,
     sportsProviders,
-    live: new ApiFootballLiveProvider(),
+    live: new FiveDollarLiveDataProvider(fiveDollarProvider),
     payments: env.PAYMENT_PROVIDER === 'nowpayments' ? new NowPaymentsProvider() : new DisabledPaymentProvider(),
     email: env.RESEND_API_KEY && env.RESEND_FROM_EMAIL
       ? new ResendEmailProvider()
