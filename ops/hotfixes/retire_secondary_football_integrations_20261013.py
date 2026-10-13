@@ -21,6 +21,9 @@ MARKER = b"the-odds-api-only-v1"
 NEW_ENV = {
     "SPORTS_PROVIDER": "the_odds_api",
     "SPORTS_PROVIDER_BASE_URL": "https://api.the-odds-api.com",
+    # Independent ODDS_API_KEY was preflighted; never retain another vendor's
+    # key under the generic SPORTS_PROVIDER_API_KEY alias.
+    "SPORTS_PROVIDER_API_KEY": "",
     "FIVEDOLLAR_API_KEY": "",
     "FIVEDOLLAR_API_BASE_URL": "",
     "FIVEDOLLAR_BETTING_ODDS_ENABLED": "false",
