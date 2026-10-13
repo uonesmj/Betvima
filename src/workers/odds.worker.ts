@@ -408,7 +408,9 @@ createWorker({
           );
         }
 
-        // Extended per-event discovery is lower priority than fresh base prices.
+        // Extended per-event discovery selects bookmaker-offered non-featured
+        // markets (score, corners, cards, etc.); do not repeat core h2h/totals.
+        // It stays detached and lower priority than fresh base prices.
         // Bound its batch size to avoid starving the short prematch quote window.
         if (extendedProviderIds.length > 0) {
           void runExtendedPrematchOddsDetached(

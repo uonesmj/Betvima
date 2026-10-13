@@ -1,4 +1,5 @@
 import { createRequestAdmissionQueue, type RequestPriority } from './odds-request-admission';
+import { selectExtendedEventMarkets } from './extended-event-markets';
 import type {
   ProviderMatch,
   ProviderOddsBundle,
@@ -224,13 +225,6 @@ async function discoverEventMarkets(
     "extended",
   );
 
-  const configured = new Set(
-    extendedMarketsForSport(sportKey)
-      .split(",")
-      .map((value) => value.trim())
-      .filter(Boolean),
-  );
-
   const discovered = new Set<string>();
 
   for (const bookmaker of discovery.bookmakers || []) {
@@ -241,11 +235,9 @@ async function discoverEventMarkets(
     }
   }
 
-  const merged = new Set<string>([...configured, ...discovered]);
-
-  return [...merged].filter(
-    (key) => !NOVA_DISCOVERY_EXCLUDED_MARKETS.has(key),
-  );
+  // This endpoint enumerates currently offered bookmaker markets. Do not
+  // merge merely configured keys into this list: they may not be priced.
+  return [...discovered];
 }
 
 function outcomeIdentity(
@@ -1195,52 +1187,40 @@ export class TheOddsApiSportsProvider implements SportsDataProvider {
 
         let event: OddsApiOddsEvent;
         try {
-          let markets = MARKETS
-            .split(",")
-            .map((value) => value.trim())
-            .filter(Boolean)
-            .join(",");
+          // The grouped /odds endpoint already covers h2h, spreads and totals.
+          // Querying those again per event starved the missing extended markets.
+          // Only buy supported extended markets actually listed by bookmakers.
+          let discoveredMarkets: string[];
           try {
-            const discoveredMarkets = await discoverEventMarkets(
-              sportKey,
-              eventId,
-            );
-            const configuredBase = MARKETS
-              .split(",")
-              .map((value) => value.trim())
-              .filter(Boolean);
-            const requestedMarkets = [
-              ...new Set(
-                configuredBase.filter((market) =>
-                  discoveredMarkets.includes(market),
-                ),
-              ),
-            ];
-            if (requestedMarkets.length > 0) {
-              markets = requestedMarkets.join(",");
-            }
-            console.info(
-              "ODDS_EVENT_MARKET_DISCOVERY",
-              JSON.stringify({
-                matchProviderId,
-                sportKey,
-                discovered: discoveredMarkets.length,
-                markets,
-              }),
-            );
+            discoveredMarkets = await discoverEventMarkets(sportKey, eventId);
           } catch (discoveryError) {
-            console.warn(
-              "ODDS_EVENT_MARKET_DISCOVERY_FALLBACK",
-              JSON.stringify({
-                matchProviderId,
-                sportKey,
-                error:
-                  discoveryError instanceof Error
-                    ? discoveryError.message
-                    : String(discoveryError),
-              }),
-            );
+            console.warn("ODDS_EVENT_MARKET_DISCOVERY_UNAVAILABLE", JSON.stringify({
+              matchProviderId,
+              sportKey,
+              error: discoveryError instanceof Error
+                ? discoveryError.message : String(discoveryError),
+            }));
+            continue;
           }
+          const configuredLimit = Number(process.env.ODDS_API_EVENT_MARKET_LIMIT || 20);
+          const requestedMarkets = selectExtendedEventMarkets(
+            extendedMarketsForSport(sportKey), discoveredMarkets, MARKETS, configuredLimit,
+          );
+          if (requestedMarkets.length === 0) {
+            console.log("ODDS_EVENT_EXTENDED_NO_MARKETS", JSON.stringify({
+              matchProviderId,
+              sportKey,
+              discovered: discoveredMarkets.length,
+            }));
+            continue;
+          }
+          const markets = requestedMarkets.join(",");
+          console.info("ODDS_EVENT_EXTENDED_MARKETS_REQUEST", JSON.stringify({
+            matchProviderId,
+            sportKey,
+            discovered: discoveredMarkets.length,
+            markets,
+          }));
           event = await request<OddsApiOddsEvent>(
             `/v4/sports/${encodeURIComponent(sportKey)}/events/${encodeURIComponent(eventId)}/odds`,
             {
