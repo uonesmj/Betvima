@@ -1,3 +1,4 @@
+import { createRequestAdmissionQueue, type RequestPriority } from './odds-request-admission';
 import type {
   ProviderMatch,
   ProviderOddsBundle,
@@ -220,6 +221,7 @@ async function discoverEventMarkets(
     {
       regions: regionsForSport(sportKey),
     },
+    "extended",
   );
 
   const configured = new Set(
@@ -396,7 +398,9 @@ function scoreForTeam(
 
 let quotaBlockedUntil = 0;
 let frequencyBlockedUntil = 0;
-let requestChain = Promise.resolve();
+// All odds requests share an upstream frequency cap, but fresh base prices
+// must not sit behind a long queue of optional per-event market discovery.
+const requestAdmission = createRequestAdmissionQueue();
 let lastRequestStartedAt = 0;
 
 const QUOTA_COOLDOWN_MS = Math.max(
@@ -423,29 +427,17 @@ function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-async function waitForRequestSlot(): Promise<void> {
-  const previous = requestChain;
-
-  let release!: () => void;
-  requestChain = new Promise<void>((resolve) => {
-    release = resolve;
-  });
-
-  await previous;
-
+async function waitForRequestSlot(priority: RequestPriority): Promise<void> {
+  const release = await requestAdmission.acquire(priority);
   try {
     const now = Date.now();
-
     if (now < frequencyBlockedUntil) {
       await sleep(frequencyBlockedUntil - now);
     }
-
     const elapsed = Date.now() - lastRequestStartedAt;
-
     if (elapsed < REQUEST_MIN_INTERVAL_MS) {
       await sleep(REQUEST_MIN_INTERVAL_MS - elapsed);
     }
-
     lastRequestStartedAt = Date.now();
   } finally {
     release();
@@ -455,6 +447,7 @@ async function waitForRequestSlot(): Promise<void> {
 async function request<T>(
   path: string,
   params: Record<string, string> = {},
+  priority: RequestPriority = "core",
 ): Promise<T> {
   if (!API_KEY) {
     throw new Error("SPORTS_PROVIDER_API_KEY is not configured");
@@ -473,7 +466,7 @@ async function request<T>(
   let lastError: Error | null = null;
 
   for (let attempt = 0; attempt <= MAX_FREQ_RETRIES; attempt += 1) {
-    await waitForRequestSlot();
+    await waitForRequestSlot(priority);
 
     const url = new URL(`${BASE_URL}${path}`);
     url.searchParams.set("apiKey", API_KEY);
@@ -1255,6 +1248,7 @@ export class TheOddsApiSportsProvider implements SportsDataProvider {
               markets,
               oddsFormat: "decimal",
             },
+            "extended",
           );
         } catch (error) {
           const message = error instanceof Error ? error.message : String(error);
