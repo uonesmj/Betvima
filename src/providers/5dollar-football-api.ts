@@ -346,11 +346,19 @@ export class FiveDollarFootballApiSportsProvider implements SportsDataProvider {
   }
 
   async fetchOdds(_matchProviderIds: string[]): Promise<ProviderResult<ProviderOddsBundle[]>> {
-    return fail("FiveDollar is a fixture/statistics-only provider; odds must come from The Odds API", "ODDS_NOT_SUPPORTED");
+    return {
+      ok: false, value: null, errorCode: "ODDS_NOT_SUPPORTED",
+      errorMessage: "FiveDollar supplies fixtures and statistics only; betting odds must come from The Odds API",
+      retryable: false,
+    };
   }
 
   async fetchEventOdds(_matchProviderIds: string[]): Promise<ProviderResult<ProviderOddsBundle[]>> {
-    return fail("FiveDollar does not supply betting markets or prices", "ODDS_NOT_SUPPORTED");
+    return {
+      ok: false, value: null, errorCode: "ODDS_NOT_SUPPORTED",
+      errorMessage: "FiveDollar does not supply betting markets or prices",
+      retryable: false,
+    };
   }
 
   async fetchFixture(matchProviderId: string): Promise<ProviderResult<ProviderMatch>> {
