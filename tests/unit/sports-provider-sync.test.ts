@@ -154,6 +154,26 @@ describe("Odds API and FiveDollar source synchronization", () => {
     expect(fiveDollarFetch).not.toHaveBeenCalled();
   });
 
+  it("allows timestamp-authenticated FiveDollar prices only after explicit source opt-in", async () => {
+    const fiveDollarFetch = vi.fn(async (ids: string[]) => ({
+      ok: true,
+      value: [{ matchProviderId: ids[0]!, markets: [], updatedAt: kickOff }],
+    }));
+    const odds = { name: MATCH_SOURCE_ODDS } as unknown as SportsDataProvider;
+    const fiveDollar = { name: MATCH_SOURCE_FALLBACK, fetchOdds: fiveDollarFetch } as unknown as SportsDataProvider;
+    expect(resolveSportsOddsProvider(MATCH_SOURCE_FALLBACK, [odds, fiveDollar], odds)).toBeNull();
+    vi.stubEnv("FIVEDOLLAR_BETTING_ODDS_ENABLED", "true");
+    try {
+      const enabled = resolveSportsOddsProvider(MATCH_SOURCE_FALLBACK, [odds, fiveDollar], odds);
+      expect(enabled).toBe(fiveDollar);
+      const result = await fetchOddsForOwningProvider(enabled!, "12345678");
+      expect(result.ok).toBe(true);
+      expect(fiveDollarFetch).toHaveBeenCalledWith(["12345678"]);
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
+
   it("resolves FiveDollar live fixtures through their canonical alias and exposes FiveDollar events", async () => {
     const aliasDb = {
       query: vi.fn(async <T,>(sql: string, params?: unknown[]) => {
