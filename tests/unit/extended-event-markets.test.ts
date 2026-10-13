@@ -19,6 +19,12 @@ describe('The Odds API extended market selection', () => {
     expect(selectExtendedEventMarkets('correct_score,double_chance', ['h2h'], 'h2h')).toEqual([]);
   });
 
+  it('does not purchase odds for markets requiring manual settlement review', () => {
+    const configured = 'corners_1x2,alternate_totals_corners,alternate_spreads_cards,to_qualify,correct_score,btts';
+    expect(selectExtendedEventMarkets(configured, configured.split(','), 'h2h,spreads,totals'))
+      .toEqual(['correct_score','btts']);
+  });
+
   it('deduplicates and caps expensive detail requests', () => {
     expect(selectExtendedEventMarkets(
       ' btts, btts, double_chance, correct_score, alternate_totals',
