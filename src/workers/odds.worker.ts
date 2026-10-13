@@ -63,14 +63,11 @@ let lastDedicatedLiveHeartbeatCheckAt = 0;
 let dedicatedLiveHeartbeatPresent = false;
 let lastExtendedLiveOddsAt = 0;
 let lastMatchDiscoveryAt = 0;
-let lastApiFootballLiveSyncAt = 0;
 const MATCH_DISCOVERY_INTERVAL_MS = process.env.SPORTS_PROVIDER === "5dollarfootballapi" ? 10 * 60_000 : 5 * 60_000;
 const LIVE_ODDS_INTERVAL_MS = process.env.SPORTS_PROVIDER === "5dollarfootballapi" ? 30_000 : 5_000;
 const EXTENDED_LIVE_ODDS_INTERVAL_MS = process.env.SPORTS_PROVIDER === "5dollarfootballapi" ? 10 * 60_000 : 5 * 60_000;
 const EXTENDED_ODDS_MAX_MATCHES_PER_CYCLE = extendedRefreshBudget(process.env.ODDS_API_EXTENDED_MAX_MATCHES_PER_CYCLE);
 const LIVE_RESULT_INTERVAL_MS = 10_000;
-const API_FOOTBALL_LIVE_INTERVAL_MS = 30_000;
-const API_FOOTBALL_MAX_DETAIL_MATCHES_PER_CYCLE = 1;
 
 if (WORKER_MODE !== 'live') {
 createWorker({
@@ -137,7 +134,7 @@ createWorker({
             ? ctx.services.providers.sportsProviders
             : [ctx.services.providers.sports]
         ).filter((provider, index, all) =>
-          provider.configured &&
+          provider.name === MATCH_SOURCE_ODDS && provider.configured &&
           all.findIndex((item) => item.name === provider.name) === index
         );
 
@@ -595,11 +592,9 @@ async function runLiveStateMaintenanceDetached(
   const now = Date.now();
   const sportsDue =
     now - lastResultReconciliationAt >= LIVE_RESULT_INTERVAL_MS;
-  const apiFootballDue =
-    ctx.services.providers.live.configured &&
-    now - lastApiFootballLiveSyncAt >= API_FOOTBALL_LIVE_INTERVAL_MS;
-
-  if (!sportsDue && !apiFootballDue) {
+  // 5Dollar's fixture feed is the only statistics/events source.
+  // Do not request or persist API-Football snapshots here.
+  if (!sportsDue) {
     return;
   }
 
@@ -610,34 +605,10 @@ async function runLiveStateMaintenanceDetached(
       at: new Date(now).toISOString(),
       scheduledAt,
       sportsDue,
-      apiFootballDue,
     }));
 
     await ctx.withLock("odds:live-state", 60, async () => {
       const liveStartedAt = Date.now();
-
-      if (
-        ctx.services.providers.live.configured &&
-        Date.now() - lastApiFootballLiveSyncAt >=
-          API_FOOTBALL_LIVE_INTERVAL_MS
-      ) {
-        lastApiFootballLiveSyncAt = Date.now();
-
-        try {
-          const liveDataResult = await syncApiFootballLiveData(ctx);
-          console.log(
-            "API_FOOTBALL_LIVE_SYNC",
-            JSON.stringify(liveDataResult),
-          );
-        } catch (error) {
-          console.error(
-            "API_FOOTBALL_LIVE_SYNC_FAILED",
-            JSON.stringify({
-              error: error instanceof Error ? error.message : String(error),
-            }),
-          );
-        }
-      }
 
       if (
         Date.now() - lastResultReconciliationAt >=
@@ -1154,7 +1125,7 @@ async function runDedicatedLiveTick(ctx: WorkerContext): Promise<void> {
       ? ctx.services.providers.sportsProviders
       : [ctx.services.providers.sports]
   ).filter((provider, index, all) =>
-    provider.configured &&
+    provider.name === MATCH_SOURCE_ODDS && provider.configured &&
     all.findIndex((item) => item.name === provider.name) === index
   );
 
@@ -1273,227 +1244,6 @@ function normalizeLiveTeamName(value: string): string {
     .replace(/[^a-z0-9]+/g, ' ')
     .trim()
     .replace(/\s+/g, ' ');
-}
-
-function liveTeamPairMatches(
-  homeA: string,
-  awayA: string,
-  homeB: string,
-  awayB: string,
-): boolean {
-  const ah = normalizeLiveTeamName(homeA);
-  const aa = normalizeLiveTeamName(awayA);
-  const bh = normalizeLiveTeamName(homeB);
-  const ba = normalizeLiveTeamName(awayB);
-  return (ah === bh && aa === ba) || (ah.includes(bh) || bh.includes(ah)) && (aa.includes(ba) || ba.includes(aa));
-}
-
-async function syncApiFootballLiveData(ctx: WorkerContext): Promise<{
-  ok: boolean;
-  liveFixtures: number;
-  matched: number;
-  eventsSaved: number;
-  statsSaved: number;
-  failed: number;
-  errorMessage: string | null;
-}> {
-  const provider = ctx.services.providers.live;
-  console.log("API_FOOTBALL_LIVE_FLOW", JSON.stringify({
-    step: "before_fetchLiveFixtures",
-    pid: process.pid,
-    at: new Date().toISOString(),
-  }));
-  const liveResult = await provider.fetchLiveFixtures();
-  console.log("API_FOOTBALL_LIVE_FLOW", JSON.stringify({
-    step: "after_fetchLiveFixtures",
-    pid: process.pid,
-    at: new Date().toISOString(),
-    ok: liveResult.ok,
-    count: liveResult.value?.length ?? 0,
-    error: liveResult.errorMessage ?? liveResult.errorCode ?? null,
-  }));
-
-  if (!liveResult.ok || !liveResult.value) {
-    return {
-      ok: false,
-      liveFixtures: 0,
-      matched: 0,
-      eventsSaved: 0,
-      statsSaved: 0,
-      failed: 1,
-      errorMessage: liveResult.errorMessage ?? liveResult.errorCode ?? 'API-Football live fixture request failed',
-    };
-  }
-
-  const fixtures = liveResult.value;
-  console.log("API_FOOTBALL_LIVE_FIXTURES_DEBUG", JSON.stringify(
-    fixtures.map((f) => ({
-      fixtureId: f.fixtureId,
-      home: f.homeTeamName,
-      away: f.awayTeamName,
-      status: f.statusShort,
-      minute: f.minute,
-      extraMinute: f.extraMinute,
-    }))
-  ));
-  if (fixtures.length === 0) {
-    return {
-      ok: true,
-      liveFixtures: 0,
-      matched: 0,
-      eventsSaved: 0,
-      statsSaved: 0,
-      failed: 0,
-      errorMessage: null,
-    };
-  }
-
-  console.log("API_FOOTBALL_LIVE_FLOW", JSON.stringify({
-    step: "before_nova_live_matches_query",
-    pid: process.pid,
-    at: new Date().toISOString(),
-  }));
-  const matches = await ctx.services.db.query<{
-    match_id: string;
-    home_team: string;
-    away_team: string;
-  }>(
-    `select m.id as match_id, ht.name as home_team, at.name as away_team
-       from nova.matches m
-       join nova.teams ht on ht.id = m.home_team_id
-       join nova.teams at on at.id = m.away_team_id
-      where m.status in ('live','paused','interrupted')
-      order by m.scheduled_at desc
-      limit 100`,
-  );
-
-  console.log("API_FOOTBALL_LIVE_FLOW", JSON.stringify({
-    step: "after_nova_live_matches_query",
-    pid: process.pid,
-    at: new Date().toISOString(),
-    novaLiveMatches: matches.length,
-  }));
-
-  let matched = 0;
-  let eventsSaved = 0;
-  let statsSaved = 0;
-  let failed = 0;
-
-  for (const fixture of fixtures) {
-    console.log("API_FOOTBALL_MATCH_DEBUG", JSON.stringify({
-      fixtureId: fixture.fixtureId,
-      apiHome: fixture.homeTeamName,
-      apiAway: fixture.awayTeamName,
-      matched: matches.some((row) =>
-        liveTeamPairMatches(
-          fixture.homeTeamName,
-          fixture.awayTeamName,
-          row.home_team,
-          row.away_team,
-        )
-      ),
-    }));
-    const match = matches.find((row) =>
-      liveTeamPairMatches(
-        fixture.homeTeamName,
-        fixture.awayTeamName,
-        row.home_team,
-        row.away_team,
-      )
-    );
-
-    if (!match) continue;
-
-    matched++;
-
-    const snapshot = {
-      source: 'api_football',
-      fixtureId: fixture.fixtureId,
-      status: fixture.status,
-      statusShort: fixture.statusShort,
-      minute: fixture.minute,
-      extraMinute: fixture.extraMinute,
-      period: fixture.period,
-      liveHomeScore: fixture.homeScore,
-      liveAwayScore: fixture.awayScore,
-      homeTeamProviderId: fixture.homeTeamProviderId,
-      awayTeamProviderId: fixture.awayTeamProviderId,
-      observedAt: fixture.observedAt,
-    };
-
-    try {
-      await ctx.services.db.query(
-        `delete from nova.match_stats where match_id = $1`,
-        [match.match_id],
-      );
-
-      await ctx.services.db.query(
-        `insert into nova.match_stats
-          (match_id, payload, provider, updated_at)
-         values ($1, $2::jsonb, $3, now())`,
-        [match.match_id, JSON.stringify(snapshot), 'api_football'],
-      );
-
-      statsSaved++;
-
-      if (matched <= API_FOOTBALL_MAX_DETAIL_MATCHES_PER_CYCLE) {
-        const statisticsResult = await provider.fetchStatistics(fixture.fixtureId);
-        if (statisticsResult.ok && statisticsResult.value) {
-          await ctx.services.db.query(
-            `update nova.match_stats
-                set payload = payload || $2::jsonb,
-                    updated_at = now()
-              where match_id = $1`,
-            [
-              match.match_id,
-              JSON.stringify({
-                statistics: statisticsResult.value,
-              }),
-            ],
-          );
-          statsSaved++;
-        } else {
-          failed++;
-          console.error("API_FOOTBALL_STATISTICS_FAILED", JSON.stringify({
-            matchId: match.match_id,
-            fixtureId: fixture.fixtureId,
-            error: statisticsResult.errorMessage ?? statisticsResult.errorCode ?? 'unknown',
-          }));
-        }
-      }
-
-      console.log("API_FOOTBALL_MATCH_SYNCED", JSON.stringify({
-        matchId: match.match_id,
-        fixtureId: fixture.fixtureId,
-        homeTeam: fixture.homeTeamName,
-        awayTeam: fixture.awayTeamName,
-        minute: fixture.minute,
-        extraMinute: fixture.extraMinute,
-        period: fixture.period,
-        liveHomeScore: fixture.homeScore,
-        liveAwayScore: fixture.awayScore,
-      }));
-    } catch (error) {
-      failed++;
-      console.error("API_FOOTBALL_MATCH_SYNC_FAILED", JSON.stringify({
-        matchId: match.match_id,
-        fixtureId: fixture.fixtureId,
-        error: error instanceof Error ? error.message : String(error),
-      }));
-    }
-
-    if (matched >= API_FOOTBALL_MAX_DETAIL_MATCHES_PER_CYCLE) break;
-  }
-
-  return {
-    ok: true,
-    liveFixtures: fixtures.length,
-    matched,
-    eventsSaved,
-    statsSaved,
-    failed,
-    errorMessage: null,
-  };
 }
 
 async function reconcileLiveResults(ctx: WorkerContext): Promise<{ checked: number; finished: number; liveUpdated: number; failed: number }> {
@@ -1813,6 +1563,9 @@ const ODDS_API_PREMATCH_HORIZON_DAYS = Math.max(
   14,
   Number(process.env.ODDS_API_PREMATCH_HORIZON_DAYS ?? 30) || 30,
 );
+// Catalog metadata (past and future fixtures) only; odds stay on The Odds API.
+const FIVEDOLLAR_PAST_DAYS = Math.min(14, Math.max(1, Number(process.env.FIVEDOLLAR_PAST_DAYS ?? 7) || 7));
+const FIVEDOLLAR_FUTURE_DAYS = Math.min(14, Math.max(1, Number(process.env.FIVEDOLLAR_FUTURE_DAYS ?? 7) || 7));
 
 async function syncMatches(
   ctx: WorkerContext,
@@ -1830,10 +1583,10 @@ async function syncMatchesUnlocked(
   providedResult?: Awaited<ReturnType<typeof ctx.services.providers.sports.fetchMatches>>,
   sourceProvider = ctx.services.providers.sports,
 ): Promise<{ synced: number }> {
-  const horizonDays = sourceProvider.name === MATCH_SOURCE_FALLBACK
-    ? 1
-    : ODDS_API_PREMATCH_HORIZON_DAYS;
-  const from = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+  const isFiveDollar = sourceProvider.name === MATCH_SOURCE_FALLBACK;
+  const horizonDays = isFiveDollar ? FIVEDOLLAR_FUTURE_DAYS : ODDS_API_PREMATCH_HORIZON_DAYS;
+  const lookbackDays = isFiveDollar ? FIVEDOLLAR_PAST_DAYS : 1;
+  const from = new Date(Date.now() - lookbackDays * 864e5).toISOString();
   const to = new Date(Date.now() + horizonDays * 864e5).toISOString();
 
     console.log("SYNC_MATCHES_START", JSON.stringify({ from, to }));
@@ -2288,13 +2041,11 @@ async function syncOddsUnlocked(
   if (!matchRow?.provider_id || !matchRow.provider) {
     return { updated: 0, rejected: 0 };
   }
-  const sourceProvider =
-    ctx.services.providers.sportsProviders?.find(
-      (provider) => provider.name === matchRow.provider,
-    ) ??
-    (ctx.services.providers.sports.name === matchRow.provider
-      ? ctx.services.providers.sports
-      : null);
+  const sourceProvider = resolveSportsOddsProvider(
+    matchRow.provider,
+    ctx.services.providers.sportsProviders,
+    ctx.services.providers.sports,
+  );
   if (!sourceProvider) {
     ctx.log.warn("ODDS_SYNC_PROVIDER_NOT_REGISTERED", {
       matchId,
