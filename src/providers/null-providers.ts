@@ -58,7 +58,7 @@ export class DisabledLiveDataProvider implements LiveDataProvider {
   readonly name = 'disabled';
   readonly configured = false;
   async health(): Promise<ProviderStatus> {
-    return { provider: 'disabled', category: 'live', configured: false,
+    return { provider: 'disabled', category: 'sports', configured: false,
       enabled: false, reachable: null, lastError: null, lastSuccessAt: null,
       requiredEnv: [],
       notes: 'Separate football live-statistics feed removed; The Odds API remains the sole sports source.' };
