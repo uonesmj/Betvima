@@ -7,6 +7,15 @@ import type {
 } from '@/lib/types';
 import { pgArray, type Row, toBig, toBool, toIso, toIsoOrNull, toNum, toNumOrNull, toStr, toStrOrNull } from '@/server/db/rows';
 
+// The fixture-only feed cannot price past/outdated records. Its live list
+// includes only recently seen games (and limits kickoffs to the last four hours).
+// Never rewrite match status or settle bets from missing provider updates.
+const FIVEDOLLAR_ACTIVE_LIVE_SQL = `(
+  m.provider IS DISTINCT FROM '5dollarfootballapi'
+  OR (m.provider_updated_at >= now() - interval '5 minutes'
+      AND m.scheduled_at >= now() - interval '4 hours')
+)`;
+
 const SPORT_KEYS: SportKey[] = [
   'football',
   'basketball',
@@ -415,7 +424,7 @@ export class PostgresCatalogRepository implements CatalogRepository {
 
   async listLiveMatches(_c: ActorContext, limit: number): Promise<Match[]> {
     const rows = await this.db.query<Row>(
-      `select ${MATCH_SELECT} ${MATCH_FROM} where m.status::text = any($1::text[])
+      `select ${MATCH_SELECT} ${MATCH_FROM} where m.status::text = any($1::text[]) and ${FIVEDOLLAR_ACTIVE_LIVE_SQL}
         order by m.minute desc nulls last, m.scheduled_at asc limit $2`,
       [pgArray(LIVE_STATUSES), Math.min(limit, 100)],
     );
@@ -426,7 +435,7 @@ export class PostgresCatalogRepository implements CatalogRepository {
       `select s.slug as sport_slug, count(*)::int as live_count
          from nova.matches m
          join nova.sports s on s.id = m.sport_id
-        where m.status::text = any($1::text[])
+        where m.status::text = any($1::text[]) and ${FIVEDOLLAR_ACTIVE_LIVE_SQL}
         group by s.slug`,
       [pgArray(LIVE_STATUSES)],
     );
