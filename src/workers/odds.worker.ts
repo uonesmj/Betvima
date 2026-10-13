@@ -228,9 +228,9 @@ createWorker({
                  scheduled_at
                from ranked
                where
-                 (bucket_order = 0 and $1::boolean and bucket_rank <= greatest($5::int * 20, 100))
-                 or (bucket_order = 1 and $2::boolean and bucket_rank <= greatest($6::int * 20, 100))
-                 or (bucket_order = 2 and $3::boolean and bucket_rank <= greatest($7::int * 20, 100))
+                 (bucket_order = 0 and $1::boolean and bucket_rank <= greatest($5::int * 20, 500))
+                 or (bucket_order = 1 and $2::boolean and bucket_rank <= greatest($6::int * 20, 500))
+                 or (bucket_order = 2 and $3::boolean and bucket_rank <= greatest($7::int * 20, 500))
                order by
                  bucket_order asc,
                  bucket_rank asc`,
