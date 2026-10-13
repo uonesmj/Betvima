@@ -3,6 +3,8 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { LeagueLogo } from '@/components/ui/logo';
+import { useApp } from '@/components/layout/providers';
+import { translateSportName, translateVisibleText } from '@/lib/i18n/ui-phrases';
 
 export type LiveLeague = {
   sportKey: string;
@@ -31,6 +33,7 @@ function sportLabel(value: string) {
 
 export function LiveMenu({ leagues }: { leagues: LiveLeague[] }) {
   const router = useRouter();
+  const { locale } = useApp();
   const [level, setLevel] = useState<Level>('sports');
   const [sport, setSport] = useState<string | null>(null);
   const [country, setCountry] = useState<string | null>(null);
@@ -71,7 +74,7 @@ export function LiveMenu({ leagues }: { leagues: LiveLeague[] }) {
               <button key={value} type="button" onClick={() => selectSport(value)}
                 className="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left hover:bg-slate-50">
                 <img src={`/sports-new/svg/${value}.svg`} className="h-6 w-6" alt="" />
-                <span className="flex-1 text-sm font-bold">{sportLabel(value)}</span>
+                <span className="flex-1 text-sm font-bold">{locale === 'fa' ? translateVisibleText(sportLabel(value)) : sportLabel(value)}</span>
                 <span>›</span>
               </button>
             ))}
@@ -89,7 +92,7 @@ export function LiveMenu({ leagues }: { leagues: LiveLeague[] }) {
               <button key={value} type="button"
                 onClick={() => { setCountry(value); setLevel('leagues'); }}
                 className="flex w-full justify-between rounded-xl px-3 py-3 text-left hover:bg-slate-50">
-                <span className="text-sm font-bold">{COUNTRY_NAMES[value] ?? value}</span>
+                <span className="text-sm font-bold">{locale === 'fa' ? translateVisibleText(COUNTRY_NAMES[value] ?? value) : COUNTRY_NAMES[value] ?? value}</span>
                 <span>›</span>
               </button>
             ))}
@@ -116,7 +119,7 @@ export function LiveMenu({ leagues }: { leagues: LiveLeague[] }) {
                     size={32}
                   />
                   <span className="flex-1 text-sm font-bold">
-                    {league.leagueName ?? league.sportKey}
+                    {locale === 'fa' ? translateSportName(league.leagueName ?? league.sportKey) : league.leagueName ?? league.sportKey}
                   </span>
                   <span>›</span>
                 </button>

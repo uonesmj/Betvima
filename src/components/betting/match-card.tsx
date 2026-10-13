@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { Tv } from 'lucide-react';
 import { useApp } from '@/components/layout/providers';
+import { translateSportName, translateVisibleText } from '@/lib/i18n/ui-phrases';
 import { formatOddsScaled, formatRelative } from '@/lib/i18n';
 import { useBetSlip, type SlipItem } from '@/lib/store/betslip';
 import { TeamLogo } from '@/components/ui/logo';
@@ -63,7 +64,7 @@ export function MatchCard({
   compact?: boolean;
   onSelectionAdded?: () => void;
 }) {
-  const { t } = useApp();
+  const { t, locale } = useApp();
   const market = primaryBettingMarket(match.topMarkets, match.isLive);
   const home = match.participants.find((p) => p.role === 'HOME');
   const away = match.participants.find((p) => p.role === 'AWAY');
@@ -109,7 +110,7 @@ export function MatchCard({
             <TeamLogo url={home?.logoUrl} name={home?.name} size={compact ? 24 : 28} />
 
             <span className={`min-w-0 truncate font-extrabold text-[#20242A] ${compact ? "text-[11px] leading-4" : "text-[12px] leading-5"}`}>
-              {home?.name ?? 'TBD'}
+              {locale === 'fa' ? translateSportName(home?.name ?? 'TBD') : home?.name ?? 'TBD'}
             </span>
 
             {match.homeScore !== null ? (
@@ -125,7 +126,7 @@ export function MatchCard({
             <TeamLogo url={away?.logoUrl} name={away?.name} size={compact ? 24 : 28} />
 
             <span className={`min-w-0 truncate font-extrabold text-[#20242A] ${compact ? "text-[11px] leading-4" : "text-[12px] leading-5"}`}>
-              {away?.name ?? 'TBD'}
+              {locale === 'fa' ? translateSportName(away?.name ?? 'TBD') : away?.name ?? 'TBD'}
             </span>
 
             {match.awayScore !== null ? (
@@ -162,7 +163,7 @@ export function MatchCard({
           </div>
         ) : (
           <div className={`flex items-center justify-center rounded-[10px] border border-[#E5E8EC] bg-[#F5F6F8] text-[11px] font-semibold text-[#969CA5] max-md:col-span-2 ${compact ? "h-9" : "h-[46px]"}`}>
-            Odds unavailable
+            {t('home.oddsUnavailable')}
           </div>
         )}
       </div>
@@ -183,6 +184,7 @@ export function OddsButton({
   disabled?: boolean;
   onSelectionAdded?: () => void;
 }) {
+  const { locale } = useApp();
   const addSelection = useBetSlip((s) => s.toggle);
   const items = useBetSlip((s) => s.items);
   const selected = items.some(
@@ -230,7 +232,7 @@ export function OddsButton({
       }}
     >
       <span className="block truncate text-[10px] text-[#5D646D]">
-        {selection.name}
+        {locale === 'fa' ? translateVisibleText(selection.name, true) : selection.name}
       </span>
 
       <span className="block text-sm font-extrabold tabular-nums text-[#20242A]">
