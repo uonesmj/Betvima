@@ -200,7 +200,7 @@ export class PostgresCatalogRepository implements CatalogRepository {
       filter.from ?? null, filter.to ?? null,
       filter.status?.length ? pgArray(filter.status) : null,
     ];
-    const conditions = `($1::text is null or s.slug = lower($1))
+    const conditions = `${ODDS_ONLY_MATCH_SQL} and ($1::text is null or s.slug = lower($1))
         and ($2::uuid is null or m.league_id = $2)
         and ($3::text is null or ht.name ilike '%' || $3 || '%' or at.name ilike '%' || $3 || '%'
              or l.name ilike '%' || $3 || '%' or l.name_fa ilike '%' || $3 || '%')
@@ -247,15 +247,15 @@ export class PostgresCatalogRepository implements CatalogRepository {
   }
 
   async getMatch(_c: ActorContext, matchId: UUID): Promise<Match | null> {
-    const row = await this.db.queryOne<Row>(`select ${MATCH_SELECT} ${MATCH_FROM} where m.id = $1`, [matchId]);
+    const row = await this.db.queryOne<Row>(`select ${MATCH_SELECT} ${MATCH_FROM} where m.id = $1 and ${ODDS_ONLY_MATCH_SQL}`, [matchId]);
     return row ? mapMatch(row) : null;
   }
 
   async getMatchBySlugOrId(_c: ActorContext, key: string): Promise<Match | null> {
     const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(key);
     const row = await this.db.queryOne<Row>(
-      isUuid ? `select ${MATCH_SELECT} ${MATCH_FROM} where m.id = $1`
-             : `select ${MATCH_SELECT} ${MATCH_FROM} where m.provider_id = $1 limit 1`,
+      isUuid ? `select ${MATCH_SELECT} ${MATCH_FROM} where m.id = $1 and ${ODDS_ONLY_MATCH_SQL}`
+             : `select ${MATCH_SELECT} ${MATCH_FROM} where m.provider_id = $1 and ${ODDS_ONLY_MATCH_SQL} limit 1`,
       [key],
     );
     return row ? mapMatch(row) : null;
@@ -433,7 +433,7 @@ export class PostgresCatalogRepository implements CatalogRepository {
   async listUpcomingMatches(_c: ActorContext, hours: number, limit: number): Promise<Match[]> {
     const rows = await this.db.query<Row>(
       `select ${MATCH_SELECT} ${MATCH_FROM}
-        where m.status = 'scheduled' and m.scheduled_at between now() and now() + ($1::int * interval '1 hour')
+        where ${ODDS_ONLY_MATCH_SQL} and m.status = 'scheduled' and m.scheduled_at between now() and now() + ($1::int * interval '1 hour')
         order by m.scheduled_at asc limit $2`,
       [hours, Math.min(Math.max(limit * 20, 200), 500)],
     );
@@ -444,7 +444,7 @@ export class PostgresCatalogRepository implements CatalogRepository {
   async search(_c: ActorContext, query: string, limit: number): Promise<Match[]> {
     const rows = await this.db.query<Row>(
       `select ${MATCH_SELECT} ${MATCH_FROM}
-        where (ht.name ilike '%' || $1 || '%' or at.name ilike '%' || $1 || '%'
+        where ${ODDS_ONLY_MATCH_SQL} and (ht.name ilike '%' || $1 || '%' or at.name ilike '%' || $1 || '%'
                or ht.name_fa ilike '%' || $1 || '%' or at.name_fa ilike '%' || $1 || '%'
                or l.name ilike '%' || $1 || '%' or l.name_fa ilike '%' || $1 || '%')
           and m.status::text not in ('settled','cancelled','abandoned')
