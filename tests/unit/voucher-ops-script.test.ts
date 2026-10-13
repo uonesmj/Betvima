@@ -4,6 +4,24 @@ import { spawnSync } from 'node:child_process';
 
 describe('voucher email recovery process safety', () => {
   const file = 'ops/hotfixes/restore_voucher_email_worker_20261013.py';
+  it('preserves private PM2 startup logs and explains boot failures without exposing payment credentials', () => {
+    const source = readFileSync('ops/hotfixes/restore_voucher_email_worker_diagnostic_20261013.py','utf8');
+    const syntax = spawnSync('python3', ['-c', 'import ast,sys;ast.parse(sys.stdin.read())'], {
+      input: source, encoding:'utf8',
+    });
+    expect(syntax.status, syntax.stderr).toBe(0);
+    for (const marker of [
+      'TSX_RUNTIME_PRECHECK_PASS',
+      'BOOT_DIAGNOSIS',
+      'PM2_BOOT_STATUS',
+      'PM2_EXIT_CODE',
+      'NOTIFICATION_WORKER_ONLINE',
+      'NOVA_WORKER_ONCE',
+      'os.chmod(f, 0o600)',
+    ]) expect(source).toContain(marker);
+    expect(source).not.toContain('activateVoucher(');
+    expect(source).not.toContain('createVoucher(');
+  });
   it('is valid Python and only launches the notification worker after safe preflight', () => {
     const source = readFileSync(file, 'utf8');
     const python = spawnSync('python3', ['-c', 'import ast,sys; ast.parse(sys.stdin.read())'], {
