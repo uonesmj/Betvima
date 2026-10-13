@@ -1,5 +1,6 @@
 import { withErrorHandling, jsonOk } from '@/lib/errors';
 import { ApiError } from '@/lib/errors';
+import { isFreshFiveDollarClock } from '@/lib/live-match-minute';
 import { createServices } from '@/server/services/container';
 import { publicActor } from '@/server/http/guard';
 import { searchParams } from '@/server/http/request';
@@ -21,7 +22,8 @@ export const GET = withErrorHandling('matches.get', async (ctx, request: Request
     const liveStats = await services.catalog.getMatchStats(match.id);
 
     const liveSnapshot =
-      match.isLive && liveStats?.payload && typeof liveStats.payload === 'object'
+      match.isLive && liveStats?.payload && typeof liveStats.payload === 'object' &&
+      isFreshFiveDollarClock(liveStats.provider, liveStats.updatedAt)
         ? liveStats.payload as {
             minute?: number | null;
             period?: string | null;
@@ -61,7 +63,8 @@ export const GET = withErrorHandling('matches.get', async (ctx, request: Request
     : null;
 
   const liveSnapshot =
-    match.isLive && liveStats?.payload && typeof liveStats.payload === 'object'
+    match.isLive && liveStats?.payload && typeof liveStats.payload === 'object' &&
+      isFreshFiveDollarClock(liveStats.provider, liveStats.updatedAt)
       ? liveStats.payload as {
           minute?: number | null;
           period?: string | null;
