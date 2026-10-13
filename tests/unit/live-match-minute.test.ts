@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
-import { isFreshFiveDollarClock, matchMinuteLabel } from '@/lib/live-match-minute';
+import { matchMinuteLabel } from '@/lib/live-match-minute';
 
-describe('FiveDollar match minute display', () => {
+describe('Odds API match minute display', () => {
   it('shows the exact provider minute, not a locally estimated timer', () => {
     expect(matchMinuteLabel(7, null)).toBe("7'");
     expect(matchMinuteLabel(44, 'first_half')).toBe("44'");
@@ -21,26 +21,17 @@ describe('FiveDollar match minute display', () => {
     expect(matchMinuteLabel(90, 'full_time')).toBe('FT');
   });
 
-  it('rejects stale FiveDollar snapshots rather than showing outdated clocks', () => {
-    const now = Date.parse('2026-10-13T02:00:00.000Z');
-    expect(isFreshFiveDollarClock('5dollarfootballapi', '2026-10-13T01:57:00.000Z', now)).toBe(true);
-    expect(isFreshFiveDollarClock('5dollarfootballapi', '2026-10-13T01:54:00.000Z', now)).toBe(false);
-    expect(isFreshFiveDollarClock('5dollarfootballapi', null, now)).toBe(false);
-    expect(isFreshFiveDollarClock('5dollarfootballapi', 'bad-date', now)).toBe(false);
-    expect(isFreshFiveDollarClock('api_football', null, now)).toBe(true);
-  });
 
-  it('keeps the 5Dollar clock read-only and limits freshness of matched bookmaker events', () => {
+  it('reads the canonical minute and never overlays a secondary provider clock', () => {
     const catalog = readFileSync('src/server/adapters/postgres/catalog.ts', 'utf8');
     const oddsRoute = readFileSync('src/app/api/v1/matches/[id]/odds/route.ts', 'utf8');
     const hero = readFileSync('src/components/betting/match-hero.tsx', 'utf8');
-    for (const source of [catalog, oddsRoute]) {
-      expect(source).toContain("ms.provider = '5dollarfootballapi'");
-      expect(source).toContain("ms.updated_at >= now() - interval '5 minutes'");
-      expect(source.includes('display_minute') || source.includes('as minute')).toBe(true);
-    }
+    expect(catalog).toContain('m.minute as display_minute');
+    expect(oddsRoute).toContain('m.minute, m.period');
+    expect(oddsRoute).not.toContain('fdclock');
+    expect(oddsRoute).toContain("m.provider = 'the_odds_api'");
     expect(hero).toContain('matchMinuteLabel(match.minute, match.period)');
-    expect(hero).not.toContain('liveSeconds');
     expect(hero).not.toContain('setLiveSeconds');
   });
+
 });
