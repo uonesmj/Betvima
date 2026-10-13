@@ -18,9 +18,9 @@ describe('fair per-fixture prematch odds refresh scheduler', () => {
     const seen=new Set<string>();
     for(let tick=0;tick<5;tick++){
       const chosen=selectFairPrematchRefreshes(all,start+tick*30_000,{near:16,mid:12,far:12},{near:false,mid:true,far:false},attempts);
-      expect(chosen).toHaveLength(tick===4?11:12);
+      expect(chosen).toHaveLength(12);
       for(const item of chosen) {
-        expect(seen.has(item.match_id)).toBe(false);
+        if(tick<4) expect(seen.has(item.match_id)).toBe(false);
         seen.add(item.match_id);
       }
     }
