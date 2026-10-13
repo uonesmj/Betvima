@@ -491,14 +491,17 @@ providerMetadata?: Record<string, unknown> | null }): Promise<PaymentIntent> {
        * still exist. The intent remains held until the email can be queued
        * or the same idempotent request is retried.
        */
-      if (!voucherCreated && error instanceof ApiError) {
-        // Explicit local validation failure: no provider voucher was created.
+      // Only a definitive provider rejection can release the reserved funds.
+      // A transport timeout or 5xx response may mean the voucher was issued.
+      const definiteRejection = error instanceof Error &&
+        /^uWallet request failed \\((?:400|401|403|404|422)\\)/.test(error.message);
+      if (!voucherCreated && (error instanceof ApiError || definiteRejection)) {
         await this.services.payments.completeIntent({
           publicId: intent.publicId,
           status: 'failed',
-          failureCode: error.code,
-          failureMessage: error.message,
-          raw: { error: error.code },
+          failureCode: error instanceof ApiError ? error.code : 'UWALLET_REJECTED',
+          failureMessage: error instanceof ApiError ? error.message : 'Voucher provider rejected issuance',
+          raw: { error: error instanceof ApiError ? error.code : 'UWALLET_REJECTED' },
         }).catch(() => undefined);
       } else {
         // Remote timeouts are ambiguous: issuing might already have succeeded.
@@ -507,7 +510,7 @@ providerMetadata?: Record<string, unknown> | null }): Promise<PaymentIntent> {
         log.error('uVoucher withdrawal requires delivery/provider reconciliation', {
           publicId: intent.publicId,
           transactionId,
-          error: error instanceof Error ? error.message : String(error),
+          errorCode: error instanceof ApiError ? error.code : 'REMOTE_DELIVERY_UNCERTAIN',
         });
       }
 
