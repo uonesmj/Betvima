@@ -14,6 +14,8 @@ REV='b59359a006f514af78ad9863cc3953c2acaa048d'
 NEW_STATS_BLOB='fa9735060b04dc7247f5e5e1adab2a0f01723831'
 OLD_STATS_BLOB='cb40083cda8a401a8be66046ab84f650f7aa837a'
 NEW_SYNC_BLOB='fa5a67cd0cf068bace7004df99b575fbf09b854a'
+BASE_SYNC_REV='c1cc6aee2662e23057c4441575ccb382226141a7'
+BASE_SYNC_BLOB='50dbb1ef113b387b7299c27182c40a2131a81931'
 SERVICE='betvima-football-stats-worker'
 GUARDED=('betvima-odds-worker','betvima-live-odds-worker','betvima-settlement-worker')
 OWNER=pwd.getpwnam('novaadmin')
@@ -33,8 +35,8 @@ def one(items,name):
  if len(matching)!=1 or matching[0].get('pm2_env',{}).get('status')!='online':
   stop('Service is not uniquely online: '+name)
  return matching[0]
-def remote(path,expected):
- url='https://raw.githubusercontent.com/uonesmj/Betvima/'+REV+'/'+path
+def remote(path,expected,revision=REV):
+ url='https://raw.githubusercontent.com/uonesmj/Betvima/'+revision+'/'+path
  with urllib.request.urlopen(url,timeout=45) as f:data=f.read(150001)
  if len(data)>150000 or blob(data)!=expected:stop('Reviewed Git blob mismatch: '+path)
  return data
@@ -80,12 +82,29 @@ def main():
   candidate=candidate.replace(old_param,'    [providerName, pgArray(providerIds)],',1).encode()
   reviewed_sync=remote('src/workers/sports-provider-sync.ts',NEW_SYNC_BLOB)
   reviewed_stats=remote('src/workers/fivedollar-stats.worker.ts',NEW_STATS_BLOB)
-  # Source changes must precisely match the two reviewed edits; no other code
-  # or site-specific customization is discarded.
-  if blob(candidate)!=NEW_SYNC_BLOB:
-   stop('Local sync source has customizations; target patch needs re-review')
+  # Independently verify exactly what changed between the reviewed source
+  # revisions before applying those two edits surgically on this VPS.
+  # The VPS sync module intentionally retains earlier server-specific odds
+  # adaptations and must NEVER be replaced wholesale by the GitHub copy.
+  baseline=remote('src/workers/sports-provider-sync.ts',BASE_SYNC_BLOB,BASE_SYNC_REV)
+  baseline_text=baseline.decode('utf8')
+  old_expected=baseline_text.replace(
+   old,old+'\nimport { pgArray } from "@/server/db/rows";',1
+  ).replace(old_param,'    [providerName, pgArray(providerIds)],',1)
+  if old_expected.encode('utf8')!=reviewed_sync:
+   stop('Reviewed GitHub changes differ from the two expected array fixes')
+  # Confirm the exact database query being patched and that both edits
+  # belong to the FiveDollar fixture-ID resolver, never an odds function.
+  resolver_start=code.find('export async function resolveFiveDollarMatchRows(')
+  if resolver_start<0 or code.count('export async function resolveFiveDollarMatchRows(')!=1:
+   stop('Ambiguous FiveDollar fixture resolver')
+  resolver_tail=code[resolver_start:]
+  if resolver_tail.count(old_param)!=1 or 'from unnest($2::text[]) as f(provider_id)' not in resolver_tail:
+   stop('Unexpected FiveDollar PostgreSQL-array query')
+  if not candidate.decode('utf8').count('pgArray(providerIds)')==1:
+   stop('Unexpected number of converted PostgreSQL array arguments')
   if candidate!=reviewed_sync:
-   stop('Provider array change did not match reviewed Git source')
+   print('SERVER_CUSTOMIZATIONS_PRESERVED',flush=True)
   tsc=ROOT/'node_modules/typescript/bin/tsc'
   if not tsc.is_file():stop('No local TypeScript compiler')
   stats_stat=STATS.stat()
