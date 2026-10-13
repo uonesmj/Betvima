@@ -1,5 +1,5 @@
 /** Exact provider reference-FX calculations shared by UI and financial backend. */
-import { ApiError } from '@/lib/errors';
+import { ApiError } from '@/lib/errors/api-error';
 
 export type VoucherFiatCurrency = 'IRT' | 'IRR';
 const SCALE = 100000000n;
