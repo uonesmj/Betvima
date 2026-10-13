@@ -124,17 +124,21 @@ export async function linkCrossProviderMatch(
     : { status: "conflict", matchId: candidate.id };
 }
 
+export function fiveDollarBookmakerPricesEnabled(): boolean {
+  // Deliberately disabled in production until financial SQL quote/settlement
+  // guards are reviewed for this additional source. No implicit env fallback.
+  return process.env.FIVEDOLLAR_BETTING_ODDS_ENABLED === "true";
+}
+
 export function resolveSportsOddsProvider(
   matchProvider: string,
   sportsProviders: SportsDataProvider[] | undefined,
   primaryProvider: SportsDataProvider,
 ): SportsDataProvider | null {
-  // FiveDollar provides fixture identity, kickoff, results, events and stats
-  // only. A 5Dollar-owned match is not quotable unless separately linked to
-  // a genuine The Odds API event. Never pass a FiveDollar ID into odds sync.
-  if (matchProvider !== MATCH_SOURCE_ODDS) return null;
-  return sportsProviders?.find((provider) => provider.name === MATCH_SOURCE_ODDS) ??
-    (primaryProvider.name === MATCH_SOURCE_ODDS ? primaryProvider : null);
+  if (matchProvider !== MATCH_SOURCE_ODDS &&
+    !(matchProvider === MATCH_SOURCE_FALLBACK && fiveDollarBookmakerPricesEnabled())) return null;
+  return sportsProviders?.find((provider) => provider.name === matchProvider) ??
+    (primaryProvider.name === matchProvider ? primaryProvider : null);
 }
 
 export function fiveDollarProviderEventId(fixtureProviderId: string, eventIdentity: string): string {
@@ -146,12 +150,13 @@ export async function fetchOddsForOwningProvider(
   providerId: string,
   prefetched?: ProviderResult<ProviderOddsBundle[]>,
 ): Promise<ProviderResult<ProviderOddsBundle[]>> {
-  if (provider.name !== MATCH_SOURCE_ODDS) {
+  if (provider.name !== MATCH_SOURCE_ODDS &&
+    !(provider.name === MATCH_SOURCE_FALLBACK && fiveDollarBookmakerPricesEnabled())) {
     return {
       ok: false,
       value: null,
       errorCode: "ODDS_PROVIDER_NOT_AUTHORIZED",
-      errorMessage: "BetVima betting odds are exclusively sourced from The Odds API",
+      errorMessage: "Betting price source is not enabled for the requested provider",
       retryable: false,
     };
   }

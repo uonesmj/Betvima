@@ -63,6 +63,48 @@ describe('FiveDollar football-only display statistics', () => {
     expect(fetchEventOdds).not.toHaveBeenCalled();
   });
 
+
+  it('requests at most 50 live fixtures per included page and does not revive finished matches', async () => {
+    vi.stubEnv('FIVEDOLLAR_API_KEY', 'testing-key');
+    vi.useFakeTimers();
+    const calls: URL[] = [];
+    vi.stubGlobal('fetch', vi.fn(async (url: string) => {
+      const requested = new URL(url);
+      calls.push(requested);
+      const page = Number(requested.searchParams.get('page') ?? 1);
+      return {
+        ok: true,
+        status: 200,
+        text: async () => JSON.stringify({
+          success: 1,
+          data: page === 1 ? [
+            { id: 12, status: 'live', kickoff_utc: '2026-10-13T19:00:00Z', teams: { home: { name: 'Alpha' }, away: { name: 'Bravo' } } },
+            { id: 13, status: 'finished', kickoff_utc: '2026-10-13T17:00:00Z', teams: { home: { name: 'Charlie' }, away: { name: 'Delta' } } },
+          ] : [
+            { id: 14, status: 'live', kickoff_utc: '2026-10-13T19:30:00Z', teams: { home: { name: 'Echo' }, away: { name: 'Foxtrot' } } },
+          ],
+          pagination: { page, has_more: page === 1 },
+        }),
+      };
+    }));
+    try {
+      const { FiveDollarFootballApiSportsProvider } = await import('@/providers/5dollar-football-api');
+      const response = new FiveDollarFootballApiSportsProvider().fetchLiveMatches('football');
+      await vi.advanceTimersByTimeAsync(8500);
+      const result = await response;
+      expect(result.ok).toBe(true);
+      expect(result.value?.map(match => match.providerId)).toEqual(['12', '14']);
+      expect(calls).toHaveLength(2);
+      for (const url of calls) {
+        expect(url.searchParams.get('per_page')).toBe('50');
+        expect(url.searchParams.get('include')).toBe('events,stats');
+      }
+    } finally {
+      vi.useRealTimers();
+      vi.unstubAllGlobals();
+    }
+  });
+
   it('refuses requests to 5Dollar odds endpoints at the provider adapter itself', async () => {
     vi.stubEnv('FIVEDOLLAR_API_KEY', 'testing-key');
     const { FiveDollarFootballApiSportsProvider } = await import('@/providers/5dollar-football-api');

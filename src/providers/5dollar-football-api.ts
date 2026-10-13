@@ -1,4 +1,5 @@
 import type { ISODateString } from "@/lib/types";
+import { authenticatedFiveDollarH2h } from "./fivedollar-authenticated-h2h";
 import type {
   ProviderMatch,
   ProviderOddsBundle,
@@ -185,8 +186,7 @@ function mapFixture(fixture: any, sport: "football" | "esports" = "football"): P
   };
 }
 
-// No betting-market or bookmaker-price parser is defined in this adapter.
-// FiveDollar is exclusively a fixture, event, result and match-statistics feed.
+// Price ingestion is separately gated; fixture, event and result access remains independent.
 
 export class FiveDollarFootballApiSportsProvider implements SportsDataProvider {
   readonly name = "5dollarfootballapi";
@@ -318,22 +318,27 @@ export class FiveDollarFootballApiSportsProvider implements SportsDataProvider {
       const seen = new Set<string>();
 
       const fetchLiveFootball = async () => {
-        const payload = await request<any>("/fixtures", {
-          status: "live",
-          per_page: 500,
-          include: "events,stats",
-        });
-
-        for (const fixture of payload?.data || []) {
-          const mapped = {
-            ...mapFixture(fixture, "football"),
-            status: "live" as const,
-          };
-          const key = `football:${mapped.providerId}`;
-          if (!seen.has(key)) {
-            seen.add(key);
-            result.push(mapped);
+        // 5Dollar caps fixture-list page size at 50 whenever include is set.
+        // The former per_page=500 with include=events,stats returned 400,
+        // starving live fixture updates even while the catalog remained online.
+        for (let page = 1; page <= 5; page++) {
+          const payload = await request<any>("/fixtures", {
+            status: "live",
+            per_page: 50,
+            include: "events,stats",
+            page,
+          });
+          for (const fixture of payload?.data || []) {
+            const mapped = mapFixture(fixture, "football");
+            // Do not force a completed or paused fixture back into 'live'.
+            if (mapped.status !== "live") continue;
+            const key = `football:${mapped.providerId}`;
+            if (!seen.has(key)) {
+              seen.add(key);
+              result.push(mapped);
+            }
           }
+          if (payload?.pagination?.has_more !== true) break;
         }
       };
 
@@ -345,12 +350,43 @@ export class FiveDollarFootballApiSportsProvider implements SportsDataProvider {
     }
   }
 
-  async fetchOdds(_matchProviderIds: string[]): Promise<ProviderResult<ProviderOddsBundle[]>> {
-    return {
-      ok: false, value: null, errorCode: "ODDS_NOT_SUPPORTED",
-      errorMessage: "FiveDollar supplies fixtures and statistics only; betting odds must come from The Odds API",
-      retryable: false,
-    };
+  async fetchOdds(matchProviderIds: string[]): Promise<ProviderResult<ProviderOddsBundle[]>> {
+    // No change to betting ownership until the settlement and SQL quote guards
+    // have been audited against the second source. CI may test mapping while
+    // production stays off by default.
+    if (process.env.FIVEDOLLAR_BETTING_ODDS_ENABLED !== "true") {
+      return {
+        ok: false, value: null, errorCode: "ODDS_NOT_SUPPORTED",
+        errorMessage: "FiveDollar betting odds require a separately verified rollout",
+        retryable: false,
+      };
+    }
+    const ids = [...new Set(matchProviderIds.map(id => String(id).trim()).filter(id => /^\d{1,20}$/.test(id)))].slice(0, 1);
+    const bundles: ProviderOddsBundle[] = [];
+    let failures = 0;
+    for (const fixtureId of ids) {
+      try {
+        // A snapshot's retrieval time is NOT a bookmaker price timestamp.
+        // Require Ultra's timestamped tick history and exact quote equality.
+        const [fixtureResponse, historyResponse] = await Promise.all([
+          request<any>(`/fixtures/${encodeURIComponent(fixtureId)}`),
+          request<any>(`/fixtures/${encodeURIComponent(fixtureId)}/odds/history`, {
+            bookmaker: "bet365", market: "1x2", per_page: 500,
+          }),
+        ]);
+        const bundle = authenticatedFiveDollarH2h(fixtureResponse?.data, historyResponse);
+        if (bundle && bundle.matchProviderId === fixtureId) bundles.push(bundle);
+      } catch (error) {
+        failures += 1;
+        console.warn("FIVEDOLLAR_AUTHENTICATED_PRICE_UNAVAILABLE", JSON.stringify({
+          fixtureId, error: error instanceof Error ? error.message : String(error),
+        }));
+      }
+    }
+    console.log("FIVEDOLLAR_AUTHENTICATED_PRICE_POLL", JSON.stringify({
+      attempted: ids.length, verified: bundles.length, failed: failures,
+    }));
+    return ok(bundles);
   }
 
   async fetchEventOdds(_matchProviderIds: string[]): Promise<ProviderResult<ProviderOddsBundle[]>> {
