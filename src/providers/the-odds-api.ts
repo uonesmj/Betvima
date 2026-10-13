@@ -223,6 +223,7 @@ async function discoverEventMarkets(
       regions: regionsForSport(sportKey),
     },
     "extended",
+    0, // No exponential 429 retries for optional markets: core pricing wins.
   );
 
   const discovered = new Set<string>();
@@ -1022,10 +1023,9 @@ export class TheOddsApiSportsProvider implements SportsDataProvider {
 
               for (const bookmaker of event.bookmakers || []) {
               for (const market of bookmaker.markets || []) {
-                const sourceUpdatedAt =
-                  market.last_update ||
-                  bookmaker.last_update ||
-                  new Date().toISOString();
+                const sourceUpdatedAt = market.last_update || bookmaker.last_update;
+                // Do not invent a price timestamp from a local fetch time.
+                if (!sourceUpdatedAt || !Number.isFinite(Date.parse(sourceUpdatedAt))) continue;
 
                 for (const bucket of marketBuckets(
                     market.key,
@@ -1231,8 +1231,23 @@ export class TheOddsApiSportsProvider implements SportsDataProvider {
     try {
       const results: ProviderOddsBundle[] = [];
       const seen = new Set<string>();
+      const startedAt = Date.now();
+      // Two network calls per fixture can otherwise hold the extended lock
+      // for minutes and compete with five-minute base-market freshness.
+      const extendedBudgetMs = 35_000;
+      let attempted = 0;
+      let requestFailures = 0;
 
       for (const matchProviderId of matchProviderIds) {
+        if (Date.now() - startedAt >= extendedBudgetMs) {
+          console.warn("ODDS_EXTENDED_BUDGET_EXHAUSTED", JSON.stringify({
+            attempted, receivedBundles: results.length,
+            elapsedMs: Date.now()-startedAt,
+            remaining: matchProviderIds.length-attempted,
+          }));
+          break;
+        }
+        attempted += 1;
         const sportKey = sportKeyFromProviderId(matchProviderId);
         const eventId = eventIdFromProviderId(matchProviderId);
         if (!sportKey || !eventId || seen.has(matchProviderId)) continue;
@@ -1247,6 +1262,10 @@ export class TheOddsApiSportsProvider implements SportsDataProvider {
           try {
             discoveredMarkets = await discoverEventMarkets(sportKey, eventId);
           } catch (discoveryError) {
+            const detail = discoveryError instanceof Error ? discoveryError.message : String(discoveryError);
+            if (detail.includes("OUT_OF_USAGE_CREDITS") || detail.includes("The Odds API 429")) {
+              throw discoveryError;
+            }
             console.warn("ODDS_EVENT_MARKET_DISCOVERY_UNAVAILABLE", JSON.stringify({
               matchProviderId,
               sportKey,
@@ -1282,6 +1301,7 @@ export class TheOddsApiSportsProvider implements SportsDataProvider {
               oddsFormat: "decimal",
             },
             "extended",
+            0, // Optional requests must never back off for 10+20+30 seconds.
           );
         } catch (error) {
           const message = error instanceof Error ? error.message : String(error);
@@ -1314,7 +1334,20 @@ export class TheOddsApiSportsProvider implements SportsDataProvider {
             continue;
           }
 
-          throw error;
+          if (message.includes("OUT_OF_USAGE_CREDITS")) throw error;
+          if (message.includes("The Odds API 429")) {
+            console.warn("ODDS_EXTENDED_RATE_LIMIT_STOP", JSON.stringify({
+              attempted, receivedBundles: results.length, elapsedMs: Date.now()-startedAt,
+            }));
+            break;
+          }
+          requestFailures += 1;
+          console.warn("ODDS_EXTENDED_EVENT_FETCH_FAILED", JSON.stringify({
+            matchProviderId, sportKey, error: message.slice(0, 200),
+          }));
+          // Never throw away previously fetched valid events because another
+          // sport or bookmaker has a transient network error.
+          continue;
         }
 
         const markets = new Map<
@@ -1337,10 +1370,9 @@ export class TheOddsApiSportsProvider implements SportsDataProvider {
 
           for (const bookmaker of event.bookmakers || []) {
             for (const market of bookmaker.markets || []) {
-              const sourceUpdatedAt =
-                market.last_update ||
-                bookmaker.last_update ||
-                new Date().toISOString();
+              const sourceUpdatedAt = market.last_update || bookmaker.last_update;
+              // Do not invent a price timestamp from a local fetch time.
+              if (!sourceUpdatedAt || !Number.isFinite(Date.parse(sourceUpdatedAt))) continue;
 
               for (const bucket of marketBuckets(
                 market.key,
@@ -1500,6 +1532,11 @@ export class TheOddsApiSportsProvider implements SportsDataProvider {
         });
       }
 
+      console.log("ODDS_EXTENDED_BATCH_SUMMARY", JSON.stringify({
+        attempted, requested: matchProviderIds.length,
+        returnedBundles: results.length, requestFailures,
+        elapsedMs: Date.now()-startedAt,
+      }));
       return providerResult(true, results);
     } catch (error) {
       return providerResult(
