@@ -10,7 +10,7 @@ export type VoucherFiatCurrency = 'IRT' | 'IRR';
 const SCALE = 100000000n;
 
 function scaledRate(rate: string): bigint {
-  if (!/^\\d{1,9}(?:\\.\\d{1,8})?$/.test(rate)) {
+  if (!/^\d{1,9}(?:\.\d{1,8})?$/.test(rate)) {
     throw new ApiError('BAD_REQUEST', 'Invalid uWallet voucher rate');
   }
   const [whole, fraction = ''] = rate.split('.');
@@ -28,7 +28,7 @@ export async function getUwalletVoucherIrrPerUsd(): Promise<string> {
     || String(c.symbol ?? c.coin ?? '').toLowerCase() === env.uwalletUvoucherCoin.toLowerCase());
   const swap = usd?.swap?.find(s => String(s.coin ?? '').toLowerCase() === env.uwalletHotvoucherCoin.toLowerCase());
   const percent = String(swap?.percent ?? '');
-  if (!/^\\d+(?:\\.\\d{1,10})?$/.test(percent)) {
+  if (!/^\d+(?:\.\d{1,10})?$/.test(percent)) {
     throw new ApiError('PAYMENT_PROVIDER_DISABLED', 'uWallet voucher reference rate is unavailable');
   }
   // Provider returns percent (e.g. 252706220 => 2527062.20 IRR/USD).
