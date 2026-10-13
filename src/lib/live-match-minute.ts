@@ -11,16 +11,3 @@ export function matchMinuteLabel(
   if (minute == null || !Number.isInteger(minute) || minute < 0 || minute > 130) return 'LIVE';
   return `${minute}'`;
 }
-
-/** A stale statistics snapshot must not override the live match clock.
- * Other configured match-data providers retain their existing behavior.
- */
-export function isFreshFiveDollarClock(
-  provider: string | null | undefined,
-  updatedAt: string | null | undefined,
-  nowMs = Date.now(),
-): boolean {
-  if (provider !== '5dollarfootballapi') return true;
-  const updated = updatedAt ? Date.parse(updatedAt) : NaN;
-  return Number.isFinite(updated) && updated <= nowMs + 30_000 && nowMs - updated <= 5 * 60_000;
-}
