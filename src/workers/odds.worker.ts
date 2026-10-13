@@ -29,6 +29,7 @@ import {
   attachProviderMatchIdentity,
   fetchOddsForOwningProvider,
   fiveDollarProviderEventId,
+  fiveDollarBookmakerPricesEnabled,
   linkCrossProviderMatch,
   resolveFiveDollarMatchRows,
   resolveSportsOddsProvider,
@@ -61,6 +62,8 @@ const lastPrematchAttemptByProvider = new Map<string, Map<string, number>>();
 const lastExtendedAttemptByProvider = new Map<string, Map<string, number>>();
 let lastResultsQuotaErrorAt = 0;
 let lastLiveOddsAt = 0;
+// Fairly cycle optional FiveDollar live quote probes; failed/missing quotes must not starve other fixtures.
+const lastFiveDollarLiveOddsAttempt = new Map<string, number>();
 // The dedicated live-price process has its own source and PM2 lifecycle.
 // Cache its heartbeat briefly so the bulk worker can stand in only when
 // that process actually disappears; never double-spend the API budget.
@@ -1142,14 +1145,16 @@ async function runDedicatedLiveTick(ctx: WorkerContext): Promise<void> {
       ? ctx.services.providers.sportsProviders
       : [ctx.services.providers.sports]
   ).filter((provider, index, all) =>
-    provider.name === MATCH_SOURCE_ODDS && provider.configured &&
+    (provider.name === MATCH_SOURCE_ODDS ||
+      (provider.name === MATCH_SOURCE_FALLBACK && fiveDollarBookmakerPricesEnabled())) &&
+    provider.configured &&
     all.findIndex((item) => item.name === provider.name) === index
   );
 
   await ctx.withLock("odds:live-priority", 15, async () => {
     for (const sourceProvider of providers) {
       try {
-        const pending = await ctx.services.db.query<{
+        let pending = await ctx.services.db.query<{
           match_id: string;
           provider_id: string | null;
         }>(
@@ -1167,6 +1172,20 @@ async function runDedicatedLiveTick(ctx: WorkerContext): Promise<void> {
             limit 200`,
           [sourceProvider.name, pgArray(LIVE_MATCH_STATUSES)],
         );
+
+        if (sourceProvider.name === MATCH_SOURCE_FALLBACK) {
+          // Ultra's 40/min shared allowance cannot price every fixture in
+          // every 5-second cycle. Keep the 15-second live lock bounded while
+          // fairly attempting new fixtures even when a quote is unavailable.
+          pending = pending
+            .sort((a, b) =>
+              (lastFiveDollarLiveOddsAttempt.get(a.match_id) ?? 0) -
+              (lastFiveDollarLiveOddsAttempt.get(b.match_id) ?? 0))
+            .slice(0, 1);
+          for (const row of pending) {
+            lastFiveDollarLiveOddsAttempt.set(row.match_id, Date.now());
+          }
+        }
 
         const providerIds = pending
           .map((row) => row.provider_id)
