@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { selectFairPrematchRefreshes } from '@/workers/prematch-selection-fairness';
+import { selectFairPrematchRefreshes, selectFairExtendedRefreshes } from '@/workers/prematch-selection-fairness';
 
 const start=Date.parse('2026-10-13T02:00:00Z');
 function fixture(i:number,hours=12) {
@@ -54,6 +54,25 @@ describe('fair per-fixture prematch odds refresh scheduler', () => {
     expect(chosen).toHaveLength(28);
     expect(chosen.filter(f=>Date.parse(f.scheduled_at)<=start+30*60_000)).toHaveLength(16);
     expect(chosen.filter(f=>Date.parse(f.scheduled_at)>start+24*3600_000)).toHaveLength(12);
+  });
+
+  it('rotates eight per-event market requests even when every previously sampled event returned 404', () => {
+    const all=Array.from({length:57},(_,i)=>fixture(i,15));
+    const attempted=new Map<string,number>();
+    const visited=new Set<string>();
+    for(let n=0;n<8;n++){
+      const chosen=selectFairExtendedRefreshes(all,start+n*300_000,8,attempted);
+      expect(chosen).toHaveLength(8);
+      chosen.forEach(e=>visited.add(e.match_id));
+    }
+    expect(visited.size).toBe(57);
+  });
+
+  it('omits cancelled and invalid extended-market events and does not fake quotes', () => {
+    const events=[fixture(0,2),{...fixture(1,3),provider_id:null},
+      {...fixture(2,3),status:'finished'},fixture(3,-1)];
+    const pending=selectFairExtendedRefreshes(events,start,8,new Map());
+    expect(pending.map(e=>e.match_id)).toEqual(['game-0000']);
   });
 
   it('treats a failed or empty upstream response as a consumed attempt', () => {
