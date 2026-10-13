@@ -27,8 +27,8 @@ describe('Odds history idempotency and expensive event-detail eligibility', () =
   it('does not schedule 404-prone stale fixtures for extended market discovery', () => {
     expect(worker).toContain("primary_market.key in ('h2h', 'spreads', 'totals')");
     expect(worker).toContain("source_quote.provider = m.provider");
-    expect(worker).toContain("source_quote.odds_updated_at >= now() - interval '15 minutes'");
-    expect(worker).toContain("source_quote.provider_timestamp >= now() - interval '15 minutes'");
+    expect(worker).toContain("source_quote.odds_updated_at >= now() - interval '5 minutes'");
+    expect(worker).toContain("source_quote.provider_timestamp >= now() - interval '5 minutes'");
     expect(worker).toContain("const normalSyncPending = pending.filter((row) => Boolean(row.provider_id))");
   });
 });

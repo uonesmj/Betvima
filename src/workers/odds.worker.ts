@@ -11,6 +11,7 @@ import { serverEnv } from '@/server/env';
 import { pgArray } from '@/server/db/rows';
 import { extendedRefreshBudget } from './odds-refresh-budget';
 import { duePrematchRefreshes, prematchRefreshCadence, type PrematchRefreshClock } from './prematch-refresh-cadence';
+import { selectFairPrematchRefreshes, selectFairExtendedRefreshes } from './prematch-selection-fairness';
 import {
   hasRejecting,
   hasSuspending,
@@ -54,6 +55,10 @@ const handlers: JobHandler[] = [
 let lastResultReconciliationAt = 0;
 // Separate clocks prevent an unrelated/legacy provider from throttling The Odds API.
 const lastPrematchByProvider = new Map<string, PrematchRefreshClock>();
+// Separate retry clocks ensure an event without fresh quotes cannot permanently
+// occupy the same limited base-odds batch (the main cause of far-future Paused).
+const lastPrematchAttemptByProvider = new Map<string, Map<string, number>>();
+const lastExtendedAttemptByProvider = new Map<string, Map<string, number>>();
 let lastResultsQuotaErrorAt = 0;
 let lastLiveOddsAt = 0;
 // The dedicated live-price process has its own source and PM2 lifecycle.
@@ -155,7 +160,7 @@ createWorker({
         const includePrematch = includePrematchNear || includePrematchMid || includePrematchFar;
         lastPrematchByProvider.set(sourceProvider.name, due.next);
 
-        const pending = includePrematch
+        const pendingCandidates = includePrematch
           ? await ctx.services.db.query<{
               match_id: string;
               provider_id: string | null;
@@ -224,9 +229,9 @@ createWorker({
                  scheduled_at
                from ranked
                where
-                 (bucket_order = 0 and $1::boolean and bucket_rank <= $5::int)
-                 or (bucket_order = 1 and $2::boolean and bucket_rank <= $6::int)
-                 or (bucket_order = 2 and $3::boolean and bucket_rank <= $7::int)
+                 (bucket_order = 0 and $1::boolean and bucket_rank <= greatest($5::int * 20, 500))
+                 or (bucket_order = 1 and $2::boolean and bucket_rank <= greatest($6::int * 20, 500))
+                 or (bucket_order = 2 and $3::boolean and bucket_rank <= greatest($7::int * 20, 500))
                order by
                  bucket_order asc,
                  bucket_rank asc`,
@@ -242,7 +247,28 @@ createWorker({
             ).catch(() => [])
           : [];
 
-        const extendedPending =
+        let recentAttempts = lastPrematchAttemptByProvider.get(sourceProvider.name);
+        if (!recentAttempts) {
+          recentAttempts = new Map<string, number>();
+          lastPrematchAttemptByProvider.set(sourceProvider.name, recentAttempts);
+        }
+        const pending = selectFairPrematchRefreshes(
+          pendingCandidates,
+          now,
+          { near: cadence.nearLimit, mid: cadence.midLimit, far: cadence.farLimit },
+          { near: includePrematchNear, mid: includePrematchMid, far: includePrematchFar },
+          recentAttempts,
+        );
+        console.log("ODDS_PREMATCH_FAIR_COVERAGE", JSON.stringify({
+          provider: sourceProvider.name,
+          discoveredCandidates: pendingCandidates.length,
+          scheduledAttempts: pending.length,
+          near: pending.filter(row => new Date(row.scheduled_at).getTime() <= now + 30 * 60_000).length,
+          mid: pending.filter(row => new Date(row.scheduled_at).getTime() > now + 30 * 60_000 && new Date(row.scheduled_at).getTime() <= now + 24 * 60 * 60_000).length,
+          far: pending.filter(row => new Date(row.scheduled_at).getTime() > now + 24 * 60 * 60_000).length,
+        }));
+
+        const extendedCandidates =
           includeExtendedPrematchNear || includeExtendedPrematchFar
             ? await ctx.services.db.query<{
                 match_id: string;
@@ -273,8 +299,8 @@ createWorker({
                      where primary_market.match_id = m.id
                        and primary_market.key in ('h2h', 'spreads', 'totals')
                        and source_quote.provider = m.provider
-                       and source_quote.odds_updated_at >= now() - interval '15 minutes'
-                       and source_quote.provider_timestamp >= now() - interval '15 minutes'
+                       and source_quote.odds_updated_at >= now() - interval '5 minutes'
+                       and source_quote.provider_timestamp >= now() - interval '5 minutes'
                    )
                    and (
                      ($3::boolean and m.scheduled_at <= now() + interval '30 minutes')
@@ -290,7 +316,7 @@ createWorker({
                    ) asc nulls first,
                    m.scheduled_at asc,
                    m.id asc
-                 limit $1`,
+                 limit greatest($1::int * 20, 500)`,
                 [
                   cadence.extendedLimit,
                   sourceProvider.name,
@@ -309,33 +335,24 @@ createWorker({
           .map((row) => row.provider_id)
           .filter((id): id is string => Boolean(id));
 
-        const extendedNearProviderIds = includeExtendedPrematchNear
-          ? extendedPending
-              .filter((row) => {
-                if (row.status !== 'scheduled' || !row.provider_id) return false;
-                const scheduledAt = new Date(row.scheduled_at).getTime();
-                return scheduledAt > now && scheduledAt <= now + 30 * 60_000;
-              })
-              .slice(0, cadence.extendedLimit)
-              .map((row) => row.provider_id)
-              .filter((id): id is string => Boolean(id))
-          : [];
-
-        const extendedFarProviderIds = includeExtendedPrematchFar
-          ? extendedPending
-              .filter((row) => {
-                if (row.status !== 'scheduled' || !row.provider_id) return false;
-                const scheduledAt = new Date(row.scheduled_at).getTime();
-                return scheduledAt > now + 30 * 60_000;
-              })
-              .slice(0, cadence.extendedLimit)
-              .map((row) => row.provider_id)
-              .filter((id): id is string => Boolean(id))
-          : [];
-
-        const extendedProviderIds = [
-          ...new Set([...extendedNearProviderIds, ...extendedFarProviderIds]),
-        ].slice(0, cadence.extendedLimit);
+        // Every genuinely fresh event gets a turn. Unpriced / 404 events must
+        // not monopolize the tiny event-detail budget on successive cycles.
+        let extendedAttempts = lastExtendedAttemptByProvider.get(sourceProvider.name);
+        if (!extendedAttempts) {
+          extendedAttempts = new Map<string, number>();
+          lastExtendedAttemptByProvider.set(sourceProvider.name, extendedAttempts);
+        }
+        const extendedPending = selectFairExtendedRefreshes(
+          extendedCandidates, now, cadence.extendedLimit, extendedAttempts,
+        );
+        const extendedProviderIds = extendedPending
+          .map((row) => row.provider_id)
+          .filter((id): id is string => Boolean(id));
+        console.log("ODDS_EXTENDED_FAIR_COVERAGE", JSON.stringify({
+          provider: sourceProvider.name,
+          eligibleCandidates: extendedCandidates.length,
+          scheduledAttempts: extendedProviderIds.length,
+        }));
 
         console.log("ODDS_PREMATCH_FETCH_START", JSON.stringify({
           at: new Date(now).toISOString(),
