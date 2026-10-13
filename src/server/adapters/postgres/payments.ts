@@ -5,6 +5,7 @@ import { ApiError } from '@/lib/errors';
 import { convertIrrMinorToUsdMinor, convertUsdMinorToIrrMinor, convertUsdMinorToIrtMinor, getUsdIrtRate } from '@/server/providers/arzhaam/client';
 import { type Row, toBig, toIso, toIsoOrNull, toJson, toNum, toStr, toStrOrNull } from '@/server/db/rows';
 import { getEstimate } from '@/server/providers/nowpayments/client';
+import { voucherWithdrawalDebit, voucherUsdToWalletMinor } from '@/server/providers/uwallet/voucher-fx';
 
 function decimalToScaledBigInt(value: number | string, scale: number): bigint {
   const text = String(value).trim();
@@ -237,6 +238,41 @@ export class PostgresPaymentRepository implements PaymentRepository {
           "BAD_REQUEST",
           `${isCryptoWithdrawal ? "Crypto" : "Voucher"} withdrawals require an IRT or IRR wallet (got ${walletCurrency})`,
         );
+      }
+
+      if (isVoucherWithdrawal) {
+        const data = providerMetadata?.voucherFx as Record<string, unknown> | undefined;
+        if (data?.source !== 'uwallet' ||
+            typeof data.rateIrrPerUsd !== 'string' ||
+            typeof data.requestedWalletAmountMinor !== 'string' ||
+            data.walletCurrency !== walletCurrency ||
+            typeof data.usdMinor !== 'string') {
+          throw new ApiError('BAD_REQUEST', 'Verified uWallet voucher FX quote is required');
+        }
+        const requested = BigInt(data.requestedWalletAmountMinor);
+        const calculated = voucherWithdrawalDebit(requested, walletCurrency, data.rateIrrPerUsd);
+        if (calculated.usdMinor !== amountMinor ||
+            calculated.usdMinor.toString() !== data.usdMinor ||
+            calculated.walletMinor.toString() !== data.walletDebitMinor) {
+          throw new ApiError('BAD_REQUEST', 'uWallet voucher quote mismatch');
+        }
+        return {
+          currency: walletCurrency,
+          amountMinor: calculated.walletMinor,
+          metadata: {
+            targetWalletCurrency: walletCurrency,
+            voucherFx: data,
+            fx: {
+              source: 'uwallet', quoteType: data.quoteType,
+              rateIrrPerUsd: data.rateIrrPerUsd,
+              quotedAt: data.quotedAt,
+              paymentCurrency: 'USD',
+              paymentAmountMinor: amountMinor.toString(),
+              walletCurrency,
+              walletAmountMinor: calculated.walletMinor.toString(),
+            },
+          },
+        };
       }
 
       const rate = await getUsdIrtRate();
@@ -665,6 +701,26 @@ export class PostgresPaymentRepository implements PaymentRepository {
           paymentCurrency === 'USD' &&
           (targetWalletCurrency === 'IRR' || targetWalletCurrency === 'IRT')
         ) {
+          if (intent.methodId === 'voucher_uvoucher' || intent.methodId === 'voucher_hotvoucher') {
+            const rateSnapshot = metadata.voucherFx as Record<string, unknown> | undefined;
+            if (rateSnapshot?.source !== 'uwallet' ||
+                typeof rateSnapshot.rateIrrPerUsd !== 'string') {
+              throw new ApiError('BAD_REQUEST', 'Verified uWallet voucher deposit FX rate missing');
+            }
+            walletCurrency = targetWalletCurrency;
+            walletAmountMinor = voucherUsdToWalletMinor(
+              paymentAmountMinor, targetWalletCurrency, rateSnapshot.rateIrrPerUsd,
+            );
+            fx = {
+              source: 'uwallet', quoteType: rateSnapshot.quoteType,
+              rateIrrPerUsd: rateSnapshot.rateIrrPerUsd,
+              quotedAt: rateSnapshot.quotedAt,
+              paymentCurrency: 'USD',
+              paymentAmountMinor: paymentAmountMinor.toString(),
+              walletCurrency,
+              walletAmountMinor: walletAmountMinor.toString(),
+            };
+          } else {
           const rate = await getUsdIrtRate();
           walletCurrency = targetWalletCurrency;
 
@@ -690,6 +746,7 @@ export class PostgresPaymentRepository implements PaymentRepository {
             walletCurrency: targetWalletCurrency,
             walletAmountMinor: walletAmountMinor.toString(),
           };
+          }
         }
         const walletMetadata = {
           public_id: intent.publicId,
