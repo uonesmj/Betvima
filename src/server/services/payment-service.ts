@@ -494,7 +494,7 @@ providerMetadata?: Record<string, unknown> | null }): Promise<PaymentIntent> {
       // Only a definitive provider rejection can release the reserved funds.
       // A transport timeout or 5xx response may mean the voucher was issued.
       const definiteRejection = error instanceof Error &&
-        /^uWallet request failed \\((?:400|401|403|404|422)\\)/.test(error.message);
+        /^uWallet request failed \((?:400|401|403|404|422)\)/.test(error.message);
       if (!voucherCreated && (error instanceof ApiError || definiteRejection)) {
         await this.services.payments.completeIntent({
           publicId: intent.publicId,
