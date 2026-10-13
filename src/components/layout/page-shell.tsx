@@ -537,14 +537,14 @@ export function MobileTabBar() {
 export function Footer({
   onSupportOpen
 }: { onSupportOpen?: () => void }) {
-  const { t } = useApp();
+  const { t, locale, setLocale } = useApp();
   const pathname = usePathname();
 
   const featuredTeams = [
-    { logo: 'manchester-united', name: 'Manchester United' },
-    { logo: 'liverpool', name: 'Liverpool' },
-    { logo: 'arsenal', name: 'Arsenal' },
-    { logo: 'ac-milan', name: 'AC Milan' },
+    { logo: 'manchester-united', name: 'Manchester United', short: 'Man United' },
+    { logo: 'liverpool', name: 'Liverpool', short: 'Liverpool' },
+    { logo: 'arsenal', name: 'Arsenal', short: 'Arsenal' },
+    { logo: 'ac-milan', name: 'AC Milan', short: 'AC Milan' },
   ];
   const paymentMarks = [
     { logo: 'visa', name: 'Visa' },
@@ -557,209 +557,161 @@ export function Footer({
   return (
     <footer
       aria-label="BetVima site footer"
-      className={(pathname === '/' ? 'mt-3' : 'mt-6') + ' relative isolate overflow-hidden border-t border-[#22302E] bg-[#090F18] pb-36 text-white md:pb-8'}
+      className={(pathname === '/' ? 'mt-2' : 'mt-4') + ' relative isolate overflow-hidden border-t border-[#22302E] bg-[#090F18] pb-[calc(3.5rem+env(safe-area-inset-bottom))] text-white lg:pb-0'}
     >
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute -right-44 -top-48 h-[420px] w-[420px] rounded-full bg-[#00D47A]/[0.055] blur-[100px] md:h-[600px] md:w-[600px]"
-      />
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute -bottom-52 -left-48 h-[480px] w-[480px] rounded-full bg-[#087FF5]/[0.065] blur-[110px]"
-      />
-      <div className="nova-container relative">
+      <div aria-hidden="true" className="pointer-events-none absolute -right-44 -top-48 h-[420px] w-[420px] rounded-full bg-[#00D47A]/[0.055] blur-[100px]" />
+      <div aria-hidden="true" className="pointer-events-none absolute -bottom-52 -left-48 h-[480px] w-[480px] rounded-full bg-[#087FF5]/[0.065] blur-[110px]" />
+      <div className="nova-container relative min-w-0">
         <div aria-hidden="true" className="h-px bg-gradient-to-r from-transparent via-[#00D47A]/70 to-transparent" />
 
-        <div className="grid gap-8 py-9 sm:py-11 lg:grid-cols-12 lg:gap-12 lg:py-14">
-          <div className="lg:col-span-7">
-            <div className="flex flex-wrap items-center gap-4">
-              <Link
-                href="/"
-                aria-label="BetVima home"
-                className="inline-flex shrink-0 items-center transition-opacity hover:opacity-85"
-              >
-                <img
-                  src="/brand/betvima-wordmark.svg"
-                  alt="BetVima"
-                  className="h-auto w-[142px] object-contain sm:w-[165px]"
-                />
+        {/* Languages are deliberately the first actionable controls in the footer. */}
+        <div className="flex min-w-0 flex-wrap items-center gap-2.5 border-b border-white/[0.07] py-3" dir="ltr">
+          <Globe2 aria-hidden="true" className="h-4 w-4 shrink-0 text-[#75EABA]" />
+          <span className="text-[11px] font-semibold text-[#A8B9C6]">Language</span>
+          <div role="group" aria-label="Footer language" className="inline-flex max-w-full items-center gap-1 rounded-xl border border-white/[0.12] bg-white/[0.045] p-1">
+            <button type="button" lang="fa" dir="rtl" aria-pressed={locale === 'fa'} onClick={() => setLocale('fa')}
+              className={'inline-flex min-h-9 items-center gap-1.5 whitespace-nowrap rounded-lg px-2.5 text-[12px] font-semibold transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#00D47A] ' + (locale === 'fa' ? 'bg-[#00D47A] text-[#041C11]' : 'text-[#D0DCE6] hover:bg-white/[0.10]')}>
+              <span aria-hidden="true" className="text-base leading-none">🇮🇷</span><span>فارسی</span>
+            </button>
+            <button type="button" lang="en" dir="ltr" aria-pressed={locale === 'en'} onClick={() => setLocale('en')}
+              className={'inline-flex min-h-9 items-center gap-1.5 whitespace-nowrap rounded-lg px-2.5 text-[12px] font-semibold transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#00D47A] ' + (locale === 'en' ? 'bg-[#00D47A] text-[#041C11]' : 'text-[#D0DCE6] hover:bg-white/[0.10]')}>
+              <span aria-hidden="true" className="text-base leading-none">🇬🇧</span><span>English</span>
+            </button>
+          </div>
+        </div>
+
+        <div className="grid min-w-0 gap-5 py-6 sm:py-7 lg:grid-cols-12 lg:gap-8 lg:py-8">
+          <div className="min-w-0 lg:col-span-7">
+            <div className="flex min-w-0 flex-wrap items-center gap-2.5">
+              <Link href="/" aria-label="BetVima home" className="inline-flex shrink-0 items-center transition-opacity hover:opacity-85">
+                <img src="/brand/betvima-logo-transparent.png" alt="BetVima" className="block h-auto w-[128px] max-w-full shrink-0 object-contain sm:w-[148px]" />
               </Link>
-              <span className="inline-flex items-center gap-2 rounded-full border border-[#00D47A]/25 bg-[#00D47A]/[0.07] px-3 py-1.5 text-[10px] font-extrabold uppercase tracking-[0.17em] text-[#75EABA]">
-                <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-[#00D47A]" />
-                Sportsbook &amp; Live
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-[#00D47A]/25 bg-[#00D47A]/[0.07] px-2.5 py-1 text-[9px] font-bold uppercase tracking-wide text-[#75EABA]">
+                <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-[#00D47A]" />Sportsbook &amp; Live
               </span>
             </div>
-
-            <h2 className="mt-7 max-w-[620px] text-[34px] font-black leading-[1.11] tracking-[-0.045em] text-white sm:text-[44px] lg:text-[52px]">
-              Every match.
-              <span className="block text-[#00D47A]">One destination.</span>
+            <h2 className="mt-4 max-w-[620px] text-[28px] font-black leading-[1.12] tracking-[-0.035em] text-white sm:text-[37px] lg:text-[42px]">
+              Every match.<span className="block text-[#00D47A]">One destination.</span>
             </h2>
-            <p className="mt-4 max-w-[500px] text-[13px] font-medium leading-7 text-[#9CA9B9] sm:text-sm">
-              Stay close to the action with live fixtures, football markets and
-              everything you need in one place.
+            <p className="mt-2.5 max-w-[500px] text-[12px] font-medium leading-5 text-[#9CA9B9] sm:text-[13px]">
+              Stay close to the action with live fixtures, football markets and everything you need in one place.
             </p>
-
-            <div className="mt-7 flex flex-wrap items-center gap-3">
-              <Link
-                href="/sports/football"
-                className="group inline-flex min-h-12 items-center justify-center gap-2.5 rounded-xl bg-[#00D47A] px-5 text-[13px] font-extrabold text-[#05170E] shadow-[0_12px_32px_rgba(0,212,122,.16)] transition duration-200 hover:-translate-y-0.5 hover:bg-[#12E68B] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#00D47A]"
-              >
-                Explore football
-                <Trophy aria-hidden="true" className="h-4 w-4 transition-transform group-hover:scale-110" />
+            <div className="mt-4 flex flex-wrap items-center gap-2.5">
+              <Link href="/sports/football" className="group inline-flex min-h-10 items-center justify-center gap-2 rounded-xl bg-[#00D47A] px-4 text-[12px] font-extrabold text-[#05170E] transition hover:bg-[#12E68B] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#00D47A]">
+                Explore football <Trophy aria-hidden="true" className="h-4 w-4 transition-transform group-hover:scale-110" />
               </Link>
-              <Link
-                href="/live"
-                className="inline-flex min-h-12 items-center justify-center gap-2.5 rounded-xl border border-white/[0.15] bg-white/[0.055] px-5 text-[13px] font-bold text-white transition duration-200 hover:border-white/35 hover:bg-white/[0.09] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-white"
-              >
-                <Radio aria-hidden="true" className="h-4 w-4 text-[#00D47A]" />
-                Live matches
+              <Link href="/live" className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-white/[0.15] bg-white/[0.055] px-4 text-[12px] font-bold text-white transition hover:border-white/35 hover:bg-white/[0.09] focus-visible:outline focus-visible:outline-2">
+                <Radio aria-hidden="true" className="h-4 w-4 text-[#00D47A]" />Live matches
               </Link>
             </div>
           </div>
 
-          <div className="lg:col-span-5">
-            <div className="relative flex h-full min-h-[290px] flex-col justify-between overflow-hidden rounded-[26px] border border-[#2A4B43] bg-gradient-to-br from-[#14372E] via-[#102D2B] to-[#102439] p-6 shadow-[0_24px_65px_rgba(0,0,0,.16)] sm:p-7">
+          <div className="min-w-0 lg:col-span-5">
+            <div className="relative flex h-full min-h-[214px] flex-col justify-between overflow-hidden rounded-[20px] border border-[#2A4B43] bg-gradient-to-br from-[#14372E] via-[#102D2B] to-[#102439] p-4 shadow-[0_18px_45px_rgba(0,0,0,.14)] sm:p-5">
               <div aria-hidden="true" className="pointer-events-none absolute -right-10 -top-16 h-52 w-52 rounded-full border border-[#72E9B0]/[0.14]" />
-              <div aria-hidden="true" className="pointer-events-none absolute -right-24 -top-28 h-72 w-72 rounded-full border border-[#72E9B0]/[0.08]" />
               <div className="relative">
-                <div className="flex items-center justify-between">
-                  <span className="inline-flex h-12 w-12 items-center justify-center rounded-[16px] border border-[#65E5A8]/20 bg-[#00D47A]/[0.13] text-[#80E8B3]">
-                    <Headphones aria-hidden="true" className="h-6 w-6" strokeWidth={1.8} />
+                <div className="flex items-center justify-between gap-2">
+                  <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-[13px] border border-[#65E5A8]/20 bg-[#00D47A]/[0.13] text-[#80E8B3]">
+                    <Headphones aria-hidden="true" className="h-5 w-5" strokeWidth={1.8} />
                   </span>
                   <span className="inline-flex items-center gap-2 rounded-full border border-[#64E9AB]/20 bg-[#00D47A]/[0.10] px-3 py-1.5 text-[11px] font-extrabold text-[#90EFC1]">
-                    <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-[#00D47A]" />
-                    24/7 Support
+                    <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-[#00D47A]" />24/7 Support
                   </span>
                 </div>
-                <h3 className="mt-7 text-[25px] font-black tracking-tight text-white sm:text-[29px]">
-                  Here when you need us.
-                </h3>
-                <p className="mt-2 max-w-[315px] text-[13px] leading-6 text-[#B1C6C5]">
-                  Questions about your account or a transaction? Reach our support team directly.
-                </p>
+                <h3 className="mt-4 text-[21px] font-black tracking-tight text-white sm:text-[24px]">Here when you need us.</h3>
+                <p className="mt-1.5 max-w-[315px] text-[12px] leading-5 text-[#B1C6C5]">Questions about your account or a transaction? Reach our support team directly.</p>
               </div>
-              <button
-                type="button"
-                onClick={onSupportOpen}
-                disabled={!onSupportOpen}
-                className="relative mt-7 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-white px-5 text-[13px] font-extrabold text-[#0D2B25] transition duration-200 hover:bg-[#DCFFEB] disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-white"
-              >
-                <MessageCircle aria-hidden="true" className="h-[17px] w-[17px]" />
-                Contact support
+              <button type="button" onClick={onSupportOpen} disabled={!onSupportOpen}
+                className="relative mt-4 inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-xl bg-white px-4 text-[12px] font-extrabold text-[#0D2B25] transition hover:bg-[#DCFFEB] disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white">
+                <MessageCircle aria-hidden="true" className="h-4 w-4" />Contact support
               </button>
             </div>
           </div>
         </div>
 
-        <div className="grid gap-x-6 gap-y-9 border-y border-white/[0.09] py-9 sm:grid-cols-2 sm:py-10 lg:grid-cols-4 lg:gap-x-10">
-          <nav aria-label="Explore BetVima">
-            <h3 className="text-[11px] font-extrabold uppercase tracking-[0.20em] text-[#78E9AF]">Explore</h3>
-            <ul className="mt-5 space-y-3.5 text-[13px] font-semibold text-[#A6B2C1]">
-              <li><Link href="/" className="transition-colors hover:text-white focus-visible:text-white">{t('nav.home')}</Link></li>
-              <li><Link href="/live" className="transition-colors hover:text-white focus-visible:text-white">{t('nav.live')}</Link></li>
-              <li><Link href="/sports/football" className="transition-colors hover:text-white focus-visible:text-white">Football</Link></li>
+        <div className="grid min-w-0 gap-x-6 gap-y-5 border-y border-white/[0.09] py-5 sm:grid-cols-2 sm:py-6 lg:grid-cols-4 lg:gap-x-8">
+          <nav aria-label="Explore BetVima" className="min-w-0">
+            <h3 className="text-[11px] font-extrabold uppercase tracking-[0.17em] text-[#78E9AF]">Explore</h3>
+            <ul className="mt-3 space-y-2.5 text-[12px] font-semibold text-[#A6B2C1]">
+              <li><Link href="/" className="transition-colors hover:text-white">{t('nav.home')}</Link></li>
+              <li><Link href="/live" className="transition-colors hover:text-white">{t('nav.live')}</Link></li>
+              <li><Link href="/sports/football" className="transition-colors hover:text-white">Football</Link></li>
             </ul>
           </nav>
-
-          <nav aria-label="Account and partners">
-            <h3 className="text-[11px] font-extrabold uppercase tracking-[0.20em] text-[#78E9AF]">Account &amp; partners</h3>
-            <ul className="mt-5 space-y-3.5 text-[13px] font-semibold text-[#A6B2C1]">
-              <li><Link href="/bets" className="transition-colors hover:text-white focus-visible:text-white">{t('nav.myBets')}</Link></li>
-              <li><Link href="/wallet" className="transition-colors hover:text-white focus-visible:text-white">{t('nav.wallet')}</Link></li>
-              <li><Link href="/affiliate/login" className="transition-colors hover:text-white focus-visible:text-white">Partner program</Link></li>
+          <nav aria-label="Account and partners" className="min-w-0">
+            <h3 className="text-[11px] font-extrabold uppercase tracking-[0.17em] text-[#78E9AF]">Account &amp; partners</h3>
+            <ul className="mt-3 space-y-2.5 text-[12px] font-semibold text-[#A6B2C1]">
+              <li><Link href="/bets" className="transition-colors hover:text-white">{t('nav.myBets')}</Link></li>
+              <li><Link href="/wallet" className="transition-colors hover:text-white">{t('nav.wallet')}</Link></li>
+              <li><Link href="/affiliate/login" className="transition-colors hover:text-white">Partner program</Link></li>
             </ul>
           </nav>
-
-          <div>
-            <h3 className="text-[11px] font-extrabold uppercase tracking-[0.20em] text-[#78E9AF]">Get in touch</h3>
-            <div className="mt-5 space-y-4">
-              <a href="mailto:BetVimaSupport@gmail.com" className="group block">
+          <div className="min-w-0">
+            <h3 className="text-[11px] font-extrabold uppercase tracking-[0.17em] text-[#78E9AF]">Get in touch</h3>
+            <div className="mt-3 space-y-2.5">
+              <a href="mailto:BetVimaSupport@gmail.com" className="group block min-w-0">
                 <span className="block text-[11px] font-medium text-[#75879A]">Customer support</span>
                 <span className="mt-1 block break-all text-[12px] font-semibold text-[#D7E3EB] transition-colors group-hover:text-[#00D47A]">BetVimaSupport@gmail.com</span>
               </a>
-              <a href="mailto:VimaPartner@gmail.com" className="group block">
+              <a href="mailto:VimaPartner@gmail.com" className="group block min-w-0">
                 <span className="block text-[11px] font-medium text-[#75879A]">Partnerships</span>
                 <span className="mt-1 block break-all text-[12px] font-semibold text-[#D7E3EB] transition-colors group-hover:text-[#00D47A]">VimaPartner@gmail.com</span>
               </a>
             </div>
           </div>
-
-          <div>
-            <h3 className="text-[11px] font-extrabold uppercase tracking-[0.20em] text-[#78E9AF]">Preferences</h3>
-            <div className="mt-4">
-              <LanguageSelector variant="footer" />
-            </div>
-            <div className="mt-5 flex items-start gap-3 rounded-xl border border-white/[0.08] bg-white/[0.035] px-3.5 py-3">
-              <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-white/[0.16] text-[12px] font-black text-white">18+</span>
-              <div>
+          <div className="min-w-0">
+            <h3 className="text-[11px] font-extrabold uppercase tracking-[0.17em] text-[#78E9AF]">Responsible play</h3>
+            <div className="mt-3 flex items-start gap-2.5">
+              <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-white/[0.16] bg-white/[0.035] text-[12px] font-black text-white">18+</span>
+              <div className="min-w-0">
                 <p className="text-[12px] font-bold text-[#E6EBF2]">Play responsibly</p>
-                <p className="mt-1 text-[11px] leading-5 text-[#8D9BAA]">Betting is for adults only.</p>
+                <p className="mt-0.5 text-[11px] leading-5 text-[#8D9BAA]">Betting is for adults only.</p>
               </div>
             </div>
           </div>
         </div>
 
-        <div className="grid gap-4 py-6 sm:py-7 lg:grid-cols-2 lg:gap-6">
-          <section aria-label="Featured football clubs" className="rounded-2xl border border-white/[0.08] bg-[#111B29]/70 p-4 sm:p-5">
-            <div className="mb-4 flex items-center gap-2.5">
-              <Trophy aria-hidden="true" className="h-[16px] w-[16px] text-[#00D47A]" />
-              <h3 className="text-[11px] font-extrabold uppercase tracking-[0.16em] text-[#D4DFE8]">Featured clubs</h3>
+        <div className="grid min-w-0 gap-3 py-4 sm:py-5 lg:grid-cols-2 lg:gap-4">
+          <section aria-label="Featured football clubs" className="min-w-0 rounded-2xl border border-white/[0.10] bg-[#111B29]/75 p-3 sm:p-4">
+            <div className="mb-3 flex items-center gap-2">
+              <Trophy aria-hidden="true" className="h-4 w-4 shrink-0 text-[#00D47A]" />
+              <h3 className="text-[11px] font-extrabold uppercase tracking-[0.12em] text-[#D4DFE8]">Featured clubs</h3>
             </div>
-            <div className="flex items-center gap-3 overflow-x-auto pb-1">
+            <div className="grid min-w-0 grid-cols-4 gap-1.5 sm:gap-2">
               {featuredTeams.map((team) => (
-                <div
-                  key={team.logo}
-                  title={team.name}
-                  className="flex h-[58px] min-w-[66px] flex-1 items-center justify-center rounded-xl border border-white/[0.07] bg-white/[0.04] px-3 sm:min-w-[72px]"
-                >
-                  <img
-                    src={'/brand/footer/teams/' + team.logo + '.svg'}
-                    alt={team.name}
-                    loading="lazy"
-                    className="h-9 w-9 object-contain"
-                  />
+                <div key={team.logo} title={team.name} className="group flex min-w-0 flex-col items-center gap-1.5 rounded-xl border border-white/[0.10] bg-gradient-to-b from-white/[0.08] to-white/[0.025] px-1 py-2 shadow-[inset_0_1px_0_rgba(255,255,255,.05)] transition-colors hover:border-[#00D47A]/35">
+                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#F4F7F9] p-1 shadow-[0_2px_10px_rgba(0,0,0,.18)] sm:h-11 sm:w-11">
+                    <img src={'/brand/footer/teams/' + team.logo + '.svg'} alt={team.name} loading="lazy" className="h-full w-full object-contain" />
+                  </span>
+                  <span className="block w-full truncate text-center text-[9px] font-semibold leading-4 text-[#C6D2DF] sm:text-[10px]">{team.short}</span>
                 </div>
               ))}
             </div>
           </section>
-
-          <section aria-label="Payment methods" className="rounded-2xl border border-white/[0.08] bg-[#111B29]/70 p-4 sm:p-5">
-            <div className="mb-4 flex items-center gap-2.5">
-              <WalletCards aria-hidden="true" className="h-[16px] w-[16px] text-[#00D47A]" />
-              <h3 className="text-[11px] font-extrabold uppercase tracking-[0.16em] text-[#D4DFE8]">Payment methods</h3>
+          <section aria-label="Payment methods" className="min-w-0 rounded-2xl border border-white/[0.10] bg-[#111B29]/75 p-3 sm:p-4">
+            <div className="mb-3 flex items-center gap-2">
+              <WalletCards aria-hidden="true" className="h-4 w-4 shrink-0 text-[#00D47A]" />
+              <h3 className="text-[11px] font-extrabold uppercase tracking-[0.12em] text-[#D4DFE8]">Payment methods</h3>
             </div>
-            <div className="flex items-center gap-2.5 overflow-x-auto pb-1">
+            <div className="grid min-w-0 grid-cols-3 gap-2 sm:grid-cols-5">
               {paymentMarks.map((method) => (
-                <div
-                  key={method.logo}
-                  title={method.name}
-                  className="flex h-[58px] min-w-[77px] flex-1 items-center justify-center rounded-xl border border-white/[0.07] bg-white/[0.04] px-2.5"
-                >
-                  <img
-                    src={'/brand/footer/payments/' + method.logo + '.svg'}
-                    alt={method.name}
-                    loading="lazy"
-                    className="h-7 w-auto max-w-[66px] object-contain"
-                  />
+                <div key={method.logo} title={method.name} className="flex h-[58px] min-w-0 flex-col items-center justify-center gap-1 rounded-xl border border-[#D6E0E8] bg-[#F4F7FA] px-1 py-1.5 shadow-[0_2px_10px_rgba(0,0,0,.10)]">
+                  <img src={'/brand/footer/payments/' + method.logo + '.svg'} alt={method.name} loading="lazy" className="h-6 w-full max-w-[58px] object-contain" />
+                  <span className="w-full truncate text-center text-[9px] font-bold leading-3 text-[#263747]">{method.name}</span>
                 </div>
               ))}
             </div>
           </section>
         </div>
 
-        <div className="flex flex-col gap-4 border-t border-white/[0.09] py-5 text-[11px] font-medium text-[#8795A6] sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col gap-2 border-t border-white/[0.09] py-3 text-[11px] font-medium text-[#8795A6] sm:flex-row sm:items-center sm:justify-between">
           <p>© {new Date().getFullYear()} BetVima. All rights reserved.</p>
-          <div className="flex items-center justify-between gap-5 sm:justify-end">
+          <div className="flex items-center justify-between gap-3 sm:justify-end">
             <span className="inline-flex items-center gap-2">
-              <ShieldCheck aria-hidden="true" className="h-4 w-4 text-[#76D9A8]" />
-              Play safe. Stay in control.
+              <ShieldCheck aria-hidden="true" className="h-4 w-4 text-[#76D9A8]" />Play safe. Stay in control.
             </span>
-            <button
-              type="button"
-              onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-              aria-label="Back to top"
-              className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-white/[0.12] bg-white/[0.04] text-white transition hover:border-[#00D47A]/50 hover:bg-[#00D47A]/[0.12] hover:text-[#00D47A] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#00D47A]"
-            >
+            <button type="button" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} aria-label="Back to top"
+              className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-white/[0.12] bg-white/[0.04] text-white transition hover:border-[#00D47A]/50 hover:bg-[#00D47A]/[0.12] hover:text-[#00D47A] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#00D47A]">
               <ArrowUp aria-hidden="true" className="h-4 w-4" />
             </button>
           </div>
