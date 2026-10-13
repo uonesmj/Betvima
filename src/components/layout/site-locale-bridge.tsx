@@ -6,7 +6,7 @@ import { translateVisibleText } from '@/lib/i18n/ui-phrases';
 
 type Translation = { english: string; persian: string };
 const ATTRIBUTES = ['placeholder', 'title', 'aria-label', 'alt'] as const;
-const EXCLUDED = 'script, style, noscript, code, pre, textarea, [translate="no"], [data-i18n-ignore]';
+const EXCLUDED = 'script, style, noscript, code, pre, [translate="no"], [data-i18n-ignore]';
 const SPORT_CONTEXT = '[data-match-id], [data-testid="match-card"], .home-reference-card, [class*="team-name"], [class*="league-name"], [class*="match-hero"], [class*="match-list"], [class*="market-list"], [class*="fixture"]';
 
 /**
@@ -38,7 +38,7 @@ export function SiteLocaleBridge() {
 
     const translateNode = (node: Text) => {
       const parent = node.parentElement;
-      if (!parent || blocked(parent)) return;
+      if (!parent || blocked(parent) || parent.closest('textarea')) return;
       const value = node.nodeValue ?? '';
       const previous = cache.get(node);
       if (!inPersian) {
