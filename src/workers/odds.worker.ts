@@ -263,6 +263,22 @@ createWorker({
                    and m.status::text = 'scheduled'
                    and m.provider_id is not null
                    and m.scheduled_at > now()
+                   -- Extended requests must be for events that the featured
+                   -- odds feed actually refreshed. Old provider IDs can 404
+                   -- even though the stale fixture remains in our catalog.
+                   -- This avoids repeatedly spending the 8-event detail
+                   -- budget on non-existent or unsupported provider events.
+                   and exists (
+                     select 1
+                     from nova.markets primary_market
+                     join nova.selections source_quote
+                       on source_quote.market_id = primary_market.id
+                     where primary_market.match_id = m.id
+                       and primary_market.key in ('h2h', 'spreads', 'totals')
+                       and source_quote.provider = m.provider
+                       and source_quote.odds_updated_at >= now() - interval '15 minutes'
+                       and source_quote.provider_timestamp >= now() - interval '15 minutes'
+                   )
                    and (
                      ($3::boolean and m.scheduled_at <= now() + interval '30 minutes')
                      or ($4::boolean and m.scheduled_at > now() + interval '30 minutes')
