@@ -1,4 +1,5 @@
 import type { Db } from "@/lib/ports/db";
+import { pgArray } from "@/server/db/rows";
 import type {
   ProviderMatch,
   ProviderOddsBundle,
@@ -174,6 +175,6 @@ export async function resolveFiveDollarMatchRows(
          on pe.provider = $1 and pe.entity_type = 'match' and pe.provider_id = f.provider_id
        join nova.matches m on m.id = coalesce(direct_match.id, pe.internal_id)
       order by f.provider_id, (direct_match.id is null)`,
-    [providerName, providerIds],
+    [providerName, pgArray(providerIds)],
   );
 }
