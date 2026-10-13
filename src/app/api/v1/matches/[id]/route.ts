@@ -1,6 +1,5 @@
 import { withErrorHandling, jsonOk } from '@/lib/errors';
 import { ApiError } from '@/lib/errors';
-import { isFreshFiveDollarClock } from '@/lib/live-match-minute';
 import { createServices } from '@/server/services/container';
 import { publicActor } from '@/server/http/guard';
 import { searchParams } from '@/server/http/request';
@@ -21,25 +20,8 @@ export const GET = withErrorHandling('matches.get', async (ctx, request: Request
     const liveEvents = await services.catalog.listMatchEvents(match.id);
     const liveStats = await services.catalog.getMatchStats(match.id);
 
-    const liveSnapshot =
-      match.isLive && liveStats?.payload && typeof liveStats.payload === 'object' &&
-      isFreshFiveDollarClock(liveStats.provider, liveStats.updatedAt)
-        ? liveStats.payload as {
-            minute?: number | null;
-            period?: string | null;
-          }
-        : null;
-
-    const liveMatch = liveSnapshot
-      ? {
-          ...match,
-          minute: liveSnapshot.minute ?? match.minute,
-          period: liveSnapshot.period ?? match.period,
-        }
-      : match;
-
     return jsonOk({
-      match: liveMatch,
+      match,
       liveEvents,
       liveStats,
     });
@@ -62,25 +44,8 @@ export const GET = withErrorHandling('matches.get', async (ctx, request: Request
     ? await services.catalog.getMatchStats(match.id)
     : null;
 
-  const liveSnapshot =
-    match.isLive && liveStats?.payload && typeof liveStats.payload === 'object' &&
-      isFreshFiveDollarClock(liveStats.provider, liveStats.updatedAt)
-      ? liveStats.payload as {
-          minute?: number | null;
-          period?: string | null;
-        }
-      : null;
-
-  const liveMatch = liveSnapshot
-    ? {
-        ...match,
-        minute: liveSnapshot.minute ?? match.minute,
-        period: liveSnapshot.period ?? match.period,
-      }
-    : match;
-
   return jsonOk({
-    match: liveMatch,
+    match,
     markets,
     oddsHistory: history,
     result,

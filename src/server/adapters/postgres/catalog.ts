@@ -7,14 +7,9 @@ import type {
 } from '@/lib/types';
 import { pgArray, type Row, toBig, toBool, toIso, toIsoOrNull, toNum, toNumOrNull, toStr, toStrOrNull } from '@/server/db/rows';
 
-// The fixture-only feed cannot price past/outdated records. Its live list
-// includes only recently seen games (and limits kickoffs to the last four hours).
-// Never rewrite match status or settle bets from missing provider updates.
-const FIVEDOLLAR_ACTIVE_LIVE_SQL = `(
-  m.provider IS DISTINCT FROM '5dollarfootballapi'
-  OR (m.provider_updated_at >= now() - interval '5 minutes'
-      AND m.scheduled_at >= now() - interval '4 hours')
-)`;
+// Never expose discontinued external fixtures in live discovery.
+// Historical rows and financial settlement records remain unchanged.
+const ODDS_ONLY_MATCH_SQL = "m.provider = 'the_odds_api'";
 
 const SPORT_KEYS: SportKey[] = [
   'football',
@@ -49,11 +44,7 @@ const BETTABLE_STATUSES = ['scheduled', 'live', 'in_play', 'paused', 'break', 'h
 
 const MATCH_SELECT = `
   m.id, m.status, m.scheduled_at, m.started_at, m.finished_at, m.minute, m.period,
-  case when fdclock.minute_value ~ '^[0-9]{1,3}$'
-       then case when fdclock.minute_value::int between 0 and 130
-                 then fdclock.minute_value::int else m.minute end
-       else m.minute end as display_minute,
-  coalesce(fdclock.period_value, m.period) as display_period,
+  m.minute as display_minute, m.period as display_period,
   m.home_score, m.away_score, m.has_live_stream, m.provider, m.updated_at, m.league_id, m.sport_id,
   s.slug as sport_slug, l.name as league_name, l.name_fa as league_name_fa, l.logo as league_logo, c.code as country_code,
   ht.name as home_name, ht.name_fa as home_name_fa, ht.short_name as home_short, ht.logo as home_logo,
@@ -69,15 +60,7 @@ const MATCH_FROM = `
   left join nova.teams ht on ht.id = m.home_team_id
   left join nova.teams at on at.id = m.away_team_id
   left join lateral (select * from nova.match_results mr where mr.match_id = m.id order by mr.revision desc limit 1) r on true
-  left join lateral (
-    select ms.payload->>'minute' as minute_value,
-           nullif(ms.payload->>'period', '') as period_value
-      from nova.match_stats ms
-     where ms.match_id = m.id and ms.provider = '5dollarfootballapi'
-       and ms.updated_at >= now() - interval '5 minutes'
-       and m.status::text in ('live','in_play','paused','break','halftime','extra_time','penalties')
-     limit 1
-  ) fdclock on true`;
+ `;
 
 function mapMatch(row: Row, topMarkets: MarketSummary[] = []): Match {
   const status = toStr(row.status, 'scheduled');
@@ -181,6 +164,7 @@ export class PostgresCatalogRepository implements CatalogRepository {
                 select count(*)
                   from nova.matches mc
                  where mc.league_id = l.id
+                   and mc.provider = 'the_odds_api'
                    and mc.status::text = 'scheduled'
                    and mc.scheduled_at >= now()
               ) as match_count
@@ -217,7 +201,7 @@ export class PostgresCatalogRepository implements CatalogRepository {
       filter.from ?? null, filter.to ?? null,
       filter.status?.length ? pgArray(filter.status) : null,
     ];
-    const conditions = `($1::text is null or s.slug = lower($1))
+    const conditions = `${ODDS_ONLY_MATCH_SQL} and ($1::text is null or s.slug = lower($1))
         and ($2::uuid is null or m.league_id = $2)
         and ($3::text is null or ht.name ilike '%' || $3 || '%' or at.name ilike '%' || $3 || '%'
              or l.name ilike '%' || $3 || '%' or l.name_fa ilike '%' || $3 || '%')
@@ -264,15 +248,15 @@ export class PostgresCatalogRepository implements CatalogRepository {
   }
 
   async getMatch(_c: ActorContext, matchId: UUID): Promise<Match | null> {
-    const row = await this.db.queryOne<Row>(`select ${MATCH_SELECT} ${MATCH_FROM} where m.id = $1`, [matchId]);
+    const row = await this.db.queryOne<Row>(`select ${MATCH_SELECT} ${MATCH_FROM} where m.id = $1 and ${ODDS_ONLY_MATCH_SQL}`, [matchId]);
     return row ? mapMatch(row) : null;
   }
 
   async getMatchBySlugOrId(_c: ActorContext, key: string): Promise<Match | null> {
     const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(key);
     const row = await this.db.queryOne<Row>(
-      isUuid ? `select ${MATCH_SELECT} ${MATCH_FROM} where m.id = $1`
-             : `select ${MATCH_SELECT} ${MATCH_FROM} where m.provider_id = $1 limit 1`,
+      isUuid ? `select ${MATCH_SELECT} ${MATCH_FROM} where m.id = $1 and ${ODDS_ONLY_MATCH_SQL}`
+             : `select ${MATCH_SELECT} ${MATCH_FROM} where m.provider_id = $1 and ${ODDS_ONLY_MATCH_SQL} limit 1`,
       [key],
     );
     return row ? mapMatch(row) : null;
@@ -296,6 +280,7 @@ export class PostgresCatalogRepository implements CatalogRepository {
          join nova.markets mk on mk.id = sel.market_id
          join nova.matches fixture on fixture.id = mk.match_id
         where sel.market_id = any($1::uuid[])
+          and sel.provider = 'the_odds_api'
           and sel.odds_updated_at is not null
           and sel.odds_updated_at >= now() - case
             when coalesce(mk.is_live, false) or fixture.status::text = any($2::text[])
@@ -304,8 +289,7 @@ export class PostgresCatalogRepository implements CatalogRepository {
           end
           -- A newly re-ingested cached bookmaker quote is not a fresh live price.
           and (
-            sel.provider not in ('the_odds_api', '5dollarfootballapi')
-            or not (coalesce(mk.is_live, false) or fixture.status::text = any($2::text[]))
+            not (coalesce(mk.is_live, false) or fixture.status::text = any($2::text[]))
             or (sel.provider_timestamp between now() - interval '45 seconds' and now() + interval '15 seconds')
           )
         order by sel.participant_type, sel.code`,
@@ -361,36 +345,16 @@ export class PostgresCatalogRepository implements CatalogRepository {
     }));
   }
 
-  async listMatchEvents(matchId: UUID): Promise<import('@/lib/types').MatchEventView[]> {
-    const rows = await this.db.query<Row>(
-      `select e.id, e.provider_event_id, e.type, e.minute, e.period, e.team_id,
-              e.player_name, e.detail, e.occurred_at, t.name as team_name
-         from nova.match_events e
-         left join nova.teams t on t.id = e.team_id
-        where e.match_id = $1
-          and e.provider_event_id like '5dollar:%'
-        order by e.minute asc nulls last, e.occurred_at asc, e.created_at asc`,
-      [matchId],
-    );
-    return rows.map((r) => ({
-      id: toStr(r.id),
-      providerEventId: toStr(r.provider_event_id),
-      type: toStr(r.type, 'event'),
-      minute: toNumOrNull(r.minute),
-      period: toStrOrNull(r.period),
-      teamId: toStrOrNull(r.team_id) || null,
-      teamName: toStrOrNull(r.team_name),
-      playerName: toStrOrNull(r.player_name),
-      detail: toStrOrNull(r.detail),
-      occurredAt: toIso(r.occurred_at),
-    }));
+  async listMatchEvents(_matchId: UUID): Promise<import('@/lib/types').MatchEventView[]> {
+    // The Odds API does not supply separate player/event statistics.
+    return [];
   }
 
   async getMatchStats(matchId: UUID): Promise<import('@/lib/types').MatchStatsView | null> {
     const row = await this.db.queryOne<Row>(
       `select provider, updated_at, payload
          from nova.match_stats
-        where match_id = $1
+        where match_id = $1 and provider = 'the_odds_api'
         order by updated_at desc
         limit 1`,
       [matchId],
@@ -424,7 +388,7 @@ export class PostgresCatalogRepository implements CatalogRepository {
 
   async listLiveMatches(_c: ActorContext, limit: number): Promise<Match[]> {
     const rows = await this.db.query<Row>(
-      `select ${MATCH_SELECT} ${MATCH_FROM} where m.status::text = any($1::text[]) and ${FIVEDOLLAR_ACTIVE_LIVE_SQL}
+      `select ${MATCH_SELECT} ${MATCH_FROM} where m.status::text = any($1::text[]) and ${ODDS_ONLY_MATCH_SQL}
         order by m.minute desc nulls last, m.scheduled_at asc limit $2`,
       [pgArray(LIVE_STATUSES), Math.min(limit, 100)],
     );
@@ -435,7 +399,7 @@ export class PostgresCatalogRepository implements CatalogRepository {
       `select s.slug as sport_slug, count(*)::int as live_count
          from nova.matches m
          join nova.sports s on s.id = m.sport_id
-        where m.status::text = any($1::text[]) and ${FIVEDOLLAR_ACTIVE_LIVE_SQL}
+        where m.status::text = any($1::text[]) and ${ODDS_ONLY_MATCH_SQL}
         group by s.slug`,
       [pgArray(LIVE_STATUSES)],
     );
@@ -450,7 +414,7 @@ export class PostgresCatalogRepository implements CatalogRepository {
   async listUpcomingMatches(_c: ActorContext, hours: number, limit: number): Promise<Match[]> {
     const rows = await this.db.query<Row>(
       `select ${MATCH_SELECT} ${MATCH_FROM}
-        where m.status = 'scheduled' and m.scheduled_at between now() and now() + ($1::int * interval '1 hour')
+        where ${ODDS_ONLY_MATCH_SQL} and m.status = 'scheduled' and m.scheduled_at between now() and now() + ($1::int * interval '1 hour')
         order by m.scheduled_at asc limit $2`,
       [hours, Math.min(Math.max(limit * 20, 200), 500)],
     );
@@ -461,7 +425,7 @@ export class PostgresCatalogRepository implements CatalogRepository {
   async search(_c: ActorContext, query: string, limit: number): Promise<Match[]> {
     const rows = await this.db.query<Row>(
       `select ${MATCH_SELECT} ${MATCH_FROM}
-        where (ht.name ilike '%' || $1 || '%' or at.name ilike '%' || $1 || '%'
+        where ${ODDS_ONLY_MATCH_SQL} and (ht.name ilike '%' || $1 || '%' or at.name ilike '%' || $1 || '%'
                or ht.name_fa ilike '%' || $1 || '%' or at.name_fa ilike '%' || $1 || '%'
                or l.name ilike '%' || $1 || '%' or l.name_fa ilike '%' || $1 || '%')
           and m.status::text not in ('settled','cancelled','abandoned')
@@ -514,8 +478,7 @@ export class PostgresCatalogRepository implements CatalogRepository {
                        else interval '300 seconds'
                      end
                      and (
-                       candidate.provider not in ('the_odds_api', '5dollarfootballapi')
-                       or not (coalesce(m.is_live, false) or fixture.status::text = any($2::text[]))
+                       not (coalesce(m.is_live, false) or fixture.status::text = any($2::text[]))
                        or candidate.provider_timestamp between now() - interval '45 seconds' and now() + interval '15 seconds'
                      )
                 ) then 0 else 1 end,
@@ -529,11 +492,11 @@ export class PostgresCatalogRepository implements CatalogRepository {
         left join nova.selections sel
           on sel.market_id = mk.id
          and sel.status = 'open'
+         and sel.provider = 'the_odds_api'
          and sel.odds_updated_at is not null
          and sel.odds_updated_at >= now() - mk.maximum_quote_age
          and (
-           sel.provider not in ('the_odds_api', '5dollarfootballapi')
-           or not mk.in_play_quote
+           not mk.in_play_quote
            or sel.provider_timestamp between now() - interval '45 seconds' and now() + interval '15 seconds'
          )
         where mk.market_rank <= 3

@@ -32,9 +32,6 @@ const schema = z.object({
   SPORTS_PROVIDER_API_KEY: z.string().optional().default(''),
   ODDS_API_BASE_URL: z.string().optional().default(''),
   ODDS_API_KEY: z.string().optional().default(''),
-  FIVEDOLLAR_API_BASE_URL: z.string().optional().default(''),
-  FIVEDOLLAR_API_KEY: z.string().optional().default(''),
-  API_FOOTBALL_KEY: z.string().optional().default(''),
   SPORTS_ODDS_FRESHNESS_SECONDS: int(45),
   SPORTS_LIVE_FRESHNESS_SECONDS: int(12),
 
@@ -153,8 +150,8 @@ export function serverEnv(): ServerEnv {
     supabaseConfigured,
     configurationProblems: problems,
     configurationComplete: problems.length === 0,
-    sportsProviderEnabled: Boolean(env.ODDS_API_KEY || env.FIVEDOLLAR_API_KEY) ||
-      (env.SPORTS_PROVIDER !== 'disabled' && Boolean(env.SPORTS_PROVIDER_API_KEY)),
+    sportsProviderEnabled: Boolean(env.ODDS_API_KEY) ||
+      (env.SPORTS_PROVIDER === 'the_odds_api' && Boolean(env.SPORTS_PROVIDER_API_KEY)),
     paymentProviderEnabled: env.PAYMENT_PROVIDER !== 'disabled' && Boolean(env.PAYMENT_PROVIDER_API_KEY),
     paymentProvider: env.PAYMENT_PROVIDER,
     paymentProviderBaseUrl: env.PAYMENT_PROVIDER_BASE_URL,
