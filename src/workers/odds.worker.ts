@@ -22,7 +22,6 @@ import {
 import { marketRuleFor, marketDisplayOrder } from '@/domain/market-rules';
 import { attachCachedLogo } from "@/server/services/logo-resolver";
 import { LIVE_MATCH_STATUSES } from '@/lib/match-state';
-import type { LiveFixture, LiveEvent, LiveStatistics } from '@/lib/ports/live-data-provider';
 import {
   MATCH_SOURCE_ODDS,
   attachProviderMatchIdentity,
@@ -605,7 +604,7 @@ async function runLiveStateMaintenanceDetached(
   const now = Date.now();
   const sportsDue =
     now - lastResultReconciliationAt >= LIVE_RESULT_INTERVAL_MS;
-  // 5Dollar's fixture feed is the only statistics/events source.
+  // No supplemental football statistics or events provider remains.
   // Do not request or persist API-Football snapshots here.
   if (!sportsDue) {
     return;
@@ -874,7 +873,7 @@ async function runDedicatedLiveTick(ctx: WorkerContext): Promise<void> {
   );
 
   await ctx.withLock("odds:live-priority", 15, async () => {
-    // The Odds API request must never block 5Dollar live quote sampling.
+    // Only The Odds API is registered for live quote sampling.
     await Promise.allSettled(providers.map(async (sourceProvider) => {
       try {
         let pending = await ctx.services.db.query<{
@@ -1957,7 +1956,7 @@ async function syncOddsUnlocked(
           const oddsScaled = oddsFromDecimalString(String(quote.odds));
           if (oddsScaled < 10100n) {
             console.warn(
-              "5DOLLAR_ODDS_BELOW_DB_MIN",
+              "ODDS_API_BELOW_DB_MIN",
               JSON.stringify({
                 providerSelectionId: quote.providerId,
                 odds: String(quote.odds),
@@ -2061,7 +2060,7 @@ async function syncOddsUnlocked(
             const current = oddsFromDecimalString(String(quote.odds));
             if (current < 10100n) {
               console.warn(
-                "5DOLLAR_ODDS_BELOW_DB_MIN_TICK",
+                "ODDS_API_BELOW_DB_MIN_TICK",
                 JSON.stringify({
                   providerSelectionId: quote.providerId,
                   odds: String(quote.odds),
