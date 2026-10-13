@@ -11,6 +11,7 @@ import { serverEnv } from '@/server/env';
 import { pgArray } from '@/server/db/rows';
 import { extendedRefreshBudget } from './odds-refresh-budget';
 import { duePrematchRefreshes, prematchRefreshCadence, type PrematchRefreshClock } from './prematch-refresh-cadence';
+import { selectFairPrematchRefreshes } from './prematch-selection-fairness';
 import {
   hasRejecting,
   hasSuspending,
@@ -54,6 +55,9 @@ const handlers: JobHandler[] = [
 let lastResultReconciliationAt = 0;
 // Separate clocks prevent an unrelated/legacy provider from throttling The Odds API.
 const lastPrematchByProvider = new Map<string, PrematchRefreshClock>();
+// Separate retry clocks ensure an event without fresh quotes cannot permanently
+// occupy the same limited base-odds batch (the main cause of far-future Paused).
+const lastPrematchAttemptByProvider = new Map<string, Map<string, number>>();
 let lastResultsQuotaErrorAt = 0;
 let lastLiveOddsAt = 0;
 // The dedicated live-price process has its own source and PM2 lifecycle.
@@ -155,7 +159,7 @@ createWorker({
         const includePrematch = includePrematchNear || includePrematchMid || includePrematchFar;
         lastPrematchByProvider.set(sourceProvider.name, due.next);
 
-        const pending = includePrematch
+        const pendingCandidates = includePrematch
           ? await ctx.services.db.query<{
               match_id: string;
               provider_id: string | null;
@@ -224,9 +228,9 @@ createWorker({
                  scheduled_at
                from ranked
                where
-                 (bucket_order = 0 and $1::boolean and bucket_rank <= $5::int)
-                 or (bucket_order = 1 and $2::boolean and bucket_rank <= $6::int)
-                 or (bucket_order = 2 and $3::boolean and bucket_rank <= $7::int)
+                 (bucket_order = 0 and $1::boolean and bucket_rank <= greatest($5::int * 20, 100))
+                 or (bucket_order = 1 and $2::boolean and bucket_rank <= greatest($6::int * 20, 100))
+                 or (bucket_order = 2 and $3::boolean and bucket_rank <= greatest($7::int * 20, 100))
                order by
                  bucket_order asc,
                  bucket_rank asc`,
@@ -241,6 +245,27 @@ createWorker({
               ]
             ).catch(() => [])
           : [];
+
+        let recentAttempts = lastPrematchAttemptByProvider.get(sourceProvider.name);
+        if (!recentAttempts) {
+          recentAttempts = new Map<string, number>();
+          lastPrematchAttemptByProvider.set(sourceProvider.name, recentAttempts);
+        }
+        const pending = selectFairPrematchRefreshes(
+          pendingCandidates,
+          now,
+          { near: cadence.nearLimit, mid: cadence.midLimit, far: cadence.farLimit },
+          { near: includePrematchNear, mid: includePrematchMid, far: includePrematchFar },
+          recentAttempts,
+        );
+        console.log("ODDS_PREMATCH_FAIR_COVERAGE", JSON.stringify({
+          provider: sourceProvider.name,
+          discoveredCandidates: pendingCandidates.length,
+          scheduledAttempts: pending.length,
+          near: pending.filter(row => new Date(row.scheduled_at).getTime() <= now + 30 * 60_000).length,
+          mid: pending.filter(row => new Date(row.scheduled_at).getTime() > now + 30 * 60_000 && new Date(row.scheduled_at).getTime() <= now + 24 * 60 * 60_000).length,
+          far: pending.filter(row => new Date(row.scheduled_at).getTime() > now + 24 * 60 * 60_000).length,
+        }));
 
         const extendedPending =
           includeExtendedPrematchNear || includeExtendedPrematchFar
