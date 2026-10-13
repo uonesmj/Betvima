@@ -4515,7 +4515,7 @@ transform:translateY(-3px); border-color:#d5dce4 !important; box-shadow:0 14px 3
 
 /* Persian translates content only; the English layout remains LTR. */
 html[lang="fa"], html[lang="fa"] body { direction: ltr; }
-html[lang="fa"] body { font-family: Tahoma, 'Noto Sans Arabic', 'Segoe UI', Arial, sans-serif; }
+html[lang="fa"] body { font-family: 'Inter', Tahoma, 'Noto Sans Arabic', system-ui, sans-serif; }
 html[lang="fa"] :is(h1,h2,h3,h4,h5,h6,p,label,button,a,span,strong,li,th,td) { unicode-bidi: plaintext; }
 html[lang="fa"] :is(h1,h2,h3,h4,h5,h6,strong,b,[class*="font-black"],[class*="font-bold"],[class*="font-extrabold"]) { font-synthesis: weight; }
 html[lang="fa"] :is(input,textarea) { unicode-bidi: plaintext; }
