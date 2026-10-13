@@ -49,7 +49,8 @@ export const GET = withErrorHandling('wallet.deposit.voucher.status', async (ctx
     status === 'confirm' ||
     status === 'confirmed' ||
     status === 'success' ||
-    status === 'succeeded'
+    status === 'succeeded' ||
+    status === 'completed'
   ) {
     const updated = await services.paymentsService.settleVoucherTransaction({
       publicId: intent.publicId,
@@ -69,7 +70,9 @@ export const GET = withErrorHandling('wallet.deposit.voucher.status', async (ctx
     status === 'reject' ||
     status === 'rejected' ||
     status === 'failed' ||
-    status === 'failure'
+    status === 'failure' ||
+    status === 'cancelled' ||
+    status === 'canceled'
   ) {
     const updated = await services.paymentsService.settleVoucherTransaction({
       publicId: intent.publicId,
