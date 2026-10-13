@@ -352,7 +352,7 @@ export class FiveDollarFootballApiSportsProvider implements SportsDataProvider {
     // production stays off by default.
     if (process.env.FIVEDOLLAR_BETTING_ODDS_ENABLED !== "true") {
       return {
-        ok: false, value: null, errorCode: "BETTING_ODDS_NOT_ENABLED",
+        ok: false, value: null, errorCode: "ODDS_NOT_SUPPORTED",
         errorMessage: "FiveDollar betting odds require a separately verified rollout",
         retryable: false,
       };
