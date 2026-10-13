@@ -73,26 +73,37 @@ def error_label(stderr):
 
 PROBE=r"""
 const pg=require('pg');
-const url=process.env.SUPABASE_DB_URL||process.env.DATABASE_URL;
-if(!url){console.error('NO_DATABASE_URL');process.exit(8)}
-const client=new pg.Client({connectionString:url,connectionTimeoutMillis:14000});
-(async()=>{
+const fs=require('fs');
+const raw=process.env.SUPABASE_DB_URL||process.env.DATABASE_URL;
+if(!raw){console.error('NO_DATABASE_URL');process.exit(8)}
+async function verify(label,config){
+ const client=new pg.Client({...config,connectionTimeoutMillis:15000});
  try{
   await client.connect();
-  const stream=client.connection.stream;
-  if(!stream || stream.encrypted!==true || stream.authorized!==true)
-    throw Error('TLS_NOT_VERIFIED');
-  const result=await client.query('select 1 as ok');
-  if(result.rows[0]?.ok!==1) throw Error('DB_PING_FAILED');
-  console.log('READONLY_VERIFIED_TLS_DB_PASS');
-  await client.end();
- }catch(e){
-  console.error(String(e?.code||e?.message||'DB_ERROR').slice(0,140));
+  const sock=client.connection?.stream;
+  if(sock?.encrypted!==true || sock?.authorized!==true)throw Error('TLS_NOT_VERIFIED');
+  const r=await client.query('select 1 as ok');
+  if(r.rows?.[0]?.ok!==1)throw Error('DB_PING_FAILED');
+  console.log(label);
+ }finally{
   try{await client.end()}catch(_){}
-  process.exitCode=1;
  }
-})();
+}
+(async()=>{
+ const c=new URL(raw);
+ for(const k of ['sslmode','sslrootcert','sslcert','sslkey','sslcrl','sslpassword','ssl']){
+  c.searchParams.delete(k);
+ }
+ const ca=fs.readFileSync(process.env.NODE_EXTRA_CA_CERTS,'utf8');
+ await verify('STRICT_CA_VERIFIED', {connectionString:c.toString(),ssl:{ca,rejectUnauthorized:true}});
+ await verify('DEFAULT_URL_VERIFIED', {connectionString:raw});
+ console.log('READONLY_VERIFIED_TLS_DB_PASS');
+})().then(()=>process.exit(0),e=>{
+ console.error(String(e?.code||e?.message||'DB_PROBE_FAILED').slice(0,120));
+ process.exit(1);
+});
 """
+
 CHECK_HEARTBEAT=r"""
 const pg=require('pg');
 const url=process.env.SUPABASE_DB_URL||process.env.DATABASE_URL;
