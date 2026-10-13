@@ -17,6 +17,7 @@ import { activateVoucher, createVoucher } from '@/server/providers/uwallet/clien
 import {
   assertVoucherRateStillCurrent, getUwalletVoucherIrrPerUsd, voucherWithdrawalDebit,
 } from '@/server/providers/uwallet/voucher-fx';
+import { verifyUwalletVoucherQuote } from '@/server/providers/uwallet/voucher-quote';
 
 const log = createLogger({ component: 'payment-service' });
 
@@ -216,7 +217,7 @@ export class PaymentService {
 
   async createWithdrawal(input: { userId: UUID; amountMinor: bigint; currency: Currency; methodId: string; destination: string; idempotencyKey: string; ip: string | null;
 providerMetadata?: Record<string, unknown> | null;
-voucherQuote?: { rateIrrPerUsd: string; quotedAt: string; requestedWalletAmountMinor: string } }): Promise<PaymentIntent> {
+voucherQuote?: { rateIrrPerUsd: string; quotedAt: string; requestedWalletAmountMinor: string; signature: string } }): Promise<PaymentIntent> {
     if (
       input.methodId === 'voucher_uvoucher' ||
       input.methodId === 'voucher_hotvoucher'
@@ -265,7 +266,7 @@ voucherQuote?: { rateIrrPerUsd: string; quotedAt: string; requestedWalletAmountM
     idempotencyKey: string;
     ip: string | null;
     providerMetadata?: Record<string, unknown> | null;
-    voucherQuote?: { rateIrrPerUsd: string; quotedAt: string; requestedWalletAmountMinor: string };
+    voucherQuote?: { rateIrrPerUsd: string; quotedAt: string; requestedWalletAmountMinor: string; signature: string };
   }): Promise<PaymentIntent> {
     const env = serverEnv();
 
@@ -333,6 +334,7 @@ voucherQuote?: { rateIrrPerUsd: string; quotedAt: string; requestedWalletAmountM
           !/^\d{1,19}$/.test(quote.requestedWalletAmountMinor)) {
         throw new ApiError('BAD_REQUEST', 'Refresh the uWallet voucher rate before withdrawal');
       }
+      verifyUwalletVoucherQuote(input.userId, quote.rateIrrPerUsd, quote.quotedAt, quote.signature);
       const currentRate = await getUwalletVoucherIrrPerUsd();
       assertVoucherRateStillCurrent(quote.rateIrrPerUsd, currentRate);
       const requestedWalletAmountMinor = BigInt(quote.requestedWalletAmountMinor);
