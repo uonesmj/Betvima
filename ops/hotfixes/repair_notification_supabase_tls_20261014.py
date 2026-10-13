@@ -172,10 +172,11 @@ def main():
     if current["pid"]==oldpid:stop("NOTIFICATION_PID_UNCHANGED")
     ca_value=current.get("pm2_env",{}).get("NODE_EXTRA_CA_CERTS")
     if ca_value!=str(CERT_PATH):stop("PM2_CA_ENV_NOT_APPLIED")
+    restartedpid=current["pid"]
     print("NOTIFICATION_RESTARTED_WITH_VERIFIED_CA",flush=True)
     time.sleep(20)
     current=active()
-    if current["pid"]!=active()["pid"]:
+    if current["pid"]!=restartedpid:
         stop("NOTIFICATION_RESTARTED_AGAIN")
     hb=node_as_worker(CHECK_HEARTBEAT,userenv,cwd)
     if hb.returncode or "NOTIFICATION_HEARTBEAT_VERIFIED" not in hb.stdout:
