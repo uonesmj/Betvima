@@ -17,16 +17,15 @@ describe('catalog live availability', () => {
     expect(selection?.isLive).toBe(false);
   });
 
-  it('applies the same five-minute FiveDollar live freshness gate to listings and sport counts', async () => {
+  it('only lists events from The Odds API', async () => {
     const query = vi.fn().mockResolvedValue([]);
     const catalog = new PostgresCatalogRepository({ query } as unknown as Db);
     await catalog.listLiveMatches({ userId: null, role: 'anon' }, 100);
     await catalog.listLiveSportCounts({ userId: null, role: 'anon' });
     expect(query).toHaveBeenCalledTimes(2);
     for (const call of query.mock.calls) {
-      expect(call[0]).toContain("m.provider IS DISTINCT FROM '5dollarfootballapi'");
-      expect(call[0]).toContain("m.provider_updated_at >= now() - interval '5 minutes'");
-      expect(call[0]).toContain("m.scheduled_at >= now() - interval '4 hours'");
+      expect(call[0]).toContain("m.provider = 'the_odds_api'");
+      expect(call[0]).not.toContain("5dollarfootballapi");
     }
   });
 
