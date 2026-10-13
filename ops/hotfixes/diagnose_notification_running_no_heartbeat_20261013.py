@@ -72,7 +72,7 @@ def main():
         try:
             raw=(pathlib.Path("/proc")/str(pid)/"environ").read_bytes()
             present={}
-            for entry in raw.split(b"\\x00"):
+            for entry in raw.split(b"\x00"):
                 if b"=" not in entry:continue
                 k=entry.split(b"=",1)[0].decode("ascii","ignore")
                 present[k]=True
