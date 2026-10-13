@@ -48,6 +48,10 @@ const voucherSchema = z.object({
   currency: z.literal('USD'),
   methodId: z.enum(['voucher_uvoucher', 'voucher_hotvoucher']),
   email: z.string().trim().email().max(254),
+  quoteRateIrrPerUsd: z.string().regex(/^\d{1,9}(?:\.\d{1,8})?$/).optional(),
+  quoteTimestamp: z.string().max(50).optional(),
+  quoteSignature: z.string().regex(/^[a-f0-9]{64}$/).optional(),
+  walletRequestedAmountMinor: z.string().regex(/^\d{1,19}$/).optional(),
 });
 
 const schema = z.union([cryptoSchema, voucherSchema]);
@@ -140,6 +144,14 @@ export const POST = withErrorHandling(
       idempotencyKey,
       ip: null,
       providerMetadata: null,
+      voucherQuote: body.quoteRateIrrPerUsd && body.quoteTimestamp && body.walletRequestedAmountMinor && body.quoteSignature
+        ? {
+            rateIrrPerUsd: body.quoteRateIrrPerUsd,
+            quotedAt: body.quoteTimestamp,
+            requestedWalletAmountMinor: body.walletRequestedAmountMinor,
+            signature: body.quoteSignature,
+          }
+        : undefined,
     });
 
     await services.admin.writeAudit({
