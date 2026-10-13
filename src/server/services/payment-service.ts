@@ -724,8 +724,8 @@ providerMetadata?: Record<string, unknown> | null }): Promise<PaymentIntent> {
     publicId: string;
     transaction: {
       status?: string;
-      receive?: number;
-      amount?: number;
+      receive?: number | string;
+      amount?: number | string;
       coin?: string;
       [key: string]: unknown;
     };
@@ -852,11 +852,13 @@ providerMetadata?: Record<string, unknown> | null }): Promise<PaymentIntent> {
     return updated.intent;
   }
 
-  private providerInteger(value: number | undefined, label: string): bigint {
-    if (value === undefined || !Number.isFinite(value) || !Number.isInteger(value) || value <= 0) {
+  private providerInteger(value: number | string | undefined, label: string): bigint {
+    const text = typeof value === 'string' ? value.trim() : String(value ?? '');
+    // Never round HotVoucher units. Provider values must be exact integers.
+    if (!/^[1-9]\\d*$/.test(text)) {
       throw new ApiError('BAD_REQUEST', `${label} is invalid`);
     }
-    return BigInt(value);
+    return BigInt(text);
   }
 
   private async getHotVoucherUnitsPerUsd(): Promise<string> {
@@ -876,12 +878,13 @@ providerMetadata?: Record<string, unknown> | null }): Promise<PaymentIntent> {
     );
 
     const raw = hot?.percent;
+    const percent = raw === undefined ? NaN : Number(raw);
 
-    if (raw === undefined || !Number.isFinite(raw) || raw <= 0) {
+    if (!Number.isFinite(percent) || percent <= 0) {
       throw new ApiError('BAD_REQUEST', 'uWallet HotVoucher exchange rate is unavailable');
     }
 
-    const rate = raw / 100;
+    const rate = percent / 100;
 
     if (!Number.isFinite(rate) || rate <= 0) {
       throw new ApiError('BAD_REQUEST', 'uWallet HotVoucher exchange rate is invalid');
@@ -923,17 +926,17 @@ providerMetadata?: Record<string, unknown> | null }): Promise<PaymentIntent> {
     const fraction = (value % 100n).toString().padStart(2, '0');
     return `${whole.toString()}.${fraction}`;
   }
-  private decimalToMinor(value: number | undefined): bigint {
-    if (value === undefined || !Number.isFinite(value)) {
+  private decimalToMinor(value: number | string | undefined): bigint {
+    // uWallet may serialize decimals as JSON numbers or strings. Avoid
+    // floating-point conversion for provider-supplied decimal strings.
+    const raw = typeof value === 'number' && Number.isFinite(value)
+      ? value.toFixed(2)
+      : typeof value === 'string' ? value.trim() : '';
+    if (!/^\\d+(?:\\.\\d{1,2})?$/.test(raw)) {
       throw new ApiError('BAD_REQUEST', 'uWallet returned an invalid voucher amount');
     }
-
-    const fixed = value.toFixed(2);
-    const parts = fixed.split('.');
-    const whole = parts[0] ?? '0';
-    const fraction = parts[1] ?? '00';
-
-    return BigInt(whole) * 100n + BigInt(fraction.padEnd(2, '0').slice(0, 2));
+    const [whole, fraction = ''] = raw.split('.');
+    return BigInt(whole!) * 100n + BigInt(fraction.padEnd(2, '0'));
   }
 
   private assertProvider(kind: 'deposits' | 'withdrawals'): void {
