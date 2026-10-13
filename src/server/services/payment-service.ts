@@ -13,7 +13,10 @@ import { createLogger } from '@/server/logger';
 import { serverEnv } from '@/server/env';
 import { hashSignal } from '@/server/utils/hash';
 import { createPayment, getMinAmount } from '@/server/providers/nowpayments/client';
-import { activateVoucher, createVoucher, getCoins } from '@/server/providers/uwallet/client';
+import { activateVoucher, createVoucher } from '@/server/providers/uwallet/client';
+import {
+  assertVoucherRateStillCurrent, getUwalletVoucherIrrPerUsd, voucherWithdrawalDebit,
+} from '@/server/providers/uwallet/voucher-fx';
 
 const log = createLogger({ component: 'payment-service' });
 
@@ -212,7 +215,8 @@ export class PaymentService {
   }
 
   async createWithdrawal(input: { userId: UUID; amountMinor: bigint; currency: Currency; methodId: string; destination: string; idempotencyKey: string; ip: string | null;
-providerMetadata?: Record<string, unknown> | null }): Promise<PaymentIntent> {
+providerMetadata?: Record<string, unknown> | null;
+voucherQuote?: { rateIrrPerUsd: string; quotedAt: string; requestedWalletAmountMinor: string } }): Promise<PaymentIntent> {
     if (
       input.methodId === 'voucher_uvoucher' ||
       input.methodId === 'voucher_hotvoucher'
@@ -261,6 +265,7 @@ providerMetadata?: Record<string, unknown> | null }): Promise<PaymentIntent> {
     idempotencyKey: string;
     ip: string | null;
     providerMetadata?: Record<string, unknown> | null;
+    voucherQuote?: { rateIrrPerUsd: string; quotedAt: string; requestedWalletAmountMinor: string };
   }): Promise<PaymentIntent> {
     const env = serverEnv();
 
@@ -315,13 +320,46 @@ providerMetadata?: Record<string, unknown> | null }): Promise<PaymentIntent> {
       throw new ApiError('BAD_REQUEST', 'Invalid voucher withdrawal amount');
     }
 
+    const profile = await this.services.users.getProfile(input.userId);
+    const targetWalletCurrency = profile?.preferredCurrency ?? 'IRT';
+    let voucherFx: Record<string, unknown> | null = null;
+    let lockedRate: string | null = null;
+
+    if (targetWalletCurrency === 'IRT' || targetWalletCurrency === 'IRR') {
+      const quote = input.voucherQuote;
+      const quotedAt = Date.parse(quote?.quotedAt ?? '');
+      if (!quote || !Number.isFinite(quotedAt) ||
+          quotedAt > Date.now() + 5_000 || Date.now() - quotedAt > 60_000 ||
+          !/^\\d{1,19}$/.test(quote.requestedWalletAmountMinor)) {
+        throw new ApiError('BAD_REQUEST', 'Refresh the uWallet voucher rate before withdrawal');
+      }
+      const currentRate = await getUwalletVoucherIrrPerUsd();
+      assertVoucherRateStillCurrent(quote.rateIrrPerUsd, currentRate);
+      const requestedWalletAmountMinor = BigInt(quote.requestedWalletAmountMinor);
+      const computed = voucherWithdrawalDebit(
+        requestedWalletAmountMinor, targetWalletCurrency, quote.rateIrrPerUsd,
+      );
+      if (computed.usdMinor !== input.amountMinor || computed.walletMinor <= 0n) {
+        throw new ApiError('BAD_REQUEST', 'uWallet voucher quote does not match requested amount');
+      }
+      lockedRate = quote.rateIrrPerUsd;
+      voucherFx = {
+        source: 'uwallet', quoteType: 'UUSD_TO_HOTVOUCHER_REFERENCE',
+        rateIrrPerUsd: lockedRate, quotedAt: quote.quotedAt,
+        walletCurrency: targetWalletCurrency,
+        walletDebitMinor: computed.walletMinor.toString(),
+        requestedWalletAmountMinor: requestedWalletAmountMinor.toString(),
+        usdMinor: computed.usdMinor.toString(),
+      };
+    }
+
     const usdAmount = this.minorToDecimal(input.amountMinor);
     let amount = usdAmount;
     let voucherProviderAmount: string | null = null;
     let voucherProviderRate: string | null = null;
 
     if (input.methodId === 'voucher_hotvoucher') {
-      const rate = await this.getHotVoucherUnitsPerUsd();
+      const rate = lockedRate ?? await getUwalletVoucherIrrPerUsd();
       const hotVoucherUnits = this.usdMinorToHotVoucher(input.amountMinor, rate);
 
       if (hotVoucherUnits <= 0n) {
@@ -332,9 +370,6 @@ providerMetadata?: Record<string, unknown> | null }): Promise<PaymentIntent> {
       voucherProviderAmount = amount;
       voucherProviderRate = rate;
     }
-
-    const profile = await this.services.users.getProfile(input.userId);
-    const targetWalletCurrency = profile?.preferredCurrency ?? 'IRT';
 
     if (input.amountMinor < 150n) {
       throw new ApiError('BAD_REQUEST', 'Minimum voucher withdrawal is $1.50');
@@ -359,6 +394,7 @@ providerMetadata?: Record<string, unknown> | null }): Promise<PaymentIntent> {
         ...(input.providerMetadata ?? {}),
         voucherCoin: coin,
         targetWalletCurrency,
+        ...(voucherFx ? { voucherFx } : {}),
         ...(voucherProviderAmount
           ? {
               voucherProviderAmount,
@@ -574,6 +610,13 @@ providerMetadata?: Record<string, unknown> | null }): Promise<PaymentIntent> {
 
     const profile = await this.services.users.getProfile(input.userId);
     const targetWalletCurrency = profile?.preferredCurrency ?? input.currency;
+    // Pin the provider FX rate before irreversible voucher redemption.
+    const voucherFx =
+      targetWalletCurrency === 'IRT' || targetWalletCurrency === 'IRR'
+        ? { source: 'uwallet', quoteType: 'UUSD_TO_HOTVOUCHER_REFERENCE',
+            rateIrrPerUsd: await getUwalletVoucherIrrPerUsd(),
+            quotedAt: new Date().toISOString() }
+        : null;
 
     const intent = await this.services.payments.createIntent({
       userId: input.userId,
@@ -585,6 +628,7 @@ providerMetadata?: Record<string, unknown> | null }): Promise<PaymentIntent> {
       providerMetadata: {
         voucherCoin: coin,
         targetWalletCurrency,
+        ...(voucherFx ? { voucherFx } : {}),
       },
     });
 
@@ -798,6 +842,14 @@ providerMetadata?: Record<string, unknown> | null }): Promise<PaymentIntent> {
       typeof intent.providerMetadata === 'object'
         ? intent.providerMetadata
         : {};
+    const needsFiatVoucherFx =
+      metadata.targetWalletCurrency === 'IRT' || metadata.targetWalletCurrency === 'IRR';
+    const voucherFx =
+      needsFiatVoucherFx && !(metadata.voucherFx && typeof metadata.voucherFx === 'object')
+        ? { source: 'uwallet', quoteType: 'UUSD_TO_HOTVOUCHER_REFERENCE',
+            rateIrrPerUsd: await getUwalletVoucherIrrPerUsd(),
+            quotedAt: new Date().toISOString() }
+        : null;
 
     if (intent.methodId === 'voucher_hotvoucher') {
       const receiveUnits = this.providerInteger(
@@ -826,6 +878,7 @@ providerMetadata?: Record<string, unknown> | null }): Promise<PaymentIntent> {
         amountMinor: settledAmountMinor.toString(),
         providerMetadata: {
           ...metadata,
+          ...(voucherFx ? { voucherFx } : {}),
           voucherCoin:
             input.transaction.coin ??
             metadata.voucherCoin ??
@@ -846,6 +899,7 @@ providerMetadata?: Record<string, unknown> | null }): Promise<PaymentIntent> {
         amountMinor: receiveMinor.toString(),
         providerMetadata: {
           ...metadata,
+          ...(voucherFx ? { voucherFx } : {}),
           voucherCoin:
             input.transaction.coin ??
             metadata.voucherCoin ??
@@ -878,35 +932,7 @@ providerMetadata?: Record<string, unknown> | null }): Promise<PaymentIntent> {
   }
 
   private async getHotVoucherUnitsPerUsd(): Promise<string> {
-    const env = serverEnv();
-    const coins = await getCoins();
-
-    const usd = coins.find(
-      (coin) =>
-        String(coin.symbol ?? coin.coin ?? '').toLowerCase() ===
-        String(env.uwalletUvoucherCoin).toLowerCase(),
-    );
-
-    const hot = usd?.swap?.find(
-      (swap) =>
-        String(swap.coin ?? '').toLowerCase() ===
-        String(env.uwalletHotvoucherCoin).toLowerCase(),
-    );
-
-    const raw = hot?.percent;
-    const percent = raw === undefined ? NaN : Number(raw);
-
-    if (!Number.isFinite(percent) || percent <= 0) {
-      throw new ApiError('BAD_REQUEST', 'uWallet HotVoucher exchange rate is unavailable');
-    }
-
-    const rate = percent / 100;
-
-    if (!Number.isFinite(rate) || rate <= 0) {
-      throw new ApiError('BAD_REQUEST', 'uWallet HotVoucher exchange rate is invalid');
-    }
-
-    return rate.toFixed(8);
+    return getUwalletVoucherIrrPerUsd();
   }
 
   private hotVoucherToUsdMinor(units: bigint, rate: string): bigint {
