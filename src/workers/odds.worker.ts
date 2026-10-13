@@ -24,14 +24,9 @@ import { attachCachedLogo } from "@/server/services/logo-resolver";
 import { LIVE_MATCH_STATUSES } from '@/lib/match-state';
 import type { LiveFixture, LiveEvent, LiveStatistics } from '@/lib/ports/live-data-provider';
 import {
-  MATCH_SOURCE_FALLBACK,
   MATCH_SOURCE_ODDS,
   attachProviderMatchIdentity,
   fetchOddsForOwningProvider,
-  fiveDollarProviderEventId,
-  fiveDollarBookmakerPricesEnabled,
-  linkCrossProviderMatch,
-  resolveFiveDollarMatchRows,
   resolveSportsOddsProvider,
 } from "./sports-provider-sync";
 
@@ -62,8 +57,6 @@ const lastPrematchAttemptByProvider = new Map<string, Map<string, number>>();
 const lastExtendedAttemptByProvider = new Map<string, Map<string, number>>();
 let lastResultsQuotaErrorAt = 0;
 let lastLiveOddsAt = 0;
-// Fairly cycle optional FiveDollar live quote probes; failed/missing quotes must not starve other fixtures.
-const lastFiveDollarLiveOddsAttempt = new Map<string, number>();
 // The dedicated live-price process has its own source and PM2 lifecycle.
 // Cache its heartbeat briefly so the bulk worker can stand in only when
 // that process actually disappears; never double-spend the API budget.
@@ -71,9 +64,9 @@ let lastDedicatedLiveHeartbeatCheckAt = 0;
 let dedicatedLiveHeartbeatPresent = false;
 let lastExtendedLiveOddsAt = 0;
 let lastMatchDiscoveryAt = 0;
-const MATCH_DISCOVERY_INTERVAL_MS = process.env.SPORTS_PROVIDER === "5dollarfootballapi" ? 10 * 60_000 : 5 * 60_000;
-const LIVE_ODDS_INTERVAL_MS = process.env.SPORTS_PROVIDER === "5dollarfootballapi" ? 30_000 : 5_000;
-const EXTENDED_LIVE_ODDS_INTERVAL_MS = process.env.SPORTS_PROVIDER === "5dollarfootballapi" ? 10 * 60_000 : 5 * 60_000;
+const MATCH_DISCOVERY_INTERVAL_MS = 5 * 60_000;
+const LIVE_ODDS_INTERVAL_MS = 5_000;
+const EXTENDED_LIVE_ODDS_INTERVAL_MS = 5 * 60_000;
 const EXTENDED_ODDS_MAX_MATCHES_PER_CYCLE = extendedRefreshBudget(process.env.ODDS_API_EXTENDED_MAX_MATCHES_PER_CYCLE);
 const LIVE_RESULT_INTERVAL_MS = 10_000;
 
@@ -779,261 +772,6 @@ const LIVE_DISCOVERY_INTERVAL_MS = Math.max(
 let lastLiveDiscoveryAt = 0;
 
 
-async function syncFiveDollarLiveDetails(
-  ctx: WorkerContext,
-  liveMatches: Array<{
-    providerId: string;
-    homeTeamName: string;
-    awayTeamName: string;
-    minute: number | null;
-    period: string | null;
-    homeScore: number | null;
-    awayScore: number | null;
-    liveEvents?: unknown[];
-    liveStats?: unknown;
-  }>,
-): Promise<void> {
-  const providerName = "5dollarfootballapi";
-  if (!ctx.services.providers.sportsProviders?.some((provider) => provider.name === providerName)) return;
-
-  const providerIds = liveMatches.map((m) => m.providerId).filter(Boolean);
-  if (!providerIds.length) return;
-
-  const rows = await resolveFiveDollarMatchRows(ctx.services.db, providerIds, providerName);
-
-  const matchByProvider = new Map(rows.map((row) => [row.provider_id, row]));
-
-  for (const fixture of liveMatches) {
-    const matchRow = matchByProvider.get(fixture.providerId);
-    if (!matchRow) continue;
-    const matchId = matchRow.match_id;
-
-    const observedAt = new Date().toISOString();
-
-    // FiveDollar owns live events for every matched game. Keep match state and
-    // score ownership with the provider that supplied the canonical match.
-    if (matchRow.match_provider === providerName) {
-      await ctx.services.db.query(
-        `update nova.matches
-            set status = 'live'::nova.match_status,
-                home_score = coalesce($2, home_score),
-                away_score = coalesce($3, away_score),
-                minute = coalesce($4, minute),
-                period = coalesce($5, period),
-                provider_updated_at = now(),
-                updated_at = now()
-          where id = $1`,
-        [
-          matchId,
-          fixture.homeScore,
-          fixture.awayScore,
-          fixture.minute,
-          fixture.period,
-        ],
-      );
-    }
-
-    const rawStats = fixture.liveStats && typeof fixture.liveStats === "object"
-      ? fixture.liveStats as Record<string, unknown>
-      : {};
-    const homeStats: Record<string, unknown> = {};
-    const awayStats: Record<string, unknown> = {};
-    for (const key of ["attacks", "dangerous_attacks", "shots_on_target", "shots_off_target", "possession"]) {
-      const category = rawStats[key];
-      if (category && typeof category === "object") {
-        const values = category as Record<string, unknown>;
-        homeStats[key] = values["home"];
-        awayStats[key] = values["away"];
-      }
-    }
-    const statKeys: Array<[string, string]> = [
-      ["attacks", "Attacks"],
-      ["dangerous_attacks", "Dangerous attacks"],
-      ["shots_on_target", "Shots on target"],
-      ["shots_off_target", "Shots off target"],
-      ["possession", "Possession"],
-    ];
-
-    const buildTeamStats = (
-      teamName: string,
-      side: Record<string, unknown>,
-      fallbackSide: "home" | "away",
-    ) => [
-      ...statKeys.map(([key, label]) => ({
-        type: label,
-        value: side[key] == null ? null : String(side[key]),
-      })),
-      {
-        type: "Corners",
-        value: rawStats["corners"] && typeof rawStats["corners"] === "object"
-          ? String(((rawStats["corners"] as Record<string, unknown>)[fallbackSide]) ?? "")
-          : null,
-      },
-      {
-        type: "Yellow cards",
-        value: rawStats["cards"] && typeof rawStats["cards"] === "object"
-          ? String((((rawStats["cards"] as Record<string, unknown>)[fallbackSide]) as Record<string, unknown> | undefined)?.["yellow"] ?? "")
-          : null,
-      },
-      {
-        type: "Red cards",
-        value: rawStats["cards"] && typeof rawStats["cards"] === "object"
-          ? String((((rawStats["cards"] as Record<string, unknown>)[fallbackSide]) as Record<string, unknown> | undefined)?.["red"] ?? "")
-          : null,
-      },
-    ];
-
-    const statistics = {
-      fixtureId: fixture.providerId,
-      teams: [
-        {
-          providerTeamId: null,
-          teamName: fixture.homeTeamName,
-          statistics: buildTeamStats(fixture.homeTeamName, homeStats, "home"),
-        },
-        {
-          providerTeamId: null,
-          teamName: fixture.awayTeamName,
-          statistics: buildTeamStats(fixture.awayTeamName, awayStats, "away"),
-        },
-      ],
-      observedAt,
-    };
-
-
-    const events = Array.isArray(fixture.liveEvents) ? fixture.liveEvents : [];
-    for (const event of events) {
-      if (!event || typeof event !== "object") continue;
-      const e = event as Record<string, unknown>;
-      const rawTeam = e["team"] ?? e["team_side"] ?? e["teamSide"] ?? e["team_name"] ?? e["teamName"];
-      const rawTeamRecord = rawTeam && typeof rawTeam === "object" && !Array.isArray(rawTeam)
-        ? rawTeam as Record<string, unknown>
-        : null;
-      const rawTeamText = typeof rawTeam === "string" || typeof rawTeam === "number"
-        ? String(rawTeam).trim()
-        : String(rawTeamRecord?.["name"] ?? rawTeamRecord?.["team_name"] ?? rawTeamRecord?.["teamName"] ?? e["team_name"] ?? e["teamName"] ?? "").trim();
-      const explicitSide = String(rawTeamRecord?.["side"] ?? rawTeamRecord?.["position"] ?? e["team_side"] ?? e["teamSide"] ?? "").trim().toLowerCase().replace(/[_-]+/g, " ");
-      const normalizedRawTeam = normalizeLiveTeamName(rawTeamText);
-      const normalizedHomeTeam = normalizeLiveTeamName(fixture.homeTeamName);
-      const normalizedAwayTeam = normalizeLiveTeamName(fixture.awayTeamName);
-      const rawTeamSide = rawTeamText.toLowerCase().replace(/[_-]+/g, " ").trim();
-      const homeNameMatches = normalizedRawTeam.length >= 3 && normalizedHomeTeam.length >= 3 &&
-        (normalizedRawTeam === normalizedHomeTeam || normalizedHomeTeam.includes(normalizedRawTeam) || normalizedRawTeam.includes(normalizedHomeTeam));
-      const awayNameMatches = normalizedRawTeam.length >= 3 && normalizedAwayTeam.length >= 3 &&
-        (normalizedRawTeam === normalizedAwayTeam || normalizedAwayTeam.includes(normalizedRawTeam) || normalizedRawTeam.includes(normalizedAwayTeam));
-      const teamSide: "home" | "away" | null =
-        ["home", "home team", "h"].includes(explicitSide) || ["home", "home team", "h"].includes(rawTeamSide) || homeNameMatches
-          ? "home"
-          : ["away", "away team", "a"].includes(explicitSide) || ["away", "away team", "a"].includes(rawTeamSide) || awayNameMatches
-            ? "away"
-            : null;
-      const teamId = teamSide === "home"
-        ? matchRow.home_team_id
-        : teamSide === "away"
-          ? matchRow.away_team_id
-          : null;
-      const rawMinute = e["minute"];
-      const parsedMinute = rawMinute == null || rawMinute === "" ? NaN : Number(rawMinute);
-      const minute = Number.isFinite(parsedMinute) ? parsedMinute : null;
-      const type = String(e["type"] ?? "event").trim().toLowerCase();
-      const normalizedType = type.replace(/[\s_-]+/g, "");
-      const isSubstitution = normalizedType.includes("subst") || normalizedType.includes("substitution");
-      const period = e["period"] == null ? null : String(e["period"]);
-      const readPlayerName = (value: unknown): string | null => {
-        if (typeof value === "string" || typeof value === "number") {
-          const text = String(value).trim();
-          return text || null;
-        }
-        if (!value || typeof value !== "object" || Array.isArray(value)) return null;
-        const record = value as Record<string, unknown>;
-        for (const key of ["name", "full_name", "fullname", "player_name", "playerName", "common_name"]) {
-          const candidate = record[key];
-          if (typeof candidate === "string" && candidate.trim()) return candidate.trim();
-        }
-        const first = typeof record["first_name"] === "string" ? record["first_name"].trim() : "";
-        const last = typeof record["last_name"] === "string" ? record["last_name"].trim() : "";
-        return [first, last].filter(Boolean).join(" ") || null;
-      };
-      const directPlayerName = readPlayerName(e["player_name"] ?? e["playerName"] ?? e["player"]);
-      const playerIn = readPlayerName(e["player_in"] ?? e["playerIn"] ?? e["incoming_player"]);
-      const playerOut = readPlayerName(e["player_out"] ?? e["playerOut"] ?? e["outgoing_player"]);
-      const playerName = isSubstitution ? null : directPlayerName ?? playerIn;
-      const rawDetail = e["detail"] ?? e["description"] ?? e["comments"];
-      const detailCandidate = typeof rawDetail === "string" || typeof rawDetail === "number"
-        ? String(rawDetail).trim()
-        : null;
-      const isCountOnlyEvent = detailCandidate != null &&
-        /^count\s*:\s*\d+(?:\.\d+)?$/i.test(detailCandidate);
-      if (isCountOnlyEvent) continue;
-      const detailText = detailCandidate || null;
-      const details = [
-        detailText || null,
-        isSubstitution && playerIn ? `In: ${playerIn}` : null,
-        isSubstitution && playerOut ? `Out: ${playerOut}` : null,
-        isSubstitution && !playerIn && !playerOut && directPlayerName ? `Player: ${directPlayerName}` : null,
-        !isSubstitution && playerOut ? `Out: ${playerOut}` : null,
-      ].filter(Boolean);
-      const providerEventIdValue = e["id"] ?? e["event_id"] ?? e["provider_event_id"];
-      const stableIdentity = providerEventIdValue != null
-        ? String(providerEventIdValue)
-        : `${type}:${minute ?? "na"}:${teamSide ?? "unknown"}:${playerName ?? playerIn ?? directPlayerName ?? ""}:${playerOut ?? ""}:${String(e["count"] ?? "")}`;
-      const providerEventId = fiveDollarProviderEventId(fixture.providerId, stableIdentity);
-
-      await ctx.services.db.query(
-        `insert into nova.match_events
-          (match_id, provider_event_id, type, minute, period, team_id, player_name, detail, occurred_at, created_at)
-         values ($1, $2, $3, $4, $5, $6, $7, $8, $9::timestamptz, now())
-         on conflict (match_id, provider_event_id) where provider_event_id is not null
-         do update set
-           type = excluded.type,
-           minute = excluded.minute,
-           period = excluded.period,
-           team_id = coalesce(excluded.team_id, nova.match_events.team_id),
-           player_name = coalesce(excluded.player_name, nova.match_events.player_name),
-           detail = excluded.detail`,
-        [
-          matchId,
-          providerEventId,
-          type,
-          minute,
-          period,
-          teamId,
-          playerName,
-          details.join(" · ") || null,
-          observedAt,
-        ],
-      );
-    }
-    await ctx.services.db.query(
-      `insert into nova.match_stats (match_id, payload, provider, updated_at)
-       values ($1, $2::jsonb, $3, now())
-       on conflict (match_id) do update
-       set payload = excluded.payload,
-           provider = excluded.provider,
-           updated_at = now()`,
-      [
-        matchId,
-        JSON.stringify({
-          source: "5dollarfootballapi",
-          fixtureId: fixture.providerId,
-          minute: fixture.minute,
-          period: fixture.period,
-          liveHomeScore: fixture.homeScore,
-          liveAwayScore: fixture.awayScore,
-          statistics,
-          observedAt,
-        }),
-        "5dollarfootballapi",
-      ],
-    );
-    console.log("FIVEDOLLAR_LIVE_DETAILS_SAVED", JSON.stringify({
-      providerId: fixture.providerId,
-      matchId,
-      events: events.length,
-    }));
-  }
-}
-
 async function runDedicatedLiveDiscovery(ctx: WorkerContext): Promise<void> {
   const now = Date.now();
   if (now - lastLiveDiscoveryAt < LIVE_DISCOVERY_INTERVAL_MS) return;
@@ -1105,22 +843,7 @@ async function runDedicatedLiveDiscovery(ctx: WorkerContext): Promise<void> {
         }));
       }
 
-      if (sourceProvider.name === "5dollarfootballapi") {
-        await syncFiveDollarLiveDetails(
-          ctx,
-          liveMatches as Array<{
-            providerId: string;
-            homeTeamName: string;
-            awayTeamName: string;
-            minute: number | null;
-            period: string | null;
-            homeScore: number | null;
-            awayScore: number | null;
-            liveEvents?: unknown[];
-            liveStats?: unknown;
-          }>,
-        );
-      }
+
     } catch (error) {
       console.error("ODDS_LIVE_DISCOVERY_FAILED", JSON.stringify({
         provider: sourceProvider.name,
@@ -1145,8 +868,7 @@ async function runDedicatedLiveTick(ctx: WorkerContext): Promise<void> {
       ? ctx.services.providers.sportsProviders
       : [ctx.services.providers.sports]
   ).filter((provider, index, all) =>
-    (provider.name === MATCH_SOURCE_ODDS ||
-      (provider.name === MATCH_SOURCE_FALLBACK && fiveDollarBookmakerPricesEnabled())) &&
+    provider.name === MATCH_SOURCE_ODDS &&
     provider.configured &&
     all.findIndex((item) => item.name === provider.name) === index
   );
@@ -1164,12 +886,6 @@ async function runDedicatedLiveTick(ctx: WorkerContext): Promise<void> {
             where m.provider = $1
               and m.provider_id is not null
               and m.status::text = any($2::text[])
-              -- Do not spend scarce 5Dollar Ultra quota on old live statuses.
-              -- This is a fetch gate only; it must not mutate match or bet state.
-              and (m.provider <> '5dollarfootballapi' OR (
-                m.provider_updated_at >= now() - interval '3 minutes'
-                and m.scheduled_at >= now() - interval '4 hours'
-              ))
             order by
               (select max(sl.odds_updated_at)
                  from nova.markets mk
@@ -1179,20 +895,6 @@ async function runDedicatedLiveTick(ctx: WorkerContext): Promise<void> {
             limit 200`,
           [sourceProvider.name, pgArray(LIVE_MATCH_STATUSES)],
         );
-
-        if (sourceProvider.name === MATCH_SOURCE_FALLBACK) {
-          // Ultra's 40/min shared allowance cannot price every fixture in
-          // every 5-second cycle. Keep the 15-second live lock bounded while
-          // fairly attempting new fixtures even when a quote is unavailable.
-          pending = pending
-            .sort((a, b) =>
-              (lastFiveDollarLiveOddsAttempt.get(a.match_id) ?? 0) -
-              (lastFiveDollarLiveOddsAttempt.get(b.match_id) ?? 0))
-            .slice(0, 1);
-          for (const row of pending) {
-            lastFiveDollarLiveOddsAttempt.set(row.match_id, Date.now());
-          }
-        }
 
         const providerIds = pending
           .map((row) => row.provider_id)
@@ -1606,9 +1308,6 @@ const ODDS_API_PREMATCH_HORIZON_DAYS = Math.max(
   14,
   Number(process.env.ODDS_API_PREMATCH_HORIZON_DAYS ?? 30) || 30,
 );
-// Catalog metadata (past and future fixtures) only; odds stay on The Odds API.
-const FIVEDOLLAR_PAST_DAYS = Math.min(14, Math.max(1, Number(process.env.FIVEDOLLAR_PAST_DAYS ?? 7) || 7));
-const FIVEDOLLAR_FUTURE_DAYS = Math.min(14, Math.max(1, Number(process.env.FIVEDOLLAR_FUTURE_DAYS ?? 7) || 7));
 
 async function syncMatches(
   ctx: WorkerContext,
@@ -1626,9 +1325,9 @@ async function syncMatchesUnlocked(
   providedResult?: Awaited<ReturnType<typeof ctx.services.providers.sports.fetchMatches>>,
   sourceProvider = ctx.services.providers.sports,
 ): Promise<{ synced: number }> {
-  const isFiveDollar = sourceProvider.name === MATCH_SOURCE_FALLBACK;
-  const horizonDays = isFiveDollar ? FIVEDOLLAR_FUTURE_DAYS : ODDS_API_PREMATCH_HORIZON_DAYS;
-  const lookbackDays = isFiveDollar ? FIVEDOLLAR_PAST_DAYS : 1;
+  if (sourceProvider.name !== MATCH_SOURCE_ODDS) return { synced: 0 };
+  const horizonDays = ODDS_API_PREMATCH_HORIZON_DAYS;
+  const lookbackDays = 1;
   const from = new Date(Date.now() - lookbackDays * 864e5).toISOString();
   const to = new Date(Date.now() + horizonDays * 864e5).toISOString();
 
@@ -1661,68 +1360,6 @@ async function syncMatchesUnlocked(
   for (let batchStart = 0; batchStart < result.value.length; batchStart += syncConcurrency) {
     const batch = result.value.slice(batchStart, batchStart + syncConcurrency);
     await Promise.all(batch.map(async (match) => {
-    if (sourceProvider.name === MATCH_SOURCE_FALLBACK) {
-      const knownMatch = await ctx.services.db.queryOne<{
-        internal_id: string;
-        canonical_provider: string | null;
-      }>(
-        `select pe.internal_id, m.provider as canonical_provider
-           from nova.provider_entities pe
-           join nova.matches m on m.id = pe.internal_id
-          where pe.provider = $1 and pe.entity_type = 'match' and pe.provider_id = $2
-          limit 1`,
-        [sourceProvider.name, match.providerId],
-      );
-      if (knownMatch?.canonical_provider === MATCH_SOURCE_ODDS) {
-        await attachProviderMatchIdentity(ctx.services.db, sourceProvider.name, match.providerId, knownMatch.internal_id);
-        return;
-      }
-
-      const link = await linkCrossProviderMatch(
-        ctx.services.db,
-        match,
-        sourceProvider.name,
-        MATCH_SOURCE_ODDS,
-      );
-      if (link.status !== "not_found") {
-        if (link.status === "linked") {
-          synced += 1;
-          return;
-        }
-        console.warn("MATCH_CROSS_PROVIDER_IDENTITY_CONFLICT", JSON.stringify({
-          provider: sourceProvider.name,
-          providerId: match.providerId,
-          oddsMatchId: link.matchId,
-        }));
-        return;
-      }
-    }
-
-    // A previous run may have created a FiveDollar canonical row before Odds
-    // API was configured. Attach the Odds identity to that row instead of
-    // introducing a duplicate; its canonical provider (and odds authority)
-    // remains unchanged for source consistency.
-    if (sourceProvider.name === MATCH_SOURCE_ODDS) {
-      const link = await linkCrossProviderMatch(
-        ctx.services.db,
-        match,
-        sourceProvider.name,
-        MATCH_SOURCE_FALLBACK,
-      );
-      if (link.status !== "not_found") {
-        if (link.status === "linked") {
-          synced += 1;
-          return;
-        }
-        console.warn("MATCH_CROSS_PROVIDER_IDENTITY_CONFLICT", JSON.stringify({
-          provider: sourceProvider.name,
-          providerId: match.providerId,
-          fallbackMatchId: link.matchId,
-        }));
-        return;
-      }
-    }
-
     const sportRow = await ctx.services.db.queryOne<{ id: string }>(
       `select id from nova.sports where slug = $1 limit 1`,
       [match.sport],
