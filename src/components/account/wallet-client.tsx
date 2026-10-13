@@ -261,7 +261,7 @@ function DepositPanel({
 }
 
 function WithdrawPanel({
-  form,setForm,submitting,message,messageTone,onSubmit,onVoucherSubmit,onInsufficientBalance,availableMinor,currency,methods,
+  form,setForm,submitting,message,messageTone,onSubmit,onVoucherSubmit,onInsufficientBalance,availableMinor,currency,methods,voucherQuote,voucherQuoteLoading,
 }: {
   form:{amount:string;methodId:string;destination:string};
   setForm:React.Dispatch<React.SetStateAction<{amount:string;methodId:string;destination:string}>>;
@@ -269,7 +269,9 @@ function WithdrawPanel({
   message:string|null;
   messageTone:'success'|'error'|'neutral';
   onSubmit:(asset:string,network:string)=>Promise<void>;
-  onVoucherSubmit:(methodId:'voucher_uvoucher'|'voucher_hotvoucher', amountMinor:string)=>Promise<void>;
+  onVoucherSubmit:(methodId:'voucher_uvoucher'|'voucher_hotvoucher', amountMinor:string, requestedWalletMinor:string|null)=>Promise<void>;
+  voucherQuote:UwalletReferenceQuote|null;
+  voucherQuoteLoading:boolean;
   onInsufficientBalance:()=>void;
   availableMinor:string;
   currency:string;
@@ -376,8 +378,9 @@ function WithdrawPanel({
     const selectedVoucher = methods.find((method) => method.id === withdrawMethod);
     const voucherLabel = withdrawMethod === "voucher_uvoucher" ? t("wallet.uVoucher") : t("wallet.hotVoucher");
     const voucherAvailable = selectedVoucher?.isAvailable === true;
-    const voucherRate = Number(usdIrrRate);
-    const voucherRateValid = Number.isFinite(voucherRate) && voucherRate > 0;
+    const voucherRate = Number(voucherQuote?.rateIrrPerUsd ?? 0)/10;
+    const voucherRateValid = Number.isFinite(voucherRate) && voucherRate > 0 &&
+      Date.now()-Date.parse(voucherQuote?.quotedAt??'') < 60_000;
     const configuredUsdMinimum = selectedVoucher
       ? Number(BigInt(selectedVoucher.minAmountMinor || '0')) / 100
       : 0;
@@ -450,11 +453,23 @@ function WithdrawPanel({
                 <div className="mt-1 flex items-center justify-between px-1 text-[11px] font-semibold">
                   <span className="text-[#8994A5]">معادل حداقل برداشت</span>
                   <b className="text-[#354052]">
-                    {currency === 'USD' ? '$1.50' : usdIrrRateLoading ? 'در حال دریافت نرخ...' : voucherMinIrrDisplay !== null ? `${voucherMinIrrDisplay} ${voucherWalletUnit}` : 'نرخ لحظه‌ای در دسترس نیست'}
+                    {currency === 'USD' ? '$1.50' : voucherQuoteLoading ? 'در حال دریافت نرخ uWallet...' : voucherMinIrrDisplay !== null ? `${voucherMinIrrDisplay} ${voucherWalletUnit}` : 'نرخ لحظه‌ای در دسترس نیست'}
                   </b>
                 </div>
               </div>
 
+              <div className="rounded-xl border border-[#D8E5F7] bg-[#F8FBFF] px-4 py-3 text-xs font-semibold text-[#506582]">
+                نرخ مرجع uWallet: {voucherRateValid ? new Intl.NumberFormat('fa-IR',{maximumFractionDigits:2}).format(voucherRate)+' تومان به‌ازای هر دلار' : 'در دسترس نیست'}
+                {voucherRateValid && currency!=='USD' && /^\d+$/.test(normalizeNumericInput(form.amount)) ? (
+                  <div className="mt-1 font-bold text-[#173DAA]">
+                    {(() => { try {
+                      const r=voucherWithdrawalDebit(BigInt(normalizeNumericInput(form.amount)),currency as 'IRT'|'IRR',voucherQuote!.rateIrrPerUsd);
+                      return 'وچر قابل دریافت: $'+(Number(r.usdMinor)/100).toFixed(2)+' — کسر از کیف پول: '+new Intl.NumberFormat('fa-IR').format(r.walletMinor.toString())+' '+(currency==='IRT'?'تومان':'ریال');
+                    } catch { return 'مبلغ نامعتبر'; } })()}
+                  </div>
+                ):null}
+                <div className="mt-1 text-[#7A8494]">این نرخ تبدیل مرجع است؛ API فعلاً قیمت خرید و فروش جداگانه ارائه نمی‌کند.</div>
+              </div>
               <div className="rounded-2xl border border-[#D8E5F7] bg-[#F2F7FF] p-4">
                 <div className="flex gap-3">
                   <Info className="h-5 w-5 shrink-0 text-[#087FF5]" />
@@ -468,21 +483,18 @@ function WithdrawPanel({
               <button type="button" disabled={submitting || !form.amount || !voucherInputValid || !Number.isFinite(Number(normalizeNumericInput(form.amount))) || Number(normalizeNumericInput(form.amount)) < (voucherWalletMin ?? Number.POSITIVE_INFINITY) || (voucherWalletMax !== null && Number(normalizeNumericInput(form.amount)) > voucherWalletMax) || !form.destination.trim()} onClick={() => {
                 const raw = normalizeNumericInput(form.amount);
                 const entered = Number(raw);
-                let amountMinor: string;
-                if (currency === 'USD') {
-                  if (!/^\d+(?:\.\d{1,2})?$/.test(raw)) return;
-                  amountMinor = String(Math.round(entered * 100));
-                } else {
-                  if (!/^\d+$/.test(raw) || !voucherRateValid) return;
-                  const walletMinor = BigInt(raw);
-                  const rateRounded = BigInt(Math.round(voucherRate));
-                  const usdMinor = currency === 'IRT'
-                    ? (walletMinor * 100n) / rateRounded
-                    : (walletMinor * 10n) / rateRounded;
-                  amountMinor = usdMinor.toString();
+                let amountMinor:string;
+                let requestedWalletMinor:string|null=null;
+                if(currency==='USD'){
+                  if(!/^\d+(?:\.\d{1,2})?$/.test(raw))return;
+                  amountMinor=String(Math.round(entered*100));
+                }else{
+                  if(!/^\d+$/.test(raw)||!voucherRateValid||!voucherQuote)return;
+                  requestedWalletMinor=raw;
+                  amountMinor=voucherWithdrawalDebit(BigInt(raw),currency as 'IRT'|'IRR',voucherQuote.rateIrrPerUsd).usdMinor.toString();
                 }
-                if (currency !== 'USD' && BigInt(amountMinor) < 150n) return;
-                void onVoucherSubmit(withdrawMethod, amountMinor);
+                if(BigInt(amountMinor)<150n)return;
+                void onVoucherSubmit(withdrawMethod,amountMinor,requestedWalletMinor);
               }} className="flex min-h-[56px] w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-[#087FF5] to-[#1769E8] text-[15px] font-black text-white shadow-lg disabled:opacity-45">
                 <ArrowUpFromLine className="h-5 w-5" />
                 {submitting ? t("wallet.submittingWithdrawal") : `${t("wallet.withdrawWith")} ${voucherLabel}`}
@@ -740,7 +752,7 @@ export function WalletClient() {
     }
   };
 
-  const submitVoucherWithdrawal = async (methodId: 'voucher_uvoucher' | 'voucher_hotvoucher', amountMinor: string) => {
+  const submitVoucherWithdrawal = async (methodId: 'voucher_uvoucher' | 'voucher_hotvoucher', amountMinor: string, requestedWalletMinor: string|null) => {
     setSubmitting(true);
     setMessage(null);
     setMessageTone('neutral');
@@ -749,7 +761,15 @@ export function WalletClient() {
       const email = form.destination.trim().toLowerCase();
       if (!email) throw new Error('Enter your account email.');
       if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new Error(t("wallet.invalidEmail"));
-      const result = await apiRequest<{ intent: CryptoPaymentResult }>('/api/v1/wallet/withdraw',{method:'POST',idempotencyKey:crypto.randomUUID(),json:{amountMinor,currency:'USD',methodId,email}});
+      if(requestedWalletMinor && !voucherQuote)throw new Error('uWallet quote expired; refresh.');
+      const result = await apiRequest<{ intent: CryptoPaymentResult }>('/api/v1/wallet/withdraw',{method:'POST',idempotencyKey:crypto.randomUUID(),json:{
+        amountMinor,currency:'USD',methodId,email,
+        ...(requestedWalletMinor && voucherQuote ? {
+          walletRequestedAmountMinor:requestedWalletMinor,
+          quoteRateIrrPerUsd:voucherQuote.rateIrrPerUsd,
+          quoteTimestamp:voucherQuote.quotedAt,
+        }:{}),
+      }});
       setMessage(result.intent.status === 'succeeded' ? t("wallet.voucherCreated") : t("wallet.voucherWithdrawalSubmitted"));
       setMessageTone(result.intent.status === 'succeeded' ? 'success' : 'neutral');
       setForm((current)=>({...current,amount:'',destination:''}));
@@ -973,6 +993,8 @@ export function WalletClient() {
           currency={currency}
           methods={methods}
           onVoucherSubmit={submitVoucherWithdrawal}
+          voucherQuote={voucherQuote}
+          voucherQuoteLoading={voucherQuoteLoading}
         />
       )}
     </div>
