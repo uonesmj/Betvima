@@ -12,7 +12,23 @@ export {
 } from '@/lib/voucher-fx';
 export type { VoucherFiatCurrency } from '@/lib/voucher-fx';
 
+let lastQuote: {rate: string; expiresAt: number} | null = null;
+let inflight: Promise<string> | null = null;
+
 export async function getUwalletVoucherIrrPerUsd(): Promise<string> {
+  // Coalesce bursts from wallet pages and financial requests. No stale-on-error
+  // fallback: monetary operations fail closed if uWallet is unavailable.
+  if (lastQuote && Date.now() < lastQuote.expiresAt) return lastQuote.rate;
+  if (!inflight) {
+    inflight = readVoucherRate().then(rate => {
+      lastQuote = { rate, expiresAt: Date.now() + 10_000 };
+      return rate;
+    }).finally(() => { inflight = null; });
+  }
+  return inflight;
+}
+
+async function readVoucherRate(): Promise<string> {
   const env = serverEnv();
   const coins = await getCoins();
   const usd = coins.find(c => String(c.coin ?? c.symbol ?? '').toLowerCase() === env.uwalletUvoucherCoin.toLowerCase()
