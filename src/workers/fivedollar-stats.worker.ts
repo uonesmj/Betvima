@@ -20,8 +20,9 @@ import {
 } from './sports-provider-sync';
 
 const provider = new FiveDollarFootballApiSportsProvider();
-const MAX_LIVE_PER_CYCLE = 80;
-const MAX_CATALOG_PER_CYCLE = 180;
+// A large live list must not monopolize the tick or expire its 240s lock.
+const MAX_LIVE_PER_CYCLE = 12;
+const MAX_CATALOG_PER_CYCLE = 32;
 const CATALOG_INTERVAL_MS = 4 * 60_000;
 const FOOTBALL_DAY = 86_400_000;
 // New and upcoming fixtures first, then rotate across seven days of history.
@@ -311,8 +312,28 @@ createWorker({
   pollIntervalMs:1_000,
   async tick(ctx){
     await ctx.withLock('football:stats:poll',240,async()=>{
-      await pollLive(ctx.services.db);
-      await pollCatalog(ctx.services.db);
+      // One provider endpoint can fail (e.g. an unsupported live-list page
+      // size) without preventing the independent past/future fixture catalog.
+      const failures: string[] = [];
+      try {
+        await pollLive(ctx.services.db);
+      } catch (error) {
+        failures.push('live');
+        console.error('FIVEDOLLAR_LIVE_POLL_ERROR',JSON.stringify({
+          error:error instanceof Error?error.message:String(error),
+        }));
+      }
+      try {
+        await pollCatalog(ctx.services.db);
+      } catch (error) {
+        failures.push('catalog');
+        console.error('FIVEDOLLAR_CATALOG_POLL_ERROR',JSON.stringify({
+          error:error instanceof Error?error.message:String(error),
+        }));
+      }
+      if(failures.length===2){
+        throw new Error('FIVEDOLLAR_ALL_FEEDS_FAILED: live and catalog');
+      }
     });
   },
 });
