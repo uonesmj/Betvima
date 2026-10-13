@@ -1152,7 +1152,8 @@ async function runDedicatedLiveTick(ctx: WorkerContext): Promise<void> {
   );
 
   await ctx.withLock("odds:live-priority", 15, async () => {
-    for (const sourceProvider of providers) {
+    // The Odds API request must never block 5Dollar live quote sampling.
+    await Promise.allSettled(providers.map(async (sourceProvider) => {
       try {
         let pending = await ctx.services.db.query<{
           match_id: string;
@@ -1204,7 +1205,7 @@ async function runDedicatedLiveTick(ctx: WorkerContext): Promise<void> {
           intervalMs: LIVE_ODDS_INTERVAL_MS,
         }));
 
-        if (providerIds.length === 0) continue;
+        if (providerIds.length === 0) return;
 
         const result = await sourceProvider.fetchOdds(providerIds);
         console.log("ODDS_LIVE_WORKER_PROVIDER_RESULT", JSON.stringify({
@@ -1216,7 +1217,7 @@ async function runDedicatedLiveTick(ctx: WorkerContext): Promise<void> {
           errorMessage: result.errorMessage ?? null,
         }));
 
-        if (!result.ok || !result.value) continue;
+        if (!result.ok || !result.value) return;
 
         const requestedIds = new Set(providerIds);
         const bundlesByProviderId = new Map(
@@ -1259,7 +1260,7 @@ async function runDedicatedLiveTick(ctx: WorkerContext): Promise<void> {
           error: error instanceof Error ? error.message : String(error),
         }));
       }
-    }
+    }));
   });
 }
 
