@@ -197,6 +197,9 @@ async function persistDetails(db:Db, match:ProviderMatch, id:string):Promise<voi
     );
   }
 
+  const matchedTeams=await db.queryOne<{home_team_id:string;away_team_id:string}>(
+    `select home_team_id,away_team_id from nova.matches where id=$1`,[id],
+  );
   const normalizedHome=normalizeMatchIdentity(match.homeTeamName);
   const normalizedAway=normalizeMatchIdentity(match.awayTeamName);
   for (const raw of (Array.isArray(match.liveEvents)?match.liveEvents:[]).slice(0,150)) {
@@ -218,21 +221,18 @@ async function persistDetails(db:Db, match:ProviderMatch, id:string):Promise<voi
     const identity=fiveDollarProviderEventId(match.providerId,String(rawIdentity));
     const detail=typeof e.detail==='string'?e.detail:
       typeof e.description==='string'?e.description:null;
-    const teamId=side==='home'?match.homeTeamProviderId:side==='away'?match.awayTeamProviderId:null;
+    const teamId=side==='home'?matchedTeams?.home_team_id:
+      side==='away'?matchedTeams?.away_team_id:null;
     await db.query(
       `insert into nova.match_events
         (match_id,provider_event_id,type,minute,period,team_id,player_name,detail,occurred_at,created_at)
-       values($1,$2,$3,$4,$5,
-         (select pe.internal_id from nova.provider_entities pe
-          where pe.provider=$6 and pe.entity_type='team' and pe.provider_id=$7 limit 1),
-         $8,$9,now(),now())
+       values($1,$2,$3,$4,$5,$6,$7,$8,now(),now())
        on conflict(match_id,provider_event_id)
          where provider_event_id is not null
        do update set type=excluded.type,minute=excluded.minute,
          period=excluded.period,player_name=coalesce(excluded.player_name,nova.match_events.player_name),
          detail=coalesce(excluded.detail,nova.match_events.detail)`,
-      [id,identity,type,minute,match.period,MATCH_SOURCE_FALLBACK,
-       teamId,player,detail],
+      [id,identity,type,minute,match.period,teamId,player,detail],
     );
   }
 }
