@@ -327,7 +327,10 @@ export class PostgresCatalogRepository implements CatalogRepository {
          join nova.matches m on m.id = sel.match_id
          left join nova.teams ht on ht.id = m.home_team_id
          left join nova.teams at on at.id = m.away_team_id
-        where sel.match_id = $1 and sel.id = any($2::uuid[])`,
+        where sel.match_id = $1 and sel.id = any($2::uuid[])
+          and sel.provider = 'the_odds_api'
+          and mk.provider = 'the_odds_api'
+          and m.provider = 'the_odds_api'`,
       [matchId, pgArray(selectionIds)],
     );
     return rows.map((r) => ({
