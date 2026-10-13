@@ -330,7 +330,7 @@ voucherQuote?: { rateIrrPerUsd: string; quotedAt: string; requestedWalletAmountM
       const quotedAt = Date.parse(quote?.quotedAt ?? '');
       if (!quote || !Number.isFinite(quotedAt) ||
           quotedAt > Date.now() + 5_000 || Date.now() - quotedAt > 60_000 ||
-          !/^\\d{1,19}$/.test(quote.requestedWalletAmountMinor)) {
+          !/^\d{1,19}$/.test(quote.requestedWalletAmountMinor)) {
         throw new ApiError('BAD_REQUEST', 'Refresh the uWallet voucher rate before withdrawal');
       }
       const currentRate = await getUwalletVoucherIrrPerUsd();
