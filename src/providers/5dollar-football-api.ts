@@ -364,7 +364,7 @@ export class FiveDollarFootballApiSportsProvider implements SportsDataProvider {
         // A snapshot's retrieval time is NOT a bookmaker price timestamp.
         // Require Ultra's timestamped tick history and exact quote equality.
         const [fixtureResponse, historyResponse] = await Promise.all([
-          request<any>(`/fixtures/${encodeURIComponent(fixtureId)}`, { include: "odds" }),
+          request<any>(`/fixtures/${encodeURIComponent(fixtureId)}`),
           request<any>(`/fixtures/${encodeURIComponent(fixtureId)}/odds/history`, {
             bookmaker: "bet365", market: "1x2", per_page: 500,
           }),
