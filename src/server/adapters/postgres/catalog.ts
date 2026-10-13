@@ -7,14 +7,9 @@ import type {
 } from '@/lib/types';
 import { pgArray, type Row, toBig, toBool, toIso, toIsoOrNull, toNum, toNumOrNull, toStr, toStrOrNull } from '@/server/db/rows';
 
-// The fixture-only feed cannot price past/outdated records. Its live list
-// includes only recently seen games (and limits kickoffs to the last four hours).
-// Never rewrite match status or settle bets from missing provider updates.
-const FIVEDOLLAR_ACTIVE_LIVE_SQL = `(
-  m.provider IS DISTINCT FROM '5dollarfootballapi'
-  OR (m.provider_updated_at >= now() - interval '5 minutes'
-      AND m.scheduled_at >= now() - interval '4 hours')
-)`;
+// Never expose discontinued external fixtures in live discovery.
+// Historical rows and financial settlement records remain unchanged.
+const ODDS_ONLY_MATCH_SQL = "m.provider = 'the_odds_api'";
 
 const SPORT_KEYS: SportKey[] = [
   'football',
@@ -49,11 +44,7 @@ const BETTABLE_STATUSES = ['scheduled', 'live', 'in_play', 'paused', 'break', 'h
 
 const MATCH_SELECT = `
   m.id, m.status, m.scheduled_at, m.started_at, m.finished_at, m.minute, m.period,
-  case when fdclock.minute_value ~ '^[0-9]{1,3}$'
-       then case when fdclock.minute_value::int between 0 and 130
-                 then fdclock.minute_value::int else m.minute end
-       else m.minute end as display_minute,
-  coalesce(fdclock.period_value, m.period) as display_period,
+  m.minute as display_minute, m.period as display_period,
   m.home_score, m.away_score, m.has_live_stream, m.provider, m.updated_at, m.league_id, m.sport_id,
   s.slug as sport_slug, l.name as league_name, l.name_fa as league_name_fa, l.logo as league_logo, c.code as country_code,
   ht.name as home_name, ht.name_fa as home_name_fa, ht.short_name as home_short, ht.logo as home_logo,
@@ -69,15 +60,7 @@ const MATCH_FROM = `
   left join nova.teams ht on ht.id = m.home_team_id
   left join nova.teams at on at.id = m.away_team_id
   left join lateral (select * from nova.match_results mr where mr.match_id = m.id order by mr.revision desc limit 1) r on true
-  left join lateral (
-    select ms.payload->>'minute' as minute_value,
-           nullif(ms.payload->>'period', '') as period_value
-      from nova.match_stats ms
-     where ms.match_id = m.id and ms.provider = '5dollarfootballapi'
-       and ms.updated_at >= now() - interval '5 minutes'
-       and m.status::text in ('live','in_play','paused','break','halftime','extra_time','penalties')
-     limit 1
-  ) fdclock on true`;
+ `;
 
 function mapMatch(row: Row, topMarkets: MarketSummary[] = []): Match {
   const status = toStr(row.status, 'scheduled');
@@ -424,7 +407,7 @@ export class PostgresCatalogRepository implements CatalogRepository {
 
   async listLiveMatches(_c: ActorContext, limit: number): Promise<Match[]> {
     const rows = await this.db.query<Row>(
-      `select ${MATCH_SELECT} ${MATCH_FROM} where m.status::text = any($1::text[]) and ${FIVEDOLLAR_ACTIVE_LIVE_SQL}
+      `select ${MATCH_SELECT} ${MATCH_FROM} where m.status::text = any($1::text[]) and ${ODDS_ONLY_MATCH_SQL}
         order by m.minute desc nulls last, m.scheduled_at asc limit $2`,
       [pgArray(LIVE_STATUSES), Math.min(limit, 100)],
     );
@@ -435,7 +418,7 @@ export class PostgresCatalogRepository implements CatalogRepository {
       `select s.slug as sport_slug, count(*)::int as live_count
          from nova.matches m
          join nova.sports s on s.id = m.sport_id
-        where m.status::text = any($1::text[]) and ${FIVEDOLLAR_ACTIVE_LIVE_SQL}
+        where m.status::text = any($1::text[]) and ${ODDS_ONLY_MATCH_SQL}
         group by s.slug`,
       [pgArray(LIVE_STATUSES)],
     );
