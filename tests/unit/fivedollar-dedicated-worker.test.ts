@@ -16,6 +16,18 @@ describe('FiveDollar dedicated football metadata process', () => {
     expect(entrypoint).toContain("import '../fivedollar-stats.worker'");
   });
 
+  it('continues catalog ingestion after a live endpoint error and limits per-tick work', () => {
+    expect(source).toContain("FIVEDOLLAR_LIVE_POLL_ERROR");
+    expect(source).toContain("FIVEDOLLAR_CATALOG_POLL_ERROR");
+    expect(source).toContain("FIVEDOLLAR_ALL_FEEDS_FAILED: live and catalog");
+    expect(source).toContain("const MAX_LIVE_PER_CYCLE = 12;");
+    expect(source).toContain("const MAX_CATALOG_PER_CYCLE = 32;");
+    expect(source.indexOf('await pollLive(ctx.services.db)')).toBeLessThan(
+      source.indexOf('await pollCatalog(ctx.services.db)'),
+    );
+    expect(source).toContain('try {\n        await pollCatalog(ctx.services.db);');
+  });
+
   it('preserves bettable matches when ingesting external fixtures', () => {
     expect(source).toContain("row.match_provider === MATCH_SOURCE_FALLBACK");
     expect(source).toContain('not exists(select 1 from nova.markets');
