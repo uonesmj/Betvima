@@ -1,14 +1,15 @@
 import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest';
 import type { Services } from '@/server/services/container';
 
-const { activateVoucherMock, createVoucherMock } = vi.hoisted(() => ({
+const { activateVoucherMock, createVoucherMock, getCoinsMock } = vi.hoisted(() => ({
   activateVoucherMock: vi.fn(),
   createVoucherMock: vi.fn(),
+  getCoinsMock: vi.fn(),
 }));
 vi.mock('@/server/providers/uwallet/client', () => ({
   activateVoucher: activateVoucherMock,
   createVoucher: createVoucherMock,
-  getCoins: vi.fn(),
+  getCoins: getCoinsMock,
 }));
 
 const intent = {
@@ -33,6 +34,11 @@ beforeEach(() => {
   vi.stubEnv('UWALLET_HOTVOUCHER_COIN', 'HV');
   activateVoucherMock.mockReset();
   createVoucherMock.mockReset();
+  getCoinsMock.mockReset();
+  getCoinsMock.mockResolvedValue([
+    { coin: 'UUSD', symbol: 'UUSD', swap: [{ coin: 'HV', percent: 252706220 }] },
+    { coin: 'HV', symbol: 'HV' },
+  ]);
 });
 afterEach(() => vi.unstubAllEnvs());
 
@@ -98,4 +104,71 @@ describe('voucher money safety and email availability', () => {
     expect(result.status).toBe('pending');
     expect(createVoucherMock).not.toHaveBeenCalled();
   });
+
+  it('pins uWallet FX before redeeming any IRT voucher deposit', async () => {
+    const created = { ...intent, status: 'initiated' };
+    const createIntent = vi.fn().mockResolvedValue(created);
+    const completeIntent = vi.fn().mockResolvedValue({intent:{...created,status:'pending'}});
+    activateVoucherMock.mockResolvedValue({transactionId:'provider-fixture',status:'pending',receive:'10'});
+    const svc = await paymentService({
+      users:{getProfile:vi.fn().mockResolvedValue({preferredCurrency:'IRT'})},
+      payments:{createIntent,completeIntent},
+    });
+    await svc.createDeposit({ userId:intent.userId,amountMinor:1000n,currency:'USD',
+      methodId:'voucher_uvoucher',voucherCode:'fixture-code',idempotencyKey:'deposit-rate-fixture',ip:null });
+    expect(getCoinsMock).toHaveBeenCalledTimes(1);
+    expect(createIntent).toHaveBeenCalledWith(expect.objectContaining({
+      providerMetadata:expect.objectContaining({
+        targetWalletCurrency:'IRT',
+        voucherFx:expect.objectContaining({source:'uwallet',rateIrrPerUsd:'2527062.20000000'}),
+      }),
+    }));
+    expect(completeIntent).toHaveBeenCalledWith(expect.objectContaining({
+      status:'pending',providerReference:'provider-fixture',
+    }));
+  });
+
+  it('rejects fiat withdrawal without valid provider quote before voucher issuance or wallet hold', async () => {
+    const createIntent=vi.fn();
+    const svc=await paymentService({
+      providers:{email:{configured:true}},
+      db:{queryOne:vi.fn().mockResolvedValue({ready:true})},
+      users:{getProfile:vi.fn().mockResolvedValue({preferredCurrency:'IRR'})},
+      payments:{createIntent},
+    });
+    await expect(svc.createWithdrawal({
+      userId:intent.userId,amountMinor:949n,currency:'USD',methodId:'voucher_uvoucher',
+      destination:'test@example.com',idempotencyKey:'missing-rate-quote',ip:null,
+    })).rejects.toThrow('Refresh the uWallet voucher rate');
+    expect(createIntent).not.toHaveBeenCalled();
+    expect(createVoucherMock).not.toHaveBeenCalled();
+  });
+
+  it('holds exactly the provider quoted IRR value and rejects a forged cent amount', async () => {
+    const createIntent=vi.fn().mockResolvedValue({...intent,status:'initiated',direction:'withdrawal'});
+    const db={queryOne:vi.fn()
+      .mockResolvedValueOnce({ready:true})
+      .mockResolvedValueOnce(null)};
+    const svc=await paymentService({
+      providers:{email:{configured:true}},
+      db,
+      users:{getProfile:vi.fn().mockResolvedValue({preferredCurrency:'IRR'})},
+      payments:{createIntent},
+      notifications:{findByDedupeKey:vi.fn().mockResolvedValue(null)},
+    });
+    const quote={rateIrrPerUsd:'2527062.20000000',quotedAt:new Date().toISOString(),requestedWalletAmountMinor:'24000000'};
+    const r=await svc.createWithdrawal({
+      userId:intent.userId,amountMinor:949n,currency:'USD',methodId:'voucher_uvoucher',
+      destination:'test@example.com',idempotencyKey:'rate-quote',ip:null,voucherQuote:quote,
+    });
+    expect(r.status).toBe('initiated');
+    expect(createIntent).toHaveBeenCalledWith(expect.objectContaining({
+      amountMinor:'949',
+      providerMetadata:expect.objectContaining({voucherFx:expect.objectContaining({
+        source:'uwallet',walletCurrency:'IRR',usdMinor:'949',requestedWalletAmountMinor:'24000000',
+      })}),
+    }));
+    expect(createVoucherMock).not.toHaveBeenCalled();
+  });
+
 });
