@@ -1163,6 +1163,12 @@ async function runDedicatedLiveTick(ctx: WorkerContext): Promise<void> {
             where m.provider = $1
               and m.provider_id is not null
               and m.status::text = any($2::text[])
+              -- Do not spend scarce 5Dollar Ultra quota on old live statuses.
+              -- This is a fetch gate only; it must not mutate match or bet state.
+              and (m.provider <> '5dollarfootballapi' OR (
+                m.provider_updated_at >= now() - interval '3 minutes'
+                and m.scheduled_at >= now() - interval '4 hours'
+              ))
             order by
               (select max(sl.odds_updated_at)
                  from nova.markets mk
