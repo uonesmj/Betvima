@@ -70,6 +70,19 @@ def main():
  if not ROOT.is_dir():stop('RELEASE_ROOT_UNRECOGNIZED')
  with open('/run/lock/betvima-fivedollar-live-odds.lock','a+b') as lock:
   fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB)
+  # Safe activation order: web must already enforce source-dated 45-second
+  # live quotes, or it could display stale 5Dollar prices as actionable.
+  try:
+   request=urllib.request.Request('https://betvima.com/api/v1/live?limit=1',
+                                  headers={'Accept':'application/json'})
+   with urllib.request.urlopen(request,timeout=35) as response:
+    if response.status!=200:stop('WEB_CATALOGUE_HTTP_STATUS')
+    snapshot=response.read(262145)
+   if len(snapshot)>262144 or b'fivedollar-authenticated-45s-v1' not in snapshot:
+    stop('WEB_CATALOGUE_INTEGRITY_VERSION_NOT_DEPLOYED')
+  except RuntimeError:raise
+  except Exception:stop('WEB_CATALOGUE_INTEGRITY_PREFLIGHT_UNAVAILABLE')
+  print('WEB_CATALOGUE_INTEGRITY_VERIFIED',flush=True)
   before=apps()
   live=online(before,LIVE)
   protected={name:online(before,name) for name in PROTECTED}
