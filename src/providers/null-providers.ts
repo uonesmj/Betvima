@@ -1,7 +1,6 @@
 import { TheOddsApiSportsProvider } from "./the-odds-api";
-import { FiveDollarFootballApiSportsProvider } from "./5dollar-football-api";
 import { NowPaymentsProvider } from "./nowpayments";
-import { FiveDollarLiveDataProvider } from "./5dollar-live-data";import { ResendEmailProvider } from './resend-email';
+import { ResendEmailProvider } from './resend-email';
 /**
  * NULL / DISABLED PROVIDERS (spec §7/§8 - "no provider configured is a first-class state").
  *
@@ -50,6 +49,23 @@ export class DisabledSportsProvider implements SportsDataProvider {
   async fetchEventOdds() { return notConfigured<never[]>('sports.fetchEventOdds', this.requiredEnv); }
   async fetchResult() { return notConfigured<ProviderResultSnapshot>('sports.fetchResult', this.requiredEnv); }
   async fetchResults() { return notConfigured<never[]>('sports.fetchResults', this.requiredEnv); }
+}
+
+/* ---------------------------------------------------- disabled live metadata */
+// The Odds API owns live scores/markets, but does not supply the separate
+// player-event/statistics endpoint. Never silently call another vendor.
+export class DisabledLiveDataProvider implements LiveDataProvider {
+  readonly name = 'disabled';
+  readonly configured = false;
+  async health(): Promise<ProviderStatus> {
+    return { provider: 'disabled', category: 'live', configured: false,
+      enabled: false, reachable: null, lastError: null, lastSuccessAt: null,
+      requiredEnv: [],
+      notes: 'Separate football live-statistics feed removed; The Odds API remains the sole sports source.' };
+  }
+  async fetchLiveFixtures() { return notConfigured<never[]>('live.fetchLiveFixtures', []); }
+  async fetchEvents() { return notConfigured<never[]>('live.fetchEvents', []); }
+  async fetchStatistics() { return notConfigured<never>('live.fetchStatistics', []); }
 }
 
 /* --------------------------------------------------------------------- payments */
@@ -118,22 +134,15 @@ export function providers(): ProviderRegistryLike {
   if (registry) return registry;
   const env = serverEnv();
   const oddsProvider = new TheOddsApiSportsProvider();
-  const fiveDollarProvider = new FiveDollarFootballApiSportsProvider();
-  // The Odds API is the sole bookmaker prices/markets authority.
-  // FiveDollar supplies football fixtures, kickoff times, results, events and
-  // statistics only. It may fill unmatched fixture catalog gaps; it never
-  // supplies prices to the betting engine.
-  const sportsProviders = [oddsProvider, fiveDollarProvider].filter(
-    (provider, index, all) =>
-      provider.configured &&
-      all.findIndex((item) => item.name === provider.name) === index
-  );
+  // The Odds API is the only permitted sports data and bookmaker source.
+  // No alternate football feed, fallback registry or implicit credentials.
+  const sportsProviders = oddsProvider.configured ? [oddsProvider] : [];
   const primarySportsProvider = sportsProviders[0] ?? new DisabledSportsProvider();
 
   registry = {
     sports: primarySportsProvider,
     sportsProviders,
-    live: new FiveDollarLiveDataProvider(fiveDollarProvider),
+    live: new DisabledLiveDataProvider(),
     payments: env.PAYMENT_PROVIDER === 'nowpayments' ? new NowPaymentsProvider() : new DisabledPaymentProvider(),
     email: env.RESEND_API_KEY && env.RESEND_FROM_EMAIL
       ? new ResendEmailProvider()
