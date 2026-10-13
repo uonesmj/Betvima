@@ -81,15 +81,9 @@ export function LiveMatchRefresh({
           stats: payload.liveStats ?? null,
         });
 
-        const minuteNodes = document.querySelectorAll<HTMLElement>('[data-live-minute]');
-        minuteNodes.forEach((node) => {
-          node.textContent = minute == null ? 'LIVE' : `LIVE ${minute}'`;
-        });
+        // React rerenders the minute and phase from the verified provider
+        // snapshot. Do not replace them through document-wide DOM mutations.
 
-        const periodNodes = document.querySelectorAll<HTMLElement>('[data-live-period]');
-        periodNodes.forEach((node) => {
-          if (period) node.textContent = period;
-        });
       } catch {
         // Keep the last known live snapshot on transient network errors.
       }

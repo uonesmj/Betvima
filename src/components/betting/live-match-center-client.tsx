@@ -49,6 +49,7 @@ export function LiveMatchCenterClient({
           ? {
               ...match,
               minute: live.minute,
+              period: live.period,
               homeScore: live.homeScore ?? match.homeScore,
               awayScore: live.awayScore ?? match.awayScore,
             }

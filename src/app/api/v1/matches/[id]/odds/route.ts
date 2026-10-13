@@ -24,6 +24,7 @@ export const GET = withErrorHandling(
         match_id: string;
         status: string;
         minute: number | null;
+        period: string | null;
         home_score: number | null;
         away_score: number | null;
         markets: unknown;
@@ -31,7 +32,11 @@ export const GET = withErrorHandling(
         `select
            m.id as match_id,
            m.status,
-           m.minute,
+           case when fdclock.minute_value ~ '^[0-9]{1,3}$'
+                then case when fdclock.minute_value::int between 0 and 130
+                          then fdclock.minute_value::int else m.minute end
+                else m.minute end as minute,
+           coalesce(fdclock.period_value, m.period) as period,
            m.home_score,
            m.away_score,
            coalesce(
@@ -76,6 +81,15 @@ export const GET = withErrorHandling(
              '[]'::jsonb
            ) as markets
          from nova.matches m
+         left join lateral (
+           select ms.payload->>'minute' as minute_value,
+                  nullif(ms.payload->>'period', '') as period_value
+             from nova.match_stats ms
+            where ms.match_id = m.id and ms.provider = '5dollarfootballapi'
+              and ms.updated_at >= now() - interval '5 minutes'
+              and m.status::text in ('live','in_play','paused','break','halftime','extra_time','penalties')
+            limit 1
+         ) fdclock on true
          where m.id = $1`,
         [id],
       );
@@ -148,6 +162,7 @@ export const GET = withErrorHandling(
         matchId: row.match_id,
         status: row.status,
         minute: row.minute,
+        period: row.period,
         homeScore: row.home_score,
         awayScore: row.away_score,
         version,

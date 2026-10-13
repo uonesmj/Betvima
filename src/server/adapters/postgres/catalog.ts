@@ -40,6 +40,11 @@ const BETTABLE_STATUSES = ['scheduled', 'live', 'in_play', 'paused', 'break', 'h
 
 const MATCH_SELECT = `
   m.id, m.status, m.scheduled_at, m.started_at, m.finished_at, m.minute, m.period,
+  case when fdclock.minute_value ~ '^[0-9]{1,3}$'
+       then case when fdclock.minute_value::int between 0 and 130
+                 then fdclock.minute_value::int else m.minute end
+       else m.minute end as display_minute,
+  coalesce(fdclock.period_value, m.period) as display_period,
   m.home_score, m.away_score, m.has_live_stream, m.provider, m.updated_at, m.league_id, m.sport_id,
   s.slug as sport_slug, l.name as league_name, l.name_fa as league_name_fa, l.logo as league_logo, c.code as country_code,
   ht.name as home_name, ht.name_fa as home_name_fa, ht.short_name as home_short, ht.logo as home_logo,
@@ -54,7 +59,16 @@ const MATCH_FROM = `
   left join nova.countries c on c.id = l.country_id
   left join nova.teams ht on ht.id = m.home_team_id
   left join nova.teams at on at.id = m.away_team_id
-  left join lateral (select * from nova.match_results mr where mr.match_id = m.id order by mr.revision desc limit 1) r on true`;
+  left join lateral (select * from nova.match_results mr where mr.match_id = m.id order by mr.revision desc limit 1) r on true
+  left join lateral (
+    select ms.payload->>'minute' as minute_value,
+           nullif(ms.payload->>'period', '') as period_value
+      from nova.match_stats ms
+     where ms.match_id = m.id and ms.provider = '5dollarfootballapi'
+       and ms.updated_at >= now() - interval '5 minutes'
+       and m.status::text in ('live','in_play','paused','break','halftime','extra_time','penalties')
+     limit 1
+  ) fdclock on true`;
 
 function mapMatch(row: Row, topMarkets: MarketSummary[] = []): Match {
   const status = toStr(row.status, 'scheduled');
@@ -75,7 +89,7 @@ function mapMatch(row: Row, topMarkets: MarketSummary[] = []): Match {
     id: toStr(row.id), sportKey: asSportKey(row.sport_slug), leagueId: toStrOrNull(row.league_id),
     leagueName: toStrOrNull(row.league_name_fa) ?? toStrOrNull(row.league_name), leagueLogoUrl: toStrOrNull(row.league_logo), countryCode: toStrOrNull(row.country_code),
     status: status as Match['status'], scheduledAt: toIso(row.scheduled_at), startedAt: toIsoOrNull(row.started_at),
-    finishedAt: toIsoOrNull(row.finished_at), minute: toNumOrNull(row.minute), period: toStrOrNull(row.period),
+    finishedAt: toIsoOrNull(row.finished_at), minute: toNumOrNull(row.display_minute ?? row.minute), period: toStrOrNull(row.display_period ?? row.period),
     homeScore: toNumOrNull(row.home_score), awayScore: toNumOrNull(row.away_score),
     homeHalfScore: toNumOrNull(row.home_half_score), awayHalfScore: toNumOrNull(row.away_half_score),
     participants, provider: toStrOrNull(row.provider),
