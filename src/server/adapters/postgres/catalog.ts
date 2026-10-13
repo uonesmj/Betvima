@@ -304,7 +304,7 @@ export class PostgresCatalogRepository implements CatalogRepository {
           end
           -- A newly re-ingested cached bookmaker quote is not a fresh live price.
           and (
-            sel.provider is distinct from 'the_odds_api'
+            sel.provider not in ('the_odds_api', '5dollarfootballapi')
             or not (coalesce(mk.is_live, false) or fixture.status::text = any($2::text[]))
             or (sel.provider_timestamp between now() - interval '45 seconds' and now() + interval '15 seconds')
           )
@@ -514,7 +514,7 @@ export class PostgresCatalogRepository implements CatalogRepository {
                        else interval '300 seconds'
                      end
                      and (
-                       candidate.provider is distinct from 'the_odds_api'
+                       candidate.provider not in ('the_odds_api', '5dollarfootballapi')
                        or not (coalesce(m.is_live, false) or fixture.status::text = any($2::text[]))
                        or candidate.provider_timestamp between now() - interval '45 seconds' and now() + interval '15 seconds'
                      )
@@ -532,7 +532,7 @@ export class PostgresCatalogRepository implements CatalogRepository {
          and sel.odds_updated_at is not null
          and sel.odds_updated_at >= now() - mk.maximum_quote_age
          and (
-           sel.provider is distinct from 'the_odds_api'
+           sel.provider not in ('the_odds_api', '5dollarfootballapi')
            or not mk.in_play_quote
            or sel.provider_timestamp between now() - interval '45 seconds' and now() + interval '15 seconds'
          )
