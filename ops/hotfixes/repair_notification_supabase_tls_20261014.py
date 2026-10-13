@@ -97,8 +97,8 @@ async function verify(label,config){
  const ca=fs.readFileSync(process.env.NODE_EXTRA_CA_CERTS,'utf8');
  await verify('STRICT_CA_VERIFIED', {connectionString:c.toString(),ssl:{ca,rejectUnauthorized:true}});
  await verify('DEFAULT_URL_VERIFIED', {connectionString:raw});
- console.log('READONLY_VERIFIED_TLS_DB_PASS');
-})().then(()=>process.exit(0),e=>{
+ process.stdout.write('READONLY_VERIFIED_TLS_DB_PASS\\n',()=>process.exit(0));
+})().catch(e=>{
  console.error(String(e?.code||e?.message||'DB_PROBE_FAILED').slice(0,120));
  process.exit(1);
 });
@@ -115,9 +115,9 @@ try{
  const q=await c.query(
  'select exists(select 1 from nova.worker_heartbeats where worker=$1 and worker_id=$2 and last_seen_at>now()-interval \'30 seconds\') ok',
  ['notification',process.env.WORKER_ID||'notification-betvima']);
- console.log(q.rows[0]?.ok?'NOTIFICATION_HEARTBEAT_VERIFIED':'NOTIFICATION_HEARTBEAT_MISSING');
+ const ok=q.rows[0]?.ok===true;
  await c.end();
- if(!q.rows[0]?.ok) process.exitCode=2;
+ process.stdout.write((ok?'NOTIFICATION_HEARTBEAT_VERIFIED':'NOTIFICATION_HEARTBEAT_MISSING')+'\\n',()=>process.exit(ok?0:2));
 }catch(e){
  console.error(String(e?.code||e?.message||'HEARTBEAT_ERROR').slice(0,140));
  try{await c.end()}catch(_){}
@@ -197,6 +197,11 @@ def main():
         print("NOTIFICATION_HEARTBEAT_CHECK",error_label(hb.stderr),flush=True)
         stop("NOTIFICATION_HEARTBEAT_NOT_CONFIRMED")
     print("NOTIFICATION_HEARTBEAT_VERIFIED",flush=True)
+    saved=run(["/usr/sbin/runuser","-u","novaadmin","--",
+               "/usr/bin/env","PM2_HOME="+PM2HOME,
+               "/usr/bin/pm2","save"],timeout=45)
+    if saved.returncode:stop("PM2_SAVE_FAILED")
+    print("NOTIFICATION_PM2_SAVED",flush=True)
     print("EMAIL_DELIVERY_RESUMED_VERIFY_QUEUED_STATUSES",flush=True)
     print("NO_NEW_VOUCHER_OR_WALLET_MUTATION",flush=True)
 if __name__=="__main__":
