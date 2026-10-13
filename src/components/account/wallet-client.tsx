@@ -464,7 +464,7 @@ function WithdrawPanel({
                   <div className="mt-1 font-bold text-[#173DAA]">
                     {(() => { try {
                       const r=voucherWithdrawalDebit(BigInt(normalizeNumericInput(form.amount)),currency as 'IRT'|'IRR',voucherQuote!.rateIrrPerUsd);
-                      return 'وچر قابل دریافت: $'+(Number(r.usdMinor)/100).toFixed(2)+' — کسر از کیف پول: '+new Intl.NumberFormat('fa-IR').format(r.walletMinor.toString())+' '+(currency==='IRT'?'تومان':'ریال');
+                      return 'وچر قابل دریافت: $'+(Number(r.usdMinor)/100).toFixed(2)+' — کسر از کیف پول: '+new Intl.NumberFormat('fa-IR').format(r.walletMinor)+' '+(currency==='IRT'?'تومان':'ریال');
                     } catch { return 'مبلغ نامعتبر'; } })()}
                   </div>
                 ):null}
