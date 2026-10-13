@@ -187,11 +187,14 @@ export function translateVisibleText(value: string, sportContext = false): strin
   if (!localized) {
     const composed = core.match(/^(.{2,80}?)\s+(-|–|—|vs\.?)\s+(.{2,80})$/i);
     if (composed) {
-      const left = phrases.get(normalize(composed[1]));
-      const right = phrases.get(normalize(composed[3]));
-      if (left && right) localized = left + ' ' + composed[2] + ' ' + right;
-      else if (sportContext && /^[A-Za-z ]+$/.test(composed[1] + composed[3])) {
-        localized = translateSportName(composed[1]) + ' ' + composed[2] + ' ' + translateSportName(composed[3]);
+      const leftName = composed[1] ?? '';
+      const separator = composed[2] ?? '-';
+      const rightName = composed[3] ?? '';
+      const left = phrases.get(normalize(leftName));
+      const right = phrases.get(normalize(rightName));
+      if (left && right) localized = left + ' ' + separator + ' ' + right;
+      else if (sportContext && /^[A-Za-z ]+$/.test(leftName + rightName)) {
+        localized = translateSportName(leftName) + ' ' + separator + ' ' + translateSportName(rightName);
       }
     }
   }
