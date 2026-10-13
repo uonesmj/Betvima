@@ -57,8 +57,8 @@ export const GET = withErrorHandling('wallet.deposit.voucher.status', async (ctx
       providerReference: intent.providerReference,
       transaction: transaction as unknown as {
         status?: string;
-        receive?: number;
-        amount?: number;
+        receive?: number | string;
+        amount?: number | string;
         coin?: string;
         [key: string]: unknown;
       },
@@ -79,8 +79,8 @@ export const GET = withErrorHandling('wallet.deposit.voucher.status', async (ctx
       providerReference: intent.providerReference,
       transaction: transaction as unknown as {
         status?: string;
-        receive?: number;
-        amount?: number;
+        receive?: number | string;
+        amount?: number | string;
         coin?: string;
         [key: string]: unknown;
       },
