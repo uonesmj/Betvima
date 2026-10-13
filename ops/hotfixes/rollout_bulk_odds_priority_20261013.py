@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Guarded, rollbackable BetVima bulk odds-only priority hotfix."""
-import hashlib, json, os, pathlib, runpy, stat, subprocess, sys, tempfile, time, urllib.request, fcntl
+import hashlib, json, os, pathlib, runpy, stat, subprocess, sys, tempfile, time, urllib.request, fcntl, pwd
 P=pathlib.Path
 ROOT=P('/opt/nova-releases/24dab3702c58a5baa4b5f18ccc1eee15b2c6fdac')
 SOURCE=ROOT/'src/workers/odds.worker.ts'
@@ -45,7 +45,7 @@ def atomic(path,data,origin):
   if os.path.exists(tmp):os.unlink(tmp)
 def local_bulk_processes():
  found=[]
- uid=ROOT.stat().st_uid
+ uid=pwd.getpwnam('novaadmin').pw_uid
  for f in P('/proc').iterdir():
   if not f.name.isdigit():continue
   try:
