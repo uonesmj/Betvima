@@ -22,6 +22,31 @@ describe('voucher email recovery process safety', () => {
     expect(source).not.toContain('activateVoucher(');
     expect(source).not.toContain('createVoucher(');
   });
+  it('starts notification with isolated PM2 environment and pinned node tsx command', () => {
+    const content = readFileSync(
+      'ops/hotfixes/restore_voucher_email_worker_pinned_node_20261013.py',
+      'utf8'
+    );
+    const result = spawnSync('python3',
+      ['-c', 'import ast,sys; ast.parse(sys.stdin.read())'],
+      { input: content, encoding: 'utf8' }
+    );
+    expect(result.status, result.stderr).toBe(0);
+    for(const marker of [
+      '"--interpreter", "none"',
+      '"--", "--import", "tsx"',
+      '"NODE_ENV"',
+      '"NOVA_WORKER_ONCE"',
+      'PM2_REGISTERED_COUNT',
+      'PM2_BOOT_STATUS',
+      'PM2_RESTARTS',
+      'NOTIFICATION_WORKER_ONLINE',
+      'not k.startswith(("PM2_","NODE_"))',
+    ]) expect(content).toContain(marker);
+    expect(content).not.toContain('command("delete", NAME)');
+    expect(content).not.toContain('createVoucher(');
+    expect(content).not.toContain('activateVoucher(');
+  });
   it('is valid Python and only launches the notification worker after safe preflight', () => {
     const source = readFileSync(file, 'utf8');
     const python = spawnSync('python3', ['-c', 'import ast,sys; ast.parse(sys.stdin.read())'], {
