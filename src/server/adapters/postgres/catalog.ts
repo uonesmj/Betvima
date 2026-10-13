@@ -164,6 +164,7 @@ export class PostgresCatalogRepository implements CatalogRepository {
                 select count(*)
                   from nova.matches mc
                  where mc.league_id = l.id
+                   and mc.provider = 'the_odds_api'
                    and mc.status::text = 'scheduled'
                    and mc.scheduled_at >= now()
               ) as match_count
@@ -279,6 +280,7 @@ export class PostgresCatalogRepository implements CatalogRepository {
          join nova.markets mk on mk.id = sel.market_id
          join nova.matches fixture on fixture.id = mk.match_id
         where sel.market_id = any($1::uuid[])
+          and sel.provider = 'the_odds_api'
           and sel.odds_updated_at is not null
           and sel.odds_updated_at >= now() - case
             when coalesce(mk.is_live, false) or fixture.status::text = any($2::text[])
@@ -287,8 +289,7 @@ export class PostgresCatalogRepository implements CatalogRepository {
           end
           -- A newly re-ingested cached bookmaker quote is not a fresh live price.
           and (
-            sel.provider not in ('the_odds_api', '5dollarfootballapi')
-            or not (coalesce(mk.is_live, false) or fixture.status::text = any($2::text[]))
+            not (coalesce(mk.is_live, false) or fixture.status::text = any($2::text[]))
             or (sel.provider_timestamp between now() - interval '45 seconds' and now() + interval '15 seconds')
           )
         order by sel.participant_type, sel.code`,
@@ -344,36 +345,16 @@ export class PostgresCatalogRepository implements CatalogRepository {
     }));
   }
 
-  async listMatchEvents(matchId: UUID): Promise<import('@/lib/types').MatchEventView[]> {
-    const rows = await this.db.query<Row>(
-      `select e.id, e.provider_event_id, e.type, e.minute, e.period, e.team_id,
-              e.player_name, e.detail, e.occurred_at, t.name as team_name
-         from nova.match_events e
-         left join nova.teams t on t.id = e.team_id
-        where e.match_id = $1
-          and e.provider_event_id like '5dollar:%'
-        order by e.minute asc nulls last, e.occurred_at asc, e.created_at asc`,
-      [matchId],
-    );
-    return rows.map((r) => ({
-      id: toStr(r.id),
-      providerEventId: toStr(r.provider_event_id),
-      type: toStr(r.type, 'event'),
-      minute: toNumOrNull(r.minute),
-      period: toStrOrNull(r.period),
-      teamId: toStrOrNull(r.team_id) || null,
-      teamName: toStrOrNull(r.team_name),
-      playerName: toStrOrNull(r.player_name),
-      detail: toStrOrNull(r.detail),
-      occurredAt: toIso(r.occurred_at),
-    }));
+  async listMatchEvents(_matchId: UUID): Promise<import('@/lib/types').MatchEventView[]> {
+    // The Odds API does not supply separate player/event statistics.
+    return [];
   }
 
   async getMatchStats(matchId: UUID): Promise<import('@/lib/types').MatchStatsView | null> {
     const row = await this.db.queryOne<Row>(
       `select provider, updated_at, payload
          from nova.match_stats
-        where match_id = $1
+        where match_id = $1 and provider = 'the_odds_api'
         order by updated_at desc
         limit 1`,
       [matchId],
@@ -497,8 +478,7 @@ export class PostgresCatalogRepository implements CatalogRepository {
                        else interval '300 seconds'
                      end
                      and (
-                       candidate.provider not in ('the_odds_api', '5dollarfootballapi')
-                       or not (coalesce(m.is_live, false) or fixture.status::text = any($2::text[]))
+                       not (coalesce(m.is_live, false) or fixture.status::text = any($2::text[]))
                        or candidate.provider_timestamp between now() - interval '45 seconds' and now() + interval '15 seconds'
                      )
                 ) then 0 else 1 end,
@@ -512,11 +492,11 @@ export class PostgresCatalogRepository implements CatalogRepository {
         left join nova.selections sel
           on sel.market_id = mk.id
          and sel.status = 'open'
+         and sel.provider = 'the_odds_api'
          and sel.odds_updated_at is not null
          and sel.odds_updated_at >= now() - mk.maximum_quote_age
          and (
-           sel.provider not in ('the_odds_api', '5dollarfootballapi')
-           or not mk.in_play_quote
+           not mk.in_play_quote
            or sel.provider_timestamp between now() - interval '45 seconds' and now() + interval '15 seconds'
          )
         where mk.market_rank <= 3
