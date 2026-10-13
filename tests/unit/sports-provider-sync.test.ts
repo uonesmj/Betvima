@@ -128,7 +128,7 @@ describe("Odds API and FiveDollar source synchronization", () => {
     expect(fake.aliases.size).toBe(0);
   });
 
-  it("fetches odds only from the provider recorded as the match owner", async () => {
+  it("never requests odds from FiveDollar, including legacy owned fixtures", async () => {
     const oddsFetch = vi.fn(async (ids: string[]) => ({
       ok: true,
       value: [{ matchProviderId: ids[0]!, markets: [], updatedAt: kickOff }],
@@ -141,20 +141,16 @@ describe("Odds API and FiveDollar source synchronization", () => {
     const fiveDollar = { name: MATCH_SOURCE_FALLBACK, fetchOdds: fiveDollarFetch } as unknown as SportsDataProvider;
     const providers = [odds, fiveDollar];
 
-    for (const [owner, providerId] of [
-      [MATCH_SOURCE_ODDS, "odds-event-1"],
-      [MATCH_SOURCE_FALLBACK, "5d-fixture-1"],
-    ]) {
-      const provider = resolveSportsOddsProvider(owner!, providers, odds);
-      expect(provider?.name).toBe(owner);
-      const result = await fetchOddsForOwningProvider(provider!, providerId!);
-      expect(result.value?.map((bundle) => bundle.matchProviderId)).toEqual([providerId]);
-    }
+    const priced = resolveSportsOddsProvider(MATCH_SOURCE_ODDS, providers, odds);
+    expect(priced).toBe(odds);
+    const response = await fetchOddsForOwningProvider(priced!, 'odds-event-1');
+    expect(response.ok).toBe(true);
+    expect(oddsFetch).toHaveBeenCalledWith(['odds-event-1']);
 
-    expect(oddsFetch).toHaveBeenCalledTimes(1);
-    expect(oddsFetch).toHaveBeenCalledWith(["odds-event-1"]);
-    expect(fiveDollarFetch).toHaveBeenCalledTimes(1);
-    expect(fiveDollarFetch).toHaveBeenCalledWith(["5d-fixture-1"]);
+    expect(resolveSportsOddsProvider(MATCH_SOURCE_FALLBACK, providers, odds)).toBeNull();
+    const refused = await fetchOddsForOwningProvider(fiveDollar, '5d-fixture-1');
+    expect(refused).toMatchObject({ ok: false, errorCode: 'ODDS_PROVIDER_NOT_AUTHORIZED' });
+    expect(fiveDollarFetch).not.toHaveBeenCalled();
   });
 
   it("resolves FiveDollar live fixtures through their canonical alias and exposes FiveDollar events", async () => {
