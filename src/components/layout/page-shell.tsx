@@ -534,7 +534,6 @@ export function MobileTabBar() {
   );
 }
 
-
 export function Footer({
   onSupportOpen
 }: { onSupportOpen?: () => void }) {
