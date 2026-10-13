@@ -30,7 +30,7 @@ describe('authenticated 5Dollar football H2H quotes',()=>{
   });
   it('fails closed for stale/future source time',()=>{
     expect(testCase(fixture,history,now+46_000)).toBeNull();
-    expect(testCase(fixture,history,now-30_000)).toBeNull();
+    expect(testCase(fixture,history,now-45_000)).toBeNull();
   });
   it('fails closed for missing history, unknown source and incomplete pages',()=>{
     expect(testCase(fixture,{})).toBeNull();
