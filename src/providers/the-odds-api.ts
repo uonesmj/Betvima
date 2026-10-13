@@ -440,6 +440,7 @@ async function request<T>(
   path: string,
   params: Record<string, string> = {},
   priority: RequestPriority = "core",
+  maxRetriesOverride?: number,
 ): Promise<T> {
   if (!API_KEY) {
     throw new Error("SPORTS_PROVIDER_API_KEY is not configured");
@@ -457,7 +458,8 @@ async function request<T>(
 
   let lastError: Error | null = null;
 
-  for (let attempt = 0; attempt <= MAX_FREQ_RETRIES; attempt += 1) {
+  const retryLimit = maxRetriesOverride ?? MAX_FREQ_RETRIES;
+  for (let attempt = 0; attempt <= retryLimit; attempt += 1) {
     await waitForRequestSlot(priority);
 
     const url = new URL(`${BASE_URL}${path}`);
@@ -504,7 +506,7 @@ async function request<T>(
         frequencyBlockedUntil =
           Date.now() + FREQUENCY_COOLDOWN_MS;
 
-        if (attempt < MAX_FREQ_RETRIES) {
+        if (attempt < retryLimit) {
           await sleep(
             FREQUENCY_COOLDOWN_MS * Math.max(1, attempt + 1),
           );
@@ -931,9 +933,30 @@ export class TheOddsApiSportsProvider implements SportsDataProvider {
       }
 
       const bundles = new Map<string, ProviderOddsBundle>();
+      // A 12-event fixture batch can span 10+ sports, and each grouped request
+      // has a 15s network timeout. Unlimited sequential requests used to hold
+      // the main 180s odds lock, letting every 5m quote expire together.
+      // Finish the current request and publish already-fetched sport bundles
+      // rather than make another call once the wall budget is consumed.
+      const coreStartedAt = Date.now();
+      const coreBudgetMs = 45_000;
+      let successfulRequests = 0;
+      let failedRequests = 0;
+      let firstError: string | null = null;
+      let skippedForBudget = 0;
 
       for (const [sportKey, eventIds] of grouped) {
         for (let offset = 0; offset < eventIds.length; offset += 50) {
+          if (Date.now() - coreStartedAt >= coreBudgetMs) {
+            skippedForBudget += Math.ceil((eventIds.length-offset)/50);
+            console.warn("ODDS_CORE_REQUEST_BUDGET_EXHAUSTED", JSON.stringify({
+              elapsedMs: Date.now()-coreStartedAt,
+              completedRequests: successfulRequests+failedRequests,
+              processedBundles: bundles.size,
+              skippedCurrentSport: sportKey,
+            }));
+            break;
+          }
           const batch = eventIds.slice(offset, offset + 50);
 
           console.log("ODDS_PROVIDER_BATCH_REQUEST", JSON.stringify({
@@ -942,15 +965,34 @@ export class TheOddsApiSportsProvider implements SportsDataProvider {
             eventIds: batch,
             markets: MARKETS,
           }));
-          const events = await request<OddsApiOddsEvent[]>(
-            `/v4/sports/${encodeURIComponent(sportKey)}/odds/`,
-            {
-              regions: regionsForSport(sportKey),
-              markets: MARKETS.split(",").map((value) => value.trim()).filter(Boolean).join(","),
-              oddsFormat: "decimal",
-              eventIds: batch.join(","),
-            },
-          );
+          let events: OddsApiOddsEvent[];
+          try {
+            events = await request<OddsApiOddsEvent[]>(
+              `/v4/sports/${encodeURIComponent(sportKey)}/odds/`,
+              {
+                regions: regionsForSport(sportKey),
+                markets: MARKETS.split(",").map((value) => value.trim()).filter(Boolean).join(","),
+                oddsFormat: "decimal",
+                eventIds: batch.join(","),
+              },
+              "core",
+              1, // 429: one bounded retry; do not block the entire odds lock
+            );
+            successfulRequests += 1;
+          } catch (error) {
+            const message = error instanceof Error ? error.message : String(error);
+            if (message.includes("OUT_OF_USAGE_CREDITS")) throw error;
+            failedRequests += 1;
+            firstError ??= message;
+            console.warn("ODDS_PROVIDER_SPORT_BATCH_FAILED", JSON.stringify({
+              sportKey, requestedEvents: batch.length,
+              error: message.slice(0, 220),
+              elapsedMs: Date.now()-coreStartedAt,
+            }));
+            // Preserve all successfully fetched sport bundles. One unavailable
+            // league is not grounds to throw away unrelated fresh prices.
+            continue;
+          }
           console.log("ODDS_PROVIDER_BATCH_RESPONSE", JSON.stringify({
             sportKey,
             requestedEvents: batch.length,
@@ -1162,6 +1204,17 @@ export class TheOddsApiSportsProvider implements SportsDataProvider {
         }
       }
 
+      console.log("ODDS_PROVIDER_CORE_BATCH_SUMMARY", JSON.stringify({
+        sports: grouped.size,
+        successfulRequests,
+        failedRequests,
+        skippedForBudget,
+        fetchedBundles: bundles.size,
+        elapsedMs: Date.now()-coreStartedAt,
+      }));
+      if (successfulRequests === 0 && failedRequests > 0) {
+        return providerResult(false, [], firstError ?? "All grouped bookmaker requests failed");
+      }
       return providerResult(true, [...bundles.values()]);
     } catch (error) {
       return providerResult(
