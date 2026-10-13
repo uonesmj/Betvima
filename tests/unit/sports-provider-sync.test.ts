@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import type { Db } from "@/lib/ports/db";
+import { PgArray, param } from "@/server/db/rows";
 import type { ProviderMatch, SportsDataProvider } from "@/lib/ports/providers";
 import { PostgresCatalogRepository } from "@/server/adapters/postgres/catalog";
 import {
@@ -157,7 +158,9 @@ describe("Odds API and FiveDollar source synchronization", () => {
     const aliasDb = {
       query: vi.fn(async <T,>(sql: string, params?: unknown[]) => {
         expect(sql).toContain("coalesce(direct_match.id, pe.internal_id)");
-        expect(params).toEqual([MATCH_SOURCE_FALLBACK, ["5d-fixture-1"]]);
+        expect(params?.[0]).toBe(MATCH_SOURCE_FALLBACK);
+        expect(params?.[1]).toBeInstanceOf(PgArray);
+        expect(param(params?.[1])).toEqual(["5d-fixture-1"]);
         return [{
           match_id: matchId,
           provider_id: "5d-fixture-1",
