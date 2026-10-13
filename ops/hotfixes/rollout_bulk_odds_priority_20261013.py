@@ -17,6 +17,7 @@ BLOBS={
  'src/providers/odds-request-admission.ts':'7f05b01852c8b4243029df5f4cec23763ba45aab',
 }
 OLD_PROVIDER='3dd5c5cab6ca62b8c972ed9295a5e3f9e085630b'
+OLD_PROVIDER_REV='24dab3702c58a5baa4b5f18ccc1eee15b2c6fdac'
 def stop(s):raise RuntimeError('SAFETY_STOP: '+s)
 def blob(d):return hashlib.sha1(b'blob '+str(len(d)).encode()+b'\0'+d).hexdigest()
 def fetched(path):
@@ -81,7 +82,9 @@ def main():
   current=SOURCE.read_bytes()
   if current!=expected:stop('Deployed v4 source differs; no changes')
   old_provider=PROVIDER.read_bytes()
-  if blob(old_provider)!=OLD_PROVIDER:stop('Local provider differs from tested base; no changes')
+  # Preserve any server-local provider edits when they merge without conflict
+  # against the verified historic Git version. Never force a conflicted merge.
+  provider_locally_modified=blob(old_provider)!=OLD_PROVIDER
   if HELPER.is_symlink():stop('Invalid existing admission helper')
   old_helper=HELPER.read_bytes() if HELPER.exists() else None
   if old_helper is not None and blob(old_helper)!=BLOBS['src/providers/odds-request-admission.ts']:
@@ -89,6 +92,21 @@ def main():
   reviewed=fetched('src/workers/odds.worker.ts').decode('utf8')
   new_provider=fetched('src/providers/the-odds-api.ts')
   new_helper=fetched('src/providers/odds-request-admission.ts')
+  if provider_locally_modified:
+   baseline_url='https://raw.githubusercontent.com/uonesmj/Betvima/'+OLD_PROVIDER_REV+'/src/providers/the-odds-api.ts'
+   with urllib.request.urlopen(baseline_url,timeout=40) as resp:baseline=resp.read(200001)
+   if len(baseline)>200000 or blob(baseline)!=OLD_PROVIDER:
+    stop('Unable to verify historic Odds API provider baseline')
+   with tempfile.TemporaryDirectory(prefix='odds-provider-merge-') as tempdir:
+    a,b,c=[P(tempdir)/name for name in ('local','base','reviewed')]
+    a.write_bytes(old_provider);b.write_bytes(baseline);c.write_bytes(new_provider)
+    merged=run('/usr/bin/git','merge-file','-p',str(a),str(b),str(c),timeout=50)
+    if merged.returncode:
+     stop('Server-local Odds API changes conflict with reviewed fix; untouched')
+    new_provider=merged.stdout.encode('utf8')
+   if b'createRequestAdmissionQueue' not in new_provider or b'<<<<<<<' in new_provider:
+    stop('Provider merge did not retain the priority guard')
+   print('LOCAL_PROVIDER_EDITS_MERGED_CONFLICT_FREE',flush=True)
   candidate=current.decode('utf8')
   # Only introduce dedicated-live detection. Keep the locally verified
   # prematch cadence and all other server-specific odds logic unchanged.
