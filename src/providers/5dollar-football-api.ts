@@ -318,22 +318,27 @@ export class FiveDollarFootballApiSportsProvider implements SportsDataProvider {
       const seen = new Set<string>();
 
       const fetchLiveFootball = async () => {
-        const payload = await request<any>("/fixtures", {
-          status: "live",
-          per_page: 500,
-          include: "events,stats",
-        });
-
-        for (const fixture of payload?.data || []) {
-          const mapped = {
-            ...mapFixture(fixture, "football"),
-            status: "live" as const,
-          };
-          const key = `football:${mapped.providerId}`;
-          if (!seen.has(key)) {
-            seen.add(key);
-            result.push(mapped);
+        // 5Dollar caps fixture-list page size at 50 whenever include is set.
+        // The former per_page=500 with include=events,stats returned 400,
+        // starving live fixture updates even while the catalog remained online.
+        for (let page = 1; page <= 5; page++) {
+          const payload = await request<any>("/fixtures", {
+            status: "live",
+            per_page: 50,
+            include: "events,stats",
+            page,
+          });
+          for (const fixture of payload?.data || []) {
+            const mapped = mapFixture(fixture, "football");
+            // Do not force a completed or paused fixture back into 'live'.
+            if (mapped.status !== "live") continue;
+            const key = `football:${mapped.providerId}`;
+            if (!seen.has(key)) {
+              seen.add(key);
+              result.push(mapped);
+            }
           }
+          if (payload?.pagination?.has_more !== true) break;
         }
       };
 
