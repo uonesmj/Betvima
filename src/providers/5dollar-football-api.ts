@@ -357,7 +357,7 @@ export class FiveDollarFootballApiSportsProvider implements SportsDataProvider {
         retryable: false,
       };
     }
-    const ids = [...new Set(matchProviderIds.map(id => String(id).trim()).filter(id => /^\\d{1,20}$/.test(id)))].slice(0, 2);
+    const ids = [...new Set(matchProviderIds.map(id => String(id).trim()).filter(id => /^\d{1,20}$/.test(id)))].slice(0, 2);
     const bundles: ProviderOddsBundle[] = [];
     let failures = 0;
     for (const fixtureId of ids) {
