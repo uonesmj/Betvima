@@ -40,7 +40,7 @@ describe('catalog live availability', () => {
     expect(query.mock.calls[1]![0]).toContain('fixture.status::text = any($2::text[])');
     expect(query.mock.calls[1]![0]).toContain("interval '45 seconds'");
     expect(query.mock.calls[1]![0]).toContain("interval '300 seconds'");
-    expect(query.mock.calls[1]![0]).toContain("provider not in ('the_odds_api', '5dollarfootballapi')");
+    expect(query.mock.calls[1]![0]).toContain("sel.provider = 'the_odds_api'");
 
   });
 });
