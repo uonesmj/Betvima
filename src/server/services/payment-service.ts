@@ -419,7 +419,7 @@ providerMetadata?: Record<string, unknown> | null }): Promise<PaymentIntent> {
 
       transactionId = String(result.transactionId ?? '').trim();
       const code = String(result.code ?? '').trim();
-      voucherCreated = Boolean(transactionId);
+      voucherCreated = Boolean(transactionId || code);
 
       if (!transactionId || !code) {
         throw new ApiError(
@@ -594,11 +594,13 @@ providerMetadata?: Record<string, unknown> | null }): Promise<PaymentIntent> {
       return intent;
     }
 
+    let providerAccepted = false;
     try {
       const activation = await activateVoucher({
         coin,
         code,
       });
+      providerAccepted = true;
 
       const status = String(activation.status ?? '').trim().toLowerCase();
       const transactionId = String(activation.transactionId ?? '').trim();
@@ -711,11 +713,22 @@ providerMetadata?: Record<string, unknown> | null }): Promise<PaymentIntent> {
       // Once a transaction reference is known, leave the payment pending for
       // reconciliation instead of incorrectly failing a redeemed voucher.
       const persisted = await this.services.payments.getIntent({ publicId: intent.publicId });
-      if (!persisted?.providerReference && error instanceof ApiError) {
+      const rejected = error instanceof Error &&
+        /^uWallet request failed \((?:400|401|403|404|422)\)/.test(error.message);
+      if (!persisted?.providerReference && !providerAccepted && rejected) {
         await this.services.payments.completeIntent({
           publicId: intent.publicId,
           status: 'failed',
-          raw: { error: error.code, message: error.message },
+          raw: { error: 'UWALLET_REJECTED' },
+        }).catch(() => undefined);
+      } else if (!persisted?.providerReference && providerAccepted) {
+        // The provider may already have consumed a bearer code without a
+        // usable transaction reference. Do not mark it failed or allow an
+        // idempotent retry to attempt a second redemption automatically.
+        await this.services.payments.completeIntent({
+          publicId: intent.publicId,
+          status: 'pending',
+          raw: { reconciliation: 'provider_accepted_without_reference' },
         }).catch(() => undefined);
       }
 
