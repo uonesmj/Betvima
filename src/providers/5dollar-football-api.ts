@@ -1,4 +1,5 @@
 import type { ISODateString } from "@/lib/types";
+import { authenticatedFiveDollarH2h } from "./fivedollar-authenticated-h2h";
 import type {
   ProviderMatch,
   ProviderOddsBundle,
@@ -345,12 +346,43 @@ export class FiveDollarFootballApiSportsProvider implements SportsDataProvider {
     }
   }
 
-  async fetchOdds(_matchProviderIds: string[]): Promise<ProviderResult<ProviderOddsBundle[]>> {
-    return {
-      ok: false, value: null, errorCode: "ODDS_NOT_SUPPORTED",
-      errorMessage: "FiveDollar supplies fixtures and statistics only; betting odds must come from The Odds API",
-      retryable: false,
-    };
+  async fetchOdds(matchProviderIds: string[]): Promise<ProviderResult<ProviderOddsBundle[]>> {
+    // No change to betting ownership until the settlement and SQL quote guards
+    // have been audited against the second source. CI may test mapping while
+    // production stays off by default.
+    if (process.env.FIVEDOLLAR_BETTING_ODDS_ENABLED !== "true") {
+      return {
+        ok: false, value: null, errorCode: "BETTING_ODDS_NOT_ENABLED",
+        errorMessage: "FiveDollar betting odds require a separately verified rollout",
+        retryable: false,
+      };
+    }
+    const ids = [...new Set(matchProviderIds.map(id => String(id).trim()).filter(id => /^\\d{1,20}$/.test(id)))].slice(0, 2);
+    const bundles: ProviderOddsBundle[] = [];
+    let failures = 0;
+    for (const fixtureId of ids) {
+      try {
+        // A snapshot's retrieval time is NOT a bookmaker price timestamp.
+        // Require Ultra's timestamped tick history and exact quote equality.
+        const [fixtureResponse, historyResponse] = await Promise.all([
+          request<any>(`/fixtures/${encodeURIComponent(fixtureId)}`),
+          request<any>(`/fixtures/${encodeURIComponent(fixtureId)}/odds/history`, {
+            bookmaker: "bet365", market: "1x2", per_page: 500,
+          }),
+        ]);
+        const bundle = authenticatedFiveDollarH2h(fixtureResponse?.data, historyResponse);
+        if (bundle && bundle.matchProviderId === fixtureId) bundles.push(bundle);
+      } catch (error) {
+        failures += 1;
+        console.warn("FIVEDOLLAR_AUTHENTICATED_PRICE_UNAVAILABLE", JSON.stringify({
+          fixtureId, error: error instanceof Error ? error.message : String(error),
+        }));
+      }
+    }
+    console.log("FIVEDOLLAR_AUTHENTICATED_PRICE_POLL", JSON.stringify({
+      attempted: ids.length, verified: bundles.length, failed: failures,
+    }));
+    return ok(bundles);
   }
 
   async fetchEventOdds(_matchProviderIds: string[]): Promise<ProviderResult<ProviderOddsBundle[]>> {
