@@ -855,7 +855,7 @@ providerMetadata?: Record<string, unknown> | null }): Promise<PaymentIntent> {
   private providerInteger(value: number | string | undefined, label: string): bigint {
     const text = typeof value === 'string' ? value.trim() : String(value ?? '');
     // Never round HotVoucher units. Provider values must be exact integers.
-    if (!/^[1-9]\\d*$/.test(text)) {
+    if (!/^[1-9]\d*$/.test(text)) {
       throw new ApiError('BAD_REQUEST', `${label} is invalid`);
     }
     return BigInt(text);
@@ -932,7 +932,7 @@ providerMetadata?: Record<string, unknown> | null }): Promise<PaymentIntent> {
     const raw = typeof value === 'number' && Number.isFinite(value)
       ? value.toFixed(2)
       : typeof value === 'string' ? value.trim() : '';
-    if (!/^\\d+(?:\\.\\d{1,2})?$/.test(raw)) {
+    if (!/^\d+(?:\.\d{1,2})?$/.test(raw)) {
       throw new ApiError('BAD_REQUEST', 'uWallet returned an invalid voucher amount');
     }
     const [whole, fraction = ''] = raw.split('.');
