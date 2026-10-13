@@ -118,6 +118,49 @@ def main():
         # the legacy toggle override the explicit registered provider.
         pass
     print("RESEND_AND_DB_CONFIG_VERIFIED", flush=True)
+
+    # Read-only provider capability probe; NEVER activate or create a voucher.
+    # Do not print auth tokens or response bodies even on HTTP failures.
+    token = cfg.get("UWALLET_TOKEN", "")
+    uv = cfg.get("UWALLET_UVOUCHER_COIN", "")
+    hv = cfg.get("UWALLET_HOTVOUCHER_COIN", "")
+    print("UWALLET_CONFIGURED", bool(token and uv and hv), flush=True)
+    if token:
+        import urllib.error
+        import urllib.request
+        base = cfg.get("UWALLET_BASE_URL", "https://api.uwallet.biz").rstrip("/")
+        if base.startswith("https://"):
+            try:
+                req = urllib.request.Request(
+                    base + "/v1/coin",
+                    headers={"Authorization": token, "Accept": "application/json"},
+                    method="GET",
+                )
+                with urllib.request.urlopen(req, timeout=15) as response:
+                    payload = json.load(response)
+                rows = payload.get("data", []) if isinstance(payload, dict) else payload
+                if not isinstance(rows, list):
+                    rows = []
+                active = {}
+                for coin in rows:
+                    if not isinstance(coin, dict):
+                        continue
+                    name = str(coin.get("coin") or coin.get("symbol") or "").lower()
+                    active[name] = coin
+                for label, name in (("UVOUCHER", uv), ("HOTVOUCHER", hv)):
+                    obj = active.get(name.lower(), {}) if name else {}
+                    permissions = obj.get("voucher", {}) if isinstance(obj, dict) else {}
+                    print(label + "_COIN_FOUND", bool(obj), flush=True)
+                    print(label + "_USE_ENABLED", bool(permissions.get("use")) if isinstance(permissions, dict) else False, flush=True)
+                    print(label + "_CREATE_ENABLED", bool(permissions.get("create")) if isinstance(permissions, dict) else False, flush=True)
+                print("UWALLET_READONLY_PROBE_COMPLETE", flush=True)
+            except urllib.error.HTTPError as e:
+                print("UWALLET_READONLY_HTTP_STATUS", e.code, flush=True)
+            except Exception:
+                print("UWALLET_READONLY_UNAVAILABLE", flush=True)
+        else:
+            print("UWALLET_BASE_URL_REQUIRES_HTTPS", flush=True)
+
     if not shutil.which("runuser"):
         stop("RUNUSER_MISSING")
     status = command("start", str(root / TARGET),
