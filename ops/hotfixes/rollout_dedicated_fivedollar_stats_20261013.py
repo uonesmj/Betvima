@@ -53,9 +53,9 @@ def verify_env():
  if not ENV.is_file():stop('Trusted .env.production missing')
  # No API key or database password is printed, copied to output, or passed as argv.
  code=("set -a; source /var/www/nova/.env.production >/dev/null 2>&1; set +a; "
-       "test -n \"\${FIVEDOLLAR_API_KEY:-}\" && "
-       "test \"\${FIVEDOLLAR_API_BASE_URL:0:8}\" = 'https://' && "
-       "test -n \"\${SUPABASE_DB_URL:-\${DATABASE_URL:-}}\"")
+       "test -n \"${FIVEDOLLAR_API_KEY:-}\" && "
+       "test \"${FIVEDOLLAR_API_BASE_URL:0:8}\" = 'https://' && "
+       "test -n \"${SUPABASE_DB_URL:-${DATABASE_URL:-}}\"")
  result=command('/usr/sbin/runuser','-u','novaadmin','--','/bin/bash','-c',code)
  if result.returncode:stop('novaadmin cannot read configured API and DB credentials (values not exposed)')
 def main():
