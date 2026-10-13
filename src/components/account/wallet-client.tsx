@@ -232,7 +232,7 @@ function DepositPanel({
           const available=Boolean(method?.isAvailable);
           const min=method?.minAmountMinor ? Number(method.minAmountMinor)/100 : 1;
           const max=method?.maxAmountMinor && method.maxAmountMinor!=='0' ? Number(method.maxAmountMinor)/100 : null;
-          const amount=Number(form.amount||0);
+          const amount=Number(normalizeNumericInput(form.amount)||0);
           const validAmount=Number.isFinite(amount)&&amount>=min&&(max===null||amount<=max);
           return <>
             <div>
@@ -646,13 +646,20 @@ export function WalletClient() {
     setMessageTone('neutral');
 
     try {
+      const normalized = normalizeNumericInput(amount);
+      if (!/^\d+(?:\.\d{1,2})?$/.test(normalized)) {
+        throw new Error('Voucher amount must be a valid USD amount with up to two decimal places.');
+      }
+      const [whole, fraction = ''] = normalized.split('.');
+      const amountMinor = BigInt(whole!) * 100n + BigInt(fraction.padEnd(2, '0'));
+      if (amountMinor < 150n) throw new Error('Minimum voucher deposit is $1.50.');
       const result = await apiRequest<{ intent: CryptoPaymentResult }>(
         '/api/v1/wallet/deposit',
         {
           method: 'POST',
           idempotencyKey: crypto.randomUUID(),
           json: {
-            amountMinor: String(Math.round(Number(amount) * 100)),
+            amountMinor: amountMinor.toString(),
             currency: 'USD',
             methodId,
             voucherCode: code.trim(),

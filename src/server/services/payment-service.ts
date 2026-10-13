@@ -279,6 +279,22 @@ providerMetadata?: Record<string, unknown> | null }): Promise<PaymentIntent> {
       );
     }
 
+    // Vouchers are bearer instruments: never issue one while delivery is
+    // offline. Enqueueing an email is not proof it can actually be sent.
+    const delivery = await this.services.db.queryOne<{ ready: boolean }>(
+      `select exists (
+         select 1 from nova.worker_heartbeats
+          where worker = 'notification'
+            and last_seen_at >= now() - interval '75 seconds'
+       ) as ready`,
+    );
+    if (!delivery?.ready) {
+      throw new ApiError(
+        'PAYMENT_PROVIDER_DISABLED',
+        'Voucher email delivery is currently unavailable; no voucher was issued',
+      );
+    }
+
     const coin =
       input.methodId === 'voucher_uvoucher'
         ? env.uwalletUvoucherCoin
@@ -320,10 +336,7 @@ providerMetadata?: Record<string, unknown> | null }): Promise<PaymentIntent> {
     const profile = await this.services.users.getProfile(input.userId);
     const targetWalletCurrency = profile?.preferredCurrency ?? 'IRT';
 
-    if (
-      (targetWalletCurrency === 'IRT' || targetWalletCurrency === 'IRR') &&
-      input.amountMinor < 150n
-    ) {
+    if (input.amountMinor < 150n) {
       throw new ApiError('BAD_REQUEST', 'Minimum voucher withdrawal is $1.50');
     }
 
@@ -383,6 +396,18 @@ providerMetadata?: Record<string, unknown> | null }): Promise<PaymentIntent> {
       return updated.intent;
     }
 
+    // One irreversible provider create per idempotency key. A concurrent
+    // retry must NOT mint a second bearer voucher when the first is in flight.
+    if (intent.status !== 'initiated') return intent;
+    const claimed = await this.services.db.queryOne<{ id: string }>(
+      `update nova.payment_transactions
+          set status = 'pending', updated_at = now()
+        where id = $1 and status = 'initiated'
+        returning id`,
+      [intent.id],
+    );
+    if (!claimed) return intent;
+
     let voucherCreated = false;
     let transactionId = '';
 
@@ -394,6 +419,7 @@ providerMetadata?: Record<string, unknown> | null }): Promise<PaymentIntent> {
 
       transactionId = String(result.transactionId ?? '').trim();
       const code = String(result.code ?? '').trim();
+      voucherCreated = Boolean(transactionId || code);
 
       if (!transactionId || !code) {
         throw new ApiError(
@@ -401,8 +427,6 @@ providerMetadata?: Record<string, unknown> | null }): Promise<PaymentIntent> {
           'uWallet did not return a voucher transaction and code',
         );
       }
-
-      voucherCreated = true;
 
       const queued = await this.services.notifications.enqueue({
         userId: input.userId,
@@ -467,27 +491,26 @@ providerMetadata?: Record<string, unknown> | null }): Promise<PaymentIntent> {
        * still exist. The intent remains held until the email can be queued
        * or the same idempotent request is retried.
        */
-      if (!voucherCreated) {
+      // Only a definitive provider rejection can release the reserved funds.
+      // A transport timeout or 5xx response may mean the voucher was issued.
+      const definiteRejection = error instanceof Error &&
+        /^uWallet request failed \((?:400|401|403|404|422)\)/.test(error.message);
+      if (!voucherCreated && (error instanceof ApiError || definiteRejection)) {
         await this.services.payments.completeIntent({
           publicId: intent.publicId,
           status: 'failed',
-          failureCode:
-            error instanceof ApiError
-              ? error.code
-              : 'UWALLET_REQUEST_FAILED',
-          failureMessage:
-            error instanceof Error
-              ? error.message
-              : 'uWallet voucher withdrawal failed',
-          raw: {
-            error: error instanceof Error ? error.message : String(error),
-          },
+          failureCode: error instanceof ApiError ? error.code : 'UWALLET_REJECTED',
+          failureMessage: error instanceof ApiError ? error.message : 'Voucher provider rejected issuance',
+          raw: { error: error instanceof ApiError ? error.code : 'UWALLET_REJECTED' },
         }).catch(() => undefined);
       } else {
-        log.error('uVoucher created but email was not queued', {
+        // Remote timeouts are ambiguous: issuing might already have succeeded.
+        // Keep the funds held for reconciliation, NEVER release them and
+        // allow a second voucher to be issued on an idempotent retry.
+        log.error('uVoucher withdrawal requires delivery/provider reconciliation', {
           publicId: intent.publicId,
           transactionId,
-          error: error instanceof Error ? error.message : String(error),
+          errorCode: error instanceof ApiError ? error.code : 'REMOTE_DELIVERY_UNCERTAIN',
         });
       }
 
@@ -566,14 +589,18 @@ providerMetadata?: Record<string, unknown> | null }): Promise<PaymentIntent> {
     });
 
     if (intent.status === 'succeeded' || intent.status === 'pending') {
+      // A pending payment with providerReference is reconciled by the worker.
+      // A pending payment without one needs operator review, not code reuse.
       return intent;
     }
 
+    let providerAccepted = false;
     try {
       const activation = await activateVoucher({
         coin,
         code,
       });
+      providerAccepted = true;
 
       const status = String(activation.status ?? '').trim().toLowerCase();
       const transactionId = String(activation.transactionId ?? '').trim();
@@ -582,7 +609,17 @@ providerMetadata?: Record<string, unknown> | null }): Promise<PaymentIntent> {
         throw new ApiError('BAD_REQUEST', 'uWallet did not return a transaction ID');
       }
 
-      if (status === 'confirm' || status === 'confirmed' || status === 'success' || status === 'succeeded') {
+      // The voucher has been consumed at the provider. Persist its reference
+      // BEFORE any conversion/ledger work, so errors never mark it "failed"
+      // and risk a second redemption.
+      await this.services.payments.completeIntent({
+        publicId: intent.publicId,
+        status: 'pending',
+        providerReference: transactionId,
+        raw: activation as unknown as Record<string, unknown>,
+      });
+
+      if (['confirm', 'confirmed', 'success', 'succeeded', 'completed'].includes(status)) {
         let settledAmountMinor: bigint;
         let voucherSettlement: Record<string, unknown> = {
           voucherCoin: coin,
@@ -652,7 +689,7 @@ providerMetadata?: Record<string, unknown> | null }): Promise<PaymentIntent> {
         return updated;
       }
 
-      if (status === 'reject' || status === 'rejected' || status === 'failed') {
+      if (['reject', 'rejected', 'failed', 'failure', 'cancelled', 'canceled'].includes(status)) {
         const updated = await this.services.payments.completeIntent({
           publicId: intent.publicId,
           status: 'failed',
@@ -672,22 +709,26 @@ providerMetadata?: Record<string, unknown> | null }): Promise<PaymentIntent> {
 
       return updated.intent;
     } catch (error) {
-      if (error instanceof ApiError) {
+      // A provider request may have succeeded despite a network timeout.
+      // Once a transaction reference is known, leave the payment pending for
+      // reconciliation instead of incorrectly failing a redeemed voucher.
+      const persisted = await this.services.payments.getIntent({ publicId: intent.publicId });
+      const rejected = error instanceof Error &&
+        /^uWallet request failed \((?:400|401|403|404|422)\)/.test(error.message);
+      if (!persisted?.providerReference && !providerAccepted && rejected) {
         await this.services.payments.completeIntent({
           publicId: intent.publicId,
           status: 'failed',
-          raw: {
-            error: error.code,
-            message: error.message,
-          },
+          raw: { error: 'UWALLET_REJECTED' },
         }).catch(() => undefined);
-      } else {
+      } else if (!persisted?.providerReference && providerAccepted) {
+        // The provider may already have consumed a bearer code without a
+        // usable transaction reference. Do not mark it failed or allow an
+        // idempotent retry to attempt a second redemption automatically.
         await this.services.payments.completeIntent({
           publicId: intent.publicId,
-          status: 'failed',
-          raw: {
-            error: 'UWALLET_REQUEST_FAILED',
-          },
+          status: 'pending',
+          raw: { reconciliation: 'provider_accepted_without_reference' },
         }).catch(() => undefined);
       }
 
@@ -699,8 +740,8 @@ providerMetadata?: Record<string, unknown> | null }): Promise<PaymentIntent> {
     publicId: string;
     transaction: {
       status?: string;
-      receive?: number;
-      amount?: number;
+      receive?: number | string;
+      amount?: number | string;
       coin?: string;
       [key: string]: unknown;
     };
@@ -740,7 +781,8 @@ providerMetadata?: Record<string, unknown> | null }): Promise<PaymentIntent> {
       status !== 'confirm' &&
       status !== 'confirmed' &&
       status !== 'success' &&
-      status !== 'succeeded'
+      status !== 'succeeded' &&
+      status !== 'completed'
     ) {
       const updated = await this.services.payments.completeIntent({
         publicId: intent.publicId,
@@ -826,11 +868,13 @@ providerMetadata?: Record<string, unknown> | null }): Promise<PaymentIntent> {
     return updated.intent;
   }
 
-  private providerInteger(value: number | undefined, label: string): bigint {
-    if (value === undefined || !Number.isFinite(value) || !Number.isInteger(value) || value <= 0) {
+  private providerInteger(value: number | string | undefined, label: string): bigint {
+    const text = typeof value === 'string' ? value.trim() : String(value ?? '');
+    // Never round HotVoucher units. Provider values must be exact integers.
+    if (!/^[1-9]\d*$/.test(text)) {
       throw new ApiError('BAD_REQUEST', `${label} is invalid`);
     }
-    return BigInt(value);
+    return BigInt(text);
   }
 
   private async getHotVoucherUnitsPerUsd(): Promise<string> {
@@ -850,12 +894,13 @@ providerMetadata?: Record<string, unknown> | null }): Promise<PaymentIntent> {
     );
 
     const raw = hot?.percent;
+    const percent = raw === undefined ? NaN : Number(raw);
 
-    if (raw === undefined || !Number.isFinite(raw) || raw <= 0) {
+    if (!Number.isFinite(percent) || percent <= 0) {
       throw new ApiError('BAD_REQUEST', 'uWallet HotVoucher exchange rate is unavailable');
     }
 
-    const rate = raw / 100;
+    const rate = percent / 100;
 
     if (!Number.isFinite(rate) || rate <= 0) {
       throw new ApiError('BAD_REQUEST', 'uWallet HotVoucher exchange rate is invalid');
@@ -897,17 +942,17 @@ providerMetadata?: Record<string, unknown> | null }): Promise<PaymentIntent> {
     const fraction = (value % 100n).toString().padStart(2, '0');
     return `${whole.toString()}.${fraction}`;
   }
-  private decimalToMinor(value: number | undefined): bigint {
-    if (value === undefined || !Number.isFinite(value)) {
+  private decimalToMinor(value: number | string | undefined): bigint {
+    // uWallet may serialize decimals as JSON numbers or strings. Avoid
+    // floating-point conversion for provider-supplied decimal strings.
+    const raw = typeof value === 'number' && Number.isFinite(value)
+      ? value.toFixed(2)
+      : typeof value === 'string' ? value.trim() : '';
+    if (!/^\d+(?:\.\d{1,2})?$/.test(raw)) {
       throw new ApiError('BAD_REQUEST', 'uWallet returned an invalid voucher amount');
     }
-
-    const fixed = value.toFixed(2);
-    const parts = fixed.split('.');
-    const whole = parts[0] ?? '0';
-    const fraction = parts[1] ?? '00';
-
-    return BigInt(whole) * 100n + BigInt(fraction.padEnd(2, '0').slice(0, 2));
+    const [whole, fraction = ''] = raw.split('.');
+    return BigInt(whole!) * 100n + BigInt(fraction.padEnd(2, '0'));
   }
 
   private assertProvider(kind: 'deposits' | 'withdrawals'): void {

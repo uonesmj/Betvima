@@ -13,16 +13,16 @@ export type UWalletVoucherCreation = {
 export type UWalletVoucherActivation = {
   transactionId?: string;
   status?: string;
-  receive?: number;
+  receive?: number | string;
   batchId?: number;
 };
 
 export type UWalletTransaction = {
   id?: string;
   coin?: string;
-  amount?: number;
+  amount?: number | string;
   fee?: number;
-  receive?: number;
+  receive?: number | string;
   status?: string;
   side?: string;
   type?: string;
@@ -134,26 +134,29 @@ export async function getTransaction(
     },
   );
 
+  const inner = payload && typeof payload === 'object' && 'data' in payload
+    ? payload.data
+    : payload;
+
+  // uWallet installations return either an array of transactions or an
+  // object for a single id. Treat an unknown shape as an error; an empty
+  // fabricated response would strand redeemed voucher deposits as pending.
+  const transaction = Array.isArray(inner) ? inner[0] : inner;
   if (
-    payload &&
-    typeof payload === 'object' &&
-    'data' in payload &&
-    Array.isArray(payload.data)
+    !transaction || typeof transaction !== 'object' ||
+    Array.isArray(transaction) ||
+    (typeof (transaction as UWalletTransaction).status !== 'string' &&
+     typeof (transaction as UWalletTransaction).id !== 'string')
   ) {
-    return payload.data[0] ?? {};
+    throw new Error('uWallet returned an invalid transaction structure');
   }
-
-  if (Array.isArray(payload)) {
-    return payload[0] ?? {};
-  }
-
-  return {};
+  return transaction as UWalletTransaction;
 }
 
 
 export type UWalletSwap = {
   coin?: string;
-  percent?: number;
+  percent?: number | string;
 };
 export type UWalletCoin = {
   coin?: string;
