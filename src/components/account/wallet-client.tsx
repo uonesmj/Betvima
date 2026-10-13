@@ -5,6 +5,8 @@ import { useApp } from '@/components/layout/providers';
 import { Card, EmptyState, ErrorNote, Field, Skeleton, Stat, StatusPill } from '@/components/ui/primitives';
 import { apiRequest, useApiQuery } from '@/lib/hooks/useApi';
 import { formatDateTime, formatMinor } from '@/lib/i18n';
+import { voucherWalletToUsdMinor, voucherWithdrawalDebit } from '@/lib/voucher-fx';
+type UwalletReferenceQuote = { source:'uwallet'; rateIrrPerUsd:string; quotedAt:string; distinctBuySellRatesAvailable:boolean };
 function normalizeNumericInput(value: string): string {
   return String(value ?? '')
     .replace(/[۰-۹]/g, (d) => String('۰۱۲۳۴۵۶۷۸۹'.indexOf(d)))
@@ -114,7 +116,7 @@ function DepositQrPlaceholder() {
 }
 
 function DepositPanel({
-  currency, methods, form, setForm, loadMethods, message, messageTone, payment, submitting, onCreatePayment, onVoucherDeposit,
+  currency, methods, form, setForm, loadMethods, message, messageTone, payment, submitting, onCreatePayment, onVoucherDeposit, voucherQuote, voucherQuoteLoading,
 }: {
   currency:string;
   methods:{id:string;nameFa:string;nameEn:string;isAvailable:boolean;unavailableReason?:string;minAmountMinor:string;maxAmountMinor:string}[];
@@ -127,6 +129,8 @@ function DepositPanel({
   onCreatePayment:(asset:string,network:string)=>Promise<void>;
   onVoucherDeposit:(methodId:string,amount:string,code:string)=>Promise<void>;
   submitting:boolean;
+  voucherQuote:UwalletReferenceQuote|null;
+  voucherQuoteLoading:boolean;
 }) {
   const { t } = useApp();
   const [kind,setKind]=useState<DepositKind>('crypto');
@@ -233,11 +237,14 @@ function DepositPanel({
           const min=method?.minAmountMinor ? Number(method.minAmountMinor)/100 : 1;
           const max=method?.maxAmountMinor && method.maxAmountMinor!=='0' ? Number(method.maxAmountMinor)/100 : null;
           const amount=Number(normalizeNumericInput(form.amount)||0);
-          const validAmount=Number.isFinite(amount)&&amount>=min&&(max===null||amount<=max);
+          const rate=Number(voucherQuote?.rateIrrPerUsd??0);
+          const estimatedUsd=currency==='USD'?amount:rate>0&&Number.isFinite(rate)?amount*(currency==='IRT'?10:1)/rate:0;
+          const validAmount=Number.isFinite(estimatedUsd)&&estimatedUsd>=min&&(max===null||estimatedUsd<=max)&&(currency==='USD'||Boolean(voucherQuote));
           return <>
             <div>
-              <label className="mb-2 block text-sm font-medium text-[#172033]">{t("wallet.amountUsd")}</label>
-              <input value={form.amount} onChange={e=>setForm(v=>({...v,amount:e.target.value,methodId}))} inputMode="decimal" placeholder={t("wallet.voucherAmountPlaceholder")} className="w-full rounded-xl border border-[#DDE5EF] bg-white px-4 py-3 text-[#172033] outline-none focus:border-[#173DAA]"/>
+              <label className="mb-2 block text-sm font-medium text-[#172033]">{currency==='IRT'?'مبلغ تقریبی واریز (تومان)':currency==='IRR'?'مبلغ تقریبی واریز (ریال)':t("wallet.amountUsd")}</label>
+              <input value={form.amount} onChange={e=>setForm(v=>({...v,amount:e.target.value,methodId}))} inputMode={currency==='USD'?'decimal':'numeric'} placeholder={currency==='USD'?t("wallet.voucherAmountPlaceholder"):'24000000'} className="w-full rounded-xl border border-[#DDE5EF] bg-white px-4 py-3 text-[#172033] outline-none focus:border-[#173DAA]"/>
+              {currency!=='USD'?<p className="mt-2 text-xs font-semibold text-[#506582]">نرخ مرجع uWallet: {rate>0?new Intl.NumberFormat('fa-IR',{maximumFractionDigits:2}).format(rate/10)+' تومان/دلار':voucherQuoteLoading?'در حال دریافت...':'در دسترس نیست'} — معادل تقریبی ${estimatedUsd.toFixed(2)} دلار. واریز نهایی بر اساس اعتبار واقعی کد در uWallet محاسبه می‌شود.</p>:null}
             </div>
             <div>
               <label className="mb-2 block text-sm font-medium text-[#172033]">{t("wallet.voucherCode")}</label>
@@ -574,6 +581,23 @@ export function WalletClient() {
   const [messageTone, setMessageTone] = useState<'success' | 'error' | 'neutral'>('neutral');
   const [cryptoPayment, setCryptoPayment] = useState<CryptoPaymentResult | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [voucherQuote,setVoucherQuote]=useState<UwalletReferenceQuote|null>(null);
+  const [voucherQuoteLoading,setVoucherQuoteLoading]=useState(false);
+  useEffect(()=>{
+    if(!session?.authenticated) return;
+    let cancelled=false;
+    const load=async()=>{
+      setVoucherQuoteLoading(true);
+      try{
+        const q=await apiRequest<UwalletReferenceQuote>('/api/v1/fx/uwallet-voucher');
+        if(!cancelled) setVoucherQuote(q);
+      }catch{if(!cancelled)setVoucherQuote(null)}
+      finally{if(!cancelled)setVoucherQuoteLoading(false)}
+    };
+    void load();
+    const timer=setInterval(()=>{void load()},20_000);
+    return()=>{cancelled=true;clearInterval(timer)};
+  },[session?.authenticated]);
   const currency = data?.wallet?.currency ?? session?.user?.currency ?? 'USD';
   const availableMinor = (() => {
     try {
@@ -647,11 +671,15 @@ export function WalletClient() {
 
     try {
       const normalized = normalizeNumericInput(amount);
-      if (!/^\d+(?:\.\d{1,2})?$/.test(normalized)) {
-        throw new Error('Voucher amount must be a valid USD amount with up to two decimal places.');
+      let amountMinor:bigint;
+      if(currency==='IRT'||currency==='IRR'){
+        if(!/^\d{1,19}$/.test(normalized)||!voucherQuote)throw new Error('uWallet rate unavailable. Refresh quote.');
+        amountMinor=voucherWalletToUsdMinor(BigInt(normalized),currency,voucherQuote.rateIrrPerUsd);
+      }else{
+        if(!/^\d+(?:\.\d{1,2})?$/.test(normalized))throw new Error('Invalid USD voucher amount.');
+        const [whole,fraction='']=normalized.split('.');
+        amountMinor=BigInt(whole!)*100n+BigInt(fraction.padEnd(2,'0'));
       }
-      const [whole, fraction = ''] = normalized.split('.');
-      const amountMinor = BigInt(whole!) * 100n + BigInt(fraction.padEnd(2, '0'));
       if (amountMinor < 150n) throw new Error('Minimum voucher deposit is $1.50.');
       const result = await apiRequest<{ intent: CryptoPaymentResult }>(
         '/api/v1/wallet/deposit',
@@ -924,6 +952,8 @@ export function WalletClient() {
             await submit('deposit', selectedAsset, selectedNetwork);
           }}
           onVoucherDeposit={submitVoucher}
+          voucherQuote={voucherQuote}
+          voucherQuoteLoading={voucherQuoteLoading}
         />
       ) : (
         <WithdrawPanel
