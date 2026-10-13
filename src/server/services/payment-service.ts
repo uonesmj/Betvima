@@ -675,7 +675,7 @@ voucherQuote?: { rateIrrPerUsd: string; quotedAt: string; requestedWalletAmountM
             activation.receive,
             'HotVoucher receive',
           );
-          const rate = await this.getHotVoucherUnitsPerUsd();
+          const rate = voucherFx?.rateIrrPerUsd ?? await this.getHotVoucherUnitsPerUsd();
           settledAmountMinor = this.hotVoucherToUsdMinor(
             receiveUnits,
             rate,
@@ -860,7 +860,10 @@ voucherQuote?: { rateIrrPerUsd: string; quotedAt: string; requestedWalletAmountM
         typeof metadata.providerRate === 'string'
           ? metadata.providerRate
           : null;
-      const rate = storedRate ?? await this.getHotVoucherUnitsPerUsd();
+      const snapshotRate = typeof (metadata.voucherFx as Record<string, unknown> | undefined)?.rateIrrPerUsd === 'string'
+        ? (metadata.voucherFx as { rateIrrPerUsd: string }).rateIrrPerUsd
+        : null;
+      const rate = storedRate ?? snapshotRate ?? await this.getHotVoucherUnitsPerUsd();
       const settledAmountMinor = this.hotVoucherToUsdMinor(
         receiveUnits,
         rate,
