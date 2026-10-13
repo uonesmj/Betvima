@@ -119,6 +119,7 @@ def node_as_worker(program,env,cwd):
     if not (pathlib.Path(cwd)/"node_modules"/"pg").exists():
         stop("NODE_POSTGRES_PACKAGE_NOT_FOUND")
     return run(["/usr/sbin/runuser","-u","novaadmin","--",
+                "/usr/bin/env","NODE_EXTRA_CA_CERTS="+env["NODE_EXTRA_CA_CERTS"],
                 "/usr/bin/node","-e",program],env=env,cwd=cwd,timeout=33)
 
 def restart_ca(path):
@@ -126,6 +127,8 @@ def restart_ca(path):
             "HOME":"/home/novaadmin","PM2_HOME":PM2HOME,
             "NODE_EXTRA_CA_CERTS":str(path)}
     p=run(["/usr/sbin/runuser","-u","novaadmin","--",
+           "/usr/bin/env","PM2_HOME="+PM2HOME,
+           "NODE_EXTRA_CA_CERTS="+str(path),
            "/usr/bin/pm2","restart",NAME,"--update-env"],env=newenv,timeout=90)
     if p.returncode:stop("NOTIFICATION_RESTART_FAILED")
 
