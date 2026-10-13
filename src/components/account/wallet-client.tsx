@@ -6,7 +6,7 @@ import { Card, EmptyState, ErrorNote, Field, Skeleton, Stat, StatusPill } from '
 import { apiRequest, useApiQuery } from '@/lib/hooks/useApi';
 import { formatDateTime, formatMinor } from '@/lib/i18n';
 import { voucherWalletToUsdMinor, voucherWithdrawalDebit } from '@/lib/voucher-fx';
-type UwalletReferenceQuote = { source:'uwallet'; rateIrrPerUsd:string; quotedAt:string; distinctBuySellRatesAvailable:boolean };
+type UwalletReferenceQuote = { source:'uwallet'; rateIrrPerUsd:string; quotedAt:string; signature:string; distinctBuySellRatesAvailable:boolean };
 function normalizeNumericInput(value: string): string {
   return String(value ?? '')
     .replace(/[۰-۹]/g, (d) => String('۰۱۲۳۴۵۶۷۸۹'.indexOf(d)))
@@ -768,6 +768,7 @@ export function WalletClient() {
           walletRequestedAmountMinor:requestedWalletMinor,
           quoteRateIrrPerUsd:voucherQuote.rateIrrPerUsd,
           quoteTimestamp:voucherQuote.quotedAt,
+          quoteSignature:voucherQuote.signature,
         }:{}),
       }});
       setMessage(result.intent.status === 'succeeded' ? t("wallet.voucherCreated") : t("wallet.voucherWithdrawalSubmitted"));
