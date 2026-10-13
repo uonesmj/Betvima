@@ -97,7 +97,7 @@ async function verify(label,config){
  const ca=fs.readFileSync(process.env.NODE_EXTRA_CA_CERTS,'utf8');
  await verify('STRICT_CA_VERIFIED', {connectionString:c.toString(),ssl:{ca,rejectUnauthorized:true}});
  await verify('DEFAULT_URL_VERIFIED', {connectionString:raw});
- process.stdout.write('READONLY_VERIFIED_TLS_DB_PASS\\n',()=>process.exit(0));
+ process.stdout.write('READONLY_VERIFIED_TLS_DB_PASS\n',()=>process.exit(0));
 })().catch(e=>{
  console.error(String(e?.code||e?.message||'DB_PROBE_FAILED').slice(0,120));
  process.exit(1);
@@ -117,7 +117,7 @@ try{
  ['notification',process.env.WORKER_ID||'notification-betvima']);
  const ok=q.rows[0]?.ok===true;
  await c.end();
- process.stdout.write((ok?'NOTIFICATION_HEARTBEAT_VERIFIED':'NOTIFICATION_HEARTBEAT_MISSING')+'\\n',()=>process.exit(ok?0:2));
+ process.stdout.write((ok?'NOTIFICATION_HEARTBEAT_VERIFIED':'NOTIFICATION_HEARTBEAT_MISSING')+'\n',()=>process.exit(ok?0:2));
 }catch(e){
  console.error(String(e?.code||e?.message||'HEARTBEAT_ERROR').slice(0,140));
  try{await c.end()}catch(_){}
