@@ -187,6 +187,7 @@ export function MatchListClient({
           ...match,
           status: data.status ?? match.status,
           minute: data.minute ?? match.minute,
+          period: data.period ?? match.period ?? null,
           homeScore: data.homeScore ?? match.homeScore,
           awayScore: data.awayScore ?? match.awayScore,
           isLive:
@@ -351,6 +352,7 @@ export function MatchListClient({
           ...match,
           status: data.status ?? match.status,
           minute: data.minute ?? match.minute,
+          period: data.period ?? match.period ?? null,
           homeScore: data.homeScore ?? match.homeScore,
           awayScore: data.awayScore ?? match.awayScore,
           isLive:
