@@ -1023,10 +1023,9 @@ export class TheOddsApiSportsProvider implements SportsDataProvider {
 
               for (const bookmaker of event.bookmakers || []) {
               for (const market of bookmaker.markets || []) {
-                const sourceUpdatedAt =
-                  market.last_update ||
-                  bookmaker.last_update ||
-                  new Date().toISOString();
+                const sourceUpdatedAt = market.last_update || bookmaker.last_update;
+                // Do not invent a price timestamp from a local fetch time.
+                if (!sourceUpdatedAt || !Number.isFinite(Date.parse(sourceUpdatedAt))) continue;
 
                 for (const bucket of marketBuckets(
                     market.key,
@@ -1371,10 +1370,9 @@ export class TheOddsApiSportsProvider implements SportsDataProvider {
 
           for (const bookmaker of event.bookmakers || []) {
             for (const market of bookmaker.markets || []) {
-              const sourceUpdatedAt =
-                market.last_update ||
-                bookmaker.last_update ||
-                new Date().toISOString();
+              const sourceUpdatedAt = market.last_update || bookmaker.last_update;
+              // Do not invent a price timestamp from a local fetch time.
+              if (!sourceUpdatedAt || !Number.isFinite(Date.parse(sourceUpdatedAt))) continue;
 
               for (const bucket of marketBuckets(
                 market.key,
