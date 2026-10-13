@@ -74,9 +74,9 @@ def main():
         print("PROCESS_ENV_UNAVAILABLE")
     else:
         for key in ("SUPABASE_DB_URL","DATABASE_URL","PGSSLMODE","PGSSLROOTCERT","NODE_EXTRA_CA_CERTS"):
-            print("HAS_"+key, bool(environment.get(key.encode())))
+            print("HAS_"+key, bool(environment.get(key)))
         for key in ("PGSSLROOTCERT","NODE_EXTRA_CA_CERTS"):
-            raw=environment.get(key.encode(),b"")
+            raw=environment.get(key,b"")
             try:
                 if raw: print(key+"_FILE_EXISTS",pathlib.Path(os.fsdecode(raw)).is_file())
             except Exception:
@@ -87,7 +87,7 @@ def main():
             peer=env_snapshot(peers[0]["pid"])
             if not peer:continue
             for key in ("SUPABASE_DB_URL","DATABASE_URL","NODE_EXTRA_CA_CERTS"):
-                k=key.encode()
+                k=key
                 if environment.get(k) and peer.get(k):
                     print("DB_CONFIG_EQUALS_"+label+"_"+key,environment[k]==peer[k])
             break
