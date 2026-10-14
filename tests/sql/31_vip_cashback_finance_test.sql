@@ -15,6 +15,14 @@ declare
   v_before bigint;
   v_payout uuid;
   v_local timestamp := timezone('Asia/Tehran', now());
+  v_band_user uuid;
+  v_band_pay uuid;
+  v_band_tx uuid;
+  v_band_bet uuid;
+  v_band_deposit bigint;
+  v_band_rate integer;
+  v_band_idx integer;
+  v_quote_band record;
 begin
   v_week := v_local::date - (extract(isodow from v_local)::int - 1) - 7;
   v_deposit_date := (v_week::timestamp at time zone 'Asia/Tehran') + interval '1 day';
@@ -125,6 +133,50 @@ begin
       where user_id=v_user and resolved_at is null;
     perform tests.assert(v_count=1,'chargeback is auditable');
   end if;
+
+
+  -- Verify each tier in REAL SQL (not merely a TypeScript string-match test).
+  for v_band_idx in 1..5 loop
+    v_band_deposit := (array[200000,400000,600000,900000,1500000]::bigint[])[v_band_idx];
+    v_band_rate := (array[300,500,600,800,1100]::integer[])[v_band_idx];
+    v_band_user := tests.make_user(
+      'cashback-tier-'||v_band_idx::text||'-'||gen_random_uuid()::text||'@test.local',
+      'user','active',true,'USD'
+    );
+    insert into nova.payment_transactions
+      (public_id,user_id,type,provider,status,amount_minor,currency,idempotency_key,completed_at,signature_verified)
+    values
+      ('VIP-TIER-'||gen_random_uuid()::text,v_band_user,'deposit','test',
+       'succeeded',v_band_deposit,'USD','vip-tier-pay:'||v_band_user::text,v_deposit_date,true)
+    returning id into v_band_pay;
+    v_band_tx := (
+      nova.credit_wallet(v_band_user,'deposit',v_band_deposit,'USD',
+        'vip-tier-ledger:'||v_band_user::text,null,null,v_band_pay,
+        'test tier deposit',null,'{}'::jsonb)->>'transaction_id'
+    )::uuid;
+    update nova.payment_transactions set wallet_transaction_id=v_band_tx where id=v_band_pay;
+    insert into nova.bets
+      (public_id,user_id,type,status,stake_minor,currency,potential_payout_minor,
+       payout_minor,combined_odds_num,combined_odds_den,combined_odds_scaled,
+       placement_idempotency_key,funding_source,settled_at)
+    values
+      ('VIP-TIER-BET-'||gen_random_uuid()::text,v_band_user,'SINGLE','settled',
+       10000,'USD',20000,0,2,1,20000,'vip-tier-bet:'||v_band_user::text,'main',v_deposit_date)
+    returning id into v_band_bet;
+    insert into nova.bet_settlements
+      (bet_id,revision,kind,status_before,status_after,payout_minor,currency,
+       stake_minor,net_user_result_minor,settled_by,created_at)
+    values
+      (v_band_bet,1,'settlement','accepted','settled',0,'USD',10000,-10000,'vip-tier-test',v_deposit_date);
+
+    select * into v_quote_band from nova.vip_cashback_quote_week(v_week)
+      where user_id=v_band_user;
+    perform tests.assert(v_quote_band.deposit_minor=v_band_deposit,'tier weekly deposit exact');
+    perform tests.assert(v_quote_band.rate_bps=v_band_rate,
+      format('VIP tier %s: rate is %s bps',v_band_idx,v_band_rate));
+    perform tests.assert(v_quote_band.cashback_minor=nova.apply_bps(10000,v_band_rate),
+      'tier award applies percentage to settled net loss');
+  end loop;
 
   perform tests.assert(
     not has_function_privilege('authenticated','nova.vip_cashback_credit_user(date,uuid,boolean)','execute'),
