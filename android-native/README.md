@@ -8,7 +8,8 @@ Open `android-native/` in Android Studio (JDK 17, Android SDK 35) and sync Gradl
 
 ## Scope and protections
 
-- Native home, live & prematch lists, league sections, match/market detail, slip preview, bet history, wallet statement, rewards and VIP explainer, profile/auth.
+- Native home, live & prematch lists, league sections, match/market detail, slip preview, filterable and paginated bet history, paginated wallet statement, rewards and VIP explainer, profile/auth.
+- Persian-first right-to-left interface with persistent language selection. Wallet, bet and bonus requests run independently so a transient endpoint outage does not erase confirmed data.
 - Requests use HTTPS to BetVima API with server-issued data. Empty / degraded catalogue is shown honestly; no fake fixtures, odds or wallet balances.
 - Supabase password sign-in uses the project's public anonymous client key obtained from `/api/v1/mobile/config`. The session JWT is verified **server-side** for account requests and stored encrypted with Android Keystore. Registration goes through the existing web registration flow with Turnstile until a dedicated mobile onboarding process is reviewed.
 - All *real-money wager submission* is disabled in the native build and the mobile bootstrap. **Do not enable** without verified age checks, jurisdiction/geolocation enforcement on the server, approved gambling licence, controls for responsible gambling, anti-abuse review and Play certification. UI selections and quotes are not proof of authorization.
@@ -18,5 +19,9 @@ Open `android-native/` in Android Studio (JDK 17, Android SDK 35) and sync Gradl
 ## Google Play release prerequisites
 
 Google requires adult-only rating, per-jurisdiction gaming licences and app approval, underage and unauthorized geography prevention, free download, and a responsible-gambling disclosure. This app is **not yet approved or ready for real-money release**. See https://support.google.com/googleplay/android-developer/answer/9877032.
+
+## Debug APK updates
+
+CI runners produce debug APKs signed by their own ephemeral debug keystore. A newer CI APK may be rejected as an *update* over an older test installation because the certificates differ; back up local-only test data and uninstall the old debug app before installing the new artifact. No production signing key is committed to this public repository. A stable app-signing key should be created and retained in a protected signing service or GitHub encrypted secrets before a proper release.
 
 Production web deployment is separately gated and is not triggered or implied by this Android PR.
