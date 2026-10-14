@@ -912,8 +912,8 @@ function BetSlipBody({
             <div className="mt-9 flex w-full items-center gap-3">
               <input
                 value={betCode}
-                onChange={(event) => setBetCode(event.target.value)}
-                placeholder="Bet code"
+                onChange={(event) => setBetCode(event.target.value.toUpperCase().slice(0, 18))}
+                placeholder="5-character code · AB3K7"
                 aria-label="Bet code"
                 className="h-[54px] min-w-0 flex-1 rounded-[17px] border border-[#E1E4E9] bg-[#F0F1F4] px-4 text-[16px] font-medium text-[#202329] outline-none transition focus:border-[#1481F2] focus:bg-white"
               />
@@ -926,6 +926,9 @@ function BetSlipBody({
                 View bet
               </button>
             </div>
+            <p className="mt-2 text-center text-[11px] text-[#777F8A]">
+              Enter a 5-character BetVima code with letters and numbers. Older NOVA codes also work.
+            </p>
           </div>
         ) : (
           <>
