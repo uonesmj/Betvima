@@ -340,6 +340,64 @@ class ApiClient {
             .put("type", if (picks.size > 1) "MULTIPLE" else "SINGLE")
             .put("stakeMinor", stakeMinor).put("currency", "USD").put("legs", legs), token)
     }
+    private fun bonusBetLegs(picks: List<Pick>, movements: List<BonusOddsMovement> =
+        emptyList()): JSONArray {
+        val changes = movements.associateBy { it.selectionId }
+        return JSONArray().also { legs ->
+            picks.forEach { pick ->
+                val update = changes[pick.selectionId]
+                legs.put(JSONObject()
+                    .put("matchId", pick.matchId)
+                    .put("marketId", pick.marketId)
+                    .put("selectionId", pick.selectionId)
+                    .put("clientOddsScaled", update?.currentScaled ?: pick.oddsScaled)
+                    .put("marketVersion", update?.version ?: pick.version ?: JSONObject.NULL)
+                    .put("acceptOddsChange", update != null))
+            }
+        }
+    }
+
+    /** Server-signed quote; fetching it does not place a bet or change balances. */
+    suspend fun bonusBetQuote(
+        token: String, picks: List<Pick>, bonus: BonusReward
+    ): BonusPlacementQuote {
+        require(picks.size == 4 && bonus.currency in setOf("USD", "IRR", "IRT"))
+        val data = post("/api/v1/bets/quote", JSONObject()
+            .put("type", "MULTIPLE")
+            .put("currency", bonus.currency)
+            .put("stakeMinor", bonus.remainingMinor)
+            .put("legs", bonusBetLegs(picks)), token)
+        val quote = data.optJSONObject("quote") ?: throw ApiFailure(502,"Quote missing")
+        return parseBonusPlacementQuote(quote, bonus.currency)
+    }
+
+    /**
+     * Real wager. Called only from explicit user confirmation and never
+     * automatically retried. The signed quote and SQL bonus-grant lock are
+     * authoritative; client checks are only additional safeguards.
+     */
+    suspend fun placeBonusBet(
+        token: String, picks: List<Pick>, bonus: BonusReward,
+        quote: BonusPlacementQuote, requestId: String
+    ): JSONObject {
+        require(requestId.isNotBlank() && picks.size == 4)
+        require(quote.currency == bonus.currency && quote.stakeMinor == bonus.remainingMinor)
+        require(validateBonusQuote(quote,picks,bonus,System.currentTimeMillis()) == null)
+        val accepted = JSONObject()
+        quote.movements.forEach { accepted.put(it.selectionId,it.currentScaled) }
+        return request("/api/v1/bets", token, JSONObject()
+            .put("type", "MULTIPLE")
+            .put("stakeMinor", bonus.remainingMinor)
+            .put("currency", bonus.currency)
+            .put("fundingSource", "bonus")
+            .put("bonusGrantId", bonus.id)
+            .put("legs", bonusBetLegs(picks,quote.movements))
+            .put("quoteToken",quote.quoteToken)
+            .put("acceptedOdds",accepted)
+            .put("acceptWarnings",true),
+            "POST",requestId)
+    }
+
     private fun parseSupportTicket(t: JSONObject): SupportTicket = SupportTicket(
         id = t.str("id"), subject = t.str("subject"),
         status = t.str("status"), category = t.str("category"),
