@@ -178,7 +178,7 @@ class ApiClient {
         picks.forEach {
             legs.put(JSONObject().put("matchId", it.matchId).put("marketId", it.marketId)
                 .put("selectionId", it.selectionId).put("clientOddsScaled", it.oddsScaled)
-                .put("marketVersion", it.version).put("acceptOddsChange", false))
+                .put("marketVersion", it.version ?: JSONObject.NULL).put("acceptOddsChange", false))
         }
         return post("/api/v1/bets/quote", JSONObject()
             .put("type", if (picks.size > 1) "MULTIPLE" else "SINGLE")
