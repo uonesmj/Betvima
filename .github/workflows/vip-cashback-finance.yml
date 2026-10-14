@@ -28,6 +28,7 @@ jobs:
       PGHOST: 127.0.0.1
       PGPORT: '5432'
       PGUSER: postgres
+      PGOPTIONS: '-c search_path=nova,public,extensions'
       PGPASSWORD: vip_cashback_test_only
       NOVA_TEST_DB: nova_vip_cashback_finance_test
     steps:
