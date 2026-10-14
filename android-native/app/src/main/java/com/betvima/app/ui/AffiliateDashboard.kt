@@ -291,7 +291,9 @@ fun AffiliateDashboard(state: AppState, model: AppViewModel) {
                     }
                 }
                 item(key = "native-affiliate-operations") {
-                    AffiliateOperations(state, model, partner?.str("currency", "USD") ?: "USD")
+                    AffiliateOperations(state, model,
+                        partner?.str("currency", "USD") ?: "USD",
+                        partner?.str("minPayoutMinor", "0") ?: "0")
                 }
             }
         }
