@@ -13,6 +13,7 @@ import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -35,6 +36,7 @@ fun BetvimaApp(model: AppViewModel) {
     var searchOpen by rememberSaveable { mutableStateOf(false) }
     var search by rememberSaveable { mutableStateOf("") }
     val snackbars = remember { SnackbarHostState() }
+    val pageStates = rememberSaveableStateHolder()
     val drawer = rememberDrawerState(DrawerValue.Closed)
     val drawerScope = rememberCoroutineScope()
 
@@ -120,20 +122,11 @@ fun BetvimaApp(model: AppViewModel) {
                 }
             },
             bottomBar = {
-                Column(Modifier.background(Color(0xFF121315))) {
-                    androidx.compose.animation.AnimatedVisibility(
-                        visible = state.tab in setOf(Tab.HOME, Tab.LIVE, Tab.SPORTS) &&
-                            state.feature == Feature.NONE,
-                        enter = slideInVertically(animationSpec = tween(230)) { it } +
-                            fadeIn(animationSpec = tween(220)),
-                        exit = slideOutVertically(animationSpec = tween(160)) { it } +
-                            fadeOut(animationSpec = tween(160))
-                    ) {
-                        AnimatedFloatingBetslip(state.picks.size, state.lang) {
-                            model.showSlip(true)
-                        }
-                    }
-                    ReferenceAnimatedBottomNav(state) { destination ->
+                ReferenceBottomBar(
+                    state = state,
+                    showSlip = state.tab in setOf(Tab.HOME, Tab.LIVE, Tab.SPORTS) &&
+                        state.feature == Feature.NONE,
+                    onNavigate = { destination ->
                         when (destination) {
                             "menu" -> drawerScope.launch { drawer.open() }
                             "home" -> model.tab(Tab.HOME)
@@ -141,8 +134,9 @@ fun BetvimaApp(model: AppViewModel) {
                             "bonus" -> model.feature(Feature.BONUSES)
                             "sports" -> model.tab(Tab.SPORTS)
                         }
-                    }
-                }
+                    },
+                    onSlip = { model.showSlip(true) }
+                )
             },
             snackbarHost = { SnackbarHost(snackbars) }
         ) { padding ->
@@ -161,32 +155,44 @@ fun BetvimaApp(model: AppViewModel) {
                 }
             }
             Box(Modifier.fillMaxSize().padding(padding)) {
+                val screenId = when {
+                    state.detailLoading || state.detail != null ->
+                        "match-" + (state.detail?.id ?: "loading")
+                    state.feature != Feature.NONE -> "feature-" + state.feature.name
+                    state.tab == Tab.HOME -> "home-" + state.homeMode.name
+                    else -> "tab-" + state.tab.name
+                }
                 AnimatedContent(
-                    targetState = Triple(state.tab, state.feature,
-                        state.detail != null || state.detailLoading),
+                    targetState = screenId,
                     label = "mainScreenNavigation",
                     transitionSpec = {
-                        (slideInHorizontally(animationSpec = tween(220)) { it / 5 } +
-                            fadeIn(animationSpec = tween(220)))
+                        (slideInHorizontally(animationSpec = tween(240)) { it / 7 } +
+                            fadeIn(animationSpec = tween(230)))
                             .togetherWith(
-                                slideOutHorizontally(animationSpec = tween(165)) { -it / 6 } +
-                                    fadeOut(animationSpec = tween(165)))
+                                slideOutHorizontally(animationSpec = tween(190)) { -it / 7 } +
+                                    fadeOut(animationSpec = tween(190)))
                     }
-                ) { (tab, feature, detailVisible) ->
-                    when {
-                        detailVisible -> MatchDetailPage(state, model)
-                        feature != Feature.NONE -> FeaturePage(state, model)
-                        tab == Tab.HOME -> HomePage(filtered, model) {
-                            searchOpen = !searchOpen
+                ) { destination ->
+                    pageStates.SaveableStateProvider(destination) {
+                        when {
+                            destination.startsWith("match-") ->
+                                MatchDetailPage(state, model)
+                            destination.startsWith("feature-") ->
+                                FeaturePage(state, model)
+                            destination.startsWith("home-") -> HomePage(filtered, model) {
+                                searchOpen = !searchOpen
+                            }
+                            destination == "tab-LIVE" ->
+                                CatalogPage(filtered, model, live = true) {
+                                    searchOpen = !searchOpen
+                                }
+                            destination == "tab-SPORTS" ->
+                                CatalogPage(filtered, model, live = false) {
+                                    searchOpen = !searchOpen
+                                }
+                            destination == "tab-BETS" -> BetsPage(state, model)
+                            destination == "tab-WALLET" -> WalletPage(state, model)
                         }
-                        tab == Tab.LIVE -> CatalogPage(filtered, model, live = true) {
-                            searchOpen = !searchOpen
-                        }
-                        tab == Tab.SPORTS -> CatalogPage(filtered, model, live = false) {
-                            searchOpen = !searchOpen
-                        }
-                        tab == Tab.BETS -> BetsPage(state, model)
-                        tab == Tab.WALLET -> WalletPage(state, model)
                     }
                 }
                 if ((state.liveLoading || state.upcomingLoading) &&
