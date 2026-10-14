@@ -483,9 +483,11 @@ fun LoginSheet(state: AppState, model: AppViewModel) {
     var password by rememberSaveable { mutableStateOf("") }
     var visible by rememberSaveable { mutableStateOf(false) }
     var registrationBrowserOpened by rememberSaveable { mutableStateOf(false) }
+    var returnedFromRegistration by rememberSaveable { mutableStateOf(false) }
     androidx.lifecycle.compose.LifecycleEventEffect(androidx.lifecycle.Lifecycle.Event.ON_RESUME) {
         if (registrationBrowserOpened) {
             registrationBrowserOpened = false
+            returnedFromRegistration = true
             // After returning from Cloudflare-protected registration, show native login.
             model.setRegisterScreen(false)
         }
@@ -524,13 +526,48 @@ fun LoginSheet(state: AppState, model: AppViewModel) {
         Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState())
             .padding(horizontal = 19.dp).padding(bottom = 34.dp),
             verticalArrangement = Arrangement.spacedBy(15.dp)) {
-            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                Text("BET", color = Palette.text, fontWeight = FontWeight.Black, fontSize = 22.sp)
-                Text("VIMA", color = Palette.green, fontWeight = FontWeight.Black, fontSize = 22.sp)
-                Spacer(Modifier.weight(1f))
-                IconButton(onClick = { model.showLogin(false) }) {
-                    Icon(Icons.Default.Close, tr(state.lang, "Close", "بستن"),
-                        tint = Palette.muted)
+            Surface(
+                shape = RoundedCornerShape(21.dp),
+                color = Palette.ink,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Box(Modifier.background(
+                    brush = androidx.compose.ui.graphics.Brush.linearGradient(
+                        listOf(Color(0xFF10151D), Color(0xFF0B302B),
+                            Color(0xFF0C1A2F)))))
+                {
+                    Column(Modifier.fillMaxWidth().padding(17.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                            Text("BET", color = Color.White,
+                                fontWeight = FontWeight.Black, fontSize = 24.sp)
+                            Text("VIMA", color = Palette.green,
+                                fontWeight = FontWeight.Black, fontSize = 24.sp)
+                            Spacer(Modifier.weight(1f))
+                            IconButton(onClick = { model.showLogin(false) }) {
+                                Icon(Icons.Default.Close,
+                                    tr(state.lang, "Close", "بستن"), tint = Color.White)
+                            }
+                        }
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Surface(color = Palette.green.copy(alpha = .16f),
+                                shape = RoundedCornerShape(12.dp)) {
+                                Icon(Icons.Default.Shield, null, tint = Palette.green,
+                                    modifier = Modifier.padding(9.dp).size(21.dp))
+                            }
+                            Spacer(Modifier.width(11.dp))
+                            Column {
+                                Text(tr(state.lang, "BETVIMA SECURE ACCESS",
+                                    "ورود امن به بت‌ویما"),
+                                    color = Color.White,
+                                    fontSize = 13.sp, fontWeight = FontWeight.Black)
+                                Text(tr(state.lang,
+                                    "One account · private tickets · encrypted session",
+                                    "یک حساب · بلیت‌های خصوصی · نشست رمزنگاری‌شده"),
+                                    color = Color(0xFFBACBD2), fontSize = 10.sp)
+                            }
+                        }
+                    }
                 }
             }
             Surface(shape = RoundedCornerShape(14.dp), color = Color(0xFFEDEFF3)) {
@@ -554,6 +591,22 @@ fun LoginSheet(state: AppState, model: AppViewModel) {
                                     fontWeight = FontWeight.ExtraBold, fontSize = 14.sp)
                             }
                         }
+                    }
+                }
+            }
+            androidx.compose.animation.AnimatedVisibility(visible = returnedFromRegistration) {
+                Surface(color = Palette.greenLight,
+                    shape = RoundedCornerShape(13.dp)) {
+                    Row(Modifier.fillMaxWidth().padding(12.dp),
+                        verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Default.MarkEmailRead, null, tint = Palette.green,
+                            modifier = Modifier.size(19.dp))
+                        Spacer(Modifier.width(9.dp))
+                        Text(tr(state.lang,
+                            "If registration succeeded, verify your email if requested, then log in here.",
+                            "اگر ثبت‌نام موفق بود، در صورت درخواست ایمیل را تأیید کنید و از همین‌جا وارد شوید."),
+                            fontSize = 11.sp, color = Palette.text,
+                            lineHeight = 16.sp)
                     }
                 }
             }
