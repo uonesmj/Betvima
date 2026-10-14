@@ -1,5 +1,6 @@
 package com.betvima.app.ui
 
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
