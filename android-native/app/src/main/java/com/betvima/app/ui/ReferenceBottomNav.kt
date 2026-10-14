@@ -44,9 +44,11 @@ private val bottomDestinations = listOf(
 @Composable
 fun ReferenceAnimatedBottomNav(
     state: AppState,
+    menuOpen: Boolean = false,
     onNavigate: (String) -> Unit
 ) {
     val selected = when {
+        menuOpen -> "menu"
         state.feature == Feature.CASINO -> "casino"
         state.feature == Feature.BONUSES || state.feature == Feature.VIP -> "bonus"
         state.tab == Tab.LIVE || state.tab == Tab.SPORTS -> "sports"
@@ -109,6 +111,7 @@ fun ReferenceAnimatedBottomNav(
 fun ReferenceBottomBar(
     state: AppState,
     showSlip: Boolean,
+    menuOpen: Boolean = false,
     onNavigate: (String) -> Unit,
     onSlip: () -> Unit
 ) {
@@ -119,7 +122,7 @@ fun ReferenceBottomBar(
     )
     Box(Modifier.fillMaxWidth().height(footerHeight)) {
         Box(Modifier.align(Alignment.BottomCenter)) {
-            ReferenceAnimatedBottomNav(state, onNavigate)
+            ReferenceAnimatedBottomNav(state, menuOpen, onNavigate)
         }
         AnimatedVisibility(
             visible = showSlip,
