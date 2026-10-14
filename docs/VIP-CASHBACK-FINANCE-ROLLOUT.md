@@ -5,7 +5,7 @@
 - Payout: Monday **after 09:00 Asia/Tehran** for the previously closed week.
 - USD minor units throughout. Only wallet-credited, successful USD deposits are eligible; unsupported currencies are intentionally excluded pending verified historical FX snapshots.
 - Deposit thresholds and cashback: USD 2,000 → 3%, 4,000 → 5%, 6,000 → 6%, 9,000 → 8%, 15,000+ → 11%.
-- Loss base: **gross settled losing MAIN-funded USD sportsbook bets** within the week, excluding all bonus-funded bets, pending/void/cashout and reversed settlements; winning bets do not offset losing bets. The operator **must confirm** whether gross vs net loss is intended.
+- Loss base (operator-approved): **net weekly sportsbook loss** = max(0, total stake losses on settled MAIN-wallet USD bets **minus net profits from winning settled MAIN-wallet USD bets** in the same Tehran calendar week). Excludes bonus-funded bets, pending/void/cashout and reversed settlements. Zero or positive net result receives no cashback.
 - Exact HALF_UP integer minor-unit rounding using nova.apply_bps().
 - No user balance is calculated in the browser. PostgreSQL credits the existing USD wallet through nova.credit_wallet() in the same transaction as the immutable VIP payout record.
 
@@ -17,7 +17,7 @@ Both must be enabled following controlled finance review. A code deployment alon
 ## Deployment and operation
 1. Install SQL migrations **0198 then 0199**, in separate committed transactions (new enum value).
 2. Run the entire PostgreSQL integration test suite on an isolated DB and run the worker with the env flag absent: no ledger movement must occur.
-3. Independently reconcile a complete sample week of payment transactions and bet settlements; confirm the currency conversion policy and gross-vs-net definition in writing.
+3. Independently reconcile a complete sample week of payment transactions and bet settlements; verify winning profits offset losing stakes and obtain approval for the non-USD currency conversion policy.
 4. Inspect the production directory and environment file paths before installing service/timer from ops/systemd. The example WorkingDirectory=/opt/nova is a placeholder until verified on the actual server.
 5. Check that the timer is scheduled for Monday at 09:00 Asia/Tehran, persistent after downtime; ensure only one authoritative scheduled instance and adequate monitoring.
 6. After financial approval, set the worker flag and the DB flag separately; first live run must be supervised. Keep an immediate disable procedure.
@@ -33,7 +33,7 @@ Both must be enabled following controlled finance review. A code deployment alon
 - If any candidate errors, worker exits nonzero and should alert operations.
 
 ## Known gaps before enabling actual money
-- Decide whether gross settled losing bets or net weekly sportsbook loss is the intended base.
+- Net weekly sportsbook loss is approved. Independently verify winning net profits properly offset losing stakes and zero/positive net weeks never receive credit.
 - Clarify all non-USD deposits/settlements, eligibility jurisdiction and related responsible gambling controls.
 - Verify no conflicting promotions or wagering-bonus exclusions.
 - Approve a clear method of manual large-award review and reversals in the financial admin workflow.
