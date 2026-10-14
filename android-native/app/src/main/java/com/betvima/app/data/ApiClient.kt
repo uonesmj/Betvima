@@ -340,6 +340,22 @@ class ApiClient {
             JSONObject().put("all", all).put("ids", JSONArray(ids)), token)
         return data.optInt("updated", 0)
     }
+    /** Public first-party code. No user identity or stake is embedded. */
+    suspend fun createBetSlipShare(picks: List<Pick>, currency: String): String {
+        val result = request("/api/v1/betslip/share",body=shareSlipPayload(picks,currency))
+        return result.str("code").also {
+            if (!validBetSlipCode(it)) throw ApiFailure(502,"Invalid code returned by server")
+        }
+    }
+
+    /** Retrieve only current available server-side selections, never trust old odds. */
+    suspend fun loadBetSlipShare(code: String): ImportedSlip {
+        val normalized = normalizeBetSlipCode(code)
+        require(validBetSlipCode(normalized))
+        val result = get("/api/v1/betslip/share/" + normalized)
+        return parseImportedSlip(result)
+    }
+
     suspend fun quote(token: String, picks: List<Pick>, stakeMinor: String): JSONObject {
         val legs = JSONArray()
         picks.forEach {

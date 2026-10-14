@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 180" role="img" aria-labelledby="title">
+  <title>BetVima</title>
+  <rect width="720" height="180" fill="none"/>
+  <g font-family="Arial Rounded MT Bold, Arial, Helvetica, sans-serif" font-size="132" font-weight="900" font-style="italic" letter-spacing="-7">
+    <text x="8" y="132" fill="#159FEF">Bet</text>
+    <text x="270" y="132" fill="#FFFFFF">Vima</text>
+  </g>
+  <circle cx="466" cy="32" r="18" fill="#159FEF"/>
+</svg>
