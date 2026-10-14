@@ -1,0 +1,11 @@
+[Unit]
+Description=BetVima historical FX evidence every hour
+
+[Timer]
+OnCalendar=hourly
+Persistent=true
+AccuracySec=5min
+Unit=betvima-vip-fx.service
+
+[Install]
+WantedBy=timers.target
