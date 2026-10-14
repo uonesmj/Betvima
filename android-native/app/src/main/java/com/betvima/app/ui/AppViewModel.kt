@@ -272,9 +272,18 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         val jwt = vault.accessToken(api)
         if (jwt.isNullOrBlank()) {
             if (sessionGeneration == generation && request == accountRequestNumber) {
-                mutable.update { it.copy(accountLoading = false,
-                    notice = tr(it.lang, "Your session could not be refreshed. Please sign in again.",
-                        "نشست شما تمدید نشد. لطفاً دوباره وارد شوید.")) }
+                if (!vault.signedIn()) {
+                    // A definitive 4xx refresh denial: replace member header with login.
+                    // Offline/timeout refreshes keep the encrypted session intact.
+                    signOut()
+                    notice(tr(state.value.lang,
+                        "Session expired. Please log in again.",
+                        "نشست منقضی شد؛ لطفاً دوباره وارد شوید."))
+                } else mutable.update {
+                    it.copy(accountLoading = false, notice = tr(it.lang,
+                        "Unable to refresh your session. Please retry.",
+                        "تمدید نشست ممکن نشد؛ دوباره تلاش کنید."))
+                }
             }
             return@launch
         }
