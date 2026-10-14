@@ -106,7 +106,7 @@ export function LoyaltyProgramClient() {
   const [selected, setSelected] = useState(8);
   const [openFaq, setOpenFaq] = useState<number | null>(0);
   const activeFamilyIndex = Math.floor(selected / 3);
-  const family = families[activeFamilyIndex];
+  const family = families[activeFamilyIndex] ?? families[0]!;
   const withinFamily = (selected % 3) + 1;
   const vipMilestone = selected >= 8;
   const isSignedIn = Boolean(session?.authenticated);
@@ -254,7 +254,7 @@ export function LoyaltyProgramClient() {
               <img src={'/brand/loyalty/' + family.id + '.png'} alt="" className="relative h-[172px] w-[230px] rounded-[28px] object-cover drop-shadow-[0_15px_25px_rgba(0,0,0,.55)] sm:h-[205px] sm:w-[290px]" />
             </div>
             <div className="relative z-10 grid grid-cols-2 gap-3 rounded-[18px] border border-white/15 bg-black/20 p-4 backdrop-blur-sm">
-              <div><p dir="auto" className="text-[11px] font-bold text-[#D1DADD]">{copy('Reference turnover', 'گردش مالی مرجع')}</p><p dir="ltr" className="mt-1.5 text-[clamp(17px,3vw,26px)] font-black tabular-nums" style={{ color: family.metal }}>{money(milestones[selected])}</p></div>
+              <div><p dir="auto" className="text-[11px] font-bold text-[#D1DADD]">{copy('Reference turnover', 'گردش مالی مرجع')}</p><p dir="ltr" className="mt-1.5 text-[clamp(17px,3vw,26px)] font-black tabular-nums" style={{ color: family.metal }}>{money(milestones[selected] ?? 0)}</p></div>
               <div className="border-l border-white/15 pl-4"><p dir="auto" className="text-[11px] font-bold text-[#D1DADD]">{copy('Club milestone', 'نقطه ورود باشگاه')}</p><p dir="auto" className="mt-1.5 text-sm font-black sm:text-base">{vipMilestone ? copy('VIP territory', 'سطوح ویژه VIP') : copy('Gold 3 ahead', 'مقصد: طلایی ۳')}</p></div>
             </div>
             <p dir="auto" className="relative z-10 mt-3 text-[11px] leading-5 text-[#C1D0D3]">{copy('These are program reference levels, not a verified personal rank or balance.', 'این سطوح فقط مرجع برنامه هستند و نشان‌دهنده سطح یا موجودی تأییدشده حساب شما نیستند.')}</p>
@@ -273,7 +273,7 @@ export function LoyaltyProgramClient() {
                   className={'flex w-full items-center justify-between gap-2 rounded-[17px] border p-3.5 text-left transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#00B86B] sm:p-4 ' + (active ? 'border-[#15BD7E] bg-[#ECFBF4] shadow-[0_5px_15px_rgba(3,115,79,.06)]' : 'border-[#E7ECEF] bg-[#F8FAFA] hover:border-[#B0D9C5] hover:bg-white')}>
                   <span className="flex min-w-0 items-center gap-3">
                     <span className={'grid h-10 w-10 shrink-0 place-items-center rounded-xl text-sm font-black ' + (active ? 'bg-[#063D30] text-[#8CFFD0]' : 'bg-white text-[#526770]')}>{String(step + 1).padStart(2, '0')}</span>
-                    <span className="min-w-0"><span dir="auto" className="block text-sm font-extrabold text-[#1A333B]">{copy(family.en, family.fa)} {step + 1}</span><span dir="ltr" className="mt-1 block text-xs font-bold tabular-nums text-[#72858A]">{money(milestones[index])}</span></span>
+                    <span className="min-w-0"><span dir="auto" className="block text-sm font-extrabold text-[#1A333B]">{copy(family.en, family.fa)} {step + 1}</span><span dir="ltr" className="mt-1 block text-xs font-bold tabular-nums text-[#72858A]">{money(milestones[index] ?? 0)}</span></span>
                   </span>
                   {active ? <BadgeCheck size={20} className="shrink-0 text-[#088C5C]" /> : <ChevronRight size={18} className="shrink-0 text-[#8A9BA0]" />}
                 </button>;
