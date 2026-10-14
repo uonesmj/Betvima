@@ -113,8 +113,10 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     fun togglePick(match: Match, market: Market, selection: Selection) {
         if (!match.bettingAvailable || !market.available || !selection.available ||
             (match.live && !state.value.liveEnabled)) return
+        val persian = state.value.lang == Lang.FA
         val entry = Pick(match.id, market.id, selection.id, match.title,
-            market.name, selection.name, selection.oddsScaled, selection.version, match.live)
+            market.label(persian), selection.label(persian),
+            selection.oddsScaled, selection.version, match.live)
         mutable.update { s ->
             val picks = if (s.picks.any { it.selectionId == entry.selectionId }) {
                 s.picks.filterNot { it.selectionId == entry.selectionId }
