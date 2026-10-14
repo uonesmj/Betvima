@@ -459,7 +459,6 @@ export class PostgresCatalogRepository implements CatalogRepository {
       match.isBettingAvailable &&
       match.sportKey !== 'esports' &&
       (match.topMarkets ?? []).some((market) =>
-        market.status === 'open' &&
         market.selections.some((selection) => selection.status === 'open'),
       ),
     )).slice(0, take);
