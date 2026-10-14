@@ -3,11 +3,14 @@ package com.betvima.app.ui
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -21,8 +24,12 @@ import androidx.compose.ui.unit.sp
  * cards remain non-interactive until an approved source supplies an actual catalogue.
  */
 @Composable
-fun CasinoLobby(lang: Lang) {
+fun CasinoLobby(state: AppState, model: AppViewModel) {
+    val lang = state.lang
+    val footerListState = rememberLazyListState()
+    val footerScope = rememberCoroutineScope()
     LazyColumn(
+        state = footerListState,
         contentPadding = PaddingValues(BvSpace.screen),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
@@ -84,7 +91,11 @@ fun CasinoLobby(lang: Lang) {
                 icon = Icons.Default.Info,
                 accent = Palette.blue)
         }
-        item { ResponsibleNote(lang) }
+        item(key = "premium-casino-footer") {
+            PremiumAppFooter(state, model) {
+                footerScope.launch { footerListState.animateScrollToItem(0) }
+            }
+        }
     }
 }
 

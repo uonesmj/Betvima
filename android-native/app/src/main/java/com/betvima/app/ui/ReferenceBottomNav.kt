@@ -119,9 +119,12 @@ fun ReferenceAnimatedBottomNav(
 }
 
 /**
- * Footer + accessory lane have dedicated space in Scaffold.bottomBar. The blue
- * slip stays in a tiny upper-right pill; it NEVER overlaps Casino or any tab.
- * Adding/removing selections cannot change the app body's scroll position.
+ * Fixed bottom navigation plus a COMPACT, truly center-aligned bet-slip pill.
+ *
+ * The accessory rail is removed entirely when no selection exists, preventing
+ * the unused dark rectangle seen in previous screenshots. With selections, a
+ * 34dp rail is just large enough for the 30dp action (no oversized empty box).
+ * The tab bar is never covered by the action.
  */
 @Composable
 fun ReferenceBottomBar(
@@ -131,17 +134,17 @@ fun ReferenceBottomBar(
     onNavigate: (String) -> Unit,
     onSlip: () -> Unit
 ) {
+    val hasSelection = showSlip && state.picks.isNotEmpty()
     Column(Modifier.fillMaxWidth().background(Color(0xFF101114))) {
         AnimatedVisibility(
-            visible = showSlip,
+            visible = hasSelection,
             enter = expandVertically(animationSpec = tween(180)) + fadeIn(tween(160)),
             exit = shrinkVertically(animationSpec = tween(160)) + fadeOut(tween(130))
         ) {
-            Row(Modifier.fillMaxWidth().height(41.dp)
-                .background(Color(0xFF101114))
-                .padding(horizontal = 14.dp, vertical = 2.dp),
-                horizontalArrangement = Arrangement.End,
-                verticalAlignment = Alignment.CenterVertically) {
+            Box(
+                Modifier.fillMaxWidth().height(36.dp),
+                contentAlignment = Alignment.Center
+            ) {
                 AnimatedFloatingBetslip(state.picks.size, state.lang, onSlip)
             }
         }
@@ -163,9 +166,9 @@ fun AnimatedFloatingBetslip(
         animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy),
         label = "compactSlipScale")
     Surface(
-        color = Palette.blue, shape = RoundedCornerShape(17.dp),
+        color = Palette.blue, shape = RoundedCornerShape(13.dp),
         shadowElevation = 3.dp,
-        modifier = Modifier.width(92.dp).height(36.dp)
+        modifier = Modifier.width(96.dp).height(31.dp)
             .graphicsLayer { scaleX = scale; scaleY = scale }
             .clickable(
                 interactionSource = interactions,
