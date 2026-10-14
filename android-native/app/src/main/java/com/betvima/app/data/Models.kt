@@ -6,11 +6,17 @@ import java.math.BigDecimal
 import java.math.RoundingMode
 
 data class Team(val name: String, val role: String, val logo: String?)
-data class Selection(val id: String, val name: String, val oddsScaled: String, val status: String, val version: Int, val movement: String) {
-    val available get() = status == "open"
+data class Selection(val id: String, val name: String, val oddsScaled: String, val status: String,
+    val version: Int, val movement: String, val nameFa: String = "") {
+    // The server has used 'open' for DB selections and 'active' in its catalogue type.
+    // Suspended, closed, void, and settled selections are never actionable.
+    val available get() = status == "open" || status == "active"
+    fun label(persian: Boolean) = if (persian && nameFa.isNotBlank()) nameFa else name
 }
-data class Market(val id: String, val key: String, val name: String, val status: String, val selections: List<Selection>) {
+data class Market(val id: String, val key: String, val name: String, val status: String,
+    val selections: List<Selection>, val nameFa: String = "") {
     val available get() = status == "open"
+    fun label(persian: Boolean) = if (persian && nameFa.isNotBlank()) nameFa else name
 }
 data class Match(
     val id: String, val league: String, val leagueLogo: String?, val sport: String,
@@ -34,7 +40,7 @@ data class Bet(val id: String, val status: String, val type: String,
     val settledPayoutMinor: String? = null, val netResultMinor: String? = null,
     val placedAt: String = "", val combinedOddsScaled: String = "0") {
     val isSettled: Boolean get() = status.lowercase() in setOf(
-        "won", "lost", "void", "refunded", "cancelled", "cashed_out", "settled")
+        "settled", "void", "refunded", "cancelled", "cashed_out", "rejected")
 }
 data class BetLegDetail(val matchLabel: String, val marketLabel: String,
     val selectionLabel: String, val oddsScaled: String, val status: String,
@@ -57,10 +63,11 @@ fun JSONObject.arr(key: String): JSONArray = optJSONArray(key) ?: JSONArray()
 fun JSONObject.numberOrNull(key: String): Int? = if (isNull(key)) null else optInt(key)
 fun parseSelection(o: JSONObject) = Selection(o.str("id"), o.str("name", o.str("nameEn", o.str("code"))),
     o.str("oddsScaled", "0"), o.str("status", "suspended"),
-    o.optInt("oddsVersion", o.optInt("version", 0)), o.str("movement", "STABLE"))
+    o.optInt("oddsVersion", o.optInt("version", 0)), o.str("movement", "STABLE"),
+    nameFa = o.str("nameFa"))
 fun parseMarket(o: JSONObject) = Market(o.str("id"), o.str("key"),
     o.str("name", o.str("nameEn", o.str("key"))), o.str("status", "suspended"),
-    o.arr("selections").objects().map(::parseSelection))
+    o.arr("selections").objects().map(::parseSelection), nameFa = o.str("nameFa"))
 fun parseMatch(o: JSONObject, overrideMarkets: JSONArray? = null): Match = Match(
     id = o.str("id"), league = o.str("leagueName", "Football"),
     leagueLogo = o.str("leagueLogoUrl").takeIf(String::isNotBlank),
