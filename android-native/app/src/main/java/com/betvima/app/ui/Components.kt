@@ -182,77 +182,105 @@ fun OddsChoice(match: Match, market: Market, selection: Selection, liveEnabled: 
 fun MatchTile(match: Match, lang: Lang, liveEnabled: Boolean, picks: List<Pick>,
     onOpen: () -> Unit, onPick: (Market, Selection) -> Unit) {
     val market = match.featured
-    Surface(Modifier.fillMaxWidth().padding(vertical = 4.dp),
-        color = Color.White, shape = RoundedCornerShape(18.dp),
-        border = BorderStroke(1.dp, Palette.border), shadowElevation = 2.dp) {
+    Surface(Modifier.fillMaxWidth().padding(vertical = 3.dp),
+        color = Color.White, shape = RoundedCornerShape(19.dp),
+        border = BorderStroke(1.dp, Palette.border), shadowElevation = 1.dp) {
         Column {
             Row(Modifier.fillMaxWidth().clickable(onClick = onOpen)
-                .padding(horizontal = 14.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
-                Column(Modifier.weight(1f)) {
-                    Text(match.league, fontWeight = FontWeight.ExtraBold, fontSize = 12.sp,
-                        maxLines = 1, overflow = TextOverflow.Ellipsis, color = Palette.text)
-                    if (match.country.isNotBlank()) Text(match.country, color = Palette.muted, fontSize = 10.sp)
-                }
-                if (match.live) SmallPill("LIVE " + (match.minute?.toString() ?: "") + "′",
-                    Color(0xFFFFECF0), Palette.red)
-                else SmallPill(match.starts.take(16).replace("T", " · "),
-                    Color(0xFFEEF3F7), Palette.muted)
-            }
-            HorizontalDivider(color = Palette.border, thickness = 0.5.dp)
-            Row(Modifier.fillMaxWidth().clickable(onClick = onOpen).padding(14.dp),
+                .padding(horizontal = 14.dp, vertical = 11.dp),
                 verticalAlignment = Alignment.CenterVertically) {
-                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Surface(color = Palette.greenLight, shape = RoundedCornerShape(9.dp)) {
+                    Icon(Icons.Default.SportsSoccer, null, tint = Palette.ink,
+                        modifier = Modifier.padding(7.dp).size(17.dp))
+                }
+                Spacer(Modifier.width(9.dp))
+                Column(Modifier.weight(1f)) {
+                    Text(match.league, fontWeight = FontWeight.ExtraBold,
+                        fontSize = 12.sp, maxLines = 1,
+                        overflow = TextOverflow.Ellipsis, color = Palette.text)
+                    Text(match.country.ifBlank { tr(lang, "Football", "فوتبال") },
+                        color = Palette.muted, fontSize = 10.sp, maxLines = 1)
+                }
+                if (match.live) SmallPill(
+                    tr(lang, "LIVE", "زنده") + " " + (match.minute?.toString() ?: "•") + "′",
+                    Color(0xFFFFEEF1), Palette.red
+                ) else Text(match.starts.take(16).replace("T", " · "),
+                    fontSize = 10.sp, color = Palette.muted)
+            }
+            HorizontalDivider(color = Palette.border.copy(alpha = .8f), thickness = .5.dp)
+            Row(Modifier.fillMaxWidth().clickable(onClick = onOpen)
+                .padding(horizontal = 14.dp, vertical = 14.dp),
+                verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(9.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        TeamBadge(match.home, 30)
-                        Spacer(Modifier.width(9.dp))
-                        Text(match.home.name, fontSize = 12.sp, fontWeight = FontWeight.Bold,
-                            color = Palette.text, maxLines = 1, overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier.weight(1f))
-                        if (match.homeScore != null)
-                            Text(match.homeScore.toString(), fontWeight = FontWeight.Black, fontSize = 16.sp)
+                        TeamBadge(match.home, 33)
+                        Spacer(Modifier.width(10.dp))
+                        Text(match.home.name, fontSize = 12.sp, fontWeight = FontWeight.ExtraBold,
+                            color = Palette.text, maxLines = 1,
+                            overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+                        if (match.homeScore != null) Text(match.homeScore.toString(),
+                            fontWeight = FontWeight.Black, fontSize = 19.sp,
+                            color = if (match.live) Palette.blue else Palette.text)
                     }
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        TeamBadge(match.away, 30)
-                        Spacer(Modifier.width(9.dp))
-                        Text(match.away.name, fontSize = 12.sp, fontWeight = FontWeight.Bold,
-                            color = Palette.text, maxLines = 1, overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier.weight(1f))
-                        if (match.awayScore != null)
-                            Text(match.awayScore.toString(), fontWeight = FontWeight.Black, fontSize = 16.sp)
+                        TeamBadge(match.away, 33)
+                        Spacer(Modifier.width(10.dp))
+                        Text(match.away.name, fontSize = 12.sp, fontWeight = FontWeight.ExtraBold,
+                            color = Palette.text, maxLines = 1,
+                            overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+                        if (match.awayScore != null) Text(match.awayScore.toString(),
+                            fontWeight = FontWeight.Black, fontSize = 19.sp,
+                            color = if (match.live) Palette.blue else Palette.text)
                     }
                 }
-                Spacer(Modifier.width(12.dp))
-                Surface(color = Palette.paper, shape = RoundedCornerShape(10.dp)) {
-                    Column(Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
+                Spacer(Modifier.width(10.dp))
+                Surface(color = Palette.paper, shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier.clickable(onClick = onOpen)) {
+                    Column(Modifier.padding(horizontal = 11.dp, vertical = 8.dp),
                         horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(if (match.live) tr(lang, "IN PLAY", "در جریان") else tr(lang, "PRE-MATCH", "پیش از شروع"),
-                            fontWeight = FontWeight.Bold, fontSize = 9.sp, color = Palette.muted)
-                        Icon(Icons.Default.ChevronRight, null, tint = Palette.blue)
+                        Text(if (match.live) tr(lang, "IN PLAY", "در جریان")
+                            else tr(lang, "PRE", "آینده"),
+                            fontSize = 9.sp, fontWeight = FontWeight.Bold, color = Palette.muted)
+                        Text(if (match.marketsCount > 0) "+${match.marketsCount}" else "›",
+                            color = Palette.blue, fontSize = 15.sp, fontWeight = FontWeight.Black)
                     }
                 }
             }
             if (market != null) {
-                Row(Modifier.fillMaxWidth().background(Color(0xFFFBFCFD))
-                    .padding(horizontal = 12.dp, vertical = 9.dp),
-                    horizontalArrangement = Arrangement.spacedBy(7.dp),
-                    verticalAlignment = Alignment.CenterVertically) {
-                    market.selections.take(3).forEach { s ->
-                        Box(Modifier.weight(1f)) {
-                            OddsChoice(match, market, s, liveEnabled,
-                                picks.any { it.selectionId == s.id }) { onPick(market, s) }
+                HorizontalDivider(color = Palette.border.copy(alpha = .6f), thickness = .5.dp)
+                Column(Modifier.fillMaxWidth().background(Color(0xFFFBFCFD))
+                    .padding(horizontal = 12.dp, vertical = 10.dp)) {
+                    Text(market.label(lang == Lang.FA), fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold, color = Palette.muted,
+                        modifier = Modifier.padding(bottom = 6.dp),
+                        maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Row(horizontalArrangement = Arrangement.spacedBy(7.dp),
+                        verticalAlignment = Alignment.CenterVertically) {
+                        market.selections.take(3).forEach { selection ->
+                            Box(Modifier.weight(1f)) {
+                                OddsChoice(match, market, selection, liveEnabled,
+                                    picks.any { it.selectionId == selection.id }) {
+                                    onPick(market, selection)
+                                }
+                            }
                         }
-                    }
-                    Surface(Modifier.size(width = 39.dp, height = 50.dp).clickable(onClick = onOpen),
-                        color = Color(0xFFEEF1F4), shape = RoundedCornerShape(10.dp)) {
-                        Box(contentAlignment = Alignment.Center) {
-                            Text("+" + (match.marketsCount - 1).coerceAtLeast(1),
-                                fontSize = 11.sp, fontWeight = FontWeight.ExtraBold, color = Palette.muted)
+                        Surface(
+                            modifier = Modifier.width(43.dp).heightIn(min = 57.dp)
+                                .clickable(onClick = onOpen),
+                            color = Palette.ink, shape = RoundedCornerShape(11.dp)) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(Icons.Default.ChevronRight,
+                                    contentDescription = tr(lang, "All markets", "تمام بازارها"),
+                                    tint = Palette.green, modifier = Modifier.size(24.dp))
+                            }
                         }
                     }
                 }
             } else {
-                Text(tr(lang, "Odds currently unavailable", "ضرایب در دسترس نیستند"), modifier = Modifier.padding(14.dp),
-                    color = Palette.muted, fontSize = 11.sp)
+                BvInformationStrip(tr(lang, "Odds temporarily unavailable",
+                    "ضرایب موقتاً در دسترس نیستند"),
+                    icon = Icons.Default.LockOutline,
+                    modifier = Modifier.padding(11.dp), accent = Palette.muted)
             }
         }
     }
