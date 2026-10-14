@@ -19,32 +19,58 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.betvima.app.data.*
+import coil.compose.AsyncImage
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.draw.clip
 
 private val sports = listOf("football", "basketball", "tennis", "volleyball",
     "hockey", "table-tennis", "baseball", "esports")
 private fun sportName(s: String) = s.replace("-", " ").replaceFirstChar { it.uppercase() }
 
+private fun sportIcon(sport: String): androidx.compose.ui.graphics.vector.ImageVector = when (sport) {
+    "football" -> Icons.Default.SportsSoccer
+    "basketball" -> Icons.Default.SportsBasketball
+    "tennis", "table-tennis" -> Icons.Default.SportsTennis
+    "volleyball" -> Icons.Default.SportsVolleyball
+    "hockey" -> Icons.Default.SportsHockey
+    "baseball" -> Icons.Default.SportsBaseball
+    "esports" -> Icons.Default.VideogameAsset
+    else -> Icons.Default.EmojiEvents
+}
+
 @Composable
 fun SportsRibbon(selected: String, lang: Lang, showEsports: Boolean = true,
     onChange: (String) -> Unit) {
     val visibleSports = if (showEsports) sports else sports.filterNot { it == "esports" }
-    LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp),
-        contentPadding = PaddingValues(vertical = 3.dp)) {
+    LazyRow(contentPadding = PaddingValues(vertical = 5.dp, horizontal = 1.dp),
+        horizontalArrangement = Arrangement.spacedBy(9.dp)) {
         items(visibleSports, key = { it }) { sport ->
-            FilterChip(
-                selected = selected == sport, onClick = { onChange(sport) },
-                label = { Text(if (lang == Lang.FA) when (sport) {
-                    "football" -> "فوتبال"; "basketball" -> "بسکتبال"; "tennis" -> "تنیس"
-                    "volleyball" -> "والیبال"; "hockey" -> "هاکی روی یخ"
-                    "table-tennis" -> "پینگ‌پنگ"; "baseball" -> "بیسبال"
-                    "esports" -> "ورزش الکترونیک"; else -> sportName(sport)
-                } else sportName(sport), fontSize = 11.sp,
-                    fontWeight = FontWeight.Bold) },
-                colors = FilterChipDefaults.filterChipColors(
-                    selectedContainerColor = Palette.greenLight,
-                    selectedLabelColor = Palette.ink
-                )
-            )
+            val active = selected == sport
+            val label = if (lang == Lang.FA) when (sport) {
+                "football" -> "فوتبال"; "basketball" -> "بسکتبال"; "tennis" -> "تنیس"
+                "volleyball" -> "والیبال"; "hockey" -> "هاکی روی یخ"
+                "table-tennis" -> "پینگ‌پنگ"; "baseball" -> "بیسبال"
+                "esports" -> "ورزش الکترونیک"; else -> sportName(sport)
+            } else sportName(sport)
+            Column(Modifier.width(71.dp).clickable { onChange(sport) }
+                .padding(vertical = 2.dp),
+                horizontalAlignment = Alignment.CenterHorizontally) {
+                Surface(shape = CircleShape,
+                    color = if (active) Palette.green else Color.White,
+                    border = BorderStroke(1.dp, if (active) Palette.green else Palette.border),
+                    shadowElevation = if (active) 3.dp else 0.dp) {
+                    Box(Modifier.size(53.dp), contentAlignment = Alignment.Center) {
+                        Icon(sportIcon(sport), contentDescription = label,
+                            modifier = Modifier.size(25.dp),
+                            tint = if (active) Palette.ink else Palette.blue)
+                    }
+                }
+                Text(label, fontSize = 10.sp, fontWeight =
+                    if (active) FontWeight.ExtraBold else FontWeight.Medium,
+                    color = if (active) Palette.ink else Palette.muted,
+                    modifier = Modifier.padding(top = 7.dp),
+                    maxLines = 1)
+            }
         }
     }
 }
@@ -64,9 +90,12 @@ fun HomePage(state: AppState, model: AppViewModel) {
         }
         item {
             Row(horizontalArrangement = Arrangement.spacedBy(9.dp)) {
-                HighlightMetric(Modifier.weight(1f), tr(state.lang, "LIVE", "زنده"), state.live.size.toString(), Palette.red)
-                HighlightMetric(Modifier.weight(1f), tr(state.lang, "UPCOMING", "آینده"), state.upcoming.size.toString(), Palette.blue)
-                HighlightMetric(Modifier.weight(1f), tr(state.lang, "MY PICKS", "انتخاب‌ها"), state.picks.size.toString(), Palette.green)
+                BvStatCard(tr(state.lang, "LIVE", "زنده"), state.live.size.toString(),
+                    Icons.Default.Sensors, Palette.red, Modifier.weight(1f))
+                BvStatCard(tr(state.lang, "UPCOMING", "آینده"), state.upcoming.size.toString(),
+                    Icons.Default.Event, Palette.blue, Modifier.weight(1f))
+                BvStatCard(tr(state.lang, "MY PICKS", "انتخاب‌ها"), state.picks.size.toString(),
+                    Icons.Default.ConfirmationNumber, Palette.green, Modifier.weight(1f))
             }
         }
         item { SectionHeading(tr(state.lang, "Live now", "هم‌اکنون زنده"),
@@ -122,17 +151,7 @@ fun HomePage(state: AppState, model: AppViewModel) {
     }
 }
 
-@Composable
-private fun HighlightMetric(modifier: Modifier, title: String, count: String, accent: Color) {
-    Surface(modifier, color = Color.White, shape = RoundedCornerShape(16.dp),
-        border = BorderStroke(1.dp, Palette.border)) {
-        Column(Modifier.padding(horizontal = 10.dp, vertical = 14.dp)) {
-            Text(title, color = Palette.muted, fontSize = 10.sp, fontWeight = FontWeight.ExtraBold)
-            Spacer(Modifier.height(5.dp))
-            Text(count, color = accent, fontSize = 22.sp, fontWeight = FontWeight.Black)
-        }
-    }
-}
+
 
 @Composable
 fun CatalogPage(state: AppState, model: AppViewModel, live: Boolean) {
