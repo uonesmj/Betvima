@@ -31,71 +31,63 @@ fun tr(lang: Lang, en: String, fa: String) = if (lang == Lang.FA) fa else en
 fun BrandHeader(lang: Lang, onHome: () -> Unit, onLanguage: () -> Unit,
     onAccount: () -> Unit, onNotifications: () -> Unit, unread: Int,
     walletBalance: String? = null, onWallet: () -> Unit = {}) {
-    Column(Modifier.fillMaxWidth().background(Palette.ink)) {
-        Row(Modifier.fillMaxWidth().heightIn(min = 66.dp)
-            .padding(horizontal = 13.dp, vertical = 7.dp),
-            verticalAlignment = Alignment.CenterVertically) {
-            Column(Modifier.clickable(onClick = onHome).padding(vertical = 5.dp)) {
-                CompositionLocalProvider(
-                    LocalLayoutDirection provides LayoutDirection.Ltr
-                ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Box(Modifier.size(width = 4.dp, height = 23.dp)
-                            .clip(RoundedCornerShape(8.dp)).background(Palette.green))
-                        Spacer(Modifier.width(7.dp))
-                        Text("BET", fontSize = 21.sp, fontWeight = FontWeight.Black,
-                            color = Color.White, letterSpacing = .6.sp)
-                        Text("VIMA", fontSize = 21.sp, fontWeight = FontWeight.Black,
-                            color = Palette.green, letterSpacing = .6.sp)
-                    }
-                }
-                Text(tr(lang, "SPORTS & LIVE", "ورزش و مسابقات زنده"),
-                    fontSize = 9.sp, color = Color(0xFF9FB2BB),
-                    modifier = Modifier.padding(start = 11.dp))
+    // The sportsbook header remains visually LTR in both translations,
+    // while all screen content below it still respects RTL for Persian.
+    CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
+        Row(
+            Modifier.fillMaxWidth().heightIn(min = 72.dp)
+                .background(Color(0xFF121315))
+                .padding(horizontal = 13.dp, vertical = 9.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Row(Modifier.clickable(onClick = onHome)
+                .padding(vertical = 11.dp), verticalAlignment = Alignment.CenterVertically) {
+                Text("BET", fontSize = 20.sp, fontWeight = FontWeight.Black,
+                    color = Color.White, letterSpacing = (-.5).sp)
+                Text("VIMA", fontSize = 20.sp, fontWeight = FontWeight.Black,
+                    color = Palette.green, letterSpacing = (-.5).sp)
             }
             Spacer(Modifier.weight(1f))
-            if (walletBalance != null) {
-                Surface(shape = RoundedCornerShape(12.dp), color = Palette.darkElevated,
-                    modifier = Modifier.clickable(onClick = onWallet)) {
-                    Column(Modifier.padding(horizontal = 9.dp, vertical = 7.dp)) {
-                        Text(tr(lang, "BALANCE", "موجودی"),
-                            color = Color(0xFFA8C2CE), fontSize = 8.sp)
-                        Text(walletBalance, color = Palette.green, fontSize = 10.sp,
-                            fontWeight = FontWeight.ExtraBold, maxLines = 1,
-                            overflow = TextOverflow.Ellipsis)
-                    }
+            Column(Modifier.clickable(onClick = onAccount)
+                .padding(horizontal = 6.dp, vertical = 4.dp),
+                horizontalAlignment = Alignment.End) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(walletBalance?.substringAfterLast(" ", "USD") ?: "USD",
+                        color = Color(0xFFAAAEBB), fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold)
+                    Icon(Icons.Default.KeyboardArrowDown, null,
+                        tint = Color(0xFFAAAEBB), modifier = Modifier.size(17.dp))
                 }
+                Text(walletBalance?.substringBeforeLast(" ", "—") ?: "—",
+                    color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.Black)
             }
-            Surface(color = Palette.green, shape = RoundedCornerShape(12.dp),
-                modifier = Modifier.clickable(onClick = onWallet)) {
+            Spacer(Modifier.width(8.dp))
+            Surface(
+                color = Palette.green, shape = RoundedCornerShape(10.dp),
+                modifier = Modifier.clickable(onClick = onWallet)
+            ) {
                 Text(tr(lang, "Wallet", "کیف‌پول"),
-                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 11.dp),
-                    color = Palette.ink, fontWeight = FontWeight.Black, fontSize = 11.sp)
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 13.dp),
+                    color = Palette.ink, fontSize = 12.sp,
+                    fontWeight = FontWeight.Black, maxLines = 1)
             }
+            Spacer(Modifier.width(7.dp))
             Box(contentAlignment = Alignment.Center) {
-                IconButton(onClick = onNotifications, modifier = Modifier.size(44.dp)) {
-                    Icon(Icons.Default.NotificationsNone,
-                        contentDescription = tr(lang, "Notifications", "اعلان‌ها"),
-                        tint = Color.White, modifier = Modifier.size(21.dp))
-                }
-                if (unread > 0) Surface(shape = CircleShape, color = Palette.green,
-                    modifier = Modifier.align(Alignment.TopEnd).size(15.dp)) {
+                Surface(color = Color(0xFF2A2C2E),
+                    shape = RoundedCornerShape(11.dp),
+                    modifier = Modifier.size(43.dp).clickable(onClick = onNotifications)) {
                     Box(contentAlignment = Alignment.Center) {
-                        Text(if (unread > 9) "9+" else unread.toString(),
-                            fontSize = 8.sp, fontWeight = FontWeight.Black, color = Palette.ink)
+                        Icon(Icons.Default.Notifications,
+                            tr(lang, "Notifications", "اعلان‌ها"),
+                            tint = Color.White, modifier = Modifier.size(21.dp))
                     }
                 }
-            }
-            Surface(shape = RoundedCornerShape(12.dp), color = Palette.darkElevated,
-                modifier = Modifier.size(44.dp).clickable(onClick = onAccount)) {
-                Box(contentAlignment = Alignment.Center) {
-                    Icon(Icons.Default.PersonOutline,
-                        contentDescription = tr(lang, "Account", "حساب کاربری"),
-                        tint = Palette.green, modifier = Modifier.size(22.dp))
-                }
+                if (unread > 0) Box(
+                    modifier = Modifier.align(Alignment.TopEnd)
+                        .size(11.dp).background(Color(0xFFFF602A), CircleShape)
+                )
             }
         }
-        HorizontalDivider(color = Color.White.copy(alpha = .08f), thickness = 1.dp)
     }
 }
 
