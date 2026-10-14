@@ -66,9 +66,11 @@ fun BrandHeader(lang: Lang, onHome: () -> Unit, onLanguage: () -> Unit,
                     }
                 }
             }
-            IconButton(onClick = onLanguage, modifier = Modifier.size(44.dp)) {
-                Text(if (lang == Lang.FA) "EN" else "فا", color = Color.White,
-                    fontWeight = FontWeight.ExtraBold, fontSize = 11.sp)
+            Surface(color = Palette.green, shape = RoundedCornerShape(12.dp),
+                modifier = Modifier.clickable(onClick = onWallet)) {
+                Text(tr(lang, "Wallet", "کیف‌پول"),
+                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 11.dp),
+                    color = Palette.ink, fontWeight = FontWeight.Black, fontSize = 11.sp)
             }
             Box(contentAlignment = Alignment.Center) {
                 IconButton(onClick = onNotifications, modifier = Modifier.size(44.dp)) {
@@ -159,31 +161,32 @@ fun OddsChoice(match: Match, market: Market, selection: Selection, liveEnabled: 
     selected: Boolean, onClick: () -> Unit) {
     val enabled = match.bettingAvailable && market.available && selection.available &&
         (!match.live || liveEnabled)
-    val bg = if (selected) Palette.greenLight else if (enabled) Palette.subtle else Color(0xFFEDF0F2)
+    val bg = if (selected) Color(0xFFDDECFF) else if (enabled) Color(0xFFEDEFF3) else Color(0xFFEDF0F2)
     Surface(
         modifier = Modifier.fillMaxWidth().heightIn(min = 57.dp)
             .clickable(enabled = enabled, onClick = onClick),
         shape = RoundedCornerShape(11.dp), color = bg,
         border = BorderStroke(if (selected) 2.dp else 1.dp,
-            if (selected) Palette.green else Palette.border)
+            if (selected) Palette.blue else Palette.border)
     ) {
         Column(Modifier.fillMaxSize().padding(horizontal = 3.dp, vertical = 7.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center) {
             Text(selection.label(LocalLayoutDirection.current == LayoutDirection.Rtl),
                 fontSize = 10.sp, maxLines = 1, overflow = TextOverflow.Ellipsis,
-                color = if (selected) Palette.ink else Palette.muted,
+                color = if (selected) Palette.blue else Palette.muted,
                 textAlign = TextAlign.Center, fontWeight = FontWeight.Medium)
             Spacer(Modifier.height(3.dp))
             Row(verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.Center) {
                 if (!enabled) Icon(Icons.Default.Lock, null, tint = Palette.muted,
                     modifier = Modifier.size(12.dp))
-                if (selected) Icon(Icons.Default.Check, null, tint = Palette.ink,
+                if (selected) Icon(Icons.Default.Check, null, tint = Palette.blue,
                     modifier = Modifier.size(12.dp))
                 Text(if (enabled) odds(selection.oddsScaled) else "—",
                     fontSize = 16.sp, fontWeight = FontWeight.Black,
-                    color = if (enabled) Palette.text else Palette.muted)
+                    color = if (selected) Palette.blue
+                        else if (enabled) Palette.text else Palette.muted)
                 if (enabled && selection.movement == "UP") Icon(
                     Icons.Default.North, null, tint = Palette.green,
                     modifier = Modifier.size(12.dp))
