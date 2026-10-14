@@ -34,6 +34,32 @@ fun MatchDetailPage(state: AppState, model: AppViewModel) {
         }
         return
     }
+    var selectedMarketGroup by rememberSaveable(match.id) { mutableStateOf("all") }
+    var marketSearch by rememberSaveable(match.id) { mutableStateOf("") }
+    val marketGroups = listOf(
+        "all" to tr(state.lang, "All", "همه"),
+        "popular" to tr(state.lang, "Popular", "پرطرفدار"),
+        "goals" to tr(state.lang, "Goals", "گل‌ها"),
+        "corners" to tr(state.lang, "Corners", "کرنرها"),
+        "cards" to tr(state.lang, "Cards", "کارت‌ها"),
+        "handicap" to tr(state.lang, "Handicap", "هندیکپ")
+    )
+    val filteredMarkets = match.markets.filter { market ->
+        val term = (market.key + " " + market.name + " " + market.nameFa).lowercase()
+        val groupMatch = when (selectedMarketGroup) {
+            "all" -> true
+            "popular" -> market.key.contains("h2h") ||
+                market.key.contains("result") || market.key.contains("total")
+            "goals" -> listOf("goal", "total", "btts", "score").any { term.contains(it) } ||
+                term.contains("گل")
+            "corners" -> term.contains("corner") || term.contains("کرنر")
+            "cards" -> term.contains("card") || term.contains("کارت")
+            "handicap" -> term.contains("handicap") || term.contains("هندیکپ")
+            else -> true
+        }
+        groupMatch && (marketSearch.isBlank() ||
+            term.contains(marketSearch.trim().lowercase()))
+    }
     LazyColumn(contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)) {
         item {
@@ -53,8 +79,9 @@ fun MatchDetailPage(state: AppState, model: AppViewModel) {
             Surface(color = Palette.ink, shape = RoundedCornerShape(23.dp),
                 modifier = Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(20.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(if (match.live) "LIVE MATCH CENTER" else "MATCH PREVIEW",
-                        color = Palette.green, fontWeight = FontWeight.ExtraBold, fontSize = 11.sp)
+                    SmallPill(if (match.live) tr(state.lang, "LIVE MATCH", "مسابقه زنده")
+                        else tr(state.lang, "MATCH PREVIEW", "پیش‌نمایش مسابقه"),
+                        Palette.green.copy(alpha = .15f), Palette.green)
                     Spacer(Modifier.height(22.dp))
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
@@ -78,17 +105,52 @@ fun MatchDetailPage(state: AppState, model: AppViewModel) {
                 }
             }
         }
-        item { SectionHeading(tr(state.lang, "All markets", "تمام بازارها"),
-            tr(state.lang, "Only available odds can be selected", "فقط ضرایب باز قابل انتخاب هستند")) }
-        if (match.markets.isEmpty()) item {
-            EmptyPanel(tr(state.lang, "Markets temporarily unavailable", "بازارها موقتاً در دسترس نیستند"),
-                tr(state.lang, "No current prices from the provider.", "قیمت معتبری از ارائه‌دهنده دریافت نشد."))
+        item {
+            SectionHeading(tr(state.lang, "All markets", "تمام بازارها"),
+                tr(state.lang, "Server-sourced selections", "بازارهای دریافت‌شده از سرور"))
+            LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp),
+                contentPadding = PaddingValues(vertical = 5.dp)) {
+                items(marketGroups, key = { it.first }) { (key, label) ->
+                    val selected = selectedMarketGroup == key
+                    Surface(shape = RoundedCornerShape(13.dp),
+                        color = if (selected) Palette.ink else Color.White,
+                        border = BorderStroke(1.dp,
+                            if (selected) Palette.ink else Palette.border),
+                        modifier = Modifier.clickable { selectedMarketGroup = key }) {
+                        Text(label, fontWeight = FontWeight.Bold, fontSize = 11.sp,
+                            color = if (selected) Palette.green else Palette.text,
+                            modifier = Modifier.padding(horizontal = 13.dp, vertical = 11.dp))
+                    }
+                }
+            }
+            Spacer(Modifier.height(4.dp))
+            OutlinedTextField(marketSearch, { marketSearch = it.take(60) },
+                singleLine = true, modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(13.dp),
+                placeholder = { Text(tr(state.lang,
+                    "Find a market", "جست‌وجوی بازار"), fontSize = 12.sp) },
+                leadingIcon = { Icon(Icons.Default.Search, null, tint = Palette.muted) },
+                trailingIcon = {
+                    if (marketSearch.isNotBlank()) IconButton(onClick = { marketSearch = "" }) {
+                        Icon(Icons.Default.Close, tr(state.lang, "Clear", "پاک کردن"))
+                    }
+                })
+            Text(filteredMarkets.size.toString() + tr(state.lang,
+                " markets", " بازار"), color = Palette.muted,
+                fontSize = 11.sp, modifier = Modifier.padding(top = 7.dp))
         }
-        items(match.markets.size) { index ->
-            val market = match.markets[index]
+        if (filteredMarkets.isEmpty()) item {
+            EmptyPanel(tr(state.lang, "No markets match your filters", "بازاری مطابق فیلتر یافت نشد"),
+                tr(state.lang, "Select another category or clear the search.",
+                    "دسته دیگری را انتخاب یا جست‌وجو را پاک کنید.")) {
+                selectedMarketGroup = "all"; marketSearch = ""
+            }
+        }
+        items(filteredMarkets, key = { it.id }) { market ->
+            val index = match.markets.indexOfFirst { it.id == market.id }
             var expanded by rememberSaveable(market.id) { mutableStateOf(index < 3) }
-            Surface(color = Color.White, shape = RoundedCornerShape(16.dp),
-                border = BorderStroke(1.dp, Palette.border)) {
+            Surface(color = Color.White, shape = RoundedCornerShape(18.dp),
+                border = BorderStroke(1.dp, Palette.border), shadowElevation = 1.dp) {
                 Column {
                     Row(Modifier.fillMaxWidth().clickable { expanded = !expanded }
                         .padding(horizontal = 14.dp, vertical = 15.dp),
