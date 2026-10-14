@@ -6,6 +6,11 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
@@ -66,9 +71,22 @@ fun SportsbookTopTabs(state: AppState, model: AppViewModel, onSearch: () -> Unit
         LazyRow(Modifier.weight(1f), state = tabListState,
             horizontalArrangement = Arrangement.spacedBy(3.dp)) {
             items(tabs, key = { it.first }) { (id, title) ->
+                val isActive = active == id
+                val pillColor by animateColorAsState(
+                    if (isActive) Color.White else Color.Transparent,
+                    animationSpec = tween(250), label = "topPillColor")
+                val pillScale by animateFloatAsState(
+                    if (isActive) 1f else .96f,
+                    animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy,
+                        stiffness = Spring.StiffnessMediumLow),
+                    label = "topPillScale")
                 Surface(shape = RoundedCornerShape(26.dp),
-                    color = if (active == id) Color.White else Color.Transparent,
-                    modifier = Modifier.clickable {
+                    color = pillColor,
+                    shadowElevation = if (isActive) 2.dp else 0.dp,
+                    modifier = Modifier.graphicsLayer {
+                        scaleX = pillScale
+                        scaleY = pillScale
+                    }.clickable {
                         when (id) {
                             "top" -> model.homeMode(HomeMode.TOP)
                             "live" -> model.tab(Tab.LIVE)
@@ -77,6 +95,7 @@ fun SportsbookTopTabs(state: AppState, model: AppViewModel, onSearch: () -> Unit
                             "esports" -> { model.sport("esports"); model.tab(Tab.SPORTS) }
                         }
                     }) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Row(Modifier.heightIn(min = 43.dp)
                         .padding(horizontal = 12.dp, vertical = 10.dp),
                         verticalAlignment = Alignment.CenterVertically) {
@@ -91,6 +110,10 @@ fun SportsbookTopTabs(state: AppState, model: AppViewModel, onSearch: () -> Unit
                         Text(title, color = Palette.text, fontWeight =
                             if (active == id) FontWeight.Black else FontWeight.SemiBold,
                             fontSize = 12.sp)
+                    }
+                    Box(Modifier.height(2.dp).width(if (isActive) 25.dp else 0.dp)
+                        .background(if (isActive) Palette.blue else Color.Transparent,
+                            RoundedCornerShape(4.dp)).animateContentSize())
                     }
                 }
             }
