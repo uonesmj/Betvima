@@ -33,13 +33,18 @@ class BetSlipSharingTest {
             shareSlipPayload((1..21).map { pick(it) },"USD")
         }
     }
-    @Test fun exactCodeRegexMatchesSite() {
+    @Test fun exactCodeRegexMatchesSiteAndLegacyCodes() {
+        assertTrue(validBetSlipCode(" ab3k7 "))
+        assertTrue(validBetSlipCode("3XK4M"))
+        assertFalse(validBetSlipCode("ABCDE"))
+        assertFalse(validBetSlipCode("23456"))
+        assertFalse(validBetSlipCode("AB0K7"))
+        assertFalse(validBetSlipCode("AB3K78"))
         assertTrue(validBetSlipCode(" nova-abcdefgh "))
         assertTrue(validBetSlipCode("NOVA-23456789"))
         assertFalse(validBetSlipCode("NOVA-01234567"))
         assertFalse(validBetSlipCode("NOVA-ABCDEFGI"))
         assertFalse(validBetSlipCode("BETVIMA-ABCDEFGH"))
-        assertFalse(validBetSlipCode("NOVA-AAAA"))
     }
     @Test fun importsOnlyFreshAvailableSnapshotAndOmitsClosedPicks() {
         fun leg(i:Int,available:Boolean):JSONObject {
@@ -58,7 +63,7 @@ class BetSlipSharingTest {
                     .put("isLive",false))
         }
         val payload=JSONObject()
-            .put("code","NOVA-ABCDEFGH")
+            .put("code","AB3K7")
             .put("currency","USD")
             .put("unavailableCount",1)
             .put("legs",JSONArray().put(leg(1,true))
