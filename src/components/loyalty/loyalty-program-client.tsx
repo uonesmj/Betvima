@@ -182,7 +182,7 @@ export function LoyaltyProgramClient() {
                 <div className="pointer-events-none absolute -right-8 -top-10 h-24 w-24 rounded-full opacity-60 blur-xl" style={{ background: item.metal + '28' }} />
                 <div className="relative flex items-center gap-2 sm:gap-3">
                   <img src={'/brand/loyalty/' + item.id + '.png'} alt="" className="h-12 w-12 shrink-0 rounded-xl object-cover sm:h-16 sm:w-16" />
-                  <span className="min-w-0"><span dir="auto" className={'block truncate text-sm font-black sm:text-base ' + (active ? 'text-white' : 'text-[#1F3039]')}>{copy(item.en, item.fa)}</span><span className={'mt-1 block text-[10px] font-bold ' + (active ? 'text-[#A7C8C2]' : 'text-[#86939B]')}><span dir="ltr">{item.cashbackRate ?? item.rate}%</span> {copy('cashback', 'کش‌بک')}</span></span>
+                  <span className="min-w-0"><span dir="auto" className={'block truncate text-sm font-black sm:text-base ' + (active ? 'text-white' : 'text-[#1F3039]')}>{copy(item.en, item.fa)}</span><span className={'mt-1 block text-[10px] font-bold ' + (active ? 'text-[#A7C8C2]' : 'text-[#86939B]')}><span dir="ltr">{item.rate}%</span> {copy('cashback', 'کش‌بک')}</span></span>
                 </div>
                 <span className="absolute right-3 top-3 h-2 w-2 rounded-full" style={{ background: active ? '#00D47A' : '#D7E4E0' }} />
               </button>
@@ -206,7 +206,7 @@ export function LoyaltyProgramClient() {
               <div><p dir="auto" className="text-[11px] font-bold text-[#D1DADD]">{copy('Minimum weekly deposit', 'حداقل واریز هفتگی')}</p><p dir="ltr" className="mt-1.5 text-[clamp(17px,3vw,26px)] font-black tabular-nums" style={{ color: family.metal }}>{money(family.weeklyDeposit)}</p></div>
               <div className="border-l border-white/15 pl-4"><p dir="auto" className="text-[11px] font-bold text-[#D1DADD]">{copy('Loss cashback rate', 'درصد کش‌بک باخت‌ها')}</p><p dir="auto" className="mt-1.5 text-sm font-black sm:text-base"><span dir="ltr">{family.rate}%</span></p></div>
             </div>
-            <p dir="auto" className="relative z-10 mt-3 text-[11px] leading-5 text-[#C1D0D3]">{copy('Example: US$1,000 in eligible settled weekly losses at this rate gives US}</p>
+            <p dir="auto" className="relative z-10 mt-3 text-[11px] leading-5 text-[#C1D0D3]">{copy('Example: US$1,000 eligible settled weekly losses at this rate = US$' + (family.rate * 10) + ' cashback for Monday (illustrative only, not an account credit).', 'مثال: با ۱٬۰۰۰ دلار باخت واجد شرایط و تسویه‌شده هفته، کش‌بک این پلن ' + (family.rate * 10) + ' دلار برای دوشنبه است (فقط مثال، نه واریز واقعی).')}</p>
           </div>
 
           <div className="flex min-w-0 flex-col rounded-[25px] border border-[#DCE6E9] bg-white p-5 sm:p-7">
@@ -242,8 +242,8 @@ export function LoyaltyProgramClient() {
 
       <section id="vip-benefits" aria-labelledby="vip-benefits-title" className="scroll-mt-28 pt-12 sm:pt-16">
         <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
-          <div><Kicker>{copy('SIGNATURE BENEFITS', 'مزایای ممتاز')}</Kicker><h2 id="vip-benefits-title" dir="auto" className="mt-3 text-[clamp(26px,4vw,38px)] font-black tracking-[-.04em] text-[#122931]">{copy('More than a membership.', 'فراتر از یک عضویت.')}</h2><p dir="auto" className="mt-2 max-w-[690px] text-sm leading-7 text-[#647781]">{copy('A curated look at the privileges described in the loyalty program. Availability is subject to eligibility and terms.', 'نگاهی به امتیازهای معرفی‌شده در برنامه وفاداری؛ فعال‌شدن هر مزیت به احراز شرایط و قوانین آن بستگی دارد.')}</p></div>
-          <div className="inline-flex items-center gap-2 rounded-full border border-[#DCE6E2] bg-white px-3 py-2 text-xs font-extrabold text-[#567368]"><Sparkles size={15} /> {copy('Program highlights', 'ویژگی‌های برنامه')}</div>
+          <div><Kicker>{copy('FIVE WEEKLY CASHBACK PLANS', 'پنج پلن کش‌بک هفتگی')}</Kicker><h2 id="vip-benefits-title" dir="auto" className="mt-3 text-[clamp(26px,4vw,38px)] font-black tracking-[-.04em] text-[#122931]">{copy('More weekly deposits. Higher cashback.', 'واریز هفتگی بیشتر، درصد کش‌بک بالاتر.')}</h2><p dir="auto" className="mt-2 max-w-[690px] text-sm leading-7 text-[#647781]">{copy('Your successful weekly deposits set the rate. The cashback amount is calculated from eligible settled weekly losses, not from deposited funds.', 'مجموع واریزهای موفق هفته درصد را تعیین می‌کند. مبلغ کش‌بک از باخت‌های واجد شرایط و تسویه‌شده هفته محاسبه می‌شود، نه از مبلغ واریزی.')}</p></div>
+          <div className="inline-flex items-center gap-2 rounded-full border border-[#DCE6E2] bg-white px-3 py-2 text-xs font-extrabold text-[#567368]"><Sparkles size={15} /> {copy('Monday payments', 'پرداخت دوشنبه‌ها')}</div>
         </div>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {benefits.map((benefit, index) => {
@@ -254,16 +254,16 @@ export function LoyaltyProgramClient() {
                 <div className="relative grid h-12 w-12 place-items-center rounded-[15px] border border-[#C5EAD9] bg-[#EAFBF3] text-[#087B51]"><Icon size={24} strokeWidth={1.8} /></div>
                 <h3 dir="auto" className="relative mt-5 text-lg font-black text-[#142B33]">{copy(benefit.en, benefit.fa)}</h3>
                 <p dir="auto" className="relative mt-2 min-h-[65px] text-sm leading-6 text-[#63757D]">{copy(benefit.descEn, benefit.descFa)}</p>
-                <div className="relative mt-5 flex items-center gap-2 border-t border-[#EAF0EE] pt-4 text-xs font-extrabold text-[#148456]"><ShieldCheck size={14} /> {copy('Eligibility applies', 'مشروط به احراز شرایط')}</div>
+                <div className="relative mt-5 flex items-center gap-2 border-t border-[#EAF0EE] pt-4 text-xs font-extrabold text-[#148456]"><ShieldCheck size={14} /> {copy('On eligible settled weekly losses', 'از باخت‌های واجد شرایط هفته')}</div>
               </article>
             );
           })}
         </div>
         <div className="mt-3 grid gap-3 rounded-[22px] border border-[#243E42] bg-[#10272E] p-5 text-white sm:grid-cols-3 sm:p-6">
           {[
-            { icon: UsersRound, en: 'Private tournaments', fa: 'تورنمنت‌های اختصاصی' },
-            { icon: Award, en: 'Personalised offers', fa: 'پیشنهادهای شخصی‌سازی‌شده' },
-            { icon: Plane, en: 'Special experiences', fa: 'تجربه‌های ویژه' },
+            { icon: UsersRound, en: 'Total weekly deposits', fa: 'جمع واریزهای موفق هفته' },
+            { icon: Award, en: 'Eligible settled losses', fa: 'باخت‌های واجد شرایط و تسویه‌شده' },
+            { icon: Plane, en: 'Monday cashback payment', fa: 'پرداخت کش‌بک در دوشنبه' },
           ].map(({ icon: Icon, en, fa }) => <div key={en} className="flex items-center gap-3 border-white/10 py-2 sm:border-r sm:last:border-0"><span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-white/10 text-[#7DF3B6]"><Icon size={19} /></span><span dir="auto" className="text-sm font-bold">{copy(en, fa)}</span></div>)}
         </div>
       </section>
@@ -271,13 +271,13 @@ export function LoyaltyProgramClient() {
       <section id="vip-journey" aria-labelledby="vip-journey-title" className="scroll-mt-28 pt-12 sm:pt-16">
         <div className="relative overflow-hidden rounded-[27px] bg-[#0B1B24] p-5 text-white sm:p-9">
           <div className="pointer-events-none absolute -right-12 -top-32 h-80 w-80 rounded-full bg-[#00D47A]/10 blur-[80px]" />
-          <Kicker>{copy('HOW THE JOURNEY WORKS', 'مسیر عضویت چگونه است')}</Kicker>
-          <h2 id="vip-journey-title" dir="auto" className="relative mt-3 max-w-[710px] text-[clamp(26px,4vw,38px)] font-black leading-tight">{copy('A clear path. Exceptional possibilities.', 'مسیری روشن، فرصت‌هایی متفاوت.')}</h2>
+          <Kicker>{copy('HOW WEEKLY CASHBACK WORKS', 'کش‌بک هفتگی چگونه محاسبه می‌شود؟')}</Kicker>
+          <h2 id="vip-journey-title" dir="auto" className="relative mt-3 max-w-[710px] text-[clamp(26px,4vw,38px)] font-black leading-tight">{copy('Three steps to Monday cashback.', 'سه مرحله تا کش‌بک دوشنبه.')}</h2>
           <div className="relative mt-8 grid gap-3 md:grid-cols-3">
             {[
-              { icon: Star, num: '01', en: 'Create your account', fa: 'حساب خود را بسازید', descEn: 'Registration is the starting point of the published Bronze-to-Platinum program.', descFa: 'ثبت‌نام نقطه آغاز مسیر اعلام‌شده از برنزی تا پلاتینی است.' },
-              { icon: TrendingUp, num: '02', en: 'Explore the levels', fa: 'سطوح را بررسی کنید', descEn: 'Review twelve reference milestones and confirm qualifying activity with support.', descFa: 'دوازده سطح مرجع را ببینید و شرایط فعالیت واجد شرایط را از پشتیبانی بپرسید.' },
-              { icon: Crown, num: '03', en: 'Unlock your VIP path', fa: 'وارد مسیر ویژه شوید', descEn: 'Gold 3 is the listed VIP milestone; actual privileges require confirmed eligibility.', descFa: 'طلایی ۳ سطح مرجع ورود به باشگاه VIP است؛ مزایای واقعی نیازمند تأیید شرایط هستند.' },
+              { icon: Star, num: '01', en: 'Total your deposits', fa: 'واریزهای هفته را جمع کنید', descEn: 'Your successful deposits that week set your cashback rate: 3%, 5%, 6%, 8% or 11%.', descFa: 'مجموع واریزهای موفق همان هفته نرخ کش‌بک را تعیین می‌کند: ۳، ۵، ۶، ۸ یا ۱۱ درصد.' },
+              { icon: TrendingUp, num: '02', en: 'Calculate weekly losses', fa: 'باخت‌های هفتگی محاسبه می‌شوند', descEn: 'The rate applies to eligible settled losses during the week, not the amount deposited.', descFa: 'این درصد به مجموع باخت‌های واجد شرایط و تسویه‌شده هفته تعلق می‌گیرد، نه به مبلغ واریزی.' },
+              { icon: Crown, num: '03', en: 'Monday is cashback day', fa: 'دوشنبه روز پرداخت کش‌بک است', descEn: 'Cashback is scheduled for Monday. Real payouts require a verified active cashback calculation and credit system.', descFa: 'پرداخت کش‌بک برای دوشنبه برنامه‌ریزی شده است. پرداخت واقعی به سیستم محاسبه و واریز فعال و تأییدشده نیاز دارد.' },
             ].map(({ icon: Icon, num, en, fa, descEn, descFa }) => <div key={num} className="relative rounded-[19px] border border-white/10 bg-white/[.055] p-5 sm:p-6"><span className="absolute right-5 top-4 text-4xl font-black text-white/[.08]">{num}</span><div className="grid h-12 w-12 place-items-center rounded-2xl bg-[#00D47A]/15 text-[#57F0AE]"><Icon size={23} /></div><h3 dir="auto" className="mt-6 text-lg font-black">{copy(en, fa)}</h3><p dir="auto" className="mt-2 text-sm leading-6 text-[#ADC0C8]">{copy(descEn, descFa)}</p></div>)}
           </div>
         </div>
@@ -288,7 +288,7 @@ export function LoyaltyProgramClient() {
           <div className="lg:pt-2">
             <Kicker>{copy('GOOD TO KNOW', 'دانستنی‌های مهم')}</Kicker>
             <h2 id="vip-faq-title" dir="auto" className="mt-3 text-[clamp(26px,4vw,38px)] font-black tracking-[-.04em] text-[#102831]">{copy('Your questions, answered.', 'پاسخ پرسش‌های شما.')}</h2>
-            <p dir="auto" className="mt-3 max-w-[430px] text-sm leading-7 text-[#657781]">{copy('Everything about the level explorer, eligibility and available support in one place.', 'راهنمای انتخاب سطح، شرایط عضویت و راه‌های دریافت پشتیبانی، همه در یک بخش.')}</p>
+            <p dir="auto" className="mt-3 max-w-[430px] text-sm leading-7 text-[#657781]">{copy('Understand weekly deposit bands, cashback on settled losses and the Monday payment schedule.', 'آستانه‌های واریز هفتگی، کش‌بک باخت‌های تسویه‌شده و زمان پرداخت دوشنبه را اینجا ببینید.')}</p>
             <Link href="/support" className="mt-5 inline-flex min-h-11 items-center gap-2 rounded-xl border border-[#CDE8DB] bg-[#EAF9F1] px-4 text-sm font-extrabold text-[#096D4A] transition hover:bg-[#D6F6E5]"><Headphones size={17} /> {copy('Ask our support team', 'سؤال از تیم پشتیبانی')} <ArrowUpRight size={16} /></Link>
           </div>
           <div className="overflow-hidden rounded-[21px] border border-[#DDE7E9] bg-white shadow-[0_10px_38px_rgba(16,38,46,.04)]">
@@ -311,120 +311,7 @@ export function LoyaltyProgramClient() {
       <section className="relative mt-12 overflow-hidden rounded-[25px] bg-[linear-gradient(115deg,#092C27,#0D252F_85%)] px-5 py-8 text-white sm:mt-16 sm:px-10 sm:py-11">
         <div className="pointer-events-none absolute -right-12 -top-20 h-64 w-64 rounded-full bg-[#00D47A]/20 blur-3xl" />
         <div className="relative flex flex-col justify-between gap-6 md:flex-row md:items-center">
-          <div><div className="mb-3 inline-flex items-center gap-2 text-xs font-extrabold tracking-wide text-[#76F3BC]"><Ticket size={17} /> {copy('BETVIMA VIP CLUB', 'باشگاه VIP بت‌ویما')}</div><h2 dir="auto" className="max-w-[650px] text-[clamp(24px,3vw,35px)] font-black leading-tight">{copy('Make your next chapter count.', 'فصل بعدی را متفاوت بسازید.')}</h2><p dir="auto" className="mt-2 max-w-[550px] text-sm leading-6 text-[#BDCFD0]">{copy('Explore the program at your own pace. Stay informed about eligibility and play responsibly.', 'با آگاهی از شرایط عضویت، مسیر سطوح را بررسی کنید و همواره مسئولانه بازی کنید.')}</p></div>
-          <Link href={isSignedIn ? '/account/profile' : '/auth/register'} className="inline-flex min-h-12 shrink-0 items-center justify-center gap-2 rounded-xl bg-[#00D47A] px-6 text-sm font-black text-[#06251B] transition hover:bg-[#4EF0B2]">{isSignedIn ? copy('Go to my account', 'رفتن به حساب من') : copy('Create an account', 'ایجاد حساب')} <ArrowRight size={17} /></Link>
-        </div>
-      </section>
-    </main>
-  );
-}
- + (family.rate * 10) + ' cashback for Monday. This is an illustration, not an account credit.', 'مثال: با ۱٬۰۰۰ دلار باخت واجد شرایط و تسویه‌شده در هفته، کش‌بک این پلن ' + (family.rate * 10) + ' دلار برای دوشنبه خواهد بود. این فقط مثال است، نه واریز واقعی به حساب.')}</p>
-          </div>
-
-          <div className="flex min-w-0 flex-col rounded-[25px] border border-[#DCE6E9] bg-white p-5 sm:p-7">
-            <div className="flex items-center justify-between gap-3">
-              <div><div className="text-[11px] font-black uppercase tracking-[.17em] text-[#26825D]">{copy('LEVEL SELECTOR', 'انتخاب سطح')}</div><h3 dir="auto" className="mt-1.5 text-xl font-black text-[#162A32]">{copy(family.en + ' collection', 'مجموعه ' + family.fa)}</h3></div>
-              <div className="grid h-11 w-11 place-items-center rounded-2xl bg-[#E9F9F0] text-[#078F60]"><Medal size={22} /></div>
-            </div>
-            <div role="group" aria-label={copy('Select level', 'انتخاب سطح')} className="mt-6 space-y-3">
-              {[0, 1, 2].map((step) => {
-                const index = activeFamilyIndex * 3 + step;
-                const active = selected === index;
-                return <button type="button" key={index} onClick={() => setSelected(index)} aria-pressed={active}
-                  className={'flex w-full items-center justify-between gap-2 rounded-[17px] border p-3.5 text-left transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#00B86B] sm:p-4 ' + (active ? 'border-[#15BD7E] bg-[#ECFBF4] shadow-[0_5px_15px_rgba(3,115,79,.06)]' : 'border-[#E7ECEF] bg-[#F8FAFA] hover:border-[#B0D9C5] hover:bg-white')}>
-                  <span className="flex min-w-0 items-center gap-3">
-                    <span className={'grid h-10 w-10 shrink-0 place-items-center rounded-xl text-sm font-black ' + (active ? 'bg-[#063D30] text-[#8CFFD0]' : 'bg-white text-[#526770]')}>{String(step + 1).padStart(2, '0')}</span>
-                    <span className="min-w-0"><span dir="auto" className="block text-sm font-extrabold text-[#1A333B]">{copy(family.en, family.fa)} {step + 1}</span><span dir="ltr" className="mt-1 block text-xs font-bold tabular-nums text-[#72858A]">{money(milestones[index] ?? 0)}</span></span>
-                  </span>
-                  {active ? <BadgeCheck size={20} className="shrink-0 text-[#088C5C]" /> : <ChevronRight size={18} className="shrink-0 text-[#8A9BA0]" />}
-                </button>;
-              })}
-            </div>
-            <div className="mt-auto pt-6">
-              <div className="mb-3 flex items-center justify-between text-xs font-bold text-[#58706E]"><span>{copy('Explore the ladder', 'مرور مسیر عضویت')}</span><span dir="ltr" className="tabular-nums">{selected + 1} / 12</span></div>
-              <div className="h-2 overflow-hidden rounded-full bg-[#E7F1EC]" role="progressbar" aria-label={copy('Explorer position, not personal progress', 'موقعیت در نمایشگر سطوح، نه پیشرفت شخصی')} aria-valuenow={selected + 1} aria-valuemin={1} aria-valuemax={12}><div className="h-full rounded-full bg-gradient-to-r from-[#00A965] to-[#62E7BA] transition-[width] motion-reduce:transition-none" style={{ width: (selected + 1) / 12 * 100 + '%' }} /></div>
-              <button type="button" disabled={selected === 11} onClick={() => setSelected((value) => Math.min(11, value + 1))} className="mt-5 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-[#122B32] px-4 text-sm font-bold text-white transition hover:bg-[#165440] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#00B86B] disabled:cursor-not-allowed disabled:bg-[#E6ECEB] disabled:text-[#82918D]">{selected === 11 ? copy('Highest listed level', 'آخرین سطح اعلام‌شده') : copy('Explore next level', 'مشاهده سطح بعدی')} <ArrowRight size={16} /></button>
-            </div>
-          </div>
-        </div>
-        <div className="mt-3 rounded-[18px] border border-[#DDE8E5] bg-[#F2F8F5] px-4 py-3 text-xs leading-6 text-[#4D675F]" dir="auto">
-          <ShieldCheck size={16} className="mr-2 inline-block align-middle text-[#159A68]" aria-hidden="true" />
-          {copy('Turnover thresholds are taken from the existing program display. Eligibility, active benefits and calculation rules must be confirmed with support.', 'آستانه‌های گردش مالی بر اساس اطلاعات فعلی برنامه نمایش داده شده‌اند. شرایط احراز، مزایای فعال و نحوه محاسبه باید از پشتیبانی تأیید شوند.')}
-        </div>
-      </section>
-
-      <section id="vip-benefits" aria-labelledby="vip-benefits-title" className="scroll-mt-28 pt-12 sm:pt-16">
-        <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
-          <div><Kicker>{copy('SIGNATURE BENEFITS', 'مزایای ممتاز')}</Kicker><h2 id="vip-benefits-title" dir="auto" className="mt-3 text-[clamp(26px,4vw,38px)] font-black tracking-[-.04em] text-[#122931]">{copy('More than a membership.', 'فراتر از یک عضویت.')}</h2><p dir="auto" className="mt-2 max-w-[690px] text-sm leading-7 text-[#647781]">{copy('A curated look at the privileges described in the loyalty program. Availability is subject to eligibility and terms.', 'نگاهی به امتیازهای معرفی‌شده در برنامه وفاداری؛ فعال‌شدن هر مزیت به احراز شرایط و قوانین آن بستگی دارد.')}</p></div>
-          <div className="inline-flex items-center gap-2 rounded-full border border-[#DCE6E2] bg-white px-3 py-2 text-xs font-extrabold text-[#567368]"><Sparkles size={15} /> {copy('Program highlights', 'ویژگی‌های برنامه')}</div>
-        </div>
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {benefits.map((benefit, index) => {
-            const Icon = benefit.icon;
-            return (
-              <article key={benefit.en} className="group relative min-w-0 overflow-hidden rounded-[22px] border border-[#E2E8EC] bg-white p-5 transition duration-200 hover:-translate-y-1 hover:border-[#AADFC8] hover:shadow-[0_20px_36px_rgba(15,49,45,.08)] motion-reduce:transition-none sm:p-6">
-                <span className="pointer-events-none absolute right-4 top-3 text-5xl font-black text-[#F0F5F3]">{String(index + 1).padStart(2, '0')}</span>
-                <div className="relative grid h-12 w-12 place-items-center rounded-[15px] border border-[#C5EAD9] bg-[#EAFBF3] text-[#087B51]"><Icon size={24} strokeWidth={1.8} /></div>
-                <h3 dir="auto" className="relative mt-5 text-lg font-black text-[#142B33]">{copy(benefit.en, benefit.fa)}</h3>
-                <p dir="auto" className="relative mt-2 min-h-[65px] text-sm leading-6 text-[#63757D]">{copy(benefit.descEn, benefit.descFa)}</p>
-                <div className="relative mt-5 flex items-center gap-2 border-t border-[#EAF0EE] pt-4 text-xs font-extrabold text-[#148456]"><ShieldCheck size={14} /> {copy('Eligibility applies', 'مشروط به احراز شرایط')}</div>
-              </article>
-            );
-          })}
-        </div>
-        <div className="mt-3 grid gap-3 rounded-[22px] border border-[#243E42] bg-[#10272E] p-5 text-white sm:grid-cols-3 sm:p-6">
-          {[
-            { icon: UsersRound, en: 'Private tournaments', fa: 'تورنمنت‌های اختصاصی' },
-            { icon: Award, en: 'Personalised offers', fa: 'پیشنهادهای شخصی‌سازی‌شده' },
-            { icon: Plane, en: 'Special experiences', fa: 'تجربه‌های ویژه' },
-          ].map(({ icon: Icon, en, fa }) => <div key={en} className="flex items-center gap-3 border-white/10 py-2 sm:border-r sm:last:border-0"><span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-white/10 text-[#7DF3B6]"><Icon size={19} /></span><span dir="auto" className="text-sm font-bold">{copy(en, fa)}</span></div>)}
-        </div>
-      </section>
-
-      <section id="vip-journey" aria-labelledby="vip-journey-title" className="scroll-mt-28 pt-12 sm:pt-16">
-        <div className="relative overflow-hidden rounded-[27px] bg-[#0B1B24] p-5 text-white sm:p-9">
-          <div className="pointer-events-none absolute -right-12 -top-32 h-80 w-80 rounded-full bg-[#00D47A]/10 blur-[80px]" />
-          <Kicker>{copy('HOW THE JOURNEY WORKS', 'مسیر عضویت چگونه است')}</Kicker>
-          <h2 id="vip-journey-title" dir="auto" className="relative mt-3 max-w-[710px] text-[clamp(26px,4vw,38px)] font-black leading-tight">{copy('A clear path. Exceptional possibilities.', 'مسیری روشن، فرصت‌هایی متفاوت.')}</h2>
-          <div className="relative mt-8 grid gap-3 md:grid-cols-3">
-            {[
-              { icon: Star, num: '01', en: 'Create your account', fa: 'حساب خود را بسازید', descEn: 'Registration is the starting point of the published Bronze-to-Platinum program.', descFa: 'ثبت‌نام نقطه آغاز مسیر اعلام‌شده از برنزی تا پلاتینی است.' },
-              { icon: TrendingUp, num: '02', en: 'Explore the levels', fa: 'سطوح را بررسی کنید', descEn: 'Review twelve reference milestones and confirm qualifying activity with support.', descFa: 'دوازده سطح مرجع را ببینید و شرایط فعالیت واجد شرایط را از پشتیبانی بپرسید.' },
-              { icon: Crown, num: '03', en: 'Unlock your VIP path', fa: 'وارد مسیر ویژه شوید', descEn: 'Gold 3 is the listed VIP milestone; actual privileges require confirmed eligibility.', descFa: 'طلایی ۳ سطح مرجع ورود به باشگاه VIP است؛ مزایای واقعی نیازمند تأیید شرایط هستند.' },
-            ].map(({ icon: Icon, num, en, fa, descEn, descFa }) => <div key={num} className="relative rounded-[19px] border border-white/10 bg-white/[.055] p-5 sm:p-6"><span className="absolute right-5 top-4 text-4xl font-black text-white/[.08]">{num}</span><div className="grid h-12 w-12 place-items-center rounded-2xl bg-[#00D47A]/15 text-[#57F0AE]"><Icon size={23} /></div><h3 dir="auto" className="mt-6 text-lg font-black">{copy(en, fa)}</h3><p dir="auto" className="mt-2 text-sm leading-6 text-[#ADC0C8]">{copy(descEn, descFa)}</p></div>)}
-          </div>
-        </div>
-      </section>
-
-      <section id="vip-faq" aria-labelledby="vip-faq-title" className="scroll-mt-28 pt-12 sm:pt-16">
-        <div className="grid gap-7 lg:grid-cols-[.85fr_1.15fr] lg:gap-10">
-          <div className="lg:pt-2">
-            <Kicker>{copy('GOOD TO KNOW', 'دانستنی‌های مهم')}</Kicker>
-            <h2 id="vip-faq-title" dir="auto" className="mt-3 text-[clamp(26px,4vw,38px)] font-black tracking-[-.04em] text-[#102831]">{copy('Your questions, answered.', 'پاسخ پرسش‌های شما.')}</h2>
-            <p dir="auto" className="mt-3 max-w-[430px] text-sm leading-7 text-[#657781]">{copy('Everything about the level explorer, eligibility and available support in one place.', 'راهنمای انتخاب سطح، شرایط عضویت و راه‌های دریافت پشتیبانی، همه در یک بخش.')}</p>
-            <Link href="/support" className="mt-5 inline-flex min-h-11 items-center gap-2 rounded-xl border border-[#CDE8DB] bg-[#EAF9F1] px-4 text-sm font-extrabold text-[#096D4A] transition hover:bg-[#D6F6E5]"><Headphones size={17} /> {copy('Ask our support team', 'سؤال از تیم پشتیبانی')} <ArrowUpRight size={16} /></Link>
-          </div>
-          <div className="overflow-hidden rounded-[21px] border border-[#DDE7E9] bg-white shadow-[0_10px_38px_rgba(16,38,46,.04)]">
-            {questions.map((item, index) => {
-              const expanded = openFaq === index;
-              return <div key={item.en} className="border-b border-[#E9EEF0] last:border-0">
-                <h3>
-                  <button type="button" aria-expanded={expanded} aria-controls={'vip-answer-' + index} onClick={() => setOpenFaq(expanded ? null : index)} className="flex min-h-[73px] w-full items-center justify-between gap-4 px-4 py-4 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-inset focus-visible:outline-[#00B86B] sm:px-6">
-                    <span dir="auto" className="text-[13px] font-black text-[#1C333B] sm:text-[15px]">{copy(item.en, item.fa)}</span>
-                    <span className={'grid h-8 w-8 shrink-0 place-items-center rounded-full transition-colors ' + (expanded ? 'bg-[#0C6145] text-white' : 'bg-[#F0F5F3] text-[#60737A]')}><ChevronDown size={18} className={'transition-transform motion-reduce:transition-none ' + (expanded ? 'rotate-180' : '')} /></span>
-                  </button>
-                </h3>
-                {expanded && <div id={'vip-answer-' + index} dir="auto" className="px-4 pb-5 text-sm leading-7 text-[#667981] sm:px-6">{copy(item.answerEn, item.answerFa)}</div>}
-              </div>;
-            })}
-          </div>
-        </div>
-      </section>
-
-      <section className="relative mt-12 overflow-hidden rounded-[25px] bg-[linear-gradient(115deg,#092C27,#0D252F_85%)] px-5 py-8 text-white sm:mt-16 sm:px-10 sm:py-11">
-        <div className="pointer-events-none absolute -right-12 -top-20 h-64 w-64 rounded-full bg-[#00D47A]/20 blur-3xl" />
-        <div className="relative flex flex-col justify-between gap-6 md:flex-row md:items-center">
-          <div><div className="mb-3 inline-flex items-center gap-2 text-xs font-extrabold tracking-wide text-[#76F3BC]"><Ticket size={17} /> {copy('BETVIMA VIP CLUB', 'باشگاه VIP بت‌ویما')}</div><h2 dir="auto" className="max-w-[650px] text-[clamp(24px,3vw,35px)] font-black leading-tight">{copy('Make your next chapter count.', 'فصل بعدی را متفاوت بسازید.')}</h2><p dir="auto" className="mt-2 max-w-[550px] text-sm leading-6 text-[#BDCFD0]">{copy('Explore the program at your own pace. Stay informed about eligibility and play responsibly.', 'با آگاهی از شرایط عضویت، مسیر سطوح را بررسی کنید و همواره مسئولانه بازی کنید.')}</p></div>
+          <div><div className="mb-3 inline-flex items-center gap-2 text-xs font-extrabold tracking-wide text-[#76F3BC]"><Ticket size={17} /> {copy('BETVIMA VIP CLUB', 'باشگاه VIP بت‌ویما')}</div><h2 dir="auto" className="max-w-[650px] text-[clamp(24px,3vw,35px)] font-black leading-tight">{copy('Your weekly deposits set your cashback rate.', 'واریز هفتگی، درصد کش‌بک شما را تعیین می‌کند.')}</h2><p dir="auto" className="mt-2 max-w-[550px] text-sm leading-6 text-[#BDCFD0]">{copy('From US$2,000 at 3% to US$15,000 or more at 11%. Your cashback is based on eligible settled weekly losses, scheduled for Monday. Play responsibly.', 'از ۲٬۰۰۰ دلار با ۳٪ تا ۱۵٬۰۰۰ دلار به بالا با ۱۱٪. کش‌بک از باخت‌های واجد شرایط و تسویه‌شده هفته محاسبه می‌شود و روز پرداخت دوشنبه است. مسئولانه بازی کنید.')}</p></div>
           <Link href={isSignedIn ? '/account/profile' : '/auth/register'} className="inline-flex min-h-12 shrink-0 items-center justify-center gap-2 rounded-xl bg-[#00D47A] px-6 text-sm font-black text-[#06251B] transition hover:bg-[#4EF0B2]">{isSignedIn ? copy('Go to my account', 'رفتن به حساب من') : copy('Create an account', 'ایجاد حساب')} <ArrowRight size={17} /></Link>
         </div>
       </section>
