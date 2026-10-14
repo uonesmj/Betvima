@@ -141,7 +141,7 @@ fun BetvimaApp(model: AppViewModel) {
             },
             snackbarHost = { SnackbarHost(snackbars) }
         ) { padding ->
-            val filtered = remember(state.live, state.upcoming, search) {
+            val filtered = run {
                 if (search.isBlank()) state
                 else {
                     val query = search.trim()
