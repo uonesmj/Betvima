@@ -57,7 +57,10 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     val state = mutable.asStateFlow()
     init {
         refreshAll()
-        if (vault.signedIn()) refreshAccount()
+        if (vault.signedIn()) {
+            refreshAccount()
+            refreshNotifications()
+        }
     }
     fun notice(message: String?) = mutable.update { it.copy(notice = message) }
     fun language() {
@@ -203,7 +206,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             sessionGeneration++
             mutable.update { it.copy(busy = false, showLogin = false, signedIn = true) }
             refreshAccount()
-            if (state.value.feature == Feature.NOTIFICATIONS) refreshNotifications()
+            refreshNotifications()
         } catch (ex: Exception) {
             mutable.update { it.copy(busy = false, notice = ex.message ?: "Sign-in failed") }
         }
