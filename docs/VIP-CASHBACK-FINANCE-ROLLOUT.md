@@ -36,5 +36,5 @@ Both must be enabled following controlled finance review. A code deployment alon
 - Net weekly sportsbook loss is approved. Independently verify winning net profits properly offset losing stakes and zero/positive net weeks never receive credit.
 - Clarify all non-USD deposits/settlements, eligibility jurisdiction and related responsible gambling controls.
 - Verify no conflicting promotions or wagering-bonus exclusions.
-- Approve a clear method of manual large-award review and reversals in the financial admin workflow.
+- Review operational anomaly alerting for large awards and resolution of chargebacks/regrades in the financial admin workflow.
 - Complete operational deployment and signed-off PostgreSQL integration testing.
