@@ -1,6 +1,7 @@
 package com.betvima.app.ui
 
 import androidx.compose.animation.togetherWith
+import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -250,14 +251,19 @@ fun SlipSheet(state: AppState, model: AppViewModel) {
     val canQuote = state.picks.isNotEmpty() &&
         ((mode == "single" && state.picks.size == 1) ||
          (mode == "multiple" && state.picks.size >= 2))
-    val sheet = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val sheet = rememberModalBottomSheetState(skipPartiallyExpanded = false)
 
     ModalBottomSheet(onDismissRequest = { model.showSlip(false) },
         sheetState = sheet, containerColor = Color.White,
+        shape = RoundedCornerShape(topStart = 27.dp, topEnd = 27.dp),
         dragHandle = { BottomSheetDefaults.DragHandle() }) {
-        Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState())
-            .padding(horizontal = 17.dp).padding(bottom = 24.dp),
-            verticalArrangement = Arrangement.spacedBy(13.dp)) {
+        Column(Modifier.fillMaxWidth().heightIn(max = 660.dp)
+            .animateContentSize(),
+            verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Surface(color = Color(0xFFE8E9EE),
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(18.dp)) {
+            Column(Modifier.padding(horizontal = 17.dp, vertical = 8.dp)) {
             Row(Modifier.fillMaxWidth().padding(bottom = 5.dp),
                 verticalAlignment = Alignment.CenterVertically) {
                 IconButton(onClick = { model.showSlip(false) }) {
@@ -277,6 +283,12 @@ fun SlipSheet(state: AppState, model: AppViewModel) {
                     fontWeight = FontWeight.ExtraBold, fontSize = 12.sp,
                     color = Palette.text)
             }
+            }
+        }
+        Column(Modifier.fillMaxWidth().weight(1f, fill = false)
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = 17.dp).animateContentSize(),
+            verticalArrangement = Arrangement.spacedBy(13.dp)) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.CenterVertically) {
                 Surface(color = Color(0xFFEDEFF3), shape = RoundedCornerShape(13.dp),
@@ -288,8 +300,12 @@ fun SlipSheet(state: AppState, model: AppViewModel) {
                             "series" to tr(state.lang, "Series", "سیستمی")
                         ).forEach { (type, title) ->
                             val enabled = type != "series"
+                            val selectedColor by androidx.compose.animation.animateColorAsState(
+                                if (mode == type) Palette.blue else Color.Transparent,
+                                label = "betSlipModeSelection"
+                            )
                             Surface(
-                                color = if (mode == type) Palette.blue else Color.Transparent,
+                                color = selectedColor,
                                 shape = RoundedCornerShape(11.dp),
                                 modifier = Modifier.weight(1f).heightIn(min = 45.dp)
                                     .clickable(enabled = enabled) {
@@ -326,7 +342,7 @@ fun SlipSheet(state: AppState, model: AppViewModel) {
                         "برای افزودن انتخاب، یکی از ضرایب باز را لمس کنید."))
             } else state.picks.forEach { pick ->
                 Surface(color = Color(0xFFEDEFF3), shape = RoundedCornerShape(16.dp),
-                    modifier = Modifier.fillMaxWidth()) {
+                    modifier = Modifier.fillMaxWidth().animateContentSize()) {
                     Column(Modifier.padding(13.dp),
                         verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -356,10 +372,18 @@ fun SlipSheet(state: AppState, model: AppViewModel) {
                 }
             }
             if (state.picks.isNotEmpty()) {
-                if (!canQuote) BvInformationStrip(tr(state.lang,
+                androidx.compose.animation.AnimatedVisibility(
+                    visible = !canQuote,
+                    enter = androidx.compose.animation.fadeIn() +
+                        androidx.compose.animation.expandVertically(),
+                    exit = androidx.compose.animation.fadeOut() +
+                        androidx.compose.animation.shrinkVertically()
+                ) {
+                    BvInformationStrip(tr(state.lang,
                     "Single requires exactly one selection; Multiple requires two or more. Series is not yet supported.",
                     "برای تکی فقط یک انتخاب و برای میکس حداقل دو انتخاب لازم است. شرط سیستمی هنوز پشتیبانی نمی‌شود."),
                     Icons.Default.Info, accent = Palette.blue)
+                }
 
                 OutlinedTextField(value = stake, onValueChange = { value ->
                     if (value.matches(Regex("[0-9]{0,10}(\\.[0-9]{0,2})?"))) {
@@ -389,15 +413,26 @@ fun SlipSheet(state: AppState, model: AppViewModel) {
                     Text(tr(state.lang, "Possible win", "برد احتمالی"),
                         fontSize = 12.sp, color = Palette.muted,
                         modifier = Modifier.weight(1f))
-                    Text(if (canQuote && !state.quote.isNullOrBlank()) state.quote.orEmpty() else "—",
-                        fontWeight = FontWeight.Black, fontSize = 14.sp,
-                        color = Palette.green)
+                    androidx.compose.animation.AnimatedContent(
+                        targetState = if (canQuote && !state.quote.isNullOrBlank())
+                            state.quote.orEmpty() else "—",
+                        label = "quotedPotentialWin") { payout ->
+                        Text(payout, fontWeight = FontWeight.Black, fontSize = 14.sp,
+                            color = Palette.green)
+                    }
                 }
-                if (canQuote && !state.quote.isNullOrBlank())
+                androidx.compose.animation.AnimatedVisibility(
+                    visible = canQuote && !state.quote.isNullOrBlank(),
+                    enter = androidx.compose.animation.fadeIn() +
+                        androidx.compose.animation.expandVertically(),
+                    exit = androidx.compose.animation.fadeOut() +
+                        androidx.compose.animation.shrinkVertically()
+                ) {
                     BvInformationStrip(tr(state.lang,
                         "Official quote received. No real-money bet was placed.",
                         "استعلام رسمی دریافت شد؛ هیچ شرط واقعی ثبت نشده است."),
                         Icons.Default.Verified, accent = Palette.green)
+                }
                 BvPrimaryButton(
                     label = if (!state.signedIn)
                         tr(state.lang, "Sign in to get a quote", "برای استعلام وارد شوید")
@@ -416,6 +451,8 @@ fun SlipSheet(state: AppState, model: AppViewModel) {
                     "ثبت شرط در این نسخه آزمایشی تا تأیید مجوز، سن و منطقه جغرافیایی غیرفعال است."),
                     fontSize = 10.sp, color = Palette.muted, lineHeight = 16.sp)
             }
+        }
+        Spacer(Modifier.height(8.dp))
         }
     }
 }
