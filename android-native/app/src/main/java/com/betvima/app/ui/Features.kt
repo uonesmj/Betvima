@@ -156,6 +156,7 @@ private fun SupportPage(state: AppState, model: AppViewModel) {
     var body by remember { mutableStateOf("") }
     var category by remember { mutableStateOf("general") }
     var busy by remember { mutableStateOf(false) }
+    var selectedTicket by remember { mutableStateOf<SupportTicket?>(null) }
 
     suspend fun reload() {
         try {
@@ -218,7 +219,8 @@ private fun SupportPage(state: AppState, model: AppViewModel) {
                         "درخواست‌های ثبت‌شده در اینجا نمایش داده می‌شوند.")) { scope.launch { reload() } }
             }
             items(tickets, key = { it.id }) { ticket ->
-                Surface(color = Color.White, shape = RoundedCornerShape(14.dp),
+                Surface(modifier = Modifier.fillMaxWidth().clickable { selectedTicket = ticket },
+                    color = Color.White, shape = RoundedCornerShape(14.dp),
                     border = BorderStroke(1.dp, Palette.border)) {
                     Row(Modifier.fillMaxWidth().padding(15.dp), verticalAlignment = Alignment.CenterVertically) {
                         Icon(Icons.Default.SupportAgent, null, tint = Palette.blue)
@@ -232,6 +234,9 @@ private fun SupportPage(state: AppState, model: AppViewModel) {
                 }
             }
         }
+    }
+    selectedTicket?.let { ticket ->
+        TicketThreadSheet(ticket, state.lang) { selectedTicket = null }
     }
 }
 
