@@ -156,6 +156,23 @@ class ApiClient {
         val match = data.optJSONObject("match") ?: throw ApiFailure(404, "Match unavailable")
         return parseMatch(match, data.optJSONArray("markets"))
     }
+    private fun parseBetLeg(leg: JSONObject): BetLegDetail {
+        val match = leg.optJSONObject("match")
+        fun integerOrNull(key: String) = match?.takeIf { !it.isNull(key) && it.has(key) }?.optInt(key)
+        return BetLegDetail(
+            matchLabel = leg.str("matchLabel"), marketLabel = leg.str("marketLabel"),
+            selectionLabel = leg.str("selectionLabel"),
+            oddsScaled = leg.str("oddsAtPlacementScaled", "0"),
+            status = leg.str("status"), result = leg.str("grade"),
+            league = match?.str("leagueName").orEmpty(), matchId = leg.str("matchId"),
+            matchStatus = match?.str("status").orEmpty(),
+            scheduledAt = match?.str("scheduledAt").orEmpty(),
+            minute = integerOrNull("minute"), clock = match?.str("clock").orEmpty(),
+            period = match?.str("period").orEmpty(),
+            homeScore = integerOrNull("homeScore"), awayScore = integerOrNull("awayScore")
+        )
+    }
+
     suspend fun bets(token: String, page: Int = 1): BetPage =
         betHistory(token, BetHistoryQuery(), page)
 
@@ -173,7 +190,8 @@ class ApiClient {
                 settledPayoutMinor = it.str("settledPayoutMinor").takeIf(String::isNotBlank),
                 netResultMinor = it.str("netResultMinor").takeIf(String::isNotBlank),
                 placedAt = it.str("placedAt", it.str("createdAt")),
-                combinedOddsScaled = it.str("combinedOddsScaled", "0")
+                combinedOddsScaled = it.str("combinedOddsScaled", "0"),
+                selections = it.arr("legs").objects().map(::parseBetLeg)
             )
         }
         return BetPage(items, response.optInt("page", page), response.optBoolean("hasMore", false))
@@ -191,17 +209,7 @@ class ApiClient {
             netResultMinor = bet.str("netResultMinor").takeIf(String::isNotBlank),
             placedAt = bet.str("placedAt"),
             settledAt = bet.str("settledAt").takeIf(String::isNotBlank),
-            legs = bet.arr("legs").objects().map { leg ->
-                BetLegDetail(
-                    matchLabel = leg.str("matchLabel"),
-                    marketLabel = leg.str("marketLabel"),
-                    selectionLabel = leg.str("selectionLabel"),
-                    oddsScaled = leg.str("oddsAtPlacementScaled", "0"),
-                    status = leg.str("status"), league =
-                        leg.optJSONObject("match")?.str("leagueName").orEmpty(),
-                    result = leg.str("grade")
-                )
-            }
+            legs = bet.arr("legs").objects().map(::parseBetLeg)
         )
     }
     suspend fun wallet(token: String, page: Int = 1): Wallet {
