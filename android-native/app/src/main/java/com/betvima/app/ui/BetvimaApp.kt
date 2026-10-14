@@ -47,13 +47,15 @@ fun BetvimaApp(model: AppViewModel) {
             }
         }
     }
-    BackHandler(enabled = state.betDetailVisible || state.showLogin || state.showSlip || state.detail != null ||
+    BackHandler(enabled = searchOpen || state.betDetailVisible || state.showLogin ||
+        state.showSlip || state.detail != null ||
         state.feature != Feature.NONE || accountOpen || state.tab != Tab.HOME) {
         when {
             state.betDetailVisible -> model.closeBet()
             state.showLogin -> model.showLogin(false)
             state.showSlip -> model.showSlip(false)
             accountOpen -> accountOpen = false
+            searchOpen -> { search = ""; searchOpen = false }
             state.detail != null -> model.closeMatch()
             state.feature != Feature.NONE -> model.feature(Feature.NONE)
             else -> model.tab(Tab.HOME)
@@ -86,7 +88,7 @@ fun BetvimaApp(model: AppViewModel) {
                             onVip = { model.feature(Feature.VIP) },
                             onSupport = { model.feature(Feature.SUPPORT) },
                             onCasino = { model.feature(Feature.CASINO) })
-                        if (searchOpen) {
+                        if (searchOpen && state.tab in setOf(Tab.HOME, Tab.LIVE, Tab.SPORTS)) {
                             OutlinedTextField(value = search, onValueChange = { search = it.take(80) },
                                 singleLine = true, modifier = Modifier.fillMaxWidth()
                                     .background(Color.White).padding(horizontal = 14.dp, vertical = 4.dp),
