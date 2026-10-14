@@ -95,18 +95,31 @@ fun BrandHeader(lang: Lang, onHome: () -> Unit, onLanguage: () -> Unit,
 
 @Composable
 fun SectionHeading(title: String, subtitle: String? = null, action: String? = null, onAction: (() -> Unit)? = null) {
-    Row(Modifier.fillMaxWidth().padding(top = 6.dp, bottom = 10.dp),
+    Row(Modifier.fillMaxWidth().padding(top = 12.dp, bottom = 7.dp),
         verticalAlignment = Alignment.CenterVertically) {
-        Box(Modifier.width(4.dp).height(23.dp).clip(CircleShape).background(Palette.green))
-        Spacer(Modifier.width(10.dp))
         Column(Modifier.weight(1f)) {
-            Text(title, fontWeight = FontWeight.ExtraBold, fontSize = 17.sp, color = Palette.text)
-            if (subtitle != null) Text(subtitle, color = Palette.muted, fontSize = 11.sp)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(Modifier.width(4.dp).height(19.dp).clip(CircleShape).background(Palette.green))
+                Spacer(Modifier.width(9.dp))
+                Text(title, fontWeight = FontWeight.Black, fontSize = 17.sp,
+                    color = Palette.text, maxLines = 2, lineHeight = 22.sp)
+            }
+            if (subtitle != null) Text(subtitle, color = Palette.muted,
+                fontSize = 11.sp, lineHeight = 16.sp,
+                modifier = Modifier.padding(start = 13.dp, top = 4.dp))
         }
         if (action != null && onAction != null) {
-            TextButton(onClick = onAction) {
-                Text(action, color = Palette.blue, fontWeight = FontWeight.Bold, fontSize = 12.sp)
-                Icon(Icons.Default.ChevronRight, null, tint = Palette.blue, modifier = Modifier.size(16.dp))
+            Surface(color = Color.White, shape = RoundedCornerShape(12.dp),
+                border = BorderStroke(1.dp, Palette.border),
+                modifier = Modifier.clickable(onClick = onAction)) {
+                Row(Modifier.padding(horizontal = 11.dp, vertical = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically) {
+                    Text(action, color = Palette.blue, fontWeight = FontWeight.Bold,
+                        fontSize = 11.sp)
+                    Spacer(Modifier.width(3.dp))
+                    Icon(Icons.Default.ChevronRight, null, tint = Palette.blue,
+                        modifier = Modifier.size(15.dp))
+                }
             }
         }
     }
@@ -288,18 +301,25 @@ fun MatchTile(match: Match, lang: Lang, liveEnabled: Boolean, picks: List<Pick>,
 
 @Composable
 fun EmptyPanel(title: String, detail: String, onRetry: (() -> Unit)? = null) {
-    Surface(color = Color.White, shape = RoundedCornerShape(20.dp),
+    Surface(color = Color.White, shape = RoundedCornerShape(21.dp),
         border = BorderStroke(1.dp, Palette.border), modifier = Modifier.fillMaxWidth()) {
-        Column(Modifier.padding(22.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-            Icon(Icons.Default.SignalWifiStatusbarConnectedNoInternet4, null, tint = Palette.muted,
-                modifier = Modifier.size(29.dp))
-            Spacer(Modifier.height(10.dp))
-            Text(title, fontWeight = FontWeight.Bold, color = Palette.text)
+        Column(Modifier.padding(horizontal = 24.dp, vertical = 28.dp),
+            horizontalAlignment = Alignment.CenterHorizontally) {
+            Surface(color = Palette.paper, shape = CircleShape) {
+                Icon(Icons.Default.TravelExplore, null, tint = Palette.blue,
+                    modifier = Modifier.padding(14.dp).size(30.dp))
+            }
+            Spacer(Modifier.height(12.dp))
+            Text(title, fontWeight = FontWeight.Black, color = Palette.text,
+                textAlign = TextAlign.Center, fontSize = 15.sp)
             Text(detail, textAlign = TextAlign.Center, color = Palette.muted,
-                fontSize = 12.sp, modifier = Modifier.padding(top = 5.dp))
-            if (onRetry != null) TextButton(onClick = onRetry) {
-                Text(if (LocalLayoutDirection.current == LayoutDirection.Rtl) "تازه‌سازی" else "Refresh",
-                    color = Palette.blue, fontWeight = FontWeight.Bold)
+                fontSize = 12.sp, lineHeight = 19.sp,
+                modifier = Modifier.padding(top = 7.dp))
+            if (onRetry != null) {
+                Spacer(Modifier.height(10.dp))
+                BvPrimaryButton(if (LocalLayoutDirection.current == LayoutDirection.Rtl)
+                    "تازه‌سازی" else "Refresh",
+                    onClick = onRetry, icon = Icons.Default.Refresh)
             }
         }
     }
@@ -307,36 +327,23 @@ fun EmptyPanel(title: String, detail: String, onRetry: (() -> Unit)? = null) {
 
 @Composable
 fun BrandHero(lang: Lang, count: Int, onLive: () -> Unit, onSports: () -> Unit) {
-    Box(Modifier.fillMaxWidth().height(194.dp).clip(RoundedCornerShape(23.dp))
-        .background(Brush.linearGradient(listOf(Palette.ink, Color(0xFF173C3C), Color(0xFF082C33))))) {
-        Box(Modifier.size(180.dp).offset(x = 210.dp, y = (-55).dp)
-            .clip(CircleShape).background(Palette.green.copy(alpha = 0.08f)))
-        Column(Modifier.fillMaxSize().padding(19.dp), verticalArrangement = Arrangement.SpaceBetween) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                SmallPill(tr(lang, "MATCH CENTER", "مرکز مسابقات"),
-                    Palette.green.copy(alpha = 0.15f), Palette.green)
-                Spacer(Modifier.weight(1f))
-                Icon(Icons.Default.Bolt, null, tint = Palette.green, modifier = Modifier.size(25.dp))
-            }
-            Column {
-                Text(tr(lang, "Every moment. Every match.", "هر لحظه، هر مسابقه."),
-                    color = Color.White, fontWeight = FontWeight.Black, fontSize = 22.sp, lineHeight = 26.sp)
-                Text(tr(lang, "Real-time odds • Live scores • Your picks",
-                    "ضرایب لحظه‌ای • نتایج زنده • انتخاب‌های شما"),
-                    color = Color(0xFFB1D0CF), fontSize = 11.sp,
-                    modifier = Modifier.padding(top = 6.dp))
-            }
-            Row(horizontalArrangement = Arrangement.spacedBy(9.dp)) {
-                Button(onClick = onLive, colors = ButtonDefaults.buttonColors(containerColor = Palette.green),
-                    shape = RoundedCornerShape(11.dp), contentPadding = PaddingValues(horizontal = 16.dp)) {
-                    Icon(Icons.Default.Sensors, null, modifier = Modifier.size(17.dp))
-                    Spacer(Modifier.width(5.dp))
-                    Text(tr(lang, "Live · " + count, "زنده · " + count), fontWeight = FontWeight.ExtraBold)
-                }
-                OutlinedButton(onClick = onSports, border = BorderStroke(1.dp, Color.White.copy(alpha = .25f)),
-                    shape = RoundedCornerShape(11.dp)) {
-                    Text(tr(lang, "All sports", "همه ورزش‌ها"), color = Color.White)
-                }
+    BvPageBanner(
+        eyebrow = tr(lang, "BETVIMA MATCH CENTER", "مرکز زنده بت‌ویما"),
+        title = tr(lang, "Your sports. Your moment.", "هیجان هر لحظه، در یک نگاه."),
+        subtitle = tr(lang, "Explore verified live scores, upcoming fixtures and real market prices.",
+            "نتایج زنده، مسابقات آینده و ضرایب واقعی را یک‌جا دنبال کنید."),
+        icon = Icons.Default.SportsSoccer,
+        accent = Palette.green
+    ) {
+        Spacer(Modifier.height(5.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(9.dp)) {
+            BvPrimaryButton(tr(lang, "Live · $count", "زنده · $count"),
+                onClick = onLive, icon = Icons.Default.Sensors)
+            OutlinedButton(onClick = onSports, shape = RoundedCornerShape(13.dp),
+                border = BorderStroke(1.dp, Color.White.copy(alpha = .3f)),
+                modifier = Modifier.heightIn(min = 50.dp)) {
+                Text(tr(lang, "All sports", "همه ورزش‌ها"), color = Color.White,
+                    fontWeight = FontWeight.Bold, fontSize = 12.sp)
             }
         }
     }
