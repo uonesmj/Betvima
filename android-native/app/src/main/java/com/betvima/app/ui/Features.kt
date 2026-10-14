@@ -32,6 +32,7 @@ fun FeaturePage(state: AppState, model: AppViewModel) {
         Feature.SUPPORT -> tr(state.lang, "24/7 Support", "پشتیبانی ۲۴ ساعته")
         Feature.CASINO -> tr(state.lang, "Casino", "کازینو")
         Feature.AFFILIATE -> tr(state.lang, "Affiliate", "همکاری در فروش")
+        Feature.NOTIFICATIONS -> tr(state.lang, "Notifications", "اعلان‌ها")
         else -> "BetVima"
     }
     Column {
@@ -54,6 +55,7 @@ fun FeaturePage(state: AppState, model: AppViewModel) {
                     "بازی‌های بومی کازینو فقط پس از اتصال معتبر و تأییدشده نمایش داده می‌شوند. بازی یا شرط ساختگی ارائه نمی‌شود."),
                 state.lang)
             Feature.AFFILIATE -> AffiliateDashboard(state, model)
+            Feature.NOTIFICATIONS -> NotificationsPage(state, model)
             else -> Unit
         }
     }
