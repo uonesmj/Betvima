@@ -1,0 +1,241 @@
+package com.betvima.app.ui
+
+import androidx.compose.foundation.*
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.saveable.rememberSaveable
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.platform.LocalUriHandler
+import com.betvima.app.BuildConfig
+import com.betvima.app.data.*
+
+@Composable
+fun MatchDetailPage(state: AppState, model: AppViewModel) {
+    val match = state.detail
+    if (match == null) {
+        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            if (state.detailLoading) CircularProgressIndicator(color = Palette.green)
+            else EmptyPanel("Match unavailable", "Return to the live or sports catalogue.") { model.closeMatch() }
+        }
+        return
+    }
+    LazyColumn(contentPadding = PaddingValues(16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        item {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                IconButton(onClick = model::closeMatch) {
+                    Icon(Icons.Default.ArrowBack, "Back")
+                }
+                Column(Modifier.weight(1f)) {
+                    Text(match.league, fontWeight = FontWeight.ExtraBold, fontSize = 16.sp)
+                    Text(match.country, color = Palette.muted, fontSize = 11.sp)
+                }
+                if (match.live) SmallPill("LIVE " + (match.minute ?: 0) + "′",
+                    Color(0xFFFFEEF0), Palette.red)
+            }
+        }
+        item {
+            Surface(color = Palette.ink, shape = RoundedCornerShape(23.dp),
+                modifier = Modifier.fillMaxWidth()) {
+                Column(Modifier.padding(20.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(if (match.live) "LIVE MATCH CENTER" else "MATCH PREVIEW",
+                        color = Palette.green, fontWeight = FontWeight.ExtraBold, fontSize = 11.sp)
+                    Spacer(Modifier.height(22.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
+                            TeamBadge(match.home, 56)
+                            Spacer(Modifier.height(8.dp))
+                            Text(match.home.name, color = Color.White, textAlign = TextAlign.Center,
+                                fontWeight = FontWeight.Bold, fontSize = 12.sp, maxLines = 2)
+                        }
+                        Text(if (match.homeScore != null && match.awayScore != null)
+                            match.homeScore.toString() + " : " + match.awayScore.toString() else "VS",
+                            color = Color.White, fontSize = 29.sp, fontWeight = FontWeight.Black)
+                        Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
+                            TeamBadge(match.away, 56)
+                            Spacer(Modifier.height(8.dp))
+                            Text(match.away.name, color = Color.White, textAlign = TextAlign.Center,
+                                fontWeight = FontWeight.Bold, fontSize = 12.sp, maxLines = 2)
+                        }
+                    }
+                    Spacer(Modifier.height(16.dp))
+                    Text(match.starts.take(16).replace("T", " · "), color = Color(0xFFB1C2C9), fontSize = 12.sp)
+                }
+            }
+        }
+        item { SectionHeading(tr(state.lang, "All markets", "تمام بازارها"),
+            tr(state.lang, "Only available odds can be selected", "فقط ضرایب باز قابل انتخاب هستند")) }
+        if (match.markets.isEmpty()) item {
+            EmptyPanel(tr(state.lang, "Markets temporarily unavailable", "بازارها موقتاً در دسترس نیستند"),
+                tr(state.lang, "No current prices from the provider.", "قیمت معتبری از ارائه‌دهنده دریافت نشد."))
+        }
+        items(match.markets.size) { index ->
+            val market = match.markets[index]
+            var expanded by rememberSaveable(market.id) { mutableStateOf(index < 3) }
+            Surface(color = Color.White, shape = RoundedCornerShape(16.dp),
+                border = BorderStroke(1.dp, Palette.border)) {
+                Column {
+                    Row(Modifier.fillMaxWidth().clickable { expanded = !expanded }
+                        .padding(horizontal = 14.dp, vertical = 15.dp),
+                        verticalAlignment = Alignment.CenterVertically) {
+                        Text(market.name, modifier = Modifier.weight(1f),
+                            fontWeight = FontWeight.Bold, color = Palette.text, fontSize = 13.sp)
+                        SmallPill(market.selections.size.toString(),
+                            Palette.paper, Palette.muted)
+                        Icon(if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                            null, tint = Palette.muted)
+                    }
+                    if (expanded) {
+                        HorizontalDivider(color = Palette.border)
+                        market.selections.chunked(3).forEach { row ->
+                            Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 5.dp),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                row.forEach { selection ->
+                                    Box(Modifier.weight(1f)) {
+                                        OddsChoice(match, market, selection, state.liveEnabled,
+                                            state.picks.any { it.selectionId == selection.id }) {
+                                            model.togglePick(match, market, selection)
+                                        }
+                                    }
+                                }
+                                repeat(3 - row.size) { Spacer(Modifier.weight(1f)) }
+                            }
+                        }
+                        Spacer(Modifier.height(5.dp))
+                    }
+                }
+            }
+        }
+        item { ResponsibleNote(state.lang) }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun SlipSheet(state: AppState, model: AppViewModel) {
+    var stake by rememberSaveable { mutableStateOf("5.00") }
+    ModalBottomSheet(onDismissRequest = { model.showSlip(false) },
+        containerColor = Palette.paper, dragHandle = { BottomSheetDefaults.DragHandle() }) {
+        Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState())
+            .padding(horizontal = 20.dp).padding(bottom = 32.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(tr(state.lang, "Bet slip", "برگه شرط"), fontSize = 22.sp,
+                    fontWeight = FontWeight.Black, modifier = Modifier.weight(1f))
+                SmallPill(state.picks.size.toString(), Palette.greenLight, Palette.ink)
+            }
+            if (state.picks.isEmpty()) {
+                EmptyPanel(tr(state.lang, "No selections", "انتخابی ندارید"),
+                    tr(state.lang, "Tap an available odd to get started.", "برای شروع روی یک ضریب باز بزنید."))
+            }
+            state.picks.forEach { pick ->
+                Surface(color = Color.White, shape = RoundedCornerShape(15.dp),
+                    border = BorderStroke(1.dp, Palette.border)) {
+                    Row(Modifier.fillMaxWidth().padding(13.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Column(Modifier.weight(1f)) {
+                            Text(pick.match, fontWeight = FontWeight.Bold,
+                                fontSize = 12.sp, color = Palette.text)
+                            Text(pick.market + " · " + pick.selection,
+                                color = Palette.muted, fontSize = 11.sp)
+                        }
+                        Text(odds(pick.oddsScaled), color = Palette.blue,
+                            fontWeight = FontWeight.Black, fontSize = 16.sp)
+                        IconButton(onClick = { model.removePick(pick.selectionId) }) {
+                            Icon(Icons.Default.Close, "Remove", tint = Palette.muted)
+                        }
+                    }
+                }
+            }
+            if (state.picks.isNotEmpty()) {
+                OutlinedTextField(value = stake, onValueChange = { value ->
+                    if (value.matches(Regex("[0-9]{0,10}(\\.[0-9]{0,2})?"))) stake = value
+                }, label = { Text(tr(state.lang, "Stake (USD)", "مبلغ شرط (دلار)")) },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                    singleLine = true, modifier = Modifier.fillMaxWidth())
+                if (state.quote != null) {
+                    Surface(shape = RoundedCornerShape(12.dp), color = Palette.greenLight) {
+                        Row(Modifier.fillMaxWidth().padding(13.dp)) {
+                            Text(tr(state.lang, "Server quoted payout", "پرداخت تأییدشده سرور"),
+                                modifier = Modifier.weight(1f), fontSize = 11.sp)
+                            Text(state.quote, fontWeight = FontWeight.Black, color = Palette.text)
+                        }
+                    }
+                }
+                if (!state.signedIn) Button(
+                    onClick = { model.showSlip(false); model.showLogin(true) },
+                    colors = ButtonDefaults.buttonColors(containerColor = Palette.green),
+                    modifier = Modifier.fillMaxWidth()) {
+                    Text(tr(state.lang, "Sign in to request a quote", "برای استعلام ضریب وارد شوید"),
+                        color = Palette.ink)
+                } else Button(onClick = { model.quote(stake) },
+                    enabled = !state.busy, modifier = Modifier.fillMaxWidth(),
+                    colors = ButtonDefaults.buttonColors(containerColor = Palette.green)) {
+                    Text(tr(state.lang, "Get official quote", "استعلام ضریب قطعی"),
+                        color = Palette.ink, fontWeight = FontWeight.Bold)
+                }
+                Surface(color = Color(0xFFFFF4E7), shape = RoundedCornerShape(13.dp)) {
+                    Text(tr(state.lang,
+                        "Real-money placement is disabled in this build pending verified regulatory approval, age and jurisdiction checks. Quotes do not place bets.",
+                        "ثبت شرط واقعی در این نسخه تا تأیید مجوز قانونی، سن و منطقه کاربر غیرفعال است. استعلام ضریب به معنی ثبت شرط نیست."),
+                        modifier = Modifier.padding(13.dp),
+                        fontSize = 11.sp, color = Color(0xFF86601C))
+                }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun LoginSheet(state: AppState, model: AppViewModel) {
+    var email by rememberSaveable { mutableStateOf("") }
+    var password by rememberSaveable { mutableStateOf("") }
+    val uri = LocalUriHandler.current
+    ModalBottomSheet(onDismissRequest = { model.showLogin(false) },
+        containerColor = Color.White) {
+        Column(Modifier.fillMaxWidth().padding(horizontal = 23.dp).padding(bottom = 35.dp),
+            verticalArrangement = Arrangement.spacedBy(15.dp)) {
+            Text(tr(state.lang, "Welcome back", "خوش آمدید"),
+                fontSize = 25.sp, fontWeight = FontWeight.Black, color = Palette.text)
+            Text(tr(state.lang, "Secure BetVima account", "حساب امن بت‌ویما"),
+                fontSize = 12.sp, color = Palette.muted)
+            OutlinedTextField(email, { email = it }, label = { Text(tr(state.lang, "Email", "ایمیل")) },
+                modifier = Modifier.fillMaxWidth(), singleLine = true,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email))
+            OutlinedTextField(password, { password = it },
+                label = { Text(tr(state.lang, "Password", "رمز عبور")) },
+                modifier = Modifier.fillMaxWidth(), singleLine = true,
+                visualTransformation = PasswordVisualTransformation(),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password))
+            Button(onClick = { model.signIn(email, password) },
+                enabled = !state.busy && email.contains("@") && password.length >= 8,
+                colors = ButtonDefaults.buttonColors(containerColor = Palette.green),
+                modifier = Modifier.fillMaxWidth().height(52.dp)) {
+                if (state.busy) CircularProgressIndicator(Modifier.size(19.dp),
+                    color = Palette.ink, strokeWidth = 2.dp)
+                else Text(tr(state.lang, "Sign in securely", "ورود امن"),
+                    fontWeight = FontWeight.Black, color = Palette.ink)
+            }
+            TextButton(onClick = { uri.openUri("https://betvima.com/auth/register") },
+                modifier = Modifier.align(Alignment.CenterHorizontally)) {
+                Text(tr(state.lang, "New here? Create account", "حساب ندارید؟ ثبت‌نام کنید"),
+                    color = Palette.blue)
+            }
+            ResponsibleNote(state.lang)
+        }
+    }
+}
