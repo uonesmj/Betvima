@@ -74,6 +74,16 @@ fun AffiliateDashboard(state: AppState, model: AppViewModel) {
     LazyColumn(contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)) {
         item {
+            BvPageBanner(
+                eyebrow = tr(state.lang, "BETVIMA PARTNERS", "همکاران بت‌ویما"),
+                title = tr(state.lang, "Your partner dashboard", "داشبورد همکاری شما"),
+                subtitle = tr(state.lang,
+                    "Track referrals and gift codes without leaving the native app.",
+                    "گزارش زیرمجموعه‌ها و کدهای معرفی را در خود اپ ببینید."),
+                icon = Icons.Default.Groups, accent = Palette.green
+            )
+        }
+        item {
             SectionHeading(tr(state.lang, "Partner command center", "پنل مدیریت همکاری"),
                 tr(state.lang, "Referrals, codes and results from your account",
                     "زیرمجموعه‌ها، کدهای هدیه و گزارش‌های واقعی"))
