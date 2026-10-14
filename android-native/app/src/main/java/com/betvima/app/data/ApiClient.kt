@@ -84,9 +84,8 @@ class ApiClient {
         return data.arr("matches").objects().map(::parseMatch) to
             (data.optBoolean("liveBettingEnabled") && !data.optBoolean("catalogueUnavailable"))
     }
-    suspend fun upcoming(sport: String = "football"): List<Match> =
-        get("/api/v1/matches?live=false&page=1&pageSize=50&sport=" +
-            URLEncoder.encode(sport, "UTF-8")).arr("items").objects().map(::parseMatch)
+    suspend fun upcoming(sport: String = "all"): List<Match> =
+        get(upcomingQueryPath(sport)).arr("items").objects().map(::parseMatch)
 
     suspend fun detail(id: String): Match {
         require(id.matches(Regex("[A-Za-z0-9-]{1,100}")))
