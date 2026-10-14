@@ -494,48 +494,66 @@ fun LoginSheet(state: AppState, model: AppViewModel) {
         dragHandle = { BottomSheetDefaults.DragHandle() }
     ) {
         Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState())
-            .padding(horizontal = 19.dp).padding(bottom = 34.dp),
-            verticalArrangement = Arrangement.spacedBy(15.dp)) {
+            .padding(horizontal = 14.dp).padding(bottom = 10.dp),
+            verticalArrangement = Arrangement.spacedBy(9.dp)) {
+            // Premium, compact masthead. Branding and trust signal share one row
+            // instead of the old two stacked, oversized panels.
             Surface(
-                shape = RoundedCornerShape(21.dp),
+                shape = RoundedCornerShape(18.dp),
                 color = Palette.ink,
+                border = BorderStroke(1.dp, Color(0xFF2A4550)),
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Box(Modifier.background(
-                    brush = androidx.compose.ui.graphics.Brush.linearGradient(
-                        listOf(Color(0xFF10151D), Color(0xFF0B302B),
-                            Color(0xFF0C1A2F)))))
-                {
-                    Column(Modifier.fillMaxWidth().padding(17.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                            Text("BET", color = Color.White,
-                                fontWeight = FontWeight.Black, fontSize = 24.sp)
-                            Text("VIMA", color = Palette.green,
-                                fontWeight = FontWeight.Black, fontSize = 24.sp)
-                            Spacer(Modifier.weight(1f))
-                            IconButton(onClick = { model.showLogin(false) }) {
-                                Icon(Icons.Default.Close,
-                                    tr(state.lang, "Close", "بستن"), tint = Color.White)
-                            }
+                Box(
+                    modifier = Modifier.background(
+                        brush = androidx.compose.ui.graphics.Brush.linearGradient(
+                            listOf(
+                                Color(0xFF111D2A),
+                                Color(0xFF0B302B),
+                                Color(0xFF102337)
+                            )
+                        )
+                    )
+                ) {
+                    Row(
+                        Modifier.fillMaxWidth().padding(
+                            start = 15.dp, end = 7.dp, top = 10.dp, bottom = 10.dp
+                        ),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Surface(
+                            color = Color.White.copy(alpha = .09f),
+                            border = BorderStroke(1.dp, Palette.green.copy(alpha = .35f)),
+                            shape = RoundedCornerShape(13.dp)
+                        ) {
+                            Icon(
+                                Icons.Default.Shield,
+                                null,
+                                tint = Palette.green,
+                                modifier = Modifier.padding(10.dp).size(21.dp)
+                            )
                         }
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Surface(color = Palette.green.copy(alpha = .16f),
-                                shape = RoundedCornerShape(12.dp)) {
-                                Icon(Icons.Default.Shield, null, tint = Palette.green,
-                                    modifier = Modifier.padding(9.dp).size(21.dp))
+                        Spacer(Modifier.width(11.dp))
+                        Column(Modifier.weight(1f),
+                            verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text("BET", color = Color.White,
+                                    fontWeight = FontWeight.Black, fontSize = 21.sp)
+                                Text("VIMA", color = Palette.green,
+                                    fontWeight = FontWeight.Black, fontSize = 21.sp)
                             }
-                            Spacer(Modifier.width(11.dp))
-                            Column {
-                                Text(tr(state.lang, "BETVIMA SECURE ACCESS",
-                                    "ورود امن به بت‌ویما"),
-                                    color = Color.White,
-                                    fontSize = 13.sp, fontWeight = FontWeight.Black)
-                                Text(tr(state.lang,
-                                    "One account · private tickets · encrypted session",
-                                    "یک حساب · بلیت‌های خصوصی · نشست رمزنگاری‌شده"),
-                                    color = Color(0xFFBACBD2), fontSize = 10.sp)
-                            }
+                            Text(tr(state.lang, "Secure access · Official account",
+                                "ورود امن · حساب رسمی بت‌ویما"),
+                                color = Color(0xFFB8CCD1),
+                                fontWeight = FontWeight.Medium, fontSize = 10.sp)
+                        }
+                        IconButton(onClick = { model.showLogin(false) }) {
+                            Icon(
+                                Icons.Default.Close,
+                                tr(state.lang, "Close", "بستن"),
+                                tint = Color(0xFFD8E6ED),
+                                modifier = Modifier.size(20.dp)
+                            )
                         }
                     }
                 }
@@ -585,37 +603,40 @@ fun LoginSheet(state: AppState, model: AppViewModel) {
                     }
                 }
             }
-            Surface(color = Color(0xFF17222E),
+            Surface(
+                color = Color(0xFFF0FAF6),
                 shape = RoundedCornerShape(14.dp),
-                modifier = Modifier.fillMaxWidth()) {
-                Row(Modifier.padding(12.dp),
-                    verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Default.VerifiedUser, null, tint = Palette.green,
-                        modifier = Modifier.size(21.dp))
-                    Spacer(Modifier.width(9.dp))
-                    Column {
-                        Text(tr(state.lang, "Secure BetVima account", "حساب امن بت‌ویما"),
-                            color = Color.White, fontWeight = FontWeight.ExtraBold,
-                            fontSize = 12.sp)
-                        Text(tr(state.lang,
-                            "Encrypted session · server-verified identity",
-                            "نشست رمزنگاری‌شده · هویت تأییدشده سرور"),
-                            color = Color(0xFFB5C3D1), fontSize = 10.sp)
+                border = BorderStroke(1.dp, Color(0xFFD4EDE2)),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(
+                    Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 9.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Surface(
+                        color = Color(0xFFDDF5E7),
+                        shape = RoundedCornerShape(10.dp)
+                    ) {
+                        Icon(Icons.Default.VerifiedUser, null, tint = Color(0xFF087B50),
+                            modifier = Modifier.padding(7.dp).size(18.dp))
                     }
+                    Spacer(Modifier.width(10.dp))
+                    Column(Modifier.weight(1f)) {
+                        Text(tr(state.lang, "Protected BetVima account", "حساب حفاظت‌شده بت‌ویما"),
+                            color = Palette.text, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                        Text(tr(state.lang, "Verified sign-in · Private account",
+                            "ورود تأییدشده · حساب خصوصی"),
+                            color = Palette.muted, fontSize = 10.sp)
+                    }
+                    Icon(Icons.Default.Lock, null, tint = Color(0xFF087B50),
+                        modifier = Modifier.size(17.dp))
                 }
             }
-            androidx.compose.animation.AnimatedContent(
-                targetState = state.registerScreen,
-                label = "authModeTransition",
-                transitionSpec = {
-                    (androidx.compose.animation.fadeIn() +
-                        androidx.compose.animation.slideInHorizontally { it / 5 })
-                        .togetherWith(androidx.compose.animation.fadeOut() +
-                            androidx.compose.animation.slideOutHorizontally { -it / 5 })
-                }
-            ) { registering ->
-                Column(verticalArrangement = Arrangement.spacedBy(13.dp)) {
-                    if (!registering) {
+            // Keep the live Cloudflare WebView in a stable subtree.
+            // AnimatedContent previously kept outgoing content mounted while
+            // transitioning and could recreate the challenge mid-load.
+            Column(verticalArrangement = Arrangement.spacedBy(9.dp)) {
+                    if (!state.registerScreen) {
                         Text(tr(state.lang, "Welcome back", "خوش آمدید"),
                             fontSize = 24.sp, fontWeight = FontWeight.Black,
                             color = Palette.text)
@@ -680,7 +701,6 @@ fun LoginSheet(state: AppState, model: AppViewModel) {
                             onLogin = { model.setRegisterScreen(false) }
                         )
                     }
-                }
             }
             ResponsibleNote(state.lang)
         }
