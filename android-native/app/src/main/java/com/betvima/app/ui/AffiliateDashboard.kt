@@ -53,27 +53,44 @@ fun AffiliateDashboard(state: AppState, model: AppViewModel) {
         busy = true
         try {
             val token = vault.accessToken(api) ?: throw IllegalStateException("Sign in required")
+            // Overview controls partner authorization. Optional widgets must not blank it out.
             val overview = api.get("/api/v1/affiliate/overview", token)
-            val links = api.get("/api/v1/affiliate/links", token)
-            val codeData = api.get("/api/v1/affiliate/gift-codes", token)
             partner = overview.optJSONObject("affiliate")
             stats = overview.optJSONObject("stats")
             payable = overview.optJSONObject("payable")
-            link = links.str("primaryUrl")
-            gifts = codeData.arr("items").objects().map {
-                GiftCode(it.str("code"), it.optInt("usageCount"), it.optBoolean("isActive", false))
-            }
             error = null
+            kotlinx.coroutines.supervisorScope {
+                val linksTask = kotlinx.coroutines.async {
+                    runCatching { api.get("/api/v1/affiliate/links", token) }
+                }
+                val giftsTask = kotlinx.coroutines.async {
+                    runCatching { api.get("/api/v1/affiliate/gift-codes", token) }
+                }
+                val urls = linksTask.await().getOrNull()
+                if (urls != null) link = urls.str("primaryUrl")
+                val codes = giftsTask.await().getOrNull()
+                if (codes != null) gifts = codes.arr("items").objects().map {
+                    GiftCode(it.str("code"), it.optInt("usageCount"),
+                        it.optBoolean("isActive", false))
+                }
+            }
         } catch (ex: Exception) {
             partner = null
             stats = null
             payable = null
             gifts = emptyList()
             link = ""
-            error = ex.message ?: "Affiliate access unavailable"
+            error = ex.message ?: tr(state.lang,
+                "Affiliate access unavailable", "دسترسی به پنل افیلیت ممکن نیست")
         } finally { busy = false }
     }
-    LaunchedEffect(state.signedIn) { if (state.signedIn) reload() }
+    LaunchedEffect(state.signedIn) {
+        if (state.signedIn) reload()
+        else {
+            partner = null; stats = null; payable = null
+            link = ""; gifts = emptyList(); error = null
+        }
+    }
     LazyColumn(contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)) {
         item {
