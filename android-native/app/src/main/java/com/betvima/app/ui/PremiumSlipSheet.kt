@@ -1,10 +1,7 @@
 package com.betvima.app.ui
 
-import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
@@ -20,7 +17,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.text.input.KeyboardType
@@ -53,10 +50,10 @@ private fun SlipBrandWordmark(
         text = "Betvima",
         modifier = modifier,
         color = color.copy(alpha = opacity),
-        fontWeight = FontWeight.ExtraBold,
-        fontStyle = FontStyle.Italic,
+        fontWeight = FontWeight.Black,
+        fontFamily = FontFamily.SansSerif,
         fontSize = fontSize,
-        letterSpacing = (-1).sp,
+        letterSpacing = 0.sp,
         lineHeight = (fontSize.value * 1.1f).sp,
         maxLines = 1,
         softWrap = false,
@@ -256,14 +253,16 @@ fun PremiumSlipSheet(state: AppState,model: AppViewModel) {
     val config=LocalConfiguration.current
     val viewport=config.screenHeightDp.dp
     val maxSheet=viewport*.89f
-    val maxPicks=viewport*.235f
+    val pickCapacity = slipPageCapacity(config.screenHeightDp)
     var funding by rememberSaveable { mutableStateOf("main") }
     var mode by rememberSaveable { mutableStateOf("single") }
     LaunchedEffect(state.signedIn) {
         if (state.signedIn) model.refreshAccount()
     }
+    // Extra picks occupy new pages instead of growing a scrollable list.
     val listHeight = if (state.picks.isEmpty()) 68.dp else
-        ((state.picks.size * 86 + 17).dp).coerceAtMost(maxPicks)
+        (state.picks.size.coerceAtMost(pickCapacity) * 75 +
+            if (state.picks.size > pickCapacity) 43 else 10).dp
     LaunchedEffect(state.picks.size,funding) {
         val expected = if(funding=="bonus" || state.picks.size>1)
             "multiple" else "single"
@@ -291,7 +290,6 @@ fun PremiumSlipSheet(state: AppState,model: AppViewModel) {
     ) {
         Column(
             modifier=Modifier.fillMaxWidth().heightIn(max=maxSheet).imePadding()
-                .animateContentSize()
         ) {
             Column(
                 modifier = Modifier.fillMaxWidth()
@@ -316,7 +314,7 @@ fun PremiumSlipSheet(state: AppState,model: AppViewModel) {
                     Spacer(Modifier.width(6.dp))
                     Column(Modifier.weight(1f)) {
                         Text(
-                            "BETVIMA / BETSLIP",
+                            tr(lang, "BETSLIP", "برگه پیش‌بینی"),
                             fontWeight = FontWeight.Black,
                             color = Color.White,
                             fontSize = 13.sp,
@@ -476,11 +474,14 @@ fun PremiumSlipSheet(state: AppState,model: AppViewModel) {
                 }
             }
             HorizontalDivider(color=slipBorder)
-            // Short slips are content-sized; only a long action dock can scroll.
-            // The final action never expands the sheet to 96% for one pick.
+            // Cash stake/quote controls stay fixed. Bonus details retain
+            // a bounded scroll only when required by small displays.
             Column(
-                Modifier.fillMaxWidth().heightIn(max=viewport*.37f)
-                    .verticalScroll(rememberScrollState())
+                Modifier.fillMaxWidth()
+                    .then(if (funding == "bonus") {
+                        Modifier.heightIn(max = viewport * .37f)
+                            .verticalScroll(rememberScrollState())
+                    } else Modifier)
                     .background(Color.White)
                     .navigationBarsPadding()
                     .padding(horizontal=14.dp,vertical=10.dp),
