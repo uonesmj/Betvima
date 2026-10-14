@@ -55,8 +55,7 @@ export function AffiliateRegisterClient() {
               {tr("Earn 70% commission")}
             </h1>
             <p className="mt-2 max-w-xl text-sm leading-6 text-[#AFC3DA]">
-              Create your independent Affiliate account and start building your
-              referral network.
+              {locale === 'fa' ? 'حساب همکاری مستقل خود را ایجاد کنید و شبکه زیرمجموعه‌هایتان را بسازید.' : 'Create your independent Affiliate account and start building your referral network.'}
             </p>
           </div>
 
