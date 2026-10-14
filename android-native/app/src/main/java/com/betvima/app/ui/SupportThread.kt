@@ -1,5 +1,9 @@
 package com.betvima.app.ui
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import android.net.Uri
+import android.provider.OpenableColumns
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -22,8 +26,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.platform.LocalContext
 import com.betvima.app.data.*
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 private val chatNavy = Color(0xFF0C1C34)
 private val chatBlue = Color(0xFF087FF5)
@@ -34,6 +40,15 @@ private val chatLine = Color(0xFFE0E7F0)
 
 private fun formatSupportTime(value: String) =
     value.take(16).replace('T', ' ').ifBlank { "—" }
+
+private data class PickedSupportFile(
+    val uri: Uri, val displayName: String, val mimeType: String, val sizeBytes: Long
+)
+
+private fun supportFileSizeLabel(bytes: Long): String =
+    if (bytes < 0) "≤ 10 MB" else String.format(
+        java.util.Locale.US, "%.1f MB", bytes.toDouble() / (1024.0 * 1024.0)
+    )
 
 @Composable
 private fun ConversationMessage(message: SupportThreadMessage, lang: Lang) {
@@ -125,6 +140,46 @@ fun TicketThreadSheet(
     var askClose by remember(ticket.id) { mutableStateOf(false) }
     var error by remember(ticket.id) { mutableStateOf<String?>(null) }
     var scrollToNew by remember(ticket.id) { mutableStateOf(false) }
+    var chosenFile by remember(ticket.id) { mutableStateOf<PickedSupportFile?>(null) }
+    val documentPicker = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocument()
+    ) { uri: Uri? ->
+        if (uri != null) scope.launch {
+            try {
+                val file = withContext(Dispatchers.IO) {
+                    val resolver = context.contentResolver
+                    val mime = resolver.getType(uri).orEmpty()
+                    var name = "attachment"
+                    var size = -1L
+                    resolver.query(
+                        uri,
+                        arrayOf(OpenableColumns.DISPLAY_NAME, OpenableColumns.SIZE),
+                        null, null, null
+                    )?.use { cursor ->
+                        if (cursor.moveToFirst()) {
+                            val n = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+                            val z = cursor.getColumnIndex(OpenableColumns.SIZE)
+                            if (n >= 0 && !cursor.isNull(n))
+                                name = cursor.getString(n).orEmpty()
+                            if (z >= 0 && !cursor.isNull(z)) size = cursor.getLong(z)
+                        }
+                    }
+                    if (!supportUploadSelectable(mime, size))
+                        throw IllegalArgumentException(
+                            "Only JPG, PNG, WEBP or PDF files up to 10 MB are supported"
+                        )
+                    PickedSupportFile(uri, supportSafeFilename(name), mime, size)
+                }
+                chosenFile = file
+                error = null
+            } catch (ex: Exception) {
+                chosenFile = null
+                error = tr(lang,
+                    "Select a JPG, PNG, WEBP or PDF under 10 MB.",
+                    "فقط فایل JPG، PNG، WEBP یا PDF کوچک‌تر از ۱۰ مگابایت انتخاب کنید.")
+            }
+        }
+    }
 
     suspend fun refresh(silent: Boolean = false) {
         if (!silent) loading = true
@@ -162,9 +217,12 @@ fun TicketThreadSheet(
     ModalBottomSheet(
         onDismissRequest = { if (!sending && !closing) onDismiss() },
         containerColor = Color(0xFFF6F8FC),
+        contentWindowInsets = { WindowInsets(0, 0, 0, 0) },
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     ) {
-        Column(Modifier.fillMaxWidth().fillMaxHeight(.85f)) {
+        // Extend the sheet to the system navigation area. The message composer
+        // owns the bottom safe inset, so no floating empty strip remains.
+        Column(Modifier.fillMaxWidth().fillMaxHeight(.96f).imePadding()) {
             Surface(color = chatNavy, shape = RoundedCornerShape(
                 topStart = 23.dp, topEnd = 23.dp)) {
                 Column(Modifier.fillMaxWidth().background(
@@ -200,10 +258,6 @@ fun TicketThreadSheet(
                                 fontWeight = FontWeight.Bold,
                                 modifier = Modifier.padding(horizontal = 9.dp, vertical = 6.dp))
                         }
-                        Spacer(Modifier.width(8.dp))
-                        Surface(color = Color.White) {
-                            SupportStatusChip(activeTicket.status, lang)
-                        }
                         Spacer(Modifier.weight(1f))
                         IconButton(onClick = { scope.launch { refresh() } },
                             enabled = !loading && !sending && !closing) {
@@ -217,6 +271,18 @@ fun TicketThreadSheet(
                                     tint = Color(0xFFFFD29B))
                             }
                         }
+                    }
+                    // Status is on its own line; never compete for horizontal
+                    // space with the ticket ID and action buttons.
+                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                        SupportStatusChip(activeTicket.status, lang)
+                        Spacer(Modifier.weight(1f))
+                        Text(
+                            supportCategoryName(activeTicket.category, lang),
+                            color = Color(0xFFBDCEDD), fontSize = 10.sp,
+                            maxLines = 1, overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.widthIn(max = 110.dp)
+                        )
                     }
                 }
             }
@@ -265,8 +331,11 @@ fun TicketThreadSheet(
             }
             Surface(color = Color.White, shadowElevation = 9.dp,
                 modifier = Modifier.fillMaxWidth()) {
-                Column(Modifier.fillMaxWidth().padding(horizontal = 13.dp, vertical = 11.dp),
-                    verticalArrangement = Arrangement.spacedBy(9.dp)) {
+                Column(
+                    Modifier.fillMaxWidth().navigationBarsPadding()
+                        .padding(horizontal = 13.dp, vertical = 10.dp),
+                    verticalArrangement = Arrangement.spacedBy(9.dp)
+                ) {
                     if (supportActive(activeTicket.status)) {
                         if (uncertain) {
                             Surface(color = Color(0xFFFFF5E6),
@@ -278,9 +347,60 @@ fun TicketThreadSheet(
                                     modifier = Modifier.padding(11.dp))
                             }
                         }
+                        chosenFile?.let { file ->
+                            Surface(
+                                color = Color(0xFFEAF4FF),
+                                shape = RoundedCornerShape(13.dp),
+                                border = BorderStroke(1.dp, Color(0xFFD4E6FC))
+                            ) {
+                                Row(
+                                    Modifier.fillMaxWidth().padding(
+                                        start = 10.dp, top = 5.dp, bottom = 5.dp, end = 4.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(
+                                        if (file.mimeType == "application/pdf")
+                                            Icons.Default.PictureAsPdf
+                                        else Icons.Default.Image,
+                                        null, tint = chatBlue,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                    Spacer(Modifier.width(8.dp))
+                                    Column(Modifier.weight(1f)) {
+                                        Text(file.displayName, color = chatInk,
+                                            fontSize = 11.sp, fontWeight = FontWeight.Bold,
+                                            maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                        Text(supportFileSizeLabel(file.sizeBytes),
+                                            color = chatMuted, fontSize = 10.sp)
+                                    }
+                                    IconButton(onClick = { chosenFile = null }, enabled = !sending) {
+                                        Icon(Icons.Default.Close,
+                                            tr(lang, "Remove file", "حذف فایل"),
+                                            tint = chatMuted, modifier = Modifier.size(18.dp))
+                                    }
+                                }
+                            }
+                        }
                         Row(Modifier.fillMaxWidth(),
                             verticalAlignment = Alignment.Bottom,
                             horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            OutlinedIconButton(
+                                onClick = {
+                                    documentPicker.launch(arrayOf(
+                                        "image/jpeg", "image/png", "image/webp",
+                                        "application/pdf"
+                                    ))
+                                },
+                                modifier = Modifier.size(48.dp),
+                                enabled = !sending && !closing && !uncertain,
+                                shape = RoundedCornerShape(15.dp),
+                                border = BorderStroke(1.dp, chatLine)
+                            ) {
+                                Icon(Icons.Default.AttachFile,
+                                    tr(lang, "Attach JPG, PNG, WEBP or PDF",
+                                        "پیوست JPG، PNG، WEBP یا PDF"),
+                                    tint = chatBlue, modifier = Modifier.size(22.dp))
+                            }
                             OutlinedTextField(
                                 value = draft,
                                 onValueChange = { draft = it.take(5000) },
@@ -292,27 +412,47 @@ fun TicketThreadSheet(
                             )
                             FilledIconButton(
                                 onClick = {
-                                    if (sending || uncertain || draft.isBlank()) return@FilledIconButton
+                                    if (sending || uncertain ||
+                                        (draft.isBlank() && chosenFile == null))
+                                        return@FilledIconButton
                                     scope.launch {
                                         sending = true; error = null
                                         try {
                                             val token = vault.accessToken(api)
                                                 ?: throw IllegalStateException("Sign in required")
-                                            val sent = api.sendSupportMessage(token, ticket.id, draft)
+                                            val attachment = chosenFile
+                                            val sent = if (attachment == null) {
+                                                api.sendSupportMessage(token, ticket.id, draft)
+                                            } else {
+                                                api.sendSupportFile(
+                                                    token, ticket.id, draft,
+                                                    context.contentResolver, attachment.uri,
+                                                    attachment.displayName,
+                                                    attachment.mimeType
+                                                )
+                                            }
                                             draft = ""
+                                            chosenFile = null
                                             messages = (messages + sent).distinctBy { it.id }
                                             scrollToNew = true
                                             refresh(silent = true)
                                             onUpdated()
-                                        } catch (_: Exception) {
-                                            uncertain = true
-                                            error = tr(lang,
-                                                "Message status unknown. Please refresh before trying again.",
-                                                "نتیجه ارسال پیام نامشخص است؛ قبل از تلاش دوباره تازه‌سازی کنید.")
+                                        } catch (ex: Exception) {
+                                            val rejected = (ex as? ApiFailure)?.code in
+                                                setOf(400, 401, 403, 404, 413, 415, 422)
+                                            uncertain = !rejected
+                                            error = if (rejected) {
+                                                ex.message?.take(220) ?: tr(lang,
+                                                    "The server rejected this attachment.",
+                                                    "سرور فایل یا پیام را نپذیرفت.")
+                                            } else tr(lang,
+                                                "Delivery is uncertain. Check the conversation before resending.",
+                                                "وضعیت ارسال مشخص نیست؛ قبل از ارسال دوباره پیام‌ها را بررسی کنید.")
                                         } finally { sending = false }
                                     }
                                 },
-                                enabled = !sending && !uncertain && draft.isNotBlank(),
+                                enabled = !sending && !uncertain &&
+                                    (draft.isNotBlank() || chosenFile != null),
                                 modifier = Modifier.size(54.dp),
                                 shape = RoundedCornerShape(17.dp),
                                 colors = IconButtonDefaults.filledIconButtonColors(
@@ -366,12 +506,24 @@ fun TicketThreadSheet(
                                 val token = vault.accessToken(api)
                                     ?: throw IllegalStateException("Sign in required")
                                 activeTicket = api.closeSupportTicket(token, ticket.id)
-                                askClose = false; error = null; onUpdated()
-                            } catch (ex: Exception) {
                                 askClose = false
-                                error = ex.message ?: tr(lang,
-                                    "Unable to close ticket","بستن درخواست ممکن نشد")
+                                error = null
+                                onUpdated()
+                            } catch (ex: Exception) {
+                                // A timeout may happen after the server has committed
+                                // the close. Read back the authoritative status
+                                // instead of telling users it definitely failed.
+                                askClose = false
                                 refresh()
+                                if (activeTicket.status == "closed") {
+                                    error = null
+                                    onUpdated()
+                                } else {
+                                    error = (ex as? ApiFailure)?.message?.take(220)
+                                        ?: tr(lang,
+                                            "Could not confirm closure. Refresh this ticket before retrying.",
+                                            "بسته‌شدن تیکت تأیید نشد. پیش از تلاش دوباره، وضعیت آن را تازه‌سازی کنید.")
+                                }
                             } finally { closing = false }
                         }
                     }, enabled = !closing,
