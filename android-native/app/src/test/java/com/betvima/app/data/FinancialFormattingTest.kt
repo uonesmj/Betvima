@@ -17,13 +17,13 @@ class FinancialFormattingTest {
         assertEquals("2000 IRR", money("2000", "IRR"))
     }
     @Test fun doNotTreatPotentialPayoutAsSettledMoney() {
-        val pending = Bet("1", "placed", "SINGLE", "1000", "2300", "USD", 1)
+        val pending = Bet("1", "accepted", "SINGLE", "1000", "2300", "USD", 1)
         assertFalse(pending.isSettled)
         assertEquals(null, pending.settledPayoutMinor)
-        val won = pending.copy(status = "won", settledPayoutMinor = "2300", netResultMinor = "1300")
+        val won = pending.copy(status = "settled", settledPayoutMinor = "2300", netResultMinor = "1300")
         assertTrue(won.isSettled)
         assertEquals("13.00 USD", money(won.netResultMinor!!, won.currency))
-        val lost = pending.copy(status = "lost", settledPayoutMinor = "0", netResultMinor = "-1000")
+        val lost = pending.copy(status = "settled", settledPayoutMinor = "0", netResultMinor = "-1000")
         assertTrue(lost.isSettled)
         assertEquals("-10.00 USD", money(lost.netResultMinor!!, lost.currency))
     }
@@ -36,11 +36,36 @@ class FinancialFormattingTest {
         assertEquals(2, next.transactions.size)
         assertFalse(next.hasMore)
     }
+    @Test fun canonicalServerBetStatusLifecycle() {
+        val base = Bet("1", "pending", "MULTIPLE", "800", "2200", "USD", 2)
+        for (status in listOf("pending", "accepted", "partially_settled", "manual_review")) {
+            assertFalse(base.copy(status = status).isSettled)
+        }
+        for (status in listOf("settled", "void", "refunded", "cancelled", "cashed_out", "rejected")) {
+            assertTrue(base.copy(status = status).isSettled)
+        }
+    }
+    @Test fun localizationFallsBackToAuthoritativeEnglishWhenPersianIsMissing() {
+        val market = Market("m", "h2h", "Match result", "open", emptyList(),
+            nameFa = "نتیجه مسابقه")
+        val selection = Selection("s", "Home win", "19500", "open", 1, "STABLE", nameFa = "برد میزبان")
+        assertEquals("نتیجه مسابقه", market.label(true))
+        assertEquals("Match result", market.label(false))
+        assertEquals("برد میزبان", selection.label(true))
+        assertEquals("Home win", selection.label(false))
+        assertEquals("Home win", selection.copy(nameFa = "").label(true))
+    }
     @Test fun suspendedMarketsCannotAppearAvailable() {
         val market = Market("m", "h2h", "Result", "suspended", emptyList())
         val selection = Selection("s", "Home", "18000", "suspended", 1, "STABLE")
         assertFalse(market.available)
         assertFalse(selection.available)
         assertTrue(market.copy(status = "open").available)
+        assertTrue(selection.copy(status = "open").available)
+        assertTrue(selection.copy(status = "active").available)
+        assertFalse(selection.copy(status = "closed").available)
+        assertFalse(selection.copy(status = "open", oddsScaled = "0").available)
+        assertFalse(selection.copy(status = "open", oddsScaled = "garbled").available)
+        assertFalse(selection.copy(status = "open", oddsScaled = "10000").available)
     }
 }
