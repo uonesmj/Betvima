@@ -53,7 +53,7 @@ fun FeaturePage(state: AppState, model: AppViewModel) {
                 tr(state.lang, "Native casino games will appear here only when a real, approved game integration is available. No placeholder wagering is offered.",
                     "بازی‌های بومی کازینو فقط پس از اتصال معتبر و تأییدشده نمایش داده می‌شوند. بازی یا شرط ساختگی ارائه نمی‌شود."),
                 state.lang)
-            Feature.AFFILIATE -> AffiliatePage(state)
+            Feature.AFFILIATE -> AffiliateDashboard(state, model)
             else -> Unit
         }
     }
