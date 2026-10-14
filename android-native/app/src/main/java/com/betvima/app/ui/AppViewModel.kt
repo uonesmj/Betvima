@@ -12,7 +12,7 @@ import java.math.BigDecimal
 import java.math.RoundingMode
 
 enum class Tab { HOME, LIVE, SPORTS, BETS, WALLET }
-enum class Feature { NONE, BONUSES, VIP, SUPPORT, CASINO, AFFILIATE }
+enum class Feature { NONE, PROFILE, BONUSES, VIP, SUPPORT, CASINO, AFFILIATE }
 enum class Lang { EN, FA }
 
 data class AppState(
