@@ -1,0 +1,7 @@
+<resources>
+    <style name="Theme.Betvima" parent="android:style/Theme.Material.Light.NoActionBar">
+        <item name="android:statusBarColor">#09131C</item>
+        <item name="android:navigationBarColor">#09131C</item>
+        <item name="android:windowLightStatusBar">false</item>
+    </style>
+</resources>

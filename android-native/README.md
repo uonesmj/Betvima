@@ -1,0 +1,22 @@
+# BetVima — Native Android
+
+Native Android app, built with **Kotlin / Jetpack Compose** (no PWA and no site WebView). The module is standalone and consumes the existing `/api/v1` service. It does **not** edit the web release pipeline, database schema, ledger or payout workers.
+
+## Local build
+
+Open `android-native/` in Android Studio (JDK 17, Android SDK 35) and sync Gradle, then build the `app` configuration. CI uses Gradle 8.10.2 and uploads a debug APK. This repository does not yet include a Gradle wrapper; Android Studio manages the Gradle distribution via its import configuration.
+
+## Scope and protections
+
+- Native home, live & prematch lists, league sections, match/market detail, slip preview, bet history, wallet statement, rewards and VIP explainer, profile/auth.
+- Requests use HTTPS to BetVima API with server-issued data. Empty / degraded catalogue is shown honestly; no fake fixtures, odds or wallet balances.
+- Supabase password sign-in uses the project's public anonymous client key obtained from `/api/v1/mobile/config`. The session JWT is verified **server-side** for account requests and stored encrypted with Android Keystore. Registration goes through the existing web registration flow with Turnstile until a dedicated mobile onboarding process is reviewed.
+- All *real-money wager submission* is disabled in the native build and the mobile bootstrap. **Do not enable** without verified age checks, jurisdiction/geolocation enforcement on the server, approved gambling licence, controls for responsible gambling, anti-abuse review and Play certification. UI selections and quotes are not proof of authorization.
+- Do not put provider or service-role secrets into the APK. Never compute final odds or financial balances client-side.
+- Privacy: no tracking SDK, no runtime location permission, no plaintext HTTP, no Android backups for auth storage. Access tokens are not logged.
+
+## Google Play release prerequisites
+
+Google requires adult-only rating, per-jurisdiction gaming licences and app approval, underage and unauthorized geography prevention, free download, and a responsible-gambling disclosure. This app is **not yet approved or ready for real-money release**. See https://support.google.com/googleplay/android-developer/answer/9877032.
+
+Production web deployment is separately gated and is not triggered or implied by this Android PR.
