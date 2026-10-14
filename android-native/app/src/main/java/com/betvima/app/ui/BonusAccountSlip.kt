@@ -76,8 +76,7 @@ fun BonusAccountSlip(state: AppState, model: AppViewModel) {
         loading = true
         return try {
             val token = vault.accessToken(api) ?: throw IllegalStateException("Sign in required")
-            val page = api.bonusCurrencyPage(token, currency)
-            val fresh = page.items.filter {
+            val fresh = api.availableBonusGrants(token, currency).filter {
                 it.currency == currency && it.status == "active" &&
                     (it.remainingMinor.toLongOrNull() ?: 0L) > 0 &&
                     bonusMillisecondsLeft(it.expiresAt, System.currentTimeMillis()) > 0
