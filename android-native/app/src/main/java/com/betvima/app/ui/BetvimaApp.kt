@@ -168,7 +168,8 @@ fun BetvimaApp(model: AppViewModel) {
                     state.tab == Tab.BETS -> BetsPage(state, model)
                     state.tab == Tab.WALLET -> WalletPage(state, model)
                 }
-                if (state.loading && state.live.isNotEmpty() && state.upcoming.isNotEmpty()) {
+                if ((state.liveLoading || state.upcomingLoading) &&
+                    state.live.isNotEmpty() && state.upcoming.isNotEmpty()) {
                     LinearProgressIndicator(Modifier.fillMaxWidth().align(Alignment.TopCenter),
                         color = Palette.green)
                 }
