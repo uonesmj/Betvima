@@ -375,6 +375,117 @@ fun ReferenceMatchCarousel(
     }
 }
 
+/**
+ * TOP Bets card hierarchy: shaded competition header + white selection panel.
+ * Actual provider markets only; no synthetic bet counts, promotions or winning chances.
+ */
+@Composable
+fun ReferenceTopBetCard(match: Match, state: AppState, model: AppViewModel) {
+    val market = match.featured
+    val selection = market?.selections?.firstOrNull { it.available }
+    val selected = selection != null &&
+        state.picks.any { it.selectionId == selection.id }
+    Surface(
+        color = Color(0xFFE0E3E9),
+        shape = RoundedCornerShape(19.dp),
+        border = BorderStroke(
+            if (selected) 2.dp else 1.dp,
+            if (selected) Palette.blue else Color(0xFFE1E4EA)),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column {
+            Row(Modifier.fillMaxWidth().clickable { model.openMatch(match.id) }
+                .padding(start = 12.dp, end = 9.dp, top = 10.dp, bottom = 8.dp),
+                verticalAlignment = Alignment.CenterVertically) {
+                val image = match.leagueLogo?.takeIf { it.startsWith("https://") }
+                if (image != null) AsyncImage(model = image,
+                    contentDescription = null, modifier = Modifier.size(29.dp))
+                else Icon(Icons.Default.EmojiEvents, null, tint = Palette.blue,
+                    modifier = Modifier.size(25.dp))
+                Spacer(Modifier.width(9.dp))
+                Text(match.league, color = Palette.muted, fontSize = 12.sp,
+                    modifier = Modifier.weight(1f), maxLines = 1,
+                    overflow = TextOverflow.Ellipsis)
+                Surface(color = Palette.blue, shape = CircleShape,
+                    modifier = Modifier.size(37.dp).clickable {
+                        model.openMatch(match.id)
+                    }) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(Icons.Default.Add,
+                            tr(state.lang, "More markets", "بازارهای بیشتر"),
+                            tint = Color.White, modifier = Modifier.size(21.dp))
+                    }
+                }
+            }
+            Surface(color = Color.White, shape = RoundedCornerShape(17.dp),
+                modifier = Modifier.fillMaxWidth()) {
+                Column(Modifier.padding(horizontal = 13.dp, vertical = 11.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Surface(color = Color.White,
+                        border = BorderStroke(1.dp, Color(0xFFE4E6EB)),
+                        shape = RoundedCornerShape(19.dp)) {
+                        Text(match.starts.take(16).replace("T", " • "),
+                            modifier = Modifier.padding(horizontal = 13.dp, vertical = 7.dp),
+                            color = Palette.text, fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold)
+                    }
+                    Row(Modifier.fillMaxWidth().clickable { model.openMatch(match.id) },
+                        verticalAlignment = Alignment.CenterVertically) {
+                        TeamBadge(match.home, 28)
+                        Spacer(Modifier.width(7.dp))
+                        Text(match.home.name, color = Palette.text,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 12.sp, modifier = Modifier.weight(1f),
+                            maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Text("–", color = Palette.muted, fontSize = 20.sp)
+                        Spacer(Modifier.width(5.dp))
+                        Text(match.away.name, color = Palette.text,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 12.sp, modifier = Modifier.weight(1f),
+                            maxLines = 1, overflow = TextOverflow.Ellipsis,
+                            textAlign = TextAlign.End)
+                        Spacer(Modifier.width(7.dp))
+                        TeamBadge(match.away, 28)
+                    }
+                    HorizontalDivider(color = Color(0xFFE8E9ED), thickness = .6.dp)
+                    Row(Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            if (market != null && selection != null)
+                                market.label(state.lang == Lang.FA) +
+                                    " · " + selection.label(state.lang == Lang.FA)
+                            else tr(state.lang, "Market unavailable", "بازار در دسترس نیست"),
+                            modifier = Modifier.weight(1f), fontSize = 11.sp,
+                            color = Palette.text, fontWeight = FontWeight.Bold,
+                            maxLines = 2
+                        )
+                        Spacer(Modifier.width(7.dp))
+                        Surface(
+                            color = if (selection != null && selected) Palette.green
+                                else Palette.blue,
+                            shape = RoundedCornerShape(9.dp),
+                            modifier = Modifier.heightIn(min = 38.dp).clickable(
+                                enabled = market != null && selection != null &&
+                                    market.available && match.bettingAvailable &&
+                                    (!match.live || state.liveEnabled)
+                            ) {
+                                if (market != null && selection != null)
+                                    model.togglePick(match, market, selection)
+                            }
+                        ) {
+                            Text(if (selection == null) "—" else
+                                com.betvima.app.data.odds(selection.oddsScaled),
+                                modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
+                                fontSize = 15.sp, fontWeight = FontWeight.Black,
+                                color = Color.White)
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
 /** Compact league list rows: no duplicated competition header for every fixture. */
 @Composable
 fun ReferenceLeagueFixture(match: Match, state: AppState, model: AppViewModel) {
