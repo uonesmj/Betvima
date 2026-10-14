@@ -12,7 +12,10 @@ data class WalletPaymentMethod(
     val available: Boolean,
     val reason: String,
     val minMinor: String,
-    val maxMinor: String
+    val maxMinor: String,
+    val feeBps: Int,
+    val fixedFeeMinor: String,
+    val estimatedSeconds: Int?
 )
 data class WalletMethodCatalogue(
     val methods: List<WalletPaymentMethod>,
@@ -24,17 +27,31 @@ data class WalletMethodCatalogue(
         !operationsUnavailable &&
             (if (direction == "deposit") depositsEnabled else withdrawalsEnabled) &&
             methods.any { it.id == id && it.available }
+
+    /** Never silently substitute a different payment method. */
+    fun method(id: String): WalletPaymentMethod? = methods.firstOrNull { it.id == id }
+
+    fun amountAllowed(id: String, usdMinor: String): Boolean {
+        val value = usdMinor.toBigIntegerOrNull() ?: return false
+        val m = method(id) ?: return false
+        val minimum = m.minMinor.toBigIntegerOrNull() ?: return false
+        val maximum = m.maxMinor.toBigIntegerOrNull() ?: return false
+        return value >= minimum && (maximum == java.math.BigInteger.ZERO || value <= maximum)
+    }
 }
 
 fun parseWalletMethods(json: JSONObject): WalletMethodCatalogue =
     WalletMethodCatalogue(
         json.arr("methods").objects().map {
             WalletPaymentMethod(
-                it.str("id"), it.str("name", it.str("id")),
+                it.str("id"), it.str("nameFa", it.str("nameEn", it.str("id"))),
                 it.optBoolean("isAvailable", false),
                 it.str("unavailableReason"),
                 it.str("minAmountMinor", "0"),
-                it.str("maxAmountMinor", "0")
+                it.str("maxAmountMinor", "0"),
+                it.optInt("feeBps", 0),
+                it.str("fixedFeeMinor", "0"),
+                if (it.isNull("estimatedSeconds")) null else it.optInt("estimatedSeconds")
             )
         },
         json.optBoolean("depositsEnabled", false),
