@@ -36,7 +36,6 @@ fun BetvimaApp(model: AppViewModel) {
     var accountOpen by rememberSaveable { mutableStateOf(false) }
     var languageOpen by rememberSaveable { mutableStateOf(false) }
     var searchOpen by rememberSaveable { mutableStateOf(false) }
-    var search by rememberSaveable { mutableStateOf("") }
     val snackbars = remember { SnackbarHostState() }
     val pageStates = rememberSaveableStateHolder()
     val drawer = rememberDrawerState(DrawerValue.Closed)
@@ -78,7 +77,7 @@ fun BetvimaApp(model: AppViewModel) {
             state.showSlip -> model.showSlip(false)
             drawer.isOpen -> drawerScope.launch { drawer.close() }
             accountOpen -> accountOpen = false
-            searchOpen -> { search = ""; searchOpen = false }
+            searchOpen -> { model.clearSearch(); searchOpen = false }
             state.detail != null -> model.closeMatch()
             state.feature != Feature.NONE -> model.feature(Feature.NONE)
             state.tab == Tab.HOME && state.homeMode == HomeMode.TOP_BETS ->
@@ -117,21 +116,7 @@ fun BetvimaApp(model: AppViewModel) {
                             com.betvima.app.data.money(state.wallet!!.availableMinor,
                                 state.wallet!!.currency) else null,
                         onWallet = { model.tab(Tab.WALLET) })
-                    if (state.detail == null && state.feature == Feature.NONE) {
-                        if (searchOpen && state.tab in setOf(Tab.HOME, Tab.LIVE, Tab.SPORTS)) {
-                            OutlinedTextField(value = search, onValueChange = { search = it.take(80) },
-                                singleLine = true, modifier = Modifier.fillMaxWidth()
-                                    .background(Color.White).padding(horizontal = 14.dp, vertical = 4.dp),
-                                placeholder = { Text(tr(state.lang, "Search teams or leagues",
-                                    "جست‌وجوی تیم یا لیگ")) },
-                                leadingIcon = { Icon(Icons.Default.Search, null) },
-                                trailingIcon = {
-                                    IconButton(onClick = { search = ""; searchOpen = false }) {
-                                        Icon(Icons.Default.Close, "Close search")
-                                    }
-                                })
-                        }
-                    }
+
                 }
             },
             bottomBar = {
@@ -155,20 +140,7 @@ fun BetvimaApp(model: AppViewModel) {
             },
             snackbarHost = { SnackbarHost(snackbars) }
         ) { padding ->
-            val filtered = run {
-                if (search.isBlank()) state
-                else {
-                    val query = search.trim()
-                    state.copy(
-                        live = state.live.filter {
-                            it.title.contains(query, true) || it.league.contains(query, true)
-                        },
-                        upcoming = state.upcoming.filter {
-                            it.title.contains(query, true) || it.league.contains(query, true)
-                        }
-                    )
-                }
-            }
+            val filtered = state
             Box(Modifier.fillMaxSize().padding(padding)) {
                 val screenId = when {
                     state.detailLoading || state.detail != null ->
@@ -219,6 +191,9 @@ fun BetvimaApp(model: AppViewModel) {
         }
         }
 
+        if (searchOpen) NativeSearchSheet(state, model) {
+            searchOpen = false
+        }
         if (state.showSlip) SlipSheet(state, model)
         if (state.showLogin) LoginSheet(state, model)
         if (state.betDetailVisible) BetReceiptSheet(state, model)
