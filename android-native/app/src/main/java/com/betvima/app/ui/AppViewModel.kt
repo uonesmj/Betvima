@@ -30,7 +30,8 @@ data class AppState(
     val betDetail: BetDetail? = null, val betDetailLoading: Boolean = false,
     val betDetailVisible: Boolean = false,
     val picks: List<Pick> = emptyList(), val showSlip: Boolean = false,
-    val showLogin: Boolean = false, val signedIn: Boolean = false,
+    val showLogin: Boolean = false, val registerScreen: Boolean = false,
+    val signedIn: Boolean = false,
     val wallet: Wallet? = null, val bets: List<Bet> = emptyList(),
     val betsPage: Int = 1, val betsHasMore: Boolean = false,
     val moreBetsLoading: Boolean = false, val moreWalletLoading: Boolean = false,
@@ -67,8 +68,9 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
     fun notice(message: String?) = mutable.update { it.copy(notice = message) }
-    fun language() {
-        val lang = if (state.value.lang == Lang.EN) Lang.FA else Lang.EN
+    fun language() =
+        setLanguage(if (state.value.lang == Lang.EN) Lang.FA else Lang.EN)
+    fun setLanguage(lang: Lang) {
         preferences.edit().putString("language", if (lang == Lang.FA) "fa" else "en").apply()
         mutable.update { it.copy(lang = lang) }
     }
@@ -233,7 +235,10 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         mutable.update { it.copy(quote = null, busy = false) }
     }
     fun showSlip(show: Boolean) = mutable.update { it.copy(showSlip = show) }
-    fun showLogin(show: Boolean) = mutable.update { it.copy(showLogin = show) }
+    fun showLogin(show: Boolean, register: Boolean = false) =
+        mutable.update { it.copy(showLogin = show, registerScreen = register) }
+    fun setRegisterScreen(register: Boolean) =
+        mutable.update { it.copy(registerScreen = register) }
     fun signIn(email: String, password: String) = viewModelScope.launch {
         mutable.update { it.copy(busy = true, notice = null) }
         try {
