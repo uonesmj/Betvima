@@ -15,6 +15,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.zIndex
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.semantics.Role
@@ -97,39 +100,84 @@ fun ReferenceAnimatedBottomNav(
     }
 }
 
+/**
+ * Footer is a single surface. The blue slip overlaps the black navigation
+ * by 20dp exactly, rather than taking a disconnected full-width row.
+ * The hit area is at least 48dp and the icon/text remain accessible.
+ */
+@Composable
+fun ReferenceBottomBar(
+    state: AppState,
+    showSlip: Boolean,
+    onNavigate: (String) -> Unit,
+    onSlip: () -> Unit
+) {
+    val footerHeight by animateDpAsState(
+        targetValue = if (showSlip) 101.dp else 77.dp,
+        animationSpec = spring(stiffness = Spring.StiffnessMediumLow),
+        label = "footerHeight"
+    )
+    Box(Modifier.fillMaxWidth().height(footerHeight)) {
+        Box(Modifier.align(Alignment.BottomCenter)) {
+            ReferenceAnimatedBottomNav(state, onNavigate)
+        }
+        AnimatedVisibility(
+            visible = showSlip,
+            modifier = Modifier.align(Alignment.TopCenter).zIndex(2f),
+            enter = slideInVertically(tween(240)) { it } + fadeIn(tween(200)),
+            exit = slideOutVertically(tween(180)) { it } + fadeOut(tween(180))
+        ) {
+            AnimatedFloatingBetslip(state.picks.size, state.lang, onSlip)
+        }
+    }
+}
+
 @Composable
 fun AnimatedFloatingBetslip(
     count: Int,
     lang: Lang,
     onOpen: () -> Unit
 ) {
-    // The reference always shows the current selection counter, including zero.
-    Box(Modifier.fillMaxWidth().padding(top = 5.dp, bottom = 4.dp),
+    val interactions = remember { MutableInteractionSource() }
+    val pressed by interactions.collectIsPressedAsState()
+    val buttonScale by animateFloatAsState(
+        if (pressed) .94f else 1f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessMediumLow),
+        label = "slipPressScale"
+    )
+    Box(Modifier.fillMaxWidth().padding(top = 1.dp),
         contentAlignment = Alignment.Center) {
-        Surface(color = Palette.blue,
+        Surface(
+            color = Palette.blue,
             shape = RoundedCornerShape(28.dp),
-            shadowElevation = 7.dp,
-            modifier = Modifier.width(134.dp).height(43.dp)
-                .clickable(onClick = onOpen)) {
+            shadowElevation = 9.dp,
+            modifier = Modifier.width(146.dp).height(50.dp)
+                .graphicsLayer { scaleX = buttonScale; scaleY = buttonScale }
+                .clickable(
+                    interactionSource = interactions,
+                    indication = androidx.compose.material3.ripple(),
+                    onClick = onOpen)
+        ) {
             Row(Modifier.fillMaxSize().padding(horizontal = 13.dp),
                 horizontalArrangement = Arrangement.Center,
                 verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Default.ConfirmationNumber,
-                    contentDescription = tr(lang, "Bet slip", "برگه شرط"),
+                    contentDescription = tr(lang, "Open bet slip", "باز کردن برگه شرط"),
                     tint = Color.White, modifier = Modifier.size(19.dp))
-                Spacer(Modifier.width(5.dp))
+                Spacer(Modifier.width(6.dp))
                 AnimatedContent(
                     targetState = count, label = "betSlipCounter",
                     transitionSpec = {
-                        (slideInVertically { it / 2 } + fadeIn())
-                            .togetherWith(slideOutVertically { -it / 2 } + fadeOut())
+                        (slideInVertically(tween(180)) { it / 2 } + fadeIn())
+                            .togetherWith(slideOutVertically(tween(150)) { -it / 2 } + fadeOut())
                     }) { value ->
                     Text(value.toString(), color = Color.White,
                         fontWeight = FontWeight.Black, fontSize = 15.sp)
                 }
-                Spacer(Modifier.width(9.dp))
-                Icon(Icons.Default.KeyboardArrowUp,
-                    tr(lang, "Open slip", "باز کردن برگه شرط"),
+                Spacer(Modifier.width(10.dp))
+                Icon(Icons.Default.KeyboardArrowUp, null,
                     tint = Color.White, modifier = Modifier.size(22.dp))
             }
         }
