@@ -96,9 +96,19 @@ class ApiClient {
     }
     suspend fun bets(token: String): List<Bet> =
         get("/api/v1/bets?pageSize=30", token).arr("items").objects().map {
-            Bet(it.str("id"), it.str("status"), it.str("type"), it.str("stakeMinor", "0"),
-                it.str("settledPayoutMinor", it.str("potentialPayoutMinor", "0")),
-                it.str("currency", "USD"), it.arr("legs").length())
+            Bet(
+                id = it.str("id"),
+                status = it.str("status"),
+                type = it.str("type"),
+                stakeMinor = it.str("stakeMinor", "0"),
+                payoutMinor = it.str("potentialPayoutMinor", "0"),
+                currency = it.str("currency", "USD"),
+                legs = it.arr("legs").length(),
+                settledPayoutMinor = it.str("settledPayoutMinor").takeIf(String::isNotBlank),
+                netResultMinor = it.str("netResultMinor").takeIf(String::isNotBlank),
+                placedAt = it.str("placedAt", it.str("createdAt")),
+                combinedOddsScaled = it.str("combinedOddsScaled", "0")
+            )
         }
     suspend fun wallet(token: String): Wallet {
         val data = get("/api/v1/wallet?currency=USD", token)
