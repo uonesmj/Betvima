@@ -97,30 +97,29 @@ export class PostgresBonusRepository implements BonusRepository {
     const items = rows.map(mapBonus);
     const total = toNum(count?.total);
 
+    // The promotion exists independently of whether a user has ever deposited.
+    // The previous lookup returned null for a new account, making the website
+    // guess "100%" instead of presenting the authoritative campaign.
     let promotion: BonusPromotionSummary | null = null;
-    const promotionId = items.find((item) => item.promotionId)?.promotionId ?? null;
-    if (promotionId) {
-      const p = await this.db.queryOne<Row>(
-        `select id, slug as code, type, title, description, percentage_bps,
-                min_deposit_minor, max_bonus_minor, is_active
-           from nova.promotions
-          where id = $1
-          limit 1`,
-        [promotionId],
-      );
-      if (p) {
-        promotion = {
-          id: toStr(p.id),
-          code: toStr(p.code),
-          type: toStr(p.type),
-          title: toStr(p.title),
-          description: toStrOrNull(p.description),
-          percentageBps: toNum(p.percentage_bps),
-          minDepositMinor: p.min_deposit_minor == null ? null : toBig(p.min_deposit_minor),
-          maxBonusMinor: p.max_bonus_minor == null ? null : toBig(p.max_bonus_minor),
-          isActive: Boolean(p.is_active),
-        };
-      }
+    const p = await this.db.queryOne<Row>(
+      `select id, slug as code, type, title, description, percentage_bps,
+              min_deposit_minor, max_bonus_minor, is_active
+         from nova.promotions
+        where slug = 'nova-100-deposit-bonus'
+        limit 1`,
+    );
+    if (p) {
+      promotion = {
+        id: toStr(p.id),
+        code: toStr(p.code),
+        type: toStr(p.type),
+        title: toStr(p.title),
+        description: toStrOrNull(p.description),
+        percentageBps: toNum(p.percentage_bps),
+        minDepositMinor: p.min_deposit_minor == null ? null : toBig(p.min_deposit_minor),
+        maxBonusMinor: p.max_bonus_minor == null ? null : toBig(p.max_bonus_minor),
+        isActive: Boolean(p.is_active),
+      };
     }
 
     return {
