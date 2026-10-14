@@ -436,8 +436,7 @@ export function AffiliatePayoutsClient() {
             </button>
 
             <p className="text-[11px] nova-muted">
-              Payout requests are reviewed manually. The affiliate team transfers the funds
-              to the saved wallet and marks the payout as paid after the transfer.
+              {locale === 'fa' ? 'درخواست‌های پرداخت به‌صورت دستی بررسی می‌شوند. تیم همکاری مبلغ را به کیف پول ذخیره‌شده انتقال می‌دهد و پس از انتقال، وضعیت را پرداخت‌شده ثبت می‌کند.' : 'Payout requests are reviewed manually. The affiliate team transfers the funds to the saved wallet and marks the payout as paid after the transfer.'}
             </p>
           </div>
         </Card>
