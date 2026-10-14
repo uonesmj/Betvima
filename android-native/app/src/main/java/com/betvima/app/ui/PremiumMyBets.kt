@@ -272,12 +272,8 @@ private fun HistoryChip(label: String, chosen: Boolean, action: () -> Unit) {
 
 @Composable
 private fun PremiumTicket(bet: Bet, lang: Lang, onOpen: () -> Unit) {
-    val isLost = (bet.netResultMinor?.startsWith("-") == true)
-    val accent = when {
-        isLost -> Palette.red
-        bet.isSettled -> Palette.green
-        else -> Palette.blue
-    }
+    val accent = ticketResultColor(bet)
+    var expanded by rememberSaveable(bet.id) { mutableStateOf(bet.legs == 1) }
     Surface(color = Color.White, shape = RoundedCornerShape(19.dp),
         border = BorderStroke(1.dp, Palette.border),
         shadowElevation = 2.dp,
@@ -303,7 +299,7 @@ private fun PremiumTicket(bet: Bet, lang: Lang, onOpen: () -> Unit) {
                 }
                 Surface(color = accent.copy(alpha = .11f),
                     shape = RoundedCornerShape(10.dp)) {
-                    Text(betStatus(bet.status, lang),
+                    Text(ticketResult(bet, lang),
                         modifier = Modifier.padding(horizontal = 9.dp, vertical = 7.dp),
                         color = accent, fontSize = 10.sp,
                         fontWeight = FontWeight.ExtraBold, maxLines = 1)
@@ -323,13 +319,33 @@ private fun PremiumTicket(bet: Bet, lang: Lang, onOpen: () -> Unit) {
                 }
                 Column(Modifier.weight(1f)) {
                     Text(if (bet.settledPayoutMinor != null)
-                        tr(lang, "Paid out", "پرداخت‌شده")
+                        tr(lang, "Confirmed return", "مبلغ نهایی برگشتی")
                         else tr(lang, "Possible return", "بازگشت احتمالی"),
                         fontSize = 10.sp, color = Palette.muted)
                     Spacer(Modifier.height(5.dp))
                     Text(money(bet.settledPayoutMinor ?: bet.payoutMinor, bet.currency),
                         fontSize = 15.sp, fontWeight = FontWeight.Black,
                         color = if (bet.settledPayoutMinor != null) accent else Palette.text)
+                }
+            }
+            if (bet.selections.isNotEmpty()) {
+                val visible = if (expanded) bet.selections else bet.selections.take(2)
+                Column(Modifier.fillMaxWidth().padding(horizontal = 13.dp, vertical = 7.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    visible.forEach { leg ->
+                        BetSelectionOverview(leg, lang, Modifier.fillMaxWidth())
+                    }
+                    if (bet.selections.size > 2) {
+                        TextButton(onClick = { expanded = !expanded }) {
+                            Icon(if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                                null, tint = Palette.blue)
+                            Spacer(Modifier.width(4.dp))
+                            Text(if (expanded) tr(lang, "Show fewer", "نمایش کمتر")
+                                else tr(lang, "Show all selections", "نمایش همه انتخاب‌ها"),
+                                color = Palette.blue, fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold)
+                        }
+                    }
                 }
             }
             Row(Modifier.fillMaxWidth()
