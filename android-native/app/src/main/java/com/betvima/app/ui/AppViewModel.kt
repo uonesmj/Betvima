@@ -21,7 +21,8 @@ data class AppState(
     val tab: Tab = Tab.HOME, val feature: Feature = Feature.NONE,
     val lang: Lang = Lang.FA, val sport: String = "football",
     val live: List<Match> = emptyList(), val upcoming: List<Match> = emptyList(),
-    val loading: Boolean = false, val detailLoading: Boolean = false,
+    val liveLoading: Boolean = false, val upcomingLoading: Boolean = false,
+    val detailLoading: Boolean = false,
     val liveEnabled: Boolean = false, val detail: Match? = null,
     val betDetail: BetDetail? = null, val betDetailLoading: Boolean = false,
     val betDetailVisible: Boolean = false,
@@ -44,6 +45,11 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     private val vault = SessionVault(app)
     private val preferences = app.getSharedPreferences("native_preferences", android.content.Context.MODE_PRIVATE)
     private var sessionGeneration = 0
+    private var liveRequestNumber = 0
+    private var upcomingRequestNumber = 0
+    private var detailRequestNumber = 0
+    private var accountRequestNumber = 0
+    private var liveRequestInFlight = false
     private val mutable = MutableStateFlow(AppState(
         signedIn = vault.signedIn(),
         lang = if (preferences.getString("language", "fa") == "en") Lang.EN else Lang.FA
@@ -62,6 +68,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     fun tab(tab: Tab) {
         mutable.update { it.copy(tab = tab, feature = Feature.NONE, detail = null) }
         when (tab) {
+            Tab.HOME -> refreshAll()
             Tab.LIVE -> refreshLive()
             Tab.SPORTS -> refreshUpcoming()
             Tab.BETS, Tab.WALLET -> if (state.value.signedIn) refreshAccount()
@@ -74,42 +81,74 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         if (feature == Feature.NOTIFICATIONS && state.value.signedIn) refreshNotifications()
     }
     fun sport(sport: String) {
+        if (state.value.sport == sport) return
         mutable.update { it.copy(sport = sport) }
-        refreshUpcoming()
+        if (state.value.tab == Tab.SPORTS) refreshUpcoming()
     }
     fun refreshAll() {
         refreshLive()
         refreshUpcoming()
     }
     fun refreshLive(silent: Boolean = false) = viewModelScope.launch {
-        if (!silent) mutable.update { it.copy(loading = true) }
+        if (liveRequestInFlight) return@launch
+        liveRequestInFlight = true
+        val request = ++liveRequestNumber
+        if (!silent) mutable.update { it.copy(liveLoading = true) }
         try {
             val (matches, liveEnabled) = api.live()
-            mutable.update { it.copy(live = matches, liveEnabled = liveEnabled, loading = false) }
+            if (request == liveRequestNumber) mutable.update {
+                it.copy(live = matches, liveEnabled = liveEnabled, liveLoading = false)
+            }
         } catch (ex: Exception) {
-            mutable.update { it.copy(loading = false, notice = if (silent) it.notice else
-                ex.message ?: "Live data unavailable") }
+            if (request == liveRequestNumber) mutable.update {
+                // Keep last known scores visible, but never leave live wagering shown as enabled
+                // after losing connection to the authoritative feed.
+                it.copy(liveEnabled = false, liveLoading = false,
+                    notice = if (silent) it.notice else tr(it.lang,
+                        "Live data unavailable. Showing last received scores.",
+                        "اتصال داده زنده قطع شد؛ آخرین نتایج دریافت‌شده نمایش داده می‌شود."))
+            }
+        } finally {
+            liveRequestInFlight = false
         }
     }
-    fun refreshUpcoming() = viewModelScope.launch {
-        mutable.update { it.copy(loading = true) }
-        try {
-            val events = api.upcoming(state.value.sport)
-            mutable.update { it.copy(upcoming = events, loading = false) }
-        } catch (ex: Exception) {
-            mutable.update { it.copy(loading = false, notice = ex.message ?: "Unable to load fixtures") }
+    fun refreshUpcoming() {
+        val requestedSport = state.value.sport
+        val request = ++upcomingRequestNumber
+        mutable.update { it.copy(upcomingLoading = true) }
+        viewModelScope.launch {
+            try {
+                val events = api.upcoming(requestedSport)
+                if (request == upcomingRequestNumber && state.value.sport == requestedSport)
+                    mutable.update { it.copy(upcoming = events, upcomingLoading = false) }
+            } catch (ex: Exception) {
+                if (request == upcomingRequestNumber && state.value.sport == requestedSport)
+                    mutable.update {
+                        it.copy(upcomingLoading = false, notice = tr(it.lang,
+                            "Unable to load the selected sport.", "بارگذاری مسابقات این رشته ناموفق بود."))
+                    }
+            }
         }
     }
     fun openMatch(id: String) = viewModelScope.launch {
+        val request = ++detailRequestNumber
         mutable.update { it.copy(detailLoading = true, detail = null) }
         try {
             val match = api.detail(id)
-            mutable.update { it.copy(detail = match, detailLoading = false) }
+            if (request == detailRequestNumber) mutable.update {
+                it.copy(detail = match, detailLoading = false)
+            }
         } catch (ex: Exception) {
-            mutable.update { it.copy(detailLoading = false, notice = ex.message ?: "Match unavailable") }
+            if (request == detailRequestNumber) mutable.update {
+                it.copy(detailLoading = false, notice = tr(it.lang,
+                    "Match details unavailable.", "جزئیات مسابقه در دسترس نیست."))
+            }
         }
     }
-    fun closeMatch() = mutable.update { it.copy(detail = null, detailLoading = false) }
+    fun closeMatch() {
+        detailRequestNumber++
+        mutable.update { it.copy(detail = null, detailLoading = false) }
+    }
     fun togglePick(match: Match, market: Market, selection: Selection) {
         if (!match.bettingAvailable || !market.available || !selection.available ||
             (match.live && !state.value.liveEnabled)) return
@@ -171,6 +210,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     }
     fun signOut() {
         closeBet()
+        closeMatch()
+        accountRequestNumber++
         sessionGeneration++
         vault.clear()
         mutable.update { it.copy(signedIn = false, wallet = null, bets = emptyList(),
@@ -182,10 +223,11 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     fun refreshAccount() = viewModelScope.launch {
         if (!state.value.signedIn) return@launch
         val generation = sessionGeneration
+        val request = ++accountRequestNumber
         mutable.update { it.copy(accountLoading = true) }
         val jwt = vault.accessToken(api)
         if (jwt.isNullOrBlank()) {
-            if (sessionGeneration == generation) {
+            if (sessionGeneration == generation && request == accountRequestNumber) {
                 mutable.update { it.copy(accountLoading = false,
                     notice = tr(it.lang, "Your session could not be refreshed. Please sign in again.",
                         "نشست شما تمدید نشد. لطفاً دوباره وارد شوید.")) }
@@ -200,7 +242,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             val walletResult = wallet.await()
             val betResult = bets.await()
             val bonusResult = bonuses.await()
-            if (sessionGeneration != generation || !state.value.signedIn) return@supervisorScope
+            if (sessionGeneration != generation || request != accountRequestNumber ||
+                !state.value.signedIn) return@supervisorScope
             mutable.update {
                 it.copy(
                     wallet = walletResult.getOrNull() ?: it.wallet,
