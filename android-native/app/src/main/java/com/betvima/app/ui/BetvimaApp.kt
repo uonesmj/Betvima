@@ -70,7 +70,9 @@ fun BetvimaApp(model: AppViewModel) {
                         onLanguage = model::language,
                         onAccount = {
                             if (state.signedIn) accountOpen = true else model.showLogin(true)
-                        })
+                        },
+                        onNotifications = { model.feature(Feature.NOTIFICATIONS) },
+                        unread = state.notifications.count { it.readAt == null })
                     if (state.detail == null && state.feature == Feature.NONE) {
                         QuickToolbar(state.lang,
                             onSports = { model.tab(Tab.SPORTS) },
