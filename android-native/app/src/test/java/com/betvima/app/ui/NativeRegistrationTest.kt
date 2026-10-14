@@ -39,4 +39,10 @@ class NativeRegistrationTest {
             .put("data", org.json.JSONObject().put("turnstileSiteKey", key))))
     }
 
+    @Test fun successfulSignupAllowsOneTapSignInOnlyWithVolatileCredentials() {
+        assertFalse(postSignupLoginEnabled(false, "secretPassword1", false))
+        assertTrue(postSignupLoginEnabled(true, "secretPassword1", false))
+        assertFalse(postSignupLoginEnabled(true, "", false))
+        assertFalse(postSignupLoginEnabled(true, "secretPassword1", true))
+    }
 }

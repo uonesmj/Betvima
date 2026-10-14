@@ -483,9 +483,9 @@ fun SlipSheet(state: AppState, model: AppViewModel) {
 @Composable
 fun LoginSheet(state: AppState, model: AppViewModel) {
     var email by rememberSaveable { mutableStateOf("") }
-    var password by rememberSaveable { mutableStateOf("") }
+    // Login credentials are memory-only and must not enter Android saved state.
+    var password by remember { mutableStateOf("") }
     var visible by rememberSaveable { mutableStateOf(false) }
-    var registrationNotice by rememberSaveable { mutableStateOf<String?>(null) }
     val uri = LocalUriHandler.current
     ModalBottomSheet(
         onDismissRequest = { model.showLogin(false) },
@@ -561,20 +561,6 @@ fun LoginSheet(state: AppState, model: AppViewModel) {
                                     fontWeight = FontWeight.ExtraBold, fontSize = 14.sp)
                             }
                         }
-                    }
-                }
-            }
-            androidx.compose.animation.AnimatedVisibility(visible = !registrationNotice.isNullOrBlank()) {
-                Surface(color = Palette.greenLight,
-                    shape = RoundedCornerShape(13.dp)) {
-                    Row(Modifier.fillMaxWidth().padding(12.dp),
-                        verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Default.MarkEmailRead, null, tint = Palette.green,
-                            modifier = Modifier.size(19.dp))
-                        Spacer(Modifier.width(9.dp))
-                        Text(registrationNotice.orEmpty(),
-                            fontSize = 11.sp, color = Palette.text,
-                            lineHeight = 16.sp)
                     }
                 }
             }
@@ -687,15 +673,9 @@ fun LoginSheet(state: AppState, model: AppViewModel) {
                     } else {
                         NativeRegistrationForm(
                             lang = state.lang,
-                            onSuccess = { emailConfirmationRequired ->
-                                registrationNotice = if (emailConfirmationRequired)
-                                    tr(state.lang,
-                                        "Account created. Confirm the email we sent you, then log in.",
-                                        "حساب ساخته شد. ایمیل تأیید را بررسی کنید و سپس وارد شوید.")
-                                else tr(state.lang,
-                                    "Account created successfully. Sign in with your new credentials.",
-                                    "حساب با موفقیت ساخته شد. با مشخصات جدید وارد شوید.")
-                                model.setRegisterScreen(false)
+                            loginBusy = state.busy,
+                            onSignIn = { createdEmail, createdPassword ->
+                                model.signIn(createdEmail, createdPassword, navigateHome = true)
                             },
                             onLogin = { model.setRegisterScreen(false) }
                         )
