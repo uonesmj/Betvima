@@ -3,6 +3,7 @@ on:
   push:
     branches:
       - 'codex/vip-cashback-financial-engine-*'
+      - 'codex/vip-historical-fx-settlement-*'
   workflow_dispatch:
 permissions:
   contents: read
@@ -31,7 +32,6 @@ jobs:
       PGOPTIONS: '-c search_path=nova,public,extensions'
       PGPASSWORD: vip_cashback_test_only
       NOVA_TEST_DB: nova_vip_cashback_finance_test
-      NOVA_SQL_TEST_FILTER: 31_vip_cashback_finance_test.sql
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
       - name: Verify PostgreSQL readiness
@@ -39,5 +39,11 @@ jobs:
           sudo apt-get update -qq
           sudo apt-get install -y -qq postgresql-client
           pg_isready -h "$PGHOST" -p "$PGPORT" -U "$PGUSER"
-      - name: Run VIP cashback ledger and settlement SQL regression against disposable PostgreSQL
+      - name: Run original VIP net weekly cashback ledger regression
+        env:
+          NOVA_SQL_TEST_FILTER: 31_vip_cashback_finance_test.sql
+        run: bash scripts/run-sql-tests.sh
+      - name: Run historical FX settlement and payout financial regression
+        env:
+          NOVA_SQL_TEST_FILTER: 32_vip_cashback_historical_fx_test.sql
         run: bash scripts/run-sql-tests.sh
