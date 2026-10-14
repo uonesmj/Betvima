@@ -557,6 +557,46 @@ fun LoginSheet(state: AppState, model: AppViewModel) {
                     }
                 }
             }
+            androidx.compose.animation.AnimatedVisibility(
+                visible = !state.authError.isNullOrBlank(),
+                enter = androidx.compose.animation.fadeIn() +
+                    androidx.compose.animation.expandVertically(),
+                exit = androidx.compose.animation.fadeOut() +
+                    androidx.compose.animation.shrinkVertically()
+            ) {
+                Surface(color = Color(0xFFFFEAEB),
+                    border = BorderStroke(1.dp, Palette.red.copy(alpha = .2f)),
+                    shape = RoundedCornerShape(13.dp)) {
+                    Row(Modifier.fillMaxWidth().padding(12.dp),
+                        verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Default.ErrorOutline, null,
+                            tint = Palette.red, modifier = Modifier.size(20.dp))
+                        Spacer(Modifier.width(9.dp))
+                        Text(state.authError.orEmpty(), color = Palette.red,
+                            modifier = Modifier.weight(1f), fontSize = 12.sp,
+                            lineHeight = 18.sp)
+                    }
+                }
+            }
+            Surface(color = Color(0xFF17222E),
+                shape = RoundedCornerShape(14.dp),
+                modifier = Modifier.fillMaxWidth()) {
+                Row(Modifier.padding(12.dp),
+                    verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Default.VerifiedUser, null, tint = Palette.green,
+                        modifier = Modifier.size(21.dp))
+                    Spacer(Modifier.width(9.dp))
+                    Column {
+                        Text(tr(state.lang, "Secure BetVima account", "حساب امن بت‌ویما"),
+                            color = Color.White, fontWeight = FontWeight.ExtraBold,
+                            fontSize = 12.sp)
+                        Text(tr(state.lang,
+                            "Encrypted session · server-verified identity",
+                            "نشست رمزنگاری‌شده · هویت تأییدشده سرور"),
+                            color = Color(0xFFB5C3D1), fontSize = 10.sp)
+                    }
+                }
+            }
             androidx.compose.animation.AnimatedContent(
                 targetState = state.registerScreen,
                 label = "authModeTransition",
