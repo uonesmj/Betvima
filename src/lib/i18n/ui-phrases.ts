@@ -1,4 +1,5 @@
 import { DICTIONARIES } from './dictionaries';
+import { EXTRA_FA_LABELS, EXTRA_FA_LABELS_SECONDARY, EXTRA_FA_LABELS_PAGES, EXTRA_FA_LABELS_MARKETS } from './ui-coverage-extra';
 
 /** Canonical English UI copy. Persian applies to display text, never IDs or wager payloads. */
 const phrasePairs: string = "\nEvery match.|هر مسابقه.\nOne destination.|یک مقصد.\nStay close to the action with live fixtures, football markets and everything you need in one place.|با مسابقات زنده، بازارهای فوتبال و همه امکانات موردنیاز، همیشه در جریان بازی‌ها باشید.\nExplore football|مشاهده فوتبال\nLive matches|مسابقات زنده\nSportsbook & Live|شرط‌بندی ورزشی و زنده\nHere when you need us.|هر زمان نیاز داشتید، کنار شما هستیم.\nQuestions about your account or a transaction? Reach our support team directly.|برای پرسش درباره حساب یا تراکنش، مستقیم با پشتیبانی ارتباط بگیرید.\nContact support|تماس با پشتیبانی\nGet in touch|تماس با ما\nExplore|کاوش\nAccount & partners|حساب و همکاری\nResponsible play|بازی مسئولانه\nPlay responsibly|مسئولانه بازی کنید\nBetting is for adults only.|شرط‌بندی فقط برای بزرگسالان است.\nCustomer support|پشتیبانی کاربران\nPartnerships|همکاری تجاری\nPartner program|برنامه همکاری\nFeatured clubs|باشگاه‌های منتخب\nPayment methods|روش‌های پرداخت\nPayment method|روش پرداخت\nAll rights reserved.|تمام حقوق محفوظ است.\nPlay safe. Stay in control.|ایمن بازی کنید و کنترل را حفظ کنید.\nLanguage|زبان\nEnglish|انگلیسی\nPersian|فارسی\nFull Time Result|نتیجه پایان بازی\nFull time|پایان بازی\nHalf time|نیمه اول\nHalf Time / Full Time|نیمه اول / پایان بازی\n1st Half|نیمه اول\n2nd Half|نیمه دوم\nFirst Half|نیمه اول\nSecond Half|نیمه دوم\nOvertime|وقت اضافه\nExtra Time|وقت اضافه\nPenalty Shootout|ضربات پنالتی\nIn Play|در جریان\nMATCH TIME|زمان مسابقه\nMATCH|مسابقه\nLIVE NOW|اکنون زنده\nUPCOMING|آینده\nLIVE|زنده\nTop|برترین‌ها\nAll|همه\nMain|اصلی\nToday|امروز\nTomorrow|فردا\nYesterday|دیروز\nStarting soon|به‌زودی شروع می‌شود\nNow|اکنون\nThis week|این هفته\nNext week|هفته آینده\nMatches|مسابقات\nMatch|مسابقه\nEvents|رویدادها\nEvent|رویداد\nLeagues|لیگ‌ها\nLeague|لیگ\nLeague table|جدول لیگ\nStandings|جدول رده‌بندی\nTournament|مسابقات\nTournaments|مسابقات\nPopular|محبوب\nTop leagues|لیگ‌های برتر\nFeatured|منتخب\nFeatured matches|مسابقات منتخب\nView all|مشاهده همه\nSee all|مشاهده همه\nShow all|نمایش همه\nLoad more|بارگذاری بیشتر\nShow more|نمایش بیشتر\nShow less|نمایش کمتر\nCollapse|بستن\nExpand|باز کردن\nMore|بیشتر\nMore markets|بازارهای بیشتر\nAll markets|همه بازارها\nMarkets|بازارها\nMarket|بازار\nOdds|ضرایب\nOdd|ضریب\nOdds unavailable|ضرایب در دسترس نیست\nOdds paused — waiting for a valid current price|ضرایب متوقف شده‌اند؛ منتظر قیمت معتبر بمانید\nAdd to bet slip|افزودن به برگه شرط\nPaused|متوقف\nSuspended|معلق\nClosed|بسته\nOpen|باز\nAvailable|در دسترس\nUnavailable|در دسترس نیست\nSelections|انتخاب‌ها\nSelection|انتخاب\nBet slip|برگه شرط\nMy Bets|شرط‌های من\nBet history|سابقه شرط‌ها\nBet details|جزئیات شرط\nStake|مبلغ شرط\nWinnings|مبلغ برد\nPotential winnings|برد احتمالی\nPotential payout|پرداخت احتمالی\nTotal odds|ضریب کل\nTotal stake|مجموع شرط\nPlace Bet|ثبت شرط\nBet Now|شرط‌بندی\nClear all|پاک‌کردن همه\nQuick Bet|شرط سریع\nQuick stakes|مبلغ‌های پیشنهادی\nSingle|تکی\nMultiple|ترکیبی\nAccumulator|ترکیبی\nSystem bet|شرط سیستمی\nWon|برنده\nLost|بازنده\nVoid|باطل\nRefunded|مستردشده\nSettled|تسویه‌شده\nPending|در انتظار\nCashout|تسویه زودهنگام\nCash Out|تسویه زودهنگام\nBet accepted|شرط پذیرفته شد\nBet rejected|شرط رد شد\nInsufficient balance|موجودی کافی نیست\nBalance|موجودی\nWallet|کیف پول\nMy wallet|کیف پول من\nDeposit|واریز\nWithdraw|برداشت\nWithdrawal|برداشت\nTransactions|تراکنش‌ها\nTransaction history|تاریخچه تراکنش‌ها\nTransaction details|جزئیات تراکنش\nAmount|مبلغ\nCurrency|ارز\nNetwork|شبکه\nChoose network|انتخاب شبکه\nSelect network|انتخاب شبکه\nMinimum deposit|حداقل واریز\nMinimum withdrawal|حداقل برداشت\nMaximum withdrawal|حداکثر برداشت\nAvailable balance|موجودی قابل استفاده\nCurrent balance|موجودی فعلی\nAccount balance|موجودی حساب\nPayment pending|پرداخت در انتظار\nPayment confirmed|پرداخت تأیید شد\nDeposit methods|روش‌های واریز\nWithdrawal methods|روش‌های برداشت\nMy account|حساب من\nAccount|حساب\nAccount details|جزئیات حساب\nProfile|پروفایل\nSettings|تنظیمات\nPersonal details|اطلاعات شخصی\nPersonal information|اطلاعات شخصی\nDisplay name|نام نمایشی\nUsername|نام کاربری\nEmail address|آدرس ایمیل\nEmail|ایمیل\nPassword|رمز عبور\nConfirm password|تکرار رمز عبور\nForgot password?|رمز عبور را فراموش کرده‌اید؟\nReset password|بازنشانی رمز عبور\nNew password|رمز عبور جدید\nCurrent password|رمز عبور فعلی\nSign in|ورود\nSign out|خروج\nLog in|ورود\nLog out|خروج\nLogin|ورود\nRegister|ثبت‌نام\nSign up|ثبت‌نام\nCreate account|ایجاد حساب\nCreate an account|ایجاد حساب\nAlready have an account?|حساب دارید؟\nDon't have an account?|حساب ندارید؟\nContinue|ادامه\nBack|بازگشت\nNext|بعدی\nPrevious|قبلی\nSave|ذخیره\nSave changes|ذخیره تغییرات\nEdit|ویرایش\nCancel|لغو\nConfirm|تأیید\nSubmit|ثبت\nClose|بستن\nDone|انجام شد\nRetry|تلاش دوباره\nRefresh|تازه‌سازی\nSearch|جستجو\nSearch matches|جستجوی مسابقات\nFilter|فیلتر\nFilters|فیلترها\nApply filters|اعمال فیلترها\nClear filters|پاک‌کردن فیلترها\nSort by|مرتب‌سازی بر اساس\nDetails|جزئیات\nStatus|وضعیت\nType|نوع\nDate|تاریخ\nTime|زمان\nCountry|کشور\nRegion|منطقه\nName|نام\nID|شناسه\nActions|عملیات\nAction|عملیات\nTotal|مجموع\nSubtotal|جمع جزء\nSummary|خلاصه\nOverview|نمای کلی\nStatistics|آمار\nStats|آمار\nResults|نتایج\nResult|نتیجه\nScore|نتیجه\nScores|نتایج\nLive score|نتیجه زنده\nKick off|شروع مسابقه\nKickoff|شروع مسابقه\nStart time|زمان شروع\nHome|خانه\nAway|میهمان\nDraw|مساوی\nHalf|نیمه\nFirst|اول\nSecond|دوم\nBoth teams|هر دو تیم\nTeam 1|تیم اول\nTeam 2|تیم دوم\nTBD|هنوز مشخص نیست\nWin|برد\nWin or draw|برد یا مساوی\nLose|باخت\nWinner|برنده\nMatch Winner|برنده مسابقه\nMoneyline|برنده مسابقه\nDouble Chance|شانس دوبرابر\nDraw No Bet|مساوی بدون شرط\nBoth Teams To Score|گل‌زنی هر دو تیم\nCorrect Score|نتیجه دقیق\nTotal Goals|مجموع گل‌ها\nTotal Points|مجموع امتیازها\nTotal Games|مجموع گیم‌ها\nTotal Runs|مجموع ران‌ها\nGoals|گل‌ها\nGoal|گل\nPoints|امتیازها\nRuns|ران‌ها\nSet|ست\nSets|ست‌ها\nGame|گیم\nGames|گیم‌ها\nCorners|کرنرها\nCorner|کرنر\nCards|کارت‌ها\nCard|کارت\nYellow Cards|کارت‌های زرد\nRed Cards|کارت‌های قرمز\nShots|شوت‌ها\nShots on target|شوت در چارچوب\nOffsides|آفسایدها\nFouls|خطاها\nPossession|مالکیت توپ\nPasses|پاس‌ها\nSaves|مهارها\nHandicap|هندیکپ\nAsian Handicap|هندیکپ آسیایی\nAlternate Asian Handicap|هندیکپ آسیایی جایگزین\nPoint Spread|هندیکپ امتیازی\nGoal Handicap|هندیکپ گل\nGame Handicap|هندیکپ گیم\nSet Handicap|هندیکپ ست\nPuck Line|هندیکپ هاکی\nRun Line|هندیکپ ران\nOver|بالای\nUnder|زیر\nYes|بله\nNo|خیر\nOther|سایر\nRegular time|وقت قانونی\nPenalties|پنالتی‌ها\nQuarter|کوارتر\nQuarters|کوارترها\nPeriod|دوره\nPeriods|دوره‌ها\nRound|راند\nRounds|راندها\nInnings|اینینگ‌ها\nTo Qualify|صعود\nFight Winner|برنده مبارزه\nMethod|روش\nVAR|کمک‌داور ویدئویی\nFootball|فوتبال\nSoccer|فوتبال\nBasketball|بسکتبال\nTennis|تنیس\nVolleyball|والیبال\nIce Hockey|هاکی روی یخ\nTable Tennis|تنیس روی میز\nBaseball|بیسبال\nHandball|هندبال\nBoxing|بوکس\nMMA|هنرهای رزمی ترکیبی\nCricket|کریکت\nEsports|ورزش‌های الکترونیکی\nAmerican Football|فوتبال آمریکایی\nChampions League|لیگ قهرمانان اروپا\nEuropa League|لیگ اروپا\nPremier League|لیگ برتر انگلیس\nLa Liga|لالیگا\nLaLiga|لالیگا\nBundesliga|بوندس‌لیگا\nSerie A|سری آ\nLigue 1|لیگ یک فرانسه\nWorld Cup|جام جهانی\nInternational|بین‌المللی\nEurope|اروپا\nAsia|آسیا\nAfrica|آفریقا\nEngland|انگلیس\nIran|ایران\nSpain|اسپانیا\nFrance|فرانسه\nGermany|آلمان\nItaly|ایتالیا\nPortugal|پرتغال\nTurkey|ترکیه\nNetherlands|هلند\nBrazil|برزیل\nArgentina|آرژانتین\nUSA|آمریکا\nUnited States|ایالات متحده آمریکا\nSaudi Arabia|عربستان سعودی\nUnited Arab Emirates|امارات متحده عربی\nRussia|روسیه\nGreece|یونان\nBelgium|بلژیک\nSwitzerland|سوئیس\nAustria|اتریش\nSweden|سوئد\nNorway|نروژ\nDenmark|دانمارک\nAustralia|استرالیا\nCanada|کانادا\nJapan|ژاپن\nSouth Korea|کره جنوبی\nChina|چین\nMexico|مکزیک\nColombia|کلمبیا\nUruguay|اروگوئه\nChile|شیلی\nPeru|پرو\nEcuador|اکوادور\nUkraine|اوکراین\nPoland|لهستان\nCroatia|کرواسی\nSerbia|صربستان\nScotland|اسکاتلند\nWales|ولز\nIreland|ایرلند\nFinland|فنلاند\nAzerbaijan|آذربایجان\nArmenia|ارمنستان\nGeorgia|گرجستان\nUzbekistan|ازبکستان\nQatar|قطر\nBahrain|بحرین\nOman|عمان\nKuwait|کویت\nIraq|عراق\nAfghanistan|افغانستان\nPakistan|پاکستان\nIndia|هند\nEgypt|مصر\nMorocco|مراکش\nNigeria|نیجریه\nSouth Africa|آفریقای جنوبی\nNew Zealand|نیوزیلند\nIndonesia|اندونزی\nMalaysia|مالزی\nThailand|تایلند\nVietnam|ویتنام\nNotifications|اعلان‌ها\nNotification|اعلان\nNo notifications|اعلانی وجود ندارد\nMark all as read|علامت‌گذاری همه به‌عنوان خوانده‌شده\nRead|خوانده‌شده\nUnread|خوانده‌نشده\nRecent activity|فعالیت‌های اخیر\nSupport|پشتیبانی\nHelp|راهنما\nHelp center|مرکز راهنما\nHelp & Support|راهنما و پشتیبانی\n24/7 Support|پشتیبانی شبانه‌روزی\n24/7 Live Chat|گفت‌وگوی زنده شبانه‌روزی\nSend message|ارسال پیام\nSend|ارسال\nMessage|پیام\nMessages|پیام‌ها\nSubject|موضوع\nDescription|توضیحات\nPriority|اولویت\nNew ticket|تیکت جدید\nCreate ticket|ایجاد تیکت\nMy tickets|تیکت‌های من\nTicket|تیکت\nTickets|تیکت‌ها\nWaiting for support|در انتظار پشتیبانی\nResolved|حل‌شده\nReopen|بازگشایی\nOpen ticket|تیکت باز\nSecurity|امنیت\nPrivacy|حریم خصوصی\nPrivacy Policy|سیاست حفظ حریم خصوصی\nTerms & Conditions|قوانین و شرایط\nResponsible Gaming|بازی مسئولانه\nBonuses|بونوس‌ها\nBonus|بونوس\nPromotions|پیشنهادهای ویژه\nPromotion|پیشنهاد ویژه\nRewards|پاداش‌ها\nReward|پاداش\nLoyalty Program|برنامه وفاداری\nVIP Club|باشگاه VIP\nVIP Loyalty Program|برنامه وفاداری VIP\nPoints|امتیازها\nReferral|معرفی\nReferral code|کد معرف\nReferral link|لینک معرفی\nReferrals|زیرمجموعه‌ها\nAffiliate|همکاری در فروش\nAffiliate program|برنامه همکاری\nAffiliate dashboard|داشبورد همکاری\nCommission|کمیسیون\nEarnings|درآمد\nPayouts|پرداخت‌ها\nPayout|پرداخت\nRequest payout|درخواست پرداخت\nPartner|همکار\nInvite friends|دعوت از دوستان\nCopy|کپی\nCopied|کپی شد\nCopy link|کپی لینک\nGift code|کد هدیه\nDashboard|داشبورد\nAdmin Panel|پنل مدیریت\nUsers|کاربران\nUser|کاربر\nManage users|مدیریت کاربران\nPayments|پرداخت‌ها\nReports|گزارش‌ها\nReport|گزارش\nAudit log|گزارش ممیزی\nRoles|نقش‌ها\nPermissions|مجوزها\nRisk|ریسک\nRisk rules|قوانین ریسک\nSettlements|تسویه‌ها\nSettlement|تسویه\nProviders|ارائه‌دهندگان\nProvider|ارائه‌دهنده\nOperations|عملیات\nWorkers|پردازشگرها\nJobs|وظایف\nHealth|سلامت سامانه\nSystem health|سلامت سامانه\nReconciliation|تطبیق حساب‌ها\nLogs|لاگ‌ها\nConfiguration|پیکربندی\nEnabled|فعال\nDisabled|غیرفعال\nActive|فعال\nInactive|غیرفعال\nApproved|تأییدشده\nRejected|ردشده\nFailed|ناموفق\nSuccess|موفق\nCompleted|تکمیل‌شده\nProcessing|در حال پردازش\nLoading|در حال بارگذاری\nLoading...|در حال بارگذاری...\nLoading…|در حال بارگذاری…\nSaving|در حال ذخیره\nSaving...|در حال ذخیره...\nUpdating|در حال به‌روزرسانی\nTry again|دوباره تلاش کنید\nNo results found|نتیجه‌ای پیدا نشد\nNo data available|داده‌ای در دسترس نیست\nNo matches found|مسابقه‌ای پیدا نشد\nNo matches available|مسابقه‌ای در دسترس نیست\nNo live matches|مسابقه زنده‌ای وجود ندارد\nSomething went wrong|مشکلی پیش آمد\nAn error occurred|خطایی رخ داد\nPlease try again later.|لطفاً بعداً دوباره تلاش کنید.\nCheck your connection|اتصال اینترنت را بررسی کنید\nConnection lost|اتصال قطع شد\nYou are offline|شما آفلاین هستید\nMaintenance mode|حالت تعمیر و نگهداری\n";
@@ -122,6 +123,22 @@ for (const corpus of [finalPhrasePairs, additionalSportsPairs]) {
 for (const line of adminPhrasePairs.split('\n')) { const split = line.indexOf('|'); if (split > 0) phrases.set(normalize(line.slice(0,split)), line.slice(split+1)); }
 for (const line of helpLegalPhrasePairs.split('\n')) { const sep = line.indexOf('|'); if (sep > 0) phrases.set(normalize(line.slice(0,sep)),line.slice(sep+1)); }
 for (const line of defaultEnglishCorrections.split('\n')) { const sep=line.indexOf('|'); if(sep>0) phrases.set(normalize(line.slice(0,sep)),line.slice(sep+1)); }
+for (const line of EXTRA_FA_LABELS.split('\n')) {
+  const index = line.indexOf('|');
+  if (index > 0) phrases.set(normalize(line.slice(0, index)), line.slice(index + 1));
+}
+for (const line of EXTRA_FA_LABELS_SECONDARY.split('\n')) {
+  const index = line.indexOf('|');
+  if (index > 0) phrases.set(normalize(line.slice(0, index)), line.slice(index + 1));
+}
+for (const line of EXTRA_FA_LABELS_PAGES.split('\n')) {
+  const index = line.indexOf('|');
+  if (index > 0) phrases.set(normalize(line.slice(0, index)), line.slice(index + 1));
+}
+for (const line of EXTRA_FA_LABELS_MARKETS.split('\n')) {
+  const index = line.indexOf('|');
+  if (index > 0) phrases.set(normalize(line.slice(0, index)), line.slice(index + 1));
+}
 for (const [english, persian] of Object.entries(knownSportsNames)) phrases.set(normalize(english), persian);
 
 const teamTerms: Record<string,string> = {
@@ -156,7 +173,7 @@ function phonetic(token: string): string {
   const fixed = teamTerms[token.toLowerCase()];
   if (fixed) return fixed;
   if (/^[A-Z0-9]{1,4}$/.test(token)) return token;
-  const lower = token.toLowerCase();
+  const lower = token.normalize('NFKD').replace(/[\u0300-\u036f]/g, '').replace(/[łŁ]/g, 'l').replace(/[øØ]/g, 'o').replace(/[đĐ]/g, 'd').replace(/ß/g, 'ss').toLowerCase();
   let output = '';
   for (let i = 0; i < lower.length;) {
     const pair = digraphs.find(([pattern]) => lower.startsWith(pattern,i));
@@ -168,18 +185,76 @@ function phonetic(token: string): string {
 export function translateSportName(value: string): string {
   const mapped = phrases.get(normalize(value));
   if (mapped) return mapped;
-  return value.replace(/[A-Za-z]+/g, phonetic).replace(/\s+/g, ' ').trim();
+  return value.replace(/[\p{Script=Latin}]+/gu, phonetic).replace(/\s+/g, ' ').trim();
 }
 
+
+/**
+ * Preserve wager identifiers, currencies, URLs, emails, payment addresses and technical
+ * values. These are data, not translatable natural-language copy.
+ */
 const preserve = /(?:@|https?:\/\/|www\.|\b(?:USD|IRT|IRR|USDT|BTC|ETH|TRX|ERC20|TRC20|API|UUID|HTTP|JSON|SQL)\b)/i;
+const safeToken = /^(?:[0-9]+(?:[.,][0-9]+)?%?|\$[0-9]+(?:[.,][0-9]+)?|18\+)$/;
+const compactWhitespace = (value: string) => value.replace(/\s+/g, ' ').trim();
+const exact = (text: string) => phrases.get(normalize(text));
+
+// Convert multi-part headings, labels and lists only when every language-bearing part
+// is translated. Never half-translate an identifier or the user's own data.
+function translatedCompound(value: string): string | null {
+  const pieces = value.split(/(\s+[•|–—]\s+|\s+\/\s+|\s*:\s+|\s*\|\s*)/u);
+  if (pieces.length < 3 || pieces.length > 15) return null;
+  let sawTranslated = false;
+  const result = pieces.map((part, i) => {
+    if (i % 2 !== 0) return part;
+    const v = part.trim();
+    if (!v) return part;
+    const translation = exact(v);
+    if (translation) {
+      sawTranslated = true;
+      return part.replace(v, translation);
+    }
+    if (safeToken.test(v)) return part;
+    return null;
+  });
+  if (!sawTranslated || result.some(x => x === null)) return null;
+  return result.join('');
+}
+
+function translatedSimpleWords(value: string): string | null {
+  if (!/^[A-Za-z][A-Za-z -]{2,48}$/.test(value)) return null;
+  if (value.trim().split(/\s+/).length > 4) return null;
+  const tokens = value.split(/(\s+|[-])/);
+  let count = 0;
+  const mapped = tokens.map(token => {
+    if (!/[A-Za-z]/.test(token)) return token;
+    // Unknown team names/brands/user data should never be pseudo-translated here.
+    const mappedToken = exact(token);
+    if (!mappedToken) return null;
+    count++;
+    return mappedToken;
+  });
+  return count >= 2 && mapped.every(v => v !== null) ? mapped.join('') : null;
+}
+
 export function translateVisibleText(value: string, sportContext = false): string {
   if (!/[A-Za-z]/.test(value)) return value;
-  const start = value.match(/^\s*/)?.[0] ?? '';
-  const end = value.match(/\s*$/)?.[0] ?? '';
+  const left = value.match(/^\s*/)?.[0] ?? '';
+  const right = value.match(/\s*$/)?.[0] ?? '';
   const core = value.trim();
   if (!core) return value;
-  let localized = phrases.get(normalize(core));
-  if (!localized && preserve.test(value)) return value;
+  const decoded = core.replace(/&amp;/g, '&').replace(/&nbsp;/g, ' ');
+  let localized = exact(decoded);
+  // Financial abbreviations stay intact, but the natural-language label around
+  // them must still be translated (e.g. "Balance (USD)").
+  if (!localized) {
+    const financialLabel = decoded.match(/^(.{2,90}?)\s*(\((?:USD|USDT|TRX|BTC|ETH|IRR|IRT)\)|(?:USD|USDT|TRX|BTC|ETH|IRR|IRT))$/i);
+    if (financialLabel) {
+      const labelTranslation = exact(financialLabel[1] ?? '');
+      if (labelTranslation) localized = labelTranslation + ' ' + (financialLabel[2] ?? '');
+    }
+  }
+  if (!localized && preserve.test(core)) return value;
+
   if (!localized) {
     const patterns: Array<[RegExp, (...args: string[]) => string]> = [
       [/^In (\d+)h$/i, (_all, n) => 'تا ' + n + ' ساعت دیگر'],
@@ -189,31 +264,58 @@ export function translateVisibleText(value: string, sportContext = false): strin
       [/^(\d+) events?$/i, (_all, n) => n + ' رویداد'],
       [/^(\d+) selections?$/i, (_all, n) => n + ' انتخاب'],
       [/^(\d+) transactions?$/i, (_all, n) => n + ' تراکنش'],
-      [/^Q([1-4]) (.*)$/i, (_all,n,rest) => 'کوارتر ' + n + ' ' + (phrases.get(normalize(rest)) ?? rest)],
-      [/^(Over|Under) ([\d.,+-]+)$/i, (_all,direction,line) => (direction.toLowerCase() === 'over' ? 'بالای ' : 'زیر ') + line],
-      [/^(.+?) - (1st Half|2nd Half)$/i, (_all,label,half) => (phrases.get(normalize(label)) ?? label) + ' - ' + (phrases.get(normalize(half)) ?? half)]
+      [/^(\d+) bets?$/i, (_all, n) => n + ' شرط'],
+      [/^(\d+) (?:live )?games?$/i, (_all, n) => n + ' بازی'],
+      [/^(\d+) minutes? ago$/i, (_all, n) => n + ' دقیقه پیش'],
+      [/^(\d+) hours? ago$/i, (_all, n) => n + ' ساعت پیش'],
+      [/^(\d+) days? ago$/i, (_all, n) => n + ' روز پیش'],
+      [/^Showing (\d+) of (\d+)$/i, (_all, n, total) => 'نمایش ' + n + ' از ' + total],
+      [/^(\d+)\/(\d+) selections?$/i, (_all, n, total) => n + ' از ' + total + ' انتخاب'],
+      [/^Q([1-4]) (.*)$/i, (_all, n, rest) => 'کوارتر ' + n + ' ' + (exact(rest) ?? rest)],
+      [/^(Over|Under) ([\d.,+-]+)$/i, (_all, dir, line) => (dir.toLowerCase() === 'over' ? 'بالای ' : 'زیر ') + line],
+      [/^(.+?) - (1st Half|2nd Half)$/i, (_all, a, b) => (exact(a) ?? a) + ' - ' + (exact(b) ?? b)],
+      [/^(.+?)\s*:\s*(\d+(?:[.,]\d+)?)$/i, (_all, a, b) => (exact(a) ?? a) + ': ' + b],
     ];
     for (const [pattern, fn] of patterns) {
-      const found = core.match(pattern);
+      const found = decoded.match(pattern);
       if (found) { localized = fn(...found); break; }
     }
   }
   if (!localized) {
-    const composed = core.match(/^(.{2,80}?)\s+(-|–|—|vs\.?)\s+(.{2,80})$/i);
+    const lineMarket = decoded.match(/^(.+?)\s+([+-]?\d+(?:[.,]\d+)?)$/);
+    if (lineMarket) {
+      const prefix = exact(lineMarket[1] ?? '');
+      if (prefix) localized = prefix + ' ' + (lineMarket[2] ?? '');
+    }
+  }
+  if (!localized) localized = translatedCompound(decoded) ?? undefined;
+  if (!localized) localized = translatedSimpleWords(decoded) ?? undefined;
+  if (!localized) {
+    const composed = decoded.match(/^(.{2,80}?)\s+(-|–|—|vs\.?)\s+(.{2,80})$/i);
     if (composed) {
-      const leftName = composed[1] ?? '';
+      const first = composed[1] ?? '';
       const separator = composed[2] ?? '-';
-      const rightName = composed[3] ?? '';
-      const left = phrases.get(normalize(leftName));
-      const right = phrases.get(normalize(rightName));
-      if (left && right) localized = left + ' ' + separator + ' ' + right;
-      else if (sportContext && /^[A-Za-z ]+$/.test(leftName + rightName)) {
-        localized = translateSportName(leftName) + ' ' + separator + ' ' + translateSportName(rightName);
+      const last = composed[3] ?? '';
+      const l = exact(first);
+      const r = exact(last);
+      if (l && r) localized = l + ' ' + separator + ' ' + r;
+      else if (sportContext && /^[A-Za-z ]+$/.test(first + last)) {
+        localized = translateSportName(first) + ' ' + separator + ' ' + translateSportName(last);
       }
     }
   }
-  if (!localized && sportContext && /^[\p{L}\p{N} .'\-()&/]+$/u.test(core) && /^[A-Za-z]/.test(core)) {
-    localized = translateSportName(core);
+  if (!localized && sportContext && /^[\p{L}\p{N} .'\-()&/]+$/u.test(decoded) && /^[\p{Script=Latin}]/u.test(decoded)) {
+    localized = translateSportName(decoded);
   }
-  return localized ? start + localized + end : value;
+  return localized ? left + compactWhitespace(localized) + right : value;
+}
+
+
+/** Outcome labels are contextual: 'Home' in an odds market means host, not homepage. */
+export function translateBettingSelection(value: string): string {
+  const key = value.trim().toLowerCase();
+  if (key === 'home' || key === 'home team') return 'میزبان';
+  if (key === 'away' || key === 'away team') return 'میهمان';
+  if (key === 'draw' || key === 'tie') return 'مساوی';
+  return translateVisibleText(value, true);
 }

@@ -21,7 +21,7 @@ import type { MatchView } from '@/components/betting/match-card';
 import { formatOddsScaled } from '@/lib/i18n';
 import { useBetSlip, type SlipItem } from '@/lib/store/betslip';
 import { LeagueLogo, TeamLogo } from '@/components/ui/logo';
-import { translateSportName, translateVisibleText } from '@/lib/i18n/ui-phrases';
+import { translateSportName, translateVisibleText, translateBettingSelection } from '@/lib/i18n/ui-phrases';
 
 type Sport = {
   key: string;
@@ -341,7 +341,7 @@ function MatchCard({
                         : 'text-[#747C85]'
                     }`}
                   >
-                    {locale === 'fa' ? translateVisibleText(selection.name, true) : selection.name}
+                    {locale === 'fa' ? translateBettingSelection(selection.name) : selection.name}
                   </span>
 
                   <strong

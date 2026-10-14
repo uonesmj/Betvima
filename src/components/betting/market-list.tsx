@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ChevronDown, ChevronUp } from 'lucide-react';
 import { useApp } from '@/components/layout/providers';
-import { translateVisibleText } from '@/lib/i18n/ui-phrases';
+import { translateVisibleText, translateBettingSelection } from '@/lib/i18n/ui-phrases';
 import { formatOddsScaled } from '@/lib/i18n';
 import { useBetSlip, type SlipItem } from '@/lib/store/betslip';
 import type { MarketView, MatchView } from './match-card';
@@ -1469,7 +1469,7 @@ function MarketSelectionButton({
         ].join(' ')}
       >
         {locale === 'fa'
-          ? translateVisibleText(translateSelectionDisplayLabel(getSelectionDisplayName(match, selection)), true)
+          ? translateBettingSelection(translateSelectionDisplayLabel(getSelectionDisplayName(match, selection)))
           : translateSelectionDisplayLabel(getSelectionDisplayName(match, selection))}
       </span>
 

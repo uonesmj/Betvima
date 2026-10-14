@@ -368,7 +368,7 @@ export function SupportAdminClient() {
               <div className="border-b border-nova-line p-3">
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <h2 className="truncate text-base font-bold">{ticket.subject}</h2>
+                    <h2 data-i18n-ignore className="truncate text-base font-bold">{ticket.subject}</h2>
                     <p className="mt-1 text-[11px] nova-muted">
                       {ticket.userEmail || ticket.userDisplayName || ticket.userId} · {formatTime(ticket.createdAt)}
                     </p>
@@ -427,7 +427,7 @@ export function SupportAdminClient() {
                     <div key={message.id} className={`flex ${message.senderRole === 'support' ? 'justify-end' : 'justify-start'}`}>
                       <div className={`max-w-[78%] rounded-2xl border px-3 py-2 ${message.senderRole === 'support' ? 'border-nova-primary/30 bg-nova-primary/10' : message.senderRole === 'system' ? 'border-yellow-400/20 bg-yellow-400/5' : 'border-nova-line bg-nova-bg'}`}>
                         <div className="mb-1 text-[9px] font-semibold uppercase tracking-wide nova-muted">{message.senderRole}</div>
-                        {message.body ? <div className="whitespace-pre-wrap text-sm leading-6">{message.body}</div> : null}
+                        {message.body ? <div data-i18n-ignore className="whitespace-pre-wrap text-sm leading-6">{message.body}</div> : null}
                         {message.attachments?.map((attachment) => {
                           const href = "/api/v1/admin/support/" + selectedId + "/attachments/" + attachment.id;
                           const isImage = attachment.mimeType.startsWith("image/");

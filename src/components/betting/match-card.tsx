@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { Tv } from 'lucide-react';
 import { useApp } from '@/components/layout/providers';
-import { translateSportName, translateVisibleText } from '@/lib/i18n/ui-phrases';
+import { translateSportName, translateVisibleText, translateBettingSelection } from '@/lib/i18n/ui-phrases';
 import { formatOddsScaled, formatRelative } from '@/lib/i18n';
 import { useBetSlip, type SlipItem } from '@/lib/store/betslip';
 import { TeamLogo } from '@/components/ui/logo';
@@ -232,7 +232,7 @@ export function OddsButton({
       }}
     >
       <span className="block truncate text-[10px] text-[#5D646D]">
-        {locale === 'fa' ? translateVisibleText(selection.name, true) : selection.name}
+        {locale === 'fa' ? translateBettingSelection(selection.name) : selection.name}
       </span>
 
       <span className="block text-sm font-extrabold tabular-nums text-[#20242A]">
