@@ -239,204 +239,224 @@ fun MatchDetailPage(state: AppState, model: AppViewModel) {
     }
 }
 
+/**
+ * Stable reference-style bet slip:
+ * - header and mode selector are NOT scrollable;
+ * - only selections scroll, preserving the current item on additions;
+ * - stake presets, payout and primary CTA are PINNED at the bottom.
+ * No text/button can be pushed below the screen by added selections.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SlipSheet(state: AppState, model: AppViewModel) {
     var stake by rememberSaveable { mutableStateOf("5.00") }
     var mode by rememberSaveable { mutableStateOf("single") }
+    val selectionScroll = androidx.compose.foundation.lazy.rememberLazyListState()
     LaunchedEffect(state.picks.size) {
-        mode = if (state.picks.size > 1) "multiple" else "single"
-        model.clearQuote()
+        val recommendedMode = if (state.picks.size > 1) "multiple" else "single"
+        if (mode != recommendedMode) {
+            mode = recommendedMode
+            model.clearQuote()
+        }
     }
     val canQuote = state.picks.isNotEmpty() &&
         ((mode == "single" && state.picks.size == 1) ||
-         (mode == "multiple" && state.picks.size >= 2))
-    val sheet = rememberModalBottomSheetState(skipPartiallyExpanded = false)
+            (mode == "multiple" && state.picks.size >= 2))
+    val sheet = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
-    ModalBottomSheet(onDismissRequest = { model.showSlip(false) },
-        sheetState = sheet, containerColor = Color.White,
-        shape = RoundedCornerShape(topStart = 27.dp, topEnd = 27.dp),
-        dragHandle = { BottomSheetDefaults.DragHandle() }) {
-        Column(Modifier.fillMaxWidth().heightIn(max = 660.dp)
-            .animateContentSize(),
-            verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        Surface(color = Color(0xFFE8E9EE),
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(18.dp)) {
-            Column(Modifier.padding(horizontal = 17.dp, vertical = 8.dp)) {
-            Row(Modifier.fillMaxWidth().padding(bottom = 5.dp),
-                verticalAlignment = Alignment.CenterVertically) {
-                IconButton(onClick = { model.showSlip(false) }) {
-                    Icon(Icons.Default.KeyboardArrowDown,
-                        tr(state.lang, "Close slip", "بستن برگه شرط"),
-                        tint = Palette.muted)
+    ModalBottomSheet(
+        onDismissRequest = { model.showSlip(false) },
+        sheetState = sheet,
+        containerColor = Color.White,
+        shape = RoundedCornerShape(topStart = 23.dp, topEnd = 23.dp),
+        dragHandle = { BottomSheetDefaults.DragHandle() }
+    ) {
+        Column(Modifier.fillMaxWidth().fillMaxHeight(.85f).imePadding()) {
+            // Fixed header, visually distinct from selections.
+            Surface(color = Color(0xFFE7E9EF),
+                modifier = Modifier.fillMaxWidth()) {
+                Row(Modifier.fillMaxWidth().heightIn(min = 57.dp)
+                    .padding(horizontal = 12.dp, vertical = 5.dp),
+                    verticalAlignment = Alignment.CenterVertically) {
+                    IconButton(onClick = { model.showSlip(false) }) {
+                        Icon(Icons.Default.KeyboardArrowDown,
+                            tr(state.lang, "Close slip", "بستن برگه شرط"),
+                            tint = Palette.muted)
+                    }
+                    Text(tr(state.lang, "Betslip", "برگه شرط"),
+                        modifier = Modifier.weight(1f),
+                        fontWeight = FontWeight.Black,
+                        fontSize = 19.sp, color = Palette.text)
+                    Text(state.wallet?.let { money(it.availableMinor, it.currency) }
+                        ?: tr(state.lang, "USD", "دلار"),
+                        fontSize = 12.sp, fontWeight = FontWeight.Bold,
+                        color = Palette.text, maxLines = 1)
                 }
-                Text(tr(state.lang, "Betslip", "برگه شرط"),
-                    modifier = Modifier.weight(1f),
-                    fontWeight = FontWeight.Black, fontSize = 20.sp, color = Palette.text)
-                Icon(Icons.Default.AccountBalanceWallet, null,
-                    tint = Palette.muted, modifier = Modifier.size(18.dp))
-                Spacer(Modifier.width(6.dp))
-                Text(if (state.wallet != null)
-                    money(state.wallet.availableMinor, state.wallet.currency)
-                    else tr(state.lang, "Balance unavailable", "موجودی نامشخص"),
-                    fontWeight = FontWeight.ExtraBold, fontSize = 12.sp,
-                    color = Palette.text)
             }
-            }
-        }
-        Column(Modifier.fillMaxWidth().weight(1f, fill = false)
-            .verticalScroll(rememberScrollState())
-            .padding(horizontal = 17.dp).animateContentSize(),
-            verticalArrangement = Arrangement.spacedBy(13.dp)) {
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp),
+            Row(Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 9.dp),
+                horizontalArrangement = Arrangement.spacedBy(7.dp),
                 verticalAlignment = Alignment.CenterVertically) {
-                Surface(color = Color(0xFFEDEFF3), shape = RoundedCornerShape(13.dp),
-                    modifier = Modifier.weight(1f)) {
+                Surface(shape = RoundedCornerShape(12.dp),
+                    color = Color(0xFFEDEFF3), modifier = Modifier.weight(1f)) {
                     Row(Modifier.padding(3.dp)) {
                         listOf(
                             "single" to tr(state.lang, "Single", "تکی"),
                             "multiple" to tr(state.lang, "Multiple", "میکس"),
                             "series" to tr(state.lang, "Series", "سیستمی")
-                        ).forEach { (type, title) ->
-                            val enabled = type != "series"
-                            val selectedColor by androidx.compose.animation.animateColorAsState(
+                        ).forEach { (type, text) ->
+                            val selected by androidx.compose.animation.animateColorAsState(
                                 if (mode == type) Palette.blue else Color.Transparent,
-                                label = "betSlipModeSelection"
-                            )
-                            Surface(
-                                color = selectedColor,
-                                shape = RoundedCornerShape(11.dp),
-                                modifier = Modifier.weight(1f).heightIn(min = 45.dp)
-                                    .clickable(enabled = enabled) {
-                                        mode = type
-                                        model.clearQuote()
-                                    }
-                            ) {
-                                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                                    Text(title, fontWeight = FontWeight.ExtraBold,
-                                        fontSize = 12.sp,
-                                        color = if (!enabled) Palette.muted
+                                label = "slipMode")
+                            Surface(color = selected, shape = RoundedCornerShape(9.dp),
+                                modifier = Modifier.weight(1f).heightIn(min = 41.dp)
+                                    .clickable(enabled = type != "series") {
+                                        mode = type; model.clearQuote()
+                                    }) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    Text(text, fontSize = 12.sp,
+                                        fontWeight = FontWeight.ExtraBold,
+                                        color = if (type == "series") Palette.muted
                                             else if (mode == type) Color.White else Palette.text)
                                 }
                             }
                         }
                     }
                 }
-                Surface(color = Color(0xFFEDEFF3), shape = RoundedCornerShape(13.dp),
-                    modifier = Modifier.size(51.dp).clickable {
-                        model.clearPicks()
-                    }) {
+                Surface(color = Color(0xFFEDEFF3),
+                    shape = RoundedCornerShape(11.dp),
+                    modifier = Modifier.size(47.dp).clickable { model.clearPicks() }) {
                     Box(contentAlignment = Alignment.Center) {
                         Icon(Icons.Default.DeleteOutline,
-                            tr(state.lang, "Clear slip", "پاک‌کردن برگه"),
-                            tint = Palette.muted)
+                            tr(state.lang, "Clear", "پاک کردن"), tint = Palette.muted)
                     }
                 }
             }
+            HorizontalDivider(color = Palette.border, thickness = 1.dp)
 
-            if (state.picks.isEmpty()) {
-                EmptyPanel(tr(state.lang, "No selections", "انتخابی ندارید"),
-                    tr(state.lang,
-                        "Tap an available price on the sports page to add a selection.",
-                        "برای افزودن انتخاب، یکی از ضرایب باز را لمس کنید."))
-            } else state.picks.forEach { pick ->
-                Surface(color = Color(0xFFEDEFF3), shape = RoundedCornerShape(16.dp),
-                    modifier = Modifier.fillMaxWidth().animateContentSize()) {
-                    Column(Modifier.padding(13.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text(pick.match, color = Palette.muted, fontSize = 12.sp,
-                                modifier = Modifier.weight(1f))
-                            IconButton(onClick = { model.removePick(pick.selectionId) },
-                                modifier = Modifier.size(29.dp)) {
-                                Icon(Icons.Default.Close,
-                                    tr(state.lang, "Remove", "حذف"),
-                                    tint = Palette.muted, modifier = Modifier.size(19.dp))
+            // Only this middle pane can scroll. It cannot move or occlude the CTA.
+            LazyColumn(
+                state = selectionScroll,
+                modifier = Modifier.weight(1f).fillMaxWidth(),
+                contentPadding = PaddingValues(horizontal = 14.dp, vertical = 11.dp),
+                verticalArrangement = Arrangement.spacedBy(9.dp)
+            ) {
+                if (state.picks.isEmpty()) item(key = "empty") {
+                    EmptyPanel(
+                        tr(state.lang, "No selections", "انتخابی ندارید"),
+                        tr(state.lang,
+                            "Choose an available price to add a match.",
+                            "برای افزودن مسابقه یکی از ضرایب باز را انتخاب کنید."))
+                }
+                items(state.picks, key = { it.selectionId }) { pick ->
+                    Surface(
+                        color = Color(0xFFF0F1F5),
+                        shape = RoundedCornerShape(14.dp),
+                        modifier = Modifier.fillMaxWidth(),
+                        border = BorderStroke(1.dp, Palette.border)
+                    ) {
+                        Column(Modifier.padding(12.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(pick.match, color = Palette.muted,
+                                    modifier = Modifier.weight(1f),
+                                    fontSize = 11.sp, maxLines = 2)
+                                IconButton(
+                                    onClick = { model.removePick(pick.selectionId) },
+                                    modifier = Modifier.size(34.dp)) {
+                                    Icon(Icons.Default.Close,
+                                        tr(state.lang, "Remove match", "حذف مسابقه"),
+                                        tint = Palette.muted, modifier = Modifier.size(19.dp))
+                                }
                             }
-                        }
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Column(Modifier.weight(1f)) {
-                                Text(pick.market, fontWeight = FontWeight.Bold,
-                                    fontSize = 11.sp, color = Palette.muted)
-                                Text(pick.selection, fontWeight = FontWeight.ExtraBold,
-                                    fontSize = 13.sp, color = Palette.text, maxLines = 2)
-                            }
-                            Surface(color = Palette.blue, shape = RoundedCornerShape(9.dp)) {
-                                Text(odds(pick.oddsScaled), color = Color.White,
-                                    fontWeight = FontWeight.Black, fontSize = 16.sp,
-                                    modifier = Modifier.padding(horizontal = 13.dp, vertical = 7.dp))
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Column(Modifier.weight(1f)) {
+                                    Text(pick.market, fontSize = 11.sp,
+                                        color = Palette.muted, maxLines = 1)
+                                    Text(pick.selection, fontSize = 13.sp,
+                                        fontWeight = FontWeight.ExtraBold,
+                                        color = Palette.text, maxLines = 2)
+                                }
+                                Surface(color = Palette.blue,
+                                    shape = RoundedCornerShape(9.dp)) {
+                                    Text(odds(pick.oddsScaled),
+                                        color = Color.White,
+                                        modifier = Modifier.padding(
+                                            horizontal = 12.dp, vertical = 8.dp),
+                                        fontWeight = FontWeight.Black, fontSize = 15.sp)
+                                }
                             }
                         }
                     }
                 }
             }
-            if (state.picks.isNotEmpty()) {
-                androidx.compose.animation.AnimatedVisibility(
-                    visible = !canQuote,
-                    enter = androidx.compose.animation.fadeIn() +
-                        androidx.compose.animation.expandVertically(),
-                    exit = androidx.compose.animation.fadeOut() +
-                        androidx.compose.animation.shrinkVertically()
-                ) {
-                    BvInformationStrip(tr(state.lang,
-                    "Single requires exactly one selection; Multiple requires two or more. Series is not yet supported.",
-                    "برای تکی فقط یک انتخاب و برای میکس حداقل دو انتخاب لازم است. شرط سیستمی هنوز پشتیبانی نمی‌شود."),
-                    Icons.Default.Info, accent = Palette.blue)
-                }
+            HorizontalDivider(color = Palette.border, thickness = 1.dp)
 
-                OutlinedTextField(value = stake, onValueChange = { value ->
-                    if (value.matches(Regex("[0-9]{0,10}(\\.[0-9]{0,2})?"))) {
-                        stake = value; model.clearQuote()
-                    }
-                }, label = { Text(tr(state.lang, "Bet amount (USD)", "مبلغ شرط (دلار)")) },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                    singleLine = true, modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(14.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    listOf("1.00", "5.00", "10.00", "20.00").forEach { preset ->
-                        Surface(shape = RoundedCornerShape(11.dp),
-                            color = if (stake == preset) Palette.blue else Color(0xFFEDEFF3),
-                            modifier = Modifier.weight(1f).clickable {
-                                stake = preset; model.clearQuote()
-                            }) {
-                            Box(Modifier.heightIn(min = 39.dp),
-                                contentAlignment = Alignment.Center) {
-                                Text("$" + preset.removeSuffix(".00"),
-                                    color = if (stake == preset) Color.White else Palette.text,
-                                    fontWeight = FontWeight.ExtraBold, fontSize = 12.sp)
+            // Pinned action dock: stake, presets, possible win and CTA never scroll.
+            Column(Modifier.fillMaxWidth().background(Color.White)
+                .padding(horizontal = 14.dp, vertical = 10.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                if (state.picks.isNotEmpty()) {
+                    val invalidMode = !canQuote
+                    if (invalidMode) Text(
+                        tr(state.lang,
+                            "Single: 1 selection · Multiple: 2+ selections · Series unavailable",
+                            "تکی: ۱ انتخاب · میکس: حداقل ۲ انتخاب · سیستمی غیرفعال"),
+                        fontSize = 10.sp, color = Palette.red,
+                        maxLines = 2)
+                    OutlinedTextField(
+                        value = stake,
+                        onValueChange = { value ->
+                            if (value.matches(Regex("[0-9]{0,10}(\\.[0-9]{0,2})?"))) {
+                                stake = value; model.clearQuote()
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        label = { Text(tr(state.lang, "Stake (USD)", "مبلغ شرط (دلار)")) },
+                        shape = RoundedCornerShape(12.dp),
+                        keyboardOptions = KeyboardOptions(
+                            keyboardType = KeyboardType.Decimal),
+                        singleLine = true
+                    )
+                    Row(horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+                        listOf("1.00", "5.00", "10.00", "20.00").forEach { preset ->
+                            Surface(
+                                shape = RoundedCornerShape(9.dp),
+                                color = if (stake == preset) Palette.blue
+                                    else Color(0xFFEDEFF3),
+                                modifier = Modifier.weight(1f).heightIn(min = 35.dp)
+                                    .clickable { stake = preset; model.clearQuote() }) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    Text("$" + preset.removeSuffix(".00"),
+                                        fontWeight = FontWeight.ExtraBold,
+                                        fontSize = 11.sp,
+                                        color = if (stake == preset) Color.White
+                                            else Palette.text)
+                                }
                             }
                         }
                     }
-                }
-                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                    Text(tr(state.lang, "Possible win", "برد احتمالی"),
-                        fontSize = 12.sp, color = Palette.muted,
-                        modifier = Modifier.weight(1f))
-                    androidx.compose.animation.AnimatedContent(
-                        targetState = if (canQuote && !state.quote.isNullOrBlank())
-                            state.quote.orEmpty() else "—",
-                        label = "quotedPotentialWin") { payout ->
-                        Text(payout, fontWeight = FontWeight.Black, fontSize = 14.sp,
-                            color = Palette.green)
+                    Row(Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically) {
+                        Text(tr(state.lang, "Possible win", "برد احتمالی"),
+                            color = Palette.muted, fontSize = 11.sp,
+                            modifier = Modifier.weight(1f))
+                        androidx.compose.animation.AnimatedContent(
+                            targetState = if (canQuote) state.quote ?: "—" else "—",
+                            label = "officialQuote") { payout ->
+                            Text(payout, color = Palette.green,
+                                fontWeight = FontWeight.Black, fontSize = 15.sp)
+                        }
                     }
-                }
-                androidx.compose.animation.AnimatedVisibility(
-                    visible = canQuote && !state.quote.isNullOrBlank(),
-                    enter = androidx.compose.animation.fadeIn() +
-                        androidx.compose.animation.expandVertically(),
-                    exit = androidx.compose.animation.fadeOut() +
-                        androidx.compose.animation.shrinkVertically()
-                ) {
-                    BvInformationStrip(tr(state.lang,
-                        "Official quote received. No real-money bet was placed.",
-                        "استعلام رسمی دریافت شد؛ هیچ شرط واقعی ثبت نشده است."),
-                        Icons.Default.Verified, accent = Palette.green)
                 }
                 BvPrimaryButton(
-                    label = if (!state.signedIn)
-                        tr(state.lang, "Sign in to get a quote", "برای استعلام وارد شوید")
-                    else tr(state.lang, "Request official quote", "استعلام رسمی ضریب"),
+                    label = when {
+                        state.picks.isEmpty() ->
+                            tr(state.lang, "Select a match", "انتخاب مسابقه")
+                        !state.signedIn ->
+                            tr(state.lang, "Log in for official quote", "ورود برای استعلام")
+                        else ->
+                            tr(state.lang, "Request official quote", "استعلام رسمی ضریب")
+                    },
                     onClick = {
                         if (!state.signedIn) {
                             model.showSlip(false); model.showLogin(true)
@@ -447,12 +467,11 @@ fun SlipSheet(state: AppState, model: AppViewModel) {
                     icon = Icons.Default.CheckCircle
                 )
                 Text(tr(state.lang,
-                    "Wager placement is disabled in this test build until age, licensing and location checks are verified.",
-                    "ثبت شرط در این نسخه آزمایشی تا تأیید مجوز، سن و منطقه جغرافیایی غیرفعال است."),
-                    fontSize = 10.sp, color = Palette.muted, lineHeight = 16.sp)
+                    "Preview only · Wager placement is disabled.",
+                    "نسخه آزمایشی · ثبت شرط واقعی غیرفعال است."),
+                    color = Palette.muted, fontSize = 9.sp,
+                    maxLines = 2, lineHeight = 13.sp)
             }
-        }
-        Spacer(Modifier.height(8.dp))
         }
     }
 }
