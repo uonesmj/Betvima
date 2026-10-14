@@ -10,7 +10,9 @@ data class Selection(val id: String, val name: String, val oddsScaled: String, v
     val version: Int, val movement: String, val nameFa: String = "") {
     // The server has used 'open' for DB selections and 'active' in its catalogue type.
     // Suspended, closed, void, and settled selections are never actionable.
-    val available get() = status == "open" || status == "active"
+    val available get() =
+        (status == "open" || status == "active") &&
+            (oddsScaled.toBigDecimalOrNull()?.let { it > BigDecimal("10000") } == true)
     fun label(persian: Boolean) = if (persian && nameFa.isNotBlank()) nameFa else name
 }
 data class Market(val id: String, val key: String, val name: String, val status: String,
