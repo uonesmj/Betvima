@@ -54,12 +54,33 @@ begin
     'vip-finance-test',v_deposit_date
   );
 
+
+  -- A settled WIN with net profit USD 600 offsets the losing USD 1,000.
+  -- Net weekly loss = 1,000 - 600 = USD 400, not USD 1,000 gross.
+  insert into nova.bets (
+    public_id,user_id,type,status,stake_minor,currency,potential_payout_minor,
+    payout_minor,combined_odds_num,combined_odds_den,combined_odds_scaled,
+    placement_idempotency_key,funding_source,settled_at
+  ) values (
+    'VIP-WIN-'||gen_random_uuid()::text,v_user,'SINGLE','settled',
+    100000,'USD',160000,160000,1.6,1,16000,
+    'vip-test-winning-bet:'||v_user::text,'main',v_deposit_date
+  ) returning id into v_bet;
+
+  insert into nova.bet_settlements (
+    bet_id,revision,kind,status_before,status_after,payout_minor,currency,
+    stake_minor,net_user_result_minor,settled_by,created_at
+  ) values (
+    v_bet,1,'settlement','accepted','settled',160000,'USD',100000,60000,
+    'vip-finance-test',v_deposit_date
+  );
+
   select * into v_quote
   from nova.vip_cashback_quote_week(v_week) q where q.user_id=v_user;
   perform tests.assert(v_quote.deposit_minor=400000,'must use posted successful USD deposits');
-  perform tests.assert(v_quote.loss_minor=100000,'must use settled MAIN wallet losses only');
+  perform tests.assert(v_quote.loss_minor=40000,'net settled loss offsets winning profit');
   perform tests.assert(v_quote.rate_bps=500,'4000 USD maps to 5%');
-  perform tests.assert(v_quote.cashback_minor=5000,'5% of 1000 USD is 50 USD');
+  perform tests.assert(v_quote.cashback_minor=2000,'5% of 400 USD net loss is 20 USD');
 
   v_credit := nova.vip_cashback_credit_user(v_week,v_user,true);
   perform tests.assert(v_credit->>'status'='preview','dry-run never credits');
@@ -88,7 +109,7 @@ begin
     perform tests.assert(v_count=1,'exactly one award per user-week');
     select balance_minor into v_before from nova.wallets
      where user_id=v_user and currency='USD';
-    perform tests.assert(v_before=405000,'wallet is credited only once by 50 USD');
+    perform tests.assert(v_before=402000,'wallet is credited only once by 20 USD');
     select count(*) into v_count from nova.wallet_transactions
      where user_id=v_user and type='vip_cashback';
     perform tests.assert(v_count=1,'immutable cashback ledger contains one credit');
