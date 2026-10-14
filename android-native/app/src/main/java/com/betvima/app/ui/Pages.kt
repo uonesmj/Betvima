@@ -25,13 +25,18 @@ private val sports = listOf("football", "basketball", "tennis", "volleyball",
 private fun sportName(s: String) = s.replace("-", " ").replaceFirstChar { it.uppercase() }
 
 @Composable
-fun SportsRibbon(selected: String, onChange: (String) -> Unit) {
+fun SportsRibbon(selected: String, lang: Lang, onChange: (String) -> Unit) {
     LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp),
         contentPadding = PaddingValues(vertical = 3.dp)) {
         items(sports, key = { it }) { sport ->
             FilterChip(
                 selected = selected == sport, onClick = { onChange(sport) },
-                label = { Text(sportName(sport), fontSize = 11.sp,
+                label = { Text(if (lang == Lang.FA) when (sport) {
+                    "football" -> "فوتبال"; "basketball" -> "بسکتبال"; "tennis" -> "تنیس"
+                    "volleyball" -> "والیبال"; "ice-hockey" -> "هاکی روی یخ"
+                    "table-tennis" -> "پینگ‌پنگ"; "baseball" -> "بیسبال"
+                    "esports" -> "ورزش الکترونیک"; else -> sportName(sport)
+                } else sportName(sport), fontSize = 11.sp,
                     fontWeight = FontWeight.Bold) },
                 colors = FilterChipDefaults.filterChipColors(
                     selectedContainerColor = Palette.greenLight,
@@ -50,12 +55,12 @@ fun HomePage(state: AppState, model: AppViewModel) {
             BrandHero(state.lang, state.live.size,
                 onLive = { model.tab(Tab.LIVE) }, onSports = { model.tab(Tab.SPORTS) })
         }
-        item { SportsRibbon(state.sport) { model.sport(it); model.tab(Tab.SPORTS) } }
+        item { SportsRibbon(state.sport, state.lang) { model.sport(it); model.tab(Tab.SPORTS) } }
         item {
             Row(horizontalArrangement = Arrangement.spacedBy(9.dp)) {
-                HighlightMetric(Modifier.weight(1f), "LIVE", state.live.size.toString(), Palette.red)
-                HighlightMetric(Modifier.weight(1f), "UPCOMING", state.upcoming.size.toString(), Palette.blue)
-                HighlightMetric(Modifier.weight(1f), "MY PICKS", state.picks.size.toString(), Palette.green)
+                HighlightMetric(Modifier.weight(1f), tr(state.lang, "LIVE", "زنده"), state.live.size.toString(), Palette.red)
+                HighlightMetric(Modifier.weight(1f), tr(state.lang, "UPCOMING", "آینده"), state.upcoming.size.toString(), Palette.blue)
+                HighlightMetric(Modifier.weight(1f), tr(state.lang, "MY PICKS", "انتخاب‌ها"), state.picks.size.toString(), Palette.green)
             }
         }
         item { SectionHeading(tr(state.lang, "Live now", "هم‌اکنون زنده"),
@@ -122,7 +127,7 @@ fun CatalogPage(state: AppState, model: AppViewModel, live: Boolean) {
                 }
             }
         }
-        if (!live) item { SportsRibbon(state.sport) { model.sport(it) } }
+        if (!live) item { SportsRibbon(state.sport, state.lang) { model.sport(it) } }
         if (state.loading && matches.isEmpty()) item {
             Box(Modifier.fillMaxWidth().height(90.dp), contentAlignment = Alignment.Center) {
                 CircularProgressIndicator(color = Palette.green)
@@ -159,7 +164,7 @@ private fun LeagueSection(key: String, matches: List<Match>, first: Boolean,
                 Column(Modifier.weight(1f)) {
                     Text(matches.first().league, color = Color.White,
                         fontWeight = FontWeight.Bold, fontSize = 13.sp)
-                    Text(matches.first().country + " · " + matches.size + " events",
+                    Text(matches.first().country + " · " + matches.size + tr(state.lang, " events", " مسابقه"),
                         color = Color(0xFF9BB0BA), fontSize = 10.sp)
                 }
                 Icon(if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
@@ -178,43 +183,109 @@ private fun LeagueSection(key: String, matches: List<Match>, first: Boolean,
     }
 }
 
+private fun betStatus(status: String, lang: Lang): String = when (status.lowercase()) {
+    "won" -> tr(lang, "Won", "برنده")
+    "lost" -> tr(lang, "Lost", "بازنده")
+    "pending", "open", "placed", "accepted" -> tr(lang, "Open", "باز")
+    "void" -> tr(lang, "Void", "باطل")
+    "refunded" -> tr(lang, "Refunded", "برگشت‌خورده")
+    "cancelled", "canceled" -> tr(lang, "Cancelled", "لغوشده")
+    "cashed_out" -> tr(lang, "Cashed out", "تسویه زودهنگام")
+    else -> status.replace("_", " ")
+}
+
 @Composable
 fun BetsPage(state: AppState, model: AppViewModel) {
+    var selectedFilter by rememberSaveable { mutableIntStateOf(0) }
+    val labels = listOf(
+        tr(state.lang, "All", "همه"),
+        tr(state.lang, "Open", "باز"),
+        tr(state.lang, "Settled", "تسویه‌شده")
+    )
+    val filtered = state.bets.filter { selectedFilter == 0 ||
+        if (selectedFilter == 1) !it.isSettled else it.isSettled }
     LazyColumn(contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(11.dp)) {
-        item { SectionHeading(tr(state.lang, "My bets", "شرط‌های من"),
-            tr(state.lang, "Current and settled tickets", "شرط‌های جاری و تسویه‌شده")) }
+        item {
+            SectionHeading(tr(state.lang, "My bets", "شرط‌های من"),
+                tr(state.lang, "Ticket history verified by the server", "سابقه شرط‌ها طبق اطلاعات سرور"),
+                tr(state.lang, "Refresh", "تازه‌سازی")) { model.refreshAccount() }
+        }
         if (!state.signedIn) item {
             LockedFeature(state.lang, tr(state.lang, "Sign in to see your tickets",
                 "برای مشاهده شرط‌های خود وارد شوید")) { model.showLogin(true) }
         } else {
-            if (state.bets.isEmpty()) item {
-                EmptyPanel(tr(state.lang, "No bet history available", "سابقه شرط موجود نیست"),
-                    tr(state.lang, "Placed bets will appear here after server confirmation.",
-                        "شرط‌های ثبت‌شده پس از تأیید سرور اینجا نمایش داده می‌شوند.")) {
+            if (state.accountLoading) item {
+                LinearProgressIndicator(Modifier.fillMaxWidth(), color = Palette.green)
+            }
+            item {
+                LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    items(labels.size) { index ->
+                        FilterChip(
+                            selected = selectedFilter == index,
+                            onClick = { selectedFilter = index },
+                            label = { Text(labels[index], fontWeight = FontWeight.Bold) },
+                            colors = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = Palette.greenLight,
+                                selectedLabelColor = Palette.ink
+                            )
+                        )
+                    }
+                }
+            }
+            if (filtered.isEmpty() && !state.accountLoading) item {
+                EmptyPanel(tr(state.lang, "No matching bet tickets", "شرطی با این وضعیت موجود نیست"),
+                    tr(state.lang, "Only confirmed records are displayed.",
+                        "فقط سوابق تأییدشده سرور نمایش داده می‌شود.")) {
                     model.refreshAccount()
                 }
             }
-            items(state.bets, key = { it.id }) { bet ->
+            items(filtered, key = { it.id }) { bet ->
                 Surface(shape = RoundedCornerShape(17.dp), color = Color.White,
                     border = BorderStroke(1.dp, Palette.border)) {
                     Column(Modifier.padding(16.dp)) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text(if (bet.legs > 1) "MULTIPLE · " + bet.legs else "SINGLE",
-                                fontSize = 11.sp, fontWeight = FontWeight.Black,
-                                modifier = Modifier.weight(1f), color = Palette.text)
-                            SmallPill(bet.status.uppercase(), Palette.paper,
-                                if (bet.status.lowercase() == "won") Palette.green else Palette.muted)
+                            Column(Modifier.weight(1f)) {
+                                Text(if (bet.legs > 1)
+                                    tr(state.lang, "Multiple · ", "میکس · ") + bet.legs
+                                    else tr(state.lang, "Single", "تکی"),
+                                    fontSize = 12.sp, fontWeight = FontWeight.Black, color = Palette.text)
+                                if (bet.placedAt.isNotBlank()) {
+                                    Text(bet.placedAt.take(16).replace("T", " · "),
+                                        fontSize = 10.sp, color = Palette.muted)
+                                }
+                            }
+                            SmallPill(betStatus(bet.status, state.lang), Palette.paper,
+                                if (bet.status.equals("won", true)) Palette.green else Palette.muted)
                         }
-                        Spacer(Modifier.height(14.dp))
+                        Spacer(Modifier.height(13.dp))
+                        HorizontalDivider(color = Palette.border)
+                        Spacer(Modifier.height(12.dp))
                         Row {
                             Column(Modifier.weight(1f)) {
                                 Text(tr(state.lang, "Stake", "مبلغ شرط"), fontSize = 11.sp, color = Palette.muted)
                                 Text(money(bet.stakeMinor, bet.currency), fontWeight = FontWeight.Bold)
                             }
                             Column(Modifier.weight(1f), horizontalAlignment = Alignment.End) {
-                                Text(tr(state.lang, "Payout", "پرداخت"), fontSize = 11.sp, color = Palette.muted)
-                                Text(money(bet.payoutMinor, bet.currency),
+                                Text(if (bet.settledPayoutMinor != null)
+                                    tr(state.lang, "Paid", "مبلغ پرداخت‌شده")
+                                    else tr(state.lang, "Potential payout", "پرداخت احتمالی"),
+                                    fontSize = 11.sp, color = Palette.muted)
+                                Text(money(bet.settledPayoutMinor ?: bet.payoutMinor, bet.currency),
                                     fontWeight = FontWeight.Black, color = Palette.text)
+                            }
+                        }
+                        if (bet.netResultMinor != null || bet.combinedOddsScaled != "0") {
+                            Spacer(Modifier.height(9.dp))
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                if (bet.combinedOddsScaled != "0") Text(
+                                    tr(state.lang, "Total odds ", "ضریب کل ") + odds(bet.combinedOddsScaled),
+                                    color = Palette.blue, fontSize = 11.sp,
+                                    modifier = Modifier.weight(1f))
+                                else Spacer(Modifier.weight(1f))
+                                if (bet.netResultMinor != null) Text(
+                                    tr(state.lang, "Net ", "خالص ") + money(bet.netResultMinor, bet.currency),
+                                    color = if (bet.netResultMinor.startsWith("-")) Palette.red else Palette.green,
+                                    fontSize = 11.sp, fontWeight = FontWeight.Bold)
                             }
                         }
                     }
@@ -228,7 +299,11 @@ fun BetsPage(state: AppState, model: AppViewModel) {
 fun WalletPage(state: AppState, model: AppViewModel) {
     LazyColumn(contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         item { SectionHeading(tr(state.lang, "My wallet", "کیف‌پول من"),
-            tr(state.lang, "USD account and transaction ledger", "حساب دلاری و گردش موجودی")) }
+            tr(state.lang, "USD account and transaction ledger", "حساب دلاری و گردش موجودی"),
+            tr(state.lang, "Refresh", "تازه‌سازی")) { model.refreshAccount() } }
+        if (state.accountLoading) item {
+            LinearProgressIndicator(Modifier.fillMaxWidth(), color = Palette.green)
+        }
         if (!state.signedIn) item {
             LockedFeature(state.lang, tr(state.lang, "Sign in to view balances",
                 "برای مشاهده موجودی وارد شوید")) { model.showLogin(true) }
