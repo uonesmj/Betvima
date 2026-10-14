@@ -22,6 +22,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -31,6 +32,8 @@ fun BetvimaApp(model: AppViewModel) {
     var searchOpen by rememberSaveable { mutableStateOf(false) }
     var search by rememberSaveable { mutableStateOf("") }
     val snackbars = remember { SnackbarHostState() }
+    val drawer = rememberDrawerState(DrawerValue.Closed)
+    val drawerScope = rememberCoroutineScope()
 
     LaunchedEffect(state.notice) {
         val message = state.notice
@@ -49,11 +52,13 @@ fun BetvimaApp(model: AppViewModel) {
     }
     BackHandler(enabled = searchOpen || state.betDetailVisible || state.showLogin ||
         state.showSlip || state.detail != null ||
-        state.feature != Feature.NONE || accountOpen || state.tab != Tab.HOME) {
+        state.feature != Feature.NONE || accountOpen || drawer.isOpen ||
+        state.tab != Tab.HOME) {
         when {
             state.betDetailVisible -> model.closeBet()
             state.showLogin -> model.showLogin(false)
             state.showSlip -> model.showSlip(false)
+            drawer.isOpen -> drawerScope.launch { drawer.close() }
             accountOpen -> accountOpen = false
             searchOpen -> { search = ""; searchOpen = false }
             state.detail != null -> model.closeMatch()
@@ -64,6 +69,16 @@ fun BetvimaApp(model: AppViewModel) {
 
     CompositionLocalProvider(LocalLayoutDirection provides
         (if (state.lang == Lang.FA) LayoutDirection.Rtl else LayoutDirection.Ltr)) {
+        ModalNavigationDrawer(
+            drawerState = drawer,
+            drawerContent = {
+                ReferenceMenuDrawer(state, model,
+                    dismiss = { drawerScope.launch { drawer.close() } },
+                    openAccount = {
+                        if (state.signedIn) accountOpen = true else model.showLogin(true)
+                    })
+            }
+        ) {
         Scaffold(
             containerColor = Palette.paper,
             topBar = {
@@ -81,13 +96,6 @@ fun BetvimaApp(model: AppViewModel) {
                                 state.wallet!!.currency) else null,
                         onWallet = { model.tab(Tab.WALLET) })
                     if (state.detail == null && state.feature == Feature.NONE) {
-                        QuickToolbar(state.lang,
-                            onSports = { model.tab(Tab.SPORTS) },
-                            onSearch = { searchOpen = !searchOpen },
-                            onBonus = { model.feature(Feature.BONUSES) },
-                            onVip = { model.feature(Feature.VIP) },
-                            onSupport = { model.feature(Feature.SUPPORT) },
-                            onCasino = { model.feature(Feature.CASINO) })
                         if (searchOpen && state.tab in setOf(Tab.HOME, Tab.LIVE, Tab.SPORTS)) {
                             OutlinedTextField(value = search, onValueChange = { search = it.take(80) },
                                 singleLine = true, modifier = Modifier.fillMaxWidth()
@@ -106,52 +114,68 @@ fun BetvimaApp(model: AppViewModel) {
             },
             bottomBar = {
                 Column {
-                    if (state.picks.isNotEmpty() && !state.showSlip) {
-                        Surface(Modifier.fillMaxWidth()
-                                .padding(horizontal = 10.dp, vertical = 5.dp)
-                                .clickable { model.showSlip(true) },
-                            shape = RoundedCornerShape(14.dp),
-                            color = Palette.green, shadowElevation = 7.dp) {
-                            Row(Modifier.padding(horizontal = 17.dp, vertical = 11.dp),
-                                verticalAlignment = Alignment.CenterVertically) {
-                                Icon(Icons.Default.ConfirmationNumber, null, tint = Palette.ink)
-                                Spacer(Modifier.width(9.dp))
-                                Column(Modifier.weight(1f)) {
-                                    Text(tr(state.lang, "Bet slip", "برگه شرط"),
-                                        color = Palette.ink, fontWeight = FontWeight.Black)
-                                    Text(tr(state.lang, "Selections · ", "انتخاب‌ها · ") +
-                                        state.picks.size, fontSize = 10.sp, color = Palette.ink)
-                                }
-                                Surface(color = Palette.ink, shape = RoundedCornerShape(10.dp)) {
+                    if (state.tab in setOf(Tab.HOME, Tab.LIVE, Tab.SPORTS) &&
+                        state.feature == Feature.NONE) {
+                        Box(Modifier.fillMaxWidth().padding(top = 4.dp, bottom = 5.dp),
+                            contentAlignment = Alignment.Center) {
+                            Surface(color = Palette.blue, shadowElevation = 6.dp,
+                                shape = RoundedCornerShape(28.dp),
+                                modifier = Modifier.width(144.dp).height(43.dp)
+                                    .clickable { model.showSlip(true) }) {
+                                Row(Modifier.fillMaxWidth().padding(horizontal = 14.dp),
+                                    horizontalArrangement = Arrangement.Center,
+                                    verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(Icons.Default.ConfirmationNumber, null,
+                                        tint = Color.White, modifier = Modifier.size(20.dp))
+                                    Spacer(Modifier.width(7.dp))
                                     Text(state.picks.size.toString(), color = Color.White,
-                                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 5.dp),
-                                        fontWeight = FontWeight.Black)
+                                        fontWeight = FontWeight.Black, fontSize = 15.sp)
+                                    Spacer(Modifier.width(11.dp))
+                                    Icon(Icons.Default.KeyboardArrowUp,
+                                        tr(state.lang, "Open bet slip", "باز کردن برگه شرط"),
+                                        tint = Color.White, modifier = Modifier.size(23.dp))
                                 }
-                                Spacer(Modifier.width(7.dp))
-                                Icon(Icons.Default.KeyboardArrowUp, null, tint = Palette.ink)
                             }
                         }
                     }
                     NavigationBar(containerColor = Palette.ink,
                         tonalElevation = 0.dp) {
                         listOf(
-                            Triple(Tab.HOME, tr(state.lang, "Home", "خانه"), Icons.Default.Home),
-                            Triple(Tab.LIVE, tr(state.lang, "Live", "زنده"), Icons.Default.Sensors),
-                            Triple(Tab.BETS, tr(state.lang, "My Bets", "شرط‌های من"), Icons.Default.ReceiptLong),
-                            Triple(Tab.WALLET, tr(state.lang, "Wallet", "کیف‌پول"), Icons.Default.AccountBalanceWallet)
-                        ).forEach { (tab, label, icon) ->
-                            NavigationBarItem(selected = state.tab == tab, onClick = { model.tab(tab) },
+                            Triple("menu", tr(state.lang, "Menu", "منو"), Icons.Default.Menu),
+                            Triple("home", tr(state.lang, "Home", "خانه"), Icons.Default.Home),
+                            Triple("casino", tr(state.lang, "Casino", "کازینو"), Icons.Default.Casino),
+                            Triple("bonus", tr(state.lang, "Bonuses", "بونوس"), Icons.Default.CardGiftcard),
+                            Triple("sports", tr(state.lang, "Sports", "ورزش‌ها"), Icons.Default.SportsSoccer)
+                        ).forEach { (destination, label, icon) ->
+                            val selected = when(destination) {
+                                "home" -> state.tab == Tab.HOME && state.feature == Feature.NONE
+                                "casino" -> state.feature == Feature.CASINO
+                                "bonus" -> state.feature == Feature.BONUSES
+                                "sports" -> state.tab in setOf(Tab.LIVE, Tab.SPORTS) &&
+                                    state.feature == Feature.NONE
+                                else -> false
+                            }
+                            NavigationBarItem(selected = selected, onClick = {
+                                when(destination) {
+                                    "menu" -> drawerScope.launch { drawer.open() }
+                                    "home" -> model.tab(Tab.HOME)
+                                    "casino" -> model.feature(Feature.CASINO)
+                                    "bonus" -> model.feature(Feature.BONUSES)
+                                    "sports" -> model.tab(Tab.SPORTS)
+                                }
+                            },
                                 icon = { Icon(icon, null, modifier = Modifier.size(22.dp)) },
                                 label = { Text(label, fontSize = 10.sp, maxLines = 1,
                                     overflow = TextOverflow.Ellipsis) },
                                 alwaysShowLabel = true,
                                 colors = NavigationBarItemDefaults.colors(
-                                    selectedIconColor = Palette.ink,
-                                    selectedTextColor = Palette.green,
+                                    selectedIconColor = Palette.blue,
+                                    selectedTextColor = Palette.blue,
                                     unselectedIconColor = Color(0xFF9BACB9),
                                     unselectedTextColor = Color(0xFF9BACB9),
-                                    indicatorColor = Palette.green
+                                    indicatorColor = Color.Transparent
                                 ))
+                        }
                         }
                     }
                 }
@@ -176,9 +200,15 @@ fun BetvimaApp(model: AppViewModel) {
                 when {
                     state.detail != null || state.detailLoading -> MatchDetailPage(state, model)
                     state.feature != Feature.NONE -> FeaturePage(state, model)
-                    state.tab == Tab.HOME -> HomePage(filtered, model)
-                    state.tab == Tab.LIVE -> CatalogPage(filtered, model, live = true)
-                    state.tab == Tab.SPORTS -> CatalogPage(filtered, model, live = false)
+                    state.tab == Tab.HOME -> HomePage(filtered, model) {
+                        searchOpen = !searchOpen
+                    }
+                    state.tab == Tab.LIVE -> CatalogPage(filtered, model, live = true) {
+                        searchOpen = !searchOpen
+                    }
+                    state.tab == Tab.SPORTS -> CatalogPage(filtered, model, live = false) {
+                        searchOpen = !searchOpen
+                    }
                     state.tab == Tab.BETS -> BetsPage(state, model)
                     state.tab == Tab.WALLET -> WalletPage(state, model)
                 }
@@ -188,6 +218,7 @@ fun BetvimaApp(model: AppViewModel) {
                         color = Palette.green)
                 }
             }
+        }
         }
 
         if (state.showSlip) SlipSheet(state, model)
