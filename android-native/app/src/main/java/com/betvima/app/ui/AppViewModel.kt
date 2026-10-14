@@ -158,7 +158,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         val persian = state.value.lang == Lang.FA
         val entry = Pick(match.id, market.id, selection.id, match.title,
             market.label(persian), selection.label(persian),
-            selection.oddsScaled, selection.version, match.live)
+            selection.oddsScaled, market.version, match.live)
         mutable.update { s ->
             val picks = if (s.picks.any { it.selectionId == entry.selectionId }) {
                 s.picks.filterNot { it.selectionId == entry.selectionId }
