@@ -4,7 +4,7 @@
 -- money, admin gating, and that service_role-style operations stay server-side.
 -- ============================================================================
 \set ON_ERROR_STOP on
-\i /home/user/nova-sportsbook/tests/sql/00_fixtures.sql
+\ir 00_fixtures.sql
 
 do $$
 declare
