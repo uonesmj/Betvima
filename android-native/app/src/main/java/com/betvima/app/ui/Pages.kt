@@ -240,7 +240,8 @@ fun BetsPage(state: AppState, model: AppViewModel) {
                 }
             }
             items(filtered, key = { it.id }) { bet ->
-                Surface(shape = RoundedCornerShape(17.dp), color = Color.White,
+                Surface(modifier = Modifier.fillMaxWidth().clickable { model.openBet(bet.id) },
+                    shape = RoundedCornerShape(17.dp), color = Color.White,
                     border = BorderStroke(1.dp, Palette.border)) {
                     Column(Modifier.padding(16.dp)) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -274,6 +275,9 @@ fun BetsPage(state: AppState, model: AppViewModel) {
                                     fontWeight = FontWeight.Black, color = Palette.text)
                             }
                         }
+                        Text(tr(state.lang, "View full receipt", "مشاهده رسید کامل"),
+                            color = Palette.blue, fontWeight = FontWeight.Bold, fontSize = 11.sp,
+                            modifier = Modifier.padding(top = 9.dp))
                         if (bet.netResultMinor != null || bet.combinedOddsScaled != "0") {
                             Spacer(Modifier.height(9.dp))
                             Row(verticalAlignment = Alignment.CenterVertically) {
