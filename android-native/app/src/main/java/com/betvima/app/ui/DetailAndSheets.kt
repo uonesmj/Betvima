@@ -465,7 +465,7 @@ fun LoginSheet(state: AppState, model: AppViewModel) {
     var visible by rememberSaveable { mutableStateOf(false) }
     val uri = LocalUriHandler.current
     val context = androidx.compose.ui.platform.LocalContext.current
-    val browserRegistration = {
+    val browserRegistration: () -> Unit = {
         // Account creation MUST pass the server's Cloudflare Turnstile, age and
         // terms checks. Do not bypass them through a direct Supabase sign-up.
         val target = android.net.Uri.parse("https://betvima.com/auth/register")
@@ -474,6 +474,7 @@ fun LoginSheet(state: AppState, model: AppViewModel) {
                 .setShowTitle(true)
                 .build().launchUrl(context, target)
         }.onFailure { uri.openUri(target.toString()) }
+        Unit
     }
     ModalBottomSheet(
         onDismissRequest = { model.showLogin(false) },
