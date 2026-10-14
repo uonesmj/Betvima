@@ -10,7 +10,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.saveable.rememberSaveable
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -296,7 +296,7 @@ fun LockedFeature(lang: Lang, message: String, onLogin: () -> Unit) {
     Surface(color = Color.White, shape = RoundedCornerShape(22.dp),
         modifier = Modifier.fillMaxWidth(), border = BorderStroke(1.dp, Palette.border)) {
         Column(Modifier.padding(25.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-            Icon(Icons.Default.LockOutline, null, tint = Palette.blue, modifier = Modifier.size(34.dp))
+            Icon(Icons.Default.Lock, null, tint = Palette.blue, modifier = Modifier.size(34.dp))
             Spacer(Modifier.height(12.dp))
             Text(message, fontSize = 14.sp, color = Palette.text,
                 textAlign = TextAlign.Center, fontWeight = FontWeight.Bold)
