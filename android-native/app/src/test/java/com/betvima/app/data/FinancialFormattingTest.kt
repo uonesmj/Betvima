@@ -3,6 +3,7 @@ package com.betvima.app.data
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
+import org.json.JSONObject
 import org.junit.Test
 
 class FinancialFormattingTest {
@@ -35,6 +36,29 @@ class FinancialFormattingTest {
         assertEquals("123.45 USD", money(next.availableMinor, next.currency))
         assertEquals(2, next.transactions.size)
         assertFalse(next.hasMore)
+    }
+    @Test fun quoteUsesMarketRevisionNotSelectionOddsRevision() {
+        val market = parseMarket(JSONObject("""
+            {
+              "id": "market-1", "key": "h2h", "nameEn": "Match Result",
+              "nameFa": "نتیجه مسابقه", "status": "open", "version": 4,
+              "selections": [
+                {"id": "selection-1", "nameEn": "Home",
+                 "nameFa": "میزبان", "status": "open",
+                 "oddsScaled": "19500", "oddsVersion": 12}
+              ]
+            }
+        """.trimIndent()))
+        assertEquals(4, market.version)
+        assertEquals(12, market.selections.single().version)
+        assertTrue(market.selections.single().available)
+        assertEquals("میزبان", market.selections.single().label(true))
+        // List cards intentionally omit market.version; an invented zero must not be sent.
+        val summary = parseMarket(JSONObject("""
+            {"id":"market-2","key":"totals","nameEn":"Totals",
+             "status":"open","selections":[]}
+        """.trimIndent()))
+        assertEquals(null, summary.version)
     }
     @Test fun canonicalServerBetStatusLifecycle() {
         val base = Bet("1", "pending", "MULTIPLE", "800", "2200", "USD", 2)
