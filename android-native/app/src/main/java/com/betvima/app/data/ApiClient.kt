@@ -231,6 +231,17 @@ class ApiClient {
         val data = get("/api/v1/wallet?page=" + page, token)
         val w = data.optJSONObject("wallet") ?: JSONObject()
         val tx = data.optJSONObject("transactions") ?: JSONObject()
+        // Payment intents are denominated in provider currency. For an IRR/IRT
+        // account, crypto deposits and voucher payouts can be USD intents.
+        // Read the USD *payment rows* separately, without mixing wallet
+        // balances/ledger entries denominated in different currencies.
+        val companionUsd = if (page == 1 && w.str("currency") in setOf("IRR", "IRT"))
+            runCatching { get("/api/v1/wallet?currency=USD&page=1", token) }.getOrNull()
+        else null
+        val paymentRows = (data.optJSONObject("payments")?.arr("items")?.objects().orEmpty() +
+            companionUsd?.optJSONObject("payments")?.arr("items")?.objects().orEmpty())
+            .distinctBy { it.str("publicId", it.str("id")) }
+            .sortedByDescending { it.str("createdAt") }
         return Wallet(w.str("availableMinor", "0"), w.str("balanceMinor", "0"),
             w.str("heldMinor", "0"), w.str("currency", "USD"),
             data.str("integrity", "unknown"), tx.arr("items").objects().map {
@@ -238,14 +249,14 @@ class ApiClient {
                     it.str("amountMinor", "0"), it.str("createdAt"),
                     it.str("direction"), it.str("status"))
             }, tx.optInt("page", page), tx.optBoolean("hasMore", false),
-            data.optJSONObject("payments")?.arr("items")?.objects()?.map {
+            paymentRows.map {
                 WalletPaymentRecord(
                     id = it.str("id"), publicId = it.str("publicId"),
                     direction = it.str("direction"), status = it.str("status"),
                     amountMinor = it.str("amountMinor", "0"), currency = it.str("currency"),
                     createdAt = it.str("createdAt"), failureMessage = it.str("failureMessage")
                 )
-            } ?: emptyList())
+            })
     }
 
     suspend fun walletMethods(direction: String, currency: String): WalletMethodCatalogue {
