@@ -197,6 +197,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     fun closeBet() = mutable.update {
         it.copy(betDetailVisible = false, betDetailLoading = false, betDetail = null)
     }
+    fun clearQuote() = mutable.update { it.copy(quote = null) }
     fun showSlip(show: Boolean) = mutable.update { it.copy(showSlip = show) }
     fun showLogin(show: Boolean) = mutable.update { it.copy(showLogin = show) }
     fun signIn(email: String, password: String) = viewModelScope.launch {
