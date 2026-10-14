@@ -15,22 +15,18 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.platform.LocalConfiguration
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import coil.ImageLoader
-import coil.compose.AsyncImage
-import coil.decode.SvgDecoder
-import androidx.compose.ui.layout.ContentScale
 import com.betvima.app.data.*
 
 private val slipNavy = Color(0xFF0C1A2E)
@@ -41,23 +37,31 @@ private val slipBorder = Color(0xFFE2E7EF)
 private val slipText = Color(0xFF202C3C)
 private val slipMuted = Color(0xFF7F8B9C)
 
+/**
+ * Compact text wordmark specifically for the bet slip. The former SVG put
+ * "Bet" and "Vima" at fixed, widely separated x positions on narrow devices.
+ * Compose paints a single word; the caller controls centering and contrast.
+ */
 @Composable
-private fun SlipWordmark(
+private fun SlipBrandWordmark(
     modifier: Modifier = Modifier,
-    opacity: Float = .16f,
-    tint: Color? = null
+    color: Color,
+    fontSize: TextUnit,
+    opacity: Float = 1f
 ) {
-    val context = LocalContext.current
-    val imageLoader = remember(context) {
-        ImageLoader.Builder(context).components { add(SvgDecoder.Factory()) }.build()
-    }
-    AsyncImage(
-        model = "file:///android_asset/betvima_wordmark.svg",
-        imageLoader = imageLoader,
-        contentDescription = null,
-        contentScale = ContentScale.Fit,
-        colorFilter = tint?.let { ColorFilter.tint(it) },
-        modifier = modifier.alpha(opacity)
+    Text(
+        text = "Betvima",
+        modifier = modifier,
+        color = color.copy(alpha = opacity),
+        fontWeight = FontWeight.ExtraBold,
+        fontStyle = FontStyle.Italic,
+        fontSize = fontSize,
+        letterSpacing = (-1).sp,
+        lineHeight = (fontSize.value * 1.1f).sp,
+        maxLines = 1,
+        softWrap = false,
+        overflow = TextOverflow.Clip,
+        textAlign = TextAlign.Center
     )
 }
 
@@ -292,11 +296,11 @@ fun PremiumSlipSheet(state: AppState,model: AppViewModel) {
             Column(
                 modifier = Modifier.fillMaxWidth()
                     .background(Brush.linearGradient(listOf(slipNavy, Color(0xFF143755))))
-                    .padding(bottom = 5.dp)
+                    .padding(bottom = 3.dp)
             ) {
                 Row(
                     Modifier.fillMaxWidth()
-                        .padding(horizontal = 13.dp, vertical = 6.dp),
+                        .padding(horizontal = 13.dp, vertical = 4.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     IconButton(
@@ -365,13 +369,15 @@ fun PremiumSlipSheet(state: AppState,model: AppViewModel) {
                 }
                 // A dedicated centered row prevents the wordmark from sitting behind
                 // the balance pill or getting cropped on narrow phone screens.
+                // One compact, centered brand line, independent of the balance width.
                 Box(
-                    Modifier.fillMaxWidth().height(32.dp),
+                    Modifier.fillMaxWidth().height(27.dp),
                     contentAlignment = Alignment.Center
                 ) {
-                    SlipWordmark(
-                        modifier = Modifier.width(164.dp).fillMaxHeight(),
-                        opacity = .95f
+                    SlipBrandWordmark(
+                        modifier = Modifier.fillMaxWidth(),
+                        color = Color(0xFFD2D6DE),
+                        fontSize = 22.sp
                     )
                 }
             }
@@ -433,11 +439,11 @@ fun PremiumSlipSheet(state: AppState,model: AppViewModel) {
                 BetSlipShareActions(state,model)
             }
             Box(Modifier.fillMaxWidth()) {
-                SlipWordmark(
-                    modifier = Modifier.align(Alignment.Center)
-                        .fillMaxWidth(.82f).height(72.dp),
-                    opacity = .13f,
-                    tint = Color(0xFF087FF5)
+                SlipBrandWordmark(
+                    modifier = Modifier.align(Alignment.Center).fillMaxWidth(),
+                    color = Color(0xFF9CA3AF),
+                    fontSize = 46.sp,
+                    opacity = .24f
                 )
                 if(state.picks.isEmpty()) {
                     Row(
