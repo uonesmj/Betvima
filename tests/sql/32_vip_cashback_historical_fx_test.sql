@@ -89,8 +89,9 @@ begin
     where sampled_at=v_rate_at;
   perform tests.assert(v_rate is not null,'immutable fx rate id must exist');
 
-  perform tests.assert(nova.vip_cb_fx_convert(150000000,'IRR',v_at)
-      is not null, 'historical IRR lookup must be available');
+  select count(*) into v_count from nova.vip_cb_fx_convert(150000000,'IRR',v_at)
+    where usd_minor=10000;
+  perform tests.assert(v_count=1,'150 million rial equals 100 USD at this historical rate');
 
   select * into v_quote from nova.vip_cashback_quote_week(v_week)
     where user_id=v_user;
