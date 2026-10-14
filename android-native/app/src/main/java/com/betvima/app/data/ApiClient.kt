@@ -15,6 +15,13 @@ import java.util.concurrent.TimeUnit
 
 class ApiFailure(val code: Int, override val message: String) : IOException(message)
 
+/** Omit the sport filter for Top. The web catalogue treats absent sport as all sports. */
+fun upcomingQueryPath(sport: String): String {
+    val base = "/api/v1/matches?live=false&page=1&pageSize=50"
+    return if (sport == "all") base else base + "&sport=" +
+        URLEncoder.encode(sport, "UTF-8")
+}
+
 /** HTTPS-only read interface to BetVima. Never logs credentials or wallet contents. */
 class ApiClient {
     private val client = OkHttpClient.Builder().connectTimeout(8, TimeUnit.SECONDS)
