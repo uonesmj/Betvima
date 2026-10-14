@@ -37,7 +37,7 @@ private val bottomDestinations = listOf(
     BvDestination("menu", "Menu", "منو", Icons.Default.Menu),
     BvDestination("home", "Home", "خانه", Icons.Default.Home),
     BvDestination("casino", "Casino", "کازینو", Icons.Default.Casino),
-    BvDestination("bonus", "Free money", "پاداش", Icons.Default.MonetizationOn),
+    BvDestination("bets", "My Bets", "شرط‌های من", Icons.Default.ReceiptLong),
     BvDestination("sports", "Sports", "ورزش‌ها", Icons.Default.SportsSoccer),
     BvDestination("language", "Language", "زبان", Icons.Default.Language)
 )
@@ -56,7 +56,7 @@ fun ReferenceAnimatedBottomNav(
     val selected = when {
         menuOpen -> "menu"
         state.feature == Feature.CASINO -> "casino"
-        state.feature == Feature.BONUSES || state.feature == Feature.VIP -> "bonus"
+        state.tab == Tab.BETS && state.feature == Feature.NONE -> "bets"
         state.tab == Tab.LIVE || state.tab == Tab.SPORTS -> "sports"
         state.tab == Tab.HOME && state.feature == Feature.NONE -> "home"
         else -> ""
