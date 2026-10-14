@@ -498,42 +498,36 @@ fun PremiumSlipSheet(state: AppState,model: AppViewModel) {
                 }
                 BetSlipShareActions(state,model)
             }
-            Box(Modifier.fillMaxWidth()) {
-                SlipBrandWordmark(
-                    modifier = Modifier.align(Alignment.Center).fillMaxWidth(),
-                    color = Color(0xFF9CA3AF),
-                    fontSize = 46.sp,
-                    opacity = .24f
-                )
-                if(state.picks.isEmpty()) {
+            if (state.picks.isEmpty()) {
+                // The watermark disappears immediately when odds are selected.
+                Box(Modifier.fillMaxWidth().height(listHeight)) {
+                    SlipBrandWordmark(
+                        modifier = Modifier.align(Alignment.Center).fillMaxWidth(),
+                        color = Color(0xFF9CA3AF),
+                        fontSize = 46.sp,
+                        opacity = .24f
+                    )
                     Row(
-                        Modifier.fillMaxWidth().height(listHeight)
-                            .padding(horizontal=17.dp),
-                        verticalAlignment=Alignment.CenterVertically,
-                        horizontalArrangement=Arrangement.Center
+                        Modifier.fillMaxSize().padding(horizontal = 17.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Center
                     ) {
-                        Icon(Icons.Default.SportsSoccer,null,tint=slipBlue,
-                            modifier=Modifier.size(20.dp))
+                        Icon(Icons.Default.SportsSoccer, null, tint = slipBlue,
+                            modifier = Modifier.size(20.dp))
                         Spacer(Modifier.width(8.dp))
                         Text(tr(lang,
                             "Pick a match to start a prediction.",
                             "برای شروع، یک مسابقه را انتخاب کنید."),
-                            color=slipMuted,fontSize=11.sp)
-                    }
-                } else {
-                    LazyColumn(
-                        modifier=Modifier.fillMaxWidth().height(listHeight),
-                        contentPadding=PaddingValues(
-                            horizontal=13.dp,vertical=5.dp),
-                        verticalArrangement=Arrangement.spacedBy(6.dp)
-                    ) {
-                        items(state.picks,key={it.selectionId}) { pick ->
-                            SlipPickCard(
-                                pick,lang,state.picks.indexOf(pick)+1,
-                                onRemove={model.removePick(pick.selectionId)})
-                        }
+                            color = slipMuted, fontSize = 11.sp)
                     }
                 }
+            } else {
+                SlipPickPager(
+                    state = state,
+                    model = model,
+                    capacity = pickCapacity,
+                    listHeight = listHeight
+                )
             }
             HorizontalDivider(color=slipBorder)
             // Cash stake/quote controls stay fixed. Bonus details retain
