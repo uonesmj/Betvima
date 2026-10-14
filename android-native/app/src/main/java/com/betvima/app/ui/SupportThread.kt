@@ -172,7 +172,6 @@ fun TicketThreadSheet(
                 }
                 chosenFile = file
                 error = null
-                uncertain = false
             } catch (ex: Exception) {
                 chosenFile = null
                 error = tr(lang,
@@ -348,9 +347,60 @@ fun TicketThreadSheet(
                                     modifier = Modifier.padding(11.dp))
                             }
                         }
+                        chosenFile?.let { file ->
+                            Surface(
+                                color = Color(0xFFEAF4FF),
+                                shape = RoundedCornerShape(13.dp),
+                                border = BorderStroke(1.dp, Color(0xFFD4E6FC))
+                            ) {
+                                Row(
+                                    Modifier.fillMaxWidth().padding(
+                                        start = 10.dp, top = 5.dp, bottom = 5.dp, end = 4.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(
+                                        if (file.mimeType == "application/pdf")
+                                            Icons.Default.PictureAsPdf
+                                        else Icons.Default.Image,
+                                        null, tint = chatBlue,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                    Spacer(Modifier.width(8.dp))
+                                    Column(Modifier.weight(1f)) {
+                                        Text(file.displayName, color = chatInk,
+                                            fontSize = 11.sp, fontWeight = FontWeight.Bold,
+                                            maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                        Text(supportFileSizeLabel(file.sizeBytes),
+                                            color = chatMuted, fontSize = 10.sp)
+                                    }
+                                    IconButton(onClick = { chosenFile = null }, enabled = !sending) {
+                                        Icon(Icons.Default.Close,
+                                            tr(lang, "Remove file", "حذف فایل"),
+                                            tint = chatMuted, modifier = Modifier.size(18.dp))
+                                    }
+                                }
+                            }
+                        }
                         Row(Modifier.fillMaxWidth(),
                             verticalAlignment = Alignment.Bottom,
                             horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            OutlinedIconButton(
+                                onClick = {
+                                    documentPicker.launch(arrayOf(
+                                        "image/jpeg", "image/png", "image/webp",
+                                        "application/pdf"
+                                    ))
+                                },
+                                modifier = Modifier.size(48.dp),
+                                enabled = !sending && !closing && !uncertain,
+                                shape = RoundedCornerShape(15.dp),
+                                border = BorderStroke(1.dp, chatLine)
+                            ) {
+                                Icon(Icons.Default.AttachFile,
+                                    tr(lang, "Attach JPG, PNG, WEBP or PDF",
+                                        "پیوست JPG، PNG، WEBP یا PDF"),
+                                    tint = chatBlue, modifier = Modifier.size(22.dp))
+                            }
                             OutlinedTextField(
                                 value = draft,
                                 onValueChange = { draft = it.take(5000) },
@@ -362,27 +412,47 @@ fun TicketThreadSheet(
                             )
                             FilledIconButton(
                                 onClick = {
-                                    if (sending || uncertain || draft.isBlank()) return@FilledIconButton
+                                    if (sending || uncertain ||
+                                        (draft.isBlank() && chosenFile == null))
+                                        return@FilledIconButton
                                     scope.launch {
                                         sending = true; error = null
                                         try {
                                             val token = vault.accessToken(api)
                                                 ?: throw IllegalStateException("Sign in required")
-                                            val sent = api.sendSupportMessage(token, ticket.id, draft)
+                                            val attachment = chosenFile
+                                            val sent = if (attachment == null) {
+                                                api.sendSupportMessage(token, ticket.id, draft)
+                                            } else {
+                                                api.sendSupportFile(
+                                                    token, ticket.id, draft,
+                                                    context.contentResolver, attachment.uri,
+                                                    attachment.displayName,
+                                                    attachment.mimeType
+                                                )
+                                            }
                                             draft = ""
+                                            chosenFile = null
                                             messages = (messages + sent).distinctBy { it.id }
                                             scrollToNew = true
                                             refresh(silent = true)
                                             onUpdated()
-                                        } catch (_: Exception) {
-                                            uncertain = true
-                                            error = tr(lang,
-                                                "Message status unknown. Please refresh before trying again.",
-                                                "نتیجه ارسال پیام نامشخص است؛ قبل از تلاش دوباره تازه‌سازی کنید.")
+                                        } catch (ex: Exception) {
+                                            val rejected = (ex as? ApiFailure)?.code in
+                                                setOf(400, 401, 403, 404, 413, 415, 422)
+                                            uncertain = !rejected
+                                            error = if (rejected) {
+                                                ex.message?.take(220) ?: tr(lang,
+                                                    "The server rejected this attachment.",
+                                                    "سرور فایل یا پیام را نپذیرفت.")
+                                            } else tr(lang,
+                                                "Delivery is uncertain. Check the conversation before resending.",
+                                                "وضعیت ارسال مشخص نیست؛ قبل از ارسال دوباره پیام‌ها را بررسی کنید.")
                                         } finally { sending = false }
                                     }
                                 },
-                                enabled = !sending && !uncertain && draft.isNotBlank(),
+                                enabled = !sending && !uncertain &&
+                                    (draft.isNotBlank() || chosenFile != null),
                                 modifier = Modifier.size(54.dp),
                                 shape = RoundedCornerShape(17.dp),
                                 colors = IconButtonDefaults.filledIconButtonColors(
@@ -436,12 +506,24 @@ fun TicketThreadSheet(
                                 val token = vault.accessToken(api)
                                     ?: throw IllegalStateException("Sign in required")
                                 activeTicket = api.closeSupportTicket(token, ticket.id)
-                                askClose = false; error = null; onUpdated()
-                            } catch (ex: Exception) {
                                 askClose = false
-                                error = ex.message ?: tr(lang,
-                                    "Unable to close ticket","بستن درخواست ممکن نشد")
+                                error = null
+                                onUpdated()
+                            } catch (ex: Exception) {
+                                // A timeout may happen after the server has committed
+                                // the close. Read back the authoritative status
+                                // instead of telling users it definitely failed.
+                                askClose = false
                                 refresh()
+                                if (activeTicket.status == "closed") {
+                                    error = null
+                                    onUpdated()
+                                } else {
+                                    error = (ex as? ApiFailure)?.message?.take(220)
+                                        ?: tr(lang,
+                                            "Could not confirm closure. Refresh this ticket before retrying.",
+                                            "بسته‌شدن تیکت تأیید نشد. پیش از تلاش دوباره، وضعیت آن را تازه‌سازی کنید.")
+                                }
                             } finally { closing = false }
                         }
                     }, enabled = !closing,
