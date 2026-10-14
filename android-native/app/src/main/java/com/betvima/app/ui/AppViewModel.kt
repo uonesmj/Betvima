@@ -26,6 +26,8 @@ data class AppState(
     val picks: List<Pick> = emptyList(), val showSlip: Boolean = false,
     val showLogin: Boolean = false, val signedIn: Boolean = false,
     val wallet: Wallet? = null, val bets: List<Bet> = emptyList(),
+    val betsPage: Int = 1, val betsHasMore: Boolean = false,
+    val moreBetsLoading: Boolean = false, val moreWalletLoading: Boolean = false,
     val bonuses: List<Bonus> = emptyList(), val busy: Boolean = false,
     val accountLoading: Boolean = false,
     val quote: String? = null, val notice: String? = null
@@ -138,7 +140,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         sessionGeneration++
         vault.clear()
         mutable.update { it.copy(signedIn = false, wallet = null, bets = emptyList(),
-            bonuses = emptyList(), quote = null, showLogin = false, accountLoading = false) }
+            bonuses = emptyList(), quote = null, showLogin = false, accountLoading = false,
+            betsPage = 1, betsHasMore = false, moreBetsLoading = false, moreWalletLoading = false) }
     }
     fun refreshAccount() = viewModelScope.launch {
         if (!state.value.signedIn) return@launch
@@ -165,13 +168,59 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             mutable.update {
                 it.copy(
                     wallet = walletResult.getOrNull() ?: it.wallet,
-                    bets = betResult.getOrNull() ?: it.bets,
+                    bets = betResult.getOrNull()?.items ?: it.bets,
+                    betsPage = betResult.getOrNull()?.page ?: it.betsPage,
+                    betsHasMore = betResult.getOrNull()?.hasMore ?: it.betsHasMore,
                     bonuses = bonusResult.getOrNull() ?: it.bonuses,
                     accountLoading = false,
                     notice = if (walletResult.isFailure || betResult.isFailure || bonusResult.isFailure)
                         tr(it.lang, "Some account information could not be refreshed.",
                             "بخشی از اطلاعات حساب به‌روزرسانی نشد.") else it.notice
                 )
+            }
+        }
+    }
+    fun loadMoreBets() = viewModelScope.launch {
+        val snapshot = state.value
+        if (!snapshot.signedIn || !snapshot.betsHasMore || snapshot.moreBetsLoading ||
+            snapshot.accountLoading || snapshot.betsPage >= 1000) return@launch
+        val generation = sessionGeneration
+        mutable.update { it.copy(moreBetsLoading = true) }
+        try {
+            val jwt = vault.accessToken(api) ?: throw ApiFailure(401, "Authentication required")
+            val next = api.bets(jwt, snapshot.betsPage + 1)
+            if (generation == sessionGeneration && state.value.signedIn) mutable.update {
+                it.copy(bets = (it.bets + next.items).distinctBy { bet -> bet.id },
+                    betsPage = next.page, betsHasMore = next.hasMore, moreBetsLoading = false)
+            }
+        } catch (ex: Exception) {
+            if (generation == sessionGeneration) mutable.update {
+                it.copy(moreBetsLoading = false,
+                    notice = tr(it.lang, "Could not load more bets.", "بارگذاری شرط‌های بیشتر ناموفق بود."))
+            }
+        }
+    }
+    fun loadMoreWallet() = viewModelScope.launch {
+        val snapshot = state.value
+        val previous = snapshot.wallet
+        if (!snapshot.signedIn || previous == null || !previous.hasMore ||
+            snapshot.moreWalletLoading || snapshot.accountLoading || previous.page >= 1000) return@launch
+        val generation = sessionGeneration
+        mutable.update { it.copy(moreWalletLoading = true) }
+        try {
+            val jwt = vault.accessToken(api) ?: throw ApiFailure(401, "Authentication required")
+            val page = api.wallet(jwt, previous.page + 1)
+            if (generation == sessionGeneration && state.value.signedIn) mutable.update {
+                val prior = it.wallet ?: previous
+                it.copy(wallet = page.copy(transactions =
+                    (prior.transactions + page.transactions).distinctBy { tx -> tx.id }),
+                    moreWalletLoading = false)
+            }
+        } catch (ex: Exception) {
+            if (generation == sessionGeneration) mutable.update {
+                it.copy(moreWalletLoading = false,
+                    notice = tr(it.lang, "Could not load more transactions.",
+                        "بارگذاری تراکنش‌های بیشتر ناموفق بود."))
             }
         }
     }
