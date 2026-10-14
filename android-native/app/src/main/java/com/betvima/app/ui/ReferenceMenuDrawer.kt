@@ -22,7 +22,8 @@ fun ReferenceMenuDrawer(
     state: AppState,
     model: AppViewModel,
     dismiss: () -> Unit,
-    openAccount: () -> Unit
+    openAccount: () -> Unit,
+    openLanguage: () -> Unit
 ) {
     ModalDrawerSheet(modifier = Modifier.width(306.dp),
         drawerContainerColor = Color(0xFF1B1C20)) {
@@ -111,7 +112,7 @@ fun ReferenceMenuDrawer(
             }
             DrawerRow(tr(state.lang, "Language", "زبان"),
                 Icons.Default.Language, if (state.lang == Lang.FA) "فارسی" else "English") {
-                model.language()
+                dismiss(); openLanguage()
             }
             Spacer(Modifier.height(15.dp))
             Text(tr(state.lang,
