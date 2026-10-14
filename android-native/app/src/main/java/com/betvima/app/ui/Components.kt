@@ -173,7 +173,7 @@ fun OddsChoice(match: Match, market: Market, selection: Selection, liveEnabled: 
             Spacer(Modifier.height(3.dp))
             Row(verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.Center) {
-                if (!enabled) Icon(Icons.Default.LockOutline, null, tint = Palette.muted,
+                if (!enabled) Icon(Icons.Default.Lock, null, tint = Palette.muted,
                     modifier = Modifier.size(12.dp))
                 if (selected) Icon(Icons.Default.Check, null, tint = Palette.ink,
                     modifier = Modifier.size(12.dp))
@@ -292,7 +292,7 @@ fun MatchTile(match: Match, lang: Lang, liveEnabled: Boolean, picks: List<Pick>,
             } else {
                 BvInformationStrip(tr(lang, "Odds temporarily unavailable",
                     "ضرایب موقتاً در دسترس نیستند"),
-                    icon = Icons.Default.LockOutline,
+                    icon = Icons.Default.Lock,
                     modifier = Modifier.padding(11.dp), accent = Palette.muted)
             }
         }
