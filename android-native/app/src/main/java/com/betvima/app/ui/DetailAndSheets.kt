@@ -498,8 +498,19 @@ fun LoginSheet(state: AppState, model: AppViewModel) {
         // terms checks. Do not bypass them through a direct Supabase sign-up.
         val target = android.net.Uri.parse("https://betvima.com/auth/register")
         runCatching {
+            // Partial Custom Tab preserves the exact first-party registration
+            // form, referral attribution and Cloudflare action=register widget.
+            // No credential is sent through an Android JavaScript bridge.
+            val height = (context.resources.displayMetrics.heightPixels * .92f).toInt()
             androidx.browser.customtabs.CustomTabsIntent.Builder()
                 .setShowTitle(true)
+                .setShareState(androidx.browser.customtabs.CustomTabsIntent.SHARE_STATE_OFF)
+                .setInitialActivityHeightPx(height)
+                .setDefaultColorSchemeParams(
+                    androidx.browser.customtabs.CustomTabColorSchemeParams.Builder()
+                        .setToolbarColor(android.graphics.Color.rgb(18, 19, 21))
+                        .build()
+                )
                 .build().launchUrl(context, target)
         }.onFailure { uri.openUri(target.toString()) }
         Unit
