@@ -36,6 +36,13 @@ data class Bet(val id: String, val status: String, val type: String,
     val isSettled: Boolean get() = status.lowercase() in setOf(
         "won", "lost", "void", "refunded", "cancelled", "cashed_out", "settled")
 }
+data class BetLegDetail(val matchLabel: String, val marketLabel: String,
+    val selectionLabel: String, val oddsScaled: String, val status: String,
+    val league: String, val result: String)
+data class BetDetail(val id: String, val publicId: String, val status: String,
+    val currency: String, val stakeMinor: String, val potentialPayoutMinor: String,
+    val settledPayoutMinor: String?, val netResultMinor: String?,
+    val placedAt: String, val settledAt: String?, val legs: List<BetLegDetail>)
 data class Transaction(val id: String, val type: String, val amountMinor: String, val time: String)
 data class Wallet(val availableMinor: String, val balanceMinor: String,
     val heldMinor: String, val currency: String, val integrity: String,
