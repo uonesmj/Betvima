@@ -114,6 +114,32 @@ class ApiClient {
         }
         return BetPage(items, response.optInt("page", page), response.optBoolean("hasMore", false))
     }
+    suspend fun betDetail(token: String, id: String): BetDetail {
+        require(id.matches(Regex("[A-Za-z0-9-]{1,100}")))
+        val data = get("/api/v1/bets/" + id, token)
+        val bet = data.optJSONObject("bet") ?: throw ApiFailure(404, "Bet not found")
+        return BetDetail(
+            id = bet.str("id"), publicId = bet.str("publicId", bet.str("id")),
+            status = bet.str("status"), currency = bet.str("currency", "USD"),
+            stakeMinor = bet.str("stakeMinor", "0"),
+            potentialPayoutMinor = bet.str("potentialPayoutMinor", "0"),
+            settledPayoutMinor = bet.str("settledPayoutMinor").takeIf(String::isNotBlank),
+            netResultMinor = bet.str("netResultMinor").takeIf(String::isNotBlank),
+            placedAt = bet.str("placedAt"),
+            settledAt = bet.str("settledAt").takeIf(String::isNotBlank),
+            legs = bet.arr("legs").objects().map { leg ->
+                BetLegDetail(
+                    matchLabel = leg.str("matchLabel"),
+                    marketLabel = leg.str("marketLabel"),
+                    selectionLabel = leg.str("selectionLabel"),
+                    oddsScaled = leg.str("oddsAtPlacementScaled", "0"),
+                    status = leg.str("status"), league =
+                        leg.optJSONObject("match")?.str("leagueName").orEmpty(),
+                    result = leg.str("grade")
+                )
+            }
+        )
+    }
     suspend fun wallet(token: String, page: Int = 1): Wallet {
         require(page in 1..1000)
         val data = get("/api/v1/wallet?currency=USD&page=" + page, token)
