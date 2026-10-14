@@ -14,6 +14,10 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.background
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.text.AnnotatedString
@@ -101,7 +105,8 @@ internal fun walletTransferValidation(
     direction: String, method: String, coin: String, network: String,
     walletCurrency: String, amount: String, destination: String,
     voucherCode: String, availableMinor: String, integrity: String,
-    methodEnabled: Boolean, quote: WalletExchangeQuote?, usdRate: String?
+    methodEnabled: Boolean, quote: WalletExchangeQuote?, usdRate: String?,
+    methodMinMinor: String = "0", methodMaxMinor: String = "0"
 ): String? {
     if (integrity != "ok") return "ledger"
     if (!methodEnabled) return "method"
@@ -123,6 +128,12 @@ internal fun walletTransferValidation(
     if (n < if (voucher) BigInteger("150") else if (direction == "deposit")
             BigInteger("2000") else if (walletCurrency == "USD") BigInteger("2000")
             else minimum) return "minimum"
+    // Catalogue limits are checked in their own payment currency. The backend
+    // remains authoritative and can reject a newly changed provider minimum.
+    val methodMin = methodMinMinor.toBigIntegerOrNull() ?: return "method"
+    val methodMax = methodMaxMinor.toBigIntegerOrNull() ?: return "method"
+    if (n < methodMin || (methodMax > BigInteger.ZERO && n > methodMax))
+        return "method_limit"
     if (direction == "withdraw") {
         val available = availableMinor.toBigIntegerOrNull() ?: return "balance"
         if (walletMinor.toBigInteger() > available) return "balance"
@@ -142,6 +153,9 @@ private fun walletErrorText(issue: String, lang: Lang): String = when (issue) {
     "ledger" -> wTr(lang,"The account ledger requires review.", "دفترکل حساب نیازمند بررسی است.")
     "method" -> wTr(lang,"This payment method is currently unavailable.",
         "این روش پرداخت فعلاً در دسترس نیست.")
+    "method_limit" -> wTr(lang,
+        "Amount is outside the limits advertised by the payment provider.",
+        "مبلغ خارج از محدوده مجاز این روش پرداخت است.")
     "minimum" -> wTr(lang,"Below the minimum: crypto $20 / voucher $1.50.",
         "کمتر از حداقل: رمزارز ۲۰ دلار / ووچر ۱٫۵۰ دلار.")
     "balance" -> wTr(lang,"Insufficient confirmed available balance.",
@@ -228,6 +242,15 @@ private fun WalletReceipt(
         Text(wTr(lang,"Status: ","وضعیت: ") + receipt.status,
             color = wMuted, fontSize = 12.sp)
         if (address.isNotBlank()) {
+            if (receipt.providerCurrency.isNotBlank()) {
+                Surface(color = Color(0xFFEAF8F3), shape = RoundedCornerShape(11.dp)) {
+                    Text(wTr(lang,"Provider payment currency: ","ارز پرداخت درگاه: ") +
+                        receipt.providerCurrency.uppercase(),
+                        modifier = Modifier.padding(horizontal = 13.dp, vertical = 8.dp),
+                        color = Color(0xFF0A8154), fontWeight = FontWeight.Bold,
+                        fontSize = 11.sp)
+                }
+            }
             Text(wTr(lang,"Send only the selected asset on the matching network.",
                 "فقط ارز انتخاب‌شده را روی شبکه صحیح ارسال کنید."),
                 color = Color(0xFF9F6319), fontSize = 11.sp)
@@ -297,8 +320,10 @@ fun WalletTransferSheet(
     // Voucher codes are not persisted in Android's saved instance state.
     var voucherCode by remember { mutableStateOf("") }
     var picker by remember { mutableStateOf("") }
+    var coinSearch by remember { mutableStateOf("") }
     var confirm by remember { mutableStateOf(false) }
     var busy by remember { mutableStateOf(false) }
+    var uncertainResult by rememberSaveable(direction) { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
     var receipt by remember { mutableStateOf<WalletPaymentIntent?>(null) }
     var methods by remember { mutableStateOf<WalletMethodCatalogue?>(null) }
@@ -336,11 +361,13 @@ fun WalletTransferSheet(
         } finally { loading = false }
     }
 
+    val selectedPaymentMethod = methods?.method(paymentMethodId)
     val methodEnabled = methods?.enabled(
         if (isDeposit) "deposit" else "withdrawal", paymentMethodId) == true
     val issue = walletTransferValidation(
         direction,method,coin,network,currency,amount,destination,voucherCode,
-        wallet.availableMinor,wallet.integrity,methodEnabled,quote,usdRate
+        wallet.availableMinor,wallet.integrity,methodEnabled,quote,usdRate,
+        selectedPaymentMethod?.minMinor ?: "0", selectedPaymentMethod?.maxMinor ?: "0"
     )
     val amountInputCurrency = if (!voucher && isDeposit) "USD" else currency
     val walletMinor = walletInputMinor(amount, amountInputCurrency)
@@ -355,10 +382,11 @@ fun WalletTransferSheet(
     fun submit() {
         // The user can leave a confirmation open long enough for an FX quote
         // to expire. Validate again at the actual press, not only at render.
-        if (busy || transactionMinor == null) return
+        if (busy || uncertainResult || transactionMinor == null) return
         val freshIssue = walletTransferValidation(
             direction,method,coin,network,currency,amount,destination,voucherCode,
-            wallet.availableMinor,wallet.integrity,methodEnabled,quote,usdRate
+            wallet.availableMinor,wallet.integrity,methodEnabled,quote,usdRate,
+            selectedPaymentMethod?.minMinor ?: "0", selectedPaymentMethod?.maxMinor ?: "0"
         )
         if (freshIssue != null) {
             confirm = false
@@ -384,12 +412,17 @@ fun WalletTransferSheet(
                     else model.walletCreateWithdrawal(payload,idempotency)
                 voucherCode = ""
                 model.refreshAccount()
-            } catch (_: Exception) {
-                // A timeout may follow an accepted request. Do not automatically
-                // re-submit a second money request with a different idempotency key.
-                error = wTr(lang,
-                    "Request not confirmed. Check payment history before retrying.",
-                    "تأیید درخواست دریافت نشد؛ قبل از تلاش دوباره تاریخچه پرداخت را بررسی کنید.")
+            } catch (ex: Exception) {
+                // Validation 4xx is definitively rejected; network interruptions,
+                // 409 conflicts and 5xx responses are *ambiguous* and cannot be
+                // retried with a new payment ID from this sheet.
+                val definiteRejection = (ex as? ApiFailure)?.code in setOf(400, 401, 403, 404, 422, 429)
+                uncertainResult = !definiteRejection
+                error = if (definiteRejection)
+                    (ex.message?.take(240) ?: wTr(lang, "Payment was rejected.", "درخواست رد شد."))
+                else wTr(lang,
+                    "Payment status unknown. Do not submit again; check your history first.",
+                    "نتیجه پرداخت نامشخص است. دوباره ارسال نکنید؛ ابتدا تاریخچه را بررسی کنید.")
             } finally { busy = false }
         }
     }
@@ -405,44 +438,93 @@ fun WalletTransferSheet(
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             if (receipt == null) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Surface(color = Color(0xFFEEF4FF), shape = RoundedCornerShape(14.dp)) {
-                        Icon(if (isDeposit) Icons.Default.SouthWest else Icons.Default.NorthEast,
-                            null, tint = wBlue, modifier = Modifier.padding(10.dp).size(23.dp))
-                    }
-                    Spacer(Modifier.width(10.dp))
-                    Column(Modifier.weight(1f)) {
-                        Text(if (isDeposit) wTr(lang,"Add funds","واریز وجه")
-                            else wTr(lang,"Withdraw funds","برداشت وجه"),
-                            color = wText, fontSize = 20.sp, fontWeight = FontWeight.Black)
-                        Text(wTr(lang,"Secure BetVima wallet","کیف پول امن بت‌ویما"),
-                            color = wMuted, fontSize = 11.sp)
-                    }
-                    IconButton(onClick = onDismiss, enabled = !busy) {
-                        Icon(Icons.Default.Close, null)
+                Surface(
+                    shape = RoundedCornerShape(23.dp),
+                    color = Color(0xFF102953),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Box(Modifier.fillMaxWidth().background(
+                        Brush.linearGradient(listOf(
+                            Color(0xFF10284D),
+                            if (isDeposit) Color(0xFF0F5A65) else Color(0xFF133F93),
+                            Color(0xFF087FF5)
+                        )))) {
+                        Box(Modifier.align(Alignment.TopEnd)
+                            .offset(x = 40.dp, y = (-58).dp).size(154.dp)
+                            .clip(CircleShape).background(Color.White.copy(alpha = .07f)))
+                        Row(Modifier.fillMaxWidth().padding(
+                            start = 15.dp, end = 6.dp, top = 15.dp, bottom = 15.dp),
+                            verticalAlignment = Alignment.CenterVertically) {
+                            Surface(
+                                color = Color.White.copy(alpha = .13f),
+                                shape = RoundedCornerShape(14.dp),
+                                border = BorderStroke(1.dp, Color.White.copy(alpha = .19f))
+                            ) {
+                                Icon(
+                                    if (isDeposit) Icons.Default.SouthWest else Icons.Default.NorthEast,
+                                    null, tint = Color.White,
+                                    modifier = Modifier.padding(11.dp).size(22.dp))
+                            }
+                            Spacer(Modifier.width(11.dp))
+                            Column(Modifier.weight(1f)) {
+                                Text(
+                                    if (isDeposit) wTr(lang,"Add funds","واریز وجه")
+                                    else wTr(lang,"Withdraw funds","برداشت وجه"),
+                                    color = Color.White,
+                                    fontSize = 20.sp, fontWeight = FontWeight.Black)
+                                Text(wTr(lang,"BETVIMA · VERIFIED PAYMENT FLOW",
+                                    "بت‌ویما · عملیات مالی امن"),
+                                    color = Color.White.copy(alpha = .77f),
+                                    fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                            }
+                            IconButton(onClick = onDismiss, enabled = !busy) {
+                                Icon(Icons.Default.Close, wTr(lang,"Close","بستن"),
+                                    tint = Color.White)
+                            }
+                        }
                     }
                 }
+                Row(verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth()) {
+                    Icon(Icons.Default.VerifiedUser, null, tint = Color(0xFF0C9363),
+                        modifier = Modifier.size(17.dp))
+                    Spacer(Modifier.width(7.dp))
+                    Text(wTr(lang, "Payments use the same secure account as the website",
+                        "پرداخت‌ها با همان حساب امن سایت انجام می‌شوند"),
+                        color = wMuted, fontSize = 11.sp)
+                }
+                Text(wTr(lang,"PAYMENT METHOD","روش پرداخت"),
+                    color = wMuted, fontSize = 10.sp,
+                    fontWeight = FontWeight.Black, letterSpacing = .8.sp)
                 Row(horizontalArrangement = Arrangement.spacedBy(7.dp)) {
                     listOf("crypto","voucher_uvoucher","voucher_hotvoucher").forEach { option ->
                         val selected = method == option
                         Surface(
-                            color = if (selected) wBlue else Color(0xFFF3F6FA),
-                            border = BorderStroke(1.dp, if (selected) wBlue else wBorder),
-                            shape = RoundedCornerShape(13.dp),
+                            color = if (selected) Color(0xFFEAF3FF) else Color(0xFFF7F9FC),
+                            border = BorderStroke(if (selected) 1.6.dp else 1.dp,
+                                if (selected) wBlue else wBorder),
+                            shape = RoundedCornerShape(15.dp),
                             modifier = Modifier.weight(1f).clickable {
                                 if (!busy) { method = option; amount = ""; error = null }
                             }
                         ) {
                             Column(Modifier.padding(vertical = 10.dp),
                                 horizontalAlignment = Alignment.CenterHorizontally) {
-                                Text(if (option == "crypto") "₿" else if (option == "voucher_uvoucher")
-                                    "🎟" else "🎫", fontSize = 19.sp)
+                                Surface(
+                                    color = if (selected) wBlue else Color.White,
+                                    shape = CircleShape
+                                ) {
+                                    Text(if (option == "crypto") "₿" else if (option == "voucher_uvoucher")
+                                        "🎟" else "🎫", fontSize = 19.sp,
+                                        modifier = Modifier.padding(horizontal = 9.dp, vertical = 5.dp))
+                                }
+                                Spacer(Modifier.height(4.dp))
                                 Text(when (option) {
                                     "crypto" -> "Crypto"
                                     "voucher_uvoucher" -> "U-Voucher"
                                     else -> "HotVoucher"
-                                }, color = if (selected) Color.White else wText,
-                                    fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                                }, color = if (selected) wBlue else wText,
+                                    fontSize = 10.sp, fontWeight = FontWeight.Black)
                             }
                         }
                     }
@@ -503,6 +585,26 @@ fun WalletTransferSheet(
                             money(wallet.availableMinor,wallet.currency),
                             color = wMuted, fontSize = 10.sp)
                 }
+                if (selectedPaymentMethod != null && methodEnabled) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Default.Info, null, tint = wBlue,
+                            modifier = Modifier.size(15.dp))
+                        Spacer(Modifier.width(6.dp))
+                        val bounds = buildString {
+                            if (selectedPaymentMethod.minMinor != "0")
+                                append(wTr(lang,"Method minimum: ","حداقل این روش: ") +
+                                    money(selectedPaymentMethod.minMinor, lookupCurrency))
+                            if (selectedPaymentMethod.maxMinor != "0") {
+                                if (isNotEmpty()) append("  ·  ")
+                                append(wTr(lang,"Maximum: ","حداکثر: ") +
+                                    money(selectedPaymentMethod.maxMinor, lookupCurrency))
+                            }
+                        }
+                        Text(bounds.ifBlank {
+                            wTr(lang, "Provider limits apply", "محدودیت‌های درگاه اعمال می‌شوند")
+                        }, color = wMuted, fontSize = 10.sp)
+                    }
+                }
                 if (voucher && currency != "USD") {
                     Surface(color = Color(0xFFEEF4FF), shape = RoundedCornerShape(13.dp)) {
                         Column(Modifier.padding(11.dp)) {
@@ -536,6 +638,21 @@ fun WalletTransferSheet(
                         singleLine = true,
                         keyboardOptions = KeyboardOptions(
                             keyboardType = if (voucher) KeyboardType.Email else KeyboardType.Text),
+                        trailingIcon = {
+                            IconButton(onClick = {
+                                // Paste only on explicit user request; no background
+                                // clipboard reading of sensitive addresses.
+                                val pasted = clipboard.getText()?.text?.trim().orEmpty()
+                                if (pasted.isNotEmpty()) {
+                                    destination = pasted.take(254)
+                                    error = null
+                                }
+                            }) {
+                                Icon(Icons.Default.ContentPaste,
+                                    wTr(lang,"Paste destination","چسباندن آدرس"),
+                                    tint = wBlue)
+                            }
+                        },
                         shape = RoundedCornerShape(14.dp),
                         modifier = Modifier.fillMaxWidth()
                     )
@@ -557,13 +674,41 @@ fun WalletTransferSheet(
                         )
                     }
                 }
+                if (uncertainResult) {
+                    Surface(color = Color(0xFFFFF7E9), shape = RoundedCornerShape(15.dp),
+                        border = BorderStroke(1.dp, Color(0xFFF1D3A5))) {
+                        Column(Modifier.fillMaxWidth().padding(13.dp),
+                            verticalArrangement = Arrangement.spacedBy(9.dp)) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(Icons.Default.WarningAmber, null,
+                                    tint = Color(0xFF966214), modifier = Modifier.size(19.dp))
+                                Spacer(Modifier.width(7.dp))
+                                Text(wTr(lang, "Request needs reconciliation",
+                                    "وضعیت درخواست نیازمند بررسی است"),
+                                    color = Color(0xFF855913), fontSize = 12.sp,
+                                    fontWeight = FontWeight.Black)
+                            }
+                            Text(wTr(lang,
+                                "To avoid duplicate charges, sending again is locked. Check recent payments before starting another request.",
+                                "برای جلوگیری از تراکنش تکراری، ارسال مجدد قفل است. ابتدا پرداخت‌های اخیر را بررسی کنید."),
+                                color = wText, fontSize = 11.sp)
+                            OutlinedButton(onClick = onOpenHistory,
+                                modifier = Modifier.fillMaxWidth()) {
+                                Icon(Icons.Default.History, null,
+                                    modifier = Modifier.size(17.dp))
+                                Spacer(Modifier.width(6.dp))
+                                Text(wTr(lang, "Review payment history", "بررسی تاریخچه پرداخت"))
+                            }
+                        }
+                    }
+                }
                 if (error != null) {
                     Surface(color = Color(0xFFFFF1F1), shape = RoundedCornerShape(12.dp)) {
                         Text(error.orEmpty(), color = Color(0xFFBC344A),
                             fontSize = 11.sp, modifier = Modifier.padding(11.dp))
                     }
                 }
-                if (!loading && issue != null && amount.isNotBlank() && methodEnabled) {
+                if (!loading && issue != null && amount.isNotBlank() && methodEnabled && !uncertainResult) {
                     Text(walletErrorText(issue,lang), color = Color(0xFFB5472F), fontSize = 11.sp)
                 }
                 OutlinedButton(onClick = { refreshKey++ },
@@ -576,7 +721,7 @@ fun WalletTransferSheet(
                         fontSize = 11.sp)
                 }
                 Button(onClick = { confirm = true },
-                    enabled = !busy && !loading && issue == null,
+                    enabled = !busy && !loading && !uncertainResult && issue == null,
                     modifier = Modifier.fillMaxWidth().height(53.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = wBlue),
                     shape = RoundedCornerShape(15.dp)) {
@@ -620,40 +765,134 @@ fun WalletTransferSheet(
     }
 
     if (picker.isNotBlank()) {
-        AlertDialog(
-            onDismissRequest = { picker = "" },
-            title = { Text(if (picker == "coin")
-                wTr(lang,"Choose cryptocurrency","انتخاب رمزارز")
-            else wTr(lang,"Select network","انتخاب شبکه")) },
-            text = {
-                Column(Modifier.heightIn(max = 410.dp).verticalScroll(rememberScrollState()),
-                    verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    if (picker == "coin") walletCoins.forEach { item ->
-                        WalletMenuRow(
-                            item.code, item.name,
-                            leading = { CryptoLogo(item) },
-                            onClick = {
-                                coin = item.code
-                                network = item.networkOptions.first()
-                                picker = ""
-                            }
+        ModalBottomSheet(
+            onDismissRequest = { picker = ""; coinSearch = "" },
+            containerColor = Color(0xFFF9FBFD),
+            sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+        ) {
+            Column(
+                Modifier.fillMaxWidth().padding(horizontal = 17.dp).padding(bottom = 28.dp),
+                verticalArrangement = Arrangement.spacedBy(13.dp)
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Surface(color = Color(0xFFE9F2FF),
+                        shape = RoundedCornerShape(13.dp)) {
+                        Icon(
+                            if (picker == "coin") Icons.Default.CurrencyBitcoin
+                            else Icons.Default.Hub,
+                            null, tint = wBlue,
+                            modifier = Modifier.padding(10.dp).size(22.dp)
                         )
-                    } else selectedCoin.networkOptions.forEach { option ->
-                        WalletMenuRow(option,wTr(lang,"Blockchain network","شبکه بلاکچین"),
-                            leading = {
-                                Icon(Icons.Default.Hub, null, tint = wBlue,
-                                    modifier = Modifier.size(25.dp))
-                            },
-                            onClick = { network = option; picker = "" })
+                    }
+                    Spacer(Modifier.width(10.dp))
+                    Column(Modifier.weight(1f)) {
+                        Text(
+                            if (picker == "coin") wTr(lang, "Select cryptocurrency", "انتخاب رمزارز")
+                            else wTr(lang, "Choose blockchain network", "انتخاب شبکه بلاکچین"),
+                            color = wText, fontSize = 18.sp, fontWeight = FontWeight.Black)
+                        Text(wTr(lang,"Choose carefully before transferring",
+                            "قبل از انتقال، انتخاب خود را بررسی کنید"),
+                            fontSize = 10.sp, color = wMuted)
+                    }
+                    IconButton(onClick = { picker = ""; coinSearch = "" }) {
+                        Icon(Icons.Default.Close, wTr(lang,"Close","بستن"))
                     }
                 }
-            },
-            confirmButton = {
-                TextButton(onClick = { picker = "" }) {
-                    Text(wTr(lang,"Close","بستن"))
+                if (picker == "coin") {
+                    OutlinedTextField(
+                        value = coinSearch,
+                        onValueChange = { coinSearch = it.take(30) },
+                        modifier = Modifier.fillMaxWidth(),
+                        leadingIcon = { Icon(Icons.Default.Search, null) },
+                        label = { Text(wTr(lang, "Search coins", "جستجوی رمزارز")) },
+                        singleLine = true, shape = RoundedCornerShape(14.dp)
+                    )
+                }
+                Column(
+                    Modifier.fillMaxWidth().heightIn(max = 430.dp)
+                        .verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(7.dp)
+                ) {
+                    if (picker == "coin") walletCoins
+                        .filter {
+                            it.code.contains(coinSearch, ignoreCase = true) ||
+                                it.name.contains(coinSearch, ignoreCase = true)
+                        }.forEach { item ->
+                            Surface(
+                                modifier = Modifier.fillMaxWidth().clickable {
+                                    coin = item.code
+                                    network = item.networkOptions.first()
+                                    picker = ""
+                                    coinSearch = ""
+                                },
+                                color = if (coin == item.code) Color(0xFFE9F4FF)
+                                    else Color.White,
+                                border = BorderStroke(if (coin == item.code) 1.5.dp else 1.dp,
+                                    if (coin == item.code) wBlue else wBorder),
+                                shape = RoundedCornerShape(16.dp)
+                            ) {
+                                Row(Modifier.fillMaxWidth().padding(12.dp),
+                                    verticalAlignment = Alignment.CenterVertically) {
+                                    CryptoLogo(item, Modifier.size(43.dp))
+                                    Spacer(Modifier.width(12.dp))
+                                    Column(Modifier.weight(1f)) {
+                                        Text(item.code, color = wText,
+                                            fontSize = 13.sp, fontWeight = FontWeight.Black)
+                                        Text(item.name + " · " +
+                                            wTr(lang,"Networks: ","شبکه‌ها: ") +
+                                            item.networkOptions.size,
+                                            color = wMuted, fontSize = 10.sp)
+                                    }
+                                    if (coin == item.code)
+                                        Icon(Icons.Default.CheckCircle, null, tint = wBlue)
+                                    else Icon(Icons.Default.ChevronRight, null, tint = wMuted)
+                                }
+                            }
+                        }
+                    else selectedCoin.networkOptions.forEach { option ->
+                        Surface(
+                            modifier = Modifier.fillMaxWidth().clickable {
+                                network = option
+                                picker = ""
+                            },
+                            color = if (network == option) Color(0xFFE9F4FF)
+                                else Color.White,
+                            border = BorderStroke(if (network == option) 1.5.dp else 1.dp,
+                                if (network == option) wBlue else wBorder),
+                            shape = RoundedCornerShape(16.dp)
+                        ) {
+                            Row(Modifier.fillMaxWidth().padding(15.dp),
+                                verticalAlignment = Alignment.CenterVertically) {
+                                Icon(Icons.Default.Hub, null, tint = wBlue)
+                                Spacer(Modifier.width(11.dp))
+                                Column(Modifier.weight(1f)) {
+                                    Text(option, fontWeight = FontWeight.Black,
+                                        fontSize = 13.sp, color = wText)
+                                    Text(wTr(lang,"Verify network compatibility",
+                                        "از سازگاری شبکه مقصد مطمئن شوید"),
+                                        color = wMuted, fontSize = 10.sp)
+                                }
+                                if (network == option)
+                                    Icon(Icons.Default.CheckCircle, null, tint = wBlue)
+                            }
+                        }
+                    }
+                }
+                Surface(color = Color(0xFFFFF7E8),
+                    shape = RoundedCornerShape(13.dp)) {
+                    Row(Modifier.fillMaxWidth().padding(12.dp),
+                        verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Default.Info, null, tint = Color(0xFF9E681D),
+                            modifier = Modifier.size(17.dp))
+                        Spacer(Modifier.width(8.dp))
+                        Text(wTr(lang,
+                            "Transfers on the wrong blockchain may be permanently lost.",
+                            "انتقال روی شبکه اشتباه ممکن است موجب از دست رفتن دائمی وجه شود."),
+                            color = Color(0xFF845716), fontSize = 11.sp)
+                    }
                 }
             }
-        )
+        }
     }
     if (confirm) {
         AlertDialog(
@@ -686,7 +925,7 @@ fun WalletTransferSheet(
                 }
             },
             confirmButton = {
-                Button(onClick = ::submit, enabled = !busy && issue == null,
+                Button(onClick = ::submit, enabled = !busy && !uncertainResult && issue == null,
                     colors = ButtonDefaults.buttonColors(containerColor = wBlue)) {
                     Text(wTr(lang,"Confirm","تأیید نهایی"))
                 }

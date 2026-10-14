@@ -5,6 +5,10 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.background
+import androidx.compose.ui.draw.clip
+import androidx.compose.animation.animateContentSize
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -49,7 +53,7 @@ private fun WalletAction(
             Text(name, color = if (dark) Color.White else walletInk,
                 fontSize = 12.sp, fontWeight = FontWeight.Black)
             Text(detail, color = if (dark) Color.White.copy(alpha = .72f) else walletMute,
-                fontSize = 9.sp, maxLines = 1)
+                fontSize = 10.sp, maxLines = 1)
         }
     }
 }
@@ -57,70 +61,134 @@ private fun WalletAction(
 @Composable
 private fun WalletSummary(state: AppState, wallet: Wallet) {
     val lang = state.lang
-    Surface(shape = RoundedCornerShape(24.dp),
+    Surface(
+        shape = RoundedCornerShape(27.dp),
         modifier = Modifier.fillMaxWidth(),
-        shadowElevation = 4.dp, color = Color(0xFF133D75)) {
-        Column(
-            Modifier.background(Brush.linearGradient(listOf(
-                Color(0xFF102B59), Color(0xFF144C98), Color(0xFF087FF5)
-            ))).padding(18.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp)
-        ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Default.AccountBalanceWallet, null, tint = Color(0xFF8EEDC1))
-                Spacer(Modifier.width(8.dp))
-                Text(tr(lang, "BETVIMA WALLET", "کیف پول بت‌ویما"),
-                    color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Black)
-                Spacer(Modifier.weight(1f))
-                Surface(color = Color.White.copy(alpha = .13f),
-                    shape = RoundedCornerShape(10.dp)) {
-                    Row(Modifier.padding(horizontal = 9.dp, vertical = 6.dp),
-                        verticalAlignment = Alignment.CenterVertically) {
-                        Text(if (wallet.currency == "IRR") "🇮🇷" else "🇺🇸", fontSize = 13.sp)
-                        Spacer(Modifier.width(5.dp))
-                        Text(wallet.currency, color = Color.White,
-                            fontWeight = FontWeight.Bold, fontSize = 11.sp)
+        shadowElevation = 6.dp,
+        color = Color(0xFF0C2346)
+    ) {
+        Box {
+            Box(
+                Modifier.matchParentSize().background(
+                    Brush.linearGradient(
+                        listOf(Color(0xFF081E3D), Color(0xFF123D7A), Color(0xFF087FF5))
+                    )
+                )
+            )
+            // Subtle glass-like circles provide depth without a static bitmap.
+            Box(Modifier.align(Alignment.TopEnd).offset(x = 72.dp, y = (-74).dp)
+                .size(218.dp).clip(CircleShape)
+                .background(Color.White.copy(alpha = .055f)))
+            Box(Modifier.align(Alignment.BottomStart).offset(x = (-82).dp, y = 89.dp)
+                .size(180.dp).clip(CircleShape)
+                .background(walletGreen.copy(alpha = .075f)))
+            Column(
+                Modifier.fillMaxWidth().padding(19.dp),
+                verticalArrangement = Arrangement.spacedBy(17.dp)
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Surface(color = walletGreen.copy(alpha = .14f),
+                        shape = RoundedCornerShape(13.dp),
+                        border = BorderStroke(1.dp, walletGreen.copy(alpha = .35f))) {
+                        Icon(Icons.Default.AccountBalanceWallet, null,
+                            tint = walletGreen,
+                            modifier = Modifier.padding(10.dp).size(21.dp))
                     }
-                }
-            }
-            Column {
-                Text(tr(lang, "AVAILABLE BALANCE", "موجودی قابل استفاده"),
-                    color = Color(0xFFC8D8F3), fontSize = 10.sp,
-                    fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
-                Text(money(wallet.availableMinor, wallet.currency),
-                    color = Color.White, fontSize = 29.sp, fontWeight = FontWeight.Black,
-                    maxLines = 1, overflow = TextOverflow.Ellipsis)
-            }
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                listOf(
-                    tr(lang, "Total", "کل موجودی") to wallet.balanceMinor,
-                    tr(lang, "Held", "مسدودشده") to wallet.heldMinor
-                ).forEach { (label, minor) ->
-                    Surface(color = Color.White.copy(alpha = .11f),
-                        shape = RoundedCornerShape(14.dp), modifier = Modifier.weight(1f)) {
-                        Column(Modifier.padding(12.dp)) {
-                            Text(label, fontSize = 10.sp, color = Color(0xFFC1D1E7))
-                            Spacer(Modifier.height(4.dp))
-                            Text(money(minor, wallet.currency), color = Color.White,
-                                fontSize = 12.sp, fontWeight = FontWeight.Black,
-                                maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Spacer(Modifier.width(10.dp))
+                    Column(Modifier.weight(1f)) {
+                        Text("BETVIMA / WALLET", color = Color.White,
+                            fontSize = 13.sp, fontWeight = FontWeight.Black,
+                            letterSpacing = .8.sp)
+                        Text(tr(lang, "Your private balance", "موجودی اختصاصی شما"),
+                            color = Color(0xFFAFCAE4), fontSize = 10.sp)
+                    }
+                    Surface(
+                        color = Color.White.copy(alpha = .12f),
+                        border = BorderStroke(1.dp, Color.White.copy(alpha = .16f)),
+                        shape = RoundedCornerShape(50)
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 7.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                when(wallet.currency) {
+                                    "IRR", "IRT" -> "🇮🇷"
+                                    "USD" -> "🇺🇸"
+                                    else -> "🌐"
+                                }, fontSize = 15.sp
+                            )
+                            Spacer(Modifier.width(5.dp))
+                            Text(wallet.currency, color = Color.White,
+                                fontWeight = FontWeight.Black, fontSize = 11.sp)
                         }
                     }
                 }
-            }
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(if (wallet.integrity == "ok") Icons.Default.VerifiedUser
-                    else Icons.Default.ReportProblem, null,
-                    tint = if (wallet.integrity == "ok") Color(0xFF8EEDC1) else Color(0xFFFFD78A),
-                    modifier = Modifier.size(16.dp))
-                Spacer(Modifier.width(6.dp))
-                Text(
-                    if (wallet.integrity == "ok")
-                        tr(lang, "Server verified ledger", "موجودی تأییدشده توسط سرور")
-                    else tr(lang, "Ledger needs review · transfers disabled",
-                        "دفترکل نیازمند بررسی است · انتقال غیرفعال"),
-                    color = Color.White.copy(alpha = .82f), fontSize = 10.sp
-                )
+                Column(Modifier.animateContentSize(), verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Box(Modifier.size(6.dp).clip(CircleShape)
+                            .background(if (wallet.integrity == "ok") walletGreen
+                                else Color(0xFFFFCD6B)))
+                        Spacer(Modifier.width(7.dp))
+                        Text(
+                            tr(lang,"AVAILABLE BALANCE","موجودی قابل استفاده"),
+                            color = Color(0xFFC0D7EE), fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold, letterSpacing = 1.sp
+                        )
+                    }
+                    Text(money(wallet.availableMinor, wallet.currency),
+                        color = Color.White, fontSize = 30.sp,
+                        fontWeight = FontWeight.Black, maxLines = 1,
+                        overflow = TextOverflow.Ellipsis)
+                }
+                Row(horizontalArrangement = Arrangement.spacedBy(9.dp)) {
+                    listOf(
+                        Triple(Icons.Default.AccountBalanceWallet,
+                            tr(lang, "Total balance", "کل موجودی"), wallet.balanceMinor),
+                        Triple(Icons.Default.Lock,
+                            tr(lang, "Reserved", "موجودی مسدود"), wallet.heldMinor)
+                    ).forEach { (icon, label, minor) ->
+                        Surface(
+                            color = Color.White.copy(alpha = .105f),
+                            shape = RoundedCornerShape(15.dp),
+                            border = BorderStroke(1.dp, Color.White.copy(alpha = .105f)),
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Column(Modifier.padding(11.dp),
+                                verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(icon, null, tint = Color(0xFFBBD9F5),
+                                        modifier = Modifier.size(14.dp))
+                                    Spacer(Modifier.width(5.dp))
+                                    Text(label, fontSize = 10.sp,
+                                        color = Color(0xFFC0D7EE), maxLines = 1)
+                                }
+                                Text(money(minor, wallet.currency), color = Color.White,
+                                    fontSize = 12.sp, fontWeight = FontWeight.Black,
+                                    maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            }
+                        }
+                    }
+                }
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Icon(
+                        if (wallet.integrity == "ok") Icons.Default.VerifiedUser
+                        else Icons.Default.WarningAmber, null,
+                        tint = if (wallet.integrity == "ok") Color(0xFF89F1C3)
+                            else Color(0xFFFFD47A), modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(Modifier.width(6.dp))
+                    Text(
+                        if (wallet.integrity == "ok")
+                            tr(lang, "Balance verified by secure ledger", "تأیید موجودی توسط دفترکل امن")
+                        else tr(lang, "Balance under review · financial requests blocked",
+                            "موجودی در حال بررسی · عملیات مالی غیرفعال"),
+                        color = Color(0xFFD3E4F5), fontSize = 10.sp
+                    )
+                }
             }
         }
     }
@@ -231,6 +299,20 @@ fun PremiumWalletPage(state: AppState, model: AppViewModel) {
             } else {
                 item { WalletSummary(state, wallet) }
                 item {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(tr(lang, "QUICK ACTIONS", "دسترسی سریع"),
+                            color = walletMute, fontSize = 10.sp,
+                            fontWeight = FontWeight.Black, letterSpacing = .7.sp)
+                        Spacer(Modifier.weight(1f))
+                        Icon(Icons.Default.Shield, null, tint = Color(0xFF0A9760),
+                            modifier = Modifier.size(14.dp))
+                        Spacer(Modifier.width(4.dp))
+                        Text(tr(lang,"Secure payments","پرداخت امن"),
+                            color = Color(0xFF087D4D), fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold)
+                    }
+                }
+                item {
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         WalletAction(tr(lang,"Deposit","واریز"),
                             tr(lang,"Add funds","شارژ حساب"),
@@ -292,11 +374,21 @@ fun PremiumWalletPage(state: AppState, model: AppViewModel) {
                 }
                 val payments = wallet.payments.filter { filter == "all" || it.direction == filter }
                 if (payments.isEmpty()) item {
-                    Surface(color = Color.White, shape = RoundedCornerShape(15.dp),
+                    Surface(color = Color.White, shape = RoundedCornerShape(17.dp),
                         border = BorderStroke(1.dp, walletEdge)) {
-                        Text(tr(lang, "No recent payment requests. Open History for ledger activity.",
-                            "درخواست پرداختی ثبت نشده است؛ گردش حساب را در تاریخچه ببینید."),
-                            modifier = Modifier.padding(17.dp), fontSize = 12.sp, color = walletMute)
+                        Column(
+                            Modifier.fillMaxWidth().padding(20.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Icon(Icons.Default.ReceiptLong, null, tint = walletBlue,
+                                modifier = Modifier.size(27.dp))
+                            Text(tr(lang, "No payment requests yet", "هنوز پرداختی ثبت نشده"),
+                                color = walletInk, fontWeight = FontWeight.Black, fontSize = 13.sp)
+                            Text(tr(lang, "New payment receipts will appear here.",
+                                "رسیدهای واریز و برداشت در این بخش نمایش داده می‌شوند."),
+                                color = walletMute, fontSize = 11.sp)
+                        }
                     }
                 }
                 items(payments.take(6), key = { it.id }) { payment ->
