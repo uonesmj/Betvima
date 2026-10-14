@@ -254,52 +254,44 @@ fun CatalogPage(state: AppState, model: AppViewModel, live: Boolean,
 private fun LeagueSection(key: String, matches: List<Match>, first: Boolean,
     state: AppState, model: AppViewModel) {
     var expanded by rememberSaveable(key) { mutableStateOf(first) }
-    Column {
-        Surface(Modifier.fillMaxWidth().clickable { expanded = !expanded },
-            color = if (expanded) Palette.ink else Color.White,
-            border = BorderStroke(1.dp,
-                if (expanded) Palette.dark else Palette.border),
-            shape = RoundedCornerShape(16.dp), shadowElevation = 1.dp) {
-            Row(Modifier.heightIn(min = 67.dp)
-                .padding(horizontal = 14.dp, vertical = 10.dp),
+    Surface(shape = RoundedCornerShape(20.dp), color = Color.White,
+        border = BorderStroke(1.dp, Palette.border),
+        modifier = Modifier.fillMaxWidth()) {
+        Column {
+            Row(Modifier.fillMaxWidth().clickable { expanded = !expanded }
+                .padding(horizontal = 13.dp, vertical = 12.dp),
                 verticalAlignment = Alignment.CenterVertically) {
                 val logo = matches.first().leagueLogo
-                Surface(shape = RoundedCornerShape(12.dp),
-                    color = if (expanded) Color.White.copy(alpha = .13f) else Palette.paper) {
-                    Box(Modifier.size(42.dp), contentAlignment = Alignment.Center) {
-                        if (logo?.startsWith("https://") == true) AsyncImage(
-                            model = logo, contentDescription = matches.first().league,
-                            modifier = Modifier.size(30.dp))
-                        else Icon(Icons.Default.EmojiEvents, null,
-                            tint = if (expanded) Palette.green else Palette.blue,
+                Surface(color = Palette.paper, shape = RoundedCornerShape(12.dp)) {
+                    Box(Modifier.size(40.dp), contentAlignment = Alignment.Center) {
+                        if (logo?.startsWith("https://") == true)
+                            AsyncImage(model = logo, contentDescription = matches.first().league,
+                                modifier = Modifier.size(30.dp))
+                        else Icon(Icons.Default.EmojiEvents, null, tint = Palette.blue,
                             modifier = Modifier.size(22.dp))
                     }
                 }
-                Spacer(Modifier.width(12.dp))
+                Spacer(Modifier.width(9.dp))
                 Column(Modifier.weight(1f)) {
-                    Text(matches.first().league,
-                        color = if (expanded) Color.White else Palette.text,
-                        fontWeight = FontWeight.ExtraBold, fontSize = 13.sp, maxLines = 2)
+                    Text(matches.first().league, color = Palette.text,
+                        fontWeight = FontWeight.ExtraBold, fontSize = 13.sp,
+                        maxLines = 2)
                     Text(matches.first().country.ifBlank {
-                        tr(state.lang, "International", "بین‌المللی") },
-                        color = if (expanded) Color(0xFFA5BAC6) else Palette.muted,
-                        fontSize = 10.sp)
+                        tr(state.lang, "Competition", "رقابت") },
+                        color = Palette.muted, fontSize = 10.sp)
                 }
-                SmallPill(matches.size.toString(),
-                    if (expanded) Palette.green.copy(alpha = .16f) else Palette.greenLight,
-                    if (expanded) Palette.green else Palette.ink)
-                Spacer(Modifier.width(7.dp))
+                SmallPill(matches.size.toString(), Palette.paper, Palette.text)
                 Icon(if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
-                    tr(state.lang, "Expand league", "باز کردن لیگ"),
-                    tint = if (expanded) Color.White else Palette.muted)
+                    tr(state.lang, "Toggle league", "نمایش یا بستن لیگ"),
+                    tint = Palette.muted)
             }
-        }
-        if (expanded) {
-            Spacer(Modifier.height(6.dp))
-            matches.forEach { match ->
-                MatchTile(match, state.lang, state.liveEnabled, state.picks,
-                    { model.openMatch(match.id) }) { market, selection ->
-                    model.togglePick(match, market, selection)
+            if (expanded) {
+                HorizontalDivider(color = Palette.border)
+                matches.forEachIndexed { index, match ->
+                    ReferenceLeagueFixture(match, state, model)
+                    if (index != matches.lastIndex)
+                        HorizontalDivider(Modifier.padding(horizontal = 12.dp),
+                            color = Palette.border.copy(alpha = .7f))
                 }
             }
         }
