@@ -84,4 +84,7 @@ fun money(minor: String, currency: String = "USD"): String = runCatching {
     BigDecimal(minor).movePointLeft(fraction).setScale(fraction, RoundingMode.HALF_UP).toPlainString() + " " + currency
 }.getOrDefault("—")
 
+data class UserNotification(val id: String, val eventKey: String, val title: String,
+    val body: String, val createdAt: String, val readAt: String?)
+data class NotificationPage(val items: List<UserNotification>, val page: Int, val hasMore: Boolean)
 data class SupportTicket(val id: String, val subject: String, val status: String, val category: String)
