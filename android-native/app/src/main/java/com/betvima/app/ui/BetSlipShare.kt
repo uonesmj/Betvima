@@ -181,15 +181,15 @@ fun BetSlipShareActions(state: AppState, model: AppViewModel) {
             text={
                 Column(verticalArrangement=Arrangement.spacedBy(10.dp)) {
                     Text(tr(lang,
-                        "Enter an 8-character NOVA code from another BetVima user.",
-                        "کد NOVA دریافتی از کاربر دیگر را وارد کنید."),
+                        "Enter a 5-character code with letters and numbers.",
+                        "کد ۵ کاراکتری شامل حروف و عدد را وارد کنید."),
                         color=shareMuted,fontSize=12.sp)
                     OutlinedTextField(
                         value=typedCode,
-                        onValueChange={typedCode=it.uppercase().take(18);
+                        onValueChange={typedCode=it.trim().uppercase(java.util.Locale.ROOT).take(18);
                             pendingImport=null;error=null},
                         label={Text(tr(lang,"Share code","کد اشتراک"))},
-                        placeholder={Text("NOVA-ABCDEFGH")},
+                        placeholder={Text("AB3K7")},
                         singleLine=true,modifier=Modifier.fillMaxWidth(),
                         shape=RoundedCornerShape(12.dp))
                     if(pendingImport!=null) {
