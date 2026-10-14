@@ -71,10 +71,10 @@ private fun SlipPickCard(
         color = Color.White,
         border = BorderStroke(1.dp, slipBorder),
         shadowElevation = 1.dp,
-        modifier = Modifier.fillMaxWidth()
+        modifier = Modifier.fillMaxWidth().height(SLIP_CARD_HEIGHT_DP.dp)
     ) {
         Row(
-            Modifier.fillMaxWidth().padding(start = 10.dp,end = 7.dp,top = 9.dp,bottom = 9.dp),
+            Modifier.fillMaxSize().padding(start = 10.dp,end = 7.dp,top = 5.dp,bottom = 5.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Surface(
@@ -96,7 +96,7 @@ private fun SlipPickCard(
             Spacer(Modifier.width(9.dp))
             Column(
                 Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(4.dp)
+                verticalArrangement = Arrangement.spacedBy(2.dp)
             ) {
                 Text(pick.match,
                     color = slipMuted,fontSize = 10.sp,
@@ -265,7 +265,7 @@ private fun SlipPickPager(
     Column(
         modifier = Modifier.fillMaxWidth().height(listHeight)
             .padding(horizontal = 13.dp, vertical = 5.dp),
-        verticalArrangement = Arrangement.spacedBy(5.dp)
+        verticalArrangement = Arrangement.spacedBy(SLIP_CARD_SPACING_DP.dp)
     ) {
         range.forEach { index ->
             val pick = state.picks[index]
@@ -277,7 +277,7 @@ private fun SlipPickPager(
         }
         if (count > capacity) {
             Row(
-                modifier = Modifier.fillMaxWidth().height(30.dp),
+                modifier = Modifier.fillMaxWidth().height(SLIP_PAGER_HEIGHT_DP.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -314,17 +314,18 @@ fun PremiumSlipSheet(state: AppState,model: AppViewModel) {
     val lang=state.lang
     val config=LocalConfiguration.current
     val viewport=config.screenHeightDp.dp
-    val maxSheet=viewport*.89f
+    // Leave only a narrow status-bar gap; the whole slip must fit above the
+    // navigation inset even with two selected cards and its action controls.
+    val maxSheet=viewport*.96f
     val pickCapacity = slipPageCapacity(config.screenHeightDp)
     var funding by rememberSaveable { mutableStateOf("main") }
     var mode by rememberSaveable { mutableStateOf("single") }
     LaunchedEffect(state.signedIn) {
         if (state.signedIn) model.refreshAccount()
     }
-    // Extra picks occupy new pages instead of growing a scrollable list.
-    val listHeight = if (state.picks.isEmpty()) 68.dp else
-        (state.picks.size.coerceAtMost(pickCapacity) * 75 +
-            if (state.picks.size > pickCapacity) 43 else 10).dp
+    // Card viewport and child sizes share one exact calculation. Do not
+    // estimate 75dp per card: that cropped real cards on Android.
+    val listHeight = slipPickAreaHeightDp(state.picks.size, pickCapacity).dp
     LaunchedEffect(state.picks.size,funding) {
         val expected = if(funding=="bonus" || state.picks.size>1)
             "multiple" else "single"
