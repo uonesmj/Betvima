@@ -135,7 +135,9 @@ fun ReferenceBottomBar(
     onSlip: () -> Unit
 ) {
     val hasSelection = showSlip // Keep zero-count Bet Slip accessible on sportsbook pages
-    Column(Modifier.fillMaxWidth().background(Color(0xFF101114))) {
+    // Keep the floating slip button on a transparent rail, not a black block.
+    // The navigation surface below retains its own dark background.
+    Column(Modifier.fillMaxWidth()) {
         AnimatedVisibility(
             visible = hasSelection,
             enter = expandVertically(animationSpec = tween(180)) + fadeIn(tween(160)),
