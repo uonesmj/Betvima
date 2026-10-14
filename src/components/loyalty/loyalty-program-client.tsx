@@ -10,81 +10,32 @@ import {
 import { useApp } from '@/components/layout/providers';
 
 type Copy = (english: string, persian: string) => string;
-type Family = 'bronze' | 'silver' | 'gold' | 'platinum';
+type Family = 'bronze' | 'silver' | 'gold' | 'platinum' | 'diamond';
 
-const families: Array<{
-  id: Family; en: string; fa: string; metal: string; wash: string; border: string;
-}> = [
-  { id: 'bronze', en: 'Bronze', fa: 'برنزی', metal: '#DDA77A', wash: 'from-[#573826] to-[#181C24]', border: 'border-[#B77F59]/50' },
-  { id: 'silver', en: 'Silver', fa: 'نقره‌ای', metal: '#D0E0F2', wash: 'from-[#384958] to-[#141D28]', border: 'border-[#9BB3CA]/50' },
-  { id: 'gold', en: 'Gold', fa: 'طلایی', metal: '#F2CE7B', wash: 'from-[#54452A] to-[#151C22]', border: 'border-[#D9A84F]/50' },
-  { id: 'platinum', en: 'Platinum', fa: 'پلاتینی', metal: '#95E9DD', wash: 'from-[#245551] to-[#101E24]', border: 'border-[#6DCEC0]/50' },
-];
-
-const milestones = [
-  0, 5000, 10000, 25000, 50000, 100000,
-  250000, 500000, 1000000, 2500000, 5000000, 10000000,
+// Presentation-only cashback schedule; no actual credits or account calculations.
+const families: Array<{ id: Family; en: string; fa: string; metal: string; wash: string; border: string; weeklyDeposit: number; rate: number }> = [
+  { id: 'bronze', en: 'Bronze', fa: 'برنزی', metal: '#DDA77A', wash: 'from-[#573826] to-[#181C24]', border: 'border-[#B77F59]/50', weeklyDeposit: 2000, rate: 3 },
+  { id: 'silver', en: 'Silver', fa: 'نقره‌ای', metal: '#D0E0F2', wash: 'from-[#384958] to-[#141D28]', border: 'border-[#9BB3CA]/50', weeklyDeposit: 4000, rate: 5 },
+  { id: 'gold', en: 'Gold', fa: 'طلایی', metal: '#F2CE7B', wash: 'from-[#54452A] to-[#151C22]', border: 'border-[#D9A84F]/50', weeklyDeposit: 6000, rate: 6 },
+  { id: 'platinum', en: 'Platinum', fa: 'پلاتینی', metal: '#95E9DD', wash: 'from-[#245551] to-[#101E24]', border: 'border-[#6DCEC0]/50', weeklyDeposit: 9000, rate: 8 },
+  { id: 'diamond', en: 'Diamond', fa: 'الماسی', metal: '#BCE7FF', wash: 'from-[#234763] to-[#101E30]', border: 'border-[#92C9F4]/50', weeklyDeposit: 15000, rate: 11 },
 ];
 
 const benefits = [
-  {
-    icon: Gift, en: 'Cashback opportunities', fa: 'فرصت‌های بازگشت وجه',
-    descEn: 'Access selected cashback offers when eligible under the active campaign terms.',
-    descFa: 'دسترسی به طرح‌های منتخب بازگشت وجه، در صورت احراز شرایط کمپین فعال.',
-  },
-  {
-    icon: TrendingUp, en: 'Rakeback offers', fa: 'پیشنهادهای بازگشت کارمزد',
-    descEn: 'Explore potential rakeback benefits where the program makes them available.',
-    descFa: 'بررسی مزایای احتمالی بازگشت کارمزد در صورت ارائه در برنامه.',
-  },
-  {
-    icon: Crown, en: 'VIP Club access', fa: 'دسترسی به باشگاه ویژه',
-    descEn: 'The published program places its VIP milestone at Gold Level 3.',
-    descFa: 'طبق سطوح اعلام‌شده برنامه، نقطه ورود به باشگاه ویژه طلایی ۳ است.',
-  },
-  {
-    icon: Trophy, en: 'Exclusive events', fa: 'رویدادهای اختصاصی',
-    descEn: 'Eligible members may receive invitations to private tournaments and experiences.',
-    descFa: 'اعضای واجد شرایط ممکن است برای تورنمنت‌ها و رویدادهای اختصاصی دعوت شوند.',
-  },
-  {
-    icon: Headphones, en: 'Personal assistance', fa: 'رسیدگی شخصی‌سازی‌شده',
-    descEn: 'Dedicated VIP assistance and concierge options may apply to eligible tiers.',
-    descFa: 'در سطوح واجد شرایط، امکان خدمات پشتیبانی اختصاصی و شخصی فراهم می‌شود.',
-  },
-  {
-    icon: Gem, en: 'Signature privileges', fa: 'امتیازهای ممتاز',
-    descEn: 'Selected gifts, dedicated offers and special event opportunities.',
-    descFa: 'هدایای منتخب، پیشنهادهای ویژه و فرصت شرکت در رویدادهای خاص.',
-  },
+  { icon: Gift, en: '3% cashback · US$2,000', fa: '۳٪ کش‌بک · ۲٬۰۰۰ دلار', descEn: 'Deposit at least US$2,000 during the week: 3% cashback on eligible settled weekly losses.', descFa: 'با مجموع واریز موفق حداقل ۲٬۰۰۰ دلار در هفته، ۳٪ از باخت‌های واجد شرایط و تسویه‌شده همان هفته کش‌بک دریافت می‌کنید.' },
+  { icon: TrendingUp, en: '5% cashback · US$4,000', fa: '۵٪ کش‌بک · ۴٬۰۰۰ دلار', descEn: 'Reach US$4,000 in total successful weekly deposits to enter the 5% cashback band.', descFa: 'با رسیدن مجموع واریزهای موفق هفته به ۴٬۰۰۰ دلار، درصد کش‌بک باخت هفتگی شما ۵٪ می‌شود.' },
+  { icon: Crown, en: '6% cashback · US$6,000', fa: '۶٪ کش‌بک · ۶٬۰۰۰ دلار', descEn: 'Total deposits of US$6,000 or more during the week qualify for the 6% band.', descFa: 'مجموع واریز موفق ۶٬۰۰۰ دلار یا بیشتر در هفته، شما را وارد بازه ۶٪ کش‌بک می‌کند.' },
+  { icon: Trophy, en: '8% cashback · US$9,000', fa: '۸٪ کش‌بک · ۹٬۰۰۰ دلار', descEn: 'Deposit US$9,000–US$14,999 in the week for 8% of eligible settled losses.', descFa: 'با مجموع واریز هفتگی از ۹٬۰۰۰ تا کمتر از ۱۵٬۰۰۰ دلار، نرخ کش‌بک ۸٪ است.' },
+  { icon: Gem, en: '11% cashback · US$15,000+', fa: '۱۱٪ کش‌بک · از ۱۵٬۰۰۰ دلار', descEn: 'Deposit US$15,000 or more in a week for the maximum 11% cashback rate.', descFa: 'با مجموع واریز هفتگی ۱۵٬۰۰۰ دلار یا بیشتر، بالاترین نرخ کش‌بک یعنی ۱۱٪ را دارید.' },
+  { icon: Headphones, en: 'Cashback payment every Monday', fa: 'پرداخت کش‌بک هر دوشنبه', descEn: 'The cashback amount is a percentage of eligible settled weekly losses, not a percentage of deposits.', descFa: 'مبلغ کش‌بک درصدی از باخت‌های واجد شرایط و تسویه‌شده در هفته است، نه درصدی از مبلغ واریزی.' },
 ];
 
 const questions = [
-  {
-    en: 'How do I become a VIP member?', fa: 'چطور عضو باشگاه VIP می‌شوم؟',
-    answerEn: 'The displayed loyalty ladder starts at Bronze 1 and identifies Gold 3 as the VIP Club milestone. Actual eligibility is determined by the program rules and verified account data.',
-    answerFa: 'مسیر نمایش‌داده‌شده از برنزی ۱ شروع می‌شود و طلایی ۳ نقطه ورود به باشگاه VIP است. احراز شرایط واقعی بر اساس قوانین برنامه و اطلاعات تأییدشده حساب انجام می‌شود.',
-  },
-  {
-    en: 'Are these figures my personal progress?', fa: 'آیا این اعداد پیشرفت شخصی من هستند؟',
-    answerEn: 'No. The amounts shown in the level explorer are published reference thresholds, not your account turnover. Your personal VIP level and remaining requirement are not shown until verified account data is connected.',
-    answerFa: 'خیر. مبالغ بخش سطوح، آستانه‌های مرجع برنامه هستند و نشان‌دهنده گردش حساب شما نیستند. سطح شخصی و مبلغ باقی‌مانده فقط زمانی نمایش داده می‌شود که اطلاعات تأییدشده حساب متصل باشد.',
-  },
-  {
-    en: 'Which bets count toward my next level?', fa: 'کدام شرط‌ها برای ارتقای سطح محاسبه می‌شوند؟',
-    answerEn: 'Qualifying activity, any exclusions and the calculation period are determined by the official loyalty terms. Please confirm them with support before relying on a turnover estimate.',
-    answerFa: 'فعالیت‌های واجد شرایط، موارد استثنا و دوره محاسبه بر اساس قوانین رسمی باشگاه تعیین می‌شوند. برای برآورد گردش لازم، ابتدا جزئیات را از پشتیبانی تأیید کنید.',
-  },
-  {
-    en: 'When can I use exclusive benefits?', fa: 'چه زمانی می‌توانم از مزایای اختصاصی استفاده کنم؟',
-    answerEn: 'Availability depends on your confirmed membership, region and any relevant promotion conditions. An illustration of a benefit does not guarantee an immediate credit or award.',
-    answerFa: 'دسترسی به مزایا به عضویت تأییدشده، منطقه و شرایط هر طرح بستگی دارد. نمایش یک مزیت به معنی واریز یا اعطای قطعی آن نیست.',
-  },
-  {
-    en: 'Where can I ask about my VIP status?', fa: 'وضعیت عضویت VIP خود را از کجا پیگیری کنم؟',
-    answerEn: 'Visit Support to ask about your verified status, qualifying activity and applicable rewards. You can also review your profile through the account page.',
-    answerFa: 'از بخش پشتیبانی درباره سطح تأییدشده، فعالیت واجد شرایط و پاداش‌های قابل استفاده سؤال کنید. اطلاعات حساب نیز در صفحه پروفایل در دسترس است.',
-  },
+  { en: 'How is my cashback rate calculated?', fa: 'درصد کش‌بک من چگونه مشخص می‌شود؟', answerEn: 'Add up your successful deposits during the week. At US$2,000 the rate is 3%; at US$4,000 it is 5%; at US$6,000 it is 6%; at US$9,000 it is 8%; and at US$15,000 or more it is 11%. Below US$2,000 does not meet a listed threshold.', answerFa: 'مجموع واریزهای موفق همان هفته را حساب کنید: از ۲٬۰۰۰ دلار ۳٪، از ۴٬۰۰۰ دلار ۵٪، از ۶٬۰۰۰ دلار ۶٪، از ۹٬۰۰۰ دلار ۸٪ و از ۱۵٬۰۰۰ دلار به بالا ۱۱٪. واریز کمتر از ۲٬۰۰۰ دلار به حداقل پلن نمی‌رسد.' },
+  { en: 'Is cashback based on my deposits or my losses?', fa: 'کش‌بک بر اساس واریز است یا باخت؟', answerEn: 'Weekly deposits determine your percentage only. Cashback is that percentage of eligible settled losses during the week, not a percentage of your deposits.', answerFa: 'مجموع واریز هفتگی فقط درصد کش‌بک را تعیین می‌کند. مبلغ کش‌بک از باخت‌های واجد شرایط و تسویه‌شده همان هفته محاسبه می‌شود، نه از مبلغ واریزی.' },
+  { en: 'When is cashback paid?', fa: 'کش‌بک چه روزی پرداخت می‌شود؟', answerEn: 'Monday is the designated weekly payment day. This page describes the cashback plan; automatic calculation and credits must be enabled and verified before actual payouts occur.', answerFa: 'دوشنبه روز تعیین‌شده برای پرداخت هفتگی است. این صفحه شرایط طرح را معرفی می‌کند و محاسبه و واریز خودکار واقعی باید در سیستم سایت فعال و تأیید شده باشد.' },
+  { en: 'Can you give me an example?', fa: 'یک مثال از محاسبه کش‌بک می‌زنید؟', answerEn: 'If your successful deposits total US$4,000 during the week and your eligible settled weekly losses total US$1,000, the 5% cashback is US$50, scheduled for Monday. It is not 5% of the US$4,000 deposit.', answerFa: 'اگر در هفته مجموعاً ۴٬۰۰۰ دلار واریز موفق و ۱٬۰۰۰ دلار باخت واجد شرایط و تسویه‌شده داشته باشید، کش‌بک ۵٪ برابر ۵۰ دلار خواهد بود که برای دوشنبه در نظر گرفته می‌شود؛ نه ۵٪ از مبلغ واریزی ۴٬۰۰۰ دلاری.' },
+  { en: 'What if I have no eligible weekly losses?', fa: 'اگر در هفته باخت واجد شرایط نداشته باشم چه می‌شود؟', answerEn: 'If the total eligible settled weekly losses are zero, the cashback calculated from those losses is also zero. Please ask support for full eligibility conditions.', answerFa: 'اگر مجموع باخت‌های واجد شرایط و تسویه‌شده هفته صفر باشد، مبلغ کش‌بک هم صفر است. برای جزئیات شرایط واجد شرایط بودن، از پشتیبانی بپرسید.' },
 ];
 
 function money(amount: number) {
@@ -103,12 +54,10 @@ function Kicker({ children }: { children: React.ReactNode }) {
 export function LoyaltyProgramClient() {
   const { locale, session, sessionLoading } = useApp();
   const copy: Copy = (en, fa) => locale === 'fa' ? fa : en;
-  const [selected, setSelected] = useState(8);
+  const [selected, setSelected] = useState(0);
   const [openFaq, setOpenFaq] = useState<number | null>(0);
-  const activeFamilyIndex = Math.floor(selected / 3);
+  const activeFamilyIndex = selected;
   const family = families[activeFamilyIndex] ?? families[0]!;
-  const withinFamily = (selected % 3) + 1;
-  const vipMilestone = selected >= 8;
   const isSignedIn = Boolean(session?.authenticated);
 
   return (
