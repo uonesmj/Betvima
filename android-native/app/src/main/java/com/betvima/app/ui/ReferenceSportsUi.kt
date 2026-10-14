@@ -1,5 +1,11 @@
 package com.betvima.app.ui
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
@@ -251,6 +257,13 @@ private fun ReferenceCompactOdd(
     val enabled = match.bettingAvailable && market.available &&
         selection.available && (!match.live || state.liveEnabled)
     val selected = state.picks.any { it.selectionId == selection.id }
+    val background by animateColorAsState(
+        targetValue = when {
+            selected -> Color(0xFFDBE9FC)
+            selection.movement == "UP" && enabled -> Color(0xFFE4F8EE)
+            selection.movement == "DOWN" && enabled -> Color(0xFFFFE7E8)
+            else -> Color(0xFFEDEFF3)
+        }, animationSpec = tween(280), label = "oddsDirectionBackground")
     Surface(
         modifier = modifier.heightIn(min = 51.dp).clickable(enabled = enabled) {
             model.togglePick(match, market, selection)
@@ -258,7 +271,7 @@ private fun ReferenceCompactOdd(
         shape = RoundedCornerShape(10.dp),
         border = BorderStroke(if (selected) 1.5.dp else 0.dp,
             if (selected) Palette.blue else Color.Transparent),
-        color = if (selected) Color(0xFFDBE9FC) else Color(0xFFEDEFF3)
+        color = background
     ) {
         Row(Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically) {
@@ -269,9 +282,23 @@ private fun ReferenceCompactOdd(
             Spacer(Modifier.width(3.dp))
             if (!enabled) Icon(Icons.Default.Lock, null,
                 modifier = Modifier.size(14.dp), tint = Palette.muted)
-            else Text(com.betvima.app.data.odds(selection.oddsScaled),
-                color = if (selected) Palette.blue else Palette.text,
-                fontSize = 15.sp, fontWeight = FontWeight.Black)
+            else AnimatedContent(
+                targetState = selection.oddsScaled, label = "livePrice",
+                transitionSpec = { fadeIn(tween(160)).togetherWith(fadeOut(tween(120))) }
+            ) { scaled ->
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(com.betvima.app.data.odds(scaled),
+                        color = if (selected) Palette.blue else Palette.text,
+                        fontSize = 15.sp, fontWeight = FontWeight.Black)
+                    if (selection.movement == "UP" || selection.movement == "DOWN") {
+                        Icon(if (selection.movement == "UP") Icons.Default.ArrowUpward
+                            else Icons.Default.ArrowDownward,
+                            null, tint = if (selection.movement == "UP") Palette.green
+                                else Palette.red,
+                            modifier = Modifier.size(12.dp))
+                    }
+                }
+            }
         }
     }
 }
