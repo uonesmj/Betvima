@@ -118,7 +118,7 @@ export function MatchDetailClient({ matchId }: { matchId: string }) {
         </Card>
 
         <Card>
-          <h3 className="mb-2 text-sm font-semibold">تغییر دستی ضرایب</h3>
+          <h3 className="mb-2 text-sm font-semibold">Manual odds changes</h3>
           <Field label="Reason for the manual price (min 8 characters, audited)">
             <input className="nova-input" value={reason} onChange={(event) => setReason(event.target.value)} />
           </Field>
@@ -153,7 +153,7 @@ export function MatchDetailClient({ matchId }: { matchId: string }) {
             </span>
           </div>
           <table className="nova-table">
-            <thead><tr><th>انتخاب</th><th>ضریب فعلی</th><th>قبلی</th><th>نسخه</th><th>Status</th><th>تغییر</th></tr></thead>
+            <thead><tr><th>Selection</th><th>Current odds</th><th>Previous</th><th>Version</th><th>Status</th><th>Change</th></tr></thead>
             <tbody>
               {market.selections.map((selection) => (
                 <tr key={selection.id}>

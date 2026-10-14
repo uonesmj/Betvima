@@ -569,11 +569,11 @@ export function Footer({
           <Globe2 aria-hidden="true" className="h-4 w-4 shrink-0 text-[#75EABA]" />
           <span className="text-[11px] font-semibold text-[#A8B9C6]">Language</span>
           <div role="group" aria-label="Footer language" className="inline-flex max-w-full items-center gap-1 rounded-xl border border-white/[0.12] bg-white/[0.045] p-1">
-            <button type="button" lang="fa" dir="rtl" aria-pressed={locale === 'fa'} onClick={() => setLocale('fa')}
+            <button type="button" translate="no" lang="fa" dir="rtl" aria-pressed={locale === 'fa'} onClick={() => setLocale('fa')}
               className={'inline-flex min-h-9 items-center gap-1.5 whitespace-nowrap rounded-lg px-2.5 text-[12px] font-semibold transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#00D47A] ' + (locale === 'fa' ? 'bg-[#00D47A] text-[#041C11]' : 'text-[#D0DCE6] hover:bg-white/[0.10]')}>
               <span aria-hidden="true" className="text-base leading-none">🇮🇷</span><span>فارسی</span>
             </button>
-            <button type="button" lang="en" dir="ltr" aria-pressed={locale === 'en'} onClick={() => setLocale('en')}
+            <button type="button" translate="no" lang="en" dir="ltr" aria-pressed={locale === 'en'} onClick={() => setLocale('en')}
               className={'inline-flex min-h-9 items-center gap-1.5 whitespace-nowrap rounded-lg px-2.5 text-[12px] font-semibold transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#00D47A] ' + (locale === 'en' ? 'bg-[#00D47A] text-[#041C11]' : 'text-[#D0DCE6] hover:bg-white/[0.10]')}>
               <span aria-hidden="true" className="text-base leading-none">🇬🇧</span><span>English</span>
             </button>

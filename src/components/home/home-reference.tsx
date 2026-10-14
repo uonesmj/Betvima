@@ -21,6 +21,7 @@ import type { MatchView } from '@/components/betting/match-card';
 import { formatOddsScaled } from '@/lib/i18n';
 import { useBetSlip, type SlipItem } from '@/lib/store/betslip';
 import { LeagueLogo, TeamLogo } from '@/components/ui/logo';
+import { translateSportName, translateVisibleText } from '@/lib/i18n/ui-phrases';
 
 type Sport = {
   key: string;
@@ -130,6 +131,7 @@ function MatchCard({
   match: MatchView;
   liveEnabled: boolean;
 }) {
+  const { locale } = useApp();
   const toggle = useBetSlip((s) => s.toggle);
   const items = useBetSlip((s) => s.items);
 
@@ -171,7 +173,7 @@ function MatchCard({
 
             <div className="min-w-0">
               <div className="truncate text-[12px] font-extrabold leading-4 text-[#20242A]">
-                {match.leagueName ?? match.sportKey}
+                {locale === 'fa' ? translateSportName(match.leagueName ?? match.sportKey) : match.leagueName ?? match.sportKey}
               </div>
               <div className="mt-0.5 truncate text-[10px] font-semibold text-[#8A9199]">
                 {match.countryCode ?? 'International'} · {match.sportKey}
@@ -242,7 +244,7 @@ function MatchCard({
               <TeamLogo url={home?.logoUrl} name={home?.name} size={58} variant="circle" />
             </div>
             <div className="mt-2 line-clamp-2 text-[12px] font-extrabold leading-4 text-[#20242A]">
-              {home?.name ?? 'TBD'}
+              {locale === 'fa' ? translateSportName(home?.name ?? 'TBD') : home?.name ?? 'TBD'}
             </div>
           </div>
 
@@ -274,7 +276,7 @@ function MatchCard({
               <TeamLogo url={away?.logoUrl} name={away?.name} size={58} variant="circle" />
             </div>
             <div className="mt-2 line-clamp-2 text-[12px] font-extrabold leading-4 text-[#20242A]">
-              {away?.name ?? 'TBD'}
+              {locale === 'fa' ? translateSportName(away?.name ?? 'TBD') : away?.name ?? 'TBD'}
             </div>
           </div>
         </div>
@@ -285,7 +287,7 @@ function MatchCard({
         <div className="border-t border-[#E5E7EB] bg-[#F5F6F8] p-1.5">
           <div className="mb-1 flex items-center justify-between gap-1">
             <span className="truncate text-[7px] font-extrabold uppercase tracking-wide text-[#69717A]">
-              {marketLabel}
+              {locale === 'fa' ? translateVisibleText(marketLabel) : marketLabel}
             </span>
 
             <span className="shrink-0 text-[7px] font-semibold text-[#8A9199]">
@@ -339,7 +341,7 @@ function MatchCard({
                         : 'text-[#747C85]'
                     }`}
                   >
-                    {selection.name}
+                    {locale === 'fa' ? translateVisibleText(selection.name, true) : selection.name}
                   </span>
 
                   <strong

@@ -1,7 +1,7 @@
 'use client';
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { DEFAULT_LOCALE, isRtl, translate, type Locale } from '@/lib/i18n';
+import { DEFAULT_LOCALE, translate, type Locale } from '@/lib/i18n';
 import { getSupabaseBrowserClient } from '@/lib/supabase/browser';
 
 interface SessionInfo {
@@ -83,15 +83,15 @@ export function AppProviders({ children, initialLocale = DEFAULT_LOCALE }: { chi
       window.localStorage.setItem('nova-locale', next);
     } catch { /* ignore storage failures */ }
     document.documentElement.lang = next;
-    document.documentElement.dir = isRtl(next) ? 'rtl' : 'ltr';
+    document.documentElement.dir = 'ltr';
   }, []);
   useEffect(() => {
     document.documentElement.lang = locale;
-    document.documentElement.dir = isRtl(locale) ? 'rtl' : 'ltr';
+    document.documentElement.dir = 'ltr';
   }, [locale]);
 
   const value = useMemo<AppContextValue>(() => ({
-    locale, setLocale, dir: isRtl(locale) ? 'rtl' : 'ltr',
+    locale, setLocale, dir: 'ltr',
     t: (key, vars) => translate(locale, key, vars),
     session: hydrated ? session : null,
     sessionLoading: hydrated ? sessionLoading : true,

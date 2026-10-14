@@ -68,7 +68,7 @@ export function BetsClient() {
               { key: 'type', header: 'Type', render: (row) => <span className="text-xs">{row.type}{row.isLive ? ' · Live' : ''}</span> },
               { key: 'status', header: t('common.status'), render: (row) => <StatusPill status={row.status} /> },
               { key: 'legs', header: 'Legs', render: (row) => <span className="text-xs nova-muted">{row.legs?.length ?? 0}</span> },
-              { key: 'odds', header: 'ضریب', render: (row) => <span className="text-xs">{formatOddsScaled(row.combinedOddsScaled)}</span> },
+              { key: 'odds', header: 'Odds', render: (row) => <span className="text-xs">{formatOddsScaled(row.combinedOddsScaled)}</span> },
               { key: 'stake', header: 'Stake', render: (row) => <span className="whitespace-nowrap text-xs">{formatMinor(row.usdStakeMinor, 'USD', locale)}</span> },
               { key: 'potential', header: 'Potential', render: (row) => <span className="whitespace-nowrap text-xs">{formatMinor(row.usdPotentialPayoutMinor, 'USD', locale)}</span> },
               {

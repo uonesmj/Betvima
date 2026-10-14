@@ -41,7 +41,7 @@ export function LanguageSelector({ variant = 'drawer' }: LanguageSelectorProps) 
         }
       >
         <Languages className="h-4 w-4" />
-        <span>{LOCALE_META[locale].nativeLabel}</span>
+        <span translate="no">{LOCALE_META[locale].nativeLabel}</span>
         <ChevronDown className={`h-4 w-4 transition-transform ${open ? 'rotate-180' : ''}`} />
       </button>
 
@@ -67,7 +67,7 @@ export function LanguageSelector({ variant = 'drawer' }: LanguageSelectorProps) 
                   : 'text-white/65 hover:bg-white/[0.05] hover:text-white'
               }`}
             >
-              <span>{LOCALE_META[item].nativeLabel}</span>
+              <span translate="no">{LOCALE_META[item].nativeLabel}</span>
               {locale === item && <span className="text-[10px] font-bold text-[#2DD4BF]">✓</span>}
             </button>
           ))}

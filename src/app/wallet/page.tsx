@@ -2,7 +2,7 @@ import { PageShell } from '@/components/layout/page-shell';
 import { WalletClient } from '@/components/account/wallet-client';
 
 export const dynamic = 'force-dynamic';
-export const metadata = { title: 'کیف پول' };
+export const metadata = { title: 'Wallet' };
 
 export default function WalletPage() {
   return (

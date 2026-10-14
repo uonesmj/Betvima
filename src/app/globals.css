@@ -4511,3 +4511,45 @@ transform:translateY(-3px); border-color:#d5dce4 !important; box-shadow:0 14px 3
 }
 
 
+
+
+/* Persian translates content only; the English layout remains LTR. */
+html[lang="fa"], html[lang="fa"] body { direction: ltr; }
+html[lang="fa"] body { font-family: 'Inter', Tahoma, 'Noto Sans Arabic', system-ui, sans-serif; }
+html[lang="fa"] :is(h1,h2,h3,h4,h5,h6,p,label,button,a,span,strong,li,th,td) { unicode-bidi: plaintext; }
+html[lang="fa"] :is(h1,h2,h3,h4,h5,h6,strong,b,[class*="font-black"],[class*="font-bold"],[class*="font-extrabold"]) { font-synthesis: weight; }
+html[lang="fa"] :is(input,textarea) { unicode-bidi: plaintext; }
+
+/* Localized CSS-generated affiliate labels; only content changes, not card geometry. */
+html[lang="fa"] .affiliate-referrals-v2 .nova-table td:nth-child(1)::before { content: "کاربر" !important; }
+html[lang="fa"] .affiliate-referrals-v2 .nova-table td:nth-child(2)::before { content: "کد" !important; }
+html[lang="fa"] .affiliate-referrals-v2 .nova-table td:nth-child(3)::before { content: "وضعیت" !important; }
+html[lang="fa"] .affiliate-referrals-v2 .nova-table td:nth-child(4)::before { content: "تأیید" !important; }
+html[lang="fa"] .affiliate-referrals-v2 .nova-table td:nth-child(5)::before { content: "واریز" !important; }
+html[lang="fa"] .affiliate-referrals-v2 .nova-table td:nth-child(6)::before { content: "برداشت" !important; }
+html[lang="fa"] .affiliate-referrals-v2 .nova-table td:nth-child(7)::before { content: "گردش مالی" !important; }
+html[lang="fa"] .affiliate-referrals-v2 .nova-table td:nth-child(8)::before { content: "سود و زیان بازیکن" !important; }
+html[lang="fa"] .affiliate-referrals-v2 .nova-table td:nth-child(9)::before { content: "سهم ۷۰٪ شما" !important; }
+html[lang="fa"] .affiliate-referrals-v2 .nova-table td:nth-child(10)::before { content: "کمیسیون" !important; }
+html[lang="fa"] .affiliate-ledger-v2 .nova-table td:nth-child(1)::before { content: "تاریخ" !important; }
+html[lang="fa"] .affiliate-ledger-v2 .nova-table td:nth-child(2)::before { content: "نوع" !important; }
+html[lang="fa"] .affiliate-ledger-v2 .nova-table td:nth-child(3)::before { content: "شرح" !important; }
+html[lang="fa"] .affiliate-ledger-v2 .nova-table td:nth-child(4)::before { content: "مبلغ" !important; }
+html[lang="fa"] .affiliate-ledger-v2 .nova-table td:nth-child(5)::before { content: "موجودی" !important; }
+html[lang="fa"] .affiliate-ledger-v2 .nova-table td:nth-child(6)::before { content: "وضعیت" !important; }
+html[lang="fa"] .affiliate-payouts-v2 .nova-table td:nth-child(1)::before { content: "تاریخ" !important; }
+html[lang="fa"] .affiliate-payouts-v2 .nova-table td:nth-child(2)::before { content: "مبلغ" !important; }
+html[lang="fa"] .affiliate-payouts-v2 .nova-table td:nth-child(3)::before { content: "روش" !important; }
+html[lang="fa"] .affiliate-payouts-v2 .nova-table td:nth-child(4)::before { content: "وضعیت" !important; }
+html[lang="fa"] .affiliate-payouts-v2 .nova-table td:nth-child(5)::before { content: "جزئیات" !important; }
+html[lang="fa"] .affiliate-shell .affiliate-referrals-v2 tbody td:nth-child(1)::before { content: "بازیکن" !important; }
+html[lang="fa"] .affiliate-shell .affiliate-referrals-v2 tbody td:nth-child(2)::before { content: "کد معرفی" !important; }
+html[lang="fa"] .affiliate-shell .affiliate-referrals-v2 tbody td:nth-child(3)::before { content: "وضعیت حساب" !important; }
+html[lang="fa"] .affiliate-shell .affiliate-referrals-v2 tbody td:nth-child(4)::before { content: "تاریخ پیوستن" !important; }
+html[lang="fa"] .affiliate-shell .affiliate-referrals-v2 tbody td:nth-child(5)::before { content: "واریز" !important; }
+html[lang="fa"] .affiliate-shell .affiliate-referrals-v2 tbody td:nth-child(6)::before { content: "برداشت" !important; }
+html[lang="fa"] .affiliate-shell .affiliate-referrals-v2 tbody td:nth-child(7)::before { content: "گردش مالی" !important; }
+html[lang="fa"] .affiliate-shell .affiliate-referrals-v2 tbody td:nth-child(8)::before { content: "سود و زیان بازیکن" !important; }
+html[lang="fa"] .affiliate-shell .affiliate-referrals-v2 tbody td:nth-child(9)::before { content: "سهم ۷۰٪ شما" !important; }
+html[lang="fa"] .affiliate-shell .affiliate-referrals-v2 tbody td:nth-child(10)::before { content: "کمیسیون دریافتی" !important; }
+html[lang="fa"] .affiliate-shell .affiliate-referrals-v2 tbody td:first-child::after { content: "شناسه" !important; }

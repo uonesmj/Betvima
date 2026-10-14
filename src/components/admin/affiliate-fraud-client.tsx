@@ -62,7 +62,7 @@ export function AffiliateFraudClient() {
                   <td>
                     <span className="flex flex-wrap gap-1">
                       <AdminAction label="Reviewing" onRun={() => resolve(flag, 'reviewing')} />
-                      <AdminAction label="Confirm" tone="danger" confirmText="این مورد تقلب Confirm شود؟" onRun={() => resolve(flag, 'confirmed')} />
+                      <AdminAction label="Confirm" tone="danger" confirmText="Confirm this fraud flag?" onRun={() => resolve(flag, 'confirmed')} />
                       <AdminAction label="Dismiss" onRun={() => resolve(flag, 'dismissed')} />
                     </span>
                   </td>

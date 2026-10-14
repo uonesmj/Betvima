@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import { AppProviders } from '@/components/layout/providers';
+import { SiteLocaleBridge } from '@/components/layout/site-locale-bridge';
 import { PwaRegister } from '@/components/layout/pwa-register';
 import { publicConfig } from '@/server/env';
 
@@ -31,6 +32,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en" dir="ltr">
       <body>
         <AppProviders initialLocale={config.locale}>
+          <SiteLocaleBridge />
           {children}
           <PwaRegister />
         </AppProviders>

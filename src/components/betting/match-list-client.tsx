@@ -3,6 +3,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { MatchCard, type MatchView } from './match-card';
 import { LeagueLogo } from '@/components/ui/logo';
+import { useApp } from '@/components/layout/providers';
+import { translateSportName, translateVisibleText } from '@/lib/i18n/ui-phrases';
 import { isLiveMatchStatus } from '@/lib/match-state';
 
 function sportLabel(sportKey: string) {
@@ -63,6 +65,7 @@ export function MatchListClient({
   liveEnabled?: boolean;
   livePage?: boolean;
 }) {
+  const { locale } = useApp();
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
   const [liveMatches, setLiveMatches] = useState<MatchView[]>(matches);
   const liveMatchesRef = useRef<MatchView[]>(matches);
@@ -475,10 +478,10 @@ export function MatchListClient({
 
                 <div className="min-w-0">
                   <h2 className="truncate text-[12px] font-black leading-4 text-[#20242A]">
-                    {group.title}
+                    {locale === 'fa' ? translateSportName(group.title) : group.title}
                   </h2>
                   <p className="mt-0.5 truncate text-[10px] font-medium leading-4 text-[#9298A1]">
-                    {group.country || sportLabel(group.sportKey)}{' '}
+                    {locale === 'fa' ? translateVisibleText(group.country || sportLabel(group.sportKey)) : group.country || sportLabel(group.sportKey)}{' '}
           · {group.matches.length} events
                   </p>
                 </div>

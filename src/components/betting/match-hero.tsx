@@ -22,6 +22,8 @@ import { formatRelative } from '@/lib/i18n';
 import { LivePitchVisualization } from "./live-pitch-visualization";
 import { matchMinuteLabel } from "@/lib/live-match-minute";
 import { LeagueLogo, TeamLogo } from '@/components/ui/logo';
+import { useApp } from '@/components/layout/providers';
+import { translateSportName } from '@/lib/i18n/ui-phrases';
 
 function formatExactDate(value: string) {
   const date = new Date(value);
@@ -214,6 +216,7 @@ export function MatchHero({
     }>;
   };
 }) {
+  const { locale } = useApp();
   const sliderRef = useRef<HTMLDivElement>(null);
   const [slide, setSlide] = useState(0);
   // Render the provider-reported minute, not a locally invented stopwatch.
@@ -392,7 +395,7 @@ export function MatchHero({
 
           <div className="min-w-0">
             <div className="truncate text-sm font-extrabold text-[#20242A]">
-              {match.leagueName ?? match.sportKey}
+              {locale === 'fa' ? translateSportName(match.leagueName ?? match.sportKey) : match.leagueName ?? match.sportKey}
             </div>
             <div className="mt-0.5 truncate text-[10px] font-semibold uppercase tracking-[.08em] text-[#8A9199]">
               {match.countryCode ?? 'International'} · {match.sportKey}
@@ -465,7 +468,7 @@ export function MatchHero({
                 >
                   <TeamLogo url={home?.logoUrl} name={homeName} size={80} variant="circle" theme="dark" eager />
                   <span className="mt-1.5 line-clamp-2 max-w-[150px] text-sm font-black leading-5 text-white sm:max-w-[220px] sm:text-base">
-                    {homeName}
+                    {locale === 'fa' ? translateSportName(homeName) : homeName}
                   </span>
                   <span className="mt-1 text-[8px] font-bold uppercase tracking-[.2em] text-white/35">
                     Home
@@ -498,7 +501,7 @@ export function MatchHero({
                 >
                   <TeamLogo url={away?.logoUrl} name={awayName} size={80} variant="circle" theme="dark" eager />
                   <span className="mt-1.5 line-clamp-2 max-w-[150px] text-sm font-black leading-5 text-white sm:max-w-[220px] sm:text-base">
-                    {awayName}
+                    {locale === 'fa' ? translateSportName(awayName) : awayName}
                   </span>
                   <span className="mt-1 text-[8px] font-bold uppercase tracking-[.2em] text-white/35">
                     Away
@@ -531,9 +534,9 @@ export function MatchHero({
               />
               <div className="hidden sm:block relative mt-3 border-t border-white/10 pt-3 sm:mt-5 sm:pt-5">
                 <div className="mb-1.5 flex items-center justify-between text-[7px] font-black uppercase tracking-[.12em] text-white/35 sm:mb-2 sm:text-[8px] sm:tracking-[.18em]">
-                  <span>{homeName}</span>
+                  <span>{locale === 'fa' ? translateSportName(homeName) : homeName}</span>
                   <span>Live pressure</span>
-                  <span>{awayName}</span>
+                  <span>{locale === 'fa' ? translateSportName(awayName) : awayName}</span>
                 </div>
 
                 <div className="relative h-2.5 overflow-hidden rounded-full bg-white/8 sm:h-3">
@@ -758,7 +761,7 @@ export function MatchHero({
                           </span>
                           {event.teamName && (
                             <span className="text-[10px] font-bold text-[#68717B]">
-                              {event.teamName}
+                              {locale === 'fa' ? translateSportName(event.teamName) : event.teamName}
                             </span>
                           )}
                           {event.playerName && (

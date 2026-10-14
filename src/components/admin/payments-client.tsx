@@ -275,10 +275,10 @@ export function PaymentsClient() {
       )}
 
       <Card className="text-[11px] nova-muted">
-        Confirm Withdrawal فقط مجوز Runی پرداخت را صادر می‌کند. وجه
-        after the provider reports a terminal successful payout. Rejected or
-        در Withdrawalsی Failed، Blockedی کیف پول آزاد می‌شود. Deposits نیز می‌توانند Openپرداخت شوند
-        only through a reversing ledger entry.
+        Confirm Withdrawal authorizes payment execution only. Funds are marked paid after
+        the provider reports a terminal successful payout. Rejected or failed withdrawals
+        release the held wallet balance. Deposits may be reversed only through a new
+        correcting ledger entry.
       </Card>
     </div>
   );

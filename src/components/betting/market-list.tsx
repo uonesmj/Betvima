@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ChevronDown, ChevronUp } from 'lucide-react';
 import { useApp } from '@/components/layout/providers';
+import { translateVisibleText } from '@/lib/i18n/ui-phrases';
 import { formatOddsScaled } from '@/lib/i18n';
 import { useBetSlip, type SlipItem } from '@/lib/store/betslip';
 import type { MarketView, MatchView } from './match-card';
@@ -1409,6 +1410,7 @@ function MarketSelectionButton({
   locked: boolean;
   onToggle: (item: SlipItem) => void;
 }) {
+  const { locale } = useApp();
   const item: SlipItem = {
     selectionId: selection.id,
     marketId: market.id,
@@ -1466,9 +1468,9 @@ function MarketSelectionButton({
             : 'font-semibold text-[#343A40]',
         ].join(' ')}
       >
-        {translateSelectionDisplayLabel(
-          getSelectionDisplayName(match, selection),
-        )}
+        {locale === 'fa'
+          ? translateVisibleText(translateSelectionDisplayLabel(getSelectionDisplayName(match, selection)), true)
+          : translateSelectionDisplayLabel(getSelectionDisplayName(match, selection))}
       </span>
 
       <span
@@ -1513,9 +1515,9 @@ function MarketCard({
   onToggleCollapse: () => void;
   onToggleSelection: (item: SlipItem) => void;
 }) {
-  const marketTitle = translateMarketDisplayLabel(
-    getMarketTitle(market, match.sportKey),
-  );
+  const { locale } = useApp();
+  const marketTitleEn = translateMarketDisplayLabel(getMarketTitle(market, match.sportKey));
+  const marketTitle = locale === 'fa' ? translateVisibleText(marketTitleEn ?? '') : marketTitleEn;
 
   return (
     <section

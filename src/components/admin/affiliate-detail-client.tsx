@@ -77,7 +77,7 @@ export function AffiliateDetailClient({ affiliateId }: { affiliateId: string }) 
           <Stat label="Suppressed (floor)" value={formatMinor(data.payable.usdSuppressedMinor, 'USD', locale)} tone="warning" />
           <Stat label="Lifetime commission" value={formatMinor(affiliate.usdLifetimeCommissionMinor, 'USD', locale)} />
           <Stat label="Lifetime paid" value={formatMinor(affiliate.usdLifetimePaidMinor, 'USD', locale)} />
-          <Stat label="مجموع Deposits" value={formatMinor(affiliate.usdLifetimeDepositsMinor, 'USD', locale)} />
+          <Stat label="Total deposits" value={formatMinor(affiliate.usdLifetimeDepositsMinor, 'USD', locale)} />
           <Stat label="Min payout" value={formatMinor(affiliate.usdMinPayoutMinor, 'USD', locale)} />
         </div>
         <p className="mt-2 text-[11px] nova-muted">

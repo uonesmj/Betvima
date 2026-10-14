@@ -1,0 +1,91 @@
+import { describe, expect, it } from 'vitest';
+import { readFileSync } from 'node:fs';
+import { DEFAULT_LOCALE, DICTIONARIES } from '@/lib/i18n/dictionaries';
+import { translateSportName, translateVisibleText } from '@/lib/i18n/ui-phrases';
+
+describe('Persian display localization with English canonical layout', () => {
+  it('defaults to English while preserving the original English dictionary', () => {
+    expect(DEFAULT_LOCALE).toBe('en');
+    expect(DICTIONARIES.en['nav.home']).toBe('Home');
+  });
+  it('translates visible sports markets without modifying odds or payment tokens', () => {
+    expect(translateVisibleText('Full Time Result')).toBe('نتیجه پایان بازی');
+    expect(translateVisibleText('Over 2.5')).toBe('بالای 2.5');
+    expect(translateVisibleText('5 markets')).toBe('5 بازار');
+    expect(translateVisibleText('20.53')).toBe('20.53');
+    expect(translateVisibleText('Withdraw USDT')).toBe('Withdraw USDT');
+  });
+  it('translates common teams and transliterates provider names only in sports context', () => {
+    expect(translateSportName('Manchester United')).toBe('منچستر یونایتد');
+    expect(translateVisibleText('Manchester United')).toBe('منچستر یونایتد');
+    expect(translateVisibleText('Brighton')).toBe('برایتون');
+    expect(translateVisibleText('St. Pauli', false)).toBe('St. Pauli');
+    expect(translateVisibleText('St. Pauli', true)).not.toBe('St. Pauli');
+  });
+  it('preserves spacing in inline labels and avoids touching bilingual input', () => {
+    expect(translateVisibleText('  View all  ')).toBe('  مشاهده همه  ');
+    expect(translateVisibleText('زنده LIVE')).toBe('زنده LIVE');
+    expect(translateVisibleText('BetVimaSupport@gmail.com')).toBe('BetVimaSupport@gmail.com');
+  });
+});
+
+
+describe('end-to-end translation vocabulary checks', () => {
+  it('covers important newly localized sections', () => {
+    expect(translateVisibleText('Primary referral link')).toBe('لینک معرفی اصلی');
+    expect(translateVisibleText('Live match center')).toBe('مرکز مسابقه زنده');
+    expect(translateVisibleText('No active bonuses')).toBe('بونوس فعالی وجود ندارد');
+    expect(translateVisibleText('Responsible gaming')).toBe('بازی مسئولانه');
+  });
+  it('covers provider team/league names with meaningful Persian spellings', () => {
+    expect(translateSportName('Celta Vigo')).toBe('سلتاویگو');
+    expect(translateSportName('Manchester City')).toBe('منچستر سیتی');
+    expect(translateSportName('UEFA Europa Conference League')).toBe('لیگ کنفرانس اروپا');
+    expect(translateVisibleText('Brighton and Hove Albion', true)).toBe('برایتون اند هوو آلبیون');
+  });
+  it('never changes English usernames, URLs, wallet tokens or numeric odds', () => {
+    expect(translateVisibleText('support@example.com')).toBe('support@example.com');
+    expect(translateVisibleText('https://betvima.com')).toBe('https://betvima.com');
+    expect(translateVisibleText('USD 11.25')).toBe('USD 11.25');
+    expect(translateVisibleText('1.95')).toBe('1.95');
+  });
+});
+
+describe('consistent English-first user and administrator copy', () => {
+  it('translates financial explanations only as visible text', () => {
+    expect(translateVisibleText('Minimum withdrawal equivalent')).toBe('معادل حداقل برداشت');
+    expect(translateVisibleText('Estimated deposit amount (toman)')).toBe('مبلغ تقریبی واریز (تومان)');
+    expect(translateVisibleText('50 USD')).toBe('50 USD');
+  });
+  it('covers help, admin and legal wording', () => {
+    expect(translateVisibleText('Help Topics')).toBe('موضوعات راهنما');
+    expect(translateVisibleText('Open liabilities')).toBe('تعهدات باز');
+    expect(translateVisibleText('Decision')).toBe('تصمیم');
+    expect(translateVisibleText('View metrics JSON')).toBe('مشاهده JSON شاخص‌ها');
+  });
+});
+
+describe('unchanged layout and non-translatable language controls', () => {
+  it('holds LTR layout while switching just the displayed language', () => {
+    const providers = readFileSync('src/components/layout/providers.tsx', 'utf8');
+    const layout = readFileSync('src/app/layout.tsx', 'utf8');
+    expect(layout).toContain('<html lang="en" dir="ltr">');
+    expect(providers).toContain("document.documentElement.dir = 'ltr'");
+    expect(providers).toContain("dir: 'ltr'");
+  });
+
+  it('keeps language options named in their native languages', () => {
+    const footer = readFileSync('src/components/layout/page-shell.tsx', 'utf8');
+    const selector = readFileSync('src/components/layout/language-selector.tsx', 'utf8');
+    expect(footer).toContain('translate="no" lang="fa" dir="rtl"');
+    expect(footer).toContain('translate="no" lang="en" dir="ltr"');
+    expect(selector).toContain('<span translate="no">{LOCALE_META[item].nativeLabel}</span>');
+  });
+
+  it('translates CSS-generated mobile affiliate headings only in Persian mode', () => {
+    const css = readFileSync('src/app/globals.css', 'utf8');
+    expect(css).toContain('.affiliate-referrals-v2 .nova-table td:nth-child(1)::before { content: "User"; }');
+    expect(css).toContain('html[lang="fa"] .affiliate-referrals-v2 .nova-table td:nth-child(1)::before { content: "کاربر" !important; }');
+    expect(css).toContain('html[lang="fa"] .affiliate-shell .affiliate-referrals-v2 tbody td:nth-child(9)::before { content: "سهم ۷۰٪ شما" !important; }');
+  });
+});
