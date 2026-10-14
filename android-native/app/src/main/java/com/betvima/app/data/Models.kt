@@ -30,7 +30,12 @@ data class Pick(
     val oddsScaled: String, val version: Int, val live: Boolean
 )
 data class Bet(val id: String, val status: String, val type: String,
-    val stakeMinor: String, val payoutMinor: String, val currency: String, val legs: Int)
+    val stakeMinor: String, val payoutMinor: String, val currency: String, val legs: Int,
+    val settledPayoutMinor: String? = null, val netResultMinor: String? = null,
+    val placedAt: String = "", val combinedOddsScaled: String = "0") {
+    val isSettled: Boolean get() = status.lowercase() in setOf(
+        "won", "lost", "void", "refunded", "cancelled", "cashed_out", "settled")
+}
 data class Transaction(val id: String, val type: String, val amountMinor: String, val time: String)
 data class Wallet(val availableMinor: String, val balanceMinor: String,
     val heldMinor: String, val currency: String, val integrity: String, val transactions: List<Transaction>)
