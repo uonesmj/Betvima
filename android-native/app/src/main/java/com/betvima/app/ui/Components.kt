@@ -38,86 +38,102 @@ fun BrandHeader(
     onNotifications: () -> Unit,
     unread: Int,
     walletBalance: String? = null,
-    onWallet: () -> Unit = {}
+    onWallet: () -> Unit = {},
+    userName: String? = null
 ) {
-    // The brand and action buttons retain a fixed left-to-right visual order
-    // even while content screens follow the selected text direction.
+    // Keep the brand and financial controls in stable left-to-right order.
+    // Actual wallet and identity values come from authenticated backend responses.
     CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
         Row(
-            Modifier.fillMaxWidth().heightIn(min = 71.dp)
-                .background(Color(0xFF121315))
-                .padding(horizontal = 11.dp, vertical = 7.dp),
+            Modifier.fillMaxWidth()
+                .background(Brush.horizontalGradient(
+                    listOf(Color(0xFF080E16), Color(0xFF15242D))))
+                .heightIn(min = 74.dp)
+                .padding(horizontal = 12.dp, vertical = 9.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Row(Modifier.clickable(onClick = onHome).padding(vertical = 10.dp),
-                verticalAlignment = Alignment.CenterVertically) {
-                Text("BET", color = Color.White, fontSize = 19.sp,
-                    fontWeight = FontWeight.Black, letterSpacing = (-.6).sp)
-                Text("VIMA", color = Palette.green, fontSize = 19.sp,
-                    fontWeight = FontWeight.Black, letterSpacing = (-.6).sp)
+            Column(Modifier.clickable(onClick = onHome).padding(vertical = 6.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text("BET", color = Color.White, fontSize = 19.sp,
+                        fontWeight = FontWeight.Black, letterSpacing = (-.8).sp)
+                    Text("VIMA", color = Palette.green, fontSize = 19.sp,
+                        fontWeight = FontWeight.Black, letterSpacing = (-.8).sp)
+                }
+                Box(Modifier.padding(top = 4.dp).width(40.dp).height(2.dp)
+                    .background(Brush.horizontalGradient(
+                        listOf(Palette.blue, Palette.green)),
+                        RoundedCornerShape(99.dp)))
             }
             Spacer(Modifier.weight(1f))
             androidx.compose.animation.AnimatedContent(
-                targetState = signedIn, label = "guestMemberHeader",
+                targetState = signedIn, label = "authenticatedHeader",
                 transitionSpec = {
                     androidx.compose.animation.fadeIn(
-                        animationSpec = androidx.compose.animation.core.tween(200)) togetherWith
+                        androidx.compose.animation.core.tween(220)) togetherWith
                     androidx.compose.animation.fadeOut(
-                        animationSpec = androidx.compose.animation.core.tween(140))
+                        androidx.compose.animation.core.tween(140))
                 }
             ) { authenticated ->
                 if (authenticated) {
                     Row(verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(7.dp)) {
-                        Column(Modifier.clickable(onClick = onAccount),
-                            horizontalAlignment = Alignment.End) {
-                            Text(walletBalance?.substringAfterLast(" ", "USD") ?: "USD",
-                                color = Color(0xFFABB2C1), fontSize = 10.sp,
-                                fontWeight = FontWeight.Bold, maxLines = 1)
-                            Text(walletBalance?.substringBeforeLast(" ", "—") ?: "—",
-                                color = Color.White, fontSize = 14.sp,
-                                fontWeight = FontWeight.Black, maxLines = 1)
-                        }
-                        Surface(color = Palette.green,
-                            shape = RoundedCornerShape(10.dp),
+                        Surface(shape = RoundedCornerShape(16.dp),
+                            color = Color(0xFF172B31),
+                            border = BorderStroke(1.dp, Palette.green.copy(alpha = .45f)),
+                            shadowElevation = 4.dp,
                             modifier = Modifier.clickable(onClick = onWallet)) {
-                            Text(tr(lang, "Wallet", "کیف‌پول"),
-                                color = Palette.ink, fontSize = 11.sp,
-                                fontWeight = FontWeight.ExtraBold,
-                                modifier = Modifier.padding(horizontal = 11.dp, vertical = 12.dp))
-                        }
-                        Box(contentAlignment = Alignment.Center) {
-                            Surface(color = Color(0xFF2A2C2E),
-                                shape = RoundedCornerShape(10.dp),
-                                modifier = Modifier.size(40.dp)
-                                    .clickable(onClick = onNotifications)) {
-                                Box(contentAlignment = Alignment.Center) {
-                                    Icon(Icons.Default.Notifications, tr(lang,
-                                        "Notifications", "اعلان‌ها"), tint = Color.White,
-                                        modifier = Modifier.size(20.dp))
+                            Row(Modifier.padding(horizontal = 11.dp, vertical = 9.dp),
+                                verticalAlignment = Alignment.CenterVertically) {
+                                Icon(Icons.Default.AccountBalanceWallet, null,
+                                    modifier = Modifier.size(18.dp), tint = Palette.green)
+                                Spacer(Modifier.width(8.dp))
+                                Column {
+                                    Text(tr(lang, "BALANCE", "موجودی"),
+                                        color = Color(0xFFA5BBC0),
+                                        fontSize = 9.sp, fontWeight = FontWeight.Bold)
+                                    Text(walletBalance ?: "—",
+                                        color = Color.White,
+                                        fontSize = 13.sp, fontWeight = FontWeight.Black,
+                                        maxLines = 1)
                                 }
                             }
-                            if (unread > 0) Box(Modifier.align(Alignment.TopEnd).size(10.dp)
-                                .background(Color(0xFFFF602A), CircleShape))
+                        }
+                        Column(Modifier.clickable(onClick = onAccount)
+                            .widthIn(max = 95.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally) {
+                            Surface(color = Color(0xFF25383F),
+                                border = BorderStroke(1.dp, Color.White.copy(alpha = .18f)),
+                                shape = CircleShape) {
+                                Icon(Icons.Default.PersonOutline,
+                                    tr(lang, "Your profile", "حساب کاربری"),
+                                    tint = Palette.green,
+                                    modifier = Modifier.padding(8.dp).size(18.dp))
+                            }
+                            Spacer(Modifier.height(3.dp))
+                            Text(userName?.takeIf { it.isNotBlank() }
+                                ?: tr(lang, "Account", "حساب"),
+                                maxLines = 1, overflow = TextOverflow.Ellipsis,
+                                color = Color.White, fontSize = 9.sp,
+                                fontWeight = FontWeight.Bold)
                         }
                     }
                 } else {
                     Row(horizontalArrangement = Arrangement.spacedBy(7.dp),
                         verticalAlignment = Alignment.CenterVertically) {
-                        Surface(color = Color(0xFF292D33),
-                            shape = RoundedCornerShape(10.dp),
-                            border = BorderStroke(1.dp, Color.White.copy(alpha = .13f)),
+                        Surface(color = Color.White.copy(alpha = .08f),
+                            shape = RoundedCornerShape(12.dp),
+                            border = BorderStroke(1.dp, Color.White.copy(alpha = .16f)),
                             modifier = Modifier.clickable(onClick = onAccount)) {
                             Text(tr(lang, "Log in", "ورود"),
-                                modifier = Modifier.padding(horizontal = 11.dp, vertical = 12.dp),
+                                modifier = Modifier.padding(horizontal = 13.dp, vertical = 11.dp),
                                 color = Color.White, fontSize = 11.sp,
                                 fontWeight = FontWeight.ExtraBold)
                         }
                         Surface(color = Palette.green,
-                            shape = RoundedCornerShape(10.dp),
+                            shape = RoundedCornerShape(12.dp),
                             modifier = Modifier.clickable(onClick = onRegister)) {
                             Text(tr(lang, "Sign up", "ثبت‌نام"),
-                                modifier = Modifier.padding(horizontal = 11.dp, vertical = 12.dp),
+                                modifier = Modifier.padding(horizontal = 13.dp, vertical = 11.dp),
                                 color = Palette.ink, fontSize = 11.sp,
                                 fontWeight = FontWeight.ExtraBold)
                         }
