@@ -107,7 +107,6 @@ fun BetvimaApp(model: AppViewModel) {
                     BrandHeader(state.lang,
                         signedIn = state.signedIn,
                         onHome = { model.tab(Tab.HOME) },
-                        onLanguage = { languageOpen = true },
                         onAccount = {
                             if (state.signedIn) accountOpen = true else model.showLogin(true)
                         },
@@ -148,6 +147,7 @@ fun BetvimaApp(model: AppViewModel) {
                             "casino" -> model.feature(Feature.CASINO)
                             "bonus" -> model.feature(Feature.BONUSES)
                             "sports" -> model.tab(Tab.SPORTS)
+                            "language" -> languageOpen = true
                         }
                     },
                     onSlip = { model.showSlip(true) }
