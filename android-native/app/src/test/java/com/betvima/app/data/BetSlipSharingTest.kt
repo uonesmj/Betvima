@@ -30,7 +30,7 @@ class BetSlipSharingTest {
             shareSlipPayload(listOf(pick(1),pick(1)),"USD")
         }
         assertThrows(IllegalArgumentException::class.java) {
-            shareSlipPayload((1..21).map(::pick),"USD")
+            shareSlipPayload((1..21).map { pick(it) },"USD")
         }
     }
     @Test fun exactCodeRegexMatchesSite() {
