@@ -119,68 +119,26 @@ fun BetvimaApp(model: AppViewModel) {
                 }
             },
             bottomBar = {
-                Column {
-                    if (state.tab in setOf(Tab.HOME, Tab.LIVE, Tab.SPORTS) &&
-                        state.feature == Feature.NONE) {
-                        Box(Modifier.fillMaxWidth().padding(top = 4.dp, bottom = 5.dp),
-                            contentAlignment = Alignment.Center) {
-                            Surface(color = Palette.blue, shadowElevation = 6.dp,
-                                shape = RoundedCornerShape(28.dp),
-                                modifier = Modifier.width(144.dp).height(43.dp)
-                                    .clickable { model.showSlip(true) }) {
-                                Row(Modifier.fillMaxWidth().padding(horizontal = 14.dp),
-                                    horizontalArrangement = Arrangement.Center,
-                                    verticalAlignment = Alignment.CenterVertically) {
-                                    Icon(Icons.Default.ConfirmationNumber, null,
-                                        tint = Color.White, modifier = Modifier.size(20.dp))
-                                    Spacer(Modifier.width(7.dp))
-                                    Text(state.picks.size.toString(), color = Color.White,
-                                        fontWeight = FontWeight.Black, fontSize = 15.sp)
-                                    Spacer(Modifier.width(11.dp))
-                                    Icon(Icons.Default.KeyboardArrowUp,
-                                        tr(state.lang, "Open bet slip", "باز کردن برگه شرط"),
-                                        tint = Color.White, modifier = Modifier.size(23.dp))
-                                }
-                            }
+                Column(Modifier.background(Color(0xFF121315))) {
+                    androidx.compose.animation.AnimatedVisibility(
+                        visible = state.tab in setOf(Tab.HOME, Tab.LIVE, Tab.SPORTS) &&
+                            state.feature == Feature.NONE && state.detail == null,
+                        enter = slideInVertically(animationSpec = tween(230)) { it } +
+                            fadeIn(animationSpec = tween(220)),
+                        exit = slideOutVertically(animationSpec = tween(160)) { it } +
+                            fadeOut(animationSpec = tween(160))
+                    ) {
+                        AnimatedFloatingBetslip(state.picks.size, state.lang) {
+                            model.showSlip(true)
                         }
                     }
-                    NavigationBar(containerColor = Palette.ink,
-                        tonalElevation = 0.dp) {
-                        listOf(
-                            Triple("menu", tr(state.lang, "Menu", "منو"), Icons.Default.Menu),
-                            Triple("home", tr(state.lang, "Home", "خانه"), Icons.Default.Home),
-                            Triple("casino", tr(state.lang, "Casino", "کازینو"), Icons.Default.Casino),
-                            Triple("bonus", tr(state.lang, "Bonuses", "بونوس"), Icons.Default.CardGiftcard),
-                            Triple("sports", tr(state.lang, "Sports", "ورزش‌ها"), Icons.Default.SportsSoccer)
-                        ).forEach { (destination, label, icon) ->
-                            val selected = when(destination) {
-                                "home" -> state.tab == Tab.HOME && state.feature == Feature.NONE
-                                "casino" -> state.feature == Feature.CASINO
-                                "bonus" -> state.feature == Feature.BONUSES
-                                "sports" -> state.tab in setOf(Tab.LIVE, Tab.SPORTS) &&
-                                    state.feature == Feature.NONE
-                                else -> false
-                            }
-                            NavigationBarItem(selected = selected, onClick = {
-                                when(destination) {
-                                    "menu" -> drawerScope.launch { drawer.open() }
-                                    "home" -> model.tab(Tab.HOME)
-                                    "casino" -> model.feature(Feature.CASINO)
-                                    "bonus" -> model.feature(Feature.BONUSES)
-                                    "sports" -> model.tab(Tab.SPORTS)
-                                }
-                            },
-                                icon = { Icon(icon, null, modifier = Modifier.size(22.dp)) },
-                                label = { Text(label, fontSize = 10.sp, maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis) },
-                                alwaysShowLabel = true,
-                                colors = NavigationBarItemDefaults.colors(
-                                    selectedIconColor = Palette.blue,
-                                    selectedTextColor = Palette.blue,
-                                    unselectedIconColor = Color(0xFF9BACB9),
-                                    unselectedTextColor = Color(0xFF9BACB9),
-                                    indicatorColor = Color.Transparent
-                                ))
+                    ReferenceAnimatedBottomNav(state) { destination ->
+                        when (destination) {
+                            "menu" -> drawerScope.launch { drawer.open() }
+                            "home" -> model.tab(Tab.HOME)
+                            "casino" -> model.feature(Feature.CASINO)
+                            "bonus" -> model.feature(Feature.BONUSES)
+                            "sports" -> model.tab(Tab.SPORTS)
                         }
                     }
                 }
@@ -202,20 +160,33 @@ fun BetvimaApp(model: AppViewModel) {
                 }
             }
             Box(Modifier.fillMaxSize().padding(padding)) {
-                when {
-                    state.detail != null || state.detailLoading -> MatchDetailPage(state, model)
-                    state.feature != Feature.NONE -> FeaturePage(state, model)
-                    state.tab == Tab.HOME -> HomePage(filtered, model) {
-                        searchOpen = !searchOpen
+                AnimatedContent(
+                    targetState = Triple(state.tab, state.feature,
+                        state.detail != null || state.detailLoading),
+                    label = "mainScreenNavigation",
+                    transitionSpec = {
+                        (slideInHorizontally(animationSpec = tween(220)) { it / 5 } +
+                            fadeIn(animationSpec = tween(220)))
+                            .togetherWith(
+                                slideOutHorizontally(animationSpec = tween(165)) { -it / 6 } +
+                                    fadeOut(animationSpec = tween(165)))
                     }
-                    state.tab == Tab.LIVE -> CatalogPage(filtered, model, live = true) {
-                        searchOpen = !searchOpen
+                ) { (tab, feature, detailVisible) ->
+                    when {
+                        detailVisible -> MatchDetailPage(state, model)
+                        feature != Feature.NONE -> FeaturePage(state, model)
+                        tab == Tab.HOME -> HomePage(filtered, model) {
+                            searchOpen = !searchOpen
+                        }
+                        tab == Tab.LIVE -> CatalogPage(filtered, model, live = true) {
+                            searchOpen = !searchOpen
+                        }
+                        tab == Tab.SPORTS -> CatalogPage(filtered, model, live = false) {
+                            searchOpen = !searchOpen
+                        }
+                        tab == Tab.BETS -> BetsPage(state, model)
+                        tab == Tab.WALLET -> WalletPage(state, model)
                     }
-                    state.tab == Tab.SPORTS -> CatalogPage(filtered, model, live = false) {
-                        searchOpen = !searchOpen
-                    }
-                    state.tab == Tab.BETS -> BetsPage(state, model)
-                    state.tab == Tab.WALLET -> WalletPage(state, model)
                 }
                 if ((state.liveLoading || state.upcomingLoading) &&
                     state.live.isNotEmpty() && state.upcoming.isNotEmpty()) {
