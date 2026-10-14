@@ -101,7 +101,8 @@ private val sportChips = listOf(
 fun ReferenceSportRibbon(state: AppState, model: AppViewModel, live: Boolean = false,
     all: Boolean = false, selectedKey: String? = null,
     onSelect: ((String) -> Unit)? = null) {
-    val current = selectedKey ?: if (all) "top" else state.sport
+    val current = (selectedKey ?: if (all) "top" else state.sport)
+        .let { if (it == "all") "top" else it }
     LazyRow(contentPadding = PaddingValues(horizontal = 13.dp, vertical = 10.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         items(sportChips, key = { it.key }) { sport ->
