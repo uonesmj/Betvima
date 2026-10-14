@@ -235,15 +235,15 @@ fun PremiumWalletPage(state: AppState, model: AppViewModel) {
                         WalletAction(tr(lang,"Deposit","واریز"),
                             tr(lang,"Add funds","شارژ حساب"),
                             Icons.Default.ArrowDownward, true,
-                            onClick = { activeSheet = "deposit" }, Modifier.weight(1f))
+                            onClick = { activeSheet = "deposit" }, modifier = Modifier.weight(1f))
                         WalletAction(tr(lang,"Withdraw","برداشت"),
                             tr(lang,"Cash out","انتقال وجه"),
                             Icons.Default.ArrowUpward, false,
-                            onClick = { activeSheet = "withdraw" }, Modifier.weight(1f))
+                            onClick = { activeSheet = "withdraw" }, modifier = Modifier.weight(1f))
                         WalletAction(tr(lang,"History","تاریخچه"),
                             tr(lang,"Activity","تراکنش‌ها"),
                             Icons.Default.History, false,
-                            onClick = { activeSheet = "history" }, Modifier.weight(1f))
+                            onClick = { activeSheet = "history" }, modifier = Modifier.weight(1f))
                     }
                 }
                 if (wallet.integrity != "ok") item {
@@ -368,6 +368,7 @@ fun PremiumWalletPage(state: AppState, model: AppViewModel) {
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun WalletHistorySheet(
     state: AppState, model: AppViewModel, onDetail: (WalletPaymentRecord) -> Unit
