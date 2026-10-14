@@ -161,7 +161,7 @@ function phonetic(token: string): string {
   const fixed = teamTerms[token.toLowerCase()];
   if (fixed) return fixed;
   if (/^[A-Z0-9]{1,4}$/.test(token)) return token;
-  const lower = token.toLowerCase();
+  const lower = token.normalize('NFKD').replace(/[\u0300-\u036f]/g, '').replace(/[łŁ]/g, 'l').replace(/[øØ]/g, 'o').replace(/[đĐ]/g, 'd').replace(/ß/g, 'ss').toLowerCase();
   let output = '';
   for (let i = 0; i < lower.length;) {
     const pair = digraphs.find(([pattern]) => lower.startsWith(pattern,i));
@@ -173,7 +173,7 @@ function phonetic(token: string): string {
 export function translateSportName(value: string): string {
   const mapped = phrases.get(normalize(value));
   if (mapped) return mapped;
-  return value.replace(/[A-Za-z]+/g, phonetic).replace(/\s+/g, ' ').trim();
+  return value.replace(/[\p{Script=Latin}]+/gu, phonetic).replace(/\s+/g, ' ').trim();
 }
 
 
@@ -232,6 +232,15 @@ export function translateVisibleText(value: string, sportContext = false): strin
   if (!core) return value;
   const decoded = core.replace(/&amp;/g, '&').replace(/&nbsp;/g, ' ');
   let localized = exact(decoded);
+  // Financial abbreviations stay intact, but the natural-language label around
+  // them must still be translated (e.g. "Balance (USD)").
+  if (!localized) {
+    const financialLabel = decoded.match(/^(.{2,90}?)\s*(\((?:USD|USDT|TRX|BTC|ETH|IRR|IRT)\)|(?:USD|USDT|TRX|BTC|ETH|IRR|IRT))$/i);
+    if (financialLabel) {
+      const labelTranslation = exact(financialLabel[1] ?? '');
+      if (labelTranslation) localized = labelTranslation + ' ' + (financialLabel[2] ?? '');
+    }
+  }
   if (!localized && preserve.test(core)) return value;
 
   if (!localized) {
