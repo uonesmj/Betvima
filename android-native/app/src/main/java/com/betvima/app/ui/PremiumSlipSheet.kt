@@ -230,6 +230,90 @@ private fun MainAccountSlipControls(
                 }
             }
         }
+        if (state.picks.isNotEmpty()) {
+            val estimate = remember(stake, state.picks) {
+                previewSlipWinnings(stake, state.picks)
+            }
+            if (estimate != null) {
+                // When a live server quote exists, it overrides the illustrative
+                // payout derived from current client odds. Neither is settlement.
+                val officialPayout = state.quote
+                    ?.removeSuffix(" USD")
+                    ?.takeIf { it.matches(Regex("[0-9]+\\.[0-9]{2}")) }
+                val possibleReturn = officialPayout ?: estimate.returnUsd
+                val netProfit = remember(possibleReturn, estimate.stakeUsd) {
+                    java.math.BigDecimal(possibleReturn)
+                        .subtract(java.math.BigDecimal(estimate.stakeUsd))
+                        .setScale(2, java.math.RoundingMode.HALF_UP)
+                        .toPlainString()
+                }
+                Surface(
+                    color = Color(0xFFF0F8F4),
+                    shape = RoundedCornerShape(12.dp),
+                    border = BorderStroke(1.dp, Color(0xFFCEEBDD)),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(
+                        modifier = Modifier.fillMaxWidth().padding(
+                            horizontal = 12.dp, vertical = 8.dp
+                        ),
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text(
+                                tr(lang, "Combined odds", "ضریب کل") +
+                                    "  " + estimate.combinedOdds,
+                                color = slipMuted, fontSize = 10.sp,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                            Text(
+                                if (officialPayout != null)
+                                    tr(lang, "Official quote", "استعلام رسمی")
+                                else tr(lang, "Estimate", "برآورد"),
+                                color = Color(0xFF32745B), fontSize = 10.sp
+                            )
+                        }
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            Column(Modifier.weight(1f)) {
+                                Text(
+                                    tr(lang, "Possible return", "بازگشت احتمالی"),
+                                    color = slipMuted, fontSize = 10.sp
+                                )
+                                Text(
+                                    "$" + possibleReturn,
+                                    color = slipText, fontSize = 17.sp,
+                                    fontWeight = FontWeight.Black
+                                )
+                            }
+                            Column(Modifier.weight(1f)) {
+                                Text(
+                                    tr(lang, "Net profit", "سود خالص"),
+                                    color = slipMuted, fontSize = 10.sp
+                                )
+                                Text(
+                                    "$" + netProfit,
+                                    color = Color(0xFF008752), fontSize = 17.sp,
+                                    fontWeight = FontWeight.Black
+                                )
+                            }
+                        }
+                        Text(
+                            tr(lang,
+                                "Return includes the stake; profit excludes it. Final price is confirmed by the server.",
+                                "بازگشت شامل اصل شرط است؛ سود بدون اصل شرط است. مبلغ نهایی را سرور تأیید می‌کند."),
+                            color = slipMuted, fontSize = 9.sp,
+                            lineHeight = 12.sp, maxLines = 2
+                        )
+                    }
+                }
+            }
+        }
         Button(
             onClick={
                 if(!state.signedIn) {
