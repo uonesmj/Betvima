@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { translateVisibleText } from '@/lib/i18n/ui-phrases';
 import { useApp } from '@/components/layout/providers';
 import { Card, EmptyState, ErrorNote, Field, Skeleton } from '@/components/ui/primitives';
 import { apiRequest, useApiQuery } from '@/lib/hooks/useApi';
@@ -8,7 +9,8 @@ import { apiRequest, useApiQuery } from '@/lib/hooks/useApi';
 interface LinkRow { id: string; code: string; campaign: string | null; source: string | null; medium: string | null; is_active: boolean; clicks: number; url: string }
 
 export function AffiliateLinksClient() {
-  const { t, session } = useApp();
+  const { t, locale, session } = useApp();
+  const tr = (value: string | undefined) => { const copy = value ?? ''; return locale === 'fa' ? translateVisibleText(copy) : copy; };
   const { data, loading, error, reload } = useApiQuery<{ links: LinkRow[]; primaryUrl: string; code: string }>(
     session?.authenticated ? '/api/v1/affiliate/links' : null,
   );
@@ -43,7 +45,7 @@ export function AffiliateLinksClient() {
         <ErrorNote message={error} onRetry={() => void reload()} retryLabel={t('common.retry')} />
         {data?.primaryUrl ? (
           <Card className="affiliate-links-primary mb-3 border-[#DCE6F1] shadow-[0_8px_24px_rgba(15,23,42,.06)]">
-            <div className="text-xs font-bold uppercase tracking-[0.12em] text-[#087FF5]">Primary referral link</div>
+            <div className="text-xs font-bold uppercase tracking-[0.12em] text-[#087FF5]">{tr("Primary referral link")}</div>
             <div className="mt-1 flex items-center gap-2">
               <code className="min-w-0 flex-1 truncate rounded-lg bg-nova-bg px-2 py-1.5 text-xs">{data.primaryUrl}</code>
               <button type="button" className="nova-btn-ghost !py-1.5 text-xs" onClick={() => void copy(data.primaryUrl)}>
@@ -51,11 +53,11 @@ export function AffiliateLinksClient() {
               </button>
             </div>
             <div className="mt-3 border-t border-[#E8EEF5] pt-3">
-              <div className="text-xs font-bold uppercase tracking-[0.12em] text-[#087FF5]">BetVima App download</div>
+              <div className="text-xs font-bold uppercase tracking-[0.12em] text-[#087FF5]">{tr("BetVima App download")}</div>
               <div className="mt-1 flex items-center gap-2">
                 <code className="min-w-0 flex-1 truncate rounded-lg bg-nova-bg px-2 py-1.5 text-xs">{`${window.location.origin}/app/affiliate/${data.code}`}</code>
                 <button type="button" className="nova-btn-primary !py-1.5 text-xs" onClick={() => window.location.assign(`/app/affiliate/${encodeURIComponent(data.code)}`)}>
-                  Download App
+                  {tr("Download App")}
                 </button>
                 <button type="button" className="nova-btn-ghost !py-1.5 text-xs" onClick={() => void copy(`${window.location.origin}/app/affiliate/${data.code}`)}>
                   {copied === `${window.location.origin}/app/affiliate/${data.code}` ? t('affiliate.copied') : t('affiliate.copyLink')}
@@ -68,7 +70,7 @@ export function AffiliateLinksClient() {
         {(data?.links.length ?? 0) === 0 ? <EmptyState title={t('common.empty')} /> : (
           <Card className="!p-0">
             <table className="nova-table">
-              <thead><tr><th>Code</th><th>Campaign</th><th>Source</th><th>Clicks</th><th /></tr></thead>
+              <thead><tr><th>{tr("Code")}</th><th>{tr("Campaign")}</th><th>{tr("Source")}</th><th>{tr("Clicks")}</th><th /></tr></thead>
               <tbody>
                 {data!.links.map((link) => (
                   <tr key={link.id}>
@@ -90,7 +92,7 @@ export function AffiliateLinksClient() {
       </div>
 
       <Card className="affiliate-create-card border-[#DCE6F1] shadow-[0_8px_24px_rgba(15,23,42,.06)]">
-        <div className="mb-4"><div className="text-lg font-black text-[#111827]">Create referral link</div><div className="mt-1 text-xs text-[#64748B]">Generate a campaign link in seconds.</div></div>
+        <div className="mb-4"><div className="text-lg font-black text-[#111827]">{tr("Create referral link")}</div><div className="mt-1 text-xs text-[#64748B]">{tr("Generate a campaign link in seconds.")}</div></div>
         {message ? <div className="mb-3 rounded-lg border border-nova-line bg-nova-surface2 p-2 text-xs">{message}</div> : null}
         <div className="space-y-3">
           <Field label="Campaign"><input className="nova-input" placeholder="e.g. summer2026" value={form.campaign} onChange={(e) => setForm({ ...form, campaign: e.target.value })} /></Field>

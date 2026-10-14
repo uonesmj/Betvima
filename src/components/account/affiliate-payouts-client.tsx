@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { translateVisibleText } from '@/lib/i18n/ui-phrases';
 import { useApp } from '@/components/layout/providers';
 import { Card, EmptyState, ErrorNote, Field, Skeleton, Stat, StatusPill } from '@/components/ui/primitives';
 import { apiRequest, useApiQuery } from '@/lib/hooks/useApi';
@@ -48,6 +49,7 @@ function walletHint(asset: AffiliateWalletAsset) {
 
 export function AffiliatePayoutsClient() {
   const { t, locale, session } = useApp();
+  const tr = (value: string | undefined) => { const copy = value ?? ''; return locale === 'fa' ? translateVisibleText(copy) : copy; };
 
   const { data, loading, error, reload } = useApiQuery<{
     items: Payout[];
@@ -217,7 +219,7 @@ export function AffiliatePayoutsClient() {
                     <td>
                       <StatusPill status={payout.status} />
                       {payout.dualApprovalRequired ? (
-                        <div className="mt-1 text-[10px] nova-muted">dual approval</div>
+                        <div className="mt-1 text-[10px] nova-muted">{tr("dual approval")}</div>
                       ) : null}
                       {payout.failedReason ? (
                         <div className="mt-1 text-[10px] text-nova-danger">{payout.failedReason}</div>
@@ -235,13 +237,13 @@ export function AffiliatePayoutsClient() {
         <Card className="affiliate-payout-wallets border-[#DCE6F1] shadow-[0_8px_24px_rgba(15,23,42,.06)]">
           <div className="mb-4">
             <div className="text-xs font-black uppercase tracking-[0.14em] text-[#64748B]">
-              Withdrawal wallets
+              {tr("Withdrawal wallets")}
             </div>
             <div className="mt-1 text-xl font-black text-[#172033]">
-              Your crypto addresses
+              {tr("Your crypto addresses")}
             </div>
             <div className="mt-1 text-xs leading-5 text-[#64748B]">
-              Save the address for each network you want to use. Payouts are reviewed and paid manually.
+              {tr("Save the address for each network you want to use. Payouts are reviewed and paid manually.")}
             </div>
           </div>
 
@@ -334,10 +336,10 @@ export function AffiliatePayoutsClient() {
         <Card className="payout-create-card border-[#DCE6F1] shadow-[0_8px_24px_rgba(15,23,42,.06)]">
           <div className="payout-crypto-hero mb-4 rounded-xl p-4 text-white">
             <div className="text-xs font-bold uppercase tracking-[0.14em] text-[#8FB7E8]">
-              Crypto payout
+              {tr("Crypto payout")}
             </div>
             <div className="mt-1 text-xl font-black">
-              Withdraw your commission
+              {tr("Withdraw your commission")}
             </div>
             <div className="mt-1 text-xs text-[#B8C7D9]">
               USD settlement · Manual crypto payout
@@ -365,7 +367,7 @@ export function AffiliatePayoutsClient() {
           <div className="space-y-3">
             <Field label="Currency">
               <div className="rounded-xl border border-[#DCE6F1] bg-[#F8FAFC] px-4 py-3 font-bold text-[#172033]">
-                USD
+                {tr("USD")}
               </div>
             </Field>
 
@@ -394,9 +396,9 @@ export function AffiliatePayoutsClient() {
                   })
                 }
               >
-                <option value="USDT_TRC20">USDT — TRC20</option>
-                <option value="TRX">TRX</option>
-                <option value="DOGE">DOGE</option>
+                <option value="USDT_TRC20">{tr("USDT — TRC20")}</option>
+                <option value="TRX">{tr("TRX")}</option>
+                <option value="DOGE">{tr("DOGE")}</option>
               </select>
             </Field>
 
@@ -408,7 +410,7 @@ export function AffiliatePayoutsClient() {
               }`}
             >
               <div className="text-[10px] font-black uppercase tracking-wider text-[#64748B]">
-                Payout destination
+                {tr("Payout destination")}
               </div>
 
               <div className="mt-1 text-xs font-bold text-[#172033]">
