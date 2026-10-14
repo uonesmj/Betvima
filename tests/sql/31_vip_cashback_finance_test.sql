@@ -104,7 +104,7 @@ begin
     perform tests.assert(v_credit->>'status'='credited','verified credit is successful');
     v_retry := nova.vip_cashback_credit_user(v_week,v_user,false);
     perform tests.assert(v_retry->>'status'='already_paid','repeat is idempotent');
-    select count(*), max(id) into v_count,v_payout
+    select count(*), min(id::text)::uuid into v_count,v_payout
       from nova.vip_cashback_payouts where user_id=v_user and week_start=v_week;
     perform tests.assert(v_count=1,'exactly one award per user-week');
     select balance_minor into v_before from nova.wallets
