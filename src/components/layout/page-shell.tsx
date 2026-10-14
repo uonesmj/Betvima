@@ -539,24 +539,28 @@ export function Footer({
 }: { onSupportOpen?: () => void }) {
   const { t, locale, setLocale } = useApp();
   const pathname = usePathname();
+  const copy = (english: string, persian: string) => locale === 'fa' ? persian : english;
 
   const featuredTeams = [
-    { logo: 'manchester-united', name: 'Manchester United', short: 'Man United' },
-    { logo: 'liverpool', name: 'Liverpool', short: 'Liverpool' },
-    { logo: 'arsenal', name: 'Arsenal', short: 'Arsenal' },
-    { logo: 'ac-milan', name: 'AC Milan', short: 'AC Milan' },
+    { logo: 'manchester-united', name: 'Manchester United', short: 'Man United', fa: 'منچستر' },
+    { logo: 'liverpool', name: 'Liverpool', short: 'Liverpool', fa: 'لیورپول' },
+    { logo: 'arsenal', name: 'Arsenal', short: 'Arsenal', fa: 'آرسنال' },
+    { logo: 'ac-milan', name: 'AC Milan', short: 'AC Milan', fa: 'میلان' },
   ];
   const paymentMarks = [
-    { logo: 'visa', name: 'Visa' },
-    { logo: 'mastercard', name: 'Mastercard' },
-    { logo: 'tether', name: 'Tether' },
-    { logo: 'bitcoin', name: 'Bitcoin' },
-    { logo: 'tron', name: 'TRON' },
+    { logo: 'visa', name: 'Visa', fa: 'ویزا' },
+    { logo: 'mastercard', name: 'Mastercard', fa: 'مسترکارت' },
+    { logo: 'tether', name: 'Tether', fa: 'تتر' },
+    { logo: 'bitcoin', name: 'Bitcoin', fa: 'بیت‌کوین' },
+    { logo: 'tron', name: 'TRON', fa: 'ترون' },
   ];
 
   return (
     <footer
       aria-label="BetVima site footer"
+      data-locale-stable
+      data-i18n-ignore
+      dir="ltr"
       className={(pathname === '/' ? 'mt-2' : 'mt-4') + ' relative isolate overflow-hidden border-t border-[#22302E] bg-[#090F18] pb-[calc(3.5rem+env(safe-area-inset-bottom))] text-white lg:pb-0'}
     >
       <div aria-hidden="true" className="pointer-events-none absolute -right-44 -top-48 h-[420px] w-[420px] rounded-full bg-[#00D47A]/[0.055] blur-[100px]" />
@@ -567,7 +571,7 @@ export function Footer({
         {/* Languages are deliberately the first actionable controls in the footer. */}
         <div className="flex min-w-0 flex-wrap items-center gap-2.5 border-b border-white/[0.07] py-3" dir="ltr">
           <Globe2 aria-hidden="true" className="h-4 w-4 shrink-0 text-[#75EABA]" />
-          <span className="text-[11px] font-semibold text-[#A8B9C6]">Language</span>
+          <span className="text-[11px] font-semibold text-[#A8B9C6]">{copy("Language", "زبان")}</span>
           <div role="group" aria-label="Footer language" className="inline-flex max-w-full items-center gap-1 rounded-xl border border-white/[0.12] bg-white/[0.045] p-1">
             <button type="button" translate="no" lang="fa" dir="rtl" aria-pressed={locale === 'fa'} onClick={() => setLocale('fa')}
               className={'inline-flex min-h-9 items-center gap-1.5 whitespace-nowrap rounded-lg px-2.5 text-[12px] font-semibold transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#00D47A] ' + (locale === 'fa' ? 'bg-[#00D47A] text-[#041C11]' : 'text-[#D0DCE6] hover:bg-white/[0.10]')}>
@@ -587,21 +591,21 @@ export function Footer({
                 <img src="/brand/betvima-logo-transparent.png" alt="BetVima" className="block h-auto w-[128px] max-w-full shrink-0 object-contain sm:w-[148px]" />
               </Link>
               <span className="inline-flex items-center gap-1.5 rounded-full border border-[#00D47A]/25 bg-[#00D47A]/[0.07] px-2.5 py-1 text-[9px] font-bold uppercase tracking-wide text-[#75EABA]">
-                <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-[#00D47A]" />Sportsbook &amp; Live
+                <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-[#00D47A]" />{copy("Sportsbook & Live", "شرط‌بندی ورزشی و زنده")}
               </span>
             </div>
-            <h2 className="mt-4 max-w-[620px] text-[28px] font-black leading-[1.12] tracking-[-0.035em] text-white sm:text-[37px] lg:text-[42px]">
-              Every match.<span className="block text-[#00D47A]">One destination.</span>
+            <h2 className={"mt-4 max-w-[620px] font-black leading-[1.17] text-white " + (locale === "fa" ? "text-[25px] tracking-normal sm:text-[32px] lg:text-[36px]" : "text-[28px] tracking-[-0.035em] sm:text-[37px] lg:text-[42px]")}>
+              {copy("Every match.", "هر مسابقه.")}<span className="block text-[#00D47A]">{copy("One destination.", "یک مقصد.")}</span>
             </h2>
             <p className="mt-2.5 max-w-[500px] text-[12px] font-medium leading-5 text-[#9CA9B9] sm:text-[13px]">
-              Stay close to the action with live fixtures, football markets and everything you need in one place.
+              {copy("Stay close to the action with live fixtures, football markets and everything you need in one place.", "با مسابقات زنده، بازارهای فوتبال و همه امکانات، همواره در جریان بازی‌ها باشید.")}
             </p>
             <div className="mt-4 flex flex-wrap items-center gap-2.5">
               <Link href="/sports/football" className="group inline-flex min-h-10 items-center justify-center gap-2 rounded-xl bg-[#00D47A] px-4 text-[12px] font-extrabold text-[#05170E] transition hover:bg-[#12E68B] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#00D47A]">
-                Explore football <Trophy aria-hidden="true" className="h-4 w-4 transition-transform group-hover:scale-110" />
+                {copy("Explore football", "مشاهده فوتبال")} <Trophy aria-hidden="true" className="h-4 w-4 transition-transform group-hover:scale-110" />
               </Link>
               <Link href="/live" className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-white/[0.15] bg-white/[0.055] px-4 text-[12px] font-bold text-white transition hover:border-white/35 hover:bg-white/[0.09] focus-visible:outline focus-visible:outline-2">
-                <Radio aria-hidden="true" className="h-4 w-4 text-[#00D47A]" />Live matches
+                <Radio aria-hidden="true" className="h-4 w-4 text-[#00D47A]" />{copy("Live matches", "مسابقات زنده")}
               </Link>
             </div>
           </div>
@@ -615,15 +619,15 @@ export function Footer({
                     <Headphones aria-hidden="true" className="h-5 w-5" strokeWidth={1.8} />
                   </span>
                   <span className="inline-flex items-center gap-2 rounded-full border border-[#64E9AB]/20 bg-[#00D47A]/[0.10] px-3 py-1.5 text-[11px] font-extrabold text-[#90EFC1]">
-                    <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-[#00D47A]" />24/7 Support
+                    <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-[#00D47A]" />{copy("24/7 Support", "پشتیبانی شبانه‌روزی")}
                   </span>
                 </div>
-                <h3 className="mt-4 text-[21px] font-black tracking-tight text-white sm:text-[24px]">Here when you need us.</h3>
-                <p className="mt-1.5 max-w-[315px] text-[12px] leading-5 text-[#B1C6C5]">Questions about your account or a transaction? Reach our support team directly.</p>
+                <h3 className="mt-4 text-[21px] font-black tracking-tight text-white sm:text-[24px]">{copy("Here when you need us.", "هر زمان نیاز داشتید، کنار شما هستیم.")}</h3>
+                <p className="mt-1.5 max-w-[315px] min-w-0 break-words text-[12px] leading-5 text-[#B1C6C5]">{copy("Questions about your account or a transaction? Reach our support team directly.", "برای حساب کاربری یا تراکنش‌ها پرسشی دارید؟ با پشتیبانی ما تماس بگیرید.")}</p>
               </div>
               <button type="button" onClick={onSupportOpen} disabled={!onSupportOpen}
                 className="relative mt-4 inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-xl bg-white px-4 text-[12px] font-extrabold text-[#0D2B25] transition hover:bg-[#DCFFEB] disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white">
-                <MessageCircle aria-hidden="true" className="h-4 w-4" />Contact support
+                <MessageCircle aria-hidden="true" className="h-4 w-4" />{copy("Contact support", "تماس با پشتیبانی")}
               </button>
             </div>
           </div>
@@ -631,41 +635,41 @@ export function Footer({
 
         <div className="grid min-w-0 gap-x-6 gap-y-5 border-y border-white/[0.09] py-5 sm:grid-cols-2 sm:py-6 lg:grid-cols-4 lg:gap-x-8">
           <nav aria-label="Explore BetVima" className="min-w-0">
-            <h3 className="text-[11px] font-extrabold uppercase tracking-[0.17em] text-[#78E9AF]">Explore</h3>
+            <h3 className="text-[11px] font-extrabold uppercase tracking-[0.17em] text-[#78E9AF]">{copy("Explore", "بخش‌ها")}</h3>
             <ul className="mt-3 space-y-2.5 text-[12px] font-semibold text-[#A6B2C1]">
               <li><Link href="/" className="transition-colors hover:text-white">{t('nav.home')}</Link></li>
               <li><Link href="/live" className="transition-colors hover:text-white">{t('nav.live')}</Link></li>
-              <li><Link href="/sports/football" className="transition-colors hover:text-white">Football</Link></li>
+              <li><Link href="/sports/football" className="transition-colors hover:text-white">{copy("Football", "فوتبال")}</Link></li>
             </ul>
           </nav>
           <nav aria-label="Account and partners" className="min-w-0">
-            <h3 className="text-[11px] font-extrabold uppercase tracking-[0.17em] text-[#78E9AF]">Account &amp; partners</h3>
+            <h3 className="text-[11px] font-extrabold uppercase tracking-[0.17em] text-[#78E9AF]">{copy("Account & partners", "حساب و همکاری")}</h3>
             <ul className="mt-3 space-y-2.5 text-[12px] font-semibold text-[#A6B2C1]">
               <li><Link href="/bets" className="transition-colors hover:text-white">{t('nav.myBets')}</Link></li>
               <li><Link href="/wallet" className="transition-colors hover:text-white">{t('nav.wallet')}</Link></li>
-              <li><Link href="/affiliate/login" className="transition-colors hover:text-white">Partner program</Link></li>
+              <li><Link href="/affiliate/login" className="transition-colors hover:text-white">{copy("Partner program", "برنامه همکاری")}</Link></li>
             </ul>
           </nav>
           <div className="min-w-0">
-            <h3 className="text-[11px] font-extrabold uppercase tracking-[0.17em] text-[#78E9AF]">Get in touch</h3>
+            <h3 className="text-[11px] font-extrabold uppercase tracking-[0.17em] text-[#78E9AF]">{copy("Get in touch", "تماس با ما")}</h3>
             <div className="mt-3 space-y-2.5">
               <a href="mailto:BetVimaSupport@gmail.com" className="group block min-w-0">
-                <span className="block text-[11px] font-medium text-[#75879A]">Customer support</span>
+                <span className="block text-[11px] font-medium text-[#75879A]">{copy("Customer support", "پشتیبانی کاربران")}</span>
                 <span className="mt-1 block break-all text-[12px] font-semibold text-[#D7E3EB] transition-colors group-hover:text-[#00D47A]">BetVimaSupport@gmail.com</span>
               </a>
               <a href="mailto:VimaPartner@gmail.com" className="group block min-w-0">
-                <span className="block text-[11px] font-medium text-[#75879A]">Partnerships</span>
+                <span className="block text-[11px] font-medium text-[#75879A]">{copy("Partnerships", "همکاری تجاری")}</span>
                 <span className="mt-1 block break-all text-[12px] font-semibold text-[#D7E3EB] transition-colors group-hover:text-[#00D47A]">VimaPartner@gmail.com</span>
               </a>
             </div>
           </div>
           <div className="min-w-0">
-            <h3 className="text-[11px] font-extrabold uppercase tracking-[0.17em] text-[#78E9AF]">Responsible play</h3>
+            <h3 className="text-[11px] font-extrabold uppercase tracking-[0.17em] text-[#78E9AF]">{copy("Responsible play", "بازی مسئولانه")}</h3>
             <div className="mt-3 flex items-start gap-2.5">
               <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-white/[0.16] bg-white/[0.035] text-[12px] font-black text-white">18+</span>
               <div className="min-w-0">
-                <p className="text-[12px] font-bold text-[#E6EBF2]">Play responsibly</p>
-                <p className="mt-0.5 text-[11px] leading-5 text-[#8D9BAA]">Betting is for adults only.</p>
+                <p className="text-[12px] font-bold text-[#E6EBF2]">{copy("Play responsibly", "مسئولانه بازی کنید")}</p>
+                <p className="mt-0.5 text-[11px] leading-5 text-[#8D9BAA]">{copy("Betting is for adults only.", "شرط‌بندی فقط برای بزرگسالان است.")}</p>
               </div>
             </div>
           </div>
@@ -675,7 +679,7 @@ export function Footer({
           <section aria-label="Featured football clubs" className="min-w-0 rounded-2xl border border-white/[0.10] bg-[#111B29]/75 p-3 sm:p-4">
             <div className="mb-3 flex items-center gap-2">
               <Trophy aria-hidden="true" className="h-4 w-4 shrink-0 text-[#00D47A]" />
-              <h3 className="text-[11px] font-extrabold uppercase tracking-[0.12em] text-[#D4DFE8]">Featured clubs</h3>
+              <h3 className="text-[11px] font-extrabold uppercase tracking-[0.12em] text-[#D4DFE8]">{copy("Featured clubs", "باشگاه‌های منتخب")}</h3>
             </div>
             <div className="grid min-w-0 grid-cols-4 gap-1.5 sm:gap-2">
               {featuredTeams.map((team) => (
@@ -683,7 +687,7 @@ export function Footer({
                   <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#F4F7F9] p-1 shadow-[0_2px_10px_rgba(0,0,0,.18)] sm:h-11 sm:w-11">
                     <img src={'/brand/footer/teams/' + team.logo + '.svg'} alt={team.name} loading="lazy" className="h-full w-full object-contain" />
                   </span>
-                  <span className="block w-full truncate text-center text-[9px] font-semibold leading-4 text-[#C6D2DF] sm:text-[10px]">{team.short}</span>
+                  <span className="block w-full truncate text-center text-[9px] font-semibold leading-4 text-[#C6D2DF] sm:text-[10px]">{locale === 'fa' ? team.fa : team.short}</span>
                 </div>
               ))}
             </div>
@@ -691,13 +695,13 @@ export function Footer({
           <section aria-label="Payment methods" className="min-w-0 rounded-2xl border border-white/[0.10] bg-[#111B29]/75 p-3 sm:p-4">
             <div className="mb-3 flex items-center gap-2">
               <WalletCards aria-hidden="true" className="h-4 w-4 shrink-0 text-[#00D47A]" />
-              <h3 className="text-[11px] font-extrabold uppercase tracking-[0.12em] text-[#D4DFE8]">Payment methods</h3>
+              <h3 className="text-[11px] font-extrabold uppercase tracking-[0.12em] text-[#D4DFE8]">{copy("Payment methods", "روش‌های پرداخت")}</h3>
             </div>
             <div className="grid min-w-0 grid-cols-3 gap-2 sm:grid-cols-5">
               {paymentMarks.map((method) => (
                 <div key={method.logo} title={method.name} className="flex h-[58px] min-w-0 flex-col items-center justify-center gap-1 rounded-xl border border-[#D6E0E8] bg-[#F4F7FA] px-1 py-1.5 shadow-[0_2px_10px_rgba(0,0,0,.10)]">
                   <img src={'/brand/footer/payments/' + method.logo + '.svg'} alt={method.name} loading="lazy" className="h-6 w-full max-w-[58px] object-contain" />
-                  <span className="w-full truncate text-center text-[9px] font-bold leading-3 text-[#263747]">{method.name}</span>
+                  <span className="w-full truncate text-center text-[9px] font-bold leading-3 text-[#263747]">{locale === 'fa' ? method.fa : method.name}</span>
                 </div>
               ))}
             </div>
@@ -705,10 +709,10 @@ export function Footer({
         </div>
 
         <div className="flex flex-col gap-2 border-t border-white/[0.09] py-3 text-[11px] font-medium text-[#8795A6] sm:flex-row sm:items-center sm:justify-between">
-          <p>© {new Date().getFullYear()} BetVima. All rights reserved.</p>
+          <p>© {new Date().getFullYear()} BetVima. {copy("All rights reserved.", "تمام حقوق محفوظ است.")}</p>
           <div className="flex items-center justify-between gap-3 sm:justify-end">
             <span className="inline-flex items-center gap-2">
-              <ShieldCheck aria-hidden="true" className="h-4 w-4 text-[#76D9A8]" />Play safe. Stay in control.
+              <ShieldCheck aria-hidden="true" className="h-4 w-4 text-[#76D9A8]" />{copy("Play safe. Stay in control.", "ایمن بازی کنید و کنترل را حفظ کنید.")}
             </span>
             <button type="button" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} aria-label="Back to top"
               className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-white/[0.12] bg-white/[0.04] text-white transition hover:border-[#00D47A]/50 hover:bg-[#00D47A]/[0.12] hover:text-[#00D47A] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#00D47A]">
