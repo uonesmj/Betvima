@@ -44,19 +44,36 @@ internal fun signupValidation(
 internal fun signupPayload(
     email: String, password: String, currency: String, referral: String,
     locale: String, token: String
-): JSONObject = JSONObject()
-    .put("email", email.trim()).put("password", password)
-    .put("currency", currency)
-    .put("referralCode", referral.trim().uppercase().takeIf { it.isNotBlank() } ?: JSONObject.NULL)
-    .put("ageConfirmed", true).put("acceptTerms", true)
-    .put("locale", locale).put("turnstileToken", token)
+): JSONObject = JSONObject().apply {
+    put("email", email.trim())
+    put("password", password)
+    put("currency", currency)
+    // API zod schema accepts an optional string, not an explicit JSON null.
+    referral.trim().uppercase().takeIf { it.isNotBlank() }
+        ?.let { put("referralCode", it) }
+    put("ageConfirmed", true)
+    put("acceptTerms", true)
+    put("locale", locale)
+    put("turnstileToken", token)
+}
+
+/** The mobile client unwraps server responses; tolerate a wrapped test response too. */
+internal fun publicTurnstileKey(config: JSONObject): String? {
+    val fields = config.optJSONObject("data") ?: config
+    return fields.optString("turnstileSiteKey").trim()
+        .takeIf { it.matches(Regex("[0-9A-Za-z_-]{10,160}")) }
+}
 
 /** No password or access token ever crosses the JavaScript bridge. */
-private class TurnstileCallbacks(private val notify: (String?) -> Unit) {
+private class TurnstileCallbacks(
+    private val notify: (String?) -> Unit,
+    private val failure: () -> Unit
+) {
     @JavascriptInterface fun verified(token: String) {
-        if (token.length in 10..2048) notify(token)
+        if (token.length in 10..2048) notify(token) else failure()
     }
     @JavascriptInterface fun invalid() = notify(null)
+    @JavascriptInterface fun unavailable() = failure()
 }
 
 private fun allowedAuthUrl(url: Uri?): Boolean {
@@ -71,9 +88,12 @@ private fun allowedAuthUrl(url: Uri?): Boolean {
 /** Widget is confined to the BetVima HTTPS origin, using the same public site key as web. */
 @SuppressLint("SetJavaScriptEnabled")
 @Composable
-private fun RealTurnstileWidget(siteKey: String, revision: Int, callback: (String?) -> Unit) {
+private fun RealTurnstileWidget(
+    siteKey: String, revision: Int, callback: (String?) -> Unit, onFailure: () -> Unit
+) {
     val context = LocalContext.current
     val currentCallback by rememberUpdatedState(callback)
+    val currentFailure by rememberUpdatedState(onFailure)
     key(siteKey, revision) {
         AndroidView(
             modifier = Modifier.fillMaxWidth().height(166.dp),
@@ -89,14 +109,24 @@ private fun RealTurnstileWidget(siteKey: String, revision: Int, callback: (Strin
                     CookieManager.getInstance().setAcceptCookie(true)
                     CookieManager.getInstance().setAcceptThirdPartyCookies(this, true)
                     setBackgroundColor(android.graphics.Color.WHITE)
-                    addJavascriptInterface(TurnstileCallbacks { received ->
-                        post { currentCallback(received) }
-                    }, "NativeTurnstile")
+                    addJavascriptInterface(TurnstileCallbacks(
+                        notify = { received -> post { currentCallback(received) } },
+                        failure = { post { currentFailure() } }
+                    ), "NativeTurnstile")
                     webChromeClient = WebChromeClient()
                     webViewClient = object : WebViewClient() {
                         override fun shouldOverrideUrlLoading(
                             view: WebView?, request: WebResourceRequest?
                         ): Boolean = !allowedAuthUrl(request?.url)
+                        override fun onReceivedError(
+                            view: WebView?,
+                            request: WebResourceRequest?,
+                            error: WebResourceError?
+                        ) {
+                            if (request?.isForMainFrame == true) {
+                                view?.post { currentFailure() }
+                            }
+                        }
                     }
                     val html = """
                      <!doctype html><html><head>
@@ -110,7 +140,7 @@ private fun RealTurnstileWidget(siteKey: String, revision: Int, callback: (Strin
                        var tries=0;
                        function mount(){
                          if(!window.turnstile || !window.turnstile.render){
-                           if(++tries<80){setTimeout(mount,250);}else{NativeTurnstile.invalid();}
+                           if(++tries<80){setTimeout(mount,250);}else{NativeTurnstile.unavailable();}
                            return;
                          }
                          window.turnstile.render('#widget',{
@@ -118,7 +148,7 @@ private fun RealTurnstileWidget(siteKey: String, revision: Int, callback: (Strin
                            size:'flexible',theme:'light',
                            callback:function(t){NativeTurnstile.verified(t)},
                            'expired-callback':function(){NativeTurnstile.invalid()},
-                           'error-callback':function(){NativeTurnstile.invalid()}
+                           'error-callback':function(){NativeTurnstile.unavailable()}
                          });
                        } mount();
                      })();</script></body></html>
@@ -163,14 +193,15 @@ fun NativeRegistrationForm(lang: Lang, onSuccess: (Boolean) -> Unit, onLogin: ()
     var busy by remember { mutableStateOf(false) }
     var submitAttempted by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
+    var challengeError by remember { mutableStateOf(false) }
 
     LaunchedEffect(configRevision) {
         configError = null
         siteKey = null
         token = null
+        challengeError = false
         siteKey = try {
-            api.get("/api/v1/mobile/config").str("turnstileSiteKey")
-                .takeIf { it.matches(Regex("[0-9A-Za-z_-]{10,160}")) }
+            publicTurnstileKey(api.get("/api/v1/mobile/config"))
                 .also {
                     if (it == null) {
                         configError = tr(lang,
@@ -187,23 +218,23 @@ fun NativeRegistrationForm(lang: Lang, onSuccess: (Boolean) -> Unit, onLogin: ()
     }
 
     val issue = signupValidation(email, password, confirmation, adult, terms)
-    val dark = Color(0xFF0D1B2E)
-    val edge = Color(0xFF263752)
-    val hint = Color(0xFF91A5C2)
-    val pale = Color(0xFFB6C9DA)
-    val bright = Color.White
+    val dark = Color.White
+    val edge = Palette.border
+    val hint = Palette.muted
+    val pale = Palette.muted
+    val bright = Palette.text
     val green = Palette.green
     val fieldColors = OutlinedTextFieldDefaults.colors(
         focusedTextColor = bright,
         unfocusedTextColor = bright,
-        cursorColor = green,
+        cursorColor = Palette.blue,
         focusedContainerColor = dark,
         unfocusedContainerColor = dark,
-        focusedBorderColor = green,
+        focusedBorderColor = Palette.blue,
         unfocusedBorderColor = edge,
-        focusedLabelColor = green,
+        focusedLabelColor = Palette.blue,
         unfocusedLabelColor = hint,
-        focusedLeadingIconColor = green,
+        focusedLeadingIconColor = Palette.blue,
         unfocusedLeadingIconColor = hint,
         focusedTrailingIconColor = hint,
         unfocusedTrailingIconColor = hint
@@ -212,29 +243,29 @@ fun NativeRegistrationForm(lang: Lang, onSuccess: (Boolean) -> Unit, onLogin: ()
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(22.dp),
-        color = Color(0xFF101B29),
-        border = BorderStroke(1.dp, edge),
-        shadowElevation = 5.dp
+        color = Color.White,
+        border = BorderStroke(1.dp, Palette.border),
+        shadowElevation = 1.dp
     ) {
         Column(Modifier.fillMaxWidth().padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp)) {
 
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Surface(color = green.copy(alpha = .14f),
-                    border = BorderStroke(1.dp, green.copy(alpha = .24f)),
+                Surface(color = Color(0xFFEAF7F1),
+                    border = BorderStroke(1.dp, green.copy(alpha = .22f)),
                     shape = RoundedCornerShape(13.dp)) {
-                    Icon(Icons.Default.PersonAdd, null, tint = green,
+                    Icon(Icons.Default.PersonAdd, null, tint = Palette.blue,
                         modifier = Modifier.padding(11.dp).size(21.dp))
                 }
                 Spacer(Modifier.width(11.dp))
                 Column(Modifier.weight(1f)) {
-                    Text(tr(lang, "CREATE YOUR ACCOUNT", "ساخت حساب کاربری"),
+                    Text(tr(lang, "Create your account", "ساخت حساب کاربری"),
                         color = bright, fontSize = 17.sp, fontWeight = FontWeight.Black)
-                    Text(tr(lang, "Secure sign up · BetVima Android",
-                        "ثبت‌نام امن · اپلیکیشن بت‌ویما"),
+                    Text(tr(lang, "One account for BetVima web and Android",
+                        "یک حساب برای سایت و اپلیکیشن بت‌ویما"),
                         color = pale, fontSize = 11.sp)
                 }
-                Surface(color = green.copy(alpha = .13f),
+                Surface(color = Color(0xFFEAF7F1),
                     shape = RoundedCornerShape(9.dp)) {
                     Text("18+", color = green, fontWeight = FontWeight.Black,
                         fontSize = 12.sp,
@@ -244,7 +275,7 @@ fun NativeRegistrationForm(lang: Lang, onSuccess: (Boolean) -> Unit, onLogin: ()
             HorizontalDivider(color = edge)
 
             Text(tr(lang, "ACCOUNT DETAILS", "مشخصات حساب"),
-                color = pale, fontSize = 10.sp, letterSpacing = 1.sp,
+                color = Palette.muted, fontSize = 10.sp, letterSpacing = 1.sp,
                 fontWeight = FontWeight.Black)
             OutlinedTextField(
                 value = email,
@@ -294,7 +325,7 @@ fun NativeRegistrationForm(lang: Lang, onSuccess: (Boolean) -> Unit, onLogin: ()
                     "password" -> tr(lang, "Password must contain 8–128 characters.",
                         "رمز عبور باید بین ۸ تا ۱۲۸ کاراکتر باشد.")
                     else -> tr(lang, "Passwords do not match.", "رمز عبور و تکرار آن یکسان نیستند.")
-                }, color = Color(0xFFFF9C9C), fontSize = 11.sp)
+                }, color = Palette.red, fontSize = 11.sp)
             }
 
             Text(tr(lang, "ACCOUNT CURRENCY", "ارز حساب"),
@@ -304,16 +335,16 @@ fun NativeRegistrationForm(lang: Lang, onSuccess: (Boolean) -> Unit, onLogin: ()
                 listOf("IRR", "USD", "EUR", "GBP").forEach { value ->
                     val selected = currency == value
                     Surface(
-                        color = if (selected) Color(0xFF15352F) else dark,
+                        color = if (selected) Color(0xFFE6F8F0) else Color(0xFFF3F5F7),
                         shape = RoundedCornerShape(12.dp),
                         border = BorderStroke(
                             if (selected) 1.5.dp else 1.dp,
-                            if (selected) green else edge),
+                            if (selected) Palette.green else edge),
                         modifier = Modifier.weight(1f).heightIn(min = 45.dp)
                             .clickable { currency = value }
                     ) {
                         Box(contentAlignment = Alignment.Center) {
-                            Text(value, color = if (selected) green else bright,
+                            Text(value, color = if (selected) Palette.text else Palette.muted,
                                 fontSize = 12.sp, fontWeight = FontWeight.Black)
                         }
                     }
@@ -333,7 +364,7 @@ fun NativeRegistrationForm(lang: Lang, onSuccess: (Boolean) -> Unit, onLogin: ()
                 shape = RoundedCornerShape(15.dp), modifier = Modifier.fillMaxWidth()
             )
 
-            Surface(color = Color(0xFF0B1728), shape = RoundedCornerShape(15.dp),
+            Surface(color = Color(0xFFF4F6F9), shape = RoundedCornerShape(15.dp),
                 border = BorderStroke(1.dp, edge)) {
                 Column(Modifier.padding(10.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -354,22 +385,22 @@ fun NativeRegistrationForm(lang: Lang, onSuccess: (Boolean) -> Unit, onLogin: ()
                     }
                     Row {
                         TextButton(onClick = { uri.openUri("https://betvima.com/legal/terms") }) {
-                            Text(tr(lang, "Terms", "شرایط استفاده"), color = green, fontSize = 11.sp)
+                            Text(tr(lang, "Terms", "شرایط استفاده"), color = Palette.blue, fontSize = 11.sp)
                         }
                         TextButton(onClick = { uri.openUri("https://betvima.com/legal/privacy") }) {
-                            Text(tr(lang, "Privacy", "حریم خصوصی"), color = green, fontSize = 11.sp)
+                            Text(tr(lang, "Privacy", "حریم خصوصی"), color = Palette.blue, fontSize = 11.sp)
                         }
                     }
                     if (submitAttempted && issue in setOf("age", "terms")) {
                         Text(tr(lang, "Confirm your age and accept the terms to continue.",
                             "برای ادامه سن و قوانین را تأیید کنید."),
-                            color = Color(0xFFFF9C9C), fontSize = 11.sp)
+                            color = Palette.red, fontSize = 11.sp)
                     }
                 }
             }
 
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Default.VerifiedUser, null, tint = green,
+                Icon(Icons.Default.VerifiedUser, null, tint = Palette.blue,
                     modifier = Modifier.size(19.dp))
                 Spacer(Modifier.width(7.dp))
                 Text(tr(lang, "CLOUDFLARE SECURITY", "تأیید امنیتی کلودفلر"),
@@ -411,9 +442,22 @@ fun NativeRegistrationForm(lang: Lang, onSuccess: (Boolean) -> Unit, onLogin: ()
                             }
                         }
                     }
-                    else -> RealTurnstileWidget(siteKey!!, revision) {
-                        token = it
-                    }
+                    else -> RealTurnstileWidget(
+                        siteKey = siteKey!!,
+                        revision = revision,
+                        callback = { token = it; if (it != null) challengeError = false },
+                        onFailure = { token = null; challengeError = true }
+                    )
+                }
+            }
+            if (challengeError) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Default.ErrorOutline, null, tint = Palette.red,
+                        modifier = Modifier.size(17.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text(tr(lang, "Security challenge could not load. Refresh and try again.",
+                        "چالش امنیتی بارگذاری نشد. تازه‌سازی کرده و دوباره تلاش کنید."),
+                        color = Palette.red, fontSize = 11.sp, modifier = Modifier.weight(1f))
                 }
             }
             if (token != null) {
@@ -427,12 +471,12 @@ fun NativeRegistrationForm(lang: Lang, onSuccess: (Boolean) -> Unit, onLogin: ()
             }
 
             if (error != null) {
-                Surface(color = Color(0xFF3D2229), shape = RoundedCornerShape(12.dp)) {
+                Surface(color = Color(0xFFFFECEF), shape = RoundedCornerShape(12.dp)) {
                     Row(Modifier.padding(11.dp), verticalAlignment = Alignment.CenterVertically) {
                         Icon(Icons.Default.ErrorOutline, null,
-                            tint = Color(0xFFFF9C9C), modifier = Modifier.size(19.dp))
+                            tint = Palette.red, modifier = Modifier.size(19.dp))
                         Spacer(Modifier.width(8.dp))
-                        Text(error.orEmpty(), color = Color(0xFFFFC1C1),
+                        Text(error.orEmpty(), color = Palette.red,
                             fontSize = 11.sp, modifier = Modifier.weight(1f))
                     }
                 }
@@ -468,11 +512,11 @@ fun NativeRegistrationForm(lang: Lang, onSuccess: (Boolean) -> Unit, onLogin: ()
                         revision++
                     } finally { busy = false }
                 }
-            }, enabled = !busy && token != null && issue == null,
+            }, enabled = !busy && token != null,
                 colors = ButtonDefaults.buttonColors(
                     containerColor = green, contentColor = Color(0xFF03140D)),
                 shape = RoundedCornerShape(15.dp),
-                modifier = Modifier.fillMaxWidth().height(55.dp)) {
+                modifier = Modifier.fillMaxWidth().height(54.dp)) {
                 if (busy) {
                     CircularProgressIndicator(Modifier.size(19.dp),
                         strokeWidth = 2.dp, color = Color(0xFF03140D))
@@ -484,10 +528,10 @@ fun NativeRegistrationForm(lang: Lang, onSuccess: (Boolean) -> Unit, onLogin: ()
                 }
             }
             if (siteKey != null && !siteKey.isNullOrBlank()) {
-                TextButton(onClick = { token = null; revision++ },
+                TextButton(onClick = { token = null; challengeError = false; revision++ },
                     modifier = Modifier.align(Alignment.CenterHorizontally)) {
                     Text(tr(lang, "Refresh security challenge", "تازه‌سازی تأیید امنیتی"),
-                        color = green, fontSize = 11.sp)
+                        color = Palette.blue, fontSize = 11.sp)
                 }
             }
             HorizontalDivider(color = edge)
@@ -497,7 +541,7 @@ fun NativeRegistrationForm(lang: Lang, onSuccess: (Boolean) -> Unit, onLogin: ()
                     color = pale, fontSize = 11.sp)
                 Spacer(Modifier.width(4.dp))
                 TextButton(onClick = onLogin) {
-                    Text(tr(lang, "Log in", "ورود به حساب"), color = green,
+                    Text(tr(lang, "Log in", "ورود به حساب"), color = Palette.blue,
                         fontWeight = FontWeight.Bold, fontSize = 12.sp)
                 }
             }

@@ -25,6 +25,18 @@ class NativeRegistrationTest {
     }
     @Test fun emptyReferralDoesNotCreateFakeAttribution() {
         val data = signupPayload("a@b.com", "strongPassword1", "IRR", "", "en", "x")
-        assertTrue(data.isNull("referralCode"))
+        assertFalse(data.has("referralCode"))
     }
+    @Test fun publicCloudflareKeyMustBePresentAndWellFormed() {
+        assertNull(publicTurnstileKey(org.json.JSONObject()
+            .put("authenticationConfigured", true)))
+        assertNull(publicTurnstileKey(org.json.JSONObject().put("turnstileSiteKey", "")))
+        val key = "0x4AAAAAAAa-1234567890abcdef"
+        assertEquals(key, publicTurnstileKey(org.json.JSONObject()
+            .put("turnstileSiteKey", key)))
+        assertEquals(key, publicTurnstileKey(org.json.JSONObject()
+            .put("ok", true)
+            .put("data", org.json.JSONObject().put("turnstileSiteKey", key))))
+    }
+
 }
