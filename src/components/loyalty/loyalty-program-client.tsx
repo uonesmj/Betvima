@@ -26,7 +26,7 @@ export function LoyaltyProgramClient() {
   const tr = (value: string | undefined) => { const label = value ?? ''; return locale === 'fa' ? translateVisibleText(label) : label; };
 
   return (
-    <main className="mx-auto w-full max-w-[1180px] px-3 pb-8 sm:px-5">
+    <main data-i18n-ignore className="mx-auto w-full max-w-[1180px] px-3 pb-8 sm:px-5">
       <section className="relative mb-5 min-h-[300px] overflow-hidden rounded-[22px] bg-[#11151D]">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_72%_50%,rgba(0,216,120,.22),transparent_35%),linear-gradient(110deg,#10151E,#151B24)]" />
         <div className="absolute right-[-40px] top-[-50px] h-[330px] w-[330px] rounded-full border border-[#00D878]/20" />
