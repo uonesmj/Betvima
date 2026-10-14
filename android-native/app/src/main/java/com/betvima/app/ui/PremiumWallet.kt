@@ -7,7 +7,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clip
+import androidx.compose.ui.draw.clip
 import androidx.compose.animation.animateContentSize
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -145,7 +145,7 @@ private fun WalletSummary(state: AppState, wallet: Wallet) {
                     listOf(
                         Triple(Icons.Default.AccountBalanceWallet,
                             tr(lang, "Total balance", "کل موجودی"), wallet.balanceMinor),
-                        Triple(Icons.Default.LockOutline,
+                        Triple(Icons.Default.Lock,
                             tr(lang, "Reserved", "موجودی مسدود"), wallet.heldMinor)
                     ).forEach { (icon, label, minor) ->
                         Surface(
