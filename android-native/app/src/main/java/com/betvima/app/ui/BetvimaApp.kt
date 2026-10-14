@@ -1,6 +1,8 @@
 package com.betvima.app.ui
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.*
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
@@ -29,6 +31,7 @@ import kotlinx.coroutines.launch
 fun BetvimaApp(model: AppViewModel) {
     val state by model.state.collectAsStateWithLifecycle()
     var accountOpen by rememberSaveable { mutableStateOf(false) }
+    var languageOpen by rememberSaveable { mutableStateOf(false) }
     var searchOpen by rememberSaveable { mutableStateOf(false) }
     var search by rememberSaveable { mutableStateOf("") }
     val snackbars = remember { SnackbarHostState() }
@@ -50,11 +53,12 @@ fun BetvimaApp(model: AppViewModel) {
             }
         }
     }
-    BackHandler(enabled = searchOpen || state.betDetailVisible || state.showLogin ||
+    BackHandler(enabled = languageOpen || searchOpen || state.betDetailVisible || state.showLogin ||
         state.showSlip || state.detail != null ||
         state.feature != Feature.NONE || accountOpen || drawer.isOpen ||
         state.tab != Tab.HOME) {
         when {
+            languageOpen -> languageOpen = false
             state.betDetailVisible -> model.closeBet()
             state.showLogin -> model.showLogin(false)
             state.showSlip -> model.showSlip(false)
@@ -84,11 +88,13 @@ fun BetvimaApp(model: AppViewModel) {
             topBar = {
                 Column {
                     BrandHeader(state.lang,
+                        signedIn = state.signedIn,
                         onHome = { model.tab(Tab.HOME) },
-                        onLanguage = model::language,
+                        onLanguage = { languageOpen = true },
                         onAccount = {
                             if (state.signedIn) accountOpen = true else model.showLogin(true)
                         },
+                        onRegister = { model.showLogin(true, register = true) },
                         onNotifications = { model.feature(Feature.NOTIFICATIONS) },
                         unread = state.notifications.count { it.readAt == null },
                         walletBalance = if (state.signedIn && state.wallet != null)
@@ -224,6 +230,11 @@ fun BetvimaApp(model: AppViewModel) {
         if (state.showLogin) LoginSheet(state, model)
         if (state.betDetailVisible) BetReceiptSheet(state, model)
         if (accountOpen) ReferenceProfileSheet(state, model) { accountOpen = false }
+        if (languageOpen) LanguagePickerDialog(
+            state.lang,
+            onSelect = { selected -> model.setLanguage(selected); languageOpen = false },
+            onDismiss = { languageOpen = false }
+        )
     }
 }
 
