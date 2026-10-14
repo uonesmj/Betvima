@@ -275,8 +275,9 @@ fun CatalogPage(state: AppState, model: AppViewModel, live: Boolean,
 private fun LeagueSection(key: String, matches: List<Match>, first: Boolean,
     state: AppState, model: AppViewModel) {
     var expanded by rememberSaveable(key) { mutableStateOf(first) }
-    Surface(shape = RoundedCornerShape(20.dp), color = Color.White,
+    Surface(shape = RoundedCornerShape(23.dp), color = Color.White,
         border = BorderStroke(1.dp, Palette.border),
+        shadowElevation = 4.dp,
         modifier = Modifier.fillMaxWidth()) {
         Column {
             Row(Modifier.fillMaxWidth().clickable { expanded = !expanded }
