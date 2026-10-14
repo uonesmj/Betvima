@@ -196,10 +196,33 @@ fun SlipSheet(state: AppState, model: AppViewModel) {
         Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState())
             .padding(horizontal = 20.dp).padding(bottom = 32.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(tr(state.lang, "Bet slip", "برگه شرط"), fontSize = 22.sp,
-                    fontWeight = FontWeight.Black, modifier = Modifier.weight(1f))
-                SmallPill(state.picks.size.toString(), Palette.greenLight, Palette.ink)
+            Surface(color = Palette.ink, shape = RoundedCornerShape(20.dp)) {
+                Column(Modifier.fillMaxWidth().padding(18.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Surface(color = Palette.green.copy(alpha = .14f),
+                            shape = RoundedCornerShape(12.dp)) {
+                            Icon(Icons.Default.ReceiptLong, null, tint = Palette.green,
+                                modifier = Modifier.padding(10.dp).size(24.dp))
+                        }
+                        Spacer(Modifier.width(11.dp))
+                        Column(Modifier.weight(1f)) {
+                            Text(tr(state.lang, "Bet slip", "برگه شرط"),
+                                fontSize = 21.sp, fontWeight = FontWeight.Black,
+                                color = Color.White)
+                            Text(if (state.picks.size > 1) tr(state.lang,
+                                "Multiple selections", "شرط میکس") else tr(state.lang,
+                                "Single selection", "شرط تکی"),
+                                color = Color(0xFFAAC3CA), fontSize = 11.sp)
+                        }
+                        SmallPill(state.picks.size.toString(),
+                            Palette.green.copy(alpha = .16f), Palette.green)
+                    }
+                    Spacer(Modifier.height(11.dp))
+                    Text(tr(state.lang,
+                        "Prices shown here are indicative until the server confirms your quote.",
+                        "ضرایب تا زمان استعلام و تأیید سرور قطعی نیستند."),
+                        color = Color(0xFFA7BEC7), fontSize = 11.sp, lineHeight = 17.sp)
+                }
             }
             if (state.picks.isEmpty()) {
                 EmptyPanel(tr(state.lang, "No selections", "انتخابی ندارید"),
@@ -224,17 +247,53 @@ fun SlipSheet(state: AppState, model: AppViewModel) {
                 }
             }
             if (state.picks.isNotEmpty()) {
+                SectionHeading(tr(state.lang, "Your stake", "مبلغ شرط"),
+                    tr(state.lang, "USD · Maximum two decimal places", "دلار · حداکثر دو رقم اعشار"))
                 OutlinedTextField(value = stake, onValueChange = { value ->
-                    if (value.matches(Regex("[0-9]{0,10}(\\.[0-9]{0,2})?"))) stake = value
+                    if (value.matches(Regex("[0-9]{0,10}(\\.[0-9]{0,2})?"))) {
+                        stake = value
+                        model.clearQuote()
+                    }
                 }, label = { Text(tr(state.lang, "Stake (USD)", "مبلغ شرط (دلار)")) },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                    singleLine = true, modifier = Modifier.fillMaxWidth())
+                    singleLine = true, modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(14.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    listOf("1.00", "5.00", "10.00", "20.00").forEach { preset ->
+                        Surface(shape = RoundedCornerShape(12.dp),
+                            color = if (stake == preset) Palette.greenLight else Color.White,
+                            border = BorderStroke(1.dp,
+                                if (stake == preset) Palette.green else Palette.border),
+                            modifier = Modifier.weight(1f).clickable {
+                                stake = preset
+                                model.clearQuote()
+                            }) {
+                            Box(Modifier.heightIn(min = 41.dp),
+                                contentAlignment = Alignment.Center) {
+                                Text("$" + preset.removeSuffix(".00"),
+                                    color = Palette.text, fontWeight = FontWeight.ExtraBold,
+                                    fontSize = 12.sp)
+                            }
+                        }
+                    }
+                }
                 if (state.quote != null) {
-                    Surface(shape = RoundedCornerShape(12.dp), color = Palette.greenLight) {
-                        Row(Modifier.fillMaxWidth().padding(13.dp)) {
-                            Text(tr(state.lang, "Server quoted payout", "پرداخت تأییدشده سرور"),
-                                modifier = Modifier.weight(1f), fontSize = 11.sp)
-                            Text(state.quote, fontWeight = FontWeight.Black, color = Palette.text)
+                    Surface(shape = RoundedCornerShape(16.dp), color = Palette.ink) {
+                        Column(Modifier.fillMaxWidth().padding(17.dp)) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(Icons.Default.Verified, null, tint = Palette.green,
+                                    modifier = Modifier.size(18.dp))
+                                Spacer(Modifier.width(7.dp))
+                                Text(tr(state.lang, "Official server quote", "استعلام رسمی سرور"),
+                                    color = Color.White, fontWeight = FontWeight.Bold,
+                                    fontSize = 12.sp)
+                            }
+                            Spacer(Modifier.height(10.dp))
+                            Text(state.quote.orEmpty(), fontWeight = FontWeight.Black,
+                                fontSize = 27.sp, color = Palette.green)
+                            Text(tr(state.lang, "Estimated payout at quote time — no bet has been placed.",
+                                "پرداخت احتمالی هنگام استعلام؛ هنوز شرطی ثبت نشده است."),
+                                color = Color(0xFFA8C0C8), fontSize = 10.sp, lineHeight = 15.sp)
                         }
                     }
                 }
@@ -250,13 +309,10 @@ fun SlipSheet(state: AppState, model: AppViewModel) {
                     Text(tr(state.lang, "Get official quote", "استعلام ضریب قطعی"),
                         color = Palette.ink, fontWeight = FontWeight.Bold)
                 }
-                Surface(color = Color(0xFFFFF4E7), shape = RoundedCornerShape(13.dp)) {
-                    Text(tr(state.lang,
+                BvInformationStrip(tr(state.lang,
                         "Real-money placement is disabled in this build pending verified regulatory approval, age and jurisdiction checks. Quotes do not place bets.",
                         "ثبت شرط واقعی در این نسخه تا تأیید مجوز قانونی، سن و منطقه کاربر غیرفعال است. استعلام ضریب به معنی ثبت شرط نیست."),
-                        modifier = Modifier.padding(13.dp),
-                        fontSize = 11.sp, color = Color(0xFF86601C))
-                }
+                    icon = Icons.Default.InfoOutline, accent = Color(0xFF986015))
             }
         }
     }
