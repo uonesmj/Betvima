@@ -55,7 +55,17 @@ class SessionVault(context: Context) {
 
     suspend fun signIn(email: String, password: String, api: ApiClient) = mutex.withLock {
         val value = api.login(email.trim(), password)
-        require(value.optString("refresh_token").isNotBlank()) { "Missing refresh token" }
+        val access = value.optString("access_token")
+        require(access.isNotBlank() && value.optString("refresh_token").isNotBlank()) {
+            "Incomplete authentication response"
+        }
+        // The bearer token is not considered an authenticated BetVima account
+        // until the *BetVima server* validates it through withUser ownership guards.
+        val verified = api.get("/api/v1/account/profile", access)
+        val session = verified.optJSONObject("session")
+        require(session != null && session.optString("id").isNotBlank()) {
+            "Could not validate account session"
+        }
         save(value.put("local_expires_at", System.currentTimeMillis() / 1000L +
             value.optLong("expires_in", 3600)))
     }
