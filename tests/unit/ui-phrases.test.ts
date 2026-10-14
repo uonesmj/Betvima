@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { DEFAULT_LOCALE, DICTIONARIES } from '@/lib/i18n/dictionaries';
-import { translateSportName, translateVisibleText } from '@/lib/i18n/ui-phrases';
+import { translateSportName, translateVisibleText, translateBettingSelection } from '@/lib/i18n/ui-phrases';
 
 describe('Persian display localization with English canonical layout', () => {
   it('defaults to English while preserving the original English dictionary', () => {
@@ -116,5 +116,26 @@ describe('exhaustive display label regressions after Persian language selection'
     expect(translateVisibleText('customer@example.com')).toBe('customer@example.com');
     expect(translateVisibleText('https://betvima.com')).toBe('https://betvima.com');
     expect(translateVisibleText('1.75')).toBe('1.75');
+  });
+});
+
+describe('sport-specific outcomes and market-line translation', () => {
+  it('keeps navigation Home distinct from the match host team', () => {
+    expect(translateVisibleText('Home')).toBe('خانه');
+    expect(translateBettingSelection('Home')).toBe('میزبان');
+    expect(translateBettingSelection('Away')).toBe('میهمان');
+    expect(translateBettingSelection('Draw')).toBe('مساوی');
+  });
+  it('translates quarter markets, handicaps, goal lines and special outcomes', () => {
+    expect(translateVisibleText('Total Goals 2.5')).toBe('مجموع گل‌ها 2.5');
+    expect(translateVisibleText('Asian Handicap -1.5')).toBe('هندیکپ آسیایی -1.5');
+    expect(translateVisibleText('Q1 Moneyline')).toBe('کوارتر 1 برنده مسابقه');
+    expect(translateVisibleText('Alternate Team Corners')).toBe('کرنرهای تیمی جایگزین');
+    expect(translateVisibleText('Moneyline (Lay)')).toBe('برنده مسابقه (مخالف)');
+  });
+  it('covers page copy previously left untranslated', () => {
+    expect(translateVisibleText('Exclusive Deposit Bonus')).toBe('بونوس اختصاصی واریز');
+    expect(translateVisibleText('Passwords do not match.')).toBe('رمزهای عبور مطابقت ندارند.');
+    expect(translateVisibleText('Try another team or league name.')).toBe('نام تیم یا لیگ دیگری را وارد کنید.');
   });
 });
