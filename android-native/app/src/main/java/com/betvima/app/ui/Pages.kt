@@ -211,7 +211,7 @@ private fun LeagueSection(key: String, matches: List<Match>, first: Boolean,
     }
 }
 
-private fun betStatus(status: String, lang: Lang): String = when (status.lowercase()) {
+fun betStatus(status: String, lang: Lang): String = when (status.lowercase()) {
     "pending" -> tr(lang, "Pending", "در انتظار ثبت")
     "accepted" -> tr(lang, "Open", "باز")
     "partially_settled" -> tr(lang, "Partially settled", "تسویه جزئی")
