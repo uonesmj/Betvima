@@ -298,8 +298,18 @@ class ApiClient {
         parseWalletIntent(get("/api/v1/wallet/deposit/voucher/status?publicId=" +
             URLEncoder.encode(publicId, "UTF-8"), token))
 
+    /** Campaign and personal grants come from the same authenticated API as the website. */
+    suspend fun bonusCurrencyPage(token: String, currency: String, page: Int = 1): BonusCurrencyPage {
+        require(currency in setOf("USD", "IRR", "IRT"))
+        require(page in 1..1000)
+        val data = get("/api/v1/bonuses?currency=" + currency + "&page=" + page +
+            "&pageSize=100", token)
+        return parseBonusCurrencyPage(data, currency, page)
+    }
+
+    /** Legacy account header uses the account's currency, not hardcoded USD. */
     suspend fun bonuses(token: String): List<Bonus> =
-        get("/api/v1/bonuses?currency=USD", token).arr("items").objects().map {
+        get("/api/v1/bonuses", token).arr("items").objects().map {
             Bonus(it.str("title", "Deposit bonus"), it.str("status"),
                 it.str("remainingAmountMinor", "0"), it.str("currency", "USD"))
         }
