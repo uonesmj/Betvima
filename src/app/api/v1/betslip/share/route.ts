@@ -1,5 +1,5 @@
-import { randomBytes } from 'node:crypto';
 import { z } from 'zod';
+import { makeBetSlipShareCode } from '@/lib/betslip-share-code';
 import { ApiError, withErrorHandling, jsonCreated } from '@/lib/errors';
 import { readJson, enforceRateLimit } from '@/server/http/request';
 import { createServices } from '@/server/services/container';
@@ -24,14 +24,6 @@ const shareSchema = z.object({
   selections: z.array(selectionSchema).min(1).max(20),
 });
 
-function makeCode(): string {
-  const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-  const bytes = randomBytes(8);
-  let code = '';
-  for (const byte of bytes) code += alphabet[byte % alphabet.length];
-  return `NOVA-${code}`;
-}
-
 export const POST = withErrorHandling('betslip.share.create', async (ctx, request: Request) => {
   const body = await readJson(request, shareSchema, ctx);
   const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown';
@@ -53,8 +45,16 @@ export const POST = withErrorHandling('betslip.share.create', async (ctx, reques
     oddsScaled: selection.oddsScaled,
     oddsVersionSeen: selection.oddsVersionSeen,
   }));
-  const code = makeCode();
-  const row = await services.db.queryOne<{ code: string }>(`insert into nova.bet_slip_shares (code, slip_type, currency, selections) values (\$1, \$2, \$3, \$4::jsonb) returning code`, [code, body.type, body.currency, JSON.stringify(selections)]);
-  if (row == null) throw new ApiError('INTERNAL_ERROR', 'Unable to create bet slip code');
-  return jsonCreated({ code: row.code });
+  // Database uniqueness arbitrates concurrent allocations; retry collisions.
+  for (let attempt = 0; attempt < 24; attempt++) {
+    const code = makeBetSlipShareCode();
+    const row = await services.db.queryOne<{ code: string }>(
+      `insert into nova.bet_slip_shares (code, slip_type, currency, selections)
+       values ($1, $2, $3, $4::jsonb)
+       on conflict (code) do nothing returning code`,
+      [code, body.type, body.currency, JSON.stringify(selections)],
+    );
+    if (row != null) return jsonCreated({ code: row.code });
+  }
+  throw new ApiError('INTERNAL_ERROR', 'Unable to allocate a unique bet slip code');
 });
