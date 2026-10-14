@@ -21,19 +21,21 @@ import androidx.compose.ui.unit.sp
 import com.betvima.app.data.*
 
 private val sports = listOf("football", "basketball", "tennis", "volleyball",
-    "ice-hockey", "table-tennis", "baseball", "esports")
+    "hockey", "table-tennis", "baseball", "esports")
 private fun sportName(s: String) = s.replace("-", " ").replaceFirstChar { it.uppercase() }
 
 @Composable
-fun SportsRibbon(selected: String, lang: Lang, onChange: (String) -> Unit) {
+fun SportsRibbon(selected: String, lang: Lang, showEsports: Boolean = true,
+    onChange: (String) -> Unit) {
+    val visibleSports = if (showEsports) sports else sports.filterNot { it == "esports" }
     LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp),
         contentPadding = PaddingValues(vertical = 3.dp)) {
-        items(sports, key = { it }) { sport ->
+        items(visibleSports, key = { it }) { sport ->
             FilterChip(
                 selected = selected == sport, onClick = { onChange(sport) },
                 label = { Text(if (lang == Lang.FA) when (sport) {
                     "football" -> "فوتبال"; "basketball" -> "بسکتبال"; "tennis" -> "تنیس"
-                    "volleyball" -> "والیبال"; "ice-hockey" -> "هاکی روی یخ"
+                    "volleyball" -> "والیبال"; "hockey" -> "هاکی روی یخ"
                     "table-tennis" -> "پینگ‌پنگ"; "baseball" -> "بیسبال"
                     "esports" -> "ورزش الکترونیک"; else -> sportName(sport)
                 } else sportName(sport), fontSize = 11.sp,
@@ -55,7 +57,11 @@ fun HomePage(state: AppState, model: AppViewModel) {
             BrandHero(state.lang, state.live.size,
                 onLive = { model.tab(Tab.LIVE) }, onSports = { model.tab(Tab.SPORTS) })
         }
-        item { SportsRibbon(state.sport, state.lang) { model.sport(it); model.tab(Tab.SPORTS) } }
+        item {
+            SportsRibbon(state.sport, state.lang, showEsports = false) {
+                model.sport(it); model.tab(Tab.SPORTS)
+            }
+        }
         item {
             Row(horizontalArrangement = Arrangement.spacedBy(9.dp)) {
                 HighlightMetric(Modifier.weight(1f), tr(state.lang, "LIVE", "زنده"), state.live.size.toString(), Palette.red)
@@ -87,6 +93,28 @@ fun HomePage(state: AppState, model: AppViewModel) {
             items(state.upcoming.take(8), key = { "home-upcoming-" + it.id }) { match ->
                 MatchTile(match, state.lang, state.liveEnabled, state.picks,
                     { model.openMatch(match.id) }) { m, s -> model.togglePick(match, m, s) }
+            }
+        }
+        val featured = state.upcoming.filter { match ->
+            match.bettingAvailable && match.featured?.available == true &&
+                match.featured?.selections?.any { it.available } == true
+        }.sortedByDescending { it.marketsCount }.take(4)
+        item {
+            SectionHeading(tr(state.lang, "Top bets", "شرط‌های برتر"),
+                tr(state.lang, "Upcoming games with the widest available markets",
+                    "مسابقات آینده با بیشترین بازار قابل انتخاب"),
+                tr(state.lang, "View all", "مشاهده همه")) { model.tab(Tab.SPORTS) }
+        }
+        if (featured.isEmpty()) item {
+            EmptyPanel(tr(state.lang, "No featured markets now", "بازار برتری در دسترس نیست"),
+                tr(state.lang, "Live data is refreshed from the official provider.",
+                    "فهرست بازارها مستقیماً از منبع رسمی دریافت می‌شود.")) {
+                model.refreshUpcoming()
+            }
+        } else items(featured, key = { "featured-" + it.id }) { match ->
+            MatchTile(match, state.lang, state.liveEnabled, state.picks,
+                { model.openMatch(match.id) }) { market, selection ->
+                model.togglePick(match, market, selection)
             }
         }
         item { FeatureShortcuts(state.lang, model) }
