@@ -47,7 +47,7 @@ internal fun signupPayload(
 ): JSONObject = JSONObject()
     .put("email", email.trim()).put("password", password)
     .put("currency", currency)
-    .put("referralCode", referral.trim().uppercase().ifBlank { JSONObject.NULL })
+    .put("referralCode", referral.trim().uppercase().takeIf { it.isNotBlank() } ?: JSONObject.NULL)
     .put("ageConfirmed", true).put("acceptTerms", true)
     .put("locale", locale).put("turnstileToken", token)
 
@@ -69,10 +69,10 @@ private fun allowedAuthUrl(url: Uri?): Boolean {
 /** Widget is confined to the BetVima HTTPS origin, using the same public site key as web. */
 @SuppressLint("SetJavaScriptEnabled")
 @Composable
-private fun RealTurnstileWidget(key: String, revision: Int, callback: (String?) -> Unit) {
+private fun RealTurnstileWidget(siteKey: String, revision: Int, callback: (String?) -> Unit) {
     val context = LocalContext.current
     val currentCallback by rememberUpdatedState(callback)
-    key(key, revision) {
+    key(siteKey, revision) {
         AndroidView(
             modifier = Modifier.fillMaxWidth().height(121.dp),
             factory = {
@@ -119,7 +119,7 @@ private fun RealTurnstileWidget(key: String, revision: Int, callback: (String?) 
                          });
                        } mount();
                      })();</script></body></html>
-                    """.trimIndent().replace("SITE_KEY_PLACEHOLDER", key)
+                    """.trimIndent().replace("SITE_KEY_PLACEHOLDER", siteKey)
                     loadDataWithBaseURL("https://betvima.com/auth/register",
                         html, "text/html", "UTF-8", null)
                 }
