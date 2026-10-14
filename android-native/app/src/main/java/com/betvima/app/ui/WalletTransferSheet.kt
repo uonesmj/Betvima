@@ -101,7 +101,8 @@ internal fun walletTransferValidation(
     direction: String, method: String, coin: String, network: String,
     walletCurrency: String, amount: String, destination: String,
     voucherCode: String, availableMinor: String, integrity: String,
-    methodEnabled: Boolean, quote: WalletExchangeQuote?, usdRate: String?
+    methodEnabled: Boolean, quote: WalletExchangeQuote?, usdRate: String?,
+    methodMinMinor: String = "0", methodMaxMinor: String = "0"
 ): String? {
     if (integrity != "ok") return "ledger"
     if (!methodEnabled) return "method"
@@ -123,6 +124,12 @@ internal fun walletTransferValidation(
     if (n < if (voucher) BigInteger("150") else if (direction == "deposit")
             BigInteger("2000") else if (walletCurrency == "USD") BigInteger("2000")
             else minimum) return "minimum"
+    // Catalogue limits are checked in their own payment currency. The backend
+    // remains authoritative and can reject a newly changed provider minimum.
+    val methodMin = methodMinMinor.toBigIntegerOrNull() ?: return "method"
+    val methodMax = methodMaxMinor.toBigIntegerOrNull() ?: return "method"
+    if (n < methodMin || (methodMax > BigInteger.ZERO && n > methodMax))
+        return "method_limit"
     if (direction == "withdraw") {
         val available = availableMinor.toBigIntegerOrNull() ?: return "balance"
         if (walletMinor.toBigInteger() > available) return "balance"
@@ -142,6 +149,9 @@ private fun walletErrorText(issue: String, lang: Lang): String = when (issue) {
     "ledger" -> wTr(lang,"The account ledger requires review.", "دفترکل حساب نیازمند بررسی است.")
     "method" -> wTr(lang,"This payment method is currently unavailable.",
         "این روش پرداخت فعلاً در دسترس نیست.")
+    "method_limit" -> wTr(lang,
+        "Amount is outside the limits advertised by the payment provider.",
+        "مبلغ خارج از محدوده مجاز این روش پرداخت است.")
     "minimum" -> wTr(lang,"Below the minimum: crypto $20 / voucher $1.50.",
         "کمتر از حداقل: رمزارز ۲۰ دلار / ووچر ۱٫۵۰ دلار.")
     "balance" -> wTr(lang,"Insufficient confirmed available balance.",
@@ -299,6 +309,7 @@ fun WalletTransferSheet(
     var picker by remember { mutableStateOf("") }
     var confirm by remember { mutableStateOf(false) }
     var busy by remember { mutableStateOf(false) }
+    var uncertainResult by rememberSaveable(direction) { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
     var receipt by remember { mutableStateOf<WalletPaymentIntent?>(null) }
     var methods by remember { mutableStateOf<WalletMethodCatalogue?>(null) }
@@ -336,11 +347,13 @@ fun WalletTransferSheet(
         } finally { loading = false }
     }
 
+    val selectedPaymentMethod = methods?.method(paymentMethodId)
     val methodEnabled = methods?.enabled(
         if (isDeposit) "deposit" else "withdrawal", paymentMethodId) == true
     val issue = walletTransferValidation(
         direction,method,coin,network,currency,amount,destination,voucherCode,
-        wallet.availableMinor,wallet.integrity,methodEnabled,quote,usdRate
+        wallet.availableMinor,wallet.integrity,methodEnabled,quote,usdRate,
+        selectedPaymentMethod?.minMinor ?: "0", selectedPaymentMethod?.maxMinor ?: "0"
     )
     val amountInputCurrency = if (!voucher && isDeposit) "USD" else currency
     val walletMinor = walletInputMinor(amount, amountInputCurrency)
@@ -355,10 +368,11 @@ fun WalletTransferSheet(
     fun submit() {
         // The user can leave a confirmation open long enough for an FX quote
         // to expire. Validate again at the actual press, not only at render.
-        if (busy || transactionMinor == null) return
+        if (busy || uncertainResult || transactionMinor == null) return
         val freshIssue = walletTransferValidation(
             direction,method,coin,network,currency,amount,destination,voucherCode,
-            wallet.availableMinor,wallet.integrity,methodEnabled,quote,usdRate
+            wallet.availableMinor,wallet.integrity,methodEnabled,quote,usdRate,
+            selectedPaymentMethod?.minMinor ?: "0", selectedPaymentMethod?.maxMinor ?: "0"
         )
         if (freshIssue != null) {
             confirm = false
@@ -384,12 +398,17 @@ fun WalletTransferSheet(
                     else model.walletCreateWithdrawal(payload,idempotency)
                 voucherCode = ""
                 model.refreshAccount()
-            } catch (_: Exception) {
-                // A timeout may follow an accepted request. Do not automatically
-                // re-submit a second money request with a different idempotency key.
-                error = wTr(lang,
-                    "Request not confirmed. Check payment history before retrying.",
-                    "تأیید درخواست دریافت نشد؛ قبل از تلاش دوباره تاریخچه پرداخت را بررسی کنید.")
+            } catch (ex: Exception) {
+                // Validation 4xx is definitively rejected; network interruptions,
+                // 409 conflicts and 5xx responses are *ambiguous* and cannot be
+                // retried with a new payment ID from this sheet.
+                val definiteRejection = (ex as? ApiFailure)?.code in setOf(400, 401, 403, 404, 422, 429)
+                uncertainResult = !definiteRejection
+                error = if (definiteRejection)
+                    (ex.message?.take(240) ?: wTr(lang, "Payment was rejected.", "درخواست رد شد."))
+                else wTr(lang,
+                    "Payment status unknown. Do not submit again; check your history first.",
+                    "نتیجه پرداخت نامشخص است. دوباره ارسال نکنید؛ ابتدا تاریخچه را بررسی کنید.")
             } finally { busy = false }
         }
     }
@@ -563,7 +582,7 @@ fun WalletTransferSheet(
                             fontSize = 11.sp, modifier = Modifier.padding(11.dp))
                     }
                 }
-                if (!loading && issue != null && amount.isNotBlank() && methodEnabled) {
+                if (!loading && issue != null && amount.isNotBlank() && methodEnabled && !uncertainResult) {
                     Text(walletErrorText(issue,lang), color = Color(0xFFB5472F), fontSize = 11.sp)
                 }
                 OutlinedButton(onClick = { refreshKey++ },
@@ -576,7 +595,7 @@ fun WalletTransferSheet(
                         fontSize = 11.sp)
                 }
                 Button(onClick = { confirm = true },
-                    enabled = !busy && !loading && issue == null,
+                    enabled = !busy && !loading && !uncertainResult && issue == null,
                     modifier = Modifier.fillMaxWidth().height(53.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = wBlue),
                     shape = RoundedCornerShape(15.dp)) {
@@ -686,7 +705,7 @@ fun WalletTransferSheet(
                 }
             },
             confirmButton = {
-                Button(onClick = ::submit, enabled = !busy && issue == null,
+                Button(onClick = ::submit, enabled = !busy && !uncertainResult && issue == null,
                     colors = ButtonDefaults.buttonColors(containerColor = wBlue)) {
                     Text(wTr(lang,"Confirm","تأیید نهایی"))
                 }
