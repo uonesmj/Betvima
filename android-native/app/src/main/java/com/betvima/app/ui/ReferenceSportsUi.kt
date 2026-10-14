@@ -111,6 +111,9 @@ fun ReferenceSportRibbon(state: AppState, model: AppViewModel, live: Boolean = f
         horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         items(sportChips, key = { it.key }) { sport ->
             val active = current == sport.key
+            val events = if (live) state.live else state.upcoming
+            val loadedCount = if (sport.key == "top") events.size else
+                events.count { it.sport == sport.key }
             Surface(shape = RoundedCornerShape(14.dp),
                 color = if (active) Palette.blue else Color(0xFFE0E3E9),
                 modifier = Modifier.width(124.dp).height(71.dp).clickable {
@@ -128,6 +131,9 @@ fun ReferenceSportRibbon(state: AppState, model: AppViewModel, live: Boolean = f
                         color = if (active) Color.White else Palette.text,
                         maxLines = 1, overflow = TextOverflow.Ellipsis,
                         fontWeight = FontWeight.ExtraBold, fontSize = 12.sp)
+                    if (loadedCount > 0) Text(loadedCount.toString(),
+                        modifier = Modifier.align(Alignment.BottomStart),
+                        fontSize = 11.sp, color = if (active) Color.White else Palette.muted)
                     Icon(sport.icon, contentDescription = null,
                         modifier = Modifier.align(Alignment.BottomEnd).size(25.dp),
                         tint = if (active) Color.White else Palette.blue)
@@ -420,10 +426,8 @@ fun ReferenceLeagueFixture(match: Match, state: AppState, model: AppViewModel) {
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 market.selections.take(3).forEach { selection ->
                     Box(Modifier.weight(1f)) {
-                        OddsChoice(match, market, selection, state.liveEnabled,
-                            state.picks.any { it.selectionId == selection.id }) {
-                            model.togglePick(match, market, selection)
-                        }
+                        ReferenceCompactOdd(match, market, selection, state, model,
+                            Modifier.fillMaxWidth())
                     }
                 }
                 Surface(color = Palette.paper, shape = RoundedCornerShape(11.dp),
