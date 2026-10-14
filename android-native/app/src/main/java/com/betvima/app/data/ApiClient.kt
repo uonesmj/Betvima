@@ -313,19 +313,62 @@ class ApiClient {
             .put("type", if (picks.size > 1) "MULTIPLE" else "SINGLE")
             .put("stakeMinor", stakeMinor).put("currency", "USD").put("legs", legs), token)
     }
-    suspend fun tickets(token: String): List<SupportTicket> {
-        val data = get("/api/v1/support?pageSize=25", token)
-        val collection = data.optJSONObject("tickets") ?: JSONObject()
-        val list = collection.optJSONArray("items") ?: data.optJSONArray("tickets") ?: JSONArray()
-        return list.objects().map {
-            SupportTicket(it.str("id"), it.str("subject"), it.str("status"), it.str("category"))
-        }
+    private fun parseSupportTicket(t: JSONObject): SupportTicket = SupportTicket(
+        id = t.str("id"), subject = t.str("subject"),
+        status = t.str("status"), category = t.str("category"),
+        createdAt = t.str("createdAt"), updatedAt = t.str("updatedAt"),
+        lastMessageAt = t.str("lastMessageAt"), priority = t.str("priority", "normal"),
+        unreadMessages = t.optInt("unreadMessages", 0)
+    )
+
+    suspend fun supportTickets(token: String, page: Int = 1): SupportTicketPage {
+        require(page in 1..10000)
+        val data = get("/api/v1/support?pageSize=25&page=" + page, token)
+        val block = data.optJSONObject("tickets") ?: JSONObject()
+        val items = block.arr("items").objects().map(::parseSupportTicket)
+        return SupportTicketPage(
+            items, block.optInt("page", page), block.optInt("total", items.size),
+            block.optBoolean("hasMore", false)
+        )
     }
+    suspend fun tickets(token: String): List<SupportTicket> = supportTickets(token).items
+
     suspend fun createTicket(token: String, category: String, subject: String, body: String): SupportTicket {
+        require(category in listOf("general","deposit","withdrawal","bet","login","bonus","technical","other"))
+        require(subject.trim().length in 3..160 && body.trim().length in 1..5000)
         val data = post("/api/v1/support", JSONObject()
-            .put("category", category).put("subject", subject).put("body", body), token)
+            .put("category", category).put("subject", subject.trim())
+            .put("body", body.trim()), token)
         val t = data.optJSONObject("ticket") ?: throw ApiFailure(502, "Ticket not returned")
-        return SupportTicket(t.str("id"), t.str("subject"), t.str("status"), t.str("category"))
+        return parseSupportTicket(t)
+    }
+    suspend fun supportConversation(token: String, ticketId: String): SupportConversation {
+        require(Regex("[a-fA-F0-9-]{36}").matches(ticketId))
+        val data = get("/api/v1/support/" + ticketId, token)
+        val ticket = data.optJSONObject("ticket") ?: throw ApiFailure(502, "Ticket unavailable")
+        val messages = data.arr("messages").objects().map {
+            SupportThreadMessage(
+                id = it.str("id"), body = it.str("body"),
+                senderRole = it.str("senderRole"), createdAt = it.str("createdAt"),
+                attachments = it.arr("attachments").objects()
+                    .map { a -> a.str("originalName") }.filter(String::isNotBlank)
+            )
+        }
+        return SupportConversation(parseSupportTicket(ticket), messages)
+    }
+    suspend fun sendSupportMessage(token: String, ticketId: String, text: String): SupportThreadMessage {
+        require(Regex("[a-fA-F0-9-]{36}").matches(ticketId))
+        require(text.trim().length in 1..5000)
+        val data = post("/api/v1/support/" + ticketId + "/messages",
+            JSONObject().put("body", text.trim()), token)
+        val m = data.optJSONObject("message") ?: throw ApiFailure(502, "Message status unknown")
+        return SupportThreadMessage(m.str("id"), m.str("body"),
+            m.str("senderRole"), m.str("createdAt"))
+    }
+    suspend fun closeSupportTicket(token: String, ticketId: String): SupportTicket {
+        require(Regex("[a-fA-F0-9-]{36}").matches(ticketId))
+        val data = post("/api/v1/support/" + ticketId + "/close", JSONObject(), token)
+        return parseSupportTicket(data.optJSONObject("ticket") ?: throw ApiFailure(502, "Ticket unavailable"))
     }
 
 }
