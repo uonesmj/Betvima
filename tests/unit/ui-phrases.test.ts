@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { readFileSync } from 'node:fs';
 import { DEFAULT_LOCALE, DICTIONARIES } from '@/lib/i18n/dictionaries';
 import { translateSportName, translateVisibleText } from '@/lib/i18n/ui-phrases';
 
@@ -61,5 +62,30 @@ describe('consistent English-first user and administrator copy', () => {
     expect(translateVisibleText('Open liabilities')).toBe('تعهدات باز');
     expect(translateVisibleText('Decision')).toBe('تصمیم');
     expect(translateVisibleText('View metrics JSON')).toBe('مشاهده JSON شاخص‌ها');
+  });
+});
+
+describe('unchanged layout and non-translatable language controls', () => {
+  it('holds LTR layout while switching just the displayed language', () => {
+    const providers = readFileSync('src/components/layout/providers.tsx', 'utf8');
+    const layout = readFileSync('src/app/layout.tsx', 'utf8');
+    expect(layout).toContain('<html lang="en" dir="ltr">');
+    expect(providers).toContain("document.documentElement.dir = 'ltr'");
+    expect(providers).toContain("dir: 'ltr'");
+  });
+
+  it('keeps language options named in their native languages', () => {
+    const footer = readFileSync('src/components/layout/page-shell.tsx', 'utf8');
+    const selector = readFileSync('src/components/layout/language-selector.tsx', 'utf8');
+    expect(footer).toContain('translate="no" lang="fa" dir="rtl"');
+    expect(footer).toContain('translate="no" lang="en" dir="ltr"');
+    expect(selector).toContain('<span translate="no">{LOCALE_META[item].nativeLabel}</span>');
+  });
+
+  it('translates CSS-generated mobile affiliate headings only in Persian mode', () => {
+    const css = readFileSync('src/app/globals.css', 'utf8');
+    expect(css).toContain('.affiliate-referrals-v2 .nova-table td:nth-child(1)::before { content: "User"; }');
+    expect(css).toContain('html[lang="fa"] .affiliate-referrals-v2 .nova-table td:nth-child(1)::before { content: "کاربر" !important; }');
+    expect(css).toContain('html[lang="fa"] .affiliate-shell .affiliate-referrals-v2 tbody td:nth-child(9)::before { content: "سهم ۷۰٪ شما" !important; }');
   });
 });
