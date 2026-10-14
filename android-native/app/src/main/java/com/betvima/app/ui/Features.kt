@@ -57,7 +57,7 @@ fun FeaturePage(state: AppState, model: AppViewModel) {
             Feature.VIP -> VipPage(state)
             Feature.BONUSES -> BonusPage(state, model)
             Feature.SUPPORT -> SupportPage(state, model)
-            Feature.CASINO -> CasinoLobby(state.lang)
+            Feature.CASINO -> CasinoLobby(state, model)
             Feature.AFFILIATE -> AffiliateDashboard(state, model)
             Feature.NOTIFICATIONS -> NotificationsPage(state, model)
             else -> Unit
