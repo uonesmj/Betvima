@@ -36,24 +36,28 @@ fun FeaturePage(state: AppState, model: AppViewModel) {
         else -> "BetVima"
     }
     Column {
-        Row(Modifier.fillMaxWidth().background(Color.White).padding(horizontal = 10.dp),
-            verticalAlignment = Alignment.CenterVertically) {
-            IconButton(onClick = { model.feature(Feature.NONE) }) {
-                Icon(Icons.Default.ArrowBack, "Back", tint = Palette.text)
+        Surface(color = Color.White, shadowElevation = 1.dp) {
+            Row(Modifier.fillMaxWidth().heightIn(min = 54.dp)
+                .padding(horizontal = 10.dp),
+                verticalAlignment = Alignment.CenterVertically) {
+                IconButton(onClick = { model.feature(Feature.NONE) }) {
+                    Icon(Icons.Default.ArrowBack,
+                        tr(state.lang, "Back", "بازگشت"), tint = Palette.text)
+                }
+                Text(title, fontSize = 17.sp, fontWeight = FontWeight.Black,
+                    color = Palette.text, modifier = Modifier.weight(1f))
+                Surface(color = Palette.greenLight, shape = RoundedCornerShape(10.dp)) {
+                    Icon(Icons.Default.VerifiedUser, null, tint = Palette.ink,
+                        modifier = Modifier.padding(8.dp).size(19.dp))
+                }
             }
-            Text(title, fontSize = 18.sp, fontWeight = FontWeight.Black,
-                color = Palette.text, modifier = Modifier.weight(1f))
         }
         when (state.feature) {
             Feature.PROFILE -> ProfilePage(state, model)
             Feature.VIP -> VipPage(state)
             Feature.BONUSES -> BonusPage(state, model)
             Feature.SUPPORT -> SupportPage(state, model)
-            Feature.CASINO -> SimpleFeaturePage(
-                tr(state.lang, "Casino lobby", "لابی کازینو"),
-                tr(state.lang, "Native casino games will appear here only when a real, approved game integration is available. No placeholder wagering is offered.",
-                    "بازی‌های بومی کازینو فقط پس از اتصال معتبر و تأییدشده نمایش داده می‌شوند. بازی یا شرط ساختگی ارائه نمی‌شود."),
-                state.lang)
+            Feature.CASINO -> CasinoLobby(state.lang)
             Feature.AFFILIATE -> AffiliateDashboard(state, model)
             Feature.NOTIFICATIONS -> NotificationsPage(state, model)
             else -> Unit
@@ -66,19 +70,18 @@ private fun VipPage(state: AppState) {
     val tiers = listOf(2000 to 3, 4000 to 5, 6000 to 6, 9000 to 8, 15000 to 11)
     LazyColumn(contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         item {
-            Surface(shape = RoundedCornerShape(24.dp), color = Palette.ink) {
-                Column(Modifier.fillMaxWidth().padding(23.dp)) {
-                    Icon(Icons.Default.WorkspacePremium, null, tint = Palette.green,
-                        modifier = Modifier.size(33.dp))
-                    Spacer(Modifier.height(13.dp))
-                    Text(tr(state.lang, "LOYALTY. REWARDED.", "وفاداری شما، پاداش شما"),
-                        fontSize = 23.sp, fontWeight = FontWeight.Black, color = Color.White)
-                    Spacer(Modifier.height(8.dp))
-                    Text(tr(state.lang,
-                        "Weekly eligible deposits determine your cashback tier. Eligible settled weekly losses are the basis for Monday payouts.",
-                        "واریزهای واجد شرایط هفتگی سطح کش‌بک شما را تعیین می‌کنند. مبنای پرداخت دوشنبه، باخت‌های قطعی و واجد شرایط همان هفته است."),
-                        fontSize = 12.sp, lineHeight = 20.sp, color = Color(0xFFB3C8C9))
-                }
+            BvPageBanner(
+                eyebrow = tr(state.lang, "VIP CLUB", "باشگاه VIP"),
+                title = tr(state.lang, "Loyalty has its rewards", "وفاداری شما ارزشمند است"),
+                subtitle = tr(state.lang,
+                    "Discover the weekly deposit tiers and eligible cashback percentages.",
+                    "سطح‌های واریز هفتگی و درصد کش‌بک مربوط به هر سطح را بشناسید."),
+                icon = Icons.Default.WorkspacePremium,
+                accent = Palette.gold
+            ) {
+                Spacer(Modifier.height(5.dp))
+                SmallPill(tr(state.lang, "Monday review", "بررسی روز دوشنبه"),
+                    Palette.gold.copy(alpha = .17f), Palette.gold)
             }
         }
         item { SectionHeading(tr(state.lang, "Weekly cashback tiers", "سطوح کش‌بک هفتگی")) }
@@ -113,6 +116,17 @@ private fun VipPage(state: AppState) {
 @Composable
 private fun BonusPage(state: AppState, model: AppViewModel) {
     LazyColumn(contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        item {
+            BvPageBanner(
+                eyebrow = tr(state.lang, "REWARDS", "پاداش‌ها"),
+                title = tr(state.lang, "Your bonuses", "پاداش‌های حساب شما"),
+                subtitle = tr(state.lang,
+                    "Every shown grant and balance comes from the BetVima server.",
+                    "همه بونوس‌ها و مانده‌ها مستقیماً از سرور بت‌ویما نمایش داده می‌شوند."),
+                icon = Icons.Default.CardGiftcard,
+                accent = Palette.gold
+            )
+        }
         item { SectionHeading(tr(state.lang, "Deposit rewards", "پاداش واریز"),
             tr(state.lang, "Your account's current bonus grants", "بونوس‌های ثبت‌شده حساب شما")) }
         if (!state.signedIn) item {
@@ -125,20 +139,26 @@ private fun BonusPage(state: AppState, model: AppViewModel) {
                         "بونوس‌ها پس از صدور توسط سرور اینجا نمایش داده می‌شوند.")) { model.refreshAccount() }
             }
             items(state.bonuses) { bonus ->
-                Surface(color = Palette.ink, shape = RoundedCornerShape(20.dp)) {
+                Surface(color = Color.White, shape = RoundedCornerShape(19.dp),
+                    border = BorderStroke(1.dp, Palette.border), shadowElevation = 1.dp) {
                     Column(Modifier.fillMaxWidth().padding(19.dp)) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Default.CardGiftcard, null, tint = Palette.green)
+                            Surface(color = Palette.greenLight, shape = RoundedCornerShape(11.dp)) {
+                                Icon(Icons.Default.CardGiftcard, null, tint = Palette.ink,
+                                    modifier = Modifier.padding(10.dp).size(21.dp))
+                            }
                             Spacer(Modifier.width(9.dp))
-                            Text(bonus.title, color = Color.White, fontWeight = FontWeight.Bold,
+                            Text(bonus.title, color = Palette.text, fontWeight = FontWeight.Bold,
                                 modifier = Modifier.weight(1f))
                             SmallPill(bonus.status, Palette.greenLight, Palette.ink)
                         }
                         Spacer(Modifier.height(20.dp))
+                        HorizontalDivider(color = Palette.border)
+                        Spacer(Modifier.height(10.dp))
                         Text(tr(state.lang, "Remaining bonus", "مانده بونوس"),
-                            color = Color(0xFF9EB6B9), fontSize = 11.sp)
+                            color = Palette.muted, fontSize = 11.sp)
                         Text(money(bonus.remainingMinor, bonus.currency),
-                            color = Palette.green, fontWeight = FontWeight.Black, fontSize = 24.sp)
+                            color = Palette.blue, fontWeight = FontWeight.Black, fontSize = 24.sp)
                     }
                 }
             }
@@ -168,6 +188,16 @@ private fun SupportPage(state: AppState, model: AppViewModel) {
     }
     LaunchedEffect(state.signedIn) { if (state.signedIn) reload() }
     LazyColumn(contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        item {
+            BvPageBanner(
+                eyebrow = tr(state.lang, "HELP CENTER", "مرکز پشتیبانی"),
+                title = tr(state.lang, "We're here to help", "همیشه در کنار شما"),
+                subtitle = tr(state.lang,
+                    "Create a ticket, follow its status and continue the conversation.",
+                    "درخواست ثبت کنید، وضعیت را ببینید و گفتگو را ادامه دهید."),
+                icon = Icons.Default.SupportAgent, accent = Palette.green
+            )
+        }
         item { SectionHeading(tr(state.lang, "Customer support", "پشتیبانی مشتریان"),
             tr(state.lang, "Create a ticket and track replies", "ثبت درخواست و پیگیری پاسخ")) }
         if (!state.signedIn) item {
@@ -186,7 +216,15 @@ private fun SupportPage(state: AppState, model: AppViewModel) {
                         Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                             listOf("general", "deposit", "withdrawal", "bet").forEach { c ->
                                 FilterChip(selected = category == c, onClick = { category = c },
-                                    label = { Text(c, fontSize = 10.sp) })
+                                    label = { Text(if (state.lang == Lang.FA) when(c) {
+                                        "general" -> "عمومی"
+                                        "deposit" -> "واریز"
+                                        "withdrawal" -> "برداشت"
+                                        "bet" -> "شرط"
+                                        else -> c
+                                    } else c, fontSize = 10.sp) },
+                                    colors = FilterChipDefaults.filterChipColors(
+                                        selectedContainerColor = Palette.greenLight))
                             }
                         }
                         OutlinedTextField(body, { body = it.take(5000) },
@@ -231,7 +269,7 @@ private fun SupportPage(state: AppState, model: AppViewModel) {
                             Text(ticket.subject, fontWeight = FontWeight.Bold, fontSize = 12.sp)
                             Text(ticket.category, color = Palette.muted, fontSize = 10.sp)
                         }
-                        SmallPill(ticket.status, Palette.paper, Palette.muted)
+                        SmallPill(ticket.status.replace("_", " "), Palette.greenLight, Palette.ink)
                     }
                 }
             }
