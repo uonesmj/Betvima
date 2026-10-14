@@ -184,12 +184,15 @@ private fun LeagueSection(key: String, matches: List<Match>, first: Boolean,
 }
 
 private fun betStatus(status: String, lang: Lang): String = when (status.lowercase()) {
-    "won" -> tr(lang, "Won", "برنده")
-    "lost" -> tr(lang, "Lost", "بازنده")
-    "pending", "open", "placed", "accepted" -> tr(lang, "Open", "باز")
+    "pending" -> tr(lang, "Pending", "در انتظار ثبت")
+    "accepted" -> tr(lang, "Open", "باز")
+    "partially_settled" -> tr(lang, "Partially settled", "تسویه جزئی")
+    "settled" -> tr(lang, "Settled", "تسویه‌شده")
     "void" -> tr(lang, "Void", "باطل")
     "refunded" -> tr(lang, "Refunded", "برگشت‌خورده")
-    "cancelled", "canceled" -> tr(lang, "Cancelled", "لغوشده")
+    "cancelled" -> tr(lang, "Cancelled", "لغوشده")
+    "rejected" -> tr(lang, "Rejected", "ردشده")
+    "manual_review" -> tr(lang, "Under review", "در حال بررسی")
     "cashed_out" -> tr(lang, "Cashed out", "تسویه زودهنگام")
     else -> status.replace("_", " ")
 }
@@ -256,7 +259,7 @@ fun BetsPage(state: AppState, model: AppViewModel) {
                                 }
                             }
                             SmallPill(betStatus(bet.status, state.lang), Palette.paper,
-                                if (bet.status.equals("won", true)) Palette.green else Palette.muted)
+                                if (bet.isSettled) Palette.green else Palette.muted)
                         }
                         Spacer(Modifier.height(13.dp))
                         HorizontalDivider(color = Palette.border)
