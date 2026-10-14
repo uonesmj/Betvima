@@ -9,6 +9,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.NotificationsNone
+import androidx.compose.material.icons.filled.NotificationsActive
 import androidx.compose.material.icons.filled.DoneAll
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -25,6 +26,20 @@ fun NotificationsPage(state: AppState, model: AppViewModel) {
     val unread = state.notifications.count { it.readAt == null }
     LazyColumn(contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(11.dp)) {
+        item {
+            BvPageBanner(
+                eyebrow = tr(state.lang, "INBOX", "صندوق اعلان‌ها"),
+                title = tr(state.lang, "Stay up to date", "همیشه در جریان باشید"),
+                subtitle = tr(state.lang,
+                    "Important account events and messages, directly from BetVima.",
+                    "پیام‌ها و رویدادهای حساب شما، مستقیماً از بت‌ویما."),
+                icon = Icons.Default.NotificationsActive
+            ) {
+                Spacer(Modifier.height(5.dp))
+                SmallPill(unread.toString() + tr(state.lang, " unread", " خوانده‌نشده"),
+                    Palette.green.copy(alpha = .15f), Palette.green)
+            }
+        }
         item {
             SectionHeading(tr(state.lang, "Notifications", "اعلان‌ها"),
                 tr(state.lang, "Messages from your BetVima account", "پیام‌های حساب بت‌ویما"),
@@ -70,7 +85,8 @@ fun NotificationsPage(state: AppState, model: AppViewModel) {
                     color = if (note.readAt == null) Palette.greenLight else Color.White,
                     border = BorderStroke(1.dp,
                         if (note.readAt == null) Palette.green else Palette.border),
-                    shape = RoundedCornerShape(17.dp)
+                    shape = RoundedCornerShape(19.dp),
+                    shadowElevation = 1.dp
                 ) {
                     Row(Modifier.padding(16.dp),
                         verticalAlignment = Alignment.Top) {
