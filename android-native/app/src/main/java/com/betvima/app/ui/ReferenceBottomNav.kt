@@ -118,41 +118,14 @@ fun ReferenceAnimatedBottomNav(
     }
 }
 
-/**
- * Fixed bottom navigation plus a COMPACT, truly center-aligned bet-slip pill.
- *
- * The accessory rail is removed entirely when no selection exists, preventing
- * the unused dark rectangle seen in previous screenshots. With selections, a
- * 34dp rail is just large enough for the 30dp action (no oversized empty box).
- * The tab bar is never covered by the action.
- */
+/** Navigation has no spacer rail. The bet slip lives in Scaffold's FAB slot. */
 @Composable
 fun ReferenceBottomBar(
     state: AppState,
-    showSlip: Boolean,
     menuOpen: Boolean = false,
-    onNavigate: (String) -> Unit,
-    onSlip: () -> Unit
+    onNavigate: (String) -> Unit
 ) {
-    val hasSelection = showSlip // Keep zero-count Bet Slip accessible on sportsbook pages
-    // Keep the floating slip button on a transparent rail, not a black block.
-    // The navigation surface below retains its own dark background.
-    Column(Modifier.fillMaxWidth()) {
-        AnimatedVisibility(
-            visible = hasSelection,
-            enter = expandVertically(animationSpec = tween(180)) + fadeIn(tween(160)),
-            exit = shrinkVertically(animationSpec = tween(160)) + fadeOut(tween(130))
-        ) {
-            Box(
-                Modifier.fillMaxWidth().height(36.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                AnimatedFloatingBetslip(state.picks.size, state.lang, onSlip)
-            }
-        }
-        HorizontalDivider(color = Color.White.copy(alpha = .11f), thickness = 1.dp)
-        ReferenceAnimatedBottomNav(state, menuOpen, onNavigate)
-    }
+    ReferenceAnimatedBottomNav(state, menuOpen, onNavigate)
 }
 
 @Composable
@@ -167,34 +140,43 @@ fun AnimatedFloatingBetslip(
         if (pressed) .94f else 1f,
         animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy),
         label = "compactSlipScale")
-    Surface(
-        color = Palette.blue, shape = RoundedCornerShape(13.dp),
-        shadowElevation = 3.dp,
-        modifier = Modifier.width(96.dp).height(31.dp)
+    // Transparent 48dp tap target: the blue pill is the only painted element.
+    Box(
+        modifier = Modifier.width(112.dp).height(48.dp)
             .graphicsLayer { scaleX = scale; scaleY = scale }
             .clickable(
                 interactionSource = interactions,
-                indication = ripple(), onClick = onOpen)
+                indication = ripple(),
+                onClick = onOpen
+            ),
+        contentAlignment = Alignment.Center
     ) {
-        Row(Modifier.fillMaxSize().padding(horizontal = 7.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.Center) {
-            Icon(Icons.Default.ConfirmationNumber,
-                contentDescription = tr(lang, "Open bet slip", "باز کردن برگه شرط"),
-                tint = Color.White, modifier = Modifier.size(16.dp))
-            Spacer(Modifier.width(5.dp))
-            AnimatedContent(
-                targetState = count, label = "betslipCount",
-                transitionSpec = {
-                    (slideInVertically(tween(170)) { it / 2 } + fadeIn())
-                        .togetherWith(slideOutVertically(tween(150)) { -it / 2 } + fadeOut())
+        Surface(
+            color = Palette.blue,
+            shape = RoundedCornerShape(13.dp),
+            shadowElevation = 3.dp,
+            modifier = Modifier.width(100.dp).height(36.dp)
+        ) {
+            Row(Modifier.fillMaxSize().padding(horizontal = 7.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center) {
+                Icon(Icons.Default.ConfirmationNumber,
+                    contentDescription = tr(lang, "Open bet slip", "باز کردن برگه شرط"),
+                    tint = Color.White, modifier = Modifier.size(16.dp))
+                Spacer(Modifier.width(5.dp))
+                AnimatedContent(
+                    targetState = count, label = "betslipCount",
+                    transitionSpec = {
+                        (slideInVertically(tween(170)) { it / 2 } + fadeIn())
+                            .togetherWith(slideOutVertically(tween(150)) { -it / 2 } + fadeOut())
+                    }
+                ) { value ->
+                    Text(value.toString(), color = Color.White,
+                        fontWeight = FontWeight.Black, fontSize = 13.sp)
                 }
-            ) { value ->
-                Text(value.toString(), color = Color.White,
-                    fontWeight = FontWeight.Black, fontSize = 13.sp)
+                Icon(Icons.Default.KeyboardArrowUp, null,
+                    tint = Color.White, modifier = Modifier.size(17.dp))
             }
-            Icon(Icons.Default.KeyboardArrowUp, null,
-                tint = Color.White, modifier = Modifier.size(17.dp))
         }
     }
 }
