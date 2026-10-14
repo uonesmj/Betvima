@@ -82,13 +82,18 @@ class ApiClient {
         request(path, token, value)
     suspend fun patch(path: String, value: JSONObject, token: String): JSONObject =
         request(path, token, value, "PATCH")
+    /** Payment request uses the same idempotency key across network retries. */
+    suspend fun payoutRequest(value: JSONObject, token: String, idempotencyKey: String): JSONObject =
+        request("/api/v1/affiliate/payouts", token, value, "POST", idempotencyKey)
 
-    private suspend fun request(path: String, token: String? = null, body: JSONObject? = null, verb: String = "POST"): JSONObject =
+    private suspend fun request(path: String, token: String? = null, body: JSONObject? = null,
+        verb: String = "POST", idempotencyKey: String? = null): JSONObject =
         withContext(Dispatchers.IO) {
             require(path.startsWith("/api/v1/"))
             val builder = Request.Builder().url(base + path)
                 .header("Accept", "application/json").header("Cache-Control", "no-store")
             if (!token.isNullOrBlank()) builder.header("Authorization", "Bearer " + token)
+            if (idempotencyKey != null) builder.header("Idempotency-Key", idempotencyKey)
             if (body != null) builder.method(verb, body.toString().toRequestBody(jsonType))
             client.newCall(builder.build()).execute().use { response ->
                 val raw = response.body?.string().orEmpty()
