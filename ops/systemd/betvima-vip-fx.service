@@ -1,0 +1,13 @@
+[Unit]
+Description=BetVima signed historical USD/toman FX evidence ingestion
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+User=root
+WorkingDirectory=/opt/nova
+EnvironmentFile=/opt/nova/.env.production
+ExecStart=/usr/bin/node --import tsx /opt/nova/src/workers/entrypoints/vip-fx.worker.ts
+TimeoutStartSec=120
+NoNewPrivileges=true
