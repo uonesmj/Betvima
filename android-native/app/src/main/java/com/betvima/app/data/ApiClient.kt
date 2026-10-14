@@ -30,6 +30,46 @@ fun searchQueryPath(query: String, live: Boolean): String {
         "&page=1&pageSize=50&q=" + URLEncoder.encode(term, "UTF-8")
 }
 
+/** Server-owned filters keep My Bets accurate across all result pages.
+ * Date is a rolling UTC day boundary, not an estimate of the user's finances.
+ */
+data class BetHistoryQuery(
+    val status: String = "all",
+    val type: String = "all",
+    val search: String = "",
+    val days: Int = 0
+)
+
+fun betHistoryPath(query: BetHistoryQuery, page: Int, todayUtc: java.time.LocalDate =
+    java.time.LocalDate.now(java.time.ZoneOffset.UTC)): String {
+    require(page in 1..1000)
+    require(query.days in setOf(0, 7, 30, 90))
+    val statuses = when (query.status) {
+        "all" -> null
+        "open" -> "pending,accepted,partially_settled,manual_review"
+        "settled" -> "settled,void,refunded,cancelled,cashed_out,rejected"
+        else -> throw IllegalArgumentException("Invalid bet status")
+    }
+    val kind = when (query.type) {
+        "all" -> null
+        "single" -> "SINGLE"
+        "multiple" -> "MULTIPLE"
+        else -> throw IllegalArgumentException("Invalid bet type")
+    }
+    val search = query.search.trim()
+    require(search.length <= 70)
+    return buildString {
+        append("/api/v1/bets?pageSize=30&page=")
+        append(page)
+        append("&sortBy=placed_at&sortDirection=desc")
+        if (statuses != null) append("&status=" + URLEncoder.encode(statuses, "UTF-8"))
+        if (kind != null) append("&type=" + kind)
+        if (search.isNotEmpty()) append("&q=" + URLEncoder.encode(search, "UTF-8"))
+        if (query.days > 0) append("&from=" +
+            URLEncoder.encode(todayUtc.minusDays(query.days.toLong()).toString(), "UTF-8"))
+    }
+}
+
 /** HTTPS-only read interface to BetVima. Never logs credentials or wallet contents. */
 class ApiClient {
     private val client = OkHttpClient.Builder().connectTimeout(8, TimeUnit.SECONDS)
@@ -116,9 +156,11 @@ class ApiClient {
         val match = data.optJSONObject("match") ?: throw ApiFailure(404, "Match unavailable")
         return parseMatch(match, data.optJSONArray("markets"))
     }
-    suspend fun bets(token: String, page: Int = 1): BetPage {
-        require(page in 1..1000)
-        val response = get("/api/v1/bets?pageSize=30&page=" + page, token)
+    suspend fun bets(token: String, page: Int = 1): BetPage =
+        betHistory(token, BetHistoryQuery(), page)
+
+    suspend fun betHistory(token: String, filter: BetHistoryQuery, page: Int = 1): BetPage {
+        val response = get(betHistoryPath(filter, page), token)
         val items = response.arr("items").objects().map {
             Bet(
                 id = it.str("id"),
