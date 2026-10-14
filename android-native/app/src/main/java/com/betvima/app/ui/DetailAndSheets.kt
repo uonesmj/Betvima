@@ -640,8 +640,9 @@ fun LoginSheet(state: AppState, model: AppViewModel) {
                                         "تأیید واقعی «من ربات نیستم» کلودفلر")
                                 ).forEach { item ->
                                     Row(verticalAlignment = Alignment.CenterVertically) {
-                                        Icon(Icons.Default.CheckCircle, null, tint = Palette.green,
-                                            modifier = Modifier.size(17.dp))
+                                        // A requirement, not an already-verified Cloudflare check.
+                                        Icon(Icons.Default.RadioButtonUnchecked, null,
+                                            tint = Palette.muted, modifier = Modifier.size(17.dp))
                                         Spacer(Modifier.width(8.dp))
                                         Text(item, color = Palette.text, fontSize = 11.sp)
                                     }
