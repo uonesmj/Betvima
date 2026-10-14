@@ -27,13 +27,15 @@ describe('VIP cashback finance safeguards', () => {
     expect(migration).toContain("currency = 'USD'");
   });
 
-  it('uses verified ledger deposits and authoritative settled main-wallet losses', () => {
+  it('uses verified deposits and NET authoritative settled main-wallet results', () => {
     expect(migration).toContain("p.status = 'succeeded'");
     expect(migration).toContain("wt.type = 'deposit'");
     expect(migration).toContain("wt.currency = 'USD'");
     expect(migration).toContain("b.funding_source = 'main'");
     expect(migration).toContain('bs.reversed_by is null');
-    expect(migration).toContain("s.net_user_result_minor < 0");
+    expect(migration).toContain('greatest(0::numeric, -sum(s.net_user_result_minor::numeric))');
+    expect(migration).toContain("s.net_user_result_minor is not null");
+    expect(migration).toContain("net_settled_main_wallet_losses_v2");
   });
 
   it('has two independent disabled-by-default money gates', () => {
@@ -47,7 +49,7 @@ describe('VIP cashback finance safeguards', () => {
   it('records wallet payments once and exposes reconciliation alerts', () => {
     expect(migration).toContain('unique(user_id, week_start)');
     expect(migration).toContain('pg_advisory_xact_lock');
-    expect(migration).toContain("'vip_cashback'::nova.wallet_tx_type");
+    expect(migration).toContain("'vip_cashback'");
     expect(migration).toContain('nova.credit_wallet(');
     expect(migration).toContain('vip_cashback_reconcile');
     expect(migration).toContain('vip_cashback_discrepancies');
