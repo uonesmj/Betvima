@@ -161,7 +161,7 @@ function BonusCard({
   percentageBps: number;
 }) {
   const { locale } = useApp();
-  const tr = (value: string) => locale === 'fa' ? translateVisibleText(value) : value;
+  const tr = (value: string | undefined) => { const label = value ?? ''; return locale === 'fa' ? translateVisibleText(label) : label; };
   const timer = countdown(bonus.expiresAt, now);
   const isActive = bonus.status === 'active';
   const isLocked = bonus.status === 'locked';
@@ -348,7 +348,7 @@ const faqs = [
 
 export function BonusesClient() {
   const { locale } = useApp();
-  const tr = (value: string) => locale === 'fa' ? translateVisibleText(value) : value;
+  const tr = (value: string | undefined) => { const label = value ?? ''; return locale === 'fa' ? translateVisibleText(label) : label; };
   const [data, setData] = useState<BonusesResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
