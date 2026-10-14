@@ -149,7 +149,8 @@ class ApiClient {
             w.str("heldMinor", "0"), w.str("currency", "USD"),
             data.str("integrity", "unknown"), tx.arr("items").objects().map {
                 Transaction(it.str("id"), it.str("type", "transaction"),
-                    it.str("amountMinor", "0"), it.str("createdAt"))
+                    it.str("amountMinor", "0"), it.str("createdAt"),
+                    it.str("direction"), it.str("status"))
             }, tx.optInt("page", page), tx.optBoolean("hasMore", false))
     }
     suspend fun bonuses(token: String): List<Bonus> =
