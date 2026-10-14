@@ -7,6 +7,14 @@ import org.json.JSONObject
 import org.junit.Test
 
 class FinancialFormattingTest {
+    @Test fun nativeSearchEncodesTeamAndLeagueNames() {
+        assertEquals("/api/v1/matches?live=true&page=1&pageSize=50&q=Real+Madrid",
+            searchQueryPath(" Real Madrid ", true))
+        assertEquals("/api/v1/matches?live=false&page=1&pageSize=50&q=Premier+League",
+            searchQueryPath("Premier League", false))
+        assertTrue(runCatching { searchQueryPath(" ", true) }.isFailure)
+        assertTrue(runCatching { searchQueryPath("a".repeat(81), false) }.isFailure)
+    }
     @Test fun topSportQueriesDoNotSendInventedSportId() {
         assertEquals("/api/v1/matches?live=false&page=1&pageSize=50", upcomingQueryPath("all"))
         assertEquals("/api/v1/matches?live=false&page=1&pageSize=50&sport=football",
