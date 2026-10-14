@@ -3,7 +3,7 @@
 -- ============================================================================
 \set ON_ERROR_STOP on
 create schema if not exists tests;
-\i /home/user/nova-sportsbook/tests/sql/00_fixtures.sql
+\ir 00_fixtures.sql
 
 do $$
 declare
