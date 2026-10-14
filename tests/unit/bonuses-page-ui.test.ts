@@ -10,7 +10,7 @@ describe('Premium bonuses page regression', () => {
     expect(route).toContain('PageShell');
   });
   it('handles API envelope and never shows fabricated account statistics to guests', () => {
-    expect(ui).toContain("'data' in payload ? payload.data : payload");
+    expect(ui).toContain('envelope.data ?? responseBody');
     expect(ui).toContain('session?.authenticated');
     expect(ui).toContain('summaryLoaded && data');
     expect(ui).toContain("number: summaryLoaded");

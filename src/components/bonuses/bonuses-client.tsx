@@ -93,7 +93,7 @@ function prettyDate(date: string, locale: 'fa' | 'en') {
     day: 'numeric', month: 'short', year: 'numeric',
   }).format(d);
 }
-function timeRemaining(expiresAt: string, now: number) {
+function timeRemaining(expiresAt: string, now: number, locale: 'fa' | 'en') {
   const value = (new Date(expiresAt).getTime() - now) / 1000;
   const remaining = Number.isFinite(value) ? Math.max(0, Math.ceil(value)) : 0;
   const d = Math.floor(remaining / 86400);
@@ -101,7 +101,7 @@ function timeRemaining(expiresAt: string, now: number) {
   const m = Math.floor((remaining % 3600) / 60);
   const s = remaining % 60;
   const pad = (n: number) => String(n).padStart(2, '0');
-  return { seconds: remaining, label: (d ? d + 'd ' : '') + pad(h) + ':' + pad(m) + ':' + pad(s) };
+  return { seconds: remaining, label: (d ? d + (locale === 'fa' ? ' روز ' : 'd ') : '') + pad(h) + ':' + pad(m) + ':' + pad(s) };
 }
 
 function Status({ status, copy }: { status: BonusStatus; copy: Copy }) {
@@ -121,7 +121,7 @@ function BonusCard({ item, copy, locale, now }: {
   const remaining = Number(item.remainingAmountMinor);
   const pct = total > 0 && Number.isFinite(total) && Number.isFinite(remaining)
     ? Math.max(0, Math.min(100, (remaining / total) * 100)) : 0;
-  const time = timeRemaining(item.expiresAt, now);
+  const time = timeRemaining(item.expiresAt, now, locale);
   const urgent = available && time.seconds > 0 && time.seconds <= 6 * 3600;
   return (
     <article className="group relative min-w-0 overflow-hidden rounded-[23px] border border-[#263D48] bg-[linear-gradient(135deg,#10242B_0%,#0B1922_72%,#11231F_100%)] p-4 shadow-[0_14px_44px_rgba(0,0,0,.16)] transition-colors hover:border-[#00D47A]/50 sm:p-5">
@@ -233,8 +233,9 @@ export function BonusesClient() {
         setData(null);
         return;
       }
-      const payload = (await res.json()) as { ok?: boolean; data?: BonusesResponse } | BonusesResponse;
-      const result = 'data' in payload ? payload.data : payload;
+      const responseBody: unknown = await res.json();
+      const envelope = responseBody as { data?: unknown };
+      const result = (envelope.data ?? responseBody) as BonusesResponse;
       if (!result || !result.summary || !Array.isArray(result.items)) {
         setError('unavailable');
         setData(null);
