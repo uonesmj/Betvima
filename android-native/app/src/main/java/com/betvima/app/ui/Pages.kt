@@ -303,6 +303,26 @@ fun BetsPage(state: AppState, model: AppViewModel) {
         if (selectedFilter == 1) !it.isSettled else it.isSettled }
     LazyColumn(contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(11.dp)) {
         item {
+            BvPageBanner(
+                eyebrow = tr(state.lang, "MY BETS", "شرط‌های من"),
+                title = tr(state.lang, "Your bet history", "همه شرط‌ها، یک‌جا"),
+                subtitle = tr(state.lang,
+                    "Track your tickets and view their server-confirmed settlement.",
+                    "وضعیت بلیت‌ها و تسویه‌های قطعی را مستقیم از سرور پیگیری کنید."),
+                icon = Icons.Default.ReceiptLong
+            ) {
+                Spacer(Modifier.height(3.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    SmallPill(state.bets.count { !it.isSettled }.toString() +
+                        tr(state.lang, " Open", " باز"),
+                        Color.White.copy(alpha = .12f), Color.White)
+                    SmallPill(state.bets.count { it.isSettled }.toString() +
+                        tr(state.lang, " Settled", " تسویه‌شده"),
+                        Palette.green.copy(alpha = .16f), Palette.green)
+                }
+            }
+        }
+        item {
             SectionHeading(tr(state.lang, "My bets", "شرط‌های من"),
                 tr(state.lang, "Ticket history verified by the server", "سابقه شرط‌ها طبق اطلاعات سرور"),
                 tr(state.lang, "Refresh", "تازه‌سازی")) { model.refreshAccount() }
@@ -338,10 +358,18 @@ fun BetsPage(state: AppState, model: AppViewModel) {
             }
             items(filtered, key = { it.id }) { bet ->
                 Surface(modifier = Modifier.fillMaxWidth().clickable { model.openBet(bet.id) },
-                    shape = RoundedCornerShape(17.dp), color = Color.White,
+                    shape = RoundedCornerShape(19.dp), color = Color.White,
+                    shadowElevation = 1.dp,
                     border = BorderStroke(1.dp, Palette.border)) {
                     Column(Modifier.padding(16.dp)) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
+                            Surface(color = if (bet.isSettled) Palette.greenLight else Palette.paper,
+                                shape = RoundedCornerShape(11.dp)) {
+                                Icon(Icons.Default.ReceiptLong, null,
+                                    tint = if (bet.isSettled) Palette.ink else Palette.blue,
+                                    modifier = Modifier.padding(10.dp).size(19.dp))
+                            }
+                            Spacer(Modifier.width(10.dp))
                             Column(Modifier.weight(1f)) {
                                 Text(if (bet.legs > 1)
                                     tr(state.lang, "Multiple · ", "میکس · ") + bet.legs
@@ -372,9 +400,17 @@ fun BetsPage(state: AppState, model: AppViewModel) {
                                     fontWeight = FontWeight.Black, color = Palette.text)
                             }
                         }
-                        Text(tr(state.lang, "View full receipt", "مشاهده رسید کامل"),
-                            color = Palette.blue, fontWeight = FontWeight.Bold, fontSize = 11.sp,
-                            modifier = Modifier.padding(top = 9.dp))
+                        Row(Modifier.fillMaxWidth().padding(top = 12.dp),
+                            verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Default.VerifiedUser, null, tint = Palette.blue,
+                                modifier = Modifier.size(15.dp))
+                            Spacer(Modifier.width(5.dp))
+                            Text(tr(state.lang, "View verified receipt", "مشاهده رسید تأییدشده"),
+                                color = Palette.blue, fontWeight = FontWeight.Bold,
+                                fontSize = 11.sp, modifier = Modifier.weight(1f))
+                            Icon(Icons.Default.ChevronRight, null, tint = Palette.blue,
+                                modifier = Modifier.size(18.dp))
+                        }
                         if (bet.netResultMinor != null || bet.combinedOddsScaled != "0") {
                             Spacer(Modifier.height(9.dp))
                             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -404,9 +440,38 @@ fun BetsPage(state: AppState, model: AppViewModel) {
     }
 }
 
+private fun walletTransactionLabel(type: String, lang: Lang): String =
+    if (lang == Lang.EN) type.replace("_", " ").replaceFirstChar { it.uppercase() }
+    else when (type) {
+        "deposit" -> "واریز"
+        "withdrawal" -> "برداشت"
+        "withdrawal_hold" -> "مسدودسازی برداشت"
+        "withdrawal_release" -> "آزادسازی برداشت"
+        "bet_debit" -> "ثبت شرط"
+        "bet_refund" -> "برگشت شرط"
+        "win_credit" -> "واریز برد"
+        "void_refund" -> "برگشت شرط باطل"
+        "bonus" -> "بونوس"
+        "adjustment" -> "اصلاح حساب"
+        "reversal" -> "بازگشت تراکنش"
+        "affiliate_payout" -> "پرداخت افیلیت"
+        "cashout" -> "تسویه زودهنگام"
+        else -> type.replace("_", " ")
+    }
+
 @Composable
 fun WalletPage(state: AppState, model: AppViewModel) {
     LazyColumn(contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        item {
+            BvPageBanner(
+                eyebrow = tr(state.lang, "MY WALLET", "کیف‌پول من"),
+                title = tr(state.lang, "Your USD account", "مدیریت موجودی دلاری"),
+                subtitle = tr(state.lang,
+                    "Balances and transactions shown here are supplied by the secure ledger.",
+                    "موجودی و تراکنش‌ها از دفترکل امن سرور دریافت می‌شوند."),
+                icon = Icons.Default.AccountBalanceWallet, accent = Palette.green
+            )
+        }
         item { SectionHeading(tr(state.lang, "My wallet", "کیف‌پول من"),
             tr(state.lang, "USD account and transaction ledger", "حساب دلاری و گردش موجودی"),
             tr(state.lang, "Refresh", "تازه‌سازی")) { model.refreshAccount() } }
@@ -424,9 +489,18 @@ fun WalletPage(state: AppState, model: AppViewModel) {
                         "تا زمان تأیید سرور موجودی نمایش داده نمی‌شود.")) { model.refreshAccount() }
             } else {
                 item {
-                    Surface(color = Palette.ink, shape = RoundedCornerShape(24.dp),
-                        modifier = Modifier.fillMaxWidth()) {
-                        Column(Modifier.padding(22.dp)) {
+                    Surface(color = Palette.ink, shape = RoundedCornerShape(23.dp),
+                        modifier = Modifier.fillMaxWidth(), shadowElevation = 3.dp) {
+                        Column(Modifier.fillMaxWidth().padding(23.dp)) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(Icons.Default.AccountBalanceWallet, null, tint = Palette.green,
+                                    modifier = Modifier.size(21.dp))
+                                Spacer(Modifier.width(8.dp))
+                                Text(tr(state.lang, "BETVIMA USD WALLET", "کیف‌پول دلاری بت‌ویما"),
+                                    color = Color.White, fontSize = 11.sp,
+                                    fontWeight = FontWeight.ExtraBold)
+                            }
+                            Spacer(Modifier.height(16.dp))
                             Text(tr(state.lang, "AVAILABLE BALANCE", "موجودی قابل برداشت"),
                                 color = Color(0xFFB0C2C7), fontSize = 11.sp, fontWeight = FontWeight.Bold)
                             Text(money(wallet.availableMinor, wallet.currency),
@@ -444,9 +518,11 @@ fun WalletPage(state: AppState, model: AppViewModel) {
                     }
                 }
                 if (wallet.integrity != "ok") item {
-                    Text(tr(state.lang, "Wallet integrity is under review; transfers are unavailable here.",
-                        "یکپارچگی کیف‌پول نیازمند بررسی است؛ انتقال وجه در اپ غیرفعال است."),
-                        color = Palette.red, fontSize = 12.sp)
+                    BvInformationStrip(
+                        tr(state.lang,
+                            "Wallet integrity is under review. Transfers are unavailable in the app.",
+                            "یکپارچگی کیف‌پول نیازمند بررسی است؛ انتقال وجه در اپ غیرفعال است."),
+                        icon = Icons.Default.WarningAmber, accent = Palette.red)
                 }
                 item { SectionHeading(tr(state.lang, "Recent activity", "تراکنش‌های اخیر")) }
                 if (wallet.transactions.isEmpty()) item {
@@ -461,12 +537,20 @@ fun WalletPage(state: AppState, model: AppViewModel) {
                             Icon(Icons.Default.ReceiptLong, null, tint = Palette.blue)
                             Spacer(Modifier.width(12.dp))
                             Column(Modifier.weight(1f)) {
-                                Text(tx.type.replace("_", " "), fontWeight = FontWeight.Bold,
-                                    fontSize = 12.sp)
+                                Text(walletTransactionLabel(tx.type, state.lang),
+                                    fontWeight = FontWeight.Bold, fontSize = 12.sp)
                                 Text(tx.time.take(16).replace("T", " "), color = Palette.muted, fontSize = 10.sp)
                             }
-                            Text(money(tx.amountMinor, wallet.currency), fontWeight = FontWeight.Bold,
-                                fontSize = 12.sp)
+                            Column(horizontalAlignment = Alignment.End) {
+                                Text(money(tx.amountMinor, wallet.currency),
+                                    fontWeight = FontWeight.Black, fontSize = 12.sp,
+                                    color = if (tx.direction == "credit") Palette.green
+                                        else if (tx.direction == "debit") Palette.red else Palette.text)
+                                if (tx.status.isNotBlank()) Text(
+                                    if (tx.status == "posted") tr(state.lang, "Posted", "ثبت‌شده")
+                                    else tx.status.replace("_", " "),
+                                    fontSize = 10.sp, color = Palette.muted)
+                            }
                         }
                     }
                 }
