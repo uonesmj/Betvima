@@ -146,6 +146,22 @@ begin
       end as bps
     from deposits d
     left join net_results l on l.user_id = d.user_id
+    -- Do not pretend historical IRR/USDT/etc betting results are USD.
+    -- Without a verified per-settlement historical FX snapshot, exclude the
+    -- entire mixed-currency user/week instead of silently under/overpaying.
+    where not exists (
+      select 1 from nova.bets mixed
+      join nova.bet_settlements mixed_s
+        on mixed_s.bet_id = mixed.id
+       and mixed_s.kind = 'settlement'
+       and mixed_s.reversed_by is null
+       and mixed_s.status_after = 'settled'
+      where mixed.user_id = d.user_id
+        and mixed.currency <> 'USD'
+        and mixed.funding_source = 'main'
+        and mixed_s.created_at >= v_start
+        and mixed_s.created_at < v_end
+    )
   )
   select q.user_id, q.deposits, q.losses, q.bps,
     case when q.bps > 0 then nova.apply_bps(q.losses, q.bps) else 0 end
