@@ -85,6 +85,17 @@ async function sweepTeams(ctx: WorkerContext): Promise<{ resolved: number; misse
         and m.scheduled_at > now() - interval '14 days'
       where t.logo is null
         and s.slug <> all($2::text[])
+        -- Skip names already proven to have no badge. Without this the sweep
+        -- re-selects the same confirmed misses forever and never advances to
+        -- new names (the batch is ordered, so a dead head blocks the queue).
+        and not exists (
+          select 1 from nova.logo_cache lc
+           where lc.entity_type = 'team'
+             and lc.sport = s.slug
+             and lc.name = t.name
+             and lc.logo_url is null
+             and lc.expires_at > now()
+        )
       group by t.id, t.name, s.slug
       order by ${sportRank("s.slug")}, count(m.id) desc, t.updated_at desc
       limit $1`,
@@ -143,6 +154,14 @@ async function sweepLeagues(ctx: WorkerContext): Promise<{ resolved: number; mis
         and m.scheduled_at > now() - interval '14 days'
       where l.logo is null
         and s.slug <> all($2::text[])
+        and not exists (
+          select 1 from nova.logo_cache lc
+           where lc.entity_type = 'league'
+             and lc.sport = s.slug
+             and lc.name = coalesce(nullif(l.name, ''), l.slug)
+             and lc.logo_url is null
+             and lc.expires_at > now()
+        )
       group by l.id, l.name, l.slug, s.slug
       order by ${sportRank("s.slug")}, count(m.id) desc, l.updated_at desc
       limit $1`,
