@@ -42,7 +42,13 @@ fun BetvimaApp(model: AppViewModel) {
     val drawer = rememberDrawerState(DrawerValue.Closed)
     val drawerScope = rememberCoroutineScope()
     var isForeground by remember { mutableStateOf(true) }
-    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { isForeground = true }
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
+        isForeground = true
+        if (state.tab in setOf(Tab.HOME, Tab.LIVE) &&
+            state.feature == Feature.NONE && state.detail == null) {
+            model.refreshLive(silent = true)
+        }
+    }
     LifecycleEventEffect(Lifecycle.Event.ON_PAUSE) { isForeground = false }
 
     LaunchedEffect(state.notice) {
@@ -64,7 +70,7 @@ fun BetvimaApp(model: AppViewModel) {
     BackHandler(enabled = languageOpen || searchOpen || state.betDetailVisible || state.showLogin ||
         state.showSlip || state.detail != null ||
         state.feature != Feature.NONE || accountOpen || drawer.isOpen ||
-        state.tab != Tab.HOME) {
+        state.tab != Tab.HOME || state.homeMode == HomeMode.TOP_BETS) {
         when {
             languageOpen -> languageOpen = false
             state.betDetailVisible -> model.closeBet()
@@ -75,6 +81,8 @@ fun BetvimaApp(model: AppViewModel) {
             searchOpen -> { search = ""; searchOpen = false }
             state.detail != null -> model.closeMatch()
             state.feature != Feature.NONE -> model.feature(Feature.NONE)
+            state.tab == Tab.HOME && state.homeMode == HomeMode.TOP_BETS ->
+                model.homeMode(HomeMode.TOP)
             else -> model.tab(Tab.HOME)
         }
     }
