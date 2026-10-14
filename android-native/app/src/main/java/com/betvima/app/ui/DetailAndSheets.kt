@@ -482,9 +482,18 @@ fun LoginSheet(state: AppState, model: AppViewModel) {
     var email by rememberSaveable { mutableStateOf("") }
     var password by rememberSaveable { mutableStateOf("") }
     var visible by rememberSaveable { mutableStateOf(false) }
+    var registrationBrowserOpened by rememberSaveable { mutableStateOf(false) }
+    androidx.lifecycle.compose.LifecycleEventEffect(androidx.lifecycle.Lifecycle.Event.ON_RESUME) {
+        if (registrationBrowserOpened) {
+            registrationBrowserOpened = false
+            // After returning from Cloudflare-protected registration, show native login.
+            model.setRegisterScreen(false)
+        }
+    }
     val uri = LocalUriHandler.current
     val context = androidx.compose.ui.platform.LocalContext.current
     val browserRegistration: () -> Unit = {
+        registrationBrowserOpened = true
         // Account creation MUST pass the server's Cloudflare Turnstile, age and
         // terms checks. Do not bypass them through a direct Supabase sign-up.
         val target = android.net.Uri.parse("https://betvima.com/auth/register")
@@ -613,9 +622,32 @@ fun LoginSheet(state: AppState, model: AppViewModel) {
                             fontSize = 12.sp, lineHeight = 20.sp, color = Palette.muted)
                         BvInformationStrip(
                             tr(state.lang,
-                                "Registration opens in a secure browser tab; no password is passed from the app.",
-                                "فرم ثبت‌نام در تب امن مرورگر باز می‌شود؛ هیچ رمزی از اپ به مرورگر ارسال نمی‌شود."),
-                            icon = Icons.Default.Shield, accent = Palette.blue)
+                                "Official BetVima registration: email, password, optional referral code, age and terms confirmation, followed by real Cloudflare Turnstile verification.",
+                                "ثبت‌نام رسمی بت‌ویما شامل ایمیل، رمز عبور، کد معرف اختیاری، تأیید سن و قوانین و سپس بررسی واقعی کلودفلر است."),
+                            icon = Icons.Default.VerifiedUser, accent = Palette.blue)
+                        Surface(color = Palette.paper, shape = RoundedCornerShape(15.dp)) {
+                            Column(Modifier.fillMaxWidth().padding(13.dp),
+                                verticalArrangement = Arrangement.spacedBy(7.dp)) {
+                                Text(tr(state.lang, "Security checks", "کنترل‌های امنیتی"),
+                                    fontWeight = FontWeight.ExtraBold,
+                                    color = Palette.text, fontSize = 13.sp)
+                                listOf(
+                                    tr(state.lang, "Account email and strong password",
+                                        "ایمیل و رمز عبور امن"),
+                                    tr(state.lang, "18+ and terms confirmation",
+                                        "تأیید سن بالای ۱۸ سال و قوانین"),
+                                    tr(state.lang, "Cloudflare I'm not a robot verification",
+                                        "تأیید واقعی «من ربات نیستم» کلودفلر")
+                                ).forEach { item ->
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Icon(Icons.Default.CheckCircle, null, tint = Palette.green,
+                                            modifier = Modifier.size(17.dp))
+                                        Spacer(Modifier.width(8.dp))
+                                        Text(item, color = Palette.text, fontSize = 11.sp)
+                                    }
+                                }
+                            }
+                        }
                         Button(onClick = browserRegistration,
                             shape = RoundedCornerShape(13.dp),
                             colors = ButtonDefaults.buttonColors(
