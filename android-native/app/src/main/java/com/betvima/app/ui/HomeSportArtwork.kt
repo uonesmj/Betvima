@@ -61,7 +61,7 @@ fun SportsBadgeShortcut(
             color = Color(0xFF0A1522)
         ) {
             Canvas(Modifier.fillMaxSize().clip(CircleShape)) {
-                val tile = 80
+                val tile = 112
                 drawImage(
                     image = atlas,
                     srcOffset = IntOffset((index % 4) * tile, (index / 4) * tile),
