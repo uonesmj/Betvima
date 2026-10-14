@@ -45,4 +45,16 @@ class NativeRegistrationTest {
         assertFalse(postSignupLoginEnabled(true, "", false))
         assertFalse(postSignupLoginEnabled(true, "secretPassword1", true))
     }
+
+    @Test fun registrationCurrencyIsRestrictedToUsdAndIrr() {
+        assertEquals(listOf("USD", "IRR"), registrationCurrencies)
+        assertEquals("IRR", signupPayload("a@b.com", "strongPassword1", "IRR", "", "fa", "token")
+            .getString("currency"))
+        assertThrows(IllegalArgumentException::class.java) {
+            signupPayload("a@b.com", "strongPassword1", "EUR", "", "fa", "token")
+        }
+        assertThrows(IllegalArgumentException::class.java) {
+            signupPayload("a@b.com", "strongPassword1", "GBP", "", "fa", "token")
+        }
+    }
 }
