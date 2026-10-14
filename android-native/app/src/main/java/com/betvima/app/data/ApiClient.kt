@@ -1,6 +1,12 @@
 package com.betvima.app.data
 
 import com.betvima.app.BuildConfig
+import android.content.ContentResolver
+import android.net.Uri
+import okhttp3.MultipartBody
+import okhttp3.Response
+import okhttp3.RequestBody.Companion.toRequestBody
+import java.io.ByteArrayOutputStream
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.MediaType.Companion.toMediaType
@@ -93,8 +99,20 @@ class ApiClient {
     suspend fun payoutRequest(value: JSONObject, token: String, idempotencyKey: String): JSONObject =
         request("/api/v1/affiliate/payouts", token, value, "POST", idempotencyKey)
 
+    private fun apiJson(response: Response): JSONObject {
+        val raw = response.body?.string().orEmpty()
+        val wrapper = runCatching { JSONObject(raw) }.getOrDefault(JSONObject())
+        if (!response.isSuccessful || !wrapper.optBoolean("ok", false)) {
+            throw ApiFailure(response.code,
+                wrapper.optJSONObject("error")?.optString("message").orEmpty()
+                    .ifBlank { "Request failed: " + response.code })
+        }
+        return wrapper.optJSONObject("data") ?: wrapper
+    }
+
     private suspend fun request(path: String, token: String? = null, body: JSONObject? = null,
-        verb: String = "POST", idempotencyKey: String? = null): JSONObject =
+        verb: String = "POST", idempotencyKey: String? = null,
+        emptyPost: Boolean = false): JSONObject =
         withContext(Dispatchers.IO) {
             require(path.startsWith("/api/v1/"))
             val builder = Request.Builder().url(base + path)
@@ -102,17 +120,9 @@ class ApiClient {
             if (!token.isNullOrBlank()) builder.header("Authorization", "Bearer " + token)
             if (idempotencyKey != null) builder.header("Idempotency-Key", idempotencyKey)
             if (body != null) builder.method(verb, body.toString().toRequestBody(jsonType))
-            (if (idempotencyKey == null) client else financialClient)
-                .newCall(builder.build()).execute().use { response ->
-                val raw = response.body?.string().orEmpty()
-                val wrapper = runCatching { JSONObject(raw) }.getOrDefault(JSONObject())
-                if (!response.isSuccessful || !wrapper.optBoolean("ok", false)) {
-                    throw ApiFailure(response.code,
-                        wrapper.optJSONObject("error")?.optString("message").orEmpty()
-                            .ifBlank { "Request failed: " + response.code })
-                }
-                wrapper.optJSONObject("data") ?: wrapper
-            }
+            else if (emptyPost) builder.post(ByteArray(0).toRequestBody(null))
+            (if (idempotencyKey == null && !emptyPost) client else financialClient)
+                .newCall(builder.build()).execute().use(::apiJson)
         }
 
     suspend fun login(email: String, password: String): JSONObject {
@@ -356,18 +366,76 @@ class ApiClient {
         }
         return SupportConversation(parseSupportTicket(ticket), messages)
     }
+    private fun parseSupportMessage(m: JSONObject): SupportThreadMessage =
+        SupportThreadMessage(
+            id = m.str("id"), body = m.str("body"),
+            senderRole = m.str("senderRole"), createdAt = m.str("createdAt"),
+            attachments = m.arr("attachments").objects()
+                .map { it.str("originalName") }.filter(String::isNotBlank)
+        )
+
     suspend fun sendSupportMessage(token: String, ticketId: String, text: String): SupportThreadMessage {
         require(Regex("[a-fA-F0-9-]{36}").matches(ticketId))
         require(text.trim().length in 1..5000)
         val data = post("/api/v1/support/" + ticketId + "/messages",
             JSONObject().put("body", text.trim()), token)
         val m = data.optJSONObject("message") ?: throw ApiFailure(502, "Message status unknown")
-        return SupportThreadMessage(m.str("id"), m.str("body"),
-            m.str("senderRole"), m.str("createdAt"))
+        return parseSupportMessage(m)
     }
+
+    /**
+     * The website uses multipart/form-data, with an optional message and a
+     * real file part. Only SAF-granted documents are read; max 10 MB enforced
+     * while streaming into a bounded local byte buffer before HTTP upload.
+     */
+    suspend fun sendSupportFile(
+        token: String, ticketId: String, text: String,
+        resolver: ContentResolver, uri: Uri, fileName: String,
+        mimeType: String
+    ): SupportThreadMessage = withContext(Dispatchers.IO) {
+        require(Regex("[a-fA-F0-9-]{36}").matches(ticketId))
+        require(text.trim().length <= 5000)
+        require(mimeType in supportAttachmentMimeTypes) { "Unsupported file type" }
+        val bytes = ByteArrayOutputStream()
+        (resolver.openInputStream(uri) ?: throw IOException("Could not read selected document"))
+            .use { input ->
+                val chunk = ByteArray(16 * 1024)
+                var total = 0L
+                while (true) {
+                    val count = input.read(chunk)
+                    if (count < 0) break
+                    total += count.toLong()
+                    if (total > SUPPORT_MAX_FILE_BYTES)
+                        throw IOException("File exceeds 10 MB limit")
+                    bytes.write(chunk, 0, count)
+                }
+                require(total > 0) { "The selected file is empty" }
+            }
+        val body = MultipartBody.Builder()
+            .setType(MultipartBody.FORM)
+            .addFormDataPart("body", text.trim())
+            .addFormDataPart(
+                "file", supportSafeFilename(fileName),
+                bytes.toByteArray().toRequestBody(mimeType.toMediaType())
+            )
+            .build()
+        val req = Request.Builder()
+            .url(base + "/api/v1/support/" + ticketId + "/messages")
+            .header("Accept", "application/json")
+            .header("Cache-Control", "no-store")
+            .header("Authorization", "Bearer " + token)
+            .post(body).build()
+        val data = financialClient.newCall(req).execute().use(::apiJson)
+        parseSupportMessage(
+            data.optJSONObject("message") ?: throw ApiFailure(502, "Message status unknown")
+        )
+    }
+
+    /** Close matches the website: POST with no JSON payload. */
     suspend fun closeSupportTicket(token: String, ticketId: String): SupportTicket {
         require(Regex("[a-fA-F0-9-]{36}").matches(ticketId))
-        val data = post("/api/v1/support/" + ticketId + "/close", JSONObject(), token)
+        val data = request("/api/v1/support/" + ticketId + "/close",
+            token = token, emptyPost = true)
         return parseSupportTicket(data.optJSONObject("ticket") ?: throw ApiFailure(502, "Ticket unavailable"))
     }
 
