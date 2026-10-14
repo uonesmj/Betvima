@@ -19,6 +19,7 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -43,7 +44,8 @@ private val slipMuted = Color(0xFF7F8B9C)
 @Composable
 private fun SlipWordmark(
     modifier: Modifier = Modifier,
-    opacity: Float = .16f
+    opacity: Float = .16f,
+    tint: Color? = null
 ) {
     val context = LocalContext.current
     val imageLoader = remember(context) {
@@ -54,6 +56,7 @@ private fun SlipWordmark(
         imageLoader = imageLoader,
         contentDescription = null,
         contentScale = ContentScale.Fit,
+        colorFilter = tint?.let { ColorFilter.tint(it) },
         modifier = modifier.alpha(opacity)
     )
 }
@@ -74,13 +77,20 @@ private fun SlipPickCard(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Surface(
-                color = Color(0xFFEAF4FF),
-                shape = RoundedCornerShape(10.dp)
+                modifier = Modifier.size(width = 32.dp, height = 34.dp),
+                color = slipBlue,
+                shape = RoundedCornerShape(10.dp),
+                border = BorderStroke(1.dp, Color(0xFF4DA9FF)),
+                shadowElevation = 2.dp
             ) {
-                Text(number.toString().padStart(2,'0'),
-                    fontWeight = FontWeight.Black,fontSize = 11.sp,
-                    color = slipBlue,
-                    modifier = Modifier.padding(horizontal = 9.dp,vertical = 8.dp))
+                Box(contentAlignment = Alignment.Center) {
+                    Text(
+                        number.toString().padStart(2, '0'),
+                        fontWeight = FontWeight.Black,
+                        fontSize = 12.sp,
+                        color = Color.White
+                    )
+                }
             }
             Spacer(Modifier.width(9.dp))
             Column(
@@ -245,6 +255,9 @@ fun PremiumSlipSheet(state: AppState,model: AppViewModel) {
     val maxPicks=viewport*.235f
     var funding by rememberSaveable { mutableStateOf("main") }
     var mode by rememberSaveable { mutableStateOf("single") }
+    LaunchedEffect(state.signedIn) {
+        if (state.signedIn) model.refreshAccount()
+    }
     val listHeight = if (state.picks.isEmpty()) 68.dp else
         ((state.picks.size * 86 + 17).dp).coerceAtMost(maxPicks)
     LaunchedEffect(state.picks.size,funding) {
@@ -276,43 +289,90 @@ fun PremiumSlipSheet(state: AppState,model: AppViewModel) {
             modifier=Modifier.fillMaxWidth().heightIn(max=maxSheet).imePadding()
                 .animateContentSize()
         ) {
-            Box(
-                modifier=Modifier.fillMaxWidth().background(
-                    Brush.linearGradient(listOf(slipNavy,Color(0xFF143755))))
+            Column(
+                modifier = Modifier.fillMaxWidth()
+                    .background(Brush.linearGradient(listOf(slipNavy, Color(0xFF143755))))
+                    .padding(bottom = 5.dp)
             ) {
-                SlipWordmark(
-                    modifier=Modifier.align(Alignment.CenterEnd)
-                        .padding(end=7.dp).width(190.dp).height(54.dp),
-                    opacity=.18f
-                )
                 Row(
                     Modifier.fillMaxWidth()
-                        .padding(horizontal=14.dp,vertical=10.dp),
-                    verticalAlignment=Alignment.CenterVertically
+                        .padding(horizontal = 13.dp, vertical = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    IconButton(onClick={model.showSlip(false)},
-                        modifier=Modifier.size(33.dp)) {
-                        Icon(Icons.Default.KeyboardArrowDown,
-                            tr(lang,"Close","بستن"),tint=Color.White)
-                    }
-                    Spacer(Modifier.width(7.dp))
-                    Column(Modifier.weight(1f)) {
-                        Text("BETVIMA / BETSLIP",
-                            fontWeight=FontWeight.Black,color=Color.White,
-                            fontSize=15.sp,letterSpacing=.5.sp)
-                        Text(tr(lang,"Your prediction slip","برگه پیش‌بینی شما"),
-                            fontSize=10.sp,color=Color(0xFFC7D5E4))
-                    }
-                    Surface(color=slipGreen.copy(alpha=.17f),
-                        shape=RoundedCornerShape(50),
-                        border=BorderStroke(1.dp,slipGreen.copy(alpha=.35f))) {
-                        Text(
-                            tr(lang,"PICKS ","انتخاب‌ها ")+state.picks.size,
-                            color=Color(0xFFADFFDD),fontWeight=FontWeight.Black,
-                            fontSize=10.sp,modifier=Modifier.padding(
-                                horizontal=11.dp,vertical=7.dp)
+                    IconButton(
+                        onClick = { model.showSlip(false) },
+                        modifier = Modifier.size(33.dp)
+                    ) {
+                        Icon(
+                            Icons.Default.KeyboardArrowDown,
+                            tr(lang, "Close", "بستن"),
+                            tint = Color.White
                         )
                     }
+                    Spacer(Modifier.width(6.dp))
+                    Column(Modifier.weight(1f)) {
+                        Text(
+                            "BETVIMA / BETSLIP",
+                            fontWeight = FontWeight.Black,
+                            color = Color.White,
+                            fontSize = 13.sp,
+                            letterSpacing = .25.sp,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                        Text(
+                            tr(lang, "Your prediction slip", "برگه پیش‌بینی شما"),
+                            fontSize = 10.sp,
+                            color = Color(0xFFC7D5E4),
+                            maxLines = 1
+                        )
+                    }
+                    Spacer(Modifier.width(5.dp))
+                    Surface(
+                        color = slipGreen.copy(alpha = .15f),
+                        shape = RoundedCornerShape(12.dp),
+                        border = BorderStroke(1.dp, slipGreen.copy(alpha = .37f))
+                    ) {
+                        Row(
+                            Modifier.widthIn(max = 153.dp)
+                                .padding(horizontal = 9.dp, vertical = 7.dp),
+                            horizontalArrangement = Arrangement.spacedBy(5.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                Icons.Default.AccountBalanceWallet,
+                                contentDescription = null,
+                                tint = Color(0xFF9CF8CE),
+                                modifier = Modifier.size(14.dp)
+                            )
+                            Text(
+                                when {
+                                    !state.signedIn -> tr(lang, "Sign in", "ورود")
+                                    state.wallet == null -> tr(lang, "Loading…", "در حال بارگذاری…")
+                                    else -> money(
+                                        state.wallet.availableMinor,
+                                        state.wallet.currency
+                                    )
+                                },
+                                color = Color(0xFFDEFFEF),
+                                fontWeight = FontWeight.Black,
+                                fontSize = 11.sp,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+                    }
+                }
+                // A dedicated centered row prevents the wordmark from sitting behind
+                // the balance pill or getting cropped on narrow phone screens.
+                Box(
+                    Modifier.fillMaxWidth().height(32.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    SlipWordmark(
+                        modifier = Modifier.width(164.dp).fillMaxHeight(),
+                        opacity = .95f
+                    )
                 }
             }
             Column(
@@ -374,9 +434,10 @@ fun PremiumSlipSheet(state: AppState,model: AppViewModel) {
             }
             Box(Modifier.fillMaxWidth()) {
                 SlipWordmark(
-                    modifier=Modifier.align(Alignment.Center)
-                        .fillMaxWidth(.82f).height(85.dp),
-                    opacity=.07f
+                    modifier = Modifier.align(Alignment.Center)
+                        .fillMaxWidth(.82f).height(72.dp),
+                    opacity = .13f,
+                    tint = Color(0xFF087FF5)
                 )
                 if(state.picks.isEmpty()) {
                     Row(
