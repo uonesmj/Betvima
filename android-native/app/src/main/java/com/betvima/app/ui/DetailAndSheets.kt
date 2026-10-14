@@ -93,7 +93,7 @@ fun MatchDetailPage(state: AppState, model: AppViewModel) {
                     Row(Modifier.fillMaxWidth().clickable { expanded = !expanded }
                         .padding(horizontal = 14.dp, vertical = 15.dp),
                         verticalAlignment = Alignment.CenterVertically) {
-                        Text(market.name, modifier = Modifier.weight(1f),
+                        Text(market.label(state.lang == Lang.FA), modifier = Modifier.weight(1f),
                             fontWeight = FontWeight.Bold, color = Palette.text, fontSize = 13.sp)
                         SmallPill(market.selections.size.toString(),
                             Palette.paper, Palette.muted)
