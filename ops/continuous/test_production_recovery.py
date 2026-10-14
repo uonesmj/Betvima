@@ -93,13 +93,13 @@ class AppliedMigrationTests(unittest.TestCase):
             name='0161a_fresh_db_numeric_sequence.sql'
             (candidate/name).write_bytes(body)
             digest=hashlib.sha256(body).hexdigest()
-            scope['c'].run.return_value=(name+'|'+digest+'|f\\n').encode()
+            scope['c'].run.return_value=(name+'|'+digest+'|f'+chr(10)).encode()
             scope['verify_applied_migrations'](candidate,active,{})
             query=scope['c'].run.call_args.kwargs['input'].decode()
             self.assertIn('BEGIN READ ONLY',query)
             self.assertIn(name,query)
-            for report in (b'',(name+'|incorrect|f\\n').encode(),
-                           (name+'|'+digest+'|t\\n').encode()):
+            for report in (b'',(name+'|incorrect|f'+chr(10)).encode(),
+                           (name+'|'+digest+'|t'+chr(10)).encode()):
                 scope['c'].run.return_value=report
                 with self.assertRaisesRegex(ValueError,'verified_migration_registry_required'):
                     scope['verify_applied_migrations'](candidate,active,{})
