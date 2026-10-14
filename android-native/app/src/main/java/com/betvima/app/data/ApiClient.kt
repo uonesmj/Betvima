@@ -94,8 +94,10 @@ class ApiClient {
         val match = data.optJSONObject("match") ?: throw ApiFailure(404, "Match unavailable")
         return parseMatch(match, data.optJSONArray("markets"))
     }
-    suspend fun bets(token: String): List<Bet> =
-        get("/api/v1/bets?pageSize=30", token).arr("items").objects().map {
+    suspend fun bets(token: String, page: Int = 1): BetPage {
+        require(page in 1..1000)
+        val response = get("/api/v1/bets?pageSize=30&page=" + page, token)
+        val items = response.arr("items").objects().map {
             Bet(
                 id = it.str("id"),
                 status = it.str("status"),
@@ -110,8 +112,11 @@ class ApiClient {
                 combinedOddsScaled = it.str("combinedOddsScaled", "0")
             )
         }
-    suspend fun wallet(token: String): Wallet {
-        val data = get("/api/v1/wallet?currency=USD", token)
+        return BetPage(items, response.optInt("page", page), response.optBoolean("hasMore", false))
+    }
+    suspend fun wallet(token: String, page: Int = 1): Wallet {
+        require(page in 1..1000)
+        val data = get("/api/v1/wallet?currency=USD&page=" + page, token)
         val w = data.optJSONObject("wallet") ?: JSONObject()
         val tx = data.optJSONObject("transactions") ?: JSONObject()
         return Wallet(w.str("availableMinor", "0"), w.str("balanceMinor", "0"),
@@ -119,7 +124,7 @@ class ApiClient {
             data.str("integrity", "unknown"), tx.arr("items").objects().map {
                 Transaction(it.str("id"), it.str("type", "transaction"),
                     it.str("amountMinor", "0"), it.str("createdAt"))
-            })
+            }, tx.optInt("page", page), tx.optBoolean("hasMore", false))
     }
     suspend fun bonuses(token: String): List<Bonus> =
         get("/api/v1/bonuses?currency=USD", token).arr("items").objects().map {
