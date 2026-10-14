@@ -41,28 +41,27 @@ import androidx.compose.ui.unit.sp
  */
 @Composable
 fun PremiumLoadingOverlay(visible: Boolean, lang: Lang) {
-    val context = LocalContext.current
-    val motionEnabled = remember(context) {
-        runCatching {
-            Settings.Global.getFloat(context.contentResolver,
-                Settings.Global.ANIMATOR_DURATION_SCALE, 1f) > 0f
-        }.getOrDefault(true)
-    }
-    val animation = rememberInfiniteTransition(label = "betvimaLuxuryLoader")
-    val rotation by animation.animateFloat(
-        initialValue = 0f, targetValue = if (motionEnabled) 360f else 0f,
-        animationSpec = infiniteRepeatable(
-            tween(if (motionEnabled) 2100 else 100000, easing = LinearEasing)),
-        label = "orbitRotation")
-    val breathe by animation.animateFloat(
-        initialValue = .55f, targetValue = if (motionEnabled) 1f else .75f,
-        animationSpec = infiniteRepeatable(
-            tween(if (motionEnabled) 1250 else 100000, easing = FastOutSlowInEasing),
-            repeatMode = androidx.compose.animation.core.RepeatMode.Reverse),
-        label = "logoBreathing")
-
     AnimatedVisibility(visible = visible,
         enter = fadeIn(tween(280)), exit = fadeOut(tween(330))) {
+        val context = LocalContext.current
+        val motionEnabled = remember(context) {
+            runCatching {
+                Settings.Global.getFloat(context.contentResolver,
+                    Settings.Global.ANIMATOR_DURATION_SCALE, 1f) > 0f
+            }.getOrDefault(true)
+        }
+        val animation = rememberInfiniteTransition(label = "betvimaLuxuryLoader")
+        val rotation by animation.animateFloat(
+            initialValue = 0f, targetValue = if (motionEnabled) 360f else 0f,
+            animationSpec = infiniteRepeatable(
+                tween(if (motionEnabled) 2100 else 100000, easing = LinearEasing)),
+            label = "orbitRotation")
+        val breathe by animation.animateFloat(
+            initialValue = .55f, targetValue = if (motionEnabled) 1f else .75f,
+            animationSpec = infiniteRepeatable(
+                tween(if (motionEnabled) 1250 else 100000, easing = FastOutSlowInEasing),
+                repeatMode = androidx.compose.animation.core.RepeatMode.Reverse),
+            label = "logoBreathing")
         Box(
             Modifier.fillMaxSize().background(
                 Brush.verticalGradient(listOf(Color(0xFF060D16),
