@@ -46,9 +46,10 @@ fun BetvimaApp(model: AppViewModel) {
             }
         }
     }
-    BackHandler(enabled = state.showLogin || state.showSlip || state.detail != null ||
+    BackHandler(enabled = state.betDetailVisible || state.showLogin || state.showSlip || state.detail != null ||
         state.feature != Feature.NONE || accountOpen || state.tab != Tab.HOME) {
         when {
+            state.betDetailVisible -> model.closeBet()
             state.showLogin -> model.showLogin(false)
             state.showSlip -> model.showSlip(false)
             accountOpen -> accountOpen = false
@@ -174,6 +175,7 @@ fun BetvimaApp(model: AppViewModel) {
 
         if (state.showSlip) SlipSheet(state, model)
         if (state.showLogin) LoginSheet(state, model)
+        if (state.betDetailVisible) BetReceiptSheet(state, model)
         if (accountOpen) {
             AlertDialog(onDismissRequest = { accountOpen = false },
                 title = { Text(tr(state.lang, "Your account", "حساب کاربری")) },
