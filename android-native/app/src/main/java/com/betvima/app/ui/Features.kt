@@ -26,6 +26,7 @@ import kotlinx.coroutines.launch
 @Composable
 fun FeaturePage(state: AppState, model: AppViewModel) {
     val title = when (state.feature) {
+        Feature.PROFILE -> tr(state.lang, "Your profile", "پروفایل کاربری")
         Feature.BONUSES -> tr(state.lang, "My Bonuses", "بونوس‌های من")
         Feature.VIP -> tr(state.lang, "VIP Club", "باشگاه VIP")
         Feature.SUPPORT -> tr(state.lang, "24/7 Support", "پشتیبانی ۲۴ ساعته")
@@ -43,6 +44,7 @@ fun FeaturePage(state: AppState, model: AppViewModel) {
                 color = Palette.text, modifier = Modifier.weight(1f))
         }
         when (state.feature) {
+            Feature.PROFILE -> ProfilePage(state, model)
             Feature.VIP -> VipPage(state)
             Feature.BONUSES -> BonusPage(state, model)
             Feature.SUPPORT -> SupportPage(state, model)
