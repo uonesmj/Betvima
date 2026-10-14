@@ -178,6 +178,28 @@ begin
       'tier award applies percentage to settled net loss');
   end loop;
 
+  -- Any non-USD settled result in the same week must suspend the entire
+  -- quote until an auditable historical FX conversion is available.
+  insert into nova.bets (
+    public_id,user_id,type,status,stake_minor,currency,potential_payout_minor,
+    payout_minor,combined_odds_num,combined_odds_den,combined_odds_scaled,
+    placement_idempotency_key,funding_source,settled_at
+  ) values (
+    'VIP-IRR-' || gen_random_uuid()::text,v_band_user,'SINGLE','settled',
+    10000000,'IRR',20000000,0,2,1,20000,
+    'vip-mixed-currency:' || v_band_user::text,'main',v_deposit_date
+  ) returning id into v_band_bet;
+  insert into nova.bet_settlements(
+    bet_id,revision,kind,status_before,status_after,payout_minor,currency,
+    stake_minor,net_user_result_minor,settled_by,created_at
+  ) values (
+    v_band_bet,1,'settlement','accepted','settled',0,'IRR',10000000,
+    -10000000,'vip-mixed-test',v_deposit_date
+  );
+  select count(*) into v_count from nova.vip_cashback_quote_week(v_week)
+   where user_id=v_band_user;
+  perform tests.assert(v_count=0,'mixed IRR/USD weekly results fail closed without trusted FX snapshot');
+
   perform tests.assert(
     not has_function_privilege('authenticated','nova.vip_cashback_credit_user(date,uuid,boolean)','execute'),
     'ordinary authenticated users cannot call money-credit RPC'
