@@ -20,6 +20,7 @@ import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -58,6 +59,9 @@ internal fun signupPayload(
 }
 
 /** The mobile client unwraps server responses; tolerate a wrapped test response too. */
+internal fun postSignupLoginEnabled(completed: Boolean, password: String, busy: Boolean): Boolean =
+    completed && password.isNotBlank() && !busy
+
 internal fun publicTurnstileKey(config: JSONObject): String? {
     val fields = config.optJSONObject("data") ?: config
     return fields.optString("turnstileSiteKey").trim()
@@ -172,7 +176,12 @@ private fun RealTurnstileWidget(
  * The user enters credentials exclusively into Compose components.
  */
 @Composable
-fun NativeRegistrationForm(lang: Lang, onSuccess: (Boolean) -> Unit, onLogin: () -> Unit) {
+fun NativeRegistrationForm(
+    lang: Lang,
+    loginBusy: Boolean,
+    onSignIn: (String, String) -> Unit,
+    onLogin: () -> Unit
+) {
     val scope = rememberCoroutineScope()
     val api = remember { ApiClient() }
     val uri = LocalUriHandler.current
@@ -194,6 +203,11 @@ fun NativeRegistrationForm(lang: Lang, onSuccess: (Boolean) -> Unit, onLogin: ()
     var submitAttempted by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
     var challengeError by remember { mutableStateOf(false) }
+    // A successful registration is remembered across rotation, but never the password.
+    // Password is retained in volatile memory only for the explicit "Log in" action.
+    var registrationCompleted by rememberSaveable { mutableStateOf(false) }
+    var emailConfirmationRequired by rememberSaveable { mutableStateOf(false) }
+    var revealNewPassword by remember { mutableStateOf(false) }
 
     LaunchedEffect(configRevision) {
         configError = null
@@ -240,6 +254,165 @@ fun NativeRegistrationForm(lang: Lang, onSuccess: (Boolean) -> Unit, onLogin: ()
         unfocusedTrailingIconColor = hint
     )
 
+    if (registrationCompleted) {
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(22.dp),
+            color = Color.White,
+            border = BorderStroke(1.dp, Palette.border),
+            shadowElevation = 2.dp
+        ) {
+            Column(
+                Modifier.fillMaxWidth().padding(19.dp),
+                verticalArrangement = Arrangement.spacedBy(15.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Surface(
+                    color = Color(0xFFE8F8EF),
+                    shape = RoundedCornerShape(23.dp),
+                    border = BorderStroke(1.dp, Palette.green.copy(alpha = .24f))
+                ) {
+                    Icon(
+                        Icons.Default.CheckCircle, null, tint = Palette.green,
+                        modifier = Modifier.padding(17.dp).size(35.dp)
+                    )
+                }
+                Text(
+                    tr(lang, "Account created successfully!", "حساب کاربری شما با موفقیت ساخته شد!"),
+                    color = Palette.text, fontSize = 19.sp, fontWeight = FontWeight.Black,
+                    textAlign = TextAlign.Center
+                )
+                Text(
+                    tr(lang,
+                        "Your BetVima sign-in information is below. Use the same account on Android and the website.",
+                        "مشخصات ورود به حساب بت‌ویما در ادامه نمایش داده شده است. همین حساب در اپلیکیشن و سایت قابل استفاده است."),
+                    color = Palette.muted, fontSize = 12.sp,
+                    textAlign = TextAlign.Center, lineHeight = 19.sp
+                )
+                Surface(
+                    color = Color(0xFFF5F7FA),
+                    border = BorderStroke(1.dp, Palette.border),
+                    shape = RoundedCornerShape(17.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(
+                        Modifier.fillMaxWidth().padding(14.dp),
+                        verticalArrangement = Arrangement.spacedBy(11.dp)
+                    ) {
+                        Text(
+                            tr(lang, "YOUR SIGN-IN DETAILS", "مشخصات ورود شما"),
+                            color = Palette.muted, fontSize = 10.sp,
+                            letterSpacing = 1.sp, fontWeight = FontWeight.Black
+                        )
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Default.Email, null, tint = Palette.blue,
+                                modifier = Modifier.size(19.dp))
+                            Spacer(Modifier.width(9.dp))
+                            Column(Modifier.weight(1f)) {
+                                Text(tr(lang, "Email", "ایمیل"), color = Palette.muted, fontSize = 11.sp)
+                                Text(email.trim(), color = Palette.text,
+                                    fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                            }
+                        }
+                        HorizontalDivider(color = Palette.border)
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Default.Lock, null, tint = Palette.blue,
+                                modifier = Modifier.size(19.dp))
+                            Spacer(Modifier.width(9.dp))
+                            Column(Modifier.weight(1f)) {
+                                Text(tr(lang, "Password", "رمز عبور"),
+                                    color = Palette.muted, fontSize = 11.sp)
+                                Text(
+                                    if (password.isBlank()) tr(lang, "Re-enter at login", "در صفحه ورود دوباره وارد کنید")
+                                    else if (revealNewPassword) password else "••••••••••",
+                                    color = Palette.text, fontSize = 13.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                            if (password.isNotEmpty()) {
+                                IconButton(onClick = { revealNewPassword = !revealNewPassword }) {
+                                    Icon(
+                                        if (revealNewPassword) Icons.Default.VisibilityOff
+                                        else Icons.Default.Visibility,
+                                        tr(lang, "Show or hide password", "نمایش یا پنهان‌کردن رمز"),
+                                        tint = Palette.blue
+                                    )
+                                }
+                            }
+                        }
+                        HorizontalDivider(color = Palette.border)
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Default.AccountBalanceWallet, null,
+                                tint = Palette.blue, modifier = Modifier.size(19.dp))
+                            Spacer(Modifier.width(9.dp))
+                            Text(tr(lang, "Account currency", "ارز حساب"),
+                                color = Palette.muted, fontSize = 12.sp)
+                            Spacer(Modifier.weight(1f))
+                            Text(currency, color = Palette.text, fontSize = 13.sp,
+                                fontWeight = FontWeight.Black)
+                        }
+                    }
+                }
+                Surface(
+                    color = if (emailConfirmationRequired) Color(0xFFFFF8E8)
+                        else Color(0xFFEAF8F1),
+                    shape = RoundedCornerShape(13.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            if (emailConfirmationRequired) Icons.Default.MarkEmailUnread
+                            else Icons.Default.VerifiedUser,
+                            null, tint = if (emailConfirmationRequired) Color(0xFF906000)
+                                else Palette.green,
+                            modifier = Modifier.size(21.dp)
+                        )
+                        Spacer(Modifier.width(9.dp))
+                        Text(
+                            if (emailConfirmationRequired)
+                                tr(lang, "Verify your email first. Then tap Log in to enter your account.",
+                                    "ابتدا لینک تأیید ارسال‌شده به ایمیل را باز کنید، سپس برای ورود روی دکمه زیر بزنید.")
+                            else tr(lang, "Ready! Tap Log in to enter your account and open the home page.",
+                                "حساب آماده است! برای ورود و رفتن به صفحه اصلی، دکمه زیر را بزنید."),
+                            color = Palette.text, fontSize = 12.sp, lineHeight = 18.sp
+                        )
+                    }
+                }
+                Button(
+                    onClick = { onSignIn(email.trim(), password) },
+                    enabled = postSignupLoginEnabled(registrationCompleted, password, loginBusy),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Palette.green, contentColor = Color(0xFF03140D)),
+                    shape = RoundedCornerShape(15.dp),
+                    modifier = Modifier.fillMaxWidth().height(54.dp)
+                ) {
+                    if (loginBusy) {
+                        CircularProgressIndicator(Modifier.size(19.dp),
+                            strokeWidth = 2.dp, color = Color(0xFF03140D))
+                    } else {
+                        Icon(Icons.Default.Login, null, modifier = Modifier.size(20.dp))
+                        Spacer(Modifier.width(9.dp))
+                        Text(tr(lang, "LOG IN TO BETVIMA", "ورود به بت‌ویما"),
+                            fontWeight = FontWeight.Black, fontSize = 14.sp)
+                    }
+                }
+                OutlinedButton(
+                    onClick = onLogin,
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(13.dp)
+                ) {
+                    Text(tr(lang, "Enter credentials manually", "ورود دستی با مشخصات حساب"),
+                        fontWeight = FontWeight.Bold, color = Palette.blue)
+                }
+                Text(
+                    tr(lang,
+                        "Your password is not saved by this page. Keep it private.",
+                        "رمز عبور در این صفحه ذخیره دائمی نمی‌شود؛ آن را محرمانه نگه دارید."),
+                    color = Palette.muted, fontSize = 10.sp, textAlign = TextAlign.Center
+                )
+            }
+        }
+    } else {
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(22.dp),
@@ -495,8 +668,14 @@ fun NativeRegistrationForm(lang: Lang, onSuccess: (Boolean) -> Unit, onLogin: ()
                         val result = api.registerAccount(signupPayload(
                             email, password, currency, referral,
                             if (lang == Lang.FA) "fa" else "en", currentToken))
-                        password = ""; confirmation = ""; token = null
-                        onSuccess(result.optBoolean("emailConfirmationRequired", false))
+                        // Preserve the user-entered password only in volatile memory,
+                        // so the explicit login button can use the same credentials.
+                        emailConfirmationRequired = result.optBoolean("emailConfirmationRequired", false)
+                        registrationCompleted = true
+                        confirmation = ""
+                        showPassword = false
+                        revealNewPassword = false
+                        token = null
                     } catch (ex: Exception) {
                         error = when ((ex as? ApiFailure)?.code) {
                             429 -> tr(lang, "Too many requests. Try again later.",
@@ -546,5 +725,6 @@ fun NativeRegistrationForm(lang: Lang, onSuccess: (Boolean) -> Unit, onLogin: ()
                 }
             }
         }
+    }
     }
 }
