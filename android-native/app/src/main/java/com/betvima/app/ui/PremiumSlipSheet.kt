@@ -165,7 +165,7 @@ private fun SlipFundingRow(
 
 @Composable
 private fun MainAccountSlipControls(
-    state: AppState, model: AppViewModel, mode: String
+    state: AppState, model: AppViewModel, mode: String, compact: Boolean
 ) {
     val lang=state.lang
     var stake by rememberSaveable { mutableStateOf("5.00") }
@@ -201,7 +201,7 @@ private fun MainAccountSlipControls(
                         fontSize=16.sp,maxLines=1)
                 }
             }
-            Row(horizontalArrangement=Arrangement.spacedBy(7.dp)) {
+            if (!compact) Row(horizontalArrangement=Arrangement.spacedBy(7.dp)) {
                 listOf("1.00","5.00","10.00","20.00").forEach { preset ->
                     Surface(
                         color=if(stake==preset)slipBlue else Color(0xFFF0F3F7),
@@ -239,7 +239,7 @@ private fun MainAccountSlipControls(
             else tr(lang,"Request official quote","استعلام رسمی ضریب"),
                 fontWeight=FontWeight.Black,fontSize=12.sp)
         }
-        Text(tr(lang,
+        if (!compact) Text(tr(lang,
             "Main Account: preview only. Real bonus wagering is available under Bonus Account.",
             "حساب اصلی: فقط پیش‌نمایش. ثبت شرط بونوسی در بخش حساب بونوس فعال است."),
             color=slipMuted,fontSize=9.sp,lineHeight=13.sp,maxLines=2)
@@ -547,7 +547,10 @@ fun PremiumSlipSheet(state: AppState,model: AppViewModel) {
                 if(funding=="bonus") {
                     BonusAccountSlip(state,model)
                 } else {
-                    MainAccountSlipControls(state,model,mode)
+                    MainAccountSlipControls(
+                        state, model, mode,
+                        compact = config.screenHeightDp < 680
+                    )
                 }
             }
         }
