@@ -49,6 +49,11 @@ begin
   insert into nova.profiles (id, public_id, email, email_hash, role, status, age_verified, email_verified, preferred_currency, kyc_status)
   values (v_id, 'NU-' || upper(substr(md5(random()::text), 1, 8)), p_email,
           encode(digest(lower(p_email), 'sha256'), 'hex'), p_role, p_status, p_age_verified, true, p_currency, 'verified')
+  on conflict (id) do update set
+    role = excluded.role, status = excluded.status,
+    age_verified = excluded.age_verified, email_verified = excluded.email_verified,
+    preferred_currency = excluded.preferred_currency, kyc_status = excluded.kyc_status,
+    email_hash = excluded.email_hash
   returning id into v_id;
   insert into nova.wallets (user_id, currency, balance_minor) values (v_id, p_currency, 0);
   if p_balance_minor <> 0 then
