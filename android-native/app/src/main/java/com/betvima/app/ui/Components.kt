@@ -36,14 +36,18 @@ fun BrandHeader(lang: Lang, onHome: () -> Unit, onLanguage: () -> Unit,
             .padding(horizontal = 13.dp, vertical = 7.dp),
             verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.clickable(onClick = onHome).padding(vertical = 5.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Box(Modifier.size(width = 4.dp, height = 23.dp)
-                        .clip(RoundedCornerShape(8.dp)).background(Palette.green))
-                    Spacer(Modifier.width(7.dp))
-                    Text("BET", fontSize = 21.sp, fontWeight = FontWeight.Black,
-                        color = Color.White, letterSpacing = .6.sp)
-                    Text("VIMA", fontSize = 21.sp, fontWeight = FontWeight.Black,
-                        color = Palette.green, letterSpacing = .6.sp)
+                CompositionLocalProvider(
+                    LocalLayoutDirection provides LayoutDirection.Ltr
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Box(Modifier.size(width = 4.dp, height = 23.dp)
+                            .clip(RoundedCornerShape(8.dp)).background(Palette.green))
+                        Spacer(Modifier.width(7.dp))
+                        Text("BET", fontSize = 21.sp, fontWeight = FontWeight.Black,
+                            color = Color.White, letterSpacing = .6.sp)
+                        Text("VIMA", fontSize = 21.sp, fontWeight = FontWeight.Black,
+                            color = Palette.green, letterSpacing = .6.sp)
+                    }
                 }
                 Text(tr(lang, "SPORTS & LIVE", "ورزش و مسابقات زنده"),
                     fontSize = 9.sp, color = Color(0xFF9FB2BB),
@@ -62,12 +66,12 @@ fun BrandHeader(lang: Lang, onHome: () -> Unit, onLanguage: () -> Unit,
                     }
                 }
             }
-            IconButton(onClick = onLanguage, modifier = Modifier.size(39.dp)) {
+            IconButton(onClick = onLanguage, modifier = Modifier.size(44.dp)) {
                 Text(if (lang == Lang.FA) "EN" else "فا", color = Color.White,
                     fontWeight = FontWeight.ExtraBold, fontSize = 11.sp)
             }
             Box(contentAlignment = Alignment.Center) {
-                IconButton(onClick = onNotifications, modifier = Modifier.size(39.dp)) {
+                IconButton(onClick = onNotifications, modifier = Modifier.size(44.dp)) {
                     Icon(Icons.Default.NotificationsNone,
                         contentDescription = tr(lang, "Notifications", "اعلان‌ها"),
                         tint = Color.White, modifier = Modifier.size(21.dp))
@@ -81,7 +85,7 @@ fun BrandHeader(lang: Lang, onHome: () -> Unit, onLanguage: () -> Unit,
                 }
             }
             Surface(shape = RoundedCornerShape(12.dp), color = Palette.darkElevated,
-                modifier = Modifier.size(40.dp).clickable(onClick = onAccount)) {
+                modifier = Modifier.size(44.dp).clickable(onClick = onAccount)) {
                 Box(contentAlignment = Alignment.Center) {
                     Icon(Icons.Default.PersonOutline,
                         contentDescription = tr(lang, "Account", "حساب کاربری"),
