@@ -25,14 +25,16 @@ class ApiClient {
     suspend fun get(path: String, token: String? = null): JSONObject = request(path, token)
     suspend fun post(path: String, value: JSONObject, token: String): JSONObject =
         request(path, token, value)
+    suspend fun patch(path: String, value: JSONObject, token: String): JSONObject =
+        request(path, token, value, "PATCH")
 
-    private suspend fun request(path: String, token: String? = null, body: JSONObject? = null): JSONObject =
+    private suspend fun request(path: String, token: String? = null, body: JSONObject? = null, verb: String = "POST"): JSONObject =
         withContext(Dispatchers.IO) {
             require(path.startsWith("/api/v1/"))
             val builder = Request.Builder().url(base + path)
                 .header("Accept", "application/json").header("Cache-Control", "no-store")
             if (!token.isNullOrBlank()) builder.header("Authorization", "Bearer " + token)
-            if (body != null) builder.post(body.toString().toRequestBody(jsonType))
+            if (body != null) builder.method(verb, body.toString().toRequestBody(jsonType))
             client.newCall(builder.build()).execute().use { response ->
                 val raw = response.body?.string().orEmpty()
                 val wrapper = runCatching { JSONObject(raw) }.getOrDefault(JSONObject())
