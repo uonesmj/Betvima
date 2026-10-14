@@ -16,7 +16,7 @@ data class Selection(val id: String, val name: String, val oddsScaled: String, v
     fun label(persian: Boolean) = if (persian && nameFa.isNotBlank()) nameFa else name
 }
 data class Market(val id: String, val key: String, val name: String, val status: String,
-    val selections: List<Selection>, val nameFa: String = "") {
+    val selections: List<Selection>, val nameFa: String = "", val version: Int? = null) {
     val available get() = status == "open"
     fun label(persian: Boolean) = if (persian && nameFa.isNotBlank()) nameFa else name
 }
@@ -35,7 +35,7 @@ data class Match(
 data class Pick(
     val matchId: String, val marketId: String, val selectionId: String,
     val match: String, val market: String, val selection: String,
-    val oddsScaled: String, val version: Int, val live: Boolean
+    val oddsScaled: String, val version: Int?, val live: Boolean
 )
 data class Bet(val id: String, val status: String, val type: String,
     val stakeMinor: String, val payoutMinor: String, val currency: String, val legs: Int,
@@ -69,7 +69,8 @@ fun parseSelection(o: JSONObject) = Selection(o.str("id"), o.str("name", o.str("
     nameFa = o.str("nameFa"))
 fun parseMarket(o: JSONObject) = Market(o.str("id"), o.str("key"),
     o.str("name", o.str("nameEn", o.str("key"))), o.str("status", "suspended"),
-    o.arr("selections").objects().map(::parseSelection), nameFa = o.str("nameFa"))
+    o.arr("selections").objects().map(::parseSelection), nameFa = o.str("nameFa"),
+    version = if (o.has("version") && !o.isNull("version")) o.optInt("version") else null)
 fun parseMatch(o: JSONObject, overrideMarkets: JSONArray? = null): Match = Match(
     id = o.str("id"), league = o.str("leagueName", "Football"),
     leagueLogo = o.str("leagueLogoUrl").takeIf(String::isNotBlank),
