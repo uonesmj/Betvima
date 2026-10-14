@@ -33,7 +33,6 @@ fun BrandHeader(
     lang: Lang,
     signedIn: Boolean,
     onHome: () -> Unit,
-    onLanguage: () -> Unit,
     onAccount: () -> Unit,
     onRegister: () -> Unit,
     onNotifications: () -> Unit,
@@ -123,15 +122,6 @@ fun BrandHeader(
                                 fontWeight = FontWeight.ExtraBold)
                         }
                     }
-                }
-            }
-            Spacer(Modifier.width(5.dp))
-            Surface(color = Color(0xFF272B2F),
-                shape = RoundedCornerShape(10.dp),
-                modifier = Modifier.size(41.dp).clickable(onClick = onLanguage)) {
-                Box(contentAlignment = Alignment.Center) {
-                    Text(if (lang == Lang.FA) "🇮🇷" else "🇬🇧",
-                        fontSize = 21.sp)
                 }
             }
         }
