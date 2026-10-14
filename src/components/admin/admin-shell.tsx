@@ -48,7 +48,7 @@ const SECTIONS: { group: string; items: { href: string; label: string }[] }[] = 
     group: 'Operations',
     items: [
       { href: '/admin/operations', label: 'Kill switches' },
-      { href: '/admin/settings', label: 'تنظیمات' },
+      { href: '/admin/settings', label: 'Settings' },
       { href: '/admin/audit', label: 'Audit log' },
       { href: '/admin/reconciliation', label: 'Reconciliation' },
       { href: '/admin/roles', label: 'Roles' },

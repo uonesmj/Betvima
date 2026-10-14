@@ -45,7 +45,7 @@ export function BetDetailClient({ betId }: { betId: string }) {
   const [message, setMessage] = useState<string | null>(null);
 
   if (loading && !data) return <Skeleton className="h-64 w-full" />;
-  if (error || !data) return <ErrorNote message={error ?? 'یافت نشد'} onRetry={() => void reload()} retryLabel={t('common.retry')} />;
+  if (error || !data) return <ErrorNote message={error ?? 'Not found'} onRetry={() => void reload()} retryLabel={t('common.retry')} />;
 
   const bet = data.bet;
   const final = ['settled', 'void', 'cancelled', 'cashed_out', 'reversed'].includes(bet.status);
@@ -87,7 +87,7 @@ export function BetDetailClient({ betId }: { betId: string }) {
 
       <Card className="!p-0">
         <table className="nova-table">
-          <thead><tr><th>مسابقه</th><th>Openار</th><th>انتخاب</th><th>ضریب هنگام ثبت</th><th>Accepted</th><th>Status</th><th>نتیجه</th></tr></thead>
+          <thead><tr><th>Match</th><th>Market</th><th>Selection</th><th>Odds at placement</th><th>Accepted</th><th>Status</th><th>Result</th></tr></thead>
           <tbody>
             {bet.legs.map((leg) => (
               <tr key={leg.id}>
@@ -163,7 +163,7 @@ export function BetDetailClient({ betId }: { betId: string }) {
           </Field>
           <AdminAction
             label="Regrade this bet" tone="danger"
-            confirmText="Openبینی نتیجه، تسویه فعلی را معکوس کرده و دوباره تسویه می‌کند. Commission نیز معکوس خواهد شد. ادامه می‌دهید؟"
+            confirmText="Reviewing the result reverses the current settlement and settles the bet again. Commission is also reversed. Continue?"
             onRun={() => act('regrade', { reason })}
           />
         </Card>

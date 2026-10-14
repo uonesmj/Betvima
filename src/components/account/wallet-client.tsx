@@ -132,7 +132,7 @@ function DepositPanel({
   voucherQuote:UwalletReferenceQuote|null;
   voucherQuoteLoading:boolean;
 }) {
-  const { t } = useApp();
+  const { t, locale } = useApp();
   const [kind,setKind]=useState<DepositKind>('crypto');
   const [asset,setAsset]=useState(currency==='IRT'?'IRT':currency);
   const [network,setNetwork]=useState('Tron (TRC-20)');
@@ -242,9 +242,9 @@ function DepositPanel({
           const validAmount=Number.isFinite(estimatedUsd)&&estimatedUsd>=min&&(max===null||estimatedUsd<=max)&&(currency==='USD'||Boolean(voucherQuote));
           return <>
             <div>
-              <label className="mb-2 block text-sm font-medium text-[#172033]">{currency==='IRT'?'مبلغ تقریبی واریز (تومان)':currency==='IRR'?'مبلغ تقریبی واریز (ریال)':t("wallet.amountUsd")}</label>
+              <label className="mb-2 block text-sm font-medium text-[#172033]">{currency==='IRT'?(locale==='fa'?'مبلغ تقریبی واریز (تومان)':'Estimated deposit amount (toman)'):currency==='IRR'?(locale==='fa'?'مبلغ تقریبی واریز (ریال)':'Estimated deposit amount (rial)'):t("wallet.amountUsd")}</label>
               <input value={form.amount} onChange={e=>setForm(v=>({...v,amount:e.target.value,methodId}))} inputMode={currency==='USD'?'decimal':'numeric'} placeholder={currency==='USD'?t("wallet.voucherAmountPlaceholder"):'24000000'} className="w-full rounded-xl border border-[#DDE5EF] bg-white px-4 py-3 text-[#172033] outline-none focus:border-[#173DAA]"/>
-              {currency!=='USD'?<p className="mt-2 text-xs font-semibold text-[#506582]">نرخ مرجع uWallet: {rate>0?new Intl.NumberFormat('fa-IR',{maximumFractionDigits:2}).format(rate/10)+' تومان/دلار':voucherQuoteLoading?'در حال دریافت...':'در دسترس نیست'} — معادل تقریبی ${estimatedUsd.toFixed(2)} دلار. واریز نهایی بر اساس اعتبار واقعی کد در uWallet محاسبه می‌شود.</p>:null}
+              {currency!=='USD'?<p className="mt-2 text-xs font-semibold text-[#506582]">{locale==='fa'?'نرخ مرجع uWallet:':'uWallet reference rate:'}{' '}{rate>0?new Intl.NumberFormat(locale==='fa'?'fa-IR':'en-US',{maximumFractionDigits:2}).format(rate/10)+(locale==='fa'?' تومان/دلار':' toman/USD'):voucherQuoteLoading?(locale==='fa'?'در حال دریافت...':'Loading...'):(locale==='fa'?'در دسترس نیست':'Unavailable')}{' — '}{locale==='fa'?'معادل تقریبی':'Approximate equivalent'} {'$'}{estimatedUsd.toFixed(2)} {locale==='fa'?'دلار. واریز نهایی بر اساس اعتبار واقعی کد در uWallet محاسبه می‌شود.':'USD. The final deposit is calculated from the voucher’s actual value in uWallet.'}</p>:null}
             </div>
             <div>
               <label className="mb-2 block text-sm font-medium text-[#172033]">{t("wallet.voucherCode")}</label>
@@ -392,7 +392,7 @@ function WithdrawPanel({
     const voucherWalletMax = currency === 'USD'
       ? Number(BigInt(availableMinor || '0')) / 100
       : Number(BigInt(availableMinor || '0'));
-    const voucherWalletUnit = currency === 'IRT' ? 'تومان' : currency === 'IRR' ? 'ریال' : 'USD';
+    const voucherWalletUnit = currency === 'IRT' ? (locale === 'fa' ? 'تومان' : 'toman') : currency === 'IRR' ? (locale === 'fa' ? 'ریال' : 'rial') : 'USD';
     const voucherMinIrrDisplay = voucherWalletMin === null
       ? null
       : new Intl.NumberFormat(locale.startsWith("fa") ? "fa-IR" : "en-US").format(voucherWalletMin);
@@ -451,24 +451,24 @@ function WithdrawPanel({
                   <b className="text-[#354052]">{currency === 'USD' ? `$${configuredUsdMinimum.toFixed(2)}` : '$1.50'}</b>
                 </div>
                 <div className="mt-1 flex items-center justify-between px-1 text-[11px] font-semibold">
-                  <span className="text-[#8994A5]">معادل حداقل برداشت</span>
+                  <span className="text-[#8994A5]">{locale === 'fa' ? 'معادل حداقل برداشت' : 'Minimum withdrawal equivalent'}</span>
                   <b className="text-[#354052]">
-                    {currency === 'USD' ? '$1.50' : voucherQuoteLoading ? 'در حال دریافت نرخ uWallet...' : voucherMinIrrDisplay !== null ? `${voucherMinIrrDisplay} ${voucherWalletUnit}` : 'نرخ لحظه‌ای در دسترس نیست'}
+                    {currency === 'USD' ? '$1.50' : voucherQuoteLoading ? (locale === 'fa' ? 'در حال دریافت نرخ uWallet...' : 'Loading uWallet exchange rate...') : voucherMinIrrDisplay !== null ? `${voucherMinIrrDisplay} ${voucherWalletUnit}` : (locale === 'fa' ? 'نرخ لحظه‌ای در دسترس نیست' : 'Live rate unavailable')}
                   </b>
                 </div>
               </div>
 
               <div className="rounded-xl border border-[#D8E5F7] bg-[#F8FBFF] px-4 py-3 text-xs font-semibold text-[#506582]">
-                نرخ مرجع uWallet: {voucherRateValid ? new Intl.NumberFormat('fa-IR',{maximumFractionDigits:2}).format(voucherRate)+' تومان به‌ازای هر دلار' : 'در دسترس نیست'}
+                {locale === 'fa' ? 'نرخ مرجع uWallet:' : 'uWallet reference rate:'} {voucherRateValid ? new Intl.NumberFormat(locale === 'fa' ? 'fa-IR' : 'en-US',{maximumFractionDigits:2}).format(voucherRate) + (locale === 'fa' ? ' تومان به‌ازای هر دلار' : ' toman per USD') : (locale === 'fa' ? 'در دسترس نیست' : 'Unavailable')}
                 {voucherRateValid && currency!=='USD' && /^\d+$/.test(normalizeNumericInput(form.amount)) ? (
                   <div className="mt-1 font-bold text-[#173DAA]">
                     {(() => { try {
                       const r=voucherWithdrawalDebit(BigInt(normalizeNumericInput(form.amount)),currency as 'IRT'|'IRR',voucherQuote!.rateIrrPerUsd);
-                      return 'وچر قابل دریافت: $'+(Number(r.usdMinor)/100).toFixed(2)+' — کسر از کیف پول: '+new Intl.NumberFormat('fa-IR').format(r.walletMinor)+' '+(currency==='IRT'?'تومان':'ریال');
-                    } catch { return 'مبلغ نامعتبر'; } })()}
+                      return locale === 'fa' ? 'وچر قابل دریافت: $'+(Number(r.usdMinor)/100).toFixed(2)+' — کسر از کیف پول: '+new Intl.NumberFormat('fa-IR').format(r.walletMinor)+' '+(currency==='IRT'?'تومان':'ریال') : 'Voucher value: $'+(Number(r.usdMinor)/100).toFixed(2)+' — Wallet debit: '+new Intl.NumberFormat('en-US').format(r.walletMinor)+' '+voucherWalletUnit;
+                    } catch { return locale === 'fa' ? 'مبلغ نامعتبر' : 'Invalid amount'; } })()}
                   </div>
                 ):null}
-                <div className="mt-1 text-[#7A8494]">این نرخ تبدیل مرجع است؛ API فعلاً قیمت خرید و فروش جداگانه ارائه نمی‌کند.</div>
+                <div className="mt-1 text-[#7A8494]">{locale === 'fa' ? 'این نرخ تبدیل مرجع است؛ API فعلاً قیمت خرید و فروش جداگانه ارائه نمی‌کند.' : 'This is a reference exchange rate; the API currently does not provide separate buy and sell prices.'}</div>
               </div>
               <div className="rounded-2xl border border-[#D8E5F7] bg-[#F2F7FF] p-4">
                 <div className="flex gap-3">

@@ -50,7 +50,7 @@ export function DashboardClient() {
           <Stat label="Payout" value={formatMinor(m.betting.payout24hMinor, 'USD', locale)} />
           <Stat label="GGR" value={formatMinor(m.betting.ggr24hMinor, 'USD', locale)} tone={BigInt(m.betting.ggr24hMinor) >= 0n ? 'success' : 'danger'} />
           <Stat label="Open bets" value={m.betting.openBets} />
-          <Stat label="تعهدات Open" value={formatMinor(m.betting.openLiabilityMinor, 'USD', locale)} tone="warning" />
+          <Stat label="Open liabilities" value={formatMinor(m.betting.openLiabilityMinor, 'USD', locale)} tone="warning" />
           <Stat label="Average stake" value={formatMinor(m.betting.avgStakeMinor, 'USD', locale)} />
           <Stat label="Margin" value={`${m.betting.marginPct.toFixed(2)}%`} />
         </div>

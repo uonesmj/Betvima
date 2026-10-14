@@ -98,7 +98,7 @@ export function AffiliatePayoutsClient() {
                       {['pending', 'eligible', 'approved', 'processing', 'manual_review'].includes(payout.status) ? (
                         <>
                           <AdminAction label="Reject" tone="danger" confirmText="Reject this payout?" onRun={() => transition(payout, 'rejected')} />
-                          <AdminAction label="Cancel" tone="danger" confirmText="این پرداخت Cancel شود؟" onRun={() => transition(payout, 'cancelled')} />
+                          <AdminAction label="Cancel" tone="danger" confirmText="Cancel this payout?" onRun={() => transition(payout, 'cancelled')} />
                         </>
                       ) : null}
                     </span>

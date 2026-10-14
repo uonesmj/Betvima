@@ -40,7 +40,7 @@ export function SettlementsClient() {
         <Stat label="Settlement backlog" value={metrics.data?.metrics.risk.settlementBacklog ?? 0} tone={(metrics.data?.metrics.risk.settlementBacklog ?? 0) > 0 ? 'warning' : undefined} />
         <Stat label="Manual review bets" value={metrics.data?.metrics.risk.manualReviewBets ?? 0} tone={(metrics.data?.metrics.risk.manualReviewBets ?? 0) > 0 ? 'warning' : undefined} />
         <Stat label="Open bets" value={metrics.data?.metrics.betting.openBets ?? 0} />
-        <Stat label="تعهدات Open" value={metrics.data?.metrics.betting.openLiabilityMinor ?? '0'} />
+        <Stat label="Open liabilities" value={metrics.data?.metrics.betting.openLiabilityMinor ?? '0'} />
       </div>
 
       <div className="grid gap-2 sm:grid-cols-3 lg:grid-cols-6">

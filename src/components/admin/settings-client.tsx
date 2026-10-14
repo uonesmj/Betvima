@@ -49,7 +49,7 @@ export function SettingsClient() {
       <ErrorNote message={null} retryLabel={t('common.retry')} />
       <Card className="!p-0">
         <table className="nova-table">
-          <thead><tr><th>تنظیم</th><th>مقدار</th><th>Type</th><th>به‌روزرسانی</th><th /></tr></thead>
+          <thead><tr><th>Setting</th><th>Value</th><th>Type</th><th>Updated</th><th /></tr></thead>
           <tbody>
             {rows.map((setting) => (
               <tr key={setting.key}>

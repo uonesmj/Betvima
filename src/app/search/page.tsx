@@ -175,7 +175,7 @@ function SearchPageContent() {
     const map = new Map<string, Match[]>();
 
     for (const match of matches) {
-      const league = match.leagueName || 'فوتبال';
+      const league = match.leagueName || 'Football';
       if (!map.has(league)) map.set(league, []);
       map.get(league)!.push(match);
     }

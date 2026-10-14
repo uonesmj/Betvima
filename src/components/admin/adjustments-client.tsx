@@ -53,7 +53,7 @@ export function AdjustmentsClient() {
           <Card className="!p-0 overflow-hidden">
             <div className="w-full overflow-x-auto">
             <table className="nova-table min-w-[900px]">
-              <thead><tr><th>Requested</th><th>User</th><th>Amount</th><th>Type</th><th>Reason</th><th>Status</th><th>تصمیم</th></tr></thead>
+              <thead><tr><th>Requested</th><th>User</th><th>Amount</th><th>Type</th><th>Reason</th><th>Status</th><th>Decision</th></tr></thead>
               <tbody>
                 {(data?.items ?? []).map((adjustment) => (
                   <tr key={adjustment.id}>

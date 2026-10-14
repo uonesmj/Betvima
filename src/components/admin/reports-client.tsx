@@ -37,8 +37,8 @@ export function ReportsClient() {
         {(['24h', '7d', '30d'] as const).map((option) => (
           <button key={option} type="button" className={`nova-tab ${range === option ? 'nova-tab-active' : ''}`} onClick={() => setRange(option)}>{option}</button>
         ))}
-        <button type="button" className="nova-btn-ghost !py-1.5 text-xs" onClick={() => download('metrics')}>مشاهده JSON شاخص‌ها</button>
-        <button type="button" className="nova-btn-ghost !py-1.5 text-xs" onClick={() => download('audit')}>مشاهده JSON ممیزی</button>
+        <button type="button" className="nova-btn-ghost !py-1.5 text-xs" onClick={() => download('metrics')}>View metrics JSON</button>
+        <button type="button" className="nova-btn-ghost !py-1.5 text-xs" onClick={() => download('audit')}>View audit JSON</button>
         <span className="ms-auto text-xs nova-muted">Generated {formatDateTime(m.generatedAt, locale)}</span>
       </div>
 
@@ -60,7 +60,7 @@ export function ReportsClient() {
           </tbody>
         </table>
         <p className="mt-2 text-[11px] nova-muted">
-          تمام ارقام هنگام درخواست از دفتر حساب و جداول تسویه محاسبه می‌شوند و شامل اعداد ذNoه‌شده یا تخمینی نیستند.
+          All figures are calculated on request from the ledger and settlement tables; they are neither cached nor estimated.
           CSV export is available from the database reports view; the JSON above is the raw API payload.
         </p>
       </Card>
@@ -69,7 +69,7 @@ export function ReportsClient() {
         <Stat label="Bets" value={m.betting.bets24h} />
         <Stat label="Active customers" value={m.users.active24h} />
         <Stat label="New customers" value={m.users.new24h} />
-        <Stat label="Userان Approved" value={m.users.verified} />
+        <Stat label="Verified users" value={m.users.verified} />
         <Stat label="Open bets" value={m.betting.openBets} />
         <Stat label="Pending withdrawals" value={m.wallet.pendingWithdrawals} tone={m.wallet.pendingWithdrawals > 0 ? 'warning' : undefined} />
         <Stat label="Affiliate payouts pending" value={m.affiliate.pendingPayouts} />

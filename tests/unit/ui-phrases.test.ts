@@ -49,3 +49,17 @@ describe('end-to-end translation vocabulary checks', () => {
     expect(translateVisibleText('1.95')).toBe('1.95');
   });
 });
+
+describe('consistent English-first user and administrator copy', () => {
+  it('translates financial explanations only as visible text', () => {
+    expect(translateVisibleText('Minimum withdrawal equivalent')).toBe('معادل حداقل برداشت');
+    expect(translateVisibleText('Estimated deposit amount (toman)')).toBe('مبلغ تقریبی واریز (تومان)');
+    expect(translateVisibleText('50 USD')).toBe('50 USD');
+  });
+  it('covers help, admin and legal wording', () => {
+    expect(translateVisibleText('Help Topics')).toBe('موضوعات راهنما');
+    expect(translateVisibleText('Open liabilities')).toBe('تعهدات باز');
+    expect(translateVisibleText('Decision')).toBe('تصمیم');
+    expect(translateVisibleText('View metrics JSON')).toBe('مشاهده JSON شاخص‌ها');
+  });
+});
