@@ -4,12 +4,13 @@ package com.betvima.app.ui
  * The bet slip expands as picks are added through five visible selections.
  * Only picks beyond five scroll in the same list (never paginate).
  *
- * If the phone/IME leaves physically less height than five cards require,
- * scrolling must also remain possible so picks are not clipped.
+ * The minimum card height fits all three text rows with their full line heights.
+ * If the phone, font scale or IME leaves less space, allow natural scrolling
+ * rather than cutting off any row of text.
  */
 internal const val SLIP_VISIBLE_PICK_LIMIT = 5
-internal const val SLIP_CARD_HEIGHT_DP = 62
-internal const val SLIP_CARD_SPACING_DP = 5
+internal const val SLIP_CARD_HEIGHT_DP = 86
+internal const val SLIP_CARD_SPACING_DP = 6
 internal const val SLIP_PICK_PADDING_DP = 10
 
 internal fun slipPickAreaHeightDp(count: Int): Int {
