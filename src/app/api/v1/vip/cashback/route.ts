@@ -9,11 +9,11 @@ export const GET = withErrorHandling('vip.cashback.history', async (ctx, request
   const [items, operation] = await Promise.all([
     services.db.query<{
       week_start: string; week_end: string; currency: string;
-      deposit_minor: string; losing_stakes_minor: string;
+      deposit_minor: string; net_loss_minor: string;
       cashback_bps: number; amount_minor: string; credited_at: string;
     }>(
       'select week_start, week_end, currency, deposit_minor::text, ' +
-      'losing_stakes_minor::text, cashback_bps, amount_minor::text, credited_at ' +
+      'net_loss_minor::text, cashback_bps, amount_minor::text, credited_at ' +
       'from nova.vip_cashback_payouts where user_id = $1 order by week_start desc limit 52',
       [user.id],
     ),
@@ -29,7 +29,7 @@ export const GET = withErrorHandling('vip.cashback.history', async (ctx, request
       weekStart: entry.week_start,
       weekEnd: entry.week_end,
       depositMinor: entry.deposit_minor,
-      eligibleLossMinor: entry.losing_stakes_minor,
+      eligibleLossMinor: entry.net_loss_minor,
       cashbackRateBps: entry.cashback_bps,
       paidMinor: entry.amount_minor,
       creditedAt: entry.credited_at,
