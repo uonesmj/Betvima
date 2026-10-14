@@ -17,6 +17,10 @@ psql -q -X -c "create database $DB" postgres
 echo "== applying migrations =="
 for f in $(ls "$DIR"/supabase/migrations/*.sql | sort); do
   echo "-- $(basename "$f")"
+  if [[ "$(basename "$f")" == "0183_support_foundation.sql" ]]; then
+    echo "-- CI-only Supabase support/storage baseline"
+    $PSQL -d "$DB" -f "$DIR/tests/sql/00_legacy_support_bootstrap.sql"
+  fi
   $PSQL -d "$DB" -f "$f"
 done
 
