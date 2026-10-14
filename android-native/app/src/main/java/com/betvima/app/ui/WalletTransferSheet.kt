@@ -43,18 +43,17 @@ private val wBorder = Color(0xFFE1E7EF)
 
 private fun wTr(lang: Lang, english: String, farsi: String): String = tr(lang, english, farsi)
 
-private fun walletMinCrypto(currency: String, usdRate: String?): BigInteger? =
-    when (currency) {
-        "USD" -> BigInteger("2000")
-        "IRR", "IRT" -> runCatching {
-            val rate = BigDecimal(usdRate ?: return null)
+private fun walletMinCrypto(currency: String, usdRate: String?): BigInteger? {
+    if (currency == "USD") return BigInteger("2000")
+    if (currency !in setOf("IRR", "IRT") || usdRate.isNullOrBlank()) return null
+    return runCatching {
+            val rate = BigDecimal(usdRate)
             require(rate.signum() > 0)
             (BigDecimal("2000") * rate)
                 .divide(if (currency == "IRT") BigDecimal(100) else BigDecimal(10),
                     0, RoundingMode.CEILING).toBigIntegerExact()
         }.getOrNull()
-        else -> null
-    }
+}
 
 private fun moneyInCurrency(minor: String, currency: String): String =
     money(minor, currency)
