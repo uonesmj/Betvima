@@ -32,12 +32,15 @@ $PSQL -d "$DB" -f "$DIR/tests/sql/00_fixtures.sql"
 
 for f in $(ls "$DIR"/tests/sql/[0-9][0-9]_*_test.sql | sort); do
   name="$(basename "$f")"
+  if [[ -n "${NOVA_SQL_TEST_FILTER:-}" && "$name" != "$NOVA_SQL_TEST_FILTER" ]]; then continue; fi
   label="$(echo "$name" | sed -E 's/^[0-9]+_//; s/_test\.sql$//; s/_/ /g')"
   echo "== $label tests =="
   echo "-- $name"
   $PSQL -d "$DB" -f "$f"
 done
 
-echo "== concurrency =="
-DB="$DB" bash "$DIR/scripts/tests/concurrent-place.sh" "$DB"
+if [[ -z "${NOVA_SQL_TEST_FILTER:-}" ]]; then
+  echo "== concurrency =="
+  DB="$DB" bash "$DIR/scripts/tests/concurrent-place.sh" "$DB"
+fi
 echo "== SQL TEST SUITE PASSED =="
