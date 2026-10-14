@@ -13,7 +13,7 @@ describe('Persian display localization with English canonical layout', () => {
     expect(translateVisibleText('Over 2.5')).toBe('بالای 2.5');
     expect(translateVisibleText('5 markets')).toBe('5 بازار');
     expect(translateVisibleText('20.53')).toBe('20.53');
-    expect(translateVisibleText('Withdraw USDT')).toBe('Withdraw USDT');
+    expect(translateVisibleText('Withdraw USDT')).toBe('برداشت USDT');
   });
   it('translates common teams and transliterates provider names only in sports context', () => {
     expect(translateSportName('Manchester United')).toBe('منچستر یونایتد');
