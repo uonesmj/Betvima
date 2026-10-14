@@ -1,6 +1,8 @@
 'use client';
 
 import { useState } from 'react';
+import { useApp } from '@/components/layout/providers';
+import { translateVisibleText } from '@/lib/i18n/ui-phrases';
 
 const levels = [
   ['Bronze 1', '—', 'bronze'], ['Bronze 2', 'US$5,000', 'bronze'], ['Bronze 3', 'US$10,000', 'bronze'],
@@ -20,6 +22,8 @@ const faqs = [
 
 export function LoyaltyProgramClient() {
   const [open, setOpen] = useState<number | null>(null);
+  const { locale } = useApp();
+  const tr = (value: string) => locale === 'fa' ? translateVisibleText(value) : value;
 
   return (
     <main className="mx-auto w-full max-w-[1180px] px-3 pb-8 sm:px-5">
@@ -29,10 +33,10 @@ export function LoyaltyProgramClient() {
         <div className="absolute right-[45px] top-[35px] h-[240px] w-[240px] rounded-full border border-[#00D878]/10" />
         <div className="relative z-10 flex min-h-[300px] items-center px-6 py-10 sm:px-12">
           <div className="max-w-[560px]">
-            <span className="mb-4 inline-flex rounded-full bg-[#00D878]/10 px-3 py-1.5 text-xs font-bold text-[#00D878]">VIP LOYALTY</span>
-            <h1 className="text-[32px] font-black tracking-[-1px] text-white sm:text-[48px]">VIP Loyalty Program</h1>
-            <p className="mt-3 text-[18px] text-[#AAB3C1]">Higher level — <span className="text-white">bigger rewards</span></p>
-            <a href="/account/profile" className="mt-7 inline-flex h-12 items-center rounded-xl bg-[#00D878] px-7 text-sm font-extrabold text-[#07130E]">Participate</a>
+            <span className="mb-4 inline-flex rounded-full bg-[#00D878]/10 px-3 py-1.5 text-xs font-bold text-[#00D878]">{tr('VIP LOYALTY')}</span>
+            <h1 className="text-[32px] font-black tracking-[-1px] text-white sm:text-[48px]">{tr('VIP Loyalty Program')}</h1>
+            <p className="mt-3 text-[18px] text-[#AAB3C1]">{tr("Higher level —")} <span className="text-white">{tr('bigger rewards')}</span></p>
+            <a href="/account/profile" className="mt-7 inline-flex h-12 items-center rounded-xl bg-[#00D878] px-7 text-sm font-extrabold text-[#07130E]">{tr('Participate')}</a>
           </div>
           <div className="pointer-events-none absolute bottom-0 right-[-15px] hidden w-[48%] sm:block">
             <img src="/brand/loyalty/vip-club-fg.png" alt="" className="ml-auto max-h-[285px] w-auto object-contain" />
@@ -41,7 +45,7 @@ export function LoyaltyProgramClient() {
       </section>
 
       <section className="mb-6 rounded-[22px] bg-[#0B1018] p-5 sm:p-7">
-        <h2 className="mb-5 text-[24px] font-black text-white">How it works</h2>
+        <h2 className="mb-5 text-[24px] font-black text-white">{tr('How it works')}</h2>
         <div className="grid gap-3 md:grid-cols-3">
           {[
             ['Step 1', 'Registration', 'You receive Bronze Level 1 immediately'],
@@ -49,26 +53,26 @@ export function LoyaltyProgramClient() {
             ['Step 3', 'Become a VIP', "You'll get exclusive privileges at Gold 3"],
           ].map(([step, title, text]) => (
             <div key={step} className="relative min-h-[170px] overflow-hidden rounded-[18px] border border-[#202936] bg-[#141A24] p-5">
-              <span className="inline-flex rounded-lg bg-[#242C38] px-3 py-1.5 text-xs font-bold text-[#B7C0CD]">{step}</span>
-              <h3 className="mt-5 text-[20px] font-black text-white">{title}</h3>
-              <p className="mt-2 max-w-[320px] text-sm leading-6 text-[#8F9AAA]">{text}</p>
+              <span className="inline-flex rounded-lg bg-[#242C38] px-3 py-1.5 text-xs font-bold text-[#B7C0CD]">{tr(step)}</span>
+              <h3 className="mt-5 text-[20px] font-black text-white">{tr(title)}</h3>
+              <p className="mt-2 max-w-[320px] text-sm leading-6 text-[#8F9AAA]">{tr(text)}</p>
             </div>
           ))}
         </div>
       </section>
 
       <section className="mb-6 rounded-[22px] bg-[#0B1018] p-5 sm:p-7">
-        <h2 className="mb-5 text-[24px] font-black text-white">Levels and Rewards</h2>
+        <h2 className="mb-5 text-[24px] font-black text-white">{tr('Levels and Rewards')}</h2>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
           {levels.map(([name, turnover, image]) => (
             <div key={name} className="overflow-hidden rounded-[18px] border border-[#252D39] bg-[#141A24]">
               <div className="relative h-[145px] overflow-hidden">
                 <img src={`/brand/loyalty/${image}.png`} alt="" className="absolute inset-0 h-full w-full object-cover" />
                 <div className="absolute inset-0 bg-gradient-to-t from-[#141A24] via-transparent to-transparent" />
-                <h3 className="absolute bottom-3 left-4 text-[17px] font-black text-white">{name}</h3>
+                <h3 className="absolute bottom-3 left-4 text-[17px] font-black text-white">{tr(name)}</h3>
               </div>
               <div className="px-4 pb-4 pt-2">
-                <p className="text-[11px] uppercase tracking-wide text-[#788494]">Turnover amount</p>
+                <p className="text-[11px] uppercase tracking-wide text-[#788494]">{tr('Turnover amount')}</p>
                 <p className="mt-1 text-[15px] font-extrabold text-white">{turnover}</p>
               </div>
             </div>
@@ -78,7 +82,7 @@ export function LoyaltyProgramClient() {
           {rewards.map((reward, i) => (
             <div key={reward} className="flex items-center gap-3 rounded-xl bg-[#141A24] px-4 py-3 text-sm text-[#D5DAE2]">
               <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#00D878]/15 text-xs font-black text-[#00D878]">{i < 2 ? '✓' : '◆'}</span>
-              {reward}
+              {tr(reward)}
             </div>
           ))}
         </div>
@@ -88,21 +92,21 @@ export function LoyaltyProgramClient() {
         <img src="/brand/loyalty/vip-club-bg.png" alt="" className="absolute inset-0 h-full w-full object-cover opacity-70" />
         <img src="/brand/loyalty/vip-club-fg.png" alt="" className="absolute bottom-0 right-[-20px] hidden h-[210px] w-auto object-contain sm:block" />
         <div className="relative z-10 max-w-[560px] px-6 py-10 sm:px-10">
-          <h2 className="text-[28px] font-black text-white">Join VIP Club</h2>
-          <p className="mt-2 text-[#A7B1BE]">Reach Gold 3 and unlock unique VIP privileges</p>
-          <a href="/account/profile" className="mt-6 inline-flex h-11 items-center rounded-xl bg-[#00D878] px-6 text-sm font-extrabold text-[#07130E]">Learn more</a>
+          <h2 className="text-[28px] font-black text-white">{tr('Join VIP Club')}</h2>
+          <p className="mt-2 text-[#A7B1BE]">{tr('Reach Gold 3 and unlock unique VIP privileges')}</p>
+          <a href="/account/profile" className="mt-6 inline-flex h-11 items-center rounded-xl bg-[#00D878] px-6 text-sm font-extrabold text-[#07130E]">{tr('Learn more')}</a>
         </div>
       </section>
 
       <section className="rounded-[22px] bg-[#0B1018] p-5 sm:p-7">
-        <h2 className="mb-5 text-[24px] font-black text-white">Questions &amp; Answers</h2>
+        <h2 className="mb-5 text-[24px] font-black text-white">{tr('Questions & Answers')}</h2>
         <div className="overflow-hidden rounded-[16px] border border-[#252D39]">
           {faqs.map(([question, answer], i) => (
             <div key={question} className="border-b border-[#252D39] last:border-0">
               <button type="button" onClick={() => setOpen(open === i ? null : i)} className="flex w-full items-center justify-between gap-4 px-4 py-5 text-left text-sm font-bold text-white sm:px-5">
-                <span>{question}</span><span className="text-xl text-[#8B96A5]">{open === i ? '−' : '+'}</span>
+                <span>{tr(question)}</span><span className="text-xl text-[#8B96A5]">{open === i ? '−' : '+'}</span>
               </button>
-              {open === i && <div className="px-4 pb-5 text-sm leading-6 text-[#929DAC] sm:px-5">{answer}</div>}
+              {open === i && <div className="px-4 pb-5 text-sm leading-6 text-[#929DAC] sm:px-5">{tr(answer)}</div>}
             </div>
           ))}
         </div>
