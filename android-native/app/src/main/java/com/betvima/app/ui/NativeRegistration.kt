@@ -60,6 +60,8 @@ private class TurnstileCallbacks(private val notify: (String?) -> Unit) {
 }
 
 private fun allowedAuthUrl(url: Uri?): Boolean {
+    if (url?.scheme == "about" && url.schemeSpecificPart in setOf("blank", "srcdoc"))
+        return true
     if (url?.scheme != "https") return false
     val host = url.host?.lowercase() ?: return false
     return host == "betvima.com" || host == "www.betvima.com" ||
@@ -74,7 +76,7 @@ private fun RealTurnstileWidget(siteKey: String, revision: Int, callback: (Strin
     val currentCallback by rememberUpdatedState(callback)
     key(siteKey, revision) {
         AndroidView(
-            modifier = Modifier.fillMaxWidth().height(121.dp),
+            modifier = Modifier.fillMaxWidth().height(200.dp),
             factory = {
                 WebView(context).apply {
                     settings.javaScriptEnabled = true
@@ -84,6 +86,7 @@ private fun RealTurnstileWidget(siteKey: String, revision: Int, callback: (Strin
                     settings.mixedContentMode = WebSettings.MIXED_CONTENT_NEVER_ALLOW
                     settings.cacheMode = WebSettings.LOAD_NO_CACHE
                     settings.javaScriptCanOpenWindowsAutomatically = false
+                    CookieManager.getInstance().setAcceptCookie(true)
                     CookieManager.getInstance().setAcceptThirdPartyCookies(this, true)
                     setBackgroundColor(android.graphics.Color.WHITE)
                     addJavascriptInterface(TurnstileCallbacks { received ->
