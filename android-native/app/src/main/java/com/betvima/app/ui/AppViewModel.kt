@@ -21,7 +21,7 @@ enum class Lang { EN, FA }
 data class AppState(
     val tab: Tab = Tab.HOME, val homeMode: HomeMode = HomeMode.TOP,
     val feature: Feature = Feature.NONE,
-    val lang: Lang = Lang.FA, val sport: String = "football",
+    val lang: Lang = Lang.FA, val sport: String = "all",
     val live: List<Match> = emptyList(), val upcoming: List<Match> = emptyList(),
     val liveLoading: Boolean = false, val upcomingLoading: Boolean = false,
     val detailLoading: Boolean = false,
