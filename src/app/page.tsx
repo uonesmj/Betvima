@@ -31,7 +31,8 @@ export default async function HomePage() {
           sports={data.sports}
           live={data.live}
           upcoming={data.upcoming}
-          esports={data.esports}
+          topBets={data.topBets}
+          topBetsUnavailable={data.degraded.includes('topBets')}
           liveEnabled={liveEnabled}
         />
       </div>
