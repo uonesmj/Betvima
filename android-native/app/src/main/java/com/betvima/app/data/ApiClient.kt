@@ -78,6 +78,10 @@ class ApiClient {
     private val jsonType = "application/json".toMediaType()
 
     suspend fun get(path: String, token: String? = null): JSONObject = request(path, token)
+    /** Registration requires a Cloudflare-verified public API call, never a bearer session. */
+    suspend fun registerAccount(payload: JSONObject): JSONObject =
+        request("/api/v1/auth/register", body = payload)
+
     suspend fun post(path: String, value: JSONObject, token: String): JSONObject =
         request(path, token, value)
     suspend fun patch(path: String, value: JSONObject, token: String): JSONObject =

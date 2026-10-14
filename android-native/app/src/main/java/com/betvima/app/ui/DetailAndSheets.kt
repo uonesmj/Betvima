@@ -485,41 +485,8 @@ fun LoginSheet(state: AppState, model: AppViewModel) {
     var email by rememberSaveable { mutableStateOf("") }
     var password by rememberSaveable { mutableStateOf("") }
     var visible by rememberSaveable { mutableStateOf(false) }
-    var registrationBrowserOpened by rememberSaveable { mutableStateOf(false) }
-    var returnedFromRegistration by rememberSaveable { mutableStateOf(false) }
-    androidx.lifecycle.compose.LifecycleEventEffect(androidx.lifecycle.Lifecycle.Event.ON_RESUME) {
-        if (registrationBrowserOpened) {
-            registrationBrowserOpened = false
-            returnedFromRegistration = true
-            // After returning from Cloudflare-protected registration, show native login.
-            model.setRegisterScreen(false)
-        }
-    }
+    var registrationNotice by rememberSaveable { mutableStateOf<String?>(null) }
     val uri = LocalUriHandler.current
-    val context = androidx.compose.ui.platform.LocalContext.current
-    val browserRegistration: () -> Unit = {
-        registrationBrowserOpened = true
-        // Account creation MUST pass the server's Cloudflare Turnstile, age and
-        // terms checks. Do not bypass them through a direct Supabase sign-up.
-        val target = android.net.Uri.parse("https://betvima.com/auth/register")
-        runCatching {
-            // Partial Custom Tab preserves the exact first-party registration
-            // form, referral attribution and Cloudflare action=register widget.
-            // No credential is sent through an Android JavaScript bridge.
-            val height = (context.resources.displayMetrics.heightPixels * .92f).toInt()
-            androidx.browser.customtabs.CustomTabsIntent.Builder()
-                .setShowTitle(true)
-                .setShareState(androidx.browser.customtabs.CustomTabsIntent.SHARE_STATE_OFF)
-                .setInitialActivityHeightPx(height)
-                .setDefaultColorSchemeParams(
-                    androidx.browser.customtabs.CustomTabColorSchemeParams.Builder()
-                        .setToolbarColor(android.graphics.Color.rgb(18, 19, 21))
-                        .build()
-                )
-                .build().launchUrl(context, target)
-        }.onFailure { uri.openUri(target.toString()) }
-        Unit
-    }
     ModalBottomSheet(
         onDismissRequest = { model.showLogin(false) },
         containerColor = Color.White,
@@ -597,7 +564,7 @@ fun LoginSheet(state: AppState, model: AppViewModel) {
                     }
                 }
             }
-            androidx.compose.animation.AnimatedVisibility(visible = returnedFromRegistration) {
+            androidx.compose.animation.AnimatedVisibility(visible = !registrationNotice.isNullOrBlank()) {
                 Surface(color = Palette.greenLight,
                     shape = RoundedCornerShape(13.dp)) {
                     Row(Modifier.fillMaxWidth().padding(12.dp),
@@ -605,9 +572,7 @@ fun LoginSheet(state: AppState, model: AppViewModel) {
                         Icon(Icons.Default.MarkEmailRead, null, tint = Palette.green,
                             modifier = Modifier.size(19.dp))
                         Spacer(Modifier.width(9.dp))
-                        Text(tr(state.lang,
-                            "If registration succeeded, verify your email if requested, then log in here.",
-                            "اگر ثبت‌نام موفق بود، در صورت درخواست ایمیل را تأیید کنید و از همین‌جا وارد شوید."),
+                        Text(registrationNotice.orEmpty(),
                             fontSize = 11.sp, color = Palette.text,
                             lineHeight = 16.sp)
                     }
@@ -720,58 +685,20 @@ fun LoginSheet(state: AppState, model: AppViewModel) {
                                 color = Palette.blue, fontSize = 12.sp)
                         }
                     } else {
-                        Text(tr(state.lang, "Create your account", "ساخت حساب کاربری"),
-                            fontSize = 24.sp, fontWeight = FontWeight.Black,
-                            color = Palette.text)
-                        Text(tr(state.lang,
-                            "For your security, registration uses the verified BetVima form with age, terms and Cloudflare bot verification. Return here to log in after registration.",
-                            "برای امنیت حساب، ثبت‌نام در فرم رسمی بت‌ویما با تأیید سن، قوانین و بررسی ضدربات انجام می‌شود. پس از ثبت‌نام به اپ برگردید و وارد شوید."),
-                            fontSize = 12.sp, lineHeight = 20.sp, color = Palette.muted)
-                        BvInformationStrip(
-                            tr(state.lang,
-                                "Official BetVima registration: email, password, optional referral code, age and terms confirmation, followed by real Cloudflare Turnstile verification.",
-                                "ثبت‌نام رسمی بت‌ویما شامل ایمیل، رمز عبور، کد معرف اختیاری، تأیید سن و قوانین و سپس بررسی واقعی کلودفلر است."),
-                            icon = Icons.Default.VerifiedUser, accent = Palette.blue)
-                        Surface(color = Palette.paper, shape = RoundedCornerShape(15.dp)) {
-                            Column(Modifier.fillMaxWidth().padding(13.dp),
-                                verticalArrangement = Arrangement.spacedBy(7.dp)) {
-                                Text(tr(state.lang, "Security checks", "کنترل‌های امنیتی"),
-                                    fontWeight = FontWeight.ExtraBold,
-                                    color = Palette.text, fontSize = 13.sp)
-                                listOf(
-                                    tr(state.lang, "Account email and strong password",
-                                        "ایمیل و رمز عبور امن"),
-                                    tr(state.lang, "18+ and terms confirmation",
-                                        "تأیید سن بالای ۱۸ سال و قوانین"),
-                                    tr(state.lang, "Cloudflare I'm not a robot verification",
-                                        "تأیید واقعی «من ربات نیستم» کلودفلر")
-                                ).forEach { item ->
-                                    Row(verticalAlignment = Alignment.CenterVertically) {
-                                        // A requirement, not an already-verified Cloudflare check.
-                                        Icon(Icons.Default.RadioButtonUnchecked, null,
-                                            tint = Palette.muted, modifier = Modifier.size(17.dp))
-                                        Spacer(Modifier.width(8.dp))
-                                        Text(item, color = Palette.text, fontSize = 11.sp)
-                                    }
-                                }
-                            }
-                        }
-                        Button(onClick = browserRegistration,
-                            shape = RoundedCornerShape(13.dp),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = Palette.green, contentColor = Palette.ink),
-                            modifier = Modifier.fillMaxWidth().height(53.dp)) {
-                            Icon(Icons.Default.OpenInBrowser, null, modifier = Modifier.size(20.dp))
-                            Spacer(Modifier.width(8.dp))
-                            Text(tr(state.lang, "Open verified registration", "ثبت‌نام امن بت‌ویما"),
-                                fontWeight = FontWeight.Black)
-                        }
-                        OutlinedButton(onClick = { model.setRegisterScreen(false) },
-                            shape = RoundedCornerShape(13.dp),
-                            modifier = Modifier.fillMaxWidth().height(49.dp)) {
-                            Text(tr(state.lang, "I registered — log in", "ثبت‌نام کردم؛ ورود به اپ"),
-                                color = Palette.blue, fontWeight = FontWeight.Bold)
-                        }
+                        NativeRegistrationForm(
+                            lang = state.lang,
+                            onSuccess = { emailConfirmationRequired ->
+                                registrationNotice = if (emailConfirmationRequired)
+                                    tr(state.lang,
+                                        "Account created. Confirm the email we sent you, then log in.",
+                                        "حساب ساخته شد. ایمیل تأیید را بررسی کنید و سپس وارد شوید.")
+                                else tr(state.lang,
+                                    "Account created successfully. Sign in with your new credentials.",
+                                    "حساب با موفقیت ساخته شد. با مشخصات جدید وارد شوید.")
+                                model.setRegisterScreen(false)
+                            },
+                            onLogin = { model.setRegisterScreen(false) }
+                        )
                     }
                 }
             }
