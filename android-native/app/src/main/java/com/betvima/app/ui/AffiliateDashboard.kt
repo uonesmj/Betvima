@@ -22,6 +22,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.betvima.app.data.*
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.async
+import kotlinx.coroutines.supervisorScope
 import org.json.JSONObject
 
 data class GiftCode(val code: String, val uses: Int, val active: Boolean)
@@ -43,6 +45,7 @@ fun AffiliateDashboard(state: AppState, model: AppViewModel) {
     var error by remember { mutableStateOf<String?>(null) }
     var partner by remember { mutableStateOf<JSONObject?>(null) }
     var stats by remember { mutableStateOf<JSONObject?>(null) }
+    var payable by remember { mutableStateOf<JSONObject?>(null) }
     var link by remember { mutableStateOf("") }
     var gifts by remember { mutableStateOf<List<GiftCode>>(emptyList()) }
     var codeInput by remember { mutableStateOf("") }
@@ -52,25 +55,44 @@ fun AffiliateDashboard(state: AppState, model: AppViewModel) {
         busy = true
         try {
             val token = vault.accessToken(api) ?: throw IllegalStateException("Sign in required")
+            // Overview controls partner authorization. Optional widgets must not blank it out.
             val overview = api.get("/api/v1/affiliate/overview", token)
-            val links = api.get("/api/v1/affiliate/links", token)
-            val codeData = api.get("/api/v1/affiliate/gift-codes", token)
             partner = overview.optJSONObject("affiliate")
             stats = overview.optJSONObject("stats")
-            link = links.str("primaryUrl")
-            gifts = codeData.arr("items").objects().map {
-                GiftCode(it.str("code"), it.optInt("usageCount"), it.optBoolean("isActive", false))
-            }
+            payable = overview.optJSONObject("payable")
             error = null
+            supervisorScope {
+                val linksTask = async {
+                    runCatching { api.get("/api/v1/affiliate/links", token) }
+                }
+                val giftsTask = async {
+                    runCatching { api.get("/api/v1/affiliate/gift-codes", token) }
+                }
+                val urls = linksTask.await().getOrNull()
+                if (urls != null) link = urls.str("primaryUrl")
+                val codes = giftsTask.await().getOrNull()
+                if (codes != null) gifts = codes.arr("items").objects().map {
+                    GiftCode(it.str("code"), it.optInt("usageCount"),
+                        it.optBoolean("isActive", false))
+                }
+            }
         } catch (ex: Exception) {
             partner = null
             stats = null
+            payable = null
             gifts = emptyList()
             link = ""
-            error = ex.message ?: "Affiliate access unavailable"
+            error = ex.message ?: tr(state.lang,
+                "Affiliate access unavailable", "دسترسی به پنل افیلیت ممکن نیست")
         } finally { busy = false }
     }
-    LaunchedEffect(state.signedIn) { if (state.signedIn) reload() }
+    LaunchedEffect(state.signedIn) {
+        if (state.signedIn) reload()
+        else {
+            partner = null; stats = null; payable = null
+            link = ""; gifts = emptyList(); error = null
+        }
+    }
     LazyColumn(contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)) {
         item {
@@ -152,11 +174,11 @@ fun AffiliateDashboard(state: AppState, model: AppViewModel) {
                     Row(horizontalArrangement = Arrangement.spacedBy(9.dp)) {
                         AffiliateMetric(Modifier.weight(1f),
                             tr(state.lang, "Clicks", "کلیک‌ها"),
-                            stats?.optInt("clicks", 0)?.toString() ?: "—",
+                            if (stats?.has("clicks") == true) stats?.optInt("clicks").toString() else "—",
                             Palette.blue)
                         AffiliateMetric(Modifier.weight(1f),
                             tr(state.lang, "Signups", "ثبت‌نام‌ها"),
-                            stats?.optInt("registrations", 0)?.toString() ?: "—",
+                            if (stats?.has("registrations") == true) stats?.optInt("registrations").toString() else "—",
                             Palette.green)
                     }
                 }
@@ -164,11 +186,39 @@ fun AffiliateDashboard(state: AppState, model: AppViewModel) {
                     Row(horizontalArrangement = Arrangement.spacedBy(9.dp)) {
                         AffiliateMetric(Modifier.weight(1f),
                             tr(state.lang, "First deposits", "اولین واریز"),
-                            stats?.optInt("firstDeposits", 0)?.toString() ?: "—",
+                            if (stats?.has("firstDeposits") == true) stats?.optInt("firstDeposits").toString() else "—",
                             Palette.green)
                         AffiliateMetric(Modifier.weight(1f),
                             tr(state.lang, "Active users", "کاربران فعال"),
-                            stats?.optInt("activeUsers", 0)?.toString() ?: "—",
+                            if (stats?.has("activeUsers") == true) stats?.optInt("activeUsers").toString() else "—",
+                            Palette.blue)
+                    }
+                }
+                item {
+                    Row(horizontalArrangement = Arrangement.spacedBy(9.dp)) {
+                        AffiliateMetric(Modifier.weight(1f),
+                            tr(state.lang, "Total deposits", "کل واریز زیرمجموعه‌ها"),
+                            stats?.str("totalDepositMinor")?.takeIf { it.isNotBlank() }
+                                ?.let { money(it, partner?.str("currency", "USD") ?: "USD") } ?: "—",
+                            Palette.blue)
+                        AffiliateMetric(Modifier.weight(1f),
+                            tr(state.lang, "Payable", "کمیسیون قابل برداشت"),
+                            payable?.str("payableMinor")?.takeIf { it.isNotBlank() }
+                                ?.let { money(it, partner?.str("currency", "USD") ?: "USD") } ?: "—",
+                            Palette.green)
+                    }
+                }
+                item {
+                    Row(horizontalArrangement = Arrangement.spacedBy(9.dp)) {
+                        AffiliateMetric(Modifier.weight(1f),
+                            tr(state.lang, "Your share", "سهم همکاری"),
+                            stats?.str("panelShareMinor")?.takeIf { it.isNotBlank() }
+                                ?.let { money(it, partner?.str("currency", "USD") ?: "USD") } ?: "—",
+                            Palette.green)
+                        AffiliateMetric(Modifier.weight(1f),
+                            tr(state.lang, "Player P/L", "سود و زیان کاربران"),
+                            stats?.str("playerNetResultMinor")?.takeIf { it.isNotBlank() }
+                                ?.let { money(it, partner?.str("currency", "USD") ?: "USD") } ?: "—",
                             Palette.blue)
                     }
                 }
@@ -239,6 +289,11 @@ fun AffiliateDashboard(state: AppState, model: AppViewModel) {
                             }
                         }
                     }
+                }
+                item(key = "native-affiliate-operations") {
+                    AffiliateOperations(state, model,
+                        partner?.str("currency", "USD") ?: "USD",
+                        partner?.str("minPayoutMinor", "0") ?: "0")
                 }
             }
         }

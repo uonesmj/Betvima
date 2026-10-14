@@ -40,13 +40,17 @@ data class Pick(
 data class Bet(val id: String, val status: String, val type: String,
     val stakeMinor: String, val payoutMinor: String, val currency: String, val legs: Int,
     val settledPayoutMinor: String? = null, val netResultMinor: String? = null,
-    val placedAt: String = "", val combinedOddsScaled: String = "0") {
+    val placedAt: String = "", val combinedOddsScaled: String = "0",
+    val selections: List<BetLegDetail> = emptyList()) {
     val isSettled: Boolean get() = status.lowercase() in setOf(
         "settled", "void", "refunded", "cancelled", "cashed_out", "rejected")
 }
 data class BetLegDetail(val matchLabel: String, val marketLabel: String,
     val selectionLabel: String, val oddsScaled: String, val status: String,
-    val league: String, val result: String)
+    val league: String, val result: String,
+    val matchId: String = "", val matchStatus: String = "", val scheduledAt: String = "",
+    val minute: Int? = null, val clock: String = "", val period: String = "",
+    val homeScore: Int? = null, val awayScore: Int? = null)
 data class BetDetail(val id: String, val publicId: String, val status: String,
     val currency: String, val stakeMinor: String, val potentialPayoutMinor: String,
     val settledPayoutMinor: String?, val netResultMinor: String?,

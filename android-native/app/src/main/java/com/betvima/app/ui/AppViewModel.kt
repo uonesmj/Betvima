@@ -405,17 +405,19 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         refreshBetHistory()
     }
 
-    fun refreshBetHistory(more: Boolean = false) = viewModelScope.launch {
+    fun refreshBetHistory(more: Boolean = false, silent: Boolean = false) = viewModelScope.launch {
         val snapshot = state.value
         if (!snapshot.signedIn) return@launch
+        if (silent && (snapshot.historyLoading || snapshot.historyMoreLoading ||
+            snapshot.historyPage > 1)) return@launch
         if (more && (snapshot.historyLoading || snapshot.historyMoreLoading ||
             !snapshot.historyHasMore || snapshot.historyPage >= 1000)) return@launch
         val generation = sessionGeneration
         val request = if (more) historyRequest else ++historyRequest
         val filter = snapshot.historyQuery
         mutable.update {
-            it.copy(historyLoading = if (more) it.historyLoading else true,
-                historyMoreLoading = more, historyError = null)
+            it.copy(historyLoading = if (more || silent) it.historyLoading else true,
+                historyMoreLoading = more, historyError = if (silent) it.historyError else null)
         }
         try {
             val jwt = vault.accessToken(api)
@@ -431,7 +433,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                     historyError = null)
             }
         } catch (ex: Exception) {
-            if (generation == sessionGeneration && request == historyRequest) mutable.update {
+            if (!silent && generation == sessionGeneration && request == historyRequest) mutable.update {
                 it.copy(historyLoading = false, historyMoreLoading = false,
                     historyError = tr(it.lang,
                         "Could not load bet history. Try again.",

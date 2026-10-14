@@ -99,28 +99,7 @@ fun BetReceiptSheet(state: AppState, model: AppViewModel) {
                             "ضرایب زمان ثبت و وضعیت هر انتخاب"))
                 }
                 items(receipt.legs) { leg ->
-                    Surface(color = Color.White, shape = RoundedCornerShape(16.dp),
-                        border = BorderStroke(1.dp, Palette.border)) {
-                        Column(Modifier.fillMaxWidth().padding(16.dp)) {
-                            if (leg.league.isNotBlank()) Text(leg.league,
-                                color = Palette.muted, fontSize = 10.sp)
-                            Text(leg.matchLabel, color = Palette.text,
-                                fontWeight = FontWeight.Black, fontSize = 13.sp)
-                            Spacer(Modifier.height(6.dp))
-                            Text(leg.marketLabel + " · " + leg.selectionLabel,
-                                color = Palette.muted, fontSize = 11.sp)
-                            Spacer(Modifier.height(11.dp))
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Text(tr(state.lang, "At placement", "هنگام ثبت") + "  " +
-                                    odds(leg.oddsScaled), color = Palette.blue,
-                                    fontWeight = FontWeight.Bold, fontSize = 12.sp,
-                                    modifier = Modifier.weight(1f))
-                                val status = if (leg.result.isNotBlank()) leg.result else leg.status
-                                SmallPill(legStatusLabel(status, state.lang),
-                                    Palette.paper, Palette.text)
-                            }
-                        }
-                    }
+                    BetSelectionOverview(leg, state.lang, Modifier.fillMaxWidth())
                 }
                 item {
                     Text(tr(state.lang,
