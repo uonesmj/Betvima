@@ -93,7 +93,10 @@ fun HomePage(state: AppState, model: AppViewModel, onSearch: () -> Unit) {
                         Icons.Default.Whatshot, Palette.blue) { model.tab(Tab.SPORTS) }
                 }
             }
-            if (featured.isEmpty()) item {
+            if (featured.isEmpty() && state.upcomingLoading) item {
+                FixtureSkeleton(Modifier.padding(horizontal = 15.dp))
+            }
+            if (featured.isEmpty() && !state.upcomingLoading) item {
                 Box(Modifier.padding(16.dp)) {
                     EmptyPanel(tr(state.lang, "Top markets are unavailable", "بازار برتری موجود نیست"),
                         tr(state.lang,
@@ -113,6 +116,7 @@ fun HomePage(state: AppState, model: AppViewModel, onSearch: () -> Unit) {
                     ReferenceSectionHeader(state.lang, "Top Live", "برترین مسابقات زنده",
                         Icons.Default.Sensors, Color(0xFFF50078)) { model.tab(Tab.LIVE) }
                     if (state.live.isNotEmpty()) ReferenceMatchCarousel(state.live, state, model)
+                    else if (state.liveLoading) FixtureSkeleton(Modifier.fillMaxWidth())
                     else EmptyPanel(tr(state.lang, "No live matches", "مسابقه زنده‌ای موجود نیست"),
                         tr(state.lang, "Refresh for the next live event.",
                             "برای بررسی مسابقات زنده، تازه‌سازی کنید.")) { model.refreshLive() }
@@ -124,6 +128,7 @@ fun HomePage(state: AppState, model: AppViewModel, onSearch: () -> Unit) {
                         Icons.Default.Event, Palette.green) { model.tab(Tab.SPORTS) }
                     if (state.upcoming.isNotEmpty())
                         ReferenceMatchCarousel(state.upcoming, state, model)
+                    else if (state.upcomingLoading) FixtureSkeleton(Modifier.fillMaxWidth())
                     else EmptyPanel(tr(state.lang, "No upcoming fixtures", "مسابقه آینده‌ای موجود نیست"),
                         tr(state.lang, "Upcoming fixtures load from the BetVima catalogue.",
                             "مسابقات از فهرست رسمی بت‌ویما دریافت می‌شوند.")) {
@@ -225,9 +230,9 @@ fun CatalogPage(state: AppState, model: AppViewModel, live: Boolean,
             }
         }
         if ((if (live) state.liveLoading else state.upcomingLoading) &&
-            allMatches.isEmpty()) item {
-            Box(Modifier.fillMaxWidth().height(110.dp), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator(color = Palette.blue)
+            allMatches.isEmpty()) {
+            items(2, key = { "skeleton-$it" }) {
+                FixtureSkeleton(Modifier.padding(horizontal = 13.dp, vertical = 3.dp))
             }
         }
         if (!(if (live) state.liveLoading else state.upcomingLoading) &&
