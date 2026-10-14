@@ -94,6 +94,18 @@ class ApiClient {
     suspend fun upcoming(sport: String = "all"): List<Match> =
         get(upcomingQueryPath(sport)).arr("items").objects().map(::parseMatch)
 
+    /**
+     * Backend catalogue search (not just the first page already present in the UI).
+     * q is URI-encoded, bound to the existing read-only /matches endpoint.
+     */
+    suspend fun searchMatches(query: String, live: Boolean): List<Match> {
+        val text = query.trim()
+        require(text.length in 2..80)
+        val path = "/api/v1/matches?live=" + live.toString() +
+            "&page=1&pageSize=50&q=" + URLEncoder.encode(text, "UTF-8")
+        return get(path).arr("items").objects().map(::parseMatch)
+    }
+
     suspend fun detail(id: String): Match {
         require(id.matches(Regex("[A-Za-z0-9-]{1,100}")))
         val data = get("/api/v1/matches/" + id)
