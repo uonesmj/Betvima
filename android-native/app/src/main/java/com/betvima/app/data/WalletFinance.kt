@@ -131,9 +131,9 @@ fun walletInputMinor(source: String, currency: String): String? {
 }
 
 /** Exact floor conversion: never promise a voucher larger than the user's fiat input. */
-fun voucherUsdMinor(walletMinor: String, currency: String, rateIrrPerUsd: String): String? =
-    runCatching {
-        if (currency == "USD") return walletMinor
+fun voucherUsdMinor(walletMinor: String, currency: String, rateIrrPerUsd: String): String? {
+    if (currency == "USD") return walletMinor
+    return runCatching {
         require(currency == "IRR" || currency == "IRT")
         val rate = BigDecimal(rateIrrPerUsd)
         require(rate > BigDecimal.ZERO)
@@ -141,6 +141,7 @@ fun voucherUsdMinor(walletMinor: String, currency: String, rateIrrPerUsd: String
         BigDecimal(walletMinor).multiply(multiplier)
             .divide(rate, 0, RoundingMode.DOWN).toBigIntegerExact().toString()
     }.getOrNull()
+}
 
 fun validWalletEmail(value: String): Boolean =
     value.trim().length <= 254 &&
