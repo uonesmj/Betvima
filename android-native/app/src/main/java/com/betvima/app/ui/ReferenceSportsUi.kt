@@ -5,6 +5,9 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.draw.clip
+import coil.compose.AsyncImage
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -20,6 +23,7 @@ import com.betvima.app.data.Match
 import com.betvima.app.data.Market
 import com.betvima.app.data.Pick
 import com.betvima.app.data.Selection
+import androidx.compose.ui.text.style.TextAlign
 
 /**
  * Dense reference-inspired sports layouts using server-owned fixtures and markets.
@@ -160,6 +164,198 @@ fun ReferenceSectionHeader(lang: Lang, titleEn: String, titleFa: String,
     }
 }
 
+/** Circular competition shortcuts, populated exclusively from returned catalogue. */
+@Composable
+fun ReferenceTournamentRibbon(state: AppState, model: AppViewModel) {
+    val competitions = (state.live + state.upcoming)
+        .filter { it.league.isNotBlank() && it.league != "Football" }
+        .distinctBy { it.league + "|" + it.country }
+        .take(7)
+    LazyRow(Modifier.fillMaxWidth(),
+        contentPadding = PaddingValues(horizontal = 15.dp, vertical = 11.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        item(key = "top-bets") {
+            TournamentShortcut(
+                label = tr(state.lang, "TOP Bets", "شرط‌های برتر"),
+                logo = null,
+                icon = Icons.Default.Whatshot, active = true
+            ) { model.homeMode(HomeMode.TOP_BETS) }
+        }
+        items(competitions, key = { it.league + "|" + it.country }) { competition ->
+            TournamentShortcut(
+                label = competition.league, logo = competition.leagueLogo,
+                icon = Icons.Default.EmojiEvents, active = false
+            ) { model.tournament(competition.league + "|" + competition.country) }
+        }
+    }
+}
+
+@Composable
+private fun TournamentShortcut(
+    label: String, logo: String?,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    active: Boolean, onClick: () -> Unit
+) {
+    Column(Modifier.width(79.dp).clickable(onClick = onClick),
+        horizontalAlignment = Alignment.CenterHorizontally) {
+        Surface(
+            shape = CircleShape, color = Color(0xFF161F2E),
+            border = BorderStroke(if (active) 2.dp else 1.dp,
+                if (active) Palette.blue else Color(0xFFDADEE6)),
+            modifier = Modifier.size(74.dp)
+        ) {
+            Box(contentAlignment = Alignment.Center) {
+                val image = logo?.takeIf { it.startsWith("https://") }
+                if (image != null) {
+                    AsyncImage(model = image, contentDescription = label,
+                        modifier = Modifier.fillMaxSize().padding(9.dp))
+                } else {
+                    Icon(icon, contentDescription = null,
+                        modifier = Modifier.size(36.dp),
+                        tint = if (active) Palette.green else Color.White)
+                }
+            }
+        }
+        Spacer(Modifier.height(7.dp))
+        Text(label, fontWeight = FontWeight.Bold,
+            fontSize = 11.sp, lineHeight = 14.sp, maxLines = 2,
+            textAlign = TextAlign.Center, color = Palette.text,
+            overflow = TextOverflow.Ellipsis)
+    }
+}
+
+@Composable
+private fun ReferenceCompactOdd(
+    match: Match, market: Market, selection: Selection,
+    state: AppState, model: AppViewModel, modifier: Modifier = Modifier
+) {
+    val enabled = match.bettingAvailable && market.available &&
+        selection.available && (!match.live || state.liveEnabled)
+    val selected = state.picks.any { it.selectionId == selection.id }
+    Surface(
+        modifier = modifier.heightIn(min = 51.dp).clickable(enabled = enabled) {
+            model.togglePick(match, market, selection)
+        },
+        shape = RoundedCornerShape(10.dp),
+        border = BorderStroke(if (selected) 1.5.dp else 0.dp,
+            if (selected) Palette.blue else Color.Transparent),
+        color = if (selected) Color(0xFFDBE9FC) else Color(0xFFEDEFF3)
+    ) {
+        Row(Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically) {
+            Text(selection.label(state.lang == Lang.FA),
+                fontSize = 10.sp, color = Palette.text,
+                maxLines = 1, overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f))
+            Spacer(Modifier.width(3.dp))
+            if (!enabled) Icon(Icons.Default.Lock, null,
+                modifier = Modifier.size(14.dp), tint = Palette.muted)
+            else Text(com.betvima.app.data.odds(selection.oddsScaled),
+                color = if (selected) Palette.blue else Palette.text,
+                fontSize = 15.sp, fontWeight = FontWeight.Black)
+        }
+    }
+}
+
+@Composable
+private fun ReferenceCarouselCard(
+    match: Match, state: AppState, model: AppViewModel
+) {
+    val market = match.featured
+    Surface(color = Color.White, shape = RoundedCornerShape(18.dp),
+        border = BorderStroke(1.dp, Color(0xFFE1E4EB)),
+        modifier = Modifier.width(316.dp), shadowElevation = 1.dp) {
+        Column(Modifier.fillMaxWidth()) {
+            Row(Modifier.fillMaxWidth().clickable { model.openMatch(match.id) }
+                .padding(horizontal = 12.dp, vertical = 11.dp),
+                verticalAlignment = Alignment.CenterVertically) {
+                Surface(shape = RoundedCornerShape(9.dp),
+                    color = Color(0xFFEDEFF3)) {
+                    Box(Modifier.size(34.dp), contentAlignment = Alignment.Center) {
+                        val image = match.leagueLogo?.takeIf { it.startsWith("https://") }
+                        if (image != null) AsyncImage(model = image,
+                            contentDescription = null, modifier = Modifier.size(26.dp))
+                        else Icon(Icons.Default.EmojiEvents, null,
+                            modifier = Modifier.size(20.dp), tint = Palette.blue)
+                    }
+                }
+                Spacer(Modifier.width(9.dp))
+                Column(Modifier.weight(1f)) {
+                    Text(match.league, fontWeight = FontWeight.Black,
+                        fontSize = 12.sp, color = Palette.text, maxLines = 1,
+                        overflow = TextOverflow.Ellipsis)
+                    Text(match.sport.replace("-", " "),
+                        color = Palette.muted, fontSize = 10.sp)
+                }
+            }
+            HorizontalDivider(thickness = .6.dp,
+                color = Color(0xFFE6E8EE))
+            Column(Modifier.padding(horizontal = 13.dp, vertical = 13.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    if (match.live) SmallPill(
+                        tr(state.lang, "LIVE", "زنده") +
+                            " " + (match.minute?.toString()?.plus("′") ?: "•"),
+                        Color(0xFFFFEAF3), Color(0xFFE60073))
+                    else SmallPill(match.starts.take(16).replace("T", " • "),
+                        Color(0xFFF1F3F6), Palette.text)
+                    Spacer(Modifier.weight(1f))
+                    if (match.marketsCount > 0) SmallPill(
+                        "+${match.marketsCount}", Palette.paper, Palette.muted)
+                }
+                listOf(match.home to match.homeScore, match.away to match.awayScore)
+                    .forEach { (team, score) ->
+                        Row(Modifier.fillMaxWidth().clickable {
+                            model.openMatch(match.id)
+                        }, verticalAlignment = Alignment.CenterVertically) {
+                            TeamBadge(team, 29)
+                            Spacer(Modifier.width(8.dp))
+                            Text(team.name, fontWeight = FontWeight.Bold,
+                                fontSize = 13.sp, color = Palette.text,
+                                modifier = Modifier.weight(1f),
+                                maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            if (score != null) Surface(
+                                color = Color(0xFFEDEFF3),
+                                shape = RoundedCornerShape(7.dp)
+                            ) {
+                                Text(score.toString(), color = Palette.text,
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                    fontSize = 12.sp, fontWeight = FontWeight.Black)
+                            }
+                        }
+                    }
+                Text(market?.label(state.lang == Lang.FA) ?: tr(state.lang,
+                    "Odds unavailable", "ضریب موجود نیست"),
+                    fontSize = 11.sp, color = Palette.muted, maxLines = 1)
+                if (market != null) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        market.selections.take(2).forEach { selection ->
+                            ReferenceCompactOdd(match, market, selection, state, model,
+                                Modifier.weight(1f))
+                        }
+                        Surface(color = Color(0xFFEDEFF3),
+                            shape = RoundedCornerShape(10.dp),
+                            modifier = Modifier.width(48.dp)
+                                .heightIn(min = 51.dp)
+                                .clickable { model.openMatch(match.id) }) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Text(if (match.marketsCount > 0)
+                                        "+${match.marketsCount}" else "›",
+                                    fontWeight = FontWeight.Black,
+                                    fontSize = 12.sp, color = Palette.text)
+                            }
+                        }
+                    }
+                } else {
+                    Text(tr(state.lang, "Provider has no open market",
+                        "بازار بازی از منبع داده دریافت نشده است"),
+                        fontSize = 10.sp, color = Palette.muted)
+                }
+            }
+        }
+    }
+}
+
 @Composable
 fun ReferenceMatchCarousel(
     matches: List<Match>, state: AppState, model: AppViewModel
@@ -168,11 +364,7 @@ fun ReferenceMatchCarousel(
         contentPadding = PaddingValues(end = 1.dp),
         horizontalArrangement = Arrangement.spacedBy(10.dp)) {
         items(matches.take(10), key = { it.id }) { match ->
-            Box(Modifier.width(306.dp)) {
-                MatchTile(match, state.lang, state.liveEnabled, state.picks,
-                    onOpen = { model.openMatch(match.id) },
-                    onPick = { market, selection -> model.togglePick(match, market, selection) })
-            }
+            ReferenceCarouselCard(match, state, model)
         }
     }
 }
