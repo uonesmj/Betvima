@@ -242,6 +242,15 @@ private fun WalletReceipt(
         Text(wTr(lang,"Status: ","وضعیت: ") + receipt.status,
             color = wMuted, fontSize = 12.sp)
         if (address.isNotBlank()) {
+            if (receipt.providerCurrency.isNotBlank()) {
+                Surface(color = Color(0xFFEAF8F3), shape = RoundedCornerShape(11.dp)) {
+                    Text(wTr(lang,"Provider payment currency: ","ارز پرداخت درگاه: ") +
+                        receipt.providerCurrency.uppercase(),
+                        modifier = Modifier.padding(horizontal = 13.dp, vertical = 8.dp),
+                        color = Color(0xFF0A8154), fontWeight = FontWeight.Bold,
+                        fontSize = 11.sp)
+                }
+            }
             Text(wTr(lang,"Send only the selected asset on the matching network.",
                 "فقط ارز انتخاب‌شده را روی شبکه صحیح ارسال کنید."),
                 color = Color(0xFF9F6319), fontSize = 11.sp)
@@ -629,6 +638,21 @@ fun WalletTransferSheet(
                         singleLine = true,
                         keyboardOptions = KeyboardOptions(
                             keyboardType = if (voucher) KeyboardType.Email else KeyboardType.Text),
+                        trailingIcon = {
+                            IconButton(onClick = {
+                                // Paste only on explicit user request; no background
+                                // clipboard reading of sensitive addresses.
+                                val pasted = clipboard.getText()?.text?.trim().orEmpty()
+                                if (pasted.isNotEmpty()) {
+                                    destination = pasted.take(254)
+                                    error = null
+                                }
+                            }) {
+                                Icon(Icons.Default.ContentPaste,
+                                    wTr(lang,"Paste destination","چسباندن آدرس"),
+                                    tint = wBlue)
+                            }
+                        },
                         shape = RoundedCornerShape(14.dp),
                         modifier = Modifier.fillMaxWidth()
                     )
@@ -741,40 +765,134 @@ fun WalletTransferSheet(
     }
 
     if (picker.isNotBlank()) {
-        AlertDialog(
-            onDismissRequest = { picker = "" },
-            title = { Text(if (picker == "coin")
-                wTr(lang,"Choose cryptocurrency","انتخاب رمزارز")
-            else wTr(lang,"Select network","انتخاب شبکه")) },
-            text = {
-                Column(Modifier.heightIn(max = 410.dp).verticalScroll(rememberScrollState()),
-                    verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    if (picker == "coin") walletCoins.forEach { item ->
-                        WalletMenuRow(
-                            item.code, item.name,
-                            leading = { CryptoLogo(item) },
-                            onClick = {
-                                coin = item.code
-                                network = item.networkOptions.first()
-                                picker = ""
-                            }
+        ModalBottomSheet(
+            onDismissRequest = { picker = ""; coinSearch = "" },
+            containerColor = Color(0xFFF9FBFD),
+            sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+        ) {
+            Column(
+                Modifier.fillMaxWidth().padding(horizontal = 17.dp).padding(bottom = 28.dp),
+                verticalArrangement = Arrangement.spacedBy(13.dp)
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Surface(color = Color(0xFFE9F2FF),
+                        shape = RoundedCornerShape(13.dp)) {
+                        Icon(
+                            if (picker == "coin") Icons.Default.CurrencyBitcoin
+                            else Icons.Default.Hub,
+                            null, tint = wBlue,
+                            modifier = Modifier.padding(10.dp).size(22.dp)
                         )
-                    } else selectedCoin.networkOptions.forEach { option ->
-                        WalletMenuRow(option,wTr(lang,"Blockchain network","شبکه بلاکچین"),
-                            leading = {
-                                Icon(Icons.Default.Hub, null, tint = wBlue,
-                                    modifier = Modifier.size(25.dp))
-                            },
-                            onClick = { network = option; picker = "" })
+                    }
+                    Spacer(Modifier.width(10.dp))
+                    Column(Modifier.weight(1f)) {
+                        Text(
+                            if (picker == "coin") wTr(lang, "Select cryptocurrency", "انتخاب رمزارز")
+                            else wTr(lang, "Choose blockchain network", "انتخاب شبکه بلاکچین"),
+                            color = wText, fontSize = 18.sp, fontWeight = FontWeight.Black)
+                        Text(wTr(lang,"Choose carefully before transferring",
+                            "قبل از انتقال، انتخاب خود را بررسی کنید"),
+                            fontSize = 10.sp, color = wMuted)
+                    }
+                    IconButton(onClick = { picker = ""; coinSearch = "" }) {
+                        Icon(Icons.Default.Close, wTr(lang,"Close","بستن"))
                     }
                 }
-            },
-            confirmButton = {
-                TextButton(onClick = { picker = "" }) {
-                    Text(wTr(lang,"Close","بستن"))
+                if (picker == "coin") {
+                    OutlinedTextField(
+                        value = coinSearch,
+                        onValueChange = { coinSearch = it.take(30) },
+                        modifier = Modifier.fillMaxWidth(),
+                        leadingIcon = { Icon(Icons.Default.Search, null) },
+                        label = { Text(wTr(lang, "Search coins", "جستجوی رمزارز")) },
+                        singleLine = true, shape = RoundedCornerShape(14.dp)
+                    )
+                }
+                Column(
+                    Modifier.fillMaxWidth().heightIn(max = 430.dp)
+                        .verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(7.dp)
+                ) {
+                    if (picker == "coin") walletCoins
+                        .filter {
+                            it.code.contains(coinSearch, ignoreCase = true) ||
+                                it.name.contains(coinSearch, ignoreCase = true)
+                        }.forEach { item ->
+                            Surface(
+                                modifier = Modifier.fillMaxWidth().clickable {
+                                    coin = item.code
+                                    network = item.networkOptions.first()
+                                    picker = ""
+                                    coinSearch = ""
+                                },
+                                color = if (coin == item.code) Color(0xFFE9F4FF)
+                                    else Color.White,
+                                border = BorderStroke(if (coin == item.code) 1.5.dp else 1.dp,
+                                    if (coin == item.code) wBlue else wBorder),
+                                shape = RoundedCornerShape(16.dp)
+                            ) {
+                                Row(Modifier.fillMaxWidth().padding(12.dp),
+                                    verticalAlignment = Alignment.CenterVertically) {
+                                    CryptoLogo(item, Modifier.size(43.dp))
+                                    Spacer(Modifier.width(12.dp))
+                                    Column(Modifier.weight(1f)) {
+                                        Text(item.code, color = wText,
+                                            fontSize = 13.sp, fontWeight = FontWeight.Black)
+                                        Text(item.name + " · " +
+                                            wTr(lang,"Networks: ","شبکه‌ها: ") +
+                                            item.networkOptions.size,
+                                            color = wMuted, fontSize = 10.sp)
+                                    }
+                                    if (coin == item.code)
+                                        Icon(Icons.Default.CheckCircle, null, tint = wBlue)
+                                    else Icon(Icons.Default.ChevronRight, null, tint = wMuted)
+                                }
+                            }
+                        }
+                    else selectedCoin.networkOptions.forEach { option ->
+                        Surface(
+                            modifier = Modifier.fillMaxWidth().clickable {
+                                network = option
+                                picker = ""
+                            },
+                            color = if (network == option) Color(0xFFE9F4FF)
+                                else Color.White,
+                            border = BorderStroke(if (network == option) 1.5.dp else 1.dp,
+                                if (network == option) wBlue else wBorder),
+                            shape = RoundedCornerShape(16.dp)
+                        ) {
+                            Row(Modifier.fillMaxWidth().padding(15.dp),
+                                verticalAlignment = Alignment.CenterVertically) {
+                                Icon(Icons.Default.Hub, null, tint = wBlue)
+                                Spacer(Modifier.width(11.dp))
+                                Column(Modifier.weight(1f)) {
+                                    Text(option, fontWeight = FontWeight.Black,
+                                        fontSize = 13.sp, color = wText)
+                                    Text(wTr(lang,"Verify network compatibility",
+                                        "از سازگاری شبکه مقصد مطمئن شوید"),
+                                        color = wMuted, fontSize = 10.sp)
+                                }
+                                if (network == option)
+                                    Icon(Icons.Default.CheckCircle, null, tint = wBlue)
+                            }
+                        }
+                    }
+                }
+                Surface(color = Color(0xFFFFF7E8),
+                    shape = RoundedCornerShape(13.dp)) {
+                    Row(Modifier.fillMaxWidth().padding(12.dp),
+                        verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Default.Info, null, tint = Color(0xFF9E681D),
+                            modifier = Modifier.size(17.dp))
+                        Spacer(Modifier.width(8.dp))
+                        Text(wTr(lang,
+                            "Transfers on the wrong blockchain may be permanently lost.",
+                            "انتقال روی شبکه اشتباه ممکن است موجب از دست رفتن دائمی وجه شود."),
+                            color = Color(0xFF845716), fontSize = 11.sp)
+                    }
                 }
             }
-        )
+        }
     }
     if (confirm) {
         AlertDialog(
