@@ -14,7 +14,7 @@ import java.math.BigDecimal
 import java.math.RoundingMode
 
 enum class Tab { HOME, LIVE, SPORTS, BETS, WALLET }
-enum class Feature { NONE, PROFILE, BONUSES, VIP, SUPPORT, CASINO, AFFILIATE }
+enum class Feature { NONE, PROFILE, BONUSES, VIP, SUPPORT, CASINO, AFFILIATE, NOTIFICATIONS }
 enum class Lang { EN, FA }
 
 data class AppState(
@@ -30,6 +30,9 @@ data class AppState(
     val wallet: Wallet? = null, val bets: List<Bet> = emptyList(),
     val betsPage: Int = 1, val betsHasMore: Boolean = false,
     val moreBetsLoading: Boolean = false, val moreWalletLoading: Boolean = false,
+    val notifications: List<UserNotification> = emptyList(),
+    val notificationPage: Int = 1, val notificationHasMore: Boolean = false,
+    val notificationLoading: Boolean = false,
     val bonuses: List<Bonus> = emptyList(), val busy: Boolean = false,
     val accountLoading: Boolean = false,
     val quote: String? = null, val notice: String? = null
@@ -68,6 +71,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     fun feature(feature: Feature) {
         mutable.update { it.copy(feature = feature, detail = null) }
         if (feature == Feature.BONUSES && state.value.signedIn) refreshAccount()
+        if (feature == Feature.NOTIFICATIONS && state.value.signedIn) refreshNotifications()
     }
     fun sport(sport: String) {
         mutable.update { it.copy(sport = sport) }
@@ -168,7 +172,9 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         vault.clear()
         mutable.update { it.copy(signedIn = false, wallet = null, bets = emptyList(),
             bonuses = emptyList(), quote = null, showLogin = false, accountLoading = false,
-            betsPage = 1, betsHasMore = false, moreBetsLoading = false, moreWalletLoading = false) }
+            betsPage = 1, betsHasMore = false, moreBetsLoading = false, moreWalletLoading = false,
+            notifications = emptyList(), notificationPage = 1, notificationHasMore = false,
+            notificationLoading = false) }
     }
     fun refreshAccount() = viewModelScope.launch {
         if (!state.value.signedIn) return@launch
@@ -205,6 +211,63 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                             "بخشی از اطلاعات حساب به‌روزرسانی نشد.") else it.notice
                 )
             }
+        }
+    }
+    fun refreshNotifications(more: Boolean = false) = viewModelScope.launch {
+        val snapshot = state.value
+        if (!snapshot.signedIn || snapshot.notificationLoading ||
+            (more && (!snapshot.notificationHasMore || snapshot.notificationPage >= 1000))) return@launch
+        val generation = sessionGeneration
+        mutable.update { it.copy(notificationLoading = true) }
+        try {
+            val jwt = vault.accessToken(api) ?: throw ApiFailure(401, "Authentication required")
+            val page = api.notifications(jwt, if (more) snapshot.notificationPage + 1 else 1)
+            if (generation == sessionGeneration && state.value.signedIn) mutable.update {
+                it.copy(
+                    notifications = if (more)
+                        (it.notifications + page.items).distinctBy { n -> n.id } else page.items,
+                    notificationPage = page.page,
+                    notificationHasMore = page.hasMore,
+                    notificationLoading = false
+                )
+            }
+        } catch (ex: Exception) {
+            if (generation == sessionGeneration) mutable.update {
+                it.copy(notificationLoading = false,
+                    notice = tr(it.lang, "Could not load notifications.",
+                        "دریافت اعلان‌ها ناموفق بود."))
+            }
+        }
+    }
+    fun markNotificationRead(id: String) = viewModelScope.launch {
+        val generation = sessionGeneration
+        val jwt = vault.accessToken(api) ?: return@launch
+        try {
+            api.readNotifications(jwt, ids = listOf(id))
+            if (generation == sessionGeneration && state.value.signedIn) mutable.update {
+                it.copy(notifications = it.notifications.map { note ->
+                    if (note.id == id) note.copy(readAt = java.time.Instant.now().toString()) else note
+                })
+            }
+        } catch (ex: Exception) {
+            if (generation == sessionGeneration) notice(
+                tr(state.value.lang, "Could not mark as read.", "ثبت وضعیت خوانده‌شده ناموفق بود."))
+        }
+    }
+    fun markAllNotificationsRead() = viewModelScope.launch {
+        val generation = sessionGeneration
+        val jwt = vault.accessToken(api) ?: return@launch
+        try {
+            api.readNotifications(jwt, all = true)
+            if (generation == sessionGeneration && state.value.signedIn) mutable.update {
+                it.copy(notifications = it.notifications.map { note ->
+                    note.copy(readAt = note.readAt ?: java.time.Instant.now().toString())
+                })
+            }
+        } catch (ex: Exception) {
+            if (generation == sessionGeneration) notice(
+                tr(state.value.lang, "Could not mark notifications as read.",
+                    "ثبت وضعیت اعلان‌ها ناموفق بود."))
         }
     }
     fun loadMoreBets() = viewModelScope.launch {
