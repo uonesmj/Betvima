@@ -71,28 +71,18 @@ export const serializeMarket = (market: Market) => ({
 
 export async function getHomepageData() {
   const services = createServices();
-  const [live, upcoming, esports, sports] = await Promise.all([
+  const [live, upcoming, topBets, sports] = await Promise.all([
     settle('live', services.catalog.listLiveMatches(serviceRoleContext, 6), [] as Awaited<ReturnType<typeof services.catalog.listLiveMatches>>),
     settle('upcoming', services.catalog.listUpcomingMatches(serviceRoleContext, 72, 12), [] as Awaited<ReturnType<typeof services.catalog.listUpcomingMatches>>),
-    settle('esports', services.catalog.listMatches(serviceRoleContext, {
-      sportKey: 'esports',
-      page: 1,
-      pageSize: 30,
-      status: ['scheduled', 'live'],
-      from: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
-      includeTotal: false,
-    }), { items: [], total: 0, page: 1, pageSize: 30, hasMore: false } as Awaited<ReturnType<typeof services.catalog.listMatches>>),
+    settle('topBets', services.catalog.listTopBetMatches(serviceRoleContext, 168, 6), [] as Awaited<ReturnType<typeof services.catalog.listTopBetMatches>>),
     settle('sports', services.catalog.listSports(serviceRoleContext), [] as Awaited<ReturnType<typeof services.catalog.listSports>>),
   ]);
   return {
     live: live.value.map(serializeMatch),
     upcoming: upcoming.value.map(serializeMatch),
-    esports: esports.value.items
-      .map(serializeMatch)
-      .filter((match) => !match.isLive && (match.marketsCount ?? 0) > 0)
-      .slice(0, 6),
+    topBets: topBets.value.map(serializeMatch),
     sports: sports.value.map((s) => ({ key: s.key, name: s.nameEn || s.nameFa, icon: s.icon })),
-    degraded: failedSections(['live', live], ['upcoming', upcoming], ['esports', esports], ['sports', sports]),
+    degraded: failedSections(['live', live], ['upcoming', upcoming], ['topBets', topBets], ['sports', sports]),
   };
 }
 
