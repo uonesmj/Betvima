@@ -16,6 +16,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -54,28 +55,47 @@ fun NativeSearchSheet(
     ModalBottomSheet(
         onDismissRequest = { model.clearSearch(); onDismiss() },
         containerColor = Palette.paper,
+        shape = RoundedCornerShape(topStart = 30.dp, topEnd = 30.dp),
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
-        dragHandle = { BottomSheetDefaults.DragHandle() }
+        dragHandle = {
+            Box(Modifier.padding(top = 12.dp, bottom = 6.dp)
+                .width(42.dp).height(4.dp)
+                .background(Palette.muted.copy(alpha = .35f), RoundedCornerShape(99.dp)))
+        }
     ) {
         Column(Modifier.fillMaxWidth().imePadding()
             .heightIn(max = 700.dp)
             .padding(horizontal = 15.dp, vertical = 7.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Default.Search, null, tint = Palette.blue,
-                    modifier = Modifier.size(23.dp))
+            Row(Modifier.fillMaxWidth().background(
+                Brush.horizontalGradient(listOf(Palette.ink, Color(0xFF183A3C))),
+                    RoundedCornerShape(21.dp))
+                .padding(horizontal = 13.dp, vertical = 13.dp),
+                verticalAlignment = Alignment.CenterVertically) {
+                Surface(color = Palette.green.copy(alpha = .18f),
+                    shape = RoundedCornerShape(13.dp)) {
+                    Icon(Icons.Default.Search, null, tint = Palette.green,
+                        modifier = Modifier.padding(11.dp).size(22.dp))
+                }
                 Spacer(Modifier.width(9.dp))
                 Text(tr(state.lang, "Search BetVima", "جست‌وجو در بت‌ویما"),
                     modifier = Modifier.weight(1f), fontWeight = FontWeight.Black,
-                    fontSize = 20.sp, color = Palette.text)
+                    fontSize = 20.sp, color = Color.White)
                 IconButton(onClick = { model.clearSearch(); onDismiss() }) {
-                    Icon(Icons.Default.Close, tr(state.lang, "Close", "بستن"))
+                    Icon(Icons.Default.Close, tr(state.lang, "Close", "بستن"),
+                        tint = Color.White)
                 }
             }
             OutlinedTextField(
                 value = query, onValueChange = { query = it.take(80) },
                 modifier = Modifier.fillMaxWidth().focusRequester(field),
-                shape = RoundedCornerShape(15.dp),
+                shape = RoundedCornerShape(16.dp),
                 singleLine = true,
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedContainerColor = Color.White,
+                    unfocusedContainerColor = Color.White,
+                    focusedBorderColor = Palette.green,
+                    unfocusedBorderColor = Palette.border,
+                    cursorColor = Palette.blue),
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
                 leadingIcon = { Icon(Icons.Default.Search, null, tint = Palette.blue) },
                 placeholder = { Text(tr(state.lang,
@@ -87,7 +107,7 @@ fun NativeSearchSheet(
                     }
                 }
             )
-            Spacer(Modifier.height(11.dp))
+            Spacer(Modifier.height(17.dp))
             AnimatedContent(
                 targetState = when {
                     query.trim().length < 2 -> "hint"
@@ -169,8 +189,9 @@ private fun SearchSection(title: String, count: Int, color: Color) {
 
 @Composable
 private fun SearchResultCard(match: Match, lang: Lang, onClick: () -> Unit) {
-    Surface(color = Color.White, shape = RoundedCornerShape(16.dp),
+    Surface(color = Color.White, shape = RoundedCornerShape(19.dp),
         border = BorderStroke(1.dp, Palette.border),
+        shadowElevation = 3.dp,
         modifier = Modifier.fillMaxWidth().clickable(onClick = onClick)) {
         Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
