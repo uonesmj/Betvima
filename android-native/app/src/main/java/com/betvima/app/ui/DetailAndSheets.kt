@@ -208,7 +208,8 @@ fun LoginSheet(state: AppState, model: AppViewModel) {
     val uri = LocalUriHandler.current
     ModalBottomSheet(onDismissRequest = { model.showLogin(false) },
         containerColor = Color.White) {
-        Column(Modifier.fillMaxWidth().padding(horizontal = 23.dp).padding(bottom = 35.dp),
+        Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState())
+            .padding(horizontal = 23.dp).padding(bottom = 35.dp),
             verticalArrangement = Arrangement.spacedBy(15.dp)) {
             Text(tr(state.lang, "Welcome back", "خوش آمدید"),
                 fontSize = 25.sp, fontWeight = FontWeight.Black, color = Palette.text)
