@@ -23,6 +23,8 @@ data class AppState(
     val live: List<Match> = emptyList(), val upcoming: List<Match> = emptyList(),
     val loading: Boolean = false, val detailLoading: Boolean = false,
     val liveEnabled: Boolean = false, val detail: Match? = null,
+    val betDetail: BetDetail? = null, val betDetailLoading: Boolean = false,
+    val betDetailVisible: Boolean = false,
     val picks: List<Pick> = emptyList(), val showSlip: Boolean = false,
     val showLogin: Boolean = false, val signedIn: Boolean = false,
     val wallet: Wallet? = null, val bets: List<Bet> = emptyList(),
@@ -123,6 +125,30 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         val picks = it.picks.filterNot { p -> p.selectionId == id }
         it.copy(picks = picks, quote = null, showSlip = picks.isNotEmpty())
     }
+    fun openBet(id: String) = viewModelScope.launch {
+        if (!state.value.signedIn) {
+            showLogin(true)
+            return@launch
+        }
+        val generation = sessionGeneration
+        mutable.update { it.copy(betDetailVisible = true, betDetailLoading = true, betDetail = null) }
+        try {
+            val jwt = vault.accessToken(api) ?: throw ApiFailure(401, "Authentication required")
+            val detail = api.betDetail(jwt, id)
+            if (generation == sessionGeneration && state.value.betDetailVisible) mutable.update {
+                it.copy(betDetail = detail, betDetailLoading = false)
+            }
+        } catch (ex: Exception) {
+            if (generation == sessionGeneration) mutable.update {
+                it.copy(betDetailLoading = false, betDetailVisible = false,
+                    notice = tr(it.lang, "Unable to open this bet receipt.",
+                        "نمایش جزئیات این شرط ممکن نشد."))
+            }
+        }
+    }
+    fun closeBet() = mutable.update {
+        it.copy(betDetailVisible = false, betDetailLoading = false, betDetail = null)
+    }
     fun showSlip(show: Boolean) = mutable.update { it.copy(showSlip = show) }
     fun showLogin(show: Boolean) = mutable.update { it.copy(showLogin = show) }
     fun signIn(email: String, password: String) = viewModelScope.launch {
@@ -137,6 +163,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
     fun signOut() {
+        closeBet()
         sessionGeneration++
         vault.clear()
         mutable.update { it.copy(signedIn = false, wallet = null, bets = emptyList(),
