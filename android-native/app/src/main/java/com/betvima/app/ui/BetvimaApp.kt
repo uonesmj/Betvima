@@ -80,7 +80,8 @@ fun BetvimaApp(model: AppViewModel) {
                     dismiss = { drawerScope.launch { drawer.close() } },
                     openAccount = {
                         if (state.signedIn) accountOpen = true else model.showLogin(true)
-                    })
+                    },
+                    openLanguage = { languageOpen = true })
             }
         ) {
         Scaffold(
