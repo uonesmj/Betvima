@@ -2,6 +2,9 @@ package com.betvima.app.ui
 
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
@@ -246,63 +249,35 @@ private fun MainAccountSlipControls(
     }
 }
 
+/**
+ * Single continuous list: the first five picks expand the sheet; the sixth
+ * pick and onwards scroll within a five-card viewport. No page arrows.
+ */
 @Composable
-private fun SlipPickPager(
+private fun SlipPickList(
     state: AppState,
     model: AppViewModel,
-    capacity: Int,
-    listHeight: androidx.compose.ui.unit.Dp
+    visibleViewportDp: Int
 ) {
-    var page by rememberSaveable { mutableIntStateOf(0) }
-    var previousCount by remember { mutableIntStateOf(state.picks.size) }
-    val count = state.picks.size
-    LaunchedEffect(count, capacity) {
-        page = if (count > previousCount) slipMaxPage(count, capacity)
-               else page.coerceAtMost(slipMaxPage(count, capacity))
-        previousCount = count
+    val listState = rememberLazyListState()
+    var oldCount by remember { mutableIntStateOf(state.picks.size) }
+    LaunchedEffect(state.picks.size) {
+        if (state.picks.size > oldCount &&
+            state.picks.size > SLIP_VISIBLE_PICK_LIMIT) {
+            listState.animateScrollToItem(state.picks.lastIndex)
+        }
+        oldCount = state.picks.size
     }
-    val range = slipPageWindow(count, capacity, page)
-    Column(
-        modifier = Modifier.fillMaxWidth().height(listHeight)
-            .padding(horizontal = 13.dp, vertical = 5.dp),
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        state = listState,
+        userScrollEnabled = slipRequiresScroll(state.picks.size, visibleViewportDp),
+        contentPadding = PaddingValues(horizontal = 13.dp, vertical = 5.dp),
         verticalArrangement = Arrangement.spacedBy(SLIP_CARD_SPACING_DP.dp)
     ) {
-        range.forEach { index ->
-            val pick = state.picks[index]
-            key(pick.selectionId) {
-                SlipPickCard(pick, state.lang, index + 1) {
-                    model.removePick(pick.selectionId)
-                }
-            }
-        }
-        if (count > capacity) {
-            Row(
-                modifier = Modifier.fillMaxWidth().height(SLIP_PAGER_HEIGHT_DP.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                IconButton(
-                    onClick = { page = (page - 1).coerceAtLeast(0) },
-                    enabled = page > 0,
-                    modifier = Modifier.size(30.dp)
-                ) {
-                    Icon(Icons.Default.ChevronLeft,
-                        tr(state.lang, "Previous picks", "انتخاب‌های قبلی"),
-                        tint = if (page > 0) slipBlue else slipMuted)
-                }
-                Text(
-                    text = "${range.first + 1}–${range.last + 1} / $count",
-                    color = slipMuted, fontWeight = FontWeight.Bold, fontSize = 11.sp
-                )
-                IconButton(
-                    onClick = { page = (page + 1).coerceAtMost(slipMaxPage(count, capacity)) },
-                    enabled = page < slipMaxPage(count, capacity),
-                    modifier = Modifier.size(30.dp)
-                ) {
-                    Icon(Icons.Default.ChevronRight,
-                        tr(state.lang, "Next picks", "انتخاب‌های بعدی"),
-                        tint = if (page < slipMaxPage(count, capacity)) slipBlue else slipMuted)
-                }
+        itemsIndexed(state.picks, key = { _, pick -> pick.selectionId }) { index, pick ->
+            SlipPickCard(pick, state.lang, index + 1) {
+                model.removePick(pick.selectionId)
             }
         }
     }
@@ -317,15 +292,13 @@ fun PremiumSlipSheet(state: AppState,model: AppViewModel) {
     // Leave only a narrow status-bar gap; the whole slip must fit above the
     // navigation inset even with two selected cards and its action controls.
     val maxSheet=viewport*.96f
-    val pickCapacity = slipPageCapacity(config.screenHeightDp)
     var funding by rememberSaveable { mutableStateOf("main") }
     var mode by rememberSaveable { mutableStateOf("single") }
     LaunchedEffect(state.signedIn) {
         if (state.signedIn) model.refreshAccount()
     }
-    // Card viewport and child sizes share one exact calculation. Do not
-    // estimate 75dp per card: that cropped real cards on Android.
-    val listHeight = slipPickAreaHeightDp(state.picks.size, pickCapacity).dp
+    // Expand to five full cards; beyond five maintain the same viewport.
+    val listHeight = slipPickAreaHeightDp(state.picks.size).dp
     LaunchedEffect(state.picks.size,funding) {
         val expected = if(funding=="bonus" || state.picks.size>1)
             "multiple" else "single"
@@ -499,36 +472,40 @@ fun PremiumSlipSheet(state: AppState,model: AppViewModel) {
                 }
                 BetSlipShareActions(state,model)
             }
-            if (state.picks.isEmpty()) {
-                // The watermark disappears immediately when odds are selected.
-                Box(Modifier.fillMaxWidth().height(listHeight)) {
-                    SlipBrandWordmark(
-                        modifier = Modifier.align(Alignment.Center).fillMaxWidth(),
-                        color = Color(0xFF9CA3AF),
-                        fontSize = 46.sp,
-                        opacity = .24f
-                    )
-                    Row(
-                        Modifier.fillMaxSize().padding(horizontal = 17.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.Center
-                    ) {
-                        Icon(Icons.Default.SportsSoccer, null, tint = slipBlue,
-                            modifier = Modifier.size(20.dp))
-                        Spacer(Modifier.width(8.dp))
-                        Text(tr(lang,
-                            "Pick a match to start a prediction.",
-                            "برای شروع، یک مسابقه را انتخاب کنید."),
-                            color = slipMuted, fontSize = 11.sp)
+            // A weighted viewport reserves space for the fixed quote/submit area.
+            // On normal phones it grows naturally to five cards; on exceptionally
+            // small viewports it can shrink without clipping inaccessible picks.
+            BoxWithConstraints(
+                modifier = Modifier.fillMaxWidth()
+                    .weight(1f, fill = false)
+                    .heightIn(max = listHeight)
+            ) {
+                if (state.picks.isEmpty()) {
+                    Box(Modifier.fillMaxSize()) {
+                        SlipBrandWordmark(
+                            modifier = Modifier.align(Alignment.Center).fillMaxWidth(),
+                            color = Color(0xFF9CA3AF),
+                            fontSize = 46.sp,
+                            opacity = .24f
+                        )
+                        Row(
+                            Modifier.fillMaxSize().padding(horizontal = 17.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center
+                        ) {
+                            Icon(Icons.Default.SportsSoccer, null, tint = slipBlue,
+                                modifier = Modifier.size(20.dp))
+                            Spacer(Modifier.width(8.dp))
+                            Text(
+                                tr(lang, "Pick a match to start a prediction.",
+                                    "برای شروع، یک مسابقه را انتخاب کنید."),
+                                color = slipMuted, fontSize = 11.sp
+                            )
+                        }
                     }
+                } else {
+                    SlipPickList(state, model, maxHeight.value.toInt())
                 }
-            } else {
-                SlipPickPager(
-                    state = state,
-                    model = model,
-                    capacity = pickCapacity,
-                    listHeight = listHeight
-                )
             }
             HorizontalDivider(color=slipBorder)
             // Cash stake/quote controls stay fixed. Bonus details retain
@@ -549,7 +526,8 @@ fun PremiumSlipSheet(state: AppState,model: AppViewModel) {
                 } else {
                     MainAccountSlipControls(
                         state, model, mode,
-                        compact = config.screenHeightDp < 680
+                        compact = config.screenHeightDp < 750 ||
+                            state.picks.size >= 3
                     )
                 }
             }
