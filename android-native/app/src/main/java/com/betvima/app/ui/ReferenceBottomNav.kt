@@ -34,7 +34,7 @@ private val bottomDestinations = listOf(
     BvDestination("menu", "Menu", "منو", Icons.Default.Menu),
     BvDestination("home", "Home", "خانه", Icons.Default.Home),
     BvDestination("casino", "Casino", "کازینو", Icons.Default.Casino),
-    BvDestination("bonus", "Bonuses", "بونوس", Icons.Default.CardGiftcard),
+    BvDestination("bonus", "Free money", "پاداش‌ها", Icons.Default.MonetizationOn),
     BvDestination("sports", "Sports", "ورزش‌ها", Icons.Default.SportsSoccer)
 )
 
