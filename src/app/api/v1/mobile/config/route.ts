@@ -16,7 +16,7 @@ export async function GET() {
       supabaseUrl: env.supabaseConfigured ? env.NEXT_PUBLIC_SUPABASE_URL : null,
       supabaseAnonKey: env.supabaseConfigured ? env.NEXT_PUBLIC_SUPABASE_ANON_KEY : null,
       // Public widget SITE key only. The verification secret remains exclusively on the server.
-      turnstileSiteKey: process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ?? '',
+      turnstileSiteKey: env.NEXT_PUBLIC_TURNSTILE_SITE_KEY,
       minAge: 18,
       wageringEnabled: false,
     },
