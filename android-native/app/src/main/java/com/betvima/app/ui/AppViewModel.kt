@@ -51,6 +51,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     private var upcomingRequestNumber = 0
     private var detailRequestNumber = 0
     private var accountRequestNumber = 0
+    private var quoteGeneration = 0
     private var liveRequestInFlight = false
     private val mutable = MutableStateFlow(AppState(
         signedIn = vault.signedIn(),
@@ -167,6 +168,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     fun togglePick(match: Match, market: Market, selection: Selection) {
         if (!match.bettingAvailable || !market.available || !selection.available ||
             (match.live && !state.value.liveEnabled)) return
+        quoteGeneration++
         val persian = state.value.lang == Lang.FA
         val entry = Pick(match.id, market.id, selection.id, match.title,
             market.label(persian), selection.label(persian),
@@ -181,9 +183,16 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             s.copy(picks = picks.take(20), showSlip = picks.isNotEmpty(), quote = null)
         }
     }
-    fun removePick(id: String) = mutable.update {
-        val picks = it.picks.filterNot { p -> p.selectionId == id }
-        it.copy(picks = picks, quote = null, showSlip = picks.isNotEmpty())
+    fun removePick(id: String) {
+        quoteGeneration++
+        mutable.update {
+            val picks = it.picks.filterNot { p -> p.selectionId == id }
+            it.copy(picks = picks, quote = null, showSlip = picks.isNotEmpty())
+        }
+    }
+    fun clearPicks() {
+        quoteGeneration++
+        mutable.update { it.copy(picks = emptyList(), quote = null, busy = false) }
     }
     fun openBet(id: String) = viewModelScope.launch {
         if (!state.value.signedIn) {
@@ -209,7 +218,10 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     fun closeBet() = mutable.update {
         it.copy(betDetailVisible = false, betDetailLoading = false, betDetail = null)
     }
-    fun clearQuote() = mutable.update { it.copy(quote = null) }
+    fun clearQuote() {
+        quoteGeneration++
+        mutable.update { it.copy(quote = null, busy = false) }
+    }
     fun showSlip(show: Boolean) = mutable.update { it.copy(showSlip = show) }
     fun showLogin(show: Boolean) = mutable.update { it.copy(showLogin = show) }
     fun signIn(email: String, password: String) = viewModelScope.launch {
@@ -227,6 +239,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     fun signOut() {
         closeBet()
         closeMatch()
+        quoteGeneration++
         accountRequestNumber++
         sessionGeneration++
         vault.clear()
@@ -377,6 +390,10 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
     fun quote(stake: String) = viewModelScope.launch {
+        val selectedPicks = state.value.picks.toList()
+        if (selectedPicks.isEmpty()) return@launch
+        val request = ++quoteGeneration
+        val generation = sessionGeneration
         val cents = runCatching {
             BigDecimal(stake).movePointRight(2).setScale(0, RoundingMode.UNNECESSARY)
                 .toBigIntegerExact().also { require(it.signum() > 0) }.toString()
@@ -390,12 +407,17 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         }
         mutable.update { it.copy(busy = true, quote = null) }
         try {
-            val result = api.quote(jwt, state.value.picks, cents).optJSONObject("quote")
+            val result = api.quote(jwt, selectedPicks, cents).optJSONObject("quote")
             val payout = result?.optString("potentialPayoutMinor").orEmpty()
-            mutable.update { it.copy(busy = false, quote =
-                if (payout.isNotBlank()) money(payout, "USD") else null) }
+            if (request == quoteGeneration && generation == sessionGeneration &&
+                selectedPicks == state.value.picks) mutable.update {
+                it.copy(busy = false, quote =
+                    if (payout.isNotBlank()) money(payout, "USD") else null)
+            }
         } catch (ex: Exception) {
-            mutable.update { it.copy(busy = false, notice = ex.message ?: "Quote unavailable") }
+            if (request == quoteGeneration && generation == sessionGeneration)
+                mutable.update { it.copy(busy = false,
+                    notice = tr(it.lang, "Quote unavailable", "استعلام ضریب ناموفق بود.")) }
         }
     }
 }
