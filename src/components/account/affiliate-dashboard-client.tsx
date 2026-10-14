@@ -62,7 +62,7 @@ type AffiliateSummary = {
 
 export function AffiliateDashboardClient() {
   const { t, locale, session } = useApp();
-  const tr = (value: string | undefined) => { const copy = value ?? ''; return locale === 'fa' ? translateVisibleText(copy) : copy; };
+  const tr = (value: string | number | undefined) => { const copy = String(value ?? ''); return locale === 'fa' ? translateVisibleText(copy) : copy; };
   const [range, setRange] = useState(1);
   const [copied, setCopied] = useState(false);
   const today = useMemo(() => isoDateLocal(new Date()), []);
