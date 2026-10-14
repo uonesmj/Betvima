@@ -76,145 +76,174 @@ fun SportsRibbon(selected: String, lang: Lang, showEsports: Boolean = true,
 }
 
 @Composable
-fun HomePage(state: AppState, model: AppViewModel) {
-    LazyColumn(contentPadding = PaddingValues(16.dp),
-        verticalArrangement = Arrangement.spacedBy(11.dp)) {
-        item {
-            BrandHero(state.lang, state.live.size,
-                onLive = { model.tab(Tab.LIVE) }, onSports = { model.tab(Tab.SPORTS) })
-        }
-        item {
-            SportsRibbon(state.sport, state.lang, showEsports = false) {
-                model.sport(it); model.tab(Tab.SPORTS)
+fun HomePage(state: AppState, model: AppViewModel, onSearch: () -> Unit) {
+    val featured = state.upcoming.filter { match ->
+        match.bettingAvailable && match.featured?.available == true &&
+            match.featured?.selections?.any { it.available } == true
+    }.sortedByDescending { it.marketsCount }
+    LazyColumn(contentPadding = PaddingValues(bottom = 20.dp),
+        verticalArrangement = Arrangement.spacedBy(3.dp)) {
+        item { SportsbookTopTabs(state, model, onSearch) }
+        item { ReferenceSportRibbon(state, model, all = true) }
+        if (state.homeMode == HomeMode.TOP_BETS) {
+            item {
+                Row(Modifier.padding(horizontal = 15.dp)) {
+                    ReferenceSectionHeader(state.lang, "TOP Bets", "شرط‌های برتر",
+                        Icons.Default.Whatshot, Palette.blue) { model.tab(Tab.SPORTS) }
+                }
             }
-        }
-        item {
-            Row(horizontalArrangement = Arrangement.spacedBy(9.dp)) {
-                BvStatCard(tr(state.lang, "LIVE", "زنده"), state.live.size.toString(),
-                    Icons.Default.Sensors, Palette.red, Modifier.weight(1f))
-                BvStatCard(tr(state.lang, "UPCOMING", "آینده"), state.upcoming.size.toString(),
-                    Icons.Default.Event, Palette.blue, Modifier.weight(1f))
-                BvStatCard(tr(state.lang, "MY PICKS", "انتخاب‌ها"), state.picks.size.toString(),
-                    Icons.Default.ConfirmationNumber, Palette.green, Modifier.weight(1f))
+            if (featured.isEmpty()) item {
+                Box(Modifier.padding(16.dp)) {
+                    EmptyPanel(tr(state.lang, "Top markets are unavailable", "بازار برتری موجود نیست"),
+                        tr(state.lang,
+                            "Only verified upcoming odds can be presented here.",
+                            "فقط ضرایب معتبر مسابقات آینده در این بخش نمایش داده می‌شوند.")) {
+                        model.refreshUpcoming()
+                    }
+                }
+            } else items(featured.take(25), key = { "top-"+it.id }) { match ->
+                Box(Modifier.padding(horizontal = 15.dp)) {
+                    MatchTile(match, state.lang, state.liveEnabled, state.picks,
+                        { model.openMatch(match.id) }) { market, selection ->
+                        model.togglePick(match, market, selection)
+                    }
+                }
             }
-        }
-        item { SectionHeading(tr(state.lang, "Live now", "هم‌اکنون زنده"),
-            tr(state.lang, "Scores and live markets", "نتایج و بازارهای زنده"),
-            tr(state.lang, "View all", "مشاهده همه")) { model.tab(Tab.LIVE) } }
-        if (state.live.isEmpty()) {
-            item { EmptyPanel(tr(state.lang, "No live fixtures", "مسابقه زنده موجود نیست"),
-                tr(state.lang, "When matches become available they will appear here.",
-                    "با شروع مسابقات، فهرست اینجا نمایش داده می‌شود.")) { model.refreshLive() } }
         } else {
-            items(state.live.take(4), key = { "home-live-" + it.id }) { match ->
-                MatchTile(match, state.lang, state.liveEnabled, state.picks,
-                    { model.openMatch(match.id) }) { m, s -> model.togglePick(match, m, s) }
+            item {
+                Column(Modifier.padding(horizontal = 15.dp)) {
+                    ReferenceSectionHeader(state.lang, "Top Live", "برترین مسابقات زنده",
+                        Icons.Default.Sensors, Color(0xFFF50078)) { model.tab(Tab.LIVE) }
+                    if (state.live.isNotEmpty()) ReferenceMatchCarousel(state.live, state, model)
+                    else EmptyPanel(tr(state.lang, "No live matches", "مسابقه زنده‌ای موجود نیست"),
+                        tr(state.lang, "Refresh for the next live event.",
+                            "برای بررسی مسابقات زنده، تازه‌سازی کنید.")) { model.refreshLive() }
+                }
             }
-        }
-        val featured = state.upcoming.filter { match ->
-            match.bettingAvailable && match.featured?.available == true &&
-                match.featured?.selections?.any { it.available } == true
-        }.sortedByDescending { it.marketsCount }.take(4)
-        item {
-            SectionHeading(tr(state.lang, "Top bets", "شرط‌های برتر"),
-                tr(state.lang, "Upcoming games with the widest available markets",
-                    "مسابقات آینده با بیشترین بازار قابل انتخاب"),
-                tr(state.lang, "View all", "مشاهده همه")) { model.tab(Tab.SPORTS) }
-        }
-        if (featured.isEmpty()) item {
-            EmptyPanel(tr(state.lang, "No featured markets now", "بازار برتری در دسترس نیست"),
-                tr(state.lang, "Live data is refreshed from the official provider.",
-                    "فهرست بازارها مستقیماً از منبع رسمی دریافت می‌شود.")) {
-                model.refreshUpcoming()
+            item {
+                Column(Modifier.padding(horizontal = 15.dp)) {
+                    ReferenceSectionHeader(state.lang, "Top Upcoming", "مسابقات مهم آینده",
+                        Icons.Default.Event, Palette.green) { model.tab(Tab.SPORTS) }
+                    if (state.upcoming.isNotEmpty())
+                        ReferenceMatchCarousel(state.upcoming, state, model)
+                    else EmptyPanel(tr(state.lang, "No upcoming fixtures", "مسابقه آینده‌ای موجود نیست"),
+                        tr(state.lang, "Upcoming fixtures load from the BetVima catalogue.",
+                            "مسابقات از فهرست رسمی بت‌ویما دریافت می‌شوند.")) {
+                        model.refreshUpcoming()
+                    }
+                }
             }
-        } else items(featured, key = { "featured-" + it.id }) { match ->
-            MatchTile(match, state.lang, state.liveEnabled, state.picks,
-                { model.openMatch(match.id) }) { market, selection ->
-                model.togglePick(match, market, selection)
+            val esports = (state.live + state.upcoming)
+                .filter { it.sport == "esports" }.distinctBy { it.id }
+            if (esports.isNotEmpty()) item {
+                Column(Modifier.padding(horizontal = 15.dp)) {
+                    ReferenceSectionHeader(state.lang, "Top Esports", "ورزش‌های الکترونیک",
+                        Icons.Default.SportsEsports, Color(0xFFEB27BE)) {
+                        model.sport("esports")
+                        model.tab(Tab.SPORTS)
+                    }
+                    ReferenceMatchCarousel(esports, state, model)
+                }
             }
+            item { Box(Modifier.padding(horizontal = 15.dp)) { FeatureShortcuts(state.lang, model) } }
         }
-        item { SectionHeading(tr(state.lang, "Upcoming matches", "مسابقات آینده"),
-            tr(state.lang, "Popular pre-match selections", "بازارهای پیش از شروع"),
-            tr(state.lang, "View all", "مشاهده همه")) { model.tab(Tab.SPORTS) } }
-        if (state.upcoming.isEmpty()) {
-            item { EmptyPanel(tr(state.lang, "No scheduled matches", "مسابقه آینده‌ای یافت نشد"),
-                tr(state.lang, "Try another sport or refresh the catalogue.",
-                    "رشته دیگری انتخاب کنید یا فهرست را تازه‌سازی کنید.")) { model.refreshUpcoming() } }
-        } else {
-            items(state.upcoming.take(8), key = { "home-upcoming-" + it.id }) { match ->
-                MatchTile(match, state.lang, state.liveEnabled, state.picks,
-                    { model.openMatch(match.id) }) { m, s -> model.togglePick(match, m, s) }
-            }
-        }
-        item { FeatureShortcuts(state.lang, model) }
         item { ResponsibleNote(state.lang) }
     }
 }
 
-
-
 @Composable
-fun CatalogPage(state: AppState, model: AppViewModel, live: Boolean) {
-    val matches = if (live) state.live else state.upcoming
-    val title = if (live) tr(state.lang, "Live center", "مرکز زنده")
-        else tr(state.lang, "Sports & fixtures", "ورزش‌ها و مسابقات")
+fun CatalogPage(state: AppState, model: AppViewModel, live: Boolean,
+    onSearch: () -> Unit) {
+    var liveSport by rememberSaveable { mutableStateOf("top") }
+    var selectedLeague by rememberSaveable(live, state.sport) { mutableStateOf("") }
+    var tournamentOpen by remember { mutableStateOf(false) }
+    val allMatches = if (live) state.live else state.upcoming
+    val matches = if (live && liveSport != "top")
+        allMatches.filter { it.sport == liveSport } else allMatches
     val groups = matches.groupBy { it.league + "|" + it.country }
-    LazyColumn(contentPadding = PaddingValues(16.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    val visibleGroups = if (selectedLeague.isBlank()) groups else
+        groups.filterKeys { it == selectedLeague }
+
+    LazyColumn(contentPadding = PaddingValues(bottom = 22.dp),
+        verticalArrangement = Arrangement.spacedBy(9.dp)) {
+        item { SportsbookTopTabs(state, model, onSearch) }
         item {
-            BvPageBanner(
-                eyebrow = if (live) tr(state.lang, "LIVE CENTER", "مرکز زنده")
-                    else tr(state.lang, "ALL SPORTS", "تمام ورزش‌ها"),
-                title = title,
-                subtitle = tr(state.lang,
-                    "Browse leagues, match scores and server-sourced prices.",
-                    "لیگ‌ها، نتایج و ضرایب تأییدشده را دنبال کنید."),
-                icon = if (live) Icons.Default.Sensors else Icons.Default.SportsSoccer,
-                accent = if (live) Palette.red else Palette.green
-            ) {
-                Spacer(Modifier.height(4.dp))
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    SmallPill(matches.size.toString() + tr(state.lang, " events", " رویداد"),
-                        Color.White.copy(alpha = .12f), Color.White)
-                    Spacer(Modifier.width(9.dp))
-                    if (live) SmallPill(tr(state.lang, "AUTO REFRESH", "به‌روزرسانی خودکار"),
-                        Palette.green.copy(alpha = .16f), Palette.green)
+            ReferenceSportRibbon(state, model, live = live,
+                selectedKey = if (live) liveSport else state.sport,
+                onSelect = if (live) ({ key -> liveSport = key }) else null)
+        }
+        if (!live) item {
+            Row(Modifier.fillMaxWidth().padding(horizontal = 15.dp, vertical = 3.dp),
+                verticalAlignment = Alignment.CenterVertically) {
+                Box(Modifier.weight(1f)) {
+                    Surface(color = Color(0xFFE1E4E9), shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier.clickable { tournamentOpen = true }) {
+                        Row(Modifier.heightIn(min = 43.dp)
+                            .padding(horizontal = 11.dp, vertical = 10.dp),
+                            verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Default.EmojiEvents, null, tint = Palette.muted,
+                                modifier = Modifier.size(17.dp))
+                            Spacer(Modifier.width(7.dp))
+                            Text(if (selectedLeague.isBlank())
+                                tr(state.lang, "Choose a tournament", "انتخاب لیگ")
+                                else groups[selectedLeague]?.firstOrNull()?.league.orEmpty(),
+                                fontSize = 12.sp, fontWeight = FontWeight.ExtraBold,
+                                color = Palette.text, maxLines = 1,
+                                overflow = TextOverflow.Ellipsis)
+                            Spacer(Modifier.width(6.dp))
+                            Icon(Icons.Default.ArrowDropDown, null, tint = Palette.muted)
+                        }
+                    }
+                    DropdownMenu(expanded = tournamentOpen,
+                        onDismissRequest = { tournamentOpen = false }) {
+                        DropdownMenuItem(
+                            text = { Text(tr(state.lang, "All competitions", "همه رقابت‌ها")) },
+                            onClick = { selectedLeague = ""; tournamentOpen = false })
+                        groups.forEach { (key, values) ->
+                            DropdownMenuItem(
+                                text = { Text(values.first().league, maxLines = 1) },
+                                onClick = { selectedLeague = key; tournamentOpen = false })
+                        }
+                    }
+                }
+                Spacer(Modifier.width(9.dp))
+                IconButton(onClick = { model.refreshUpcoming() }) {
+                    Icon(Icons.Default.Refresh,
+                        tr(state.lang, "Refresh", "تازه‌سازی"), tint = Palette.blue)
                 }
             }
         }
-        item {
-            SectionHeading(tr(state.lang, "Competitions", "رقابت‌ها"),
-                tr(state.lang, "Tap a league to expand its fixtures.",
-                    "برای مشاهده مسابقات، لیگ را باز کنید."),
-                tr(state.lang, "Refresh", "تازه‌سازی")) {
-                    if (live) model.refreshLive() else model.refreshUpcoming()
+        if (live && !state.liveEnabled) item {
+            Box(Modifier.padding(horizontal = 15.dp)) {
+                BvInformationStrip(tr(state.lang,
+                    "Live betting is currently paused. Last confirmed scores remain visible.",
+                    "شرط زنده متوقف است؛ آخرین نتایج تأییدشده نمایش داده می‌شوند."),
+                    Icons.Default.Info, accent = Palette.blue)
+            }
+        }
+        if ((if (live) state.liveLoading else state.upcomingLoading) &&
+            allMatches.isEmpty()) item {
+            Box(Modifier.fillMaxWidth().height(110.dp), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator(color = Palette.blue)
+            }
+        }
+        if (!(if (live) state.liveLoading else state.upcomingLoading) &&
+            visibleGroups.isEmpty()) item {
+            Box(Modifier.padding(15.dp)) {
+                EmptyPanel(tr(state.lang, "No matches for this filter", "مسابقه‌ای یافت نشد"),
+                    tr(state.lang,
+                        "Try another sport or competition and refresh.",
+                        "رشته یا لیگ دیگری را انتخاب و تازه‌سازی کنید.")) {
+                    if (live) { liveSport = "top"; model.refreshLive() }
+                    else { selectedLeague = ""; model.refreshUpcoming() }
                 }
-            if (live && !state.liveEnabled) {
-                Surface(color = Color(0xFFFFF3E2), shape = RoundedCornerShape(13.dp),
-                    modifier = Modifier.fillMaxWidth()) {
-                    Text(tr(state.lang,
-                        "Live wagering currently paused. Prices are view-only.",
-                        "ثبت شرط زنده موقتاً متوقف است و ضرایب فقط نمایشی هستند."),
-                        modifier = Modifier.padding(12.dp), fontSize = 12.sp, color = Color(0xFF865A19))
+            }
+        }
+        visibleGroups.entries.forEachIndexed { index, group ->
+            item(key = "league-"+group.key) {
+                Box(Modifier.padding(horizontal = 13.dp)) {
+                    LeagueSection(group.key, group.value, index == 0, state, model)
                 }
-            }
-        }
-        if (!live) item { SportsRibbon(state.sport, state.lang) { model.sport(it) } }
-        if ((if (live) state.liveLoading else state.upcomingLoading) && matches.isEmpty()) item {
-            Box(Modifier.fillMaxWidth().height(90.dp), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator(color = Palette.green)
-            }
-        }
-        if (!(if (live) state.liveLoading else state.upcomingLoading) && matches.isEmpty()) item {
-            EmptyPanel(tr(state.lang, "No events available", "رویدادی موجود نیست"),
-                tr(state.lang, "The live feed may be between match windows.",
-                    "ممکن است در حال حاضر مسابقه‌ای از منبع داده منتشر نشده باشد.")) {
-                if (live) model.refreshLive() else model.refreshUpcoming()
-            }
-        }
-        groups.entries.forEachIndexed { index, group ->
-            item(key = "league-" + group.key) {
-                LeagueSection(group.key, group.value, index == 0, state, model)
             }
         }
         item { ResponsibleNote(state.lang) }
