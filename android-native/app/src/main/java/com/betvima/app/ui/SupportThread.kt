@@ -1,5 +1,9 @@
 package com.betvima.app.ui
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import android.net.Uri
+import android.provider.OpenableColumns
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -22,8 +26,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.platform.LocalContext
 import com.betvima.app.data.*
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 private val chatNavy = Color(0xFF0C1C34)
 private val chatBlue = Color(0xFF087FF5)
@@ -34,6 +40,15 @@ private val chatLine = Color(0xFFE0E7F0)
 
 private fun formatSupportTime(value: String) =
     value.take(16).replace('T', ' ').ifBlank { "—" }
+
+private data class PickedSupportFile(
+    val uri: Uri, val displayName: String, val mimeType: String, val sizeBytes: Long
+)
+
+private fun supportFileSizeLabel(bytes: Long): String =
+    if (bytes < 0) "≤ 10 MB" else String.format(
+        java.util.Locale.US, "%.1f MB", bytes.toDouble() / (1024.0 * 1024.0)
+    )
 
 @Composable
 private fun ConversationMessage(message: SupportThreadMessage, lang: Lang) {
@@ -125,6 +140,47 @@ fun TicketThreadSheet(
     var askClose by remember(ticket.id) { mutableStateOf(false) }
     var error by remember(ticket.id) { mutableStateOf<String?>(null) }
     var scrollToNew by remember(ticket.id) { mutableStateOf(false) }
+    var chosenFile by remember(ticket.id) { mutableStateOf<PickedSupportFile?>(null) }
+    val documentPicker = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocument()
+    ) { uri: Uri? ->
+        if (uri != null) scope.launch {
+            try {
+                val file = withContext(Dispatchers.IO) {
+                    val resolver = context.contentResolver
+                    val mime = resolver.getType(uri).orEmpty()
+                    var name = "attachment"
+                    var size = -1L
+                    resolver.query(
+                        uri,
+                        arrayOf(OpenableColumns.DISPLAY_NAME, OpenableColumns.SIZE),
+                        null, null, null
+                    )?.use { cursor ->
+                        if (cursor.moveToFirst()) {
+                            val n = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+                            val z = cursor.getColumnIndex(OpenableColumns.SIZE)
+                            if (n >= 0 && !cursor.isNull(n))
+                                name = cursor.getString(n).orEmpty()
+                            if (z >= 0 && !cursor.isNull(z)) size = cursor.getLong(z)
+                        }
+                    }
+                    if (!supportUploadSelectable(mime, size))
+                        throw IllegalArgumentException(
+                            "Only JPG, PNG, WEBP or PDF files up to 10 MB are supported"
+                        )
+                    PickedSupportFile(uri, supportSafeFilename(name), mime, size)
+                }
+                chosenFile = file
+                error = null
+                uncertain = false
+            } catch (ex: Exception) {
+                chosenFile = null
+                error = tr(lang,
+                    "Select a JPG, PNG, WEBP or PDF under 10 MB.",
+                    "فقط فایل JPG، PNG، WEBP یا PDF کوچک‌تر از ۱۰ مگابایت انتخاب کنید.")
+            }
+        }
+    }
 
     suspend fun refresh(silent: Boolean = false) {
         if (!silent) loading = true
@@ -162,9 +218,12 @@ fun TicketThreadSheet(
     ModalBottomSheet(
         onDismissRequest = { if (!sending && !closing) onDismiss() },
         containerColor = Color(0xFFF6F8FC),
+        contentWindowInsets = { WindowInsets(0, 0, 0, 0) },
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     ) {
-        Column(Modifier.fillMaxWidth().fillMaxHeight(.85f)) {
+        // Extend the sheet to the system navigation area. The message composer
+        // owns the bottom safe inset, so no floating empty strip remains.
+        Column(Modifier.fillMaxWidth().fillMaxHeight(.96f).imePadding()) {
             Surface(color = chatNavy, shape = RoundedCornerShape(
                 topStart = 23.dp, topEnd = 23.dp)) {
                 Column(Modifier.fillMaxWidth().background(
@@ -200,10 +259,6 @@ fun TicketThreadSheet(
                                 fontWeight = FontWeight.Bold,
                                 modifier = Modifier.padding(horizontal = 9.dp, vertical = 6.dp))
                         }
-                        Spacer(Modifier.width(8.dp))
-                        Surface(color = Color.White) {
-                            SupportStatusChip(activeTicket.status, lang)
-                        }
                         Spacer(Modifier.weight(1f))
                         IconButton(onClick = { scope.launch { refresh() } },
                             enabled = !loading && !sending && !closing) {
@@ -217,6 +272,18 @@ fun TicketThreadSheet(
                                     tint = Color(0xFFFFD29B))
                             }
                         }
+                    }
+                    // Status is on its own line; never compete for horizontal
+                    // space with the ticket ID and action buttons.
+                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                        SupportStatusChip(activeTicket.status, lang)
+                        Spacer(Modifier.weight(1f))
+                        Text(
+                            supportCategoryName(activeTicket.category, lang),
+                            color = Color(0xFFBDCEDD), fontSize = 10.sp,
+                            maxLines = 1, overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.widthIn(max = 110.dp)
+                        )
                     }
                 }
             }
@@ -265,8 +332,11 @@ fun TicketThreadSheet(
             }
             Surface(color = Color.White, shadowElevation = 9.dp,
                 modifier = Modifier.fillMaxWidth()) {
-                Column(Modifier.fillMaxWidth().padding(horizontal = 13.dp, vertical = 11.dp),
-                    verticalArrangement = Arrangement.spacedBy(9.dp)) {
+                Column(
+                    Modifier.fillMaxWidth().navigationBarsPadding()
+                        .padding(horizontal = 13.dp, vertical = 10.dp),
+                    verticalArrangement = Arrangement.spacedBy(9.dp)
+                ) {
                     if (supportActive(activeTicket.status)) {
                         if (uncertain) {
                             Surface(color = Color(0xFFFFF5E6),
