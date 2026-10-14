@@ -126,4 +126,19 @@ class ApiClient {
             .put("type", if (picks.size > 1) "MULTIPLE" else "SINGLE")
             .put("stakeMinor", stakeMinor).put("currency", "USD").put("legs", legs), token)
     }
+    suspend fun tickets(token: String): List<SupportTicket> {
+        val data = get("/api/v1/support?pageSize=25", token)
+        val collection = data.optJSONObject("tickets") ?: JSONObject()
+        val list = collection.optJSONArray("items") ?: data.optJSONArray("tickets") ?: JSONArray()
+        return list.objects().map {
+            SupportTicket(it.str("id"), it.str("subject"), it.str("status"), it.str("category"))
+        }
+    }
+    suspend fun createTicket(token: String, category: String, subject: String, body: String): SupportTicket {
+        val data = post("/api/v1/support", JSONObject()
+            .put("category", category).put("subject", subject).put("body", body), token)
+        val t = data.optJSONObject("ticket") ?: throw ApiFailure(502, "Ticket not returned")
+        return SupportTicket(t.str("id"), t.str("subject"), t.str("status"), t.str("category"))
+    }
+
 }
