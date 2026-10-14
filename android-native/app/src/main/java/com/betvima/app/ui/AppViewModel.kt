@@ -347,6 +347,30 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             notifications = emptyList(), notificationPage = 1, notificationHasMore = false,
             notificationLoading = false) }
     }
+    // Financial mutations stay behind the encrypted SessionVault. Compose never
+    // sees the access token; the server revalidates method switches, balances,
+    // currency, limits, rate quotes and ownership on every operation.
+    private suspend fun walletJwt(): String {
+        if (!state.value.signedIn) throw ApiFailure(401, "Sign in required")
+        return vault.accessToken(api)?.takeIf(String::isNotBlank)
+            ?: throw ApiFailure(401, "Your secure session has expired")
+    }
+    suspend fun walletPaymentMethods(direction: String, currency: String): WalletMethodCatalogue =
+        api.walletMethods(direction, currency)
+    suspend fun walletVoucherReference(): WalletExchangeQuote =
+        api.walletVoucherQuote(walletJwt())
+    suspend fun walletUsdRate(): String = api.walletUsdIrrRate(walletJwt())
+    suspend fun walletCreateDeposit(payload: org.json.JSONObject, idempotency: String): WalletPaymentIntent {
+        if (state.value.wallet?.integrity != "ok") throw ApiFailure(409, "Wallet ledger verification required")
+        return api.createWalletDeposit(walletJwt(), payload, idempotency)
+    }
+    suspend fun walletCreateWithdrawal(payload: org.json.JSONObject, idempotency: String): WalletPaymentIntent {
+        if (state.value.wallet?.integrity != "ok") throw ApiFailure(409, "Wallet ledger verification required")
+        return api.createWalletWithdrawal(walletJwt(), payload, idempotency)
+    }
+    suspend fun walletVoucherStatus(publicId: String): WalletPaymentIntent =
+        api.voucherPaymentStatus(walletJwt(), publicId)
+
     fun refreshAccount() = viewModelScope.launch {
         if (!state.value.signedIn) return@launch
         val generation = sessionGeneration

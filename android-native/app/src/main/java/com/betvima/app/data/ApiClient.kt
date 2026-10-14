@@ -223,7 +223,8 @@ class ApiClient {
     }
     suspend fun wallet(token: String, page: Int = 1): Wallet {
         require(page in 1..1000)
-        val data = get("/api/v1/wallet?currency=USD&page=" + page, token)
+        // Omit currency: the first-party API uses the user's canonical account currency.
+        val data = get("/api/v1/wallet?page=" + page, token)
         val w = data.optJSONObject("wallet") ?: JSONObject()
         val tx = data.optJSONObject("transactions") ?: JSONObject()
         return Wallet(w.str("availableMinor", "0"), w.str("balanceMinor", "0"),
@@ -232,8 +233,39 @@ class ApiClient {
                 Transaction(it.str("id"), it.str("type", "transaction"),
                     it.str("amountMinor", "0"), it.str("createdAt"),
                     it.str("direction"), it.str("status"))
-            }, tx.optInt("page", page), tx.optBoolean("hasMore", false))
+            }, tx.optInt("page", page), tx.optBoolean("hasMore", false),
+            data.optJSONObject("payments")?.arr("items")?.objects()?.map {
+                WalletPaymentRecord(
+                    id = it.str("id"), publicId = it.str("publicId"),
+                    direction = it.str("direction"), status = it.str("status"),
+                    amountMinor = it.str("amountMinor", "0"), currency = it.str("currency"),
+                    createdAt = it.str("createdAt"), failureMessage = it.str("failureMessage")
+                )
+            } ?: emptyList())
     }
+
+    suspend fun walletMethods(direction: String, currency: String): WalletMethodCatalogue {
+        require(direction in listOf("deposit", "withdrawal"))
+        require(currency in setOf("USD", "IRR", "IRT"))
+        return parseWalletMethods(get(
+            "/api/v1/payments/methods?direction=" + direction + "&currency=" + currency))
+    }
+    suspend fun walletVoucherQuote(token: String): WalletExchangeQuote {
+        val o = get("/api/v1/fx/uwallet-voucher", token)
+        return WalletExchangeQuote(o.str("rateIrrPerUsd"), o.str("quotedAt"), o.str("signature"))
+    }
+    suspend fun walletUsdIrrRate(token: String): String =
+        get("/api/v1/fx/usd-irr", token).str("value")
+
+    /** Caller creates one UUID per explicit confirmation, never replay a financial POST. */
+    suspend fun createWalletDeposit(token: String, payload: JSONObject, requestId: String): WalletPaymentIntent =
+        parseWalletIntent(request("/api/v1/wallet/deposit", token, payload, "POST", requestId))
+    suspend fun createWalletWithdrawal(token: String, payload: JSONObject, requestId: String): WalletPaymentIntent =
+        parseWalletIntent(request("/api/v1/wallet/withdraw", token, payload, "POST", requestId))
+    suspend fun voucherPaymentStatus(token: String, publicId: String): WalletPaymentIntent =
+        parseWalletIntent(get("/api/v1/wallet/deposit/voucher/status?publicId=" +
+            URLEncoder.encode(publicId, "UTF-8"), token))
+
     suspend fun bonuses(token: String): List<Bonus> =
         get("/api/v1/bonuses?currency=USD", token).arr("items").objects().map {
             Bonus(it.str("title", "Deposit bonus"), it.str("status"),

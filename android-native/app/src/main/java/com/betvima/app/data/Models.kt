@@ -59,7 +59,8 @@ data class Transaction(val id: String, val type: String, val amountMinor: String
     val time: String, val direction: String = "", val status: String = "")
 data class Wallet(val availableMinor: String, val balanceMinor: String,
     val heldMinor: String, val currency: String, val integrity: String,
-    val transactions: List<Transaction>, val page: Int = 1, val hasMore: Boolean = false)
+    val transactions: List<Transaction>, val page: Int = 1, val hasMore: Boolean = false,
+    val payments: List<WalletPaymentRecord> = emptyList())
 data class BetPage(val items: List<Bet>, val page: Int, val hasMore: Boolean)
 data class Bonus(val title: String, val status: String, val remainingMinor: String, val currency: String)
 
