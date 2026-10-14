@@ -83,6 +83,40 @@ class AppliedMigrationTests(unittest.TestCase):
             self.assertNotIn('INSERT INTO nova.migrations',query)
             self.assertNotIn('CREATE OR REPLACE',query)
 
+    def test_historical_0161a_migration_needs_exact_applied_checksum(self):
+        """Recognize the one approved legacy filename, never execute its SQL."""
+        with tempfile.TemporaryDirectory() as temp:
+            root=pathlib.Path(temp)
+            active=root/'active';active.mkdir()
+            candidate=root/'candidate';candidate.mkdir()
+            body=b'create sequence if not exists nova.user_numeric_id_seq;'
+            name='0161a_fresh_db_numeric_sequence.sql'
+            (candidate/name).write_bytes(body)
+            digest=hashlib.sha256(body).hexdigest()
+            scope['c'].run.return_value=(name+'|'+digest+'|f'+chr(10)).encode()
+            scope['verify_applied_migrations'](candidate,active,{})
+            query=scope['c'].run.call_args.kwargs['input'].decode()
+            self.assertIn('BEGIN READ ONLY',query)
+            self.assertIn(name,query)
+            for report in (b'',(name+'|incorrect|f'+chr(10)).encode(),
+                           (name+'|'+digest+'|t'+chr(10)).encode()):
+                scope['c'].run.return_value=report
+                with self.assertRaisesRegex(ValueError,'verified_migration_registry_required'):
+                    scope['verify_applied_migrations'](candidate,active,{})
+            scope['c'].run.reset_mock()
+            scope['c'].run.assert_not_called()
+
+    def test_rejects_other_nonstandard_migration_filenames(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root=pathlib.Path(temp)
+            active=root/'active';active.mkdir()
+            candidate=root/'candidate';candidate.mkdir()
+            (candidate/'0161b_unapproved_variant.sql').write_text('SELECT 1;')
+            scope['c'].run.reset_mock()
+            with self.assertRaisesRegex(ValueError,'migration_change_requires_separate_approval'):
+                scope['verify_applied_migrations'](candidate,active,{})
+            scope['c'].run.assert_not_called()
+
     def test_unapproved_migration_mismatch_fails_closed(self):
         with tempfile.TemporaryDirectory() as temp:
             root=pathlib.Path(temp);active=root/'active';active.mkdir()

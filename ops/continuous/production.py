@@ -69,8 +69,11 @@ def verify_applied_migrations(candidate, active, values):
     if before == after: return
     if any(after.get(name)!=sha for name,sha in before.items()):
         raise ValueError('migration_change_requires_separate_approval')
+    # 0161a is a historical, already-applied compatibility migration. Keep
+    # four-digit naming for new files, with this one explicit legacy exception;
+    # every added file still needs an exact SHA-256, non-baseline registry match.
     added = {name:sha for name,sha in after.items() if name not in before}
-    if not added or len(added)>12 or not all(re.fullmatch(r'[0-9]{4}_[a-z0-9_]+\.sql',name) for name in added):
+    if not added or len(added)>12 or not all(re.fullmatch(r'(?:[0-9]{4}_[a-z0-9_]+|0161a_fresh_db_numeric_sequence)\.sql',name) for name in added):
         raise ValueError('migration_change_requires_separate_approval')
     quoted = ','.join("'"+name+"'" for name in sorted(added))
     sql = ("BEGIN READ ONLY; SELECT filename,checksum,baseline "
