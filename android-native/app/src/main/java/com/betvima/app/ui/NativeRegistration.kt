@@ -654,16 +654,34 @@ fun NativeRegistrationForm(
                 }
             }
 
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Default.VerifiedUser, null, tint = Palette.blue,
-                    modifier = Modifier.size(19.dp))
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Icon(Icons.Default.Shield, null, tint = Palette.blue,
+                    modifier = Modifier.size(17.dp))
                 Spacer(Modifier.width(7.dp))
-                Text(tr(lang, "CLOUDFLARE SECURITY", "تأیید امنیتی کلودفلر"),
-                    color = bright, fontSize = 12.sp, fontWeight = FontWeight.Black)
+                Text(tr(lang, "I'm not a robot · Cloudflare", "من ربات نیستم · کلودفلر"),
+                    color = bright, fontSize = 12.sp, fontWeight = FontWeight.Bold,
+                    modifier = Modifier.weight(1f))
+                if (challengeError) {
+                    TextButton(onClick = {
+                        token = null
+                        challengeError = false
+                        challengeReady = false
+                        revision++
+                    }) {
+                        Icon(Icons.Default.Refresh, null, tint = Palette.blue,
+                            modifier = Modifier.size(16.dp))
+                        Spacer(Modifier.width(2.dp))
+                        Text(tr(lang, "Retry", "تلاش مجدد"),
+                            color = Palette.blue, fontSize = 11.sp)
+                    }
+                }
             }
             // The ONLY WebView in this screen is the Cloudflare challenge itself.
             // The rest of registration is native Compose and never loads site HTML.
-            Surface(color = Color.White, shape = RoundedCornerShape(15.dp),
+            Surface(color = Color.White, shape = RoundedCornerShape(12.dp),
                 border = BorderStroke(1.dp, edge),
                 modifier = Modifier.fillMaxWidth()) {
                 when {
@@ -697,12 +715,37 @@ fun NativeRegistrationForm(
                             }
                         }
                     }
-                    else -> RealTurnstileWidget(
-                        siteKey = siteKey!!,
-                        revision = revision,
-                        callback = { token = it; if (it != null) challengeError = false },
-                        onFailure = { token = null; challengeError = true }
-                    )
+                    else -> Column(
+                        Modifier.fillMaxWidth().padding(horizontal = 5.dp, vertical = 3.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        if (!challengeReady && !challengeError) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.padding(vertical = 4.dp)
+                            ) {
+                                CircularProgressIndicator(Modifier.size(13.dp),
+                                    color = Palette.blue, strokeWidth = 1.5.dp)
+                                Spacer(Modifier.width(6.dp))
+                                Text(tr(lang, "Connecting securely…", "در حال اتصال امن…"),
+                                    color = Palette.muted, fontSize = 10.sp)
+                            }
+                        }
+                        RealTurnstileWidget(
+                            siteKey = siteKey!!,
+                            revision = revision,
+                            callback = {
+                                token = it
+                                challengeError = it == null
+                            },
+                            onReady = { challengeReady = true; challengeError = false },
+                            onFailure = {
+                                token = null
+                                challengeReady = false
+                                challengeError = true
+                            }
+                        )
+                    }
                 }
             }
             if (challengeError) {
@@ -770,6 +813,7 @@ fun NativeRegistrationForm(
                                 "ثبت‌نام انجام نشد. تأیید امنیتی را مجدداً انجام دهید.")
                         }
                         token = null
+                        challengeReady = false
                         revision++
                     } finally { busy = false }
                 }
@@ -788,14 +832,6 @@ fun NativeRegistrationForm(
                         fontWeight = FontWeight.Black, fontSize = 14.sp)
                 }
             }
-            if (siteKey != null && !siteKey.isNullOrBlank()) {
-                TextButton(onClick = { token = null; challengeError = false; revision++ },
-                    modifier = Modifier.align(Alignment.CenterHorizontally)) {
-                    Text(tr(lang, "Refresh security challenge", "تازه‌سازی تأیید امنیتی"),
-                        color = Palette.blue, fontSize = 11.sp)
-                }
-            }
-            HorizontalDivider(color = edge)
             Row(verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.align(Alignment.CenterHorizontally)) {
                 Text(tr(lang, "Already registered?", "قبلاً ثبت‌نام کرده‌اید؟"),
