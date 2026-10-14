@@ -223,69 +223,7 @@ fun BetvimaApp(model: AppViewModel) {
         if (state.showSlip) SlipSheet(state, model)
         if (state.showLogin) LoginSheet(state, model)
         if (state.betDetailVisible) BetReceiptSheet(state, model)
-        if (accountOpen) {
-            ModalBottomSheet(onDismissRequest = { accountOpen = false },
-                containerColor = Palette.paper) {
-                Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState())
-                    .padding(horizontal = 17.dp).padding(bottom = 32.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    BvPageBanner(
-                        eyebrow = tr(state.lang, "YOUR ACCOUNT", "حساب کاربری"),
-                        title = tr(state.lang, "Welcome to BetVima", "به حساب خود خوش آمدید"),
-                        subtitle = tr(state.lang,
-                            "Your wallet and account features, one tap away.",
-                            "کیف‌پول و امکانات حساب شما، تنها با یک لمس."),
-                        icon = Icons.Default.PersonOutline
-                    ) {
-                        if (state.wallet != null) {
-                            Spacer(Modifier.height(7.dp))
-                            Text(com.betvima.app.data.money(
-                                state.wallet!!.availableMinor, state.wallet!!.currency),
-                                color = Palette.green, fontSize = 25.sp,
-                                fontWeight = FontWeight.Black)
-                        }
-                    }
-                    SectionHeading(tr(state.lang, "Quick access", "دسترسی سریع"),
-                        tr(state.lang, "Your account and services", "امکانات و خدمات کاربری"))
-                    BvFeatureTile(tr(state.lang, "My profile", "پروفایل من"),
-                        tr(state.lang, "Personal details and account status",
-                            "اطلاعات شخصی و وضعیت حساب"),
-                        Icons.Default.PersonOutline, Palette.blue,
-                        onClick = { accountOpen = false; model.feature(Feature.PROFILE) })
-                    BvFeatureTile(tr(state.lang, "Wallet", "کیف‌پول"),
-                        tr(state.lang, "USD balance and account statement",
-                            "موجودی دلاری و گردش حساب"),
-                        Icons.Default.AccountBalanceWallet, Palette.green,
-                        onClick = { accountOpen = false; model.tab(Tab.WALLET) })
-                    BvFeatureTile(tr(state.lang, "My bets", "شرط‌های من"),
-                        tr(state.lang, "Review tickets and settlement",
-                            "بررسی بلیت‌ها و تسویه‌ها"),
-                        Icons.Default.ReceiptLong, Palette.blue,
-                        onClick = { accountOpen = false; model.tab(Tab.BETS) })
-                    BvFeatureTile(tr(state.lang, "My bonuses", "بونوس‌های من"),
-                        tr(state.lang, "Your issued rewards", "پاداش‌های ثبت‌شده"),
-                        Icons.Default.CardGiftcard, Palette.gold,
-                        onClick = { accountOpen = false; model.feature(Feature.BONUSES) })
-                    BvFeatureTile(tr(state.lang, "Support", "پشتیبانی"),
-                        tr(state.lang, "Follow your requests and replies",
-                            "پیگیری درخواست‌ها و پیام‌ها"),
-                        Icons.Default.SupportAgent, Palette.blue,
-                        onClick = { accountOpen = false; model.feature(Feature.SUPPORT) })
-                    Spacer(Modifier.height(5.dp))
-                    OutlinedButton(
-                        onClick = { accountOpen = false; model.signOut() },
-                        shape = RoundedCornerShape(13.dp),
-                        border = BorderStroke(1.dp, Palette.red.copy(alpha = .28f)),
-                        modifier = Modifier.fillMaxWidth().heightIn(min = 49.dp)) {
-                        Icon(Icons.Default.Logout, null, tint = Palette.red,
-                            modifier = Modifier.size(18.dp))
-                        Spacer(Modifier.width(7.dp))
-                        Text(tr(state.lang, "Sign out", "خروج از حساب"),
-                            color = Palette.red, fontWeight = FontWeight.Bold)
-                    }
-                }
-            }
-        }
+        if (accountOpen) ReferenceProfileSheet(state, model) { accountOpen = false }
     }
 }
 
