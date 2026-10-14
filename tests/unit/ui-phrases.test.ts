@@ -89,3 +89,32 @@ describe('unchanged layout and non-translatable language controls', () => {
     expect(css).toContain('html[lang="fa"] .affiliate-shell .affiliate-referrals-v2 tbody td:nth-child(9)::before { content: "سهم ۷۰٪ شما" !important; }');
   });
 });
+
+describe('exhaustive display label regressions after Persian language selection', () => {
+  it('localizes previously uncovered account, affiliate and sportsbook labels', () => {
+    expect(translateVisibleText('Half loss')).toBe('نیم‌باخت');
+    expect(translateVisibleText('Under review')).toBe('در حال بررسی');
+    expect(translateVisibleText('View active and settled bets')).toBe('مشاهده شرط‌های باز و تسویه‌شده');
+    expect(translateVisibleText('Accept new odds')).toBe('پذیرش ضرایب جدید');
+    expect(translateVisibleText('Cancel this job?')).toBe('این وظیفه لغو شود؟');
+    expect(translateVisibleText('Questions &amp; Answers')).toBe('پرسش‌ها و پاسخ‌ها');
+  });
+  it('localizes compound UI strings while keeping numeric values intact', () => {
+    expect(translateVisibleText('Stake: $10')).toBe('مبلغ شرط: $10');
+    expect(translateVisibleText('Balance (USD)')).toBe('موجودی (USD)');
+    expect(translateVisibleText('Showing 3 of 25')).toBe('نمایش 3 از 25');
+    expect(translateVisibleText('12 minutes ago')).toBe('12 دقیقه پیش');
+    expect(translateVisibleText('Won / Lost')).toBe('برنده / بازنده');
+  });
+  it('transliterates Latin accented names without leaving stray Latin characters', () => {
+    expect(translateSportName('Łódź')).not.toMatch(/[A-Za-zŁł]/);
+    expect(translateSportName('Žalgiris')).not.toMatch(/[A-Za-zŽž]/);
+    expect(translateSportName('Manchester United')).toBe('منچستر یونایتد');
+  });
+  it('leaves technical identifiers, addresses and odds unmodified', () => {
+    expect(translateVisibleText('TRX')).toBe('TRX');
+    expect(translateVisibleText('customer@example.com')).toBe('customer@example.com');
+    expect(translateVisibleText('https://betvima.com')).toBe('https://betvima.com');
+    expect(translateVisibleText('1.75')).toBe('1.75');
+  });
+});
