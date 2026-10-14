@@ -113,8 +113,12 @@ begin
       on conflict(week_start,user_id,error_code) do nothing;
     end;
   end loop;
-  v_run_status := case when not p_live then 'preview'
-                       when v_failed_count > 0 then 'partial_failure'
+  if not p_live then
+    -- Strictly read-only preview; do not create even an audit row.
+    return jsonb_build_object('status','preview','week_start',v_week,
+      'candidates',v_candidate_count,'paid',0,'failed',0,'paid_minor',0);
+  end if;
+  v_run_status := case when v_failed_count > 0 then 'partial_failure'
                        else 'success' end;
   insert into nova.vip_cashback_run_audits(
     week_start,is_live,status,candidate_count,paid_count,already_paid_count,
