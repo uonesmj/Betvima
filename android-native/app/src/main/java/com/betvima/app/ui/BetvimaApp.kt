@@ -24,6 +24,8 @@ import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
+import androidx.lifecycle.Lifecycle
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -39,6 +41,9 @@ fun BetvimaApp(model: AppViewModel) {
     val pageStates = rememberSaveableStateHolder()
     val drawer = rememberDrawerState(DrawerValue.Closed)
     val drawerScope = rememberCoroutineScope()
+    var isForeground by remember { mutableStateOf(true) }
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { isForeground = true }
+    LifecycleEventEffect(Lifecycle.Event.ON_PAUSE) { isForeground = false }
 
     LaunchedEffect(state.notice) {
         val message = state.notice
@@ -47,10 +52,11 @@ fun BetvimaApp(model: AppViewModel) {
             snackbars.showSnackbar(message, withDismissAction = true)
         }
     }
-    LaunchedEffect(state.tab, state.feature, state.detail?.id) {
-        if (state.tab == Tab.LIVE && state.feature == Feature.NONE && state.detail == null) {
+    LaunchedEffect(state.tab, state.feature, state.detail?.id, isForeground) {
+        if (isForeground && state.tab in setOf(Tab.LIVE, Tab.HOME) &&
+            state.feature == Feature.NONE && state.detail == null) {
             while (true) {
-                delay(6_000)
+                delay(if (state.tab == Tab.LIVE) 6_000 else 18_000)
                 model.refreshLive(silent = true)
             }
         }
@@ -126,6 +132,7 @@ fun BetvimaApp(model: AppViewModel) {
                     state = state,
                     showSlip = state.tab in setOf(Tab.HOME, Tab.LIVE, Tab.SPORTS) &&
                         state.feature == Feature.NONE,
+                    menuOpen = drawer.isOpen,
                     onNavigate = { destination ->
                         when (destination) {
                             "menu" -> drawerScope.launch { drawer.open() }
