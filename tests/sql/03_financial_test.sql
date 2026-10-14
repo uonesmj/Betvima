@@ -3,7 +3,7 @@
 -- Covers spec §80 (critical bet tests), §82 (payment-adjacent money paths) and §99.
 -- ============================================================================
 \set ON_ERROR_STOP on
-\i /home/user/nova-sportsbook/tests/sql/00_fixtures.sql
+\ir 00_fixtures.sql
 
 do $$
 declare

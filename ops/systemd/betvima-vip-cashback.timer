@@ -1,0 +1,11 @@
+[Unit]
+Description=BetVima VIP cashback Mondays 09:00 Asia/Tehran
+
+[Timer]
+OnCalendar=Mon *-*-* 09:00:00 Asia/Tehran
+Persistent=true
+AccuracySec=1min
+Unit=betvima-vip-cashback.service
+
+[Install]
+WantedBy=timers.target

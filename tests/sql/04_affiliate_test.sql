@@ -12,7 +12,7 @@
 --     100M / 500M / 1B user wins -> payable stays >= 0
 -- ============================================================================
 \set ON_ERROR_STOP on
-\i /var/www/nova/tests/sql/00_fixtures.sql
+\ir 00_fixtures.sql
 
 -- helper: attribute a user to an affiliate and settle one bet with a known user result
 create or replace function tests.run_bet(

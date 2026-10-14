@@ -17,20 +17,30 @@ psql -q -X -c "create database $DB" postgres
 echo "== applying migrations =="
 for f in $(ls "$DIR"/supabase/migrations/*.sql | sort); do
   echo "-- $(basename "$f")"
+  if [[ "$(basename "$f")" == "0183_support_foundation.sql" ]]; then
+    echo "-- CI-only Supabase support/storage baseline"
+    $PSQL -d "$DB" -f "$DIR/tests/sql/00_legacy_support_bootstrap.sql"
+  fi
   $PSQL -d "$DB" -f "$f"
 done
 
 echo "== loading fixtures =="
+# The test fixtures populate profiles directly; avoid duplicate registration
+# from the production GoTrue auth.users trigger in this disposable database only.
+$PSQL -d "$DB" -c 'alter table auth.users disable trigger on_auth_user_created_nova_profile;'
 $PSQL -d "$DB" -f "$DIR/tests/sql/00_fixtures.sql"
 
 for f in $(ls "$DIR"/tests/sql/[0-9][0-9]_*_test.sql | sort); do
   name="$(basename "$f")"
+  if [[ -n "${NOVA_SQL_TEST_FILTER:-}" && "$name" != "$NOVA_SQL_TEST_FILTER" ]]; then continue; fi
   label="$(echo "$name" | sed -E 's/^[0-9]+_//; s/_test\.sql$//; s/_/ /g')"
   echo "== $label tests =="
   echo "-- $name"
   $PSQL -d "$DB" -f "$f"
 done
 
-echo "== concurrency =="
-DB="$DB" bash "$DIR/scripts/tests/concurrent-place.sh" "$DB"
+if [[ -z "${NOVA_SQL_TEST_FILTER:-}" ]]; then
+  echo "== concurrency =="
+  DB="$DB" bash "$DIR/scripts/tests/concurrent-place.sh" "$DB"
+fi
 echo "== SQL TEST SUITE PASSED =="

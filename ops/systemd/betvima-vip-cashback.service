@@ -1,0 +1,13 @@
+[Unit]
+Description=BetVima Monday VIP cashback one-shot
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+User=root
+WorkingDirectory=/opt/nova
+EnvironmentFile=/opt/nova/.env.production
+ExecStart=/usr/bin/node --import tsx /opt/nova/src/workers/entrypoints/vip-cashback.worker.ts
+TimeoutStartSec=1800
+NoNewPrivileges=true
