@@ -8,6 +8,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.async
+import kotlinx.coroutines.supervisorScope
 import java.math.BigDecimal
 import java.math.RoundingMode
 
@@ -17,7 +19,7 @@ enum class Lang { EN, FA }
 
 data class AppState(
     val tab: Tab = Tab.HOME, val feature: Feature = Feature.NONE,
-    val lang: Lang = Lang.EN, val sport: String = "football",
+    val lang: Lang = Lang.FA, val sport: String = "football",
     val live: List<Match> = emptyList(), val upcoming: List<Match> = emptyList(),
     val loading: Boolean = false, val detailLoading: Boolean = false,
     val liveEnabled: Boolean = false, val detail: Match? = null,
@@ -25,6 +27,7 @@ data class AppState(
     val showLogin: Boolean = false, val signedIn: Boolean = false,
     val wallet: Wallet? = null, val bets: List<Bet> = emptyList(),
     val bonuses: List<Bonus> = emptyList(), val busy: Boolean = false,
+    val accountLoading: Boolean = false,
     val quote: String? = null, val notice: String? = null
 )
 
@@ -32,14 +35,23 @@ data class AppState(
 class AppViewModel(app: Application) : AndroidViewModel(app) {
     private val api = ApiClient()
     private val vault = SessionVault(app)
-    private val mutable = MutableStateFlow(AppState(signedIn = vault.signedIn()))
+    private val preferences = app.getSharedPreferences("native_preferences", android.content.Context.MODE_PRIVATE)
+    private var sessionGeneration = 0
+    private val mutable = MutableStateFlow(AppState(
+        signedIn = vault.signedIn(),
+        lang = if (preferences.getString("language", "fa") == "en") Lang.EN else Lang.FA
+    ))
     val state = mutable.asStateFlow()
     init {
         refreshAll()
         if (vault.signedIn()) refreshAccount()
     }
     fun notice(message: String?) = mutable.update { it.copy(notice = message) }
-    fun language() = mutable.update { it.copy(lang = if (it.lang == Lang.EN) Lang.FA else Lang.EN) }
+    fun language() {
+        val lang = if (state.value.lang == Lang.EN) Lang.FA else Lang.EN
+        preferences.edit().putString("language", if (lang == Lang.FA) "fa" else "en").apply()
+        mutable.update { it.copy(lang = lang) }
+    }
     fun tab(tab: Tab) {
         mutable.update { it.copy(tab = tab, feature = Feature.NONE, detail = null) }
         when (tab) {
@@ -115,6 +127,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         mutable.update { it.copy(busy = true, notice = null) }
         try {
             vault.signIn(email, password, api)
+            sessionGeneration++
             mutable.update { it.copy(busy = false, showLogin = false, signedIn = true) }
             refreshAccount()
         } catch (ex: Exception) {
@@ -122,24 +135,44 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
     fun signOut() {
+        sessionGeneration++
         vault.clear()
         mutable.update { it.copy(signedIn = false, wallet = null, bets = emptyList(),
-            bonuses = emptyList(), quote = null, showLogin = false) }
+            bonuses = emptyList(), quote = null, showLogin = false, accountLoading = false) }
     }
     fun refreshAccount() = viewModelScope.launch {
-        val jwt = vault.accessToken(api) ?: run {
-            mutable.update { it.copy(wallet = null, bets = emptyList(), bonuses = emptyList(),
-                notice = "Please sign in again") }
+        if (!state.value.signedIn) return@launch
+        val generation = sessionGeneration
+        mutable.update { it.copy(accountLoading = true) }
+        val jwt = vault.accessToken(api)
+        if (jwt.isNullOrBlank()) {
+            if (sessionGeneration == generation) {
+                mutable.update { it.copy(accountLoading = false,
+                    notice = tr(it.lang, "Your session could not be refreshed. Please sign in again.",
+                        "نشست شما تمدید نشد. لطفاً دوباره وارد شوید.")) }
+            }
             return@launch
         }
-        try {
-            val wallet = api.wallet(jwt)
-            val bets = api.bets(jwt)
-            val bonuses = api.bonuses(jwt)
-            mutable.update { it.copy(wallet = wallet, bets = bets, bonuses = bonuses) }
-        } catch (ex: Exception) {
-            mutable.update { it.copy(wallet = null, bets = emptyList(), bonuses = emptyList(),
-                notice = ex.message ?: "Account data unavailable") }
+        supervisorScope {
+            // A temporary error in a single service must not erase confirmed wallet data.
+            val wallet = async { runCatching { api.wallet(jwt) } }
+            val bets = async { runCatching { api.bets(jwt) } }
+            val bonuses = async { runCatching { api.bonuses(jwt) } }
+            val walletResult = wallet.await()
+            val betResult = bets.await()
+            val bonusResult = bonuses.await()
+            if (sessionGeneration != generation || !state.value.signedIn) return@supervisorScope
+            mutable.update {
+                it.copy(
+                    wallet = walletResult.getOrNull() ?: it.wallet,
+                    bets = betResult.getOrNull() ?: it.bets,
+                    bonuses = bonusResult.getOrNull() ?: it.bonuses,
+                    accountLoading = false,
+                    notice = if (walletResult.isFailure || betResult.isFailure || bonusResult.isFailure)
+                        tr(it.lang, "Some account information could not be refreshed.",
+                            "بخشی از اطلاعات حساب به‌روزرسانی نشد.") else it.notice
+                )
+            }
         }
     }
     fun quote(stake: String) = viewModelScope.launch {
