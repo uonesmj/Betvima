@@ -38,7 +38,9 @@ data class Bet(val id: String, val status: String, val type: String,
 }
 data class Transaction(val id: String, val type: String, val amountMinor: String, val time: String)
 data class Wallet(val availableMinor: String, val balanceMinor: String,
-    val heldMinor: String, val currency: String, val integrity: String, val transactions: List<Transaction>)
+    val heldMinor: String, val currency: String, val integrity: String,
+    val transactions: List<Transaction>, val page: Int = 1, val hasMore: Boolean = false)
+data class BetPage(val items: List<Bet>, val page: Int, val hasMore: Boolean)
 data class Bonus(val title: String, val status: String, val remainingMinor: String, val currency: String)
 
 fun JSONArray.objects(): List<JSONObject> = (0 until length()).mapNotNull { optJSONObject(it) }
