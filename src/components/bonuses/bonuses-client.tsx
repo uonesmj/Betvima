@@ -417,7 +417,7 @@ export function BonusesClient() {
   );
 
   return (
-    <div className="-mx-4 min-h-0 overflow-hidden bg-[#030A12] pb-10 text-white sm:-mx-5 lg:-mx-6">
+    <div data-i18n-ignore className="-mx-4 min-h-0 overflow-hidden bg-[#030A12] pb-10 text-white sm:-mx-5 lg:-mx-6">
       <section className="relative overflow-hidden border-y border-[#142632] bg-[radial-gradient(circle_at_80%_15%,rgba(0,217,137,.18),transparent_28%),radial-gradient(circle_at_15%_100%,rgba(69,167,255,.07),transparent_32%),linear-gradient(135deg,#06131B,#071019_55%,#06170F)] px-5 py-8 sm:px-8 sm:py-10 lg:px-10 lg:py-12">
         <div className="pointer-events-none absolute -right-24 -top-28 h-72 w-72 rounded-full bg-[#00D989]/10 blur-3xl" />
         <div className="pointer-events-none absolute -bottom-32 -left-20 h-64 w-64 rounded-full bg-[#45A7FF]/5 blur-3xl" />
