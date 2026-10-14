@@ -4553,3 +4553,13 @@ html[lang="fa"] .affiliate-shell .affiliate-referrals-v2 tbody td:nth-child(8)::
 html[lang="fa"] .affiliate-shell .affiliate-referrals-v2 tbody td:nth-child(9)::before { content: "سهم ۷۰٪ شما" !important; }
 html[lang="fa"] .affiliate-shell .affiliate-referrals-v2 tbody td:nth-child(10)::before { content: "کمیسیون دریافتی" !important; }
 html[lang="fa"] .affiliate-shell .affiliate-referrals-v2 tbody td:first-child::after { content: "شناسه" !important; }
+
+/* Footer: translated copy must not reorder or stretch the original mobile grid. */
+html[lang="fa"] footer[data-locale-stable] { direction: ltr; }
+html[lang="fa"] footer[data-locale-stable] :is(nav, section, div, ul, li, h2, h3, p, span, a, button) {
+  unicode-bidi: normal;
+  min-width: 0;
+}
+html[lang="fa"] footer[data-locale-stable] :is(h2, h3, p, a, button) { overflow-wrap: anywhere; }
+html[lang="fa"] footer[data-locale-stable] [role="group"] { direction: ltr; }
+html[lang="fa"] footer[data-locale-stable] [role="group"] [lang="fa"] { direction: rtl; }
