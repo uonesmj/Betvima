@@ -128,12 +128,12 @@ fun CatalogPage(state: AppState, model: AppViewModel, live: Boolean) {
             }
         }
         if (!live) item { SportsRibbon(state.sport, state.lang) { model.sport(it) } }
-        if (state.loading && matches.isEmpty()) item {
+        if ((if (live) state.liveLoading else state.upcomingLoading) && matches.isEmpty()) item {
             Box(Modifier.fillMaxWidth().height(90.dp), contentAlignment = Alignment.Center) {
                 CircularProgressIndicator(color = Palette.green)
             }
         }
-        if (!state.loading && matches.isEmpty()) item {
+        if (!(if (live) state.liveLoading else state.upcomingLoading) && matches.isEmpty()) item {
             EmptyPanel(tr(state.lang, "No events available", "رویدادی موجود نیست"),
                 tr(state.lang, "The live feed may be between match windows.",
                     "ممکن است در حال حاضر مسابقه‌ای از منبع داده منتشر نشده باشد.")) {
