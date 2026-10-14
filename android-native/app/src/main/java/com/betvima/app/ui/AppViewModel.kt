@@ -31,6 +31,7 @@ data class AppState(
     val betDetailVisible: Boolean = false,
     val picks: List<Pick> = emptyList(), val showSlip: Boolean = false,
     val showLogin: Boolean = false, val registerScreen: Boolean = false,
+    val authError: String? = null,
     val signedIn: Boolean = false,
     val wallet: Wallet? = null, val bets: List<Bet> = emptyList(),
     val betsPage: Int = 1, val betsHasMore: Boolean = false,
@@ -285,20 +286,38 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     }
     fun showSlip(show: Boolean) = mutable.update { it.copy(showSlip = show) }
     fun showLogin(show: Boolean, register: Boolean = false) =
-        mutable.update { it.copy(showLogin = show, registerScreen = register) }
+        mutable.update { it.copy(showLogin = show, registerScreen = register, authError = null) }
     fun setRegisterScreen(register: Boolean) =
-        mutable.update { it.copy(registerScreen = register) }
+        mutable.update { it.copy(registerScreen = register, authError = null) }
     fun signIn(email: String, password: String) = viewModelScope.launch {
-        mutable.update { it.copy(busy = true, notice = null) }
+        if (state.value.busy) return@launch
+        if (!email.trim().contains("@") || password.length !in 8..128) {
+            mutable.update { it.copy(authError = tr(it.lang,
+                "Check your email and password.", "ایمیل و رمز عبور را بررسی کنید.")) }
+            return@launch
+        }
+        mutable.update { it.copy(busy = true, notice = null, authError = null) }
         try {
-            vault.signIn(email, password, api)
+            vault.signIn(email.trim(), password, api)
             sessionGeneration++
-            mutable.update { it.copy(busy = false, showLogin = false, signedIn = true) }
+            mutable.update { it.copy(busy = false, showLogin = false, signedIn = true,
+                authError = null) }
             refreshAccount()
             if (state.value.tab == Tab.BETS) refreshBetHistory()
             refreshNotifications()
         } catch (ex: Exception) {
-            mutable.update { it.copy(busy = false, notice = ex.message ?: "Sign-in failed") }
+            val text = when ((ex as? ApiFailure)?.code) {
+                400, 401, 403 -> tr(state.value.lang,
+                    "Incorrect credentials or verification required.",
+                    "مشخصات ورود نادرست است یا تأیید حساب لازم است.")
+                429 -> tr(state.value.lang,
+                    "Too many attempts. Please try again later.",
+                    "تلاش بیش از حد مجاز؛ کمی بعد دوباره امتحان کنید.")
+                else -> tr(state.value.lang,
+                    "We could not sign in. Check your connection and retry.",
+                    "ورود انجام نشد؛ اتصال اینترنت را بررسی و دوباره تلاش کنید.")
+            }
+            mutable.update { it.copy(busy = false, authError = text) }
         }
     }
     fun signOut() {
@@ -310,7 +329,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         sessionGeneration++
         vault.clear()
         mutable.update { it.copy(signedIn = false, wallet = null, bets = emptyList(),
-            bonuses = emptyList(), quote = null, showLogin = false, accountLoading = false,
+            bonuses = emptyList(), quote = null, showLogin = false,
+            authError = null, accountLoading = false,
             betsPage = 1, betsHasMore = false, moreBetsLoading = false,
             historyQuery = BetHistoryQuery(), historyBets = emptyList(), historyPage = 1,
             historyHasMore = false, historyLoading = false,
