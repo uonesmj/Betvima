@@ -44,12 +44,18 @@ internal fun signupValidation(
 internal fun signupPayload(
     email: String, password: String, currency: String, referral: String,
     locale: String, token: String
-): JSONObject = JSONObject()
-    .put("email", email.trim()).put("password", password)
-    .put("currency", currency)
-    .put("referralCode", referral.trim().uppercase().takeIf { it.isNotBlank() } ?: JSONObject.NULL)
-    .put("ageConfirmed", true).put("acceptTerms", true)
-    .put("locale", locale).put("turnstileToken", token)
+): JSONObject = JSONObject().apply {
+    put("email", email.trim())
+    put("password", password)
+    put("currency", currency)
+    // API zod schema accepts an optional string, not an explicit JSON null.
+    referral.trim().uppercase().takeIf { it.isNotBlank() }
+        ?.let { put("referralCode", it) }
+    put("ageConfirmed", true)
+    put("acceptTerms", true)
+    put("locale", locale)
+    put("turnstileToken", token)
+}
 
 /** No password or access token ever crosses the JavaScript bridge. */
 private class TurnstileCallbacks(private val notify: (String?) -> Unit) {
