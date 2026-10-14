@@ -103,11 +103,8 @@ fun HomePage(state: AppState, model: AppViewModel, onSearch: () -> Unit) {
                     }
                 }
             } else items(featured.take(25), key = { "top-"+it.id }) { match ->
-                Box(Modifier.padding(horizontal = 15.dp)) {
-                    MatchTile(match, state.lang, state.liveEnabled, state.picks,
-                        { model.openMatch(match.id) }) { market, selection ->
-                        model.togglePick(match, market, selection)
-                    }
+                Box(Modifier.padding(horizontal = 15.dp, vertical = 3.dp)) {
+                    ReferenceTopBetCard(match, state, model)
                 }
             }
         } else {
