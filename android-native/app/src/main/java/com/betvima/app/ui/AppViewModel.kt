@@ -69,7 +69,9 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         mutable.update { it.copy(lang = lang) }
     }
     fun tab(tab: Tab) {
-        mutable.update { it.copy(tab = tab, feature = Feature.NONE, detail = null) }
+        detailRequestNumber++
+        mutable.update { it.copy(tab = tab, feature = Feature.NONE,
+            detail = null, detailLoading = false) }
         when (tab) {
             Tab.HOME -> refreshAll()
             Tab.LIVE -> refreshLive()
@@ -79,7 +81,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
     fun feature(feature: Feature) {
-        mutable.update { it.copy(feature = feature, detail = null) }
+        detailRequestNumber++
+        mutable.update { it.copy(feature = feature, detail = null, detailLoading = false) }
         if (feature == Feature.BONUSES && state.value.signedIn) refreshAccount()
         if (feature == Feature.NOTIFICATIONS && state.value.signedIn) refreshNotifications()
     }
