@@ -16,7 +16,7 @@ create table if not exists nova.vip_cashback_payouts (
   week_end date not null,
   currency text not null default 'USD' check(currency = 'USD'),
   deposit_minor bigint not null check(deposit_minor >= 200000),
-  losing_stakes_minor bigint not null check(losing_stakes_minor >= 0),
+  net_loss_minor bigint not null check(net_loss_minor >= 0),
   cashback_bps integer not null check(cashback_bps in (300,500,600,800,1100)),
   amount_minor bigint not null check(amount_minor > 0),
   wallet_transaction_id uuid not null unique references nova.wallet_transactions(id) on delete restrict,
@@ -62,8 +62,8 @@ for select to authenticated using(user_id = nova.current_user_id());
 grant all on nova.vip_cashback_payouts, nova.vip_cashback_discrepancies to service_role;
 
 -- Returns a snapshot, never writes. No floating-point accounting.
--- Important: gross losses = sum of losing main-wallet bet settlements;
--- winning bets do not reduce that amount. This definition needs operator approval.
+-- NET weekly sportsbook loss = max(0, -sum(net_user_result_minor)).
+-- Winning bet profits offset losing bets; no payout if week has no net loss.
 -- Foreign currencies intentionally excluded until authoritative FX snapshots exist.
 create or replace function nova.vip_cashback_quote_week(p_week_start date)
 returns table (
@@ -111,9 +111,9 @@ begin
       )
     group by p.user_id
   ),
-  losses as (
+  net_results as (
     select b.user_id,
-      sum(-s.net_user_result_minor)::bigint as amount_minor
+      greatest(0::numeric, -sum(s.net_user_result_minor::numeric))::bigint as amount_minor
     from nova.bets b
     join lateral (
       select bs.net_user_result_minor, bs.created_at, bs.status_after
@@ -128,7 +128,7 @@ begin
       and b.funding_source = 'main'
       and b.status = 'settled'
       and s.status_after = 'settled'
-      and s.net_user_result_minor < 0
+      and s.net_user_result_minor is not null
       and s.created_at >= v_start
       and s.created_at < v_end
     group by b.user_id
@@ -145,7 +145,7 @@ begin
         else 0
       end as bps
     from deposits d
-    left join losses l on l.user_id = d.user_id
+    left join net_results l on l.user_id = d.user_id
   )
   select q.user_id, q.deposits, q.losses, q.bps,
     case when q.bps > 0 then nova.apply_bps(q.losses, q.bps) else 0 end
@@ -211,7 +211,7 @@ begin
     'week_start',p_week_start,'week_end',p_week_start + 7,'currency','USD',
     'deposit_minor',v_quote.deposit_minor,'loss_minor',v_quote.loss_minor,
     'cashback_bps',v_quote.rate_bps,'amount_minor',v_quote.cashback_minor,
-    'formula','gross_settled_main_wallet_losses_v1'
+    'formula','net_settled_main_wallet_losses_v2'
   );
   if p_dry_run then
     return v_snapshot || jsonb_build_object('status','preview','dry_run',true);
@@ -262,14 +262,14 @@ begin
 
   v_key := 'vip-cashback:v1:' || p_week_start::text || ':' || p_user_id::text;
   v_result := nova.credit_wallet(
-    p_user_id, 'vip_cashback'::nova.wallet_tx_type, v_quote.cashback_minor, 'USD',
+    p_user_id, 'vip_cashback', v_quote.cashback_minor, 'USD',
     v_key, 'VIP_CASHBACK_' || p_week_start::text, null, null,
     'Weekly VIP cashback on eligible settled USD sports losses', null,
     v_snapshot
   );
 
   insert into nova.vip_cashback_payouts(
-    user_id, week_start, week_end, deposit_minor, losing_stakes_minor,
+    user_id, week_start, week_end, deposit_minor, net_loss_minor,
     cashback_bps, amount_minor, wallet_transaction_id, source_snapshot)
   values (p_user_id, p_week_start, p_week_start + 7, v_quote.deposit_minor,
      v_quote.loss_minor, v_quote.rate_bps, v_quote.cashback_minor,
@@ -309,7 +309,7 @@ begin
       jsonb_build_object('deposit_minor',m.deposits,'loss_minor',m.losses,
         'cashback_bps',m.bps,'amount_minor',m.amount)
     from mismatches m
-    where m.deposit_minor <> m.deposits or m.losing_stakes_minor <> m.losses
+    where m.deposit_minor <> m.deposits or m.net_loss_minor <> m.losses
        or m.cashback_bps <> m.bps or m.amount_minor <> m.amount
     on conflict(payout_id,recomputed_snapshot) do nothing
     returning 1
