@@ -134,7 +134,7 @@ fun ReferenceBottomBar(
     onNavigate: (String) -> Unit,
     onSlip: () -> Unit
 ) {
-    val hasSelection = showSlip && state.picks.isNotEmpty()
+    val hasSelection = showSlip // Keep zero-count Bet Slip accessible on sportsbook pages
     Column(Modifier.fillMaxWidth().background(Color(0xFF101114))) {
         AnimatedVisibility(
             visible = hasSelection,
