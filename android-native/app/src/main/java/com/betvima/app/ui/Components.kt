@@ -119,7 +119,7 @@ fun OddsChoice(match: Match, market: Market, selection: Selection, liveEnabled: 
 }
 
 @Composable
-fun MatchTile(match: Match, liveEnabled: Boolean, picks: List<Pick>,
+fun MatchTile(match: Match, lang: Lang, liveEnabled: Boolean, picks: List<Pick>,
     onOpen: () -> Unit, onPick: (Market, Selection) -> Unit) {
     val market = match.featured
     Surface(Modifier.fillMaxWidth().padding(vertical = 4.dp),
@@ -165,7 +165,7 @@ fun MatchTile(match: Match, liveEnabled: Boolean, picks: List<Pick>,
                 Surface(color = Palette.paper, shape = RoundedCornerShape(10.dp)) {
                     Column(Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
                         horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(if (match.live) "IN PLAY" else "PRE-MATCH",
+                        Text(if (match.live) tr(lang, "IN PLAY", "در جریان") else tr(lang, "PRE-MATCH", "پیش از شروع"),
                             fontWeight = FontWeight.Bold, fontSize = 9.sp, color = Palette.muted)
                         Icon(Icons.Default.ChevronRight, null, tint = Palette.blue)
                     }
@@ -191,7 +191,7 @@ fun MatchTile(match: Match, liveEnabled: Boolean, picks: List<Pick>,
                     }
                 }
             } else {
-                Text("Odds currently unavailable", modifier = Modifier.padding(14.dp),
+                Text(tr(lang, "Odds currently unavailable", "ضرایب در دسترس نیستند"), modifier = Modifier.padding(14.dp),
                     color = Palette.muted, fontSize = 11.sp)
             }
         }
