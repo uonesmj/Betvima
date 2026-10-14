@@ -19,6 +19,19 @@ import androidx.compose.ui.unit.sp
 import com.betvima.app.data.money
 import com.betvima.app.data.odds
 
+private fun legStatusLabel(raw: String, lang: Lang): String = when (raw.uppercase()) {
+    "WON" -> tr(lang, "Won", "برنده")
+    "LOST" -> tr(lang, "Lost", "بازنده")
+    "VOID" -> tr(lang, "Void", "باطل")
+    "HALF_WON" -> tr(lang, "Half won", "نیم‌برد")
+    "HALF_LOST" -> tr(lang, "Half lost", "نیم‌باخت")
+    "PENDING" -> tr(lang, "Pending", "در انتظار")
+    "PENDING_REVIEW", "MANUAL_REVIEW" -> tr(lang, "Under review", "در حال بررسی")
+    "CANCELLED" -> tr(lang, "Cancelled", "لغوشده")
+    "REFUNDED" -> tr(lang, "Refunded", "برگشت‌خورده")
+    else -> raw.replace("_", " ")
+}
+
 /** Server-authoritative read-only receipt: no client-side regrading or payout calculations. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -56,7 +69,7 @@ fun BetReceiptSheet(state: AppState, model: AppViewModel) {
                                 receipt.placedAt.replace("T", " · ").take(19),
                                 color = Color(0xFFB3C8CE), fontSize = 10.sp)
                             Spacer(Modifier.height(13.dp))
-                            SmallPill(receipt.status.replace("_", " ").uppercase(),
+                            SmallPill(betStatus(receipt.status, state.lang),
                                 Palette.greenLight, Palette.ink)
                             Spacer(Modifier.height(14.dp))
                             Text(tr(state.lang, "Stake", "مبلغ شرط"),
@@ -102,7 +115,8 @@ fun BetReceiptSheet(state: AppState, model: AppViewModel) {
                                     odds(leg.oddsScaled), color = Palette.blue,
                                     fontWeight = FontWeight.Bold, fontSize = 12.sp,
                                     modifier = Modifier.weight(1f))
-                                SmallPill(if (leg.result.isNotBlank()) leg.result else leg.status,
+                                val status = if (leg.result.isNotBlank()) leg.result else leg.status
+                                SmallPill(legStatusLabel(status, state.lang),
                                     Palette.paper, Palette.text)
                             }
                         }
