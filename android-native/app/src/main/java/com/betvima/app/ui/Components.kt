@@ -28,7 +28,8 @@ import com.betvima.app.data.*
 fun tr(lang: Lang, en: String, fa: String) = if (lang == Lang.FA) fa else en
 
 @Composable
-fun BrandHeader(lang: Lang, onHome: () -> Unit, onLanguage: () -> Unit, onAccount: () -> Unit) {
+fun BrandHeader(lang: Lang, onHome: () -> Unit, onLanguage: () -> Unit,
+    onAccount: () -> Unit, onNotifications: () -> Unit, unread: Int) {
     Row(Modifier.fillMaxWidth().background(Palette.ink).padding(horizontal = 18.dp, vertical = 14.dp),
         verticalAlignment = Alignment.CenterVertically) {
         Column(Modifier.clickable(onClick = onHome)) {
@@ -44,6 +45,14 @@ fun BrandHeader(lang: Lang, onHome: () -> Unit, onLanguage: () -> Unit, onAccoun
         Spacer(Modifier.weight(1f))
         IconButton(onClick = onLanguage) {
             Icon(Icons.Default.Language, contentDescription = "Change language", tint = Color.White)
+        }
+        Box(contentAlignment = Alignment.Center) {
+            IconButton(onClick = onNotifications) {
+                Icon(Icons.Default.Notifications, contentDescription =
+                    tr(lang, "Notifications", "اعلان‌ها"), tint = Color.White)
+            }
+            if (unread > 0) Box(Modifier.align(Alignment.TopEnd).padding(top = 3.dp, end = 4.dp)
+                .size(8.dp).clip(CircleShape).background(Palette.green))
         }
         Surface(shape = RoundedCornerShape(14.dp), color = Palette.dark,
             modifier = Modifier.size(42.dp).clickable(onClick = onAccount)) {
