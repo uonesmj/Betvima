@@ -1,12 +1,16 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { translateVisibleText } from '@/lib/i18n/ui-phrases';
+import { useApp } from '@/components/layout/providers';
 import { useRouter } from 'next/navigation';
 import { Card, Field } from '@/components/ui/primitives';
 import { apiRequest } from '@/lib/hooks/useApi';
 import { getSupabaseBrowserClient } from '@/lib/supabase/browser';
 
 export function AffiliateLoginClient() {
+  const { locale } = useApp();
+  const tr = (value: string | undefined) => { const copy = value ?? ''; return locale === 'fa' ? translateVisibleText(copy) : copy; };
   const router = useRouter();
   const turnstileWidgetRef = useRef<string | null>(null);
   const turnstileTokenRef = useRef<string | null>(null);
@@ -244,15 +248,15 @@ export function AffiliateLoginClient() {
     <div className="mx-auto max-w-3xl">
       <section className="mb-5 overflow-hidden rounded-[24px] bg-[#071A31] p-6 text-white shadow-[0_14px_40px_rgba(7,26,49,.18)] sm:p-8">
         <div className="text-[11px] font-black tracking-[.22em] text-[#58A6FF]">
-          BETVIMA AFFILIATE
+          {tr("BETVIMA AFFILIATE")}
         </div>
 
         <h1 className="mt-2 text-3xl font-black sm:text-4xl">
-          Affiliate Login
+          {tr("Affiliate Login")}
         </h1>
 
         <p className="mt-2 max-w-xl text-sm leading-6 text-[#AFC3DA]">
-          Sign in to your independent BetVima Affiliate account.
+          {tr("Sign in to your independent BetVima Affiliate account.")}
         </p>
       </section>
 
@@ -274,13 +278,11 @@ export function AffiliateLoginClient() {
             <div className="space-y-4">
               <div className="rounded-2xl border border-[#DCEBFA] bg-[#F5FAFF] p-4">
                 <div className="text-sm font-black text-[#172033]">
-                  Reset your Affiliate password
+                  {tr("Reset your Affiliate password")}
                 </div>
 
                 <p className="mt-1 text-xs leading-5 text-[#64748B]">
-                  Enter the email address registered to
-                  your Affiliate account. We&apos;ll send
-                  you a secure password reset link.
+                  {locale === 'fa' ? 'ایمیل ثبت‌شده برای حساب همکاری خود را وارد کنید تا لینک امن بازنشانی رمز عبور برایتان ارسال شود.' : "Enter the email address registered to your Affiliate account. We'll send you a secure password reset link."}
                 </p>
               </div>
 
@@ -333,7 +335,7 @@ export function AffiliateLoginClient() {
                   setMessageType('error');
                 }}
               >
-                Back to Affiliate Login
+                {tr("Back to Affiliate Login")}
               </button>
             </div>
           ) : (
@@ -376,7 +378,7 @@ export function AffiliateLoginClient() {
                     setMessageType('error');
                   }}
                 >
-                  Forgot password?
+                  {tr("Forgot password?")}
                 </button>
               </div>
 
@@ -399,7 +401,7 @@ export function AffiliateLoginClient() {
                   href="/affiliate/register"
                   className="font-bold text-[#087FF5] hover:underline"
                 >
-                  Create one
+                  {tr("Create one")}
                 </a>
               </div>
             </div>

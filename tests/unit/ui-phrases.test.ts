@@ -139,3 +139,46 @@ describe('sport-specific outcomes and market-line translation', () => {
     expect(translateVisibleText('Try another team or league name.')).toBe('نام تیم یا لیگ دیگری را وارد کنید.');
   });
 });
+
+
+describe('Persian footer, bonus, VIP and affiliate completion', () => {
+  it('preserves footer layout and avoids post-render text mutation', () => {
+    const footer = readFileSync('src/components/layout/page-shell.tsx', 'utf8');
+    const css = readFileSync('src/app/globals.css', 'utf8');
+    expect(footer).toContain('data-locale-stable');
+    expect(footer).toContain('data-i18n-ignore');
+    expect(footer).toContain('copy("Every match.", "هر مسابقه.")');
+    expect(footer).toContain('copy("Language", "زبان")');
+    expect(css).toContain('footer[data-locale-stable]');
+    expect(css).toContain('direction: ltr');
+  });
+
+  it('localizes full bonus statuses and FAQ wording', () => {
+    expect(translateVisibleText('Deposit Bonus')).toBe('بونوس واریز');
+    expect(translateVisibleText('Get a 100% bonus on every successful deposit. Each bonus is independent and remains valid for 24 hours.'))
+      .toBe('با هر واریز موفق بونوس ۱۰۰ درصد دریافت کنید. هر بونوس مستقل است و ۲۴ ساعت اعتبار دارد.');
+    expect(translateVisibleText('How do I use a bonus?')).toBe('چگونه از بونوس استفاده کنم؟');
+    expect(translateVisibleText('The bonus is marked as Lost and no amount is credited to the Main Account.'))
+      .toBe('وضعیت بونوس «بازنده» می‌شود و مبلغی به حساب اصلی افزوده نمی‌شود.');
+  });
+
+  it('translates VIP reward names, levels and full questions', () => {
+    expect(translateVisibleText('Bronze 1')).toBe('برنزی ۱');
+    expect(translateVisibleText('Platinum 3')).toBe('پلاتینی ۳');
+    expect(translateVisibleText('Private tournaments')).toBe('تورنمنت‌های اختصاصی');
+    expect(translateVisibleText('When do I become a VIP?')).toBe('چه زمانی عضو VIP می‌شوم؟');
+    expect(translateVisibleText('VIP privileges begin at Gold 3 and continue to expand as you progress through higher levels.'))
+      .toBe('امکانات VIP از سطح طلایی ۳ آغاز می‌شوند و در سطوح بالاتر گسترش می‌یابند.');
+  });
+
+  it('covers affiliate dashboard, ledger and security messages', () => {
+    expect(translateVisibleText('Turn your network into')).toBe('شبکه ارتباطی خود را به');
+    expect(translateVisibleText('real income')).toBe('درآمد واقعی تبدیل کنید');
+    expect(translateVisibleText('How commission works')).toBe('نحوه محاسبه کمیسیون');
+    expect(translateVisibleText('Unable to save wallet')).toBe('ذخیره کیف پول ممکن نشد');
+    expect(translateVisibleText('Your current commission balance and next settlement window.'))
+      .toBe('موجودی فعلی کمیسیون شما و زمان تسویه بعدی.');
+    expect(translateVisibleText('USD')).toBe('USD');
+    expect(translateVisibleText('1.65')).toBe('1.65');
+  });
+});

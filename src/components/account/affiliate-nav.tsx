@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useState } from 'react';
+import { translateVisibleText } from '@/lib/i18n/ui-phrases';
 import { useApp } from '@/components/layout/providers';
 import { getSupabaseBrowserClient } from '@/lib/supabase/browser';
 
@@ -15,7 +16,8 @@ const ITEMS = [
 ];
 
 export function AffiliateNav() {
-  const { t } = useApp();
+  const { t, locale } = useApp();
+  const tr = (value: string | undefined) => { const copy = value ?? ''; return locale === 'fa' ? translateVisibleText(copy) : copy; };
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
@@ -97,7 +99,7 @@ export function AffiliateNav() {
             />
             <div className="absolute right-0 z-50 mt-2 w-[245px] overflow-hidden rounded-2xl border border-[#D9E3ED] bg-white p-1.5 shadow-[0_18px_50px_rgba(15,23,42,.16)]">
               <div className="px-3 pb-2 pt-2 text-[9px] font-black uppercase tracking-[.2em] text-[#94A3B8]">
-                Affiliate Center
+                {tr("Affiliate Center")}
               </div>
 
               {ITEMS.map((item) => {

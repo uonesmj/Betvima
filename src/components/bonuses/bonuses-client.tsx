@@ -1,6 +1,8 @@
 'use client';
 
 import Link from 'next/link';
+import { useApp } from '@/components/layout/providers';
+import { translateVisibleText } from '@/lib/i18n/ui-phrases';
 import { useEffect, useMemo, useState } from 'react';
 import {
   Gift,
@@ -135,6 +137,7 @@ function countdown(expiresAt: string, now: number) {
 }
 
 function StatusBadge({ status }: { status: BonusStatus }) {
+  const { locale } = useApp();
   const meta = STATUS_META[status];
   const Icon = meta.icon;
 
@@ -143,7 +146,7 @@ function StatusBadge({ status }: { status: BonusStatus }) {
       className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1.5 text-[10px] font-black uppercase tracking-[0.08em] ${meta.className}`}
     >
       <Icon className="h-3.5 w-3.5" />
-      {meta.label}
+      {locale === 'fa' ? translateVisibleText(meta.label) : meta.label}
     </span>
   );
 }
@@ -157,6 +160,8 @@ function BonusCard({
   now: number;
   percentageBps: number;
 }) {
+  const { locale } = useApp();
+  const tr = (value: string | undefined) => { const label = value ?? ''; return locale === 'fa' ? translateVisibleText(label) : label; };
   const timer = countdown(bonus.expiresAt, now);
   const isActive = bonus.status === 'active';
   const isLocked = bonus.status === 'locked';
@@ -186,10 +191,10 @@ function BonusCard({
 
             <div>
               <p className="text-[10px] font-black uppercase tracking-[0.16em] text-[#00D989]">
-                Deposit Bonus
+                {tr("Deposit Bonus")}
               </p>
               <p className="mt-1 text-xs font-semibold text-[#708392]">
-                {bonusPercentageLabel}% promotional reward
+                {bonusPercentageLabel}% {tr('promotional reward')}
               </p>
             </div>
           </div>
@@ -199,7 +204,7 @@ function BonusCard({
 
         <div className="mt-7">
           <p className="text-xs font-bold text-[#738694]">
-            Bonus amount
+            {tr("Bonus amount")}
           </p>
           <div className="mt-1 flex flex-wrap items-end gap-2">
             <h3 className="text-[34px] font-black leading-none tracking-[-0.04em] text-white sm:text-[40px]">
@@ -207,8 +212,7 @@ function BonusCard({
             </h3>
           </div>
           <p className="mt-3 max-w-xl text-sm leading-6 text-[#81919F]">
-            Your deposit bonus is available according to the current promotion
-            rules and can be used within its validity period.
+            {tr('Your deposit bonus is available according to the current promotion rules and can be used within its validity period.')}
           </p>
         </div>
       </div>
@@ -218,7 +222,7 @@ function BonusCard({
           <div className="flex items-center justify-between gap-3">
             <div>
               <p className="text-[10px] font-black uppercase tracking-[0.14em] text-[#647786]">
-                Remaining
+                {tr("Remaining")}
               </p>
               <p className="mt-1 text-lg font-black text-white">
                 {formatAmount(bonus.remainingAmountMinor, bonus.currency)}
@@ -238,8 +242,8 @@ function BonusCard({
           </div>
 
           <div className="mt-2 flex justify-between text-[10px] font-bold text-[#607381]">
-            <span>Bonus balance</span>
-            <span>{Math.round(progress)}% remaining</span>
+            <span>{tr("Bonus balance")}</span>
+            <span>{Math.round(progress)}% {tr('remaining')}</span>
           </div>
         </div>
 
@@ -248,7 +252,7 @@ function BonusCard({
             <div className="flex items-center gap-2 text-[#687B89]">
               <Clock3 className="h-4 w-4" />
               <span className="text-[10px] font-black uppercase tracking-[0.12em]">
-                Granted
+                {tr("Granted")}
               </span>
             </div>
             <p className="mt-2 text-sm font-extrabold text-white">
@@ -260,11 +264,11 @@ function BonusCard({
             <div className="flex items-center gap-2 text-[#687B89]">
               <TimerReset className="h-4 w-4" />
               <span className="text-[10px] font-black uppercase tracking-[0.12em]">
-                Validity
+                {tr("Validity")}
               </span>
             </div>
             <p className="mt-2 text-sm font-extrabold text-white">
-              24 hours
+              {tr("24 hours")}
             </p>
           </div>
         </div>
@@ -278,10 +282,10 @@ function BonusCard({
                 </div>
                 <div>
                   <p className="text-xs font-black text-white">
-                    {timer.remaining > 0 ? 'Expires in' : 'Expired'}
+                    {tr(timer.remaining > 0 ? 'Expires in' : 'Expired')}
                   </p>
                   <p className="mt-0.5 text-[10px] font-semibold text-[#657985]">
-                    Use your bonus before the timer reaches zero.
+                    {tr("Use your bonus before the timer reaches zero.")}
                   </p>
                 </div>
               </div>
@@ -295,20 +299,19 @@ function BonusCard({
 
         {bonus.status === 'won' ? (
           <div className="mt-3 rounded-2xl border border-[#45A7FF]/15 bg-[#45A7FF]/[0.05] p-4 text-xs leading-5 text-[#AFCDEA]">
-            Your bonus has been completed successfully. The eligible bonus
-            amount was credited to your Main Account.
+            {tr('Your bonus has been completed successfully. The eligible bonus amount was credited to your Main Account.')}
           </div>
         ) : null}
 
         {bonus.status === 'lost' ? (
           <div className="mt-3 rounded-2xl border border-[#FF5964]/15 bg-[#FF5964]/[0.05] p-4 text-xs leading-5 text-[#DDB0B4]">
-            This bonus was used and did not qualify for a Main Account reward.
+            {tr("This bonus was used and did not qualify for a Main Account reward.")}
           </div>
         ) : null}
 
         {bonus.status === 'expired' ? (
           <div className="mt-3 rounded-2xl border border-[#89929E]/15 bg-[#89929E]/[0.05] p-4 text-xs leading-5 text-[#9DA7B0]">
-            This bonus expired before it was successfully used.
+            {tr("This bonus expired before it was successfully used.")}
           </div>
         ) : null}
       </div>
@@ -344,6 +347,8 @@ const faqs = [
 ];
 
 export function BonusesClient() {
+  const { locale } = useApp();
+  const tr = (value: string | undefined) => { const label = value ?? ''; return locale === 'fa' ? translateVisibleText(label) : label; };
   const [data, setData] = useState<BonusesResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -412,7 +417,7 @@ export function BonusesClient() {
   );
 
   return (
-    <div className="-mx-4 min-h-0 overflow-hidden bg-[#030A12] pb-10 text-white sm:-mx-5 lg:-mx-6">
+    <div data-i18n-ignore className="-mx-4 min-h-0 overflow-hidden bg-[#030A12] pb-10 text-white sm:-mx-5 lg:-mx-6">
       <section className="relative overflow-hidden border-y border-[#142632] bg-[radial-gradient(circle_at_80%_15%,rgba(0,217,137,.18),transparent_28%),radial-gradient(circle_at_15%_100%,rgba(69,167,255,.07),transparent_32%),linear-gradient(135deg,#06131B,#071019_55%,#06170F)] px-5 py-8 sm:px-8 sm:py-10 lg:px-10 lg:py-12">
         <div className="pointer-events-none absolute -right-24 -top-28 h-72 w-72 rounded-full bg-[#00D989]/10 blur-3xl" />
         <div className="pointer-events-none absolute -bottom-32 -left-20 h-64 w-64 rounded-full bg-[#45A7FF]/5 blur-3xl" />
@@ -422,17 +427,16 @@ export function BonusesClient() {
             <div>
               <div className="inline-flex items-center gap-2 rounded-full border border-[#00D989]/20 bg-[#00D989]/10 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.14em] text-[#00D989]">
                 <Sparkles className="h-3.5 w-3.5" />
-                NOVA Rewards
+                {tr("NOVA Rewards")}
               </div>
 
               <h1 className="mt-4 max-w-2xl text-4xl font-black tracking-[-0.045em] text-white sm:text-5xl">
-                Turn every deposit into{' '}
-                <span className="text-[#00D989]">more play.</span>
+                {tr('Turn every deposit into')}{' '}
+                <span className="text-[#00D989]">{tr("more play.")}</span>
               </h1>
 
               <p className="mt-4 max-w-2xl text-sm leading-7 text-[#91A2AF] sm:text-base">
-                Get a 100% bonus on every successful deposit. Each bonus is
-                independent and remains valid for 24 hours.
+                {tr('Get a 100% bonus on every successful deposit. Each bonus is independent and remains valid for 24 hours.')}
               </p>
 
               <div className="mt-6 flex flex-wrap gap-3">
@@ -441,13 +445,13 @@ export function BonusesClient() {
                   className="inline-flex items-center gap-2 rounded-xl bg-[#00D989] px-5 py-3 text-sm font-black text-[#03120C] shadow-[0_10px_28px_rgba(0,217,137,.16)] transition hover:brightness-105"
                 >
                   <WalletCards className="h-4 w-4" />
-                  Make a Deposit
+                  {tr("Make a Deposit")}
                   <ArrowRight className="h-4 w-4" />
                 </Link>
 
                 <div className="inline-flex items-center gap-2 rounded-xl border border-[#18303A] bg-black/20 px-4 py-3 text-xs font-bold text-[#8495A2]">
                   <Clock3 className="h-4 w-4 text-[#00D989]" />
-                  24-hour validity
+                  {tr("24-hour validity")}
                 </div>
               </div>
             </div>
@@ -455,7 +459,7 @@ export function BonusesClient() {
             <div className="rounded-[24px] border border-[#19353F] bg-[#06121A]/80 p-5 shadow-[0_18px_60px_rgba(0,0,0,.22)] backdrop-blur">
               <div className="flex items-center justify-between">
                 <span className="text-[10px] font-black uppercase tracking-[0.15em] text-[#718492]">
-                  Bonus Overview
+                  {tr("Bonus Overview")}
                 </span>
                 <Gift className="h-5 w-5 text-[#00D989]" />
               </div>
@@ -463,7 +467,7 @@ export function BonusesClient() {
               <div className="mt-5 grid grid-cols-3 gap-2">
                 <div className="rounded-2xl border border-[#00D989]/15 bg-[#00D989]/[0.06] p-3">
                   <p className="text-[9px] font-black uppercase tracking-wider text-[#637783]">
-                    Active
+                    {tr("Active")}
                   </p>
                   <p className="mt-1 text-2xl font-black text-white">
                     {data?.summary.active ?? 0}
@@ -472,7 +476,7 @@ export function BonusesClient() {
 
                 <div className="rounded-2xl border border-[#18303A] bg-[#08151E] p-3">
                   <p className="text-[9px] font-black uppercase tracking-wider text-[#637783]">
-                    Locked
+                    {tr("Locked")}
                   </p>
                   <p className="mt-1 text-2xl font-black text-white">
                     {data?.summary.locked ?? 0}
@@ -481,7 +485,7 @@ export function BonusesClient() {
 
                 <div className="rounded-2xl border border-[#18303A] bg-[#08151E] p-3">
                   <p className="text-[9px] font-black uppercase tracking-wider text-[#637783]">
-                    Won
+                    {tr("Won")}
                   </p>
                   <p className="mt-1 text-2xl font-black text-white">
                     {data?.summary.won ?? 0}
@@ -491,7 +495,7 @@ export function BonusesClient() {
 
               <div className="mt-4 flex items-center justify-between border-t border-[#17303A] pt-4">
                 <span className="text-xs font-semibold text-[#718492]">
-                  Total bonuses
+                  {tr("Total bonuses")}
                 </span>
                 <span className="text-sm font-black text-white">
                   {data?.summary.total ?? 0}
@@ -509,11 +513,11 @@ export function BonusesClient() {
               <div className="flex items-center gap-2">
                 <span className="h-5 w-1 rounded-full bg-[#00D989]" />
                 <h2 className="text-2xl font-black tracking-tight text-white">
-                  Available Bonuses
+                  {tr("Available Bonuses")}
                 </h2>
               </div>
               <p className="mt-2 text-sm text-[#748592]">
-                Your active rewards and their remaining validity.
+                {tr("Your active rewards and their remaining validity.")}
               </p>
             </div>
 
@@ -522,7 +526,7 @@ export function BonusesClient() {
               onClick={() => void load()}
               disabled={loading}
               className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-[#18303A] bg-[#07131D] text-[#80909D] transition hover:border-[#00D989]/30 hover:text-[#00D989] disabled:opacity-50"
-              aria-label="Refresh bonuses"
+              aria-label={tr('Refresh bonuses')}
             >
               <RefreshCw
                 className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`}
@@ -534,7 +538,7 @@ export function BonusesClient() {
             <div className="rounded-[24px] border border-[#17303B] bg-[#07131D] p-12 text-center">
               <RefreshCw className="mx-auto h-7 w-7 animate-spin text-[#00D989]" />
               <p className="mt-4 text-sm font-bold text-[#8495A2]">
-                Loading your bonuses...
+                {tr("Loading your bonuses...")}
               </p>
             </div>
           ) : error ? (
@@ -542,7 +546,7 @@ export function BonusesClient() {
               <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-[#FF5964]/10">
                 <CircleAlert className="h-6 w-6 text-[#FF5964]" />
               </div>
-              <p className="mt-4 text-sm font-bold text-white">{error}</p>
+              <p className="mt-4 text-sm font-bold text-white">{tr(error)}</p>
               <button
                 type="button"
                 onClick={() => {
@@ -551,7 +555,7 @@ export function BonusesClient() {
                 }}
                 className="mt-5 rounded-xl bg-white px-5 py-2.5 text-sm font-black text-[#071018] transition hover:bg-[#E8EEF1]"
               >
-                Try again
+                {tr("Try again")}
               </button>
             </div>
           ) : activeBonuses.length === 0 ? (
@@ -562,17 +566,16 @@ export function BonusesClient() {
                   <Gift className="h-7 w-7 text-[#536875]" />
                 </div>
                 <h3 className="mt-5 text-lg font-black text-white">
-                  No active bonuses
+                  {tr("No active bonuses")}
                 </h3>
                 <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-[#718390]">
-                  Make a successful deposit to receive a 100% bonus
-                  automatically. Each bonus remains valid for 24 hours.
+                  {tr('Make a successful deposit to receive a 100% bonus automatically. Each bonus remains valid for 24 hours.')}
                 </p>
                 <Link
                   href="/wallet"
                   className="mt-6 inline-flex items-center gap-2 rounded-xl bg-[#00D989] px-6 py-3 text-sm font-black text-[#03120C]"
                 >
-                  Go to Wallet
+                  {tr("Go to Wallet")}
                   <ArrowRight className="h-4 w-4" />
                 </Link>
               </div>
@@ -597,19 +600,19 @@ export function BonusesClient() {
               <div className="flex items-center gap-2">
                 <span className="h-5 w-1 rounded-full bg-[#40515D]" />
                 <h2 className="text-2xl font-black tracking-tight text-white">
-                  Bonus History
+                  {tr("Bonus History")}
                 </h2>
               </div>
               <p className="mt-2 text-sm text-[#748592]">
-                Completed, expired and cancelled bonuses.
+                {tr("Completed, expired and cancelled bonuses.")}
               </p>
             </div>
 
             <div className="overflow-hidden rounded-[24px] border border-[#17303B] bg-[#07131D]">
               <div className="hidden grid-cols-[1fr_180px_120px] border-b border-[#17303B] bg-[#081720] px-5 py-3 text-[9px] font-black uppercase tracking-[0.14em] text-[#607381] sm:grid">
-                <span>Bonus</span>
-                <span>Date</span>
-                <span className="text-right">Status</span>
+                <span>{tr("Bonus")}</span>
+                <span>{tr("Date")}</span>
+                <span className="text-right">{tr("Status")}</span>
               </div>
 
               <div className="divide-y divide-[#132832]">
@@ -627,7 +630,7 @@ export function BonusesClient() {
                           {formatAmount(bonus.amountMinor, bonus.currency)}
                         </p>
                         <p className="mt-0.5 text-xs text-[#687A87]">
-                          Deposit bonus
+                          {tr("Deposit bonus")}
                         </p>
                       </div>
                     </div>
@@ -651,11 +654,11 @@ export function BonusesClient() {
             <div className="flex items-center gap-2">
               <span className="h-5 w-1 rounded-full bg-[#40515D]" />
               <h2 className="text-2xl font-black tracking-tight text-white">
-                How Bonuses Work
+                {tr("How Bonuses Work")}
               </h2>
             </div>
             <p className="mt-2 text-sm text-[#748592]">
-              Everything you need to know about your NOVA deposit bonus.
+              {tr("Everything you need to know about your NOVA deposit bonus.")}
             </p>
           </div>
 
@@ -665,7 +668,7 @@ export function BonusesClient() {
 
               return (
                 <div
-                  key={question}
+                  key={tr(question)}
                   className={`overflow-hidden rounded-2xl border bg-[#07131D] transition ${
                     isOpen
                       ? 'border-[#00D989]/20'
@@ -681,7 +684,7 @@ export function BonusesClient() {
                     aria-expanded={isOpen}
                   >
                     <span className="text-sm font-extrabold text-white">
-                      {question}
+                      {tr(question)}
                     </span>
 
                     <span
@@ -701,7 +704,7 @@ export function BonusesClient() {
 
                   {isOpen ? (
                     <div className="border-t border-[#17303B] px-5 pb-5 pt-4 text-sm leading-6 text-[#8999A6]">
-                      {answer}
+                      {tr(answer)}
                     </div>
                   ) : null}
                 </div>
@@ -718,13 +721,13 @@ export function BonusesClient() {
               </div>
               <div>
                 <p className="text-[10px] font-black uppercase tracking-[0.14em] text-[#00D989]">
-                  24/7 Support
+                  {tr("24/7 Support")}
                 </p>
                 <h3 className="mt-1 text-lg font-black text-white">
-                  Need help with your bonus?
+                  {tr("Need help with your bonus?")}
                 </h3>
                 <p className="mt-1 text-sm text-[#81929F]">
-                  Our support team is available whenever you need assistance.
+                  {tr("Our support team is available whenever you need assistance.")}
                 </p>
               </div>
             </div>
@@ -733,7 +736,7 @@ export function BonusesClient() {
               href="/help"
               className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#00D989] px-5 py-3 text-sm font-black text-[#03120C] transition hover:brightness-105"
             >
-              Contact support
+              {tr("Contact support")}
               <ArrowRight className="h-4 w-4" />
             </Link>
           </div>

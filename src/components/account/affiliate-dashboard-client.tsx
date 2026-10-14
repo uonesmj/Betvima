@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import { translateVisibleText } from '@/lib/i18n/ui-phrases';
 import { useApp } from '@/components/layout/providers';
 import { Card, EmptyState, ErrorNote, Skeleton, Stat, StatusPill } from '@/components/ui/primitives';
 import { useApiQuery } from '@/lib/hooks/useApi';
@@ -61,6 +62,7 @@ type AffiliateSummary = {
 
 export function AffiliateDashboardClient() {
   const { t, locale, session } = useApp();
+  const tr = (value: string | number | undefined) => { const copy = String(value ?? ''); return locale === 'fa' ? translateVisibleText(copy) : copy; };
   const [range, setRange] = useState(1);
   const [copied, setCopied] = useState(false);
   const today = useMemo(() => isoDateLocal(new Date()), []);
@@ -192,28 +194,28 @@ export function AffiliateDashboardClient() {
         <div className="pointer-events-none absolute -right-20 -top-24 h-72 w-72 rounded-full bg-[#087FF5]/20 blur-3xl" />
         <div className="relative grid gap-7 lg:grid-cols-[1.35fr_.65fr] lg:items-center">
           <div>
-            <div className="text-[10px] font-black uppercase tracking-[.28em] text-[#55A7FF]">BETVIMA AFFILIATE</div>
-            <h1 className="mt-2 max-w-2xl text-3xl font-black leading-[1.05] tracking-tight sm:text-4xl">Turn your network into <span className="text-[#18A8FF]">real income</span></h1>
-            <p className="mt-4 max-w-xl text-sm leading-6 text-[#B8C9DD] sm:text-base">Share your referral link, bring new players to NOVA and earn from their settled net results.</p>
+            <div className="text-[10px] font-black uppercase tracking-[.28em] text-[#55A7FF]">{tr("BETVIMA AFFILIATE")}</div>
+            <h1 className="mt-2 max-w-2xl text-3xl font-black leading-[1.05] tracking-tight sm:text-4xl">{tr("Turn your network into")}<span className="text-[#18A8FF]">{tr("real income")}</span></h1>
+            <p className="mt-4 max-w-xl text-sm leading-6 text-[#B8C9DD] sm:text-base">{tr("Share your referral link, bring new players to NOVA and earn from their settled net results.")}</p>
             <div className="mt-5 flex flex-wrap gap-2">
               <span className="rounded-full border border-white/10 bg-white/10 px-3 py-2 text-xs font-bold">70% commission</span>
-              <span className="rounded-full border border-white/10 bg-white/10 px-3 py-2 text-xs font-bold">USD settlement</span>
+              <span className="rounded-full border border-white/10 bg-white/10 px-3 py-2 text-xs font-bold">{tr("USD settlement")}</span>
               <span className="rounded-full border border-white/10 bg-white/10 px-3 py-2 text-xs font-bold">$40 minimum</span>
             </div>
           </div>
           <div className="rounded-[26px] border border-[#168BFF]/35 bg-gradient-to-br from-[#0B315A] to-[#061A33] p-6 text-center shadow-[0_20px_50px_rgba(0,0,0,.25)]">
             <div className="mx-auto flex h-24 w-24 items-center justify-center rounded-full border border-[#28B5FF]/40 bg-[#087FF5]/15 text-4xl font-black text-[#19A7FF]">N</div>
-            <div className="mt-4 text-[10px] font-black uppercase tracking-[.2em] text-[#8FB7E8]">Commission rate</div>
+            <div className="mt-4 text-[10px] font-black uppercase tracking-[.2em] text-[#8FB7E8]">{tr("Commission rate")}</div>
             <div className="mt-1 text-5xl font-black">{(affiliate.commissionRateBps / 100).toFixed(0)}%</div>
-            <div className="mt-1 text-xs font-bold text-[#9FB6CE]">PROFIT / LOSS SHARE</div>
+            <div className="mt-1 text-xs font-bold text-[#9FB6CE]">{tr("PROFIT / LOSS SHARE")}</div>
           </div>
         </div>
         <div className="relative mt-6 rounded-2xl border border-white/10 bg-white/[.07] p-3">
-          <div className="mb-2 flex items-center justify-between text-[10px] font-black uppercase tracking-[.15em] text-[#8FA7C2]"><span>Your referral link</span><span>{affiliate.code}</span></div>
+          <div className="mb-2 flex items-center justify-between text-[10px] font-black uppercase tracking-[.15em] text-[#8FA7C2]"><span>{tr("Your referral link")}</span><span>{affiliate.code}</span></div>
           <div className="flex gap-2">
             <div className="min-w-0 flex-1 truncate rounded-xl bg-white/10 px-3 py-3 text-xs">{referralUrl}</div>
             <button onClick={copyReferral} className="rounded-xl bg-[#087FF5] px-4 text-xs font-black">{copied ? 'Copied' : 'Copy'}</button>
-            <button onClick={shareReferral} className="hidden rounded-xl border border-white/15 bg-white/10 px-4 text-xs font-black sm:block">Share</button>
+            <button onClick={shareReferral} className="hidden rounded-xl border border-white/15 bg-white/10 px-4 text-xs font-black sm:block">{tr("Share")}</button>
           </div>
         </div>
       </section>
@@ -245,7 +247,7 @@ export function AffiliateDashboardClient() {
             {giftCodeBusy ? '...' : t('affiliate.giftCodeCreate')}
           </button>
         </div>
-        {giftCodeError && <p className="mt-2 text-xs font-bold text-[#DC2626]">{giftCodeError}</p>}
+        {giftCodeError && <p className="mt-2 text-xs font-bold text-[#DC2626]">{tr(giftCodeError)}</p>}
         <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
           {(giftCodes?.items ?? []).map((item) => (
             <div key={item.id} className="flex items-center justify-between rounded-xl border border-[#E7ECF2] bg-[#F8FAFC] px-3 py-3">
@@ -262,8 +264,8 @@ export function AffiliateDashboardClient() {
         <div className="mb-3 flex items-end justify-between">
           
 
-          <div><h2 className="text-lg font-black text-[#111827]">Key performance</h2><p className="mt-1 text-xs text-[#718096]">All referred players</p></div>
-          <span className="rounded-full bg-[#EAF4FF] px-3 py-1 text-[10px] font-black text-[#087FF5]">LIVE DATA</span>
+          <div><h2 className="text-lg font-black text-[#111827]">{tr("Key performance")}</h2><p className="mt-1 text-xs text-[#718096]">{tr("All referred players")}</p></div>
+          <span className="rounded-full bg-[#EAF4FF] px-3 py-1 text-[10px] font-black text-[#087FF5]">{tr("LIVE DATA")}</span>
         </div>
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
           {[
@@ -274,9 +276,9 @@ export function AffiliateDashboardClient() {
           ].map(([label,value,icon,iconClass,note]) => (
             <div key={String(label)} className="rounded-2xl border border-[#E5EBF2] bg-white p-4 shadow-[0_5px_20px_rgba(15,23,42,.045)]">
               <div className={`flex h-10 w-10 items-center justify-center rounded-xl text-lg font-black ${iconClass}`}>{icon}</div>
-              <div className="mt-4 text-xs font-bold text-[#718096]">{label}</div>
+              <div className="mt-4 text-xs font-bold text-[#718096]">{tr(label)}</div>
               <div className="mt-1 truncate text-xl font-black tracking-tight text-[#111827]">{value}</div>
-              <div className="mt-2 text-[10px] font-bold text-[#94A3B8]">{note}</div>
+              <div className="mt-2 text-[10px] font-bold text-[#94A3B8]">{tr(note)}</div>
             </div>
           ))}
         </div></section>
@@ -284,8 +286,8 @@ export function AffiliateDashboardClient() {
         <div className="relative overflow-hidden rounded-[22px] border border-[#E1E8F0] bg-white p-5 shadow-[0_8px_28px_rgba(15,23,42,.055)] sm:p-6">
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="font-black text-[#111827]">Commission performance</h2>
-              <p className="mt-1 text-xs text-[#718096]">Daily settled commission</p>
+              <h2 className="font-black text-[#111827]">{tr("Commission performance")}</h2>
+              <p className="mt-1 text-xs text-[#718096]">{tr("Daily settled commission")}</p>
             </div>
             <div className="flex rounded-xl bg-[#F2F5F9] p-1">
               {[7, 30].map((n) => (
@@ -315,8 +317,8 @@ export function AffiliateDashboardClient() {
 
         <div className="relative overflow-hidden rounded-[22px] border border-[#E1E8F0] bg-white p-5 shadow-[0_8px_28px_rgba(15,23,42,.055)] sm:p-6">
           <div className="absolute right-0 top-0 h-24 w-24 rounded-full bg-[#7C3AED]/5 blur-2xl" />
-          <h2 className="relative font-black text-[#111827]">Acquisition funnel</h2>
-          <p className="mt-1 text-xs text-[#718096]">Selected period</p>
+          <h2 className="relative font-black text-[#111827]">{tr("Acquisition funnel")}</h2>
+          <p className="mt-1 text-xs text-[#718096]">{tr("Selected period")}</p>
           <div className="mt-5 space-y-5">
             {[
               ['Clicks', totalClicks, 100],
@@ -338,23 +340,23 @@ export function AffiliateDashboardClient() {
       <section className="overflow-hidden rounded-[22px] border border-[#E1E8F0] bg-white shadow-[0_8px_28px_rgba(15,23,42,.055)]">
         <div className="flex items-center justify-between border-b border-[#EEF2F6] px-5 py-4">
           <div>
-            <h2 className="font-black text-[#111827]">Referred players</h2>
-            <p className="mt-1 text-xs text-[#718096]">Recent players acquired through your network</p>
+            <h2 className="font-black text-[#111827]">{tr("Referred players")}</h2>
+            <p className="mt-1 text-xs text-[#718096]">{tr("Recent players acquired through your network")}</p>
           </div>
-          <a href="/affiliate/referrals" className="text-xs font-black text-[#087FF5]">View all</a>
+          <a href="/affiliate/referrals" className="text-xs font-black text-[#087FF5]">{tr("View all")}</a>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full min-w-[820px] text-left text-xs">
             <thead className="bg-[#F8FAFC] text-[10px] font-black uppercase tracking-wider text-[#718096]">
               <tr>
-                <th className="px-5 py-3">Player</th>
-                <th className="px-4 py-3">Status</th>
-                <th className="px-4 py-3 text-right">Deposit</th>
-                <th className="px-4 py-3 text-right">Withdrawal</th>
-                <th className="px-4 py-3 text-right">Turnover</th>
+                <th className="px-5 py-3">{tr("Player")}</th>
+                <th className="px-4 py-3">{tr("Status")}</th>
+                <th className="px-4 py-3 text-right">{tr("Deposit")}</th>
+                <th className="px-4 py-3 text-right">{tr("Withdrawal")}</th>
+                <th className="px-4 py-3 text-right">{tr("Turnover")}</th>
                 <th className="px-4 py-3 text-right">P/L</th>
-                <th className="px-4 py-3 text-right">Your 70%</th>
-                <th className="px-5 py-3 text-right">Commission</th>
+                <th className="px-4 py-3 text-right">{tr("Your 70%")}</th>
+                <th className="px-5 py-3 text-right">{tr("Commission")}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[#EEF2F6]">
@@ -379,7 +381,7 @@ export function AffiliateDashboardClient() {
                 </tr>
               ))}
               {(referrals?.items?.length ?? 0) === 0 && (
-                <tr><td colSpan={8} className="px-5 py-10 text-center text-sm text-[#718096]">No referred players yet.</td></tr>
+                <tr><td colSpan={8} className="px-5 py-10 text-center text-sm text-[#718096]">{tr("No referred players yet.")}</td></tr>
               )}
             </tbody>
           </table>
@@ -392,9 +394,9 @@ export function AffiliateDashboardClient() {
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <h2 className="font-black text-[#111827]">Balance & settlement</h2>
-              <p className="mt-1 text-xs text-[#718096]">Your current commission balance and next settlement window.</p>
+              <p className="mt-1 text-xs text-[#718096]">{tr("Your current commission balance and next settlement window.")}</p>
             </div>
-            <span className="rounded-full bg-[#E8FBF4] px-3 py-1.5 text-[10px] font-black text-[#059669]">USD SETTLEMENT</span>
+            <span className="rounded-full bg-[#E8FBF4] px-3 py-1.5 text-[10px] font-black text-[#059669]">{tr("USD SETTLEMENT")}</span>
           </div>
         <div className="mt-4 overflow-hidden rounded-xl border border-[#E7ECF2]">
           <Stat label={t('affiliate.payable')} value={formatMinor(payable.payableMinor, currency, locale)} tone="success" />
@@ -407,16 +409,16 @@ export function AffiliateDashboardClient() {
             <StatusPill status={affiliate.status} />
             <span className="nova-chip">{affiliate.commissionModel}</span>
             <span className="nova-chip">{(affiliate.commissionRateBps / 100).toFixed(0)}%</span>
-            <span className="nova-chip">code: {affiliate.code}</span>
+            <span className="nova-chip">{tr('code:')} {affiliate.code}</span>
             <span className="nova-chip">{t('affiliate.minPayout')}: {formatMinor(affiliate.minPayoutMinor, currency, locale)}</span>
           </div>
-          <p className="mt-2">{data.note}</p>
+          <p className="mt-2">{tr(data.note)}</p>
           <p className="mt-1">
             Settlement runs every {WEEKDAYS[(affiliate.settlementDay ?? 7) % 7] ?? affiliate.settlementDay} at {String(affiliate.settlementHour ?? 0).padStart(2, '0')}:{String(affiliate.settlementMinute ?? 0).padStart(2, '0')} ({affiliate.settlementTimezone}).
-            Next settlement: <strong className="text-nova-text">{formatDateTime(nextWindow.periodStart.toISOString(), locale)}</strong>
+            {tr('Next settlement:')} <strong className="text-nova-text">{formatDateTime(nextWindow.periodStart.toISOString(), locale)}</strong>
             {' '}(local: {nextWindow.localLabel.replace(/ \(.*\)$/, '')} + 7 days).
           </p>
-          <p className="mt-1">Period: {formatDateTime(data.period.start, locale)} → {formatDateTime(data.period.end, locale)}</p>
+          <p className="mt-1">{tr('Period:')} {formatDateTime(data.period.start, locale)} → {formatDateTime(data.period.end, locale)}</p>
         </div>
         </div>
       </section>
