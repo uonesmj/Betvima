@@ -74,6 +74,9 @@ fun betHistoryPath(query: BetHistoryQuery, page: Int, todayUtc: java.time.LocalD
 class ApiClient {
     private val client = OkHttpClient.Builder().connectTimeout(8, TimeUnit.SECONDS)
         .readTimeout(15, TimeUnit.SECONDS).callTimeout(20, TimeUnit.SECONDS).build()
+    // Money-mutating POSTs must never be automatically replayed by OkHttp.
+    private val financialClient = client.newBuilder()
+        .retryOnConnectionFailure(false).build()
     private val base = BuildConfig.API_BASE_URL.trimEnd('/')
     private val jsonType = "application/json".toMediaType()
 
@@ -99,7 +102,8 @@ class ApiClient {
             if (!token.isNullOrBlank()) builder.header("Authorization", "Bearer " + token)
             if (idempotencyKey != null) builder.header("Idempotency-Key", idempotencyKey)
             if (body != null) builder.method(verb, body.toString().toRequestBody(jsonType))
-            client.newCall(builder.build()).execute().use { response ->
+            (if (idempotencyKey == null) client else financialClient)
+                .newCall(builder.build()).execute().use { response ->
                 val raw = response.body?.string().orEmpty()
                 val wrapper = runCatching { JSONObject(raw) }.getOrDefault(JSONObject())
                 if (!response.isSuccessful || !wrapper.optBoolean("ok", false)) {
