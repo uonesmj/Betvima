@@ -22,6 +22,7 @@ data class AppState(
     val tab: Tab = Tab.HOME, val homeMode: HomeMode = HomeMode.TOP,
     val feature: Feature = Feature.NONE,
     val lang: Lang = Lang.FA, val sport: String = "all",
+    val tournamentLeague: String = "",
     val live: List<Match> = emptyList(), val upcoming: List<Match> = emptyList(),
     val liveLoading: Boolean = false, val upcomingLoading: Boolean = false,
     val detailLoading: Boolean = false,
@@ -81,6 +82,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         detailRequestNumber++
         mutable.update { it.copy(tab = tab, feature = Feature.NONE,
             homeMode = if (tab == Tab.HOME) HomeMode.TOP else it.homeMode,
+            tournamentLeague = if (tab == Tab.SPORTS) "" else it.tournamentLeague,
             detail = null, detailLoading = false) }
         when (tab) {
             Tab.HOME -> refreshAll()
@@ -96,9 +98,17 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         if (feature == Feature.BONUSES && state.value.signedIn) refreshAccount()
         if (feature == Feature.NOTIFICATIONS && state.value.signedIn) refreshNotifications()
     }
+    fun tournament(leagueKey: String) {
+        detailRequestNumber++
+        mutable.update {
+            it.copy(tab = Tab.SPORTS, feature = Feature.NONE, sport = "all",
+                tournamentLeague = leagueKey, detail = null, detailLoading = false)
+        }
+        refreshUpcoming()
+    }
     fun sport(sport: String) {
-        if (state.value.sport == sport) return
-        mutable.update { it.copy(sport = sport) }
+        if (state.value.sport == sport && state.value.tournamentLeague.isBlank()) return
+        mutable.update { it.copy(sport = sport, tournamentLeague = "") }
         if (state.value.tab == Tab.SPORTS) refreshUpcoming()
     }
     fun refreshAll() {
