@@ -170,7 +170,10 @@ fun CatalogPage(state: AppState, model: AppViewModel, live: Boolean,
         item {
             ReferenceSportRibbon(state, model, live = live,
                 selectedKey = if (live) liveSport else state.sport,
-                onSelect = if (live) ({ key -> liveSport = key }) else null)
+                onSelect = { key ->
+                    if (live) liveSport = key
+                    else model.sport(if (key == "top") "all" else key)
+                })
         }
         if (!live) item {
             Row(Modifier.fillMaxWidth().padding(horizontal = 15.dp, vertical = 3.dp),
