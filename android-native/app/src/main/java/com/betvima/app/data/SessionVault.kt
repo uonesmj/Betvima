@@ -69,7 +69,13 @@ class SessionVault(context: Context) {
             save(fresh.put("local_expires_at", System.currentTimeMillis() / 1000L +
                 fresh.optLong("expires_in", 3600)))
             fresh.optString("access_token").takeIf { it.isNotBlank() }
-        } catch (_: Exception) {
+        } catch (ex: Exception) {
+            // Only a definitive authentication rejection invalidates the stored
+            // session. Network errors/timeouts must NEVER log a user out.
+            if (ex is ApiFailure && ex.code in setOf(400, 401, 403)) {
+                memory = null
+                prefs.edit().remove("session").apply()
+            }
             null
         }
     }
