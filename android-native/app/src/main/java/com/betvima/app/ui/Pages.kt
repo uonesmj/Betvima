@@ -184,7 +184,7 @@ fun CatalogPage(state: AppState, model: AppViewModel, live: Boolean,
                     else model.sport(if (key == "top") "all" else key)
                 })
         }
-        item {
+        if (!live) item {
             Row(Modifier.fillMaxWidth().padding(horizontal = 15.dp, vertical = 3.dp),
                 verticalAlignment = Alignment.CenterVertically) {
                 Surface(
