@@ -74,10 +74,10 @@ private fun SlipPickCard(
         color = Color.White,
         border = BorderStroke(1.dp, slipBorder),
         shadowElevation = 1.dp,
-        modifier = Modifier.fillMaxWidth().height(SLIP_CARD_HEIGHT_DP.dp)
+        modifier = Modifier.fillMaxWidth().heightIn(min = SLIP_CARD_HEIGHT_DP.dp)
     ) {
         Row(
-            Modifier.fillMaxSize().padding(start = 10.dp,end = 7.dp,top = 5.dp,bottom = 5.dp),
+            Modifier.fillMaxWidth().padding(start = 10.dp,end = 7.dp,top = 9.dp,bottom = 9.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Surface(
@@ -97,19 +97,27 @@ private fun SlipPickCard(
                 }
             }
             Spacer(Modifier.width(9.dp))
+            // Three complete text baselines: the previous fixed 62dp height
+            // clipped the market (third row) at the bottom of every card.
             Column(
                 Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(2.dp)
+                verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
-                Text(pick.match,
-                    color = slipMuted,fontSize = 10.sp,
-                    maxLines = 1,overflow = TextOverflow.Ellipsis)
-                Text(pick.selection,
-                    color = slipText,fontSize = 13.sp,
-                    fontWeight = FontWeight.Black,maxLines = 1,
-                    overflow = TextOverflow.Ellipsis)
-                Text(pick.market,color = slipMuted,fontSize = 10.sp,
-                    maxLines = 1,overflow = TextOverflow.Ellipsis)
+                Text(
+                    pick.match, color = slipMuted, fontSize = 10.sp,
+                    lineHeight = 14.sp, maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Text(
+                    pick.selection, color = slipText, fontSize = 13.sp,
+                    lineHeight = 18.sp, fontWeight = FontWeight.Black,
+                    maxLines = 1, overflow = TextOverflow.Ellipsis
+                )
+                Text(
+                    pick.market, color = slipMuted, fontSize = 11.sp,
+                    lineHeight = 15.sp, maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
             }
             Spacer(Modifier.width(5.dp))
             Surface(color = Color(0xFFE8F8F0),shape = RoundedCornerShape(10.dp)) {
@@ -257,7 +265,6 @@ private fun MainAccountSlipControls(
 private fun SlipPickList(
     state: AppState,
     model: AppViewModel,
-    visibleViewportDp: Int
 ) {
     val listState = rememberLazyListState()
     var oldCount by remember { mutableIntStateOf(state.picks.size) }
@@ -271,7 +278,9 @@ private fun SlipPickList(
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         state = listState,
-        userScrollEnabled = slipRequiresScroll(state.picks.size, visibleViewportDp),
+        // If accessibility font scale or a small screen causes overflow before
+        // five selections, the content must still remain reachable.
+        userScrollEnabled = true,
         contentPadding = PaddingValues(horizontal = 13.dp, vertical = 5.dp),
         verticalArrangement = Arrangement.spacedBy(SLIP_CARD_SPACING_DP.dp)
     ) {
@@ -475,7 +484,7 @@ fun PremiumSlipSheet(state: AppState,model: AppViewModel) {
             // A weighted viewport reserves space for the fixed quote/submit area.
             // On normal phones it grows naturally to five cards; on exceptionally
             // small viewports it can shrink without clipping inaccessible picks.
-            BoxWithConstraints(
+            Box(
                 modifier = Modifier.fillMaxWidth()
                     .weight(1f, fill = false)
                     .heightIn(max = listHeight)
@@ -504,7 +513,7 @@ fun PremiumSlipSheet(state: AppState,model: AppViewModel) {
                         }
                     }
                 } else {
-                    SlipPickList(state, model, maxHeight.value.toInt())
+                    SlipPickList(state, model)
                 }
             }
             HorizontalDivider(color=slipBorder)
