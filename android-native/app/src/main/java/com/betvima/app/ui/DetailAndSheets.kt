@@ -254,9 +254,11 @@ fun MatchDetailPage(state: AppState, model: AppViewModel) {
 fun SlipSheet(state: AppState, model: AppViewModel) {
     var stake by rememberSaveable { mutableStateOf("5.00") }
     var mode by rememberSaveable { mutableStateOf("single") }
+    var funding by rememberSaveable { mutableStateOf("main") }
     val selectionScroll = androidx.compose.foundation.lazy.rememberLazyListState()
-    LaunchedEffect(state.picks.size) {
-        val recommendedMode = if (state.picks.size > 1) "multiple" else "single"
+    LaunchedEffect(state.picks.size, funding) {
+        val recommendedMode = if (funding == "bonus" || state.picks.size > 1)
+            "multiple" else "single"
         if (mode != recommendedMode) {
             mode = recommendedMode
             model.clearQuote()
@@ -271,10 +273,11 @@ fun SlipSheet(state: AppState, model: AppViewModel) {
         onDismissRequest = { model.showSlip(false) },
         sheetState = sheet,
         containerColor = Color.White,
+        contentWindowInsets = { WindowInsets(0,0,0,0) },
         shape = RoundedCornerShape(topStart = 23.dp, topEnd = 23.dp),
         dragHandle = { BottomSheetDefaults.DragHandle() }
     ) {
-        Column(Modifier.fillMaxWidth().fillMaxHeight(.85f).imePadding()) {
+        Column(Modifier.fillMaxWidth().fillMaxHeight(.96f).imePadding()) {
             // Fixed header, visually distinct from selections.
             Surface(color = Color(0xFFE7E9EF),
                 modifier = Modifier.fillMaxWidth()) {
@@ -312,7 +315,8 @@ fun SlipSheet(state: AppState, model: AppViewModel) {
                                 label = "slipMode")
                             Surface(color = selected, shape = RoundedCornerShape(9.dp),
                                 modifier = Modifier.weight(1f).heightIn(min = 41.dp)
-                                    .clickable(enabled = type != "series") {
+                                    .clickable(enabled = type != "series" &&
+                                        (funding != "bonus" || type == "multiple")) {
                                         mode = type; model.clearQuote()
                                     }) {
                                 Box(contentAlignment = Alignment.Center) {
@@ -331,6 +335,51 @@ fun SlipSheet(state: AppState, model: AppViewModel) {
                     Box(contentAlignment = Alignment.Center) {
                         Icon(Icons.Default.DeleteOutline,
                             tr(state.lang, "Clear", "پاک کردن"), tint = Palette.muted)
+                    }
+                }
+            }
+            Row(
+                Modifier.fillMaxWidth().padding(horizontal=14.dp, vertical=8.dp),
+                horizontalArrangement=Arrangement.spacedBy(8.dp)
+            ) {
+                listOf(
+                    Triple("main",
+                        tr(state.lang, "Main Account", "حساب اصلی"),
+                        Icons.Default.AccountBalanceWallet),
+                    Triple("bonus",
+                        tr(state.lang, "Bonus Account", "حساب بونوس"),
+                        Icons.Default.CardGiftcard)
+                ).forEach { (source,label,icon) ->
+                    val selected = funding == source
+                    Surface(
+                        modifier=Modifier.weight(1f).heightIn(min=48.dp)
+                            .clickable {
+                                funding=source
+                                if(source=="bonus") mode="multiple"
+                                model.clearQuote()
+                            },
+                        color=if(selected && source=="bonus") Color(0xFFF5E9FF)
+                            else if(selected) Color(0xFFE9F3FF) else Color(0xFFF4F5F8),
+                        border=BorderStroke(1.dp,
+                            if(selected && source=="bonus") Color(0xFFAA6DCC)
+                            else if(selected) Palette.blue else Palette.border),
+                        shape=RoundedCornerShape(13.dp)
+                    ) {
+                        Row(Modifier.padding(horizontal=9.dp,vertical=9.dp),
+                            verticalAlignment=Alignment.CenterVertically) {
+                            Icon(icon,null,
+                                tint=if(selected && source=="bonus") Color(0xFF8E39BA)
+                                    else if(selected) Palette.blue else Palette.muted,
+                                modifier=Modifier.size(18.dp))
+                            Spacer(Modifier.width(6.dp))
+                            Text(label, fontWeight=FontWeight.Black, fontSize=11.sp,
+                                maxLines=1,
+                                color=if(selected)Palette.text else Palette.muted,
+                                modifier=Modifier.weight(1f))
+                            if(selected) Icon(Icons.Default.CheckCircle,null,
+                                tint=if(source=="bonus") Color(0xFF8E39BA)
+                                else Palette.blue,modifier=Modifier.size(14.dp))
+                        }
                     }
                 }
             }
@@ -398,7 +447,9 @@ fun SlipSheet(state: AppState, model: AppViewModel) {
             Column(Modifier.fillMaxWidth().background(Color.White)
                 .padding(horizontal = 14.dp, vertical = 10.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                if (state.picks.isNotEmpty()) {
+                if (funding == "bonus") {
+                    BonusAccountSlip(state, model)
+                } else if (state.picks.isNotEmpty()) {
                     val invalidMode = !canQuote
                     if (invalidMode) Text(
                         tr(state.lang,
@@ -451,6 +502,7 @@ fun SlipSheet(state: AppState, model: AppViewModel) {
                         }
                     }
                 }
+                if (funding == "main") {
                 BvPrimaryButton(
                     label = when {
                         state.picks.isEmpty() ->
@@ -470,10 +522,11 @@ fun SlipSheet(state: AppState, model: AppViewModel) {
                     icon = Icons.Default.CheckCircle
                 )
                 Text(tr(state.lang,
-                    "Preview only · Wager placement is disabled.",
-                    "نسخه آزمایشی · ثبت شرط واقعی غیرفعال است."),
+                    "Main-account betting preview only · Bonus Account supports confirmed wagers.",
+                    "حساب اصلی فقط پیش‌نمایش است؛ ثبت شرط واقعی بونوسی با تأیید نهایی انجام می‌شود."),
                     color = Palette.muted, fontSize = 9.sp,
                     maxLines = 2, lineHeight = 13.sp)
+                }
             }
         }
     }
