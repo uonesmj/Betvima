@@ -162,8 +162,33 @@ fun CatalogPage(state: AppState, model: AppViewModel, live: Boolean) {
     LazyColumn(contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp)) {
         item {
-            SectionHeading(title, tr(state.lang,
-                "Explore real-time leagues and markets", "لیگ‌ها و بازارهای لحظه‌ای"))
+            BvPageBanner(
+                eyebrow = if (live) tr(state.lang, "LIVE CENTER", "مرکز زنده")
+                    else tr(state.lang, "ALL SPORTS", "تمام ورزش‌ها"),
+                title = title,
+                subtitle = tr(state.lang,
+                    "Browse leagues, match scores and server-sourced prices.",
+                    "لیگ‌ها، نتایج و ضرایب تأییدشده را دنبال کنید."),
+                icon = if (live) Icons.Default.Sensors else Icons.Default.SportsSoccer,
+                accent = if (live) Palette.red else Palette.green
+            ) {
+                Spacer(Modifier.height(4.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    SmallPill(matches.size.toString() + tr(state.lang, " events", " رویداد"),
+                        Color.White.copy(alpha = .12f), Color.White)
+                    Spacer(Modifier.width(9.dp))
+                    if (live) SmallPill(tr(state.lang, "AUTO REFRESH", "به‌روزرسانی خودکار"),
+                        Palette.green.copy(alpha = .16f), Palette.green)
+                }
+            }
+        }
+        item {
+            SectionHeading(tr(state.lang, "Competitions", "رقابت‌ها"),
+                tr(state.lang, "Tap a league to expand its fixtures.",
+                    "برای مشاهده مسابقات، لیگ را باز کنید."),
+                tr(state.lang, "Refresh", "تازه‌سازی")) {
+                    if (live) model.refreshLive() else model.refreshUpcoming()
+                }
             if (live && !state.liveEnabled) {
                 Surface(color = Color(0xFFFFF3E2), shape = RoundedCornerShape(13.dp),
                     modifier = Modifier.fillMaxWidth()) {
@@ -202,20 +227,42 @@ private fun LeagueSection(key: String, matches: List<Match>, first: Boolean,
     var expanded by rememberSaveable(key) { mutableStateOf(first) }
     Column {
         Surface(Modifier.fillMaxWidth().clickable { expanded = !expanded },
-            color = Palette.ink, shape = RoundedCornerShape(13.dp)) {
-            Row(Modifier.padding(horizontal = 14.dp, vertical = 14.dp),
+            color = if (expanded) Palette.ink else Color.White,
+            border = BorderStroke(1.dp,
+                if (expanded) Palette.dark else Palette.border),
+            shape = RoundedCornerShape(16.dp), shadowElevation = 1.dp) {
+            Row(Modifier.heightIn(min = 67.dp)
+                .padding(horizontal = 14.dp, vertical = 10.dp),
                 verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Default.EmojiEvents, null, tint = Palette.green,
-                    modifier = Modifier.size(22.dp))
-                Spacer(Modifier.width(11.dp))
-                Column(Modifier.weight(1f)) {
-                    Text(matches.first().league, color = Color.White,
-                        fontWeight = FontWeight.Bold, fontSize = 13.sp)
-                    Text(matches.first().country + " · " + matches.size + tr(state.lang, " events", " مسابقه"),
-                        color = Color(0xFF9BB0BA), fontSize = 10.sp)
+                val logo = matches.first().leagueLogo
+                Surface(shape = RoundedCornerShape(12.dp),
+                    color = if (expanded) Color.White.copy(alpha = .13f) else Palette.paper) {
+                    Box(Modifier.size(42.dp), contentAlignment = Alignment.Center) {
+                        if (logo?.startsWith("https://") == true) AsyncImage(
+                            model = logo, contentDescription = matches.first().league,
+                            modifier = Modifier.size(30.dp))
+                        else Icon(Icons.Default.EmojiEvents, null,
+                            tint = if (expanded) Palette.green else Palette.blue,
+                            modifier = Modifier.size(22.dp))
+                    }
                 }
+                Spacer(Modifier.width(12.dp))
+                Column(Modifier.weight(1f)) {
+                    Text(matches.first().league,
+                        color = if (expanded) Color.White else Palette.text,
+                        fontWeight = FontWeight.ExtraBold, fontSize = 13.sp, maxLines = 2)
+                    Text(matches.first().country.ifBlank {
+                        tr(state.lang, "International", "بین‌المللی") },
+                        color = if (expanded) Color(0xFFA5BAC6) else Palette.muted,
+                        fontSize = 10.sp)
+                }
+                SmallPill(matches.size.toString(),
+                    if (expanded) Palette.green.copy(alpha = .16f) else Palette.greenLight,
+                    if (expanded) Palette.green else Palette.ink)
+                Spacer(Modifier.width(7.dp))
                 Icon(if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
-                    "Toggle league", tint = Color.White)
+                    tr(state.lang, "Expand league", "باز کردن لیگ"),
+                    tint = if (expanded) Color.White else Palette.muted)
             }
         }
         if (expanded) {
