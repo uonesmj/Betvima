@@ -25,3 +25,8 @@ create table if not exists storage.buckets (
 create or replace function auth.uid() returns uuid language sql stable as $$
   select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid
 $$;
+
+-- GoTrue-auth columns used by later 0140 signup trigger in the clean test DB.
+alter table auth.users add column if not exists raw_user_meta_data jsonb not null default '{}'::jsonb;
+alter table auth.users add column if not exists phone text;
+alter table auth.users add column if not exists email_confirmed_at timestamptz;
