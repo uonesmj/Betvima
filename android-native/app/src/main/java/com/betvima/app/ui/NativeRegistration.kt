@@ -57,12 +57,23 @@ internal fun signupPayload(
     put("turnstileToken", token)
 }
 
+/** The mobile client unwraps server responses; tolerate a wrapped test response too. */
+internal fun publicTurnstileKey(config: JSONObject): String? {
+    val fields = config.optJSONObject("data") ?: config
+    return fields.optString("turnstileSiteKey").trim()
+        .takeIf { it.matches(Regex("[0-9A-Za-z_-]{10,160}")) }
+}
+
 /** No password or access token ever crosses the JavaScript bridge. */
-private class TurnstileCallbacks(private val notify: (String?) -> Unit) {
+private class TurnstileCallbacks(
+    private val notify: (String?) -> Unit,
+    private val failure: () -> Unit
+) {
     @JavascriptInterface fun verified(token: String) {
-        if (token.length in 10..2048) notify(token)
+        if (token.length in 10..2048) notify(token) else failure()
     }
     @JavascriptInterface fun invalid() = notify(null)
+    @JavascriptInterface fun unavailable() = failure()
 }
 
 private fun allowedAuthUrl(url: Uri?): Boolean {
@@ -77,9 +88,12 @@ private fun allowedAuthUrl(url: Uri?): Boolean {
 /** Widget is confined to the BetVima HTTPS origin, using the same public site key as web. */
 @SuppressLint("SetJavaScriptEnabled")
 @Composable
-private fun RealTurnstileWidget(siteKey: String, revision: Int, callback: (String?) -> Unit) {
+private fun RealTurnstileWidget(
+    siteKey: String, revision: Int, callback: (String?) -> Unit, onFailure: () -> Unit
+) {
     val context = LocalContext.current
     val currentCallback by rememberUpdatedState(callback)
+    val currentFailure by rememberUpdatedState(onFailure)
     key(siteKey, revision) {
         AndroidView(
             modifier = Modifier.fillMaxWidth().height(166.dp),
@@ -95,14 +109,24 @@ private fun RealTurnstileWidget(siteKey: String, revision: Int, callback: (Strin
                     CookieManager.getInstance().setAcceptCookie(true)
                     CookieManager.getInstance().setAcceptThirdPartyCookies(this, true)
                     setBackgroundColor(android.graphics.Color.WHITE)
-                    addJavascriptInterface(TurnstileCallbacks { received ->
-                        post { currentCallback(received) }
-                    }, "NativeTurnstile")
+                    addJavascriptInterface(TurnstileCallbacks(
+                        notify = { received -> post { currentCallback(received) } },
+                        failure = { post { currentFailure() } }
+                    ), "NativeTurnstile")
                     webChromeClient = WebChromeClient()
                     webViewClient = object : WebViewClient() {
                         override fun shouldOverrideUrlLoading(
                             view: WebView?, request: WebResourceRequest?
                         ): Boolean = !allowedAuthUrl(request?.url)
+                        override fun onReceivedError(
+                            view: WebView?,
+                            request: WebResourceRequest?,
+                            error: WebResourceError?
+                        ) {
+                            if (request?.isForMainFrame == true) {
+                                view?.post { currentFailure() }
+                            }
+                        }
                     }
                     val html = """
                      <!doctype html><html><head>
@@ -116,7 +140,7 @@ private fun RealTurnstileWidget(siteKey: String, revision: Int, callback: (Strin
                        var tries=0;
                        function mount(){
                          if(!window.turnstile || !window.turnstile.render){
-                           if(++tries<80){setTimeout(mount,250);}else{NativeTurnstile.invalid();}
+                           if(++tries<80){setTimeout(mount,250);}else{NativeTurnstile.unavailable();}
                            return;
                          }
                          window.turnstile.render('#widget',{
@@ -124,7 +148,7 @@ private fun RealTurnstileWidget(siteKey: String, revision: Int, callback: (Strin
                            size:'flexible',theme:'light',
                            callback:function(t){NativeTurnstile.verified(t)},
                            'expired-callback':function(){NativeTurnstile.invalid()},
-                           'error-callback':function(){NativeTurnstile.invalid()}
+                           'error-callback':function(){NativeTurnstile.unavailable()}
                          });
                        } mount();
                      })();</script></body></html>
@@ -169,14 +193,15 @@ fun NativeRegistrationForm(lang: Lang, onSuccess: (Boolean) -> Unit, onLogin: ()
     var busy by remember { mutableStateOf(false) }
     var submitAttempted by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
+    var challengeError by remember { mutableStateOf(false) }
 
     LaunchedEffect(configRevision) {
         configError = null
         siteKey = null
         token = null
+        challengeError = false
         siteKey = try {
-            api.get("/api/v1/mobile/config").str("turnstileSiteKey")
-                .takeIf { it.matches(Regex("[0-9A-Za-z_-]{10,160}")) }
+            publicTurnstileKey(api.get("/api/v1/mobile/config"))
                 .also {
                     if (it == null) {
                         configError = tr(lang,
@@ -417,9 +442,22 @@ fun NativeRegistrationForm(lang: Lang, onSuccess: (Boolean) -> Unit, onLogin: ()
                             }
                         }
                     }
-                    else -> RealTurnstileWidget(siteKey!!, revision) {
-                        token = it
-                    }
+                    else -> RealTurnstileWidget(
+                        siteKey = siteKey!!,
+                        revision = revision,
+                        callback = { token = it; if (it != null) challengeError = false },
+                        onFailure = { token = null; challengeError = true }
+                    )
+                }
+            }
+            if (challengeError) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Default.ErrorOutline, null, tint = Palette.red,
+                        modifier = Modifier.size(17.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text(tr(lang, "Security challenge could not load. Refresh and try again.",
+                        "چالش امنیتی بارگذاری نشد. تازه‌سازی کرده و دوباره تلاش کنید."),
+                        color = Palette.red, fontSize = 11.sp, modifier = Modifier.weight(1f))
                 }
             }
             if (token != null) {
@@ -490,7 +528,7 @@ fun NativeRegistrationForm(lang: Lang, onSuccess: (Boolean) -> Unit, onLogin: ()
                 }
             }
             if (siteKey != null && !siteKey.isNullOrBlank()) {
-                TextButton(onClick = { token = null; revision++ },
+                TextButton(onClick = { token = null; challengeError = false; revision++ },
                     modifier = Modifier.align(Alignment.CenterHorizontally)) {
                     Text(tr(lang, "Refresh security challenge", "تازه‌سازی تأیید امنیتی"),
                         color = Palette.blue, fontSize = 11.sp)
