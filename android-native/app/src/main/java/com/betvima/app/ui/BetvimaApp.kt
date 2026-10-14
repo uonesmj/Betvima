@@ -176,7 +176,6 @@ fun BetvimaApp(model: AppViewModel) {
                                     indicatorColor = Color.Transparent
                                 ))
                         }
-                        }
                     }
                 }
             },
