@@ -282,9 +282,7 @@ export function AffiliateLoginClient() {
                 </div>
 
                 <p className="mt-1 text-xs leading-5 text-[#64748B]">
-                  Enter the email address registered to
-                  your Affiliate account. We&apos;ll send
-                  you a secure password reset link.
+                  {locale === 'fa' ? 'ایمیل ثبت‌شده برای حساب همکاری خود را وارد کنید تا لینک امن بازنشانی رمز عبور برایتان ارسال شود.' : "Enter the email address registered to your Affiliate account. We'll send you a secure password reset link."}
                 </p>
               </div>
 
