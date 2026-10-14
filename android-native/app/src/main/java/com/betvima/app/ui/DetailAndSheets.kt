@@ -241,128 +241,179 @@ fun MatchDetailPage(state: AppState, model: AppViewModel) {
 @Composable
 fun SlipSheet(state: AppState, model: AppViewModel) {
     var stake by rememberSaveable { mutableStateOf("5.00") }
+    var mode by rememberSaveable { mutableStateOf("single") }
+    LaunchedEffect(state.picks.size) {
+        mode = if (state.picks.size > 1) "multiple" else "single"
+        model.clearQuote()
+    }
+    val canQuote = state.picks.isNotEmpty() &&
+        ((mode == "single" && state.picks.size == 1) ||
+         (mode == "multiple" && state.picks.size >= 2))
+    val sheet = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+
     ModalBottomSheet(onDismissRequest = { model.showSlip(false) },
-        containerColor = Palette.paper, dragHandle = { BottomSheetDefaults.DragHandle() }) {
+        sheetState = sheet, containerColor = Color.White,
+        dragHandle = { BottomSheetDefaults.DragHandle() }) {
         Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState())
-            .padding(horizontal = 20.dp).padding(bottom = 32.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Surface(color = Palette.ink, shape = RoundedCornerShape(20.dp)) {
-                Column(Modifier.fillMaxWidth().padding(18.dp)) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Surface(color = Palette.green.copy(alpha = .14f),
-                            shape = RoundedCornerShape(12.dp)) {
-                            Icon(Icons.Default.ReceiptLong, null, tint = Palette.green,
-                                modifier = Modifier.padding(10.dp).size(24.dp))
+            .padding(horizontal = 17.dp).padding(bottom = 24.dp),
+            verticalArrangement = Arrangement.spacedBy(13.dp)) {
+            Row(Modifier.fillMaxWidth().padding(bottom = 5.dp),
+                verticalAlignment = Alignment.CenterVertically) {
+                IconButton(onClick = { model.showSlip(false) }) {
+                    Icon(Icons.Default.KeyboardArrowDown,
+                        tr(state.lang, "Close slip", "بستن برگه شرط"),
+                        tint = Palette.muted)
+                }
+                Text(tr(state.lang, "Betslip", "برگه شرط"),
+                    modifier = Modifier.weight(1f),
+                    fontWeight = FontWeight.Black, fontSize = 20.sp, color = Palette.text)
+                Icon(Icons.Default.AccountBalanceWallet, null,
+                    tint = Palette.muted, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(6.dp))
+                Text(if (state.wallet != null)
+                    money(state.wallet.availableMinor, state.wallet.currency)
+                    else tr(state.lang, "Balance unavailable", "موجودی نامشخص"),
+                    fontWeight = FontWeight.ExtraBold, fontSize = 12.sp,
+                    color = Palette.text)
+            }
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically) {
+                Surface(color = Color(0xFFEDEFF3), shape = RoundedCornerShape(13.dp),
+                    modifier = Modifier.weight(1f)) {
+                    Row(Modifier.padding(3.dp)) {
+                        listOf(
+                            "single" to tr(state.lang, "Single", "تکی"),
+                            "multiple" to tr(state.lang, "Multiple", "میکس"),
+                            "series" to tr(state.lang, "Series", "سیستمی")
+                        ).forEach { (type, title) ->
+                            val enabled = type != "series"
+                            Surface(
+                                color = if (mode == type) Palette.blue else Color.Transparent,
+                                shape = RoundedCornerShape(11.dp),
+                                modifier = Modifier.weight(1f).heightIn(min = 45.dp)
+                                    .clickable(enabled = enabled) {
+                                        mode = type
+                                        model.clearQuote()
+                                    }
+                            ) {
+                                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                    Text(title, fontWeight = FontWeight.ExtraBold,
+                                        fontSize = 12.sp,
+                                        color = if (!enabled) Palette.muted
+                                            else if (mode == type) Color.White else Palette.text)
+                                }
+                            }
                         }
-                        Spacer(Modifier.width(11.dp))
-                        Column(Modifier.weight(1f)) {
-                            Text(tr(state.lang, "Bet slip", "برگه شرط"),
-                                fontSize = 21.sp, fontWeight = FontWeight.Black,
-                                color = Color.White)
-                            Text(if (state.picks.size > 1) tr(state.lang,
-                                "Multiple selections", "شرط میکس") else tr(state.lang,
-                                "Single selection", "شرط تکی"),
-                                color = Color(0xFFAAC3CA), fontSize = 11.sp)
-                        }
-                        SmallPill(state.picks.size.toString(),
-                            Palette.green.copy(alpha = .16f), Palette.green)
                     }
-                    Spacer(Modifier.height(11.dp))
-                    Text(tr(state.lang,
-                        "Prices shown here are indicative until the server confirms your quote.",
-                        "ضرایب تا زمان استعلام و تأیید سرور قطعی نیستند."),
-                        color = Color(0xFFA7BEC7), fontSize = 11.sp, lineHeight = 17.sp)
+                }
+                Surface(color = Color(0xFFEDEFF3), shape = RoundedCornerShape(13.dp),
+                    modifier = Modifier.size(51.dp).clickable {
+                        model.clearPicks()
+                    }) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(Icons.Default.DeleteOutline,
+                            tr(state.lang, "Clear slip", "پاک‌کردن برگه"),
+                            tint = Palette.muted)
+                    }
                 }
             }
+
             if (state.picks.isEmpty()) {
                 EmptyPanel(tr(state.lang, "No selections", "انتخابی ندارید"),
-                    tr(state.lang, "Tap an available odd to get started.", "برای شروع روی یک ضریب باز بزنید."))
-            }
-            state.picks.forEach { pick ->
-                Surface(color = Color.White, shape = RoundedCornerShape(15.dp),
-                    border = BorderStroke(1.dp, Palette.border)) {
-                    Row(Modifier.fillMaxWidth().padding(13.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Column(Modifier.weight(1f)) {
-                            Text(pick.match, fontWeight = FontWeight.Bold,
-                                fontSize = 12.sp, color = Palette.text)
-                            Text(pick.market + " · " + pick.selection,
-                                color = Palette.muted, fontSize = 11.sp)
+                    tr(state.lang,
+                        "Tap an available price on the sports page to add a selection.",
+                        "برای افزودن انتخاب، یکی از ضرایب باز را لمس کنید."))
+            } else state.picks.forEach { pick ->
+                Surface(color = Color(0xFFEDEFF3), shape = RoundedCornerShape(16.dp),
+                    modifier = Modifier.fillMaxWidth()) {
+                    Column(Modifier.padding(13.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(pick.match, color = Palette.muted, fontSize = 12.sp,
+                                modifier = Modifier.weight(1f))
+                            IconButton(onClick = { model.removePick(pick.selectionId) },
+                                modifier = Modifier.size(29.dp)) {
+                                Icon(Icons.Default.Close,
+                                    tr(state.lang, "Remove", "حذف"),
+                                    tint = Palette.muted, modifier = Modifier.size(19.dp))
+                            }
                         }
-                        Text(odds(pick.oddsScaled), color = Palette.blue,
-                            fontWeight = FontWeight.Black, fontSize = 16.sp)
-                        IconButton(onClick = { model.removePick(pick.selectionId) }) {
-                            Icon(Icons.Default.Close, "Remove", tint = Palette.muted)
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Column(Modifier.weight(1f)) {
+                                Text(pick.market, fontWeight = FontWeight.Bold,
+                                    fontSize = 11.sp, color = Palette.muted)
+                                Text(pick.selection, fontWeight = FontWeight.ExtraBold,
+                                    fontSize = 13.sp, color = Palette.text, maxLines = 2)
+                            }
+                            Surface(color = Palette.blue, shape = RoundedCornerShape(9.dp)) {
+                                Text(odds(pick.oddsScaled), color = Color.White,
+                                    fontWeight = FontWeight.Black, fontSize = 16.sp,
+                                    modifier = Modifier.padding(horizontal = 13.dp, vertical = 7.dp))
+                            }
                         }
                     }
                 }
             }
             if (state.picks.isNotEmpty()) {
-                SectionHeading(tr(state.lang, "Your stake", "مبلغ شرط"),
-                    tr(state.lang, "USD · Maximum two decimal places", "دلار · حداکثر دو رقم اعشار"))
+                if (!canQuote) BvInformationStrip(tr(state.lang,
+                    "Single requires exactly one selection; Multiple requires two or more. Series is not yet supported.",
+                    "برای تکی فقط یک انتخاب و برای میکس حداقل دو انتخاب لازم است. شرط سیستمی هنوز پشتیبانی نمی‌شود."),
+                    Icons.Default.Info, accent = Palette.blue)
+
                 OutlinedTextField(value = stake, onValueChange = { value ->
                     if (value.matches(Regex("[0-9]{0,10}(\\.[0-9]{0,2})?"))) {
-                        stake = value
-                        model.clearQuote()
+                        stake = value; model.clearQuote()
                     }
-                }, label = { Text(tr(state.lang, "Stake (USD)", "مبلغ شرط (دلار)")) },
+                }, label = { Text(tr(state.lang, "Bet amount (USD)", "مبلغ شرط (دلار)")) },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     singleLine = true, modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(14.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     listOf("1.00", "5.00", "10.00", "20.00").forEach { preset ->
-                        Surface(shape = RoundedCornerShape(12.dp),
-                            color = if (stake == preset) Palette.greenLight else Color.White,
-                            border = BorderStroke(1.dp,
-                                if (stake == preset) Palette.green else Palette.border),
+                        Surface(shape = RoundedCornerShape(11.dp),
+                            color = if (stake == preset) Palette.blue else Color(0xFFEDEFF3),
                             modifier = Modifier.weight(1f).clickable {
-                                stake = preset
-                                model.clearQuote()
+                                stake = preset; model.clearQuote()
                             }) {
-                            Box(Modifier.heightIn(min = 41.dp),
+                            Box(Modifier.heightIn(min = 39.dp),
                                 contentAlignment = Alignment.Center) {
                                 Text("$" + preset.removeSuffix(".00"),
-                                    color = Palette.text, fontWeight = FontWeight.ExtraBold,
-                                    fontSize = 12.sp)
+                                    color = if (stake == preset) Color.White else Palette.text,
+                                    fontWeight = FontWeight.ExtraBold, fontSize = 12.sp)
                             }
                         }
                     }
                 }
-                if (state.quote != null) {
-                    Surface(shape = RoundedCornerShape(16.dp), color = Palette.ink) {
-                        Column(Modifier.fillMaxWidth().padding(17.dp)) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Icon(Icons.Default.Verified, null, tint = Palette.green,
-                                    modifier = Modifier.size(18.dp))
-                                Spacer(Modifier.width(7.dp))
-                                Text(tr(state.lang, "Official server quote", "استعلام رسمی سرور"),
-                                    color = Color.White, fontWeight = FontWeight.Bold,
-                                    fontSize = 12.sp)
-                            }
-                            Spacer(Modifier.height(10.dp))
-                            Text(state.quote.orEmpty(), fontWeight = FontWeight.Black,
-                                fontSize = 27.sp, color = Palette.green)
-                            Text(tr(state.lang, "Estimated payout at quote time — no bet has been placed.",
-                                "پرداخت احتمالی هنگام استعلام؛ هنوز شرطی ثبت نشده است."),
-                                color = Color(0xFFA8C0C8), fontSize = 10.sp, lineHeight = 15.sp)
-                        }
-                    }
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    Text(tr(state.lang, "Possible win", "برد احتمالی"),
+                        fontSize = 12.sp, color = Palette.muted,
+                        modifier = Modifier.weight(1f))
+                    Text(if (canQuote && !state.quote.isNullOrBlank()) state.quote.orEmpty() else "—",
+                        fontWeight = FontWeight.Black, fontSize = 14.sp,
+                        color = Palette.green)
                 }
-                if (!state.signedIn) Button(
-                    onClick = { model.showSlip(false); model.showLogin(true) },
-                    colors = ButtonDefaults.buttonColors(containerColor = Palette.green),
-                    modifier = Modifier.fillMaxWidth()) {
-                    Text(tr(state.lang, "Sign in to request a quote", "برای استعلام ضریب وارد شوید"),
-                        color = Palette.ink)
-                } else Button(onClick = { model.quote(stake) },
-                    enabled = !state.busy, modifier = Modifier.fillMaxWidth(),
-                    colors = ButtonDefaults.buttonColors(containerColor = Palette.green)) {
-                    Text(tr(state.lang, "Get official quote", "استعلام ضریب قطعی"),
-                        color = Palette.ink, fontWeight = FontWeight.Bold)
-                }
-                BvInformationStrip(tr(state.lang,
-                        "Real-money placement is disabled in this build pending verified regulatory approval, age and jurisdiction checks. Quotes do not place bets.",
-                        "ثبت شرط واقعی در این نسخه تا تأیید مجوز قانونی، سن و منطقه کاربر غیرفعال است. استعلام ضریب به معنی ثبت شرط نیست."),
-                    icon = Icons.Default.Info, accent = Color(0xFF986015))
+                if (canQuote && !state.quote.isNullOrBlank())
+                    BvInformationStrip(tr(state.lang,
+                        "Official quote received. No real-money bet was placed.",
+                        "استعلام رسمی دریافت شد؛ هیچ شرط واقعی ثبت نشده است."),
+                        Icons.Default.Verified, accent = Palette.green)
+                BvPrimaryButton(
+                    label = if (!state.signedIn)
+                        tr(state.lang, "Sign in to get a quote", "برای استعلام وارد شوید")
+                    else tr(state.lang, "Request official quote", "استعلام رسمی ضریب"),
+                    onClick = {
+                        if (!state.signedIn) {
+                            model.showSlip(false); model.showLogin(true)
+                        } else model.quote(stake)
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = canQuote && !state.busy,
+                    icon = Icons.Default.CheckCircle
+                )
+                Text(tr(state.lang,
+                    "Wager placement is disabled in this test build until age, licensing and location checks are verified.",
+                    "ثبت شرط در این نسخه آزمایشی تا تأیید مجوز، سن و منطقه جغرافیایی غیرفعال است."),
+                    fontSize = 10.sp, color = Palette.muted, lineHeight = 16.sp)
             }
         }
     }
