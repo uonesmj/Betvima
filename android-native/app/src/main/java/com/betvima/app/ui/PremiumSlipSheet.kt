@@ -246,6 +246,68 @@ private fun MainAccountSlipControls(
     }
 }
 
+@Composable
+private fun SlipPickPager(
+    state: AppState,
+    model: AppViewModel,
+    capacity: Int,
+    listHeight: androidx.compose.ui.unit.Dp
+) {
+    var page by rememberSaveable { mutableIntStateOf(0) }
+    var previousCount by remember { mutableIntStateOf(state.picks.size) }
+    val count = state.picks.size
+    LaunchedEffect(count, capacity) {
+        page = if (count > previousCount) slipMaxPage(count, capacity)
+               else page.coerceAtMost(slipMaxPage(count, capacity))
+        previousCount = count
+    }
+    val range = slipPageWindow(count, capacity, page)
+    Column(
+        modifier = Modifier.fillMaxWidth().height(listHeight)
+            .padding(horizontal = 13.dp, vertical = 5.dp),
+        verticalArrangement = Arrangement.spacedBy(5.dp)
+    ) {
+        range.forEach { index ->
+            val pick = state.picks[index]
+            key(pick.selectionId) {
+                SlipPickCard(pick, state.lang, index + 1) {
+                    model.removePick(pick.selectionId)
+                }
+            }
+        }
+        if (count > capacity) {
+            Row(
+                modifier = Modifier.fillMaxWidth().height(30.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                IconButton(
+                    onClick = { page = (page - 1).coerceAtLeast(0) },
+                    enabled = page > 0,
+                    modifier = Modifier.size(30.dp)
+                ) {
+                    Icon(Icons.Default.ChevronLeft,
+                        tr(state.lang, "Previous picks", "انتخاب‌های قبلی"),
+                        tint = if (page > 0) slipBlue else slipMuted)
+                }
+                Text(
+                    text = "${range.first + 1}–${range.last + 1} / $count",
+                    color = slipMuted, fontWeight = FontWeight.Bold, fontSize = 11.sp
+                )
+                IconButton(
+                    onClick = { page = (page + 1).coerceAtMost(slipMaxPage(count, capacity)) },
+                    enabled = page < slipMaxPage(count, capacity),
+                    modifier = Modifier.size(30.dp)
+                ) {
+                    Icon(Icons.Default.ChevronRight,
+                        tr(state.lang, "Next picks", "انتخاب‌های بعدی"),
+                        tint = if (page < slipMaxPage(count, capacity)) slipBlue else slipMuted)
+                }
+            }
+        }
+    }
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PremiumSlipSheet(state: AppState,model: AppViewModel) {
