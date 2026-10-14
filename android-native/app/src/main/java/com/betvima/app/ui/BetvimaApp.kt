@@ -123,7 +123,7 @@ fun BetvimaApp(model: AppViewModel) {
                 Column(Modifier.background(Color(0xFF121315))) {
                     androidx.compose.animation.AnimatedVisibility(
                         visible = state.tab in setOf(Tab.HOME, Tab.LIVE, Tab.SPORTS) &&
-                            state.feature == Feature.NONE && state.detail == null,
+                            state.feature == Feature.NONE,
                         enter = slideInVertically(animationSpec = tween(230)) { it } +
                             fadeIn(animationSpec = tween(220)),
                         exit = slideOutVertically(animationSpec = tween(160)) { it } +
