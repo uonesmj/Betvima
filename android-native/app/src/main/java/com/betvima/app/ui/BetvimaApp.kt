@@ -186,8 +186,8 @@ fun BetvimaApp(model: AppViewModel) {
                     }
                 },
                 confirmButton = {
-                    TextButton(onClick = { accountOpen = false; model.refreshAccount() }) {
-                        Text(tr(state.lang, "Refresh", "تازه‌سازی"), color = Palette.blue)
+                    TextButton(onClick = { accountOpen = false; model.feature(Feature.PROFILE) }) {
+                        Text(tr(state.lang, "My profile", "پروفایل من"), color = Palette.blue)
                     }
                 },
                 dismissButton = {
