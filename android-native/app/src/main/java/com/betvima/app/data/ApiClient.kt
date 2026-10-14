@@ -5,7 +5,6 @@ import android.content.ContentResolver
 import android.net.Uri
 import okhttp3.MultipartBody
 import okhttp3.Response
-import okhttp3.RequestBody.Companion.toRequestBody
 import java.io.ByteArrayOutputStream
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -83,6 +82,14 @@ class ApiClient {
     // Money-mutating POSTs must never be automatically replayed by OkHttp.
     private val financialClient = client.newBuilder()
         .retryOnConnectionFailure(false).build()
+    // A mobile upload can take longer than a typical JSON request.
+    // Do not automatically retry a POST that could already be stored.
+    private val supportUploadClient = client.newBuilder()
+        .retryOnConnectionFailure(false)
+        .writeTimeout(75, TimeUnit.SECONDS)
+        .readTimeout(45, TimeUnit.SECONDS)
+        .callTimeout(90, TimeUnit.SECONDS)
+        .build()
     private val base = BuildConfig.API_BASE_URL.trimEnd('/')
     private val jsonType = "application/json".toMediaType()
 
@@ -425,7 +432,7 @@ class ApiClient {
             .header("Cache-Control", "no-store")
             .header("Authorization", "Bearer " + token)
             .post(body).build()
-        val data = financialClient.newCall(req).execute().use(::apiJson)
+        val data = supportUploadClient.newCall(req).execute().use(::apiJson)
         parseSupportMessage(
             data.optJSONObject("message") ?: throw ApiFailure(502, "Message status unknown")
         )
