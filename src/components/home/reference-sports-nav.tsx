@@ -436,7 +436,7 @@ export function ReferenceSportsNav({ showTournament = true, showSportsCarousel =
       <div className="mx-auto w-full max-w-[1400px]">
         <div className="overflow-x-auto px-3 pt-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           <div className="flex min-w-max items-center gap-1.5">
-            {mainItems.map((item) => {
+            {mainItems.filter((item) => pathname !== '/' || item.href !== '/sports/esports').map((item) => {
               const active = isMainActive(item.href);
 
               return (
