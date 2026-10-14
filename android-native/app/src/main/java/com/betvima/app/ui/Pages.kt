@@ -78,77 +78,81 @@ fun SportsRibbon(selected: String, lang: Lang, showEsports: Boolean = true,
 
 @Composable
 fun HomePage(state: AppState, model: AppViewModel, onSearch: () -> Unit) {
+    // Featured games are real, bettable upcoming markets, never fabricated promotions.
     val featured = state.upcoming.filter { match ->
         match.bettingAvailable && match.featured?.available == true &&
             match.featured?.selections?.any { it.available } == true
-    }.sortedByDescending { it.marketsCount }
-    LazyColumn(contentPadding = PaddingValues(bottom = 20.dp),
-        verticalArrangement = Arrangement.spacedBy(3.dp)) {
+    }.sortedWith(compareByDescending<Match> { it.marketsCount }.thenBy { it.starts })
+    LazyColumn(contentPadding = PaddingValues(bottom = 28.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp)) {
         item { SportsbookTopTabs(state, model, onSearch) }
         item { ReferenceTournamentRibbon(state, model) }
         if (state.homeMode == HomeMode.TOP_BETS) {
             item {
-                Row(Modifier.padding(horizontal = 15.dp)) {
-                    ReferenceSectionHeader(state.lang, "TOP Bets", "شرط‌های برتر",
+                Column(Modifier.padding(horizontal = 15.dp)) {
+                    ReferenceSectionHeader(state.lang, "Top Bets", "شرط‌های برتر",
                         Icons.Default.Whatshot, Palette.blue) { model.tab(Tab.SPORTS) }
                 }
             }
-            if (featured.isEmpty() && state.upcomingLoading) item {
-                FixtureSkeleton(Modifier.padding(horizontal = 15.dp))
-            }
-            if (featured.isEmpty() && !state.upcomingLoading) item {
-                Box(Modifier.padding(16.dp)) {
-                    EmptyPanel(tr(state.lang, "Top markets are unavailable", "بازار برتری موجود نیست"),
-                        tr(state.lang,
-                            "Only verified upcoming odds can be presented here.",
-                            "فقط ضرایب معتبر مسابقات آینده در این بخش نمایش داده می‌شوند.")) {
-                        model.refreshUpcoming()
+            if (featured.isEmpty() && state.upcomingLoading) {
+                items(2) { FixtureSkeleton(Modifier.padding(horizontal = 15.dp)) }
+            } else if (featured.isEmpty()) {
+                item {
+                    Box(Modifier.padding(horizontal = 15.dp)) {
+                        EmptyPanel(tr(state.lang, "Top markets are unavailable", "بازار برتری موجود نیست"),
+                            tr(state.lang, "Only verified upcoming odds are displayed.",
+                                "فقط ضرایب تأییدشده بازی‌های آینده نمایش داده می‌شوند.")) {
+                            model.refreshUpcoming()
+                        }
                     }
                 }
-            } else items(featured.take(25), key = { "top-"+it.id }) { match ->
+            } else items(featured.take(25), key = { "top-" + it.id }) { match ->
                 Box(Modifier.padding(horizontal = 15.dp, vertical = 3.dp)) {
                     ReferenceTopBetCard(match, state, model)
                 }
             }
         } else {
+            // Exactly three editorial home sections, aligned with the reference site.
             item {
                 Column(Modifier.padding(horizontal = 15.dp)) {
-                    ReferenceSectionHeader(state.lang, "Top Live", "برترین مسابقات زنده",
-                        Icons.Default.Sensors, Color(0xFFF50078)) { model.tab(Tab.LIVE) }
+                    ReferenceSectionHeader(state.lang, "Live", "زنده",
+                        Icons.Default.Sensors, Color(0xFFE82465)) { model.tab(Tab.LIVE) }
                     if (state.live.isNotEmpty()) ReferenceMatchCarousel(state.live, state, model)
                     else if (state.liveLoading) FixtureSkeleton(Modifier.fillMaxWidth())
                     else EmptyPanel(tr(state.lang, "No live matches", "مسابقه زنده‌ای موجود نیست"),
-                        tr(state.lang, "Refresh for the next live event.",
-                            "برای بررسی مسابقات زنده، تازه‌سازی کنید.")) { model.refreshLive() }
+                        tr(state.lang, "Check again as events begin.",
+                            "با شروع مسابقات دوباره بررسی کنید.")) { model.refreshLive() }
                 }
             }
             item {
                 Column(Modifier.padding(horizontal = 15.dp)) {
-                    ReferenceSectionHeader(state.lang, "Top Upcoming", "مسابقات مهم آینده",
+                    ReferenceSectionHeader(state.lang, "Top Bets", "شرط‌های برتر",
+                        Icons.Default.Whatshot, Palette.blue) {
+                        model.homeMode(HomeMode.TOP_BETS)
+                    }
+                    if (featured.isNotEmpty()) ReferenceMatchCarousel(featured, state, model)
+                    else if (state.upcomingLoading) FixtureSkeleton(Modifier.fillMaxWidth())
+                    else EmptyPanel(tr(state.lang, "Top markets are unavailable", "بازار برتری موجود نیست"),
+                        tr(state.lang, "Markets appear when confirmed by the provider.",
+                            "بازارها پس از تأیید منبع داده نمایش داده می‌شوند.")) {
+                        model.refreshUpcoming()
+                    }
+                }
+            }
+            item {
+                Column(Modifier.padding(horizontal = 15.dp)) {
+                    ReferenceSectionHeader(state.lang, "Upcoming", "آینده",
                         Icons.Default.Event, Palette.green) { model.tab(Tab.SPORTS) }
                     if (state.upcoming.isNotEmpty())
                         ReferenceMatchCarousel(state.upcoming, state, model)
                     else if (state.upcomingLoading) FixtureSkeleton(Modifier.fillMaxWidth())
                     else EmptyPanel(tr(state.lang, "No upcoming fixtures", "مسابقه آینده‌ای موجود نیست"),
-                        tr(state.lang, "Upcoming fixtures load from the BetVima catalogue.",
-                            "مسابقات از فهرست رسمی بت‌ویما دریافت می‌شوند.")) {
+                        tr(state.lang, "Upcoming fixtures load from the live catalogue.",
+                            "مسابقات آینده از فهرست واقعی دریافت می‌شوند.")) {
                         model.refreshUpcoming()
                     }
                 }
             }
-            val esports = (state.live + state.upcoming)
-                .filter { it.sport == "esports" }.distinctBy { it.id }
-            if (esports.isNotEmpty()) item {
-                Column(Modifier.padding(horizontal = 15.dp)) {
-                    ReferenceSectionHeader(state.lang, "Top Esports", "ورزش‌های الکترونیک",
-                        Icons.Default.SportsEsports, Color(0xFFEB27BE)) {
-                        model.sport("esports")
-                        model.tab(Tab.SPORTS)
-                    }
-                    ReferenceMatchCarousel(esports, state, model)
-                }
-            }
-            item { Box(Modifier.padding(horizontal = 15.dp)) { FeatureShortcuts(state.lang, model) } }
         }
         item { ResponsibleNote(state.lang) }
     }
@@ -158,7 +162,7 @@ fun HomePage(state: AppState, model: AppViewModel, onSearch: () -> Unit) {
 fun CatalogPage(state: AppState, model: AppViewModel, live: Boolean,
     onSearch: () -> Unit) {
     var liveSport by rememberSaveable { mutableStateOf("top") }
-    var selectedLeague by rememberSaveable(live, state.sport, state.tournamentLeague) {
+    var selectedLeague by rememberSaveable(live, liveSport, state.sport, state.tournamentLeague) {
         mutableStateOf(if (live) "" else state.tournamentLeague)
     }
     var tournamentOpen by remember { mutableStateOf(false) }
@@ -183,41 +187,45 @@ fun CatalogPage(state: AppState, model: AppViewModel, live: Boolean,
         if (!live) item {
             Row(Modifier.fillMaxWidth().padding(horizontal = 15.dp, vertical = 3.dp),
                 verticalAlignment = Alignment.CenterVertically) {
-                Box(Modifier.weight(1f)) {
-                    Surface(color = Color(0xFFE1E4E9), shape = RoundedCornerShape(12.dp),
-                        modifier = Modifier.clickable { tournamentOpen = true }) {
-                        Row(Modifier.heightIn(min = 43.dp)
-                            .padding(horizontal = 11.dp, vertical = 10.dp),
-                            verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Default.EmojiEvents, null, tint = Palette.muted,
-                                modifier = Modifier.size(17.dp))
-                            Spacer(Modifier.width(7.dp))
+                Surface(
+                    color = Color.White,
+                    shape = RoundedCornerShape(17.dp),
+                    border = BorderStroke(1.dp, Palette.border),
+                    shadowElevation = 2.dp,
+                    modifier = Modifier.weight(1f).clickable { tournamentOpen = true }
+                ) {
+                    Row(Modifier.heightIn(min = 54.dp)
+                        .padding(horizontal = 13.dp, vertical = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically) {
+                        Surface(color = Palette.greenLight, shape = RoundedCornerShape(11.dp)) {
+                            Icon(Icons.Default.EmojiEvents, null, tint = Palette.blue,
+                                modifier = Modifier.padding(9.dp).size(20.dp))
+                        }
+                        Spacer(Modifier.width(10.dp))
+                        Column(Modifier.weight(1f)) {
+                            Text(tr(state.lang, "TOURNAMENTS", "رقابت‌ها"),
+                                fontSize = 9.sp, fontWeight = FontWeight.Black,
+                                color = Palette.muted)
                             Text(if (selectedLeague.isBlank())
                                 tr(state.lang, "Choose a tournament", "انتخاب لیگ")
                                 else groups[selectedLeague]?.firstOrNull()?.league.orEmpty(),
-                                fontSize = 12.sp, fontWeight = FontWeight.ExtraBold,
+                                fontSize = 13.sp, fontWeight = FontWeight.ExtraBold,
                                 color = Palette.text, maxLines = 1,
                                 overflow = TextOverflow.Ellipsis)
-                            Spacer(Modifier.width(6.dp))
-                            Icon(Icons.Default.ArrowDropDown, null, tint = Palette.muted)
                         }
-                    }
-                    DropdownMenu(expanded = tournamentOpen,
-                        onDismissRequest = { tournamentOpen = false }) {
-                        DropdownMenuItem(
-                            text = { Text(tr(state.lang, "All competitions", "همه رقابت‌ها")) },
-                            onClick = { selectedLeague = ""; tournamentOpen = false })
-                        groups.forEach { (key, values) ->
-                            DropdownMenuItem(
-                                text = { Text(values.first().league, maxLines = 1) },
-                                onClick = { selectedLeague = key; tournamentOpen = false })
-                        }
+                        Icon(Icons.Default.KeyboardArrowDown, null, tint = Palette.blue)
                     }
                 }
-                Spacer(Modifier.width(9.dp))
-                IconButton(onClick = { model.refreshUpcoming() }) {
-                    Icon(Icons.Default.Refresh,
-                        tr(state.lang, "Refresh", "تازه‌سازی"), tint = Palette.blue)
+                Spacer(Modifier.width(8.dp))
+                Surface(color = Color.White, shape = RoundedCornerShape(15.dp),
+                    border = BorderStroke(1.dp, Palette.border),
+                    modifier = Modifier.size(54.dp).clickable {
+                        if (live) model.refreshLive() else model.refreshUpcoming()
+                    }) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(Icons.Default.Refresh,
+                            tr(state.lang, "Refresh", "تازه‌سازی"), tint = Palette.blue)
+                    }
                 }
             }
         }
@@ -256,14 +264,20 @@ fun CatalogPage(state: AppState, model: AppViewModel, live: Boolean,
         }
         item { ResponsibleNote(state.lang) }
     }
+    if (tournamentOpen) PremiumTournamentSheet(
+        lang = state.lang, groups = groups, selected = selectedLeague,
+        onSelect = { selectedLeague = it },
+        onDismiss = { tournamentOpen = false }
+    )
 }
 
 @Composable
 private fun LeagueSection(key: String, matches: List<Match>, first: Boolean,
     state: AppState, model: AppViewModel) {
     var expanded by rememberSaveable(key) { mutableStateOf(first) }
-    Surface(shape = RoundedCornerShape(20.dp), color = Color.White,
+    Surface(shape = RoundedCornerShape(23.dp), color = Color.White,
         border = BorderStroke(1.dp, Palette.border),
+        shadowElevation = 4.dp,
         modifier = Modifier.fillMaxWidth()) {
         Column {
             Row(Modifier.fillMaxWidth().clickable { expanded = !expanded }

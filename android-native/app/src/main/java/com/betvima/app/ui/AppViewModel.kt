@@ -33,6 +33,7 @@ data class AppState(
     val showLogin: Boolean = false, val registerScreen: Boolean = false,
     val authError: String? = null,
     val signedIn: Boolean = false,
+    val accountName: String? = null,
     val wallet: Wallet? = null, val bets: List<Bet> = emptyList(),
     val betsPage: Int = 1, val betsHasMore: Boolean = false,
     val historyQuery: BetHistoryQuery = BetHistoryQuery(),
@@ -328,7 +329,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         historyRequest++
         sessionGeneration++
         vault.clear()
-        mutable.update { it.copy(signedIn = false, wallet = null, bets = emptyList(),
+        mutable.update { it.copy(signedIn = false, accountName = null, wallet = null, bets = emptyList(),
             bonuses = emptyList(), quote = null, showLogin = false,
             authError = null, accountLoading = false,
             betsPage = 1, betsHasMore = false, moreBetsLoading = false,
@@ -367,14 +368,21 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             val wallet = async { runCatching { api.wallet(jwt) } }
             val bets = async { runCatching { api.bets(jwt) } }
             val bonuses = async { runCatching { api.bonuses(jwt) } }
+            val profile = async { runCatching { api.get("/api/v1/account/profile", jwt) } }
             val walletResult = wallet.await()
             val betResult = bets.await()
             val bonusResult = bonuses.await()
+            val remoteProfile = profile.await().getOrNull()?.optJSONObject("profile")
+            val remoteName = listOf("displayName", "username")
+                .firstNotNullOfOrNull { key ->
+                    remoteProfile?.optString(key)?.trim()?.takeIf { it.isNotEmpty() }
+                }
             if (sessionGeneration != generation || request != accountRequestNumber ||
                 !state.value.signedIn) return@supervisorScope
             mutable.update {
                 it.copy(
                     wallet = walletResult.getOrNull() ?: it.wallet,
+                    accountName = remoteName ?: it.accountName,
                     bets = betResult.getOrNull()?.items ?: it.bets,
                     betsPage = betResult.getOrNull()?.page ?: it.betsPage,
                     betsHasMore = betResult.getOrNull()?.hasMore ?: it.betsHasMore,

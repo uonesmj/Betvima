@@ -29,6 +29,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -190,24 +191,35 @@ fun ReferenceSportRibbon(state: AppState, model: AppViewModel, live: Boolean = f
 fun ReferenceSectionHeader(lang: Lang, titleEn: String, titleFa: String,
     icon: androidx.compose.ui.graphics.vector.ImageVector, tint: Color,
     onAll: () -> Unit) {
-    Row(Modifier.fillMaxWidth().padding(top = 15.dp, bottom = 11.dp),
+    Row(Modifier.fillMaxWidth().padding(top = 17.dp, bottom = 11.dp),
         verticalAlignment = Alignment.CenterVertically) {
-        Surface(color = tint, shape = RoundedCornerShape(10.dp)) {
-            Icon(icon, null, tint = Color.White,
-                modifier = Modifier.padding(9.dp).size(17.dp))
+        Surface(color = tint.copy(alpha = .13f),
+            border = BorderStroke(1.dp, tint.copy(alpha = .27f)),
+            shape = RoundedCornerShape(14.dp)) {
+            Icon(icon, null, tint = tint,
+                modifier = Modifier.padding(11.dp).size(19.dp))
         }
         Spacer(Modifier.width(10.dp))
-        Text(tr(lang, titleEn, titleFa), fontWeight = FontWeight.Black,
-            fontSize = 18.sp, color = Palette.text, modifier = Modifier.weight(1f))
-        Surface(color = Color(0xFFE1E4EB), shape = RoundedCornerShape(18.dp),
+        Column(Modifier.weight(1f)) {
+            Text(tr(lang, titleEn, titleFa), fontWeight = FontWeight.Black,
+                fontSize = 19.sp, color = Palette.text)
+            Spacer(Modifier.height(3.dp))
+            Box(Modifier.width(35.dp).height(3.dp)
+                .background(Brush.horizontalGradient(listOf(tint, Palette.green)),
+                    RoundedCornerShape(99.dp)))
+        }
+        Surface(color = Palette.ink, shape = RoundedCornerShape(14.dp),
+            shadowElevation = 3.dp,
+            border = BorderStroke(1.dp, Palette.green.copy(alpha = .25f)),
             modifier = Modifier.clickable(onClick = onAll)) {
-            Row(Modifier.heightIn(min = 42.dp)
-                .padding(horizontal = 15.dp, vertical = 9.dp),
+            Row(Modifier.heightIn(min = 43.dp)
+                .padding(horizontal = 13.dp, vertical = 9.dp),
                 verticalAlignment = Alignment.CenterVertically) {
-                Text(tr(lang, "All", "همه"), fontSize = 12.sp,
-                    fontWeight = FontWeight.ExtraBold, color = Palette.text)
-                Icon(Icons.Default.ChevronRight, null,
-                    tint = Palette.muted, modifier = Modifier.size(19.dp))
+                Text(tr(lang, "View all", "مشاهده همه"), fontSize = 11.sp,
+                    fontWeight = FontWeight.ExtraBold, color = Color.White)
+                Spacer(Modifier.width(5.dp))
+                Icon(Icons.Default.ArrowForward, null,
+                    tint = Palette.green, modifier = Modifier.size(17.dp))
             }
         }
     }
@@ -302,15 +314,15 @@ private fun ReferenceCompactOdd(
             selected -> Color(0xFFDBE9FC)
             selection.movement == "UP" && enabled -> Color(0xFFE4F8EE)
             selection.movement == "DOWN" && enabled -> Color(0xFFFFE7E8)
-            else -> Color(0xFFEDEFF3)
+            else -> Color(0xFFF6F8FA)
         }, animationSpec = tween(280), label = "oddsDirectionBackground")
     Surface(
         modifier = modifier.heightIn(min = 51.dp).clickable(enabled = enabled) {
             model.togglePick(match, market, selection)
         },
         shape = RoundedCornerShape(10.dp),
-        border = BorderStroke(if (selected) 1.5.dp else 0.dp,
-            if (selected) Palette.blue else Color.Transparent),
+        border = BorderStroke(if (selected) 1.5.dp else 1.dp,
+            if (selected) Palette.blue else Palette.border),
         color = background
     ) {
         Row(Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 8.dp),
@@ -348,15 +360,18 @@ private fun ReferenceCarouselCard(
     match: Match, state: AppState, model: AppViewModel
 ) {
     val market = match.featured
-    Surface(color = Color.White, shape = RoundedCornerShape(18.dp),
-        border = BorderStroke(1.dp, Color(0xFFE1E4EB)),
-        modifier = Modifier.width(316.dp), shadowElevation = 1.dp) {
+    Surface(color = Color.White, shape = RoundedCornerShape(23.dp),
+        border = BorderStroke(1.dp, Palette.border),
+        modifier = Modifier.width(316.dp), shadowElevation = 5.dp) {
         Column(Modifier.fillMaxWidth()) {
             Row(Modifier.fillMaxWidth().clickable { model.openMatch(match.id) }
-                .padding(horizontal = 12.dp, vertical = 11.dp),
+                .background(Brush.horizontalGradient(listOf(
+                    Color(0xFFF0F8F7), Color.White)))
+                .padding(horizontal = 13.dp, vertical = 13.dp),
                 verticalAlignment = Alignment.CenterVertically) {
                 Surface(shape = RoundedCornerShape(9.dp),
-                    color = Color(0xFFEDEFF3)) {
+                    color = Palette.greenLight,
+                    border = BorderStroke(1.dp, Palette.green.copy(alpha = .2f))) {
                     Box(Modifier.size(34.dp), contentAlignment = Alignment.Center) {
                         val image = match.leagueLogo?.takeIf { it.startsWith("https://") }
                         if (image != null) AsyncImage(model = image,
@@ -466,11 +481,12 @@ fun ReferenceTopBetCard(match: Match, state: AppState, model: AppViewModel) {
     val selected = selection != null &&
         state.picks.any { it.selectionId == selection.id }
     Surface(
-        color = Color(0xFFE0E3E9),
-        shape = RoundedCornerShape(19.dp),
+        color = Color(0xFFF0F5F7),
+        shape = RoundedCornerShape(23.dp),
         border = BorderStroke(
             if (selected) 2.dp else 1.dp,
-            if (selected) Palette.blue else Color(0xFFE1E4EA)),
+            if (selected) Palette.blue else Palette.border),
+        shadowElevation = 4.dp,
         modifier = Modifier.fillMaxWidth()
     ) {
         Column {
@@ -572,7 +588,7 @@ fun ReferenceLeagueFixture(match: Match, state: AppState, model: AppViewModel) {
     val market = match.featured
     Column(Modifier.fillMaxWidth().background(Color.White)
         .clickable { model.openMatch(match.id) }
-        .padding(horizontal = 12.dp, vertical = 12.dp),
+        .padding(horizontal = 14.dp, vertical = 15.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             if (match.live) SmallPill(tr(state.lang, "LIVE", "زنده") +

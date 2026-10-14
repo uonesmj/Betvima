@@ -36,6 +36,12 @@ fun BetvimaApp(model: AppViewModel) {
     var accountOpen by rememberSaveable { mutableStateOf(false) }
     var languageOpen by rememberSaveable { mutableStateOf(false) }
     var searchOpen by rememberSaveable { mutableStateOf(false) }
+    var initialSplash by rememberSaveable { mutableStateOf(true) }
+    LaunchedEffect(Unit) {
+        // Motion is an entrance identity, not a proxy for backend progress.
+        delay(1050)
+        initialSplash = false
+    }
     val snackbars = remember { SnackbarHostState() }
     val pageStates = rememberSaveableStateHolder()
     val drawer = rememberDrawerState(DrawerValue.Closed)
@@ -115,7 +121,8 @@ fun BetvimaApp(model: AppViewModel) {
                         walletBalance = if (state.signedIn && state.wallet != null)
                             com.betvima.app.data.money(state.wallet!!.availableMinor,
                                 state.wallet!!.currency) else null,
-                        onWallet = { model.tab(Tab.WALLET) })
+                        onWallet = { model.tab(Tab.WALLET) },
+                        userName = state.accountName)
 
                 }
             },
@@ -203,6 +210,7 @@ fun BetvimaApp(model: AppViewModel) {
             onSelect = { selected -> model.setLanguage(selected); languageOpen = false },
             onDismiss = { languageOpen = false }
         )
+        PremiumLoadingOverlay(initialSplash, state.lang)
     }
 }
 

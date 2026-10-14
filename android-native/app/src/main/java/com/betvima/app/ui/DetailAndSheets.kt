@@ -89,7 +89,8 @@ fun MatchDetailPage(state: AppState, model: AppViewModel) {
             }
         }
         item {
-            Surface(color = Color(0xFFE1E4EB), shape = RoundedCornerShape(17.dp)) {
+            Surface(color = Color.White, shape = RoundedCornerShape(21.dp),
+                border = BorderStroke(1.dp, Palette.border), shadowElevation = 3.dp) {
                 Row(Modifier.fillMaxWidth().padding(3.dp),
                     horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                     listOf(
@@ -127,8 +128,10 @@ fun MatchDetailPage(state: AppState, model: AppViewModel) {
                         fontWeight = FontWeight.ExtraBold, fontSize = 12.sp,
                         color = Palette.text, maxLines = 2)
                 }
-                Surface(color = Color(0xFF858B9A),
-                    shape = RoundedCornerShape(12.dp)) {
+                Surface(color = Palette.ink,
+                    border = BorderStroke(1.dp, Palette.green.copy(alpha = .5f)),
+                    shadowElevation = 5.dp,
+                    shape = RoundedCornerShape(15.dp)) {
                     Text(if (match.homeScore != null && match.awayScore != null)
                         "${match.homeScore}:${match.awayScore}" else "VS",
                         modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
@@ -165,9 +168,9 @@ fun MatchDetailPage(state: AppState, model: AppViewModel) {
                 items(marketGroups, key = { it.first }) { (key, label) ->
                     val selected = selectedMarketGroup == key
                     Surface(shape = RoundedCornerShape(13.dp),
-                        color = if (selected) Palette.blue else Color(0xFFE0E3E9),
+                        color = if (selected) Palette.ink else Color.White,
                         border = BorderStroke(1.dp,
-                            if (selected) Palette.blue else Palette.border),
+                            if (selected) Palette.green else Palette.border),
                         modifier = Modifier.clickable { selectedMarketGroup = key }) {
                         Text(label, fontWeight = FontWeight.Bold, fontSize = 11.sp,
                             color = if (selected) Color.White else Palette.text,
@@ -201,8 +204,8 @@ fun MatchDetailPage(state: AppState, model: AppViewModel) {
         items(filteredMarkets, key = { it.id }) { market ->
             val index = match.markets.indexOfFirst { it.id == market.id }
             var expanded by rememberSaveable(market.id) { mutableStateOf(index < 3) }
-            Surface(color = Color.White, shape = RoundedCornerShape(18.dp),
-                border = BorderStroke(1.dp, Palette.border), shadowElevation = 1.dp) {
+            Surface(color = Color.White, shape = RoundedCornerShape(21.dp),
+                border = BorderStroke(1.dp, Palette.border), shadowElevation = 4.dp) {
                 Column {
                     Row(Modifier.fillMaxWidth().clickable { expanded = !expanded }
                         .padding(horizontal = 14.dp, vertical = 15.dp),
