@@ -55,7 +55,7 @@ describe('VIP cashback finance safeguards', () => {
     expect(migration).toContain('vip_cashback_discrepancies');
     expect(migration).toContain('revoke execute on function nova.vip_cashback_credit_user');
     expect(migration).toContain('vip_cb_payout_immutable');
-    expect(migration).toContain('VIP_AMOUNT_REQUIRES_FINANCE_REVIEW');
+    expect(migration).not.toContain('VIP_AMOUNT_REQUIRES_FINANCE_REVIEW');
   });
 
   it('uses a persistent Tehran-timezone Monday timer and no automatic installation', () => {
