@@ -23,7 +23,7 @@ const faqs = [
 export function LoyaltyProgramClient() {
   const [open, setOpen] = useState<number | null>(null);
   const { locale } = useApp();
-  const tr = (value: string) => locale === 'fa' ? translateVisibleText(value) : value;
+  const tr = (value: string | undefined) => { const label = value ?? ''; return locale === 'fa' ? translateVisibleText(label) : label; };
 
   return (
     <main className="mx-auto w-full max-w-[1180px] px-3 pb-8 sm:px-5">
