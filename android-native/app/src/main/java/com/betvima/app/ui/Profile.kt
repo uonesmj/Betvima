@@ -60,6 +60,17 @@ fun ProfilePage(state: AppState, model: AppViewModel) {
         verticalArrangement = Arrangement.spacedBy(13.dp)
     ) {
         item {
+            BvPageBanner(
+                eyebrow = tr(state.lang, "ACCOUNT CENTER", "مرکز حساب کاربری"),
+                title = tr(state.lang, "Your BetVima profile", "پروفایل اختصاصی شما"),
+                subtitle = tr(state.lang,
+                    "Manage your profile and view your account status securely.",
+                    "اطلاعات شخصی و وضعیت حساب خود را با امنیت کامل بررسی کنید."),
+                icon = Icons.Default.VerifiedUser,
+                accent = Palette.green
+            )
+        }
+        item {
             SectionHeading(
                 tr(state.lang, "Your profile", "پروفایل کاربری"),
                 tr(state.lang, "Private account details", "اطلاعات خصوصی حساب")
@@ -80,7 +91,8 @@ fun ProfilePage(state: AppState, model: AppViewModel) {
             }
             if (profile != null) {
                 item {
-                    Surface(color = Palette.ink, shape = RoundedCornerShape(23.dp)) {
+                    Surface(color = Palette.ink, shape = RoundedCornerShape(23.dp),
+                        shadowElevation = 2.dp) {
                         Column(Modifier.fillMaxWidth().padding(21.dp)) {
                             Icon(Icons.Default.VerifiedUser, null, tint = Palette.green,
                                 modifier = Modifier.size(31.dp))
@@ -97,8 +109,9 @@ fun ProfilePage(state: AppState, model: AppViewModel) {
                     }
                 }
                 item {
-                    Surface(color = Color.White, shape = RoundedCornerShape(18.dp),
-                        border = BorderStroke(1.dp, Palette.border)) {
+                    Surface(color = Color.White, shape = RoundedCornerShape(19.dp),
+                        border = BorderStroke(1.dp, Palette.border),
+                        shadowElevation = 1.dp) {
                         Column(Modifier.padding(17.dp)) {
                             ProfileInfoRow(
                                 tr(state.lang, "Account currency", "ارز حساب"),
@@ -145,7 +158,8 @@ fun ProfilePage(state: AppState, model: AppViewModel) {
                                     enabled = !loading && name.trim().length in 2..60 &&
                                         (phone.isBlank() || phone.length in 6..32),
                                     colors = ButtonDefaults.buttonColors(containerColor = Palette.green),
-                                    modifier = Modifier.fillMaxWidth(),
+                                    modifier = Modifier.fillMaxWidth().heightIn(min = 50.dp),
+                                    shape = RoundedCornerShape(13.dp),
                                     onClick = {
                                         scope.launch {
                                             loading = true
