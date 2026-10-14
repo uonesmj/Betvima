@@ -216,19 +216,35 @@ fun ReferenceSectionHeader(lang: Lang, titleEn: String, titleFa: String,
 /** Circular competition shortcuts, populated exclusively from returned catalogue. */
 @Composable
 fun ReferenceTournamentRibbon(state: AppState, model: AppViewModel) {
+    val categories = listOf(
+        Triple("football", tr(state.lang, "Football", "فوتبال"), 0),
+        Triple("tennis", tr(state.lang, "Tennis", "تنیس"), 1),
+        Triple("basketball", tr(state.lang, "Basketball", "بسکتبال"), 2),
+        Triple("hockey", tr(state.lang, "Ice hockey", "هاکی"), 3),
+        Triple("table-tennis", tr(state.lang, "Table tennis", "پینگ‌پنگ"), 4),
+        Triple("volleyball", tr(state.lang, "Volleyball", "والیبال"), 5),
+        Triple("baseball", tr(state.lang, "Baseball", "بیسبال"), 6),
+        Triple("esports", tr(state.lang, "Esports", "ورزش الکترونیک"), 7)
+    )
     val competitions = (state.live + state.upcoming)
         .filter { it.league.isNotBlank() && it.league != "Football" }
         .distinctBy { it.league + "|" + it.country }
         .take(7)
-    LazyRow(Modifier.fillMaxWidth(),
+    val ribbonState = rememberLazyListState()
+    LazyRow(Modifier.fillMaxWidth(), state = ribbonState,
         contentPadding = PaddingValues(horizontal = 15.dp, vertical = 11.dp),
         horizontalArrangement = Arrangement.spacedBy(12.dp)) {
         item(key = "top-bets") {
-            TournamentShortcut(
+            SportsBadgeShortcut(
                 label = tr(state.lang, "TOP Bets", "شرط‌های برتر"),
-                logo = null,
-                icon = Icons.Default.Whatshot, active = true
+                index = 0, selected = false
             ) { model.homeMode(HomeMode.TOP_BETS) }
+        }
+        items(categories, key = { it.first }) { (sport, name, picture) ->
+            SportsBadgeShortcut(label = name, index = picture, selected = false) {
+                model.sport(sport)
+                model.tab(Tab.SPORTS)
+            }
         }
         items(competitions, key = { it.league + "|" + it.country }) { competition ->
             TournamentShortcut(
