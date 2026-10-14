@@ -72,7 +72,11 @@ fun BetvimaApp(model: AppViewModel) {
                             if (state.signedIn) accountOpen = true else model.showLogin(true)
                         },
                         onNotifications = { model.feature(Feature.NOTIFICATIONS) },
-                        unread = state.notifications.count { it.readAt == null })
+                        unread = state.notifications.count { it.readAt == null },
+                        walletBalance = if (state.signedIn && state.wallet != null)
+                            com.betvima.app.data.money(state.wallet!!.availableMinor,
+                                state.wallet!!.currency) else null,
+                        onWallet = { model.tab(Tab.WALLET) })
                     if (state.detail == null && state.feature == Feature.NONE) {
                         QuickToolbar(state.lang,
                             onSports = { model.tab(Tab.SPORTS) },
@@ -100,15 +104,21 @@ fun BetvimaApp(model: AppViewModel) {
             bottomBar = {
                 Column {
                     if (state.picks.isNotEmpty() && !state.showSlip) {
-                        Surface(Modifier.fillMaxWidth().clickable { model.showSlip(true) },
-                            color = Palette.green, shadowElevation = 8.dp) {
+                        Surface(Modifier.fillMaxWidth()
+                                .padding(horizontal = 10.dp, vertical = 5.dp)
+                                .clickable { model.showSlip(true) },
+                            shape = RoundedCornerShape(14.dp),
+                            color = Palette.green, shadowElevation = 7.dp) {
                             Row(Modifier.padding(horizontal = 17.dp, vertical = 11.dp),
                                 verticalAlignment = Alignment.CenterVertically) {
                                 Icon(Icons.Default.ConfirmationNumber, null, tint = Palette.ink)
                                 Spacer(Modifier.width(9.dp))
-                                Text(tr(state.lang, "Bet slip", "برگه شرط"),
-                                    color = Palette.ink, fontWeight = FontWeight.Black,
-                                    modifier = Modifier.weight(1f))
+                                Column(Modifier.weight(1f)) {
+                                    Text(tr(state.lang, "Bet slip", "برگه شرط"),
+                                        color = Palette.ink, fontWeight = FontWeight.Black)
+                                    Text(tr(state.lang, "Selections · ", "انتخاب‌ها · ") +
+                                        state.picks.size, fontSize = 10.sp, color = Palette.ink)
+                                }
                                 Surface(color = Palette.ink, shape = RoundedCornerShape(10.dp)) {
                                     Text(state.picks.size.toString(), color = Color.White,
                                         modifier = Modifier.padding(horizontal = 12.dp, vertical = 5.dp),
@@ -119,7 +129,8 @@ fun BetvimaApp(model: AppViewModel) {
                             }
                         }
                     }
-                    NavigationBar(containerColor = Palette.ink, tonalElevation = 0.dp) {
+                    NavigationBar(containerColor = Palette.ink,
+                        tonalElevation = 0.dp) {
                         listOf(
                             Triple(Tab.HOME, tr(state.lang, "Home", "خانه"), Icons.Default.Home),
                             Triple(Tab.LIVE, tr(state.lang, "Live", "زنده"), Icons.Default.Sensors),
@@ -132,11 +143,11 @@ fun BetvimaApp(model: AppViewModel) {
                                     overflow = TextOverflow.Ellipsis) },
                                 alwaysShowLabel = true,
                                 colors = NavigationBarItemDefaults.colors(
-                                    selectedIconColor = Palette.green,
+                                    selectedIconColor = Palette.ink,
                                     selectedTextColor = Palette.green,
                                     unselectedIconColor = Color(0xFF9BACB9),
                                     unselectedTextColor = Color(0xFF9BACB9),
-                                    indicatorColor = Palette.dark
+                                    indicatorColor = Palette.green
                                 ))
                         }
                     }
@@ -207,9 +218,9 @@ fun BetvimaApp(model: AppViewModel) {
 @Composable
 private fun QuickToolbar(lang: Lang, onSports: () -> Unit, onSearch: () -> Unit,
     onBonus: () -> Unit, onVip: () -> Unit, onSupport: () -> Unit, onCasino: () -> Unit) {
-    LazyRow(Modifier.fillMaxWidth().background(Palette.dark),
-        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
-        horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+    LazyRow(Modifier.fillMaxWidth().background(Palette.ink),
+        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 10.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         item { ToolbarAction(tr(lang, "Sports", "ورزش‌ها"), Icons.Default.SportsSoccer, onSports) }
         item { ToolbarAction(tr(lang, "Search", "جست‌وجو"), Icons.Default.Search, onSearch) }
         item { ToolbarAction(tr(lang, "Bonuses", "بونوس‌ها"), Icons.Default.CardGiftcard, onBonus) }
@@ -220,9 +231,10 @@ private fun QuickToolbar(lang: Lang, onSports: () -> Unit, onSearch: () -> Unit,
 }
 @Composable
 private fun ToolbarAction(title: String, icon: androidx.compose.ui.graphics.vector.ImageVector, onClick: () -> Unit) {
-    Surface(color = Color.White.copy(alpha = .08f), shape = RoundedCornerShape(11.dp),
+    Surface(color = Palette.darkElevated, shape = RoundedCornerShape(12.dp),
+        border = BorderStroke(1.dp, Color.White.copy(alpha = .07f)),
         modifier = Modifier.clickable(onClick = onClick)) {
-        Row(Modifier.padding(horizontal = 11.dp, vertical = 8.dp),
+        Row(Modifier.heightIn(min = 35.dp).padding(horizontal = 12.dp, vertical = 7.dp),
             verticalAlignment = Alignment.CenterVertically) {
             Icon(icon, null, tint = Palette.green, modifier = Modifier.size(15.dp))
             Spacer(Modifier.width(5.dp))
