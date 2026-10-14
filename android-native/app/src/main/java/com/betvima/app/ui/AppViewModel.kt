@@ -34,6 +34,10 @@ data class AppState(
     val signedIn: Boolean = false,
     val wallet: Wallet? = null, val bets: List<Bet> = emptyList(),
     val betsPage: Int = 1, val betsHasMore: Boolean = false,
+    val historyQuery: BetHistoryQuery = BetHistoryQuery(),
+    val historyBets: List<Bet> = emptyList(), val historyPage: Int = 1,
+    val historyHasMore: Boolean = false, val historyLoading: Boolean = false,
+    val historyMoreLoading: Boolean = false, val historyError: String? = null,
     val moreBetsLoading: Boolean = false, val moreWalletLoading: Boolean = false,
     val notifications: List<UserNotification> = emptyList(),
     val notificationPage: Int = 1, val notificationHasMore: Boolean = false,
@@ -58,6 +62,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     private var detailRequestNumber = 0
     private var accountRequestNumber = 0
     private var quoteGeneration = 0
+    private var historyRequest = 0
     private var searchGeneration = 0
     private var liveRequestInFlight = false
     private val mutable = MutableStateFlow(AppState(
@@ -95,7 +100,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             Tab.HOME -> refreshAll()
             Tab.LIVE -> refreshLive()
             Tab.SPORTS -> refreshUpcoming()
-            Tab.BETS, Tab.WALLET -> if (state.value.signedIn) refreshAccount()
+            Tab.BETS -> if (state.value.signedIn) refreshBetHistory()
+            Tab.WALLET -> if (state.value.signedIn) refreshAccount()
             else -> Unit
         }
     }
@@ -289,6 +295,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             sessionGeneration++
             mutable.update { it.copy(busy = false, showLogin = false, signedIn = true) }
             refreshAccount()
+            if (state.value.tab == Tab.BETS) refreshBetHistory()
             refreshNotifications()
         } catch (ex: Exception) {
             mutable.update { it.copy(busy = false, notice = ex.message ?: "Sign-in failed") }
@@ -299,11 +306,16 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         closeMatch()
         quoteGeneration++
         accountRequestNumber++
+        historyRequest++
         sessionGeneration++
         vault.clear()
         mutable.update { it.copy(signedIn = false, wallet = null, bets = emptyList(),
             bonuses = emptyList(), quote = null, showLogin = false, accountLoading = false,
-            betsPage = 1, betsHasMore = false, moreBetsLoading = false, moreWalletLoading = false,
+            betsPage = 1, betsHasMore = false, moreBetsLoading = false,
+            historyQuery = BetHistoryQuery(), historyBets = emptyList(), historyPage = 1,
+            historyHasMore = false, historyLoading = false,
+            historyMoreLoading = false, historyError = null,
+            moreWalletLoading = false,
             notifications = emptyList(), notificationPage = 1, notificationHasMore = false,
             notificationLoading = false) }
     }
@@ -355,6 +367,51 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             }
         }
     }
+    fun setBetHistoryQuery(filter: BetHistoryQuery) {
+        if (state.value.historyQuery == filter) return
+        ++historyRequest
+        mutable.update {
+            it.copy(historyQuery = filter, historyBets = emptyList(),
+                historyPage = 1, historyHasMore = false, historyError = null)
+        }
+        refreshBetHistory()
+    }
+
+    fun refreshBetHistory(more: Boolean = false) = viewModelScope.launch {
+        val snapshot = state.value
+        if (!snapshot.signedIn) return@launch
+        if (more && (snapshot.historyLoading || snapshot.historyMoreLoading ||
+            !snapshot.historyHasMore || snapshot.historyPage >= 1000)) return@launch
+        val generation = sessionGeneration
+        val request = if (more) historyRequest else ++historyRequest
+        val filter = snapshot.historyQuery
+        mutable.update {
+            it.copy(historyLoading = if (more) it.historyLoading else true,
+                historyMoreLoading = more, historyError = null)
+        }
+        try {
+            val jwt = vault.accessToken(api)
+                ?: throw ApiFailure(401, "Session unavailable")
+            val response = api.betHistory(jwt, filter, if (more) snapshot.historyPage + 1 else 1)
+            if (generation == sessionGeneration && request == historyRequest &&
+                state.value.historyQuery == filter && state.value.signedIn) mutable.update {
+                it.copy(historyBets = if (more)
+                    (it.historyBets + response.items).distinctBy { item -> item.id }
+                    else response.items,
+                    historyPage = response.page, historyHasMore = response.hasMore,
+                    historyLoading = false, historyMoreLoading = false,
+                    historyError = null)
+            }
+        } catch (ex: Exception) {
+            if (generation == sessionGeneration && request == historyRequest) mutable.update {
+                it.copy(historyLoading = false, historyMoreLoading = false,
+                    historyError = tr(it.lang,
+                        "Could not load bet history. Try again.",
+                        "تاریخچه شرط‌ها دریافت نشد؛ دوباره تلاش کنید."))
+            }
+        }
+    }
+
     fun refreshNotifications(more: Boolean = false) = viewModelScope.launch {
         val snapshot = state.value
         if (!snapshot.signedIn || snapshot.notificationLoading ||
