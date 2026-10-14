@@ -7,6 +7,13 @@ import org.json.JSONObject
 import org.junit.Test
 
 class FinancialFormattingTest {
+    @Test fun topSportQueriesDoNotSendInventedSportId() {
+        assertEquals("/api/v1/matches?live=false&page=1&pageSize=50", upcomingQueryPath("all"))
+        assertEquals("/api/v1/matches?live=false&page=1&pageSize=50&sport=football",
+            upcomingQueryPath("football"))
+        assertEquals("/api/v1/matches?live=false&page=1&pageSize=50&sport=esports",
+            upcomingQueryPath("esports"))
+    }
     @Test fun fixedPointOddsAreNotTreatedAsDecimalOdds() {
         assertEquals("1.93", odds("19300"))
         assertEquals("2.00", odds("20000"))
