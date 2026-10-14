@@ -158,6 +158,21 @@ class ApiClient {
                 it.str("remainingAmountMinor", "0"), it.str("currency", "USD"))
         }
 
+    suspend fun notifications(token: String, page: Int = 1): NotificationPage {
+        require(page in 1..1000)
+        val data = get("/api/v1/notifications?pageSize=20&page=" + page, token)
+        return NotificationPage(data.arr("items").objects().map {
+            UserNotification(it.str("id"), it.str("eventKey"),
+                it.str("title"), it.str("body"), it.str("createdAt"),
+                it.str("readAt").takeIf(String::isNotBlank))
+        }, data.optInt("page", page), data.optBoolean("hasMore", false))
+    }
+    suspend fun readNotifications(token: String, ids: List<String> = emptyList(), all: Boolean = false): Int {
+        require(all || ids.isNotEmpty())
+        val data = post("/api/v1/notifications",
+            JSONObject().put("all", all).put("ids", JSONArray(ids)), token)
+        return data.optInt("updated", 0)
+    }
     suspend fun quote(token: String, picks: List<Pick>, stakeMinor: String): JSONObject {
         val legs = JSONArray()
         picks.forEach {
