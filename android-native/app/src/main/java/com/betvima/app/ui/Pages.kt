@@ -111,19 +111,6 @@ fun HomePage(state: AppState, model: AppViewModel) {
                     { model.openMatch(match.id) }) { m, s -> model.togglePick(match, m, s) }
             }
         }
-        item { SectionHeading(tr(state.lang, "Upcoming matches", "مسابقات آینده"),
-            tr(state.lang, "Popular pre-match selections", "بازارهای پیش از شروع"),
-            tr(state.lang, "View all", "مشاهده همه")) { model.tab(Tab.SPORTS) } }
-        if (state.upcoming.isEmpty()) {
-            item { EmptyPanel(tr(state.lang, "No scheduled matches", "مسابقه آینده‌ای یافت نشد"),
-                tr(state.lang, "Try another sport or refresh the catalogue.",
-                    "رشته دیگری انتخاب کنید یا فهرست را تازه‌سازی کنید.")) { model.refreshUpcoming() } }
-        } else {
-            items(state.upcoming.take(8), key = { "home-upcoming-" + it.id }) { match ->
-                MatchTile(match, state.lang, state.liveEnabled, state.picks,
-                    { model.openMatch(match.id) }) { m, s -> model.togglePick(match, m, s) }
-            }
-        }
         val featured = state.upcoming.filter { match ->
             match.bettingAvailable && match.featured?.available == true &&
                 match.featured?.selections?.any { it.available } == true
@@ -144,6 +131,19 @@ fun HomePage(state: AppState, model: AppViewModel) {
             MatchTile(match, state.lang, state.liveEnabled, state.picks,
                 { model.openMatch(match.id) }) { market, selection ->
                 model.togglePick(match, market, selection)
+            }
+        }
+        item { SectionHeading(tr(state.lang, "Upcoming matches", "مسابقات آینده"),
+            tr(state.lang, "Popular pre-match selections", "بازارهای پیش از شروع"),
+            tr(state.lang, "View all", "مشاهده همه")) { model.tab(Tab.SPORTS) } }
+        if (state.upcoming.isEmpty()) {
+            item { EmptyPanel(tr(state.lang, "No scheduled matches", "مسابقه آینده‌ای یافت نشد"),
+                tr(state.lang, "Try another sport or refresh the catalogue.",
+                    "رشته دیگری انتخاب کنید یا فهرست را تازه‌سازی کنید.")) { model.refreshUpcoming() } }
+        } else {
+            items(state.upcoming.take(8), key = { "home-upcoming-" + it.id }) { match ->
+                MatchTile(match, state.lang, state.liveEnabled, state.picks,
+                    { model.openMatch(match.id) }) { m, s -> model.togglePick(match, m, s) }
             }
         }
         item { FeatureShortcuts(state.lang, model) }
@@ -598,14 +598,29 @@ fun FeatureShortcuts(lang: Lang, model: AppViewModel) {
             Row(horizontalArrangement = Arrangement.spacedBy(9.dp),
                 modifier = Modifier.fillMaxWidth().padding(bottom = 9.dp)) {
                 row.forEach { (feature, title, icon) ->
+                    val spotlight = feature == Feature.VIP
                     Surface(Modifier.weight(1f).clickable { model.feature(feature) },
-                        color = Color.White, shape = RoundedCornerShape(16.dp),
-                        border = BorderStroke(1.dp, Palette.border)) {
-                        Row(Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
-                            Icon(icon, null, tint = Palette.blue, modifier = Modifier.size(19.dp))
-                            Spacer(Modifier.width(8.dp))
-                            Text(title, fontWeight = FontWeight.Bold, fontSize = 11.sp,
-                                maxLines = 2, color = Palette.text)
+                        color = if (spotlight) Palette.ink else Color.White,
+                        shape = RoundedCornerShape(19.dp),
+                        border = BorderStroke(1.dp, if (spotlight) Palette.ink else Palette.border),
+                        shadowElevation = 1.dp) {
+                        Column(Modifier.fillMaxWidth().heightIn(min = 94.dp)
+                            .padding(14.dp),
+                            verticalArrangement = Arrangement.SpaceBetween) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Surface(color = if (spotlight)
+                                        Palette.green.copy(alpha = .15f) else Palette.greenLight,
+                                    shape = RoundedCornerShape(10.dp)) {
+                                    Icon(icon, null, tint = if (spotlight) Palette.green else Palette.ink,
+                                        modifier = Modifier.padding(8.dp).size(21.dp))
+                                }
+                                Spacer(Modifier.weight(1f))
+                                Icon(Icons.Default.NorthEast, null,
+                                    tint = if (spotlight) Palette.green else Palette.blue,
+                                    modifier = Modifier.size(16.dp))
+                            }
+                            Text(title, fontWeight = FontWeight.ExtraBold, fontSize = 12.sp,
+                                maxLines = 2, color = if (spotlight) Color.White else Palette.text)
                         }
                     }
                 }
