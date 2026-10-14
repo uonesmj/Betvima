@@ -85,7 +85,7 @@ fun HomePage(state: AppState, model: AppViewModel, onSearch: () -> Unit) {
     LazyColumn(contentPadding = PaddingValues(bottom = 20.dp),
         verticalArrangement = Arrangement.spacedBy(3.dp)) {
         item { SportsbookTopTabs(state, model, onSearch) }
-        item { ReferenceSportRibbon(state, model, all = true) }
+        item { ReferenceTournamentRibbon(state, model) }
         if (state.homeMode == HomeMode.TOP_BETS) {
             item {
                 Row(Modifier.padding(horizontal = 15.dp)) {
@@ -156,7 +156,9 @@ fun HomePage(state: AppState, model: AppViewModel, onSearch: () -> Unit) {
 fun CatalogPage(state: AppState, model: AppViewModel, live: Boolean,
     onSearch: () -> Unit) {
     var liveSport by rememberSaveable { mutableStateOf("top") }
-    var selectedLeague by rememberSaveable(live, state.sport) { mutableStateOf("") }
+    var selectedLeague by rememberSaveable(live, state.sport, state.tournamentLeague) {
+        mutableStateOf(if (live) "" else state.tournamentLeague)
+    }
     var tournamentOpen by remember { mutableStateOf(false) }
     val allMatches = if (live) state.live else state.upcoming
     val matches = if (live && liveSport != "top")
