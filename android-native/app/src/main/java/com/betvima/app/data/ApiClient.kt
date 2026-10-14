@@ -22,6 +22,14 @@ fun upcomingQueryPath(sport: String): String {
         URLEncoder.encode(sport, "UTF-8")
 }
 
+/** Build the same backend q query used by the web sportsbook. */
+fun searchQueryPath(query: String, live: Boolean): String {
+    val term = query.trim()
+    require(term.length in 2..80)
+    return "/api/v1/matches?live=" + live.toString() +
+        "&page=1&pageSize=50&q=" + URLEncoder.encode(term, "UTF-8")
+}
+
 /** HTTPS-only read interface to BetVima. Never logs credentials or wallet contents. */
 class ApiClient {
     private val client = OkHttpClient.Builder().connectTimeout(8, TimeUnit.SECONDS)
@@ -99,11 +107,7 @@ class ApiClient {
      * q is URI-encoded, bound to the existing read-only /matches endpoint.
      */
     suspend fun searchMatches(query: String, live: Boolean): List<Match> {
-        val text = query.trim()
-        require(text.length in 2..80)
-        val path = "/api/v1/matches?live=" + live.toString() +
-            "&page=1&pageSize=50&q=" + URLEncoder.encode(text, "UTF-8")
-        return get(path).arr("items").objects().map(::parseMatch)
+        return get(searchQueryPath(query, live)).arr("items").objects().map(::parseMatch)
     }
 
     suspend fun detail(id: String): Match {
