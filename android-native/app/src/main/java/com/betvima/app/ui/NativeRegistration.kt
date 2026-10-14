@@ -42,10 +42,13 @@ internal fun signupValidation(
     !terms -> "terms"
     else -> null
 }
+internal val registrationCurrencies = listOf("USD", "IRR")
+
 internal fun signupPayload(
     email: String, password: String, currency: String, referral: String,
     locale: String, token: String
 ): JSONObject = JSONObject().apply {
+    require(currency in registrationCurrencies) { "Unsupported signup currency" }
     put("email", email.trim())
     put("password", password)
     put("currency", currency)
@@ -71,13 +74,17 @@ internal fun publicTurnstileKey(config: JSONObject): String? {
 /** No password or access token ever crosses the JavaScript bridge. */
 private class TurnstileCallbacks(
     private val notify: (String?) -> Unit,
-    private val failure: () -> Unit
+    private val failure: () -> Unit,
+    private val ready: () -> Unit,
+    private val resize: (Int) -> Unit
 ) {
     @JavascriptInterface fun verified(token: String) {
         if (token.length in 10..2048) notify(token) else failure()
     }
     @JavascriptInterface fun invalid() = notify(null)
     @JavascriptInterface fun unavailable() = failure()
+    @JavascriptInterface fun mounted() = ready()
+    @JavascriptInterface fun measured(height: Int) = resize(height)
 }
 
 private fun allowedAuthUrl(url: Uri?): Boolean {
@@ -89,18 +96,26 @@ private fun allowedAuthUrl(url: Uri?): Boolean {
         host == "challenges.cloudflare.com" || host.endsWith(".challenges.cloudflare.com")
 }
 
-/** Widget is confined to the BetVima HTTPS origin, using the same public site key as web. */
+/** The only WebView in registration is the real Cloudflare widget, not the website. */
 @SuppressLint("SetJavaScriptEnabled")
 @Composable
 private fun RealTurnstileWidget(
-    siteKey: String, revision: Int, callback: (String?) -> Unit, onFailure: () -> Unit
+    siteKey: String,
+    revision: Int,
+    callback: (String?) -> Unit,
+    onReady: () -> Unit,
+    onFailure: () -> Unit
 ) {
     val context = LocalContext.current
     val currentCallback by rememberUpdatedState(callback)
+    val currentReady by rememberUpdatedState(onReady)
     val currentFailure by rememberUpdatedState(onFailure)
+    // A regular Turnstile widget is ~65 CSS pixels high. Allow the actual
+    // Cloudflare challenge to expand dynamically instead of cropping it.
+    var challengeHeight by remember(siteKey, revision) { mutableIntStateOf(86) }
     key(siteKey, revision) {
         AndroidView(
-            modifier = Modifier.fillMaxWidth().height(166.dp),
+            modifier = Modifier.fillMaxWidth().height(challengeHeight.dp),
             factory = {
                 WebView(context).apply {
                     settings.javaScriptEnabled = true
@@ -108,57 +123,86 @@ private fun RealTurnstileWidget(
                     settings.allowFileAccess = false
                     settings.allowContentAccess = false
                     settings.mixedContentMode = WebSettings.MIXED_CONTENT_NEVER_ALLOW
-                    settings.cacheMode = WebSettings.LOAD_NO_CACHE
+                    // Respect HTTP caching rather than forcing the Turnstile script
+                    // to download again on each security challenge refresh.
+                    settings.cacheMode = WebSettings.LOAD_DEFAULT
                     settings.javaScriptCanOpenWindowsAutomatically = false
                     CookieManager.getInstance().setAcceptCookie(true)
                     CookieManager.getInstance().setAcceptThirdPartyCookies(this, true)
                     setBackgroundColor(android.graphics.Color.WHITE)
-                    addJavascriptInterface(TurnstileCallbacks(
-                        notify = { received -> post { currentCallback(received) } },
-                        failure = { post { currentFailure() } }
-                    ), "NativeTurnstile")
+                    addJavascriptInterface(
+                        TurnstileCallbacks(
+                            notify = { value -> post { currentCallback(value) } },
+                            ready = { post { currentReady() } },
+                            failure = { post { currentFailure() } },
+                            resize = { cssHeight -> post {
+                                challengeHeight = cssHeight.coerceIn(76, 350)
+                            } }
+                        ), "NativeTurnstile"
+                    )
                     webChromeClient = WebChromeClient()
                     webViewClient = object : WebViewClient() {
                         override fun shouldOverrideUrlLoading(
                             view: WebView?, request: WebResourceRequest?
                         ): Boolean = !allowedAuthUrl(request?.url)
                         override fun onReceivedError(
-                            view: WebView?,
-                            request: WebResourceRequest?,
+                            view: WebView?, request: WebResourceRequest?,
                             error: WebResourceError?
                         ) {
-                            if (request?.isForMainFrame == true) {
+                            if (request?.isForMainFrame == true)
                                 view?.post { currentFailure() }
-                            }
                         }
                     }
+                    // Explicit onload avoids the former 80 x 250ms JS polling
+                    // loop. An 12s fallback produces a visible retry rather than
+                    // leaving a blank widget indefinitely.
                     val html = """
-                     <!doctype html><html><head>
-                     <meta name="viewport" content="width=device-width,initial-scale=1">
-                     <style>body{background:#fff;margin:0;font:12px system-ui}
-                       #widget{min-height:70px;display:flex;justify-content:center;padding:10px 0}</style>
-                     </head><body><div id="widget"></div>
-                     <script src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit"
-                         async defer></script>
-                     <script>(function(){
-                       var tries=0;
-                       function mount(){
-                         if(!window.turnstile || !window.turnstile.render){
-                           if(++tries<80){setTimeout(mount,250);}else{NativeTurnstile.unavailable();}
-                           return;
-                         }
-                         window.turnstile.render('#widget',{
-                           sitekey:'SITE_KEY_PLACEHOLDER',action:'register',
-                           size:'flexible',theme:'light',
-                           callback:function(t){NativeTurnstile.verified(t)},
-                           'expired-callback':function(){NativeTurnstile.invalid()},
-                           'error-callback':function(){NativeTurnstile.unavailable()}
-                         });
-                       } mount();
-                     })();</script></body></html>
+                        <!doctype html><html><head>
+                        <meta name="viewport" content="width=device-width,initial-scale=1">
+                        <style>
+                          html,body{background:#fff;margin:0;padding:0;width:100%;overflow:hidden;}
+                          #widget{width:100%;min-height:65px;display:flex;align-items:flex-start;justify-content:center;}
+                          iframe{max-width:100%;}
+                        </style></head><body><div id="widget"></div>
+                        <script>
+                          (function(){
+                            var mounted=false;
+                            function measure(){
+                              var node=document.getElementById('widget');
+                              if(node) NativeTurnstile.measured(Math.ceil(node.getBoundingClientRect().height)+8);
+                            }
+                            window.mountBetvimaChallenge=function(){
+                              if(mounted)return;
+                              try {
+                                if(!window.turnstile || !window.turnstile.render)throw Error('not_ready');
+                                window.turnstile.render('#widget',{
+                                  sitekey:'SITE_KEY_PLACEHOLDER',
+                                  action:'register',size:'flexible',theme:'light',
+                                  appearance:'always',
+                                  callback:function(token){NativeTurnstile.verified(token)},
+                                  'expired-callback':function(){NativeTurnstile.invalid()},
+                                  'error-callback':function(){NativeTurnstile.unavailable()}
+                                });
+                                mounted=true;
+                                NativeTurnstile.mounted();
+                                if(window.ResizeObserver){
+                                  new ResizeObserver(measure).observe(document.getElementById('widget'));
+                                }
+                                requestAnimationFrame(measure);
+                              } catch(e) { NativeTurnstile.unavailable(); }
+                            };
+                            window.setTimeout(function(){
+                              if(!mounted)NativeTurnstile.unavailable();
+                            },12000);
+                          })();
+                        </script>
+                        <script src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit&amp;onload=mountBetvimaChallenge"
+                                async defer onerror="NativeTurnstile.unavailable()"></script>
+                        </body></html>
                     """.trimIndent().replace("SITE_KEY_PLACEHOLDER", siteKey)
-                    loadDataWithBaseURL("https://betvima.com/auth/register",
-                        html, "text/html", "UTF-8", null)
+                    loadDataWithBaseURL(
+                        "https://betvima.com/auth/register", html, "text/html", "UTF-8", null
+                    )
                 }
             },
             onRelease = {
@@ -194,6 +238,7 @@ fun NativeRegistrationForm(
     var confirmation by remember { mutableStateOf("") }
     var showPassword by rememberSaveable { mutableStateOf(false) }
     var currency by rememberSaveable { mutableStateOf("IRR") }
+    var currencyMenuOpen by rememberSaveable { mutableStateOf(false) }
     var referral by rememberSaveable { mutableStateOf("") }
     var adult by rememberSaveable { mutableStateOf(false) }
     var terms by rememberSaveable { mutableStateOf(false) }
@@ -203,6 +248,7 @@ fun NativeRegistrationForm(
     var submitAttempted by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
     var challengeError by remember { mutableStateOf(false) }
+    var challengeReady by remember { mutableStateOf(false) }
     // A successful registration is remembered across rotation, but never the password.
     // Password is retained in volatile memory only for the explicit "Log in" action.
     var registrationCompleted by rememberSaveable { mutableStateOf(false) }
@@ -214,6 +260,7 @@ fun NativeRegistrationForm(
         siteKey = null
         token = null
         challengeError = false
+        challengeReady = false
         siteKey = try {
             publicTurnstileKey(api.get("/api/v1/mobile/config"))
                 .also {
@@ -420,8 +467,8 @@ fun NativeRegistrationForm(
         border = BorderStroke(1.dp, Palette.border),
         shadowElevation = 1.dp
     ) {
-        Column(Modifier.fillMaxWidth().padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp)) {
+        Column(Modifier.fillMaxWidth().padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(9.dp)) {
 
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Surface(color = Color(0xFFEAF7F1),
@@ -445,11 +492,6 @@ fun NativeRegistrationForm(
                         modifier = Modifier.padding(horizontal = 9.dp, vertical = 6.dp))
                 }
             }
-            HorizontalDivider(color = edge)
-
-            Text(tr(lang, "ACCOUNT DETAILS", "مشخصات حساب"),
-                color = Palette.muted, fontSize = 10.sp, letterSpacing = 1.sp,
-                fontWeight = FontWeight.Black)
             OutlinedTextField(
                 value = email,
                 onValueChange = { email = it.trim().take(254); error = null },
@@ -501,25 +543,64 @@ fun NativeRegistrationForm(
                 }, color = Palette.red, fontSize = 11.sp)
             }
 
-            Text(tr(lang, "ACCOUNT CURRENCY", "ارز حساب"),
-                color = pale, fontSize = 10.sp,
-                fontWeight = FontWeight.Black, letterSpacing = 1.sp)
-            Row(horizontalArrangement = Arrangement.spacedBy(7.dp)) {
-                listOf("IRR", "USD", "EUR", "GBP").forEach { value ->
-                    val selected = currency == value
-                    Surface(
-                        color = if (selected) Color(0xFFE6F8F0) else Color(0xFFF3F5F7),
-                        shape = RoundedCornerShape(12.dp),
-                        border = BorderStroke(
-                            if (selected) 1.5.dp else 1.dp,
-                            if (selected) Palette.green else edge),
-                        modifier = Modifier.weight(1f).heightIn(min = 45.dp)
-                            .clickable { currency = value }
+            // One compact anchored popup, with the two currencies supported by
+            // the native sign-up experience. Never show EUR/GBP here.
+            Box(Modifier.fillMaxWidth()) {
+                Surface(
+                    color = Color(0xFFF7F9FB),
+                    shape = RoundedCornerShape(13.dp),
+                    border = BorderStroke(1.dp, edge),
+                    modifier = Modifier.fillMaxWidth().height(51.dp)
+                        .clickable { currencyMenuOpen = true }
+                ) {
+                    Row(
+                        Modifier.fillMaxWidth().padding(horizontal = 13.dp),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Box(contentAlignment = Alignment.Center) {
-                            Text(value, color = if (selected) Palette.text else Palette.muted,
-                                fontSize = 12.sp, fontWeight = FontWeight.Black)
+                        Icon(Icons.Default.Payments, null, tint = Palette.blue,
+                            modifier = Modifier.size(20.dp))
+                        Spacer(Modifier.width(10.dp))
+                        Column(Modifier.weight(1f)) {
+                            Text(tr(lang, "Account currency", "ارز حساب"),
+                                color = Palette.muted, fontSize = 10.sp)
+                            Text(
+                                if (currency == "USD")
+                                    tr(lang, "US Dollar (USD)", "دلار آمریکا (USD)")
+                                else tr(lang, "Iranian Rial (IRR)", "ریال ایران (IRR)"),
+                                color = Palette.text, fontSize = 13.sp,
+                                fontWeight = FontWeight.Bold
+                            )
                         }
+                        Icon(Icons.Default.KeyboardArrowDown, null, tint = Palette.blue)
+                    }
+                }
+                DropdownMenu(
+                    expanded = currencyMenuOpen,
+                    onDismissRequest = { currencyMenuOpen = false },
+                    modifier = Modifier.background(Color.White)
+                ) {
+                    registrationCurrencies.forEach { value ->
+                        DropdownMenuItem(
+                            text = {
+                                Column {
+                                    Text(
+                                        if (value == "USD") tr(lang, "US Dollar", "دلار آمریکا")
+                                        else tr(lang, "Iranian Rial", "ریال ایران"),
+                                        fontWeight = FontWeight.Bold, color = Palette.text
+                                    )
+                                    Text(value, fontSize = 11.sp, color = Palette.muted)
+                                }
+                            },
+                            leadingIcon = {
+                                Icon(Icons.Default.AccountBalanceWallet, null,
+                                    tint = if (currency == value) Palette.green else Palette.blue)
+                            },
+                            trailingIcon = {
+                                if (currency == value)
+                                    Icon(Icons.Default.CheckCircle, null, tint = Palette.green)
+                            },
+                            onClick = { currency = value; currencyMenuOpen = false }
+                        )
                     }
                 }
             }
@@ -539,7 +620,8 @@ fun NativeRegistrationForm(
 
             Surface(color = Color(0xFFF4F6F9), shape = RoundedCornerShape(15.dp),
                 border = BorderStroke(1.dp, edge)) {
-                Column(Modifier.padding(10.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Column(Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                    verticalArrangement = Arrangement.spacedBy(0.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Checkbox(checked = adult, onCheckedChange = { adult = it },
                             colors = CheckboxDefaults.colors(checkedColor = green))
