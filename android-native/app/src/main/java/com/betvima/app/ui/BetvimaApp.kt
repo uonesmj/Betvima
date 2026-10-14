@@ -72,6 +72,15 @@ fun BetvimaApp(model: AppViewModel) {
             }
         }
     }
+    LaunchedEffect(state.tab, state.feature, state.signedIn, isForeground) {
+        if (isForeground && state.signedIn && state.tab == Tab.BETS &&
+            state.feature == Feature.NONE) {
+            while (true) {
+                delay(18_000)
+                model.refreshBetHistory(silent = true)
+            }
+        }
+    }
     BackHandler(enabled = languageOpen || searchOpen || state.betDetailVisible || state.showLogin ||
         state.showSlip || state.detail != null ||
         state.feature != Feature.NONE || accountOpen || drawer.isOpen ||
