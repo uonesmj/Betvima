@@ -81,7 +81,7 @@ fun CasinoLobby(lang: Lang) {
                 tr(lang,
                     "Game integration is not yet active. No bet can be made from this lobby. All displayed real-money amounts will be in USD after approval.",
                     "اتصال بازی‌ها هنوز فعال نشده است. از این صفحه امکان ثبت شرط وجود ندارد. مبالغ واقعی پس از تأیید اتصال با دلار نمایش داده می‌شوند."),
-                icon = Icons.Default.InfoOutline,
+                icon = Icons.Default.Info,
                 accent = Palette.blue)
         }
         item { ResponsibleNote(lang) }
