@@ -162,6 +162,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             sessionGeneration++
             mutable.update { it.copy(busy = false, showLogin = false, signedIn = true) }
             refreshAccount()
+            if (state.value.feature == Feature.NOTIFICATIONS) refreshNotifications()
         } catch (ex: Exception) {
             mutable.update { it.copy(busy = false, notice = ex.message ?: "Sign-in failed") }
         }
