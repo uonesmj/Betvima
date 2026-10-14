@@ -5,6 +5,8 @@
         android:allowBackup="false"
         android:usesCleartextTraffic="false"
         android:label="@string/app_name"
+        android:icon="@drawable/ic_betvima_launcher"
+        android:roundIcon="@drawable/ic_betvima_launcher"
         android:theme="@style/Theme.Betvima"
         android:supportsRtl="true">
         <activity
