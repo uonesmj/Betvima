@@ -11,6 +11,8 @@ import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
@@ -210,7 +212,8 @@ fun EmptyPanel(title: String, detail: String, onRetry: (() -> Unit)? = null) {
             Text(detail, textAlign = TextAlign.Center, color = Palette.muted,
                 fontSize = 12.sp, modifier = Modifier.padding(top = 5.dp))
             if (onRetry != null) TextButton(onClick = onRetry) {
-                Text("Refresh", color = Palette.blue, fontWeight = FontWeight.Bold)
+                Text(if (LocalLayoutDirection.current == LayoutDirection.Rtl) "تازه‌سازی" else "Refresh",
+                    color = Palette.blue, fontWeight = FontWeight.Bold)
             }
         }
     }
