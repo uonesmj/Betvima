@@ -76,4 +76,42 @@ class WalletFinanceTest {
             "IRR","2500000","test@example.com","", "5000000",
             "ok",true,null,null))
     }
+
+    @Test fun providerRangeIsAppliedWithoutInventingDefaults() {
+        val payload = JSONObject().put("methods", org.json.JSONArray().put(
+            JSONObject()
+                .put("id", "voucher_uvoucher")
+                .put("nameEn", "U-Voucher")
+                .put("nameFa", "یو ووچر")
+                .put("isAvailable", true)
+                .put("minAmountMinor", "150")
+                .put("maxAmountMinor", "25000")
+                .put("feeBps", 100)
+                .put("fixedFeeMinor", "15")
+        )).put("depositsEnabled", true).put("withdrawalsEnabled", true)
+            .put("operationsUnavailable", false)
+        val methods = parseWalletMethods(payload)
+        val m = methods.method("voucher_uvoucher")!!
+        assertEquals("یو ووچر", m.name)
+        assertEquals(100, m.feeBps)
+        assertEquals("15", m.fixedFeeMinor)
+        assertFalse(methods.amountAllowed("voucher_uvoucher", "149"))
+        assertTrue(methods.amountAllowed("voucher_uvoucher", "150"))
+        assertTrue(methods.amountAllowed("voucher_uvoucher", "25000"))
+        assertFalse(methods.amountAllowed("voucher_uvoucher", "25001"))
+        assertFalse(methods.amountAllowed("unknown", "200"))
+    }
+
+    @Test fun cryptoMethodLimitsCannotBeIgnoredAtSubmit() {
+        fun validate(value: String, min: String, max: String) =
+            walletTransferValidation(
+                "deposit", "crypto", "USDT", "Tron (TRC-20)",
+                "USD", value, "", "", "0", "ok", true,
+                null, null, min, max
+            )
+        assertEquals("method_limit", validate("20.00", "3000", "10000"))
+        assertNull(validate("30.00", "3000", "10000"))
+        assertEquals("method_limit", validate("120.00", "3000", "10000"))
+        assertEquals("minimum", validate("19.99", "0", "0"))
+    }
 }
