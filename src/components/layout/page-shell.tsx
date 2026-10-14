@@ -594,7 +594,7 @@ export function Footer({
                 <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-[#00D47A]" />{copy("Sportsbook & Live", "شرط‌بندی ورزشی و زنده")}
               </span>
             </div>
-            <h2 className={"mt-4 max-w-[620px] font-black leading-[1.17] text-white " + (locale === "fa" ? "text-[25px] tracking-normal sm:text-[32px] lg:text-[36px]" : "text-[28px] tracking-[-0.035em] sm:text-[37px] lg:text-[42px]")}>
+            <h2 className={"mt-4 max-w-[620px] font-black text-white " + (locale === "fa" ? "text-[25px] leading-[1.17] tracking-normal sm:text-[32px] lg:text-[36px]" : "text-[28px] leading-[1.12] tracking-[-0.035em] sm:text-[37px] lg:text-[42px]")}>
               {copy("Every match.", "هر مسابقه.")}<span className="block text-[#00D47A]">{copy("One destination.", "یک مقصد.")}</span>
             </h2>
             <p className="mt-2.5 max-w-[500px] text-[12px] font-medium leading-5 text-[#9CA9B9] sm:text-[13px]">
