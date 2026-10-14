@@ -130,7 +130,7 @@ fun BetvimaApp(model: AppViewModel) {
                             "menu" -> drawerScope.launch { drawer.open() }
                             "home" -> model.tab(Tab.HOME)
                             "casino" -> model.feature(Feature.CASINO)
-                            "bonus" -> model.feature(Feature.BONUSES)
+                            "bets" -> model.tab(Tab.BETS)
                             "sports" -> model.tab(Tab.SPORTS)
                             "language" -> languageOpen = true
                         }
