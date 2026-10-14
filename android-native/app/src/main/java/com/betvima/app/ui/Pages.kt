@@ -67,7 +67,7 @@ fun HomePage(state: AppState, model: AppViewModel) {
                     "با شروع مسابقات، فهرست اینجا نمایش داده می‌شود.")) { model.refreshLive() } }
         } else {
             items(state.live.take(4), key = { "home-live-" + it.id }) { match ->
-                MatchTile(match, state.liveEnabled, state.picks,
+                MatchTile(match, state.lang, state.liveEnabled, state.picks,
                     { model.openMatch(match.id) }) { m, s -> model.togglePick(match, m, s) }
             }
         }
@@ -80,7 +80,7 @@ fun HomePage(state: AppState, model: AppViewModel) {
                     "رشته دیگری انتخاب کنید یا فهرست را تازه‌سازی کنید.")) { model.refreshUpcoming() } }
         } else {
             items(state.upcoming.take(8), key = { "home-upcoming-" + it.id }) { match ->
-                MatchTile(match, state.liveEnabled, state.picks,
+                MatchTile(match, state.lang, state.liveEnabled, state.picks,
                     { model.openMatch(match.id) }) { m, s -> model.togglePick(match, m, s) }
             }
         }
@@ -169,7 +169,7 @@ private fun LeagueSection(key: String, matches: List<Match>, first: Boolean,
         if (expanded) {
             Spacer(Modifier.height(6.dp))
             matches.forEach { match ->
-                MatchTile(match, state.liveEnabled, state.picks,
+                MatchTile(match, state.lang, state.liveEnabled, state.picks,
                     { model.openMatch(match.id) }) { market, selection ->
                     model.togglePick(match, market, selection)
                 }
