@@ -27,7 +27,7 @@ Both must be enabled following controlled finance review. A code deployment alon
 - One payout per user+week is enforced via immutable unique key and SQL advisory lock; credit+award are atomic.
 - Worker can run repeatedly, including after an outage within the same week.
 - Frozen/suspended wallets, non-customer accounts and unresolved regrade/chargeback discrepancies are blocked.
-- Awards greater than USD 1,000 go to manual finance review (do not silently credit).
+- All verified eligible award sizes use the same idempotent ledger credit path; no undocumented US$1,000 cashback cap is applied. Monitor unusually large transfers as an operational alert.
 - Correction/chargeback after a paid reward triggers a discrepancy record and blocks later payments until finance resolves it. There is no automatic negative clawback.
 - Historical backfills are disabled to prevent accidental duplicate payouts.
 - If any candidate errors, worker exits nonzero and should alert operations.
