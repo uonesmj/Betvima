@@ -3,6 +3,8 @@ package com.betvima.app.ui
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.shape.CircleShape
@@ -46,10 +48,15 @@ fun SportsbookTopTabs(state: AppState, model: AppViewModel, onSearch: () -> Unit
         state.homeMode == HomeMode.TOP_BETS -> "bets"
         else -> "top"
     }
+    val tabListState = rememberLazyListState()
+    LaunchedEffect(active) {
+        val index = tabs.indexOfFirst { it.first == active }
+        if (index >= 0) tabListState.animateScrollToItem(index)
+    }
     Row(Modifier.fillMaxWidth().background(Palette.paper)
         .padding(start = 9.dp, end = 9.dp, top = 12.dp, bottom = 4.dp),
         verticalAlignment = Alignment.CenterVertically) {
-        LazyRow(Modifier.weight(1f),
+        LazyRow(Modifier.weight(1f), state = tabListState,
             horizontalArrangement = Arrangement.spacedBy(3.dp)) {
             items(tabs, key = { it.first }) { (id, title) ->
                 Surface(shape = RoundedCornerShape(26.dp),
@@ -107,7 +114,13 @@ fun ReferenceSportRibbon(state: AppState, model: AppViewModel, live: Boolean = f
     onSelect: ((String) -> Unit)? = null) {
     val current = (selectedKey ?: if (all) "top" else state.sport)
         .let { if (it == "all") "top" else it }
-    LazyRow(contentPadding = PaddingValues(horizontal = 13.dp, vertical = 10.dp),
+    val sportListState = rememberLazyListState()
+    LaunchedEffect(current) {
+        val index = sportChips.indexOfFirst { it.key == current }
+        if (index >= 0) sportListState.animateScrollToItem(index)
+    }
+    LazyRow(state = sportListState,
+        contentPadding = PaddingValues(horizontal = 13.dp, vertical = 10.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         items(sportChips, key = { it.key }) { sport ->
             val active = current == sport.key
