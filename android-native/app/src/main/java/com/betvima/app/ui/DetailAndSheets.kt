@@ -1,5 +1,6 @@
 package com.betvima.app.ui
 
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -424,37 +425,158 @@ fun SlipSheet(state: AppState, model: AppViewModel) {
 fun LoginSheet(state: AppState, model: AppViewModel) {
     var email by rememberSaveable { mutableStateOf("") }
     var password by rememberSaveable { mutableStateOf("") }
+    var visible by rememberSaveable { mutableStateOf(false) }
     val uri = LocalUriHandler.current
-    ModalBottomSheet(onDismissRequest = { model.showLogin(false) },
-        containerColor = Color.White) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val browserRegistration = {
+        // Account creation MUST pass the server's Cloudflare Turnstile, age and
+        // terms checks. Do not bypass them through a direct Supabase sign-up.
+        val target = android.net.Uri.parse("https://betvima.com/auth/register")
+        runCatching {
+            androidx.browser.customtabs.CustomTabsIntent.Builder()
+                .setShowTitle(true)
+                .build().launchUrl(context, target)
+        }.onFailure { uri.openUri(target.toString()) }
+    }
+    ModalBottomSheet(
+        onDismissRequest = { model.showLogin(false) },
+        containerColor = Color.White,
+        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+        dragHandle = { BottomSheetDefaults.DragHandle() }
+    ) {
         Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState())
-            .padding(horizontal = 23.dp).padding(bottom = 35.dp),
+            .padding(horizontal = 19.dp).padding(bottom = 34.dp),
             verticalArrangement = Arrangement.spacedBy(15.dp)) {
-            Text(tr(state.lang, "Welcome back", "خوش آمدید"),
-                fontSize = 25.sp, fontWeight = FontWeight.Black, color = Palette.text)
-            Text(tr(state.lang, "Secure BetVima account", "حساب امن بت‌ویما"),
-                fontSize = 12.sp, color = Palette.muted)
-            OutlinedTextField(email, { email = it }, label = { Text(tr(state.lang, "Email", "ایمیل")) },
-                modifier = Modifier.fillMaxWidth(), singleLine = true,
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email))
-            OutlinedTextField(password, { password = it },
-                label = { Text(tr(state.lang, "Password", "رمز عبور")) },
-                modifier = Modifier.fillMaxWidth(), singleLine = true,
-                visualTransformation = PasswordVisualTransformation(),
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password))
-            Button(onClick = { model.signIn(email, password) },
-                enabled = !state.busy && email.contains("@") && password.length >= 8,
-                colors = ButtonDefaults.buttonColors(containerColor = Palette.green),
-                modifier = Modifier.fillMaxWidth().height(52.dp)) {
-                if (state.busy) CircularProgressIndicator(Modifier.size(19.dp),
-                    color = Palette.ink, strokeWidth = 2.dp)
-                else Text(tr(state.lang, "Sign in securely", "ورود امن"),
-                    fontWeight = FontWeight.Black, color = Palette.ink)
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Text("BET", color = Palette.text, fontWeight = FontWeight.Black, fontSize = 22.sp)
+                Text("VIMA", color = Palette.green, fontWeight = FontWeight.Black, fontSize = 22.sp)
+                Spacer(Modifier.weight(1f))
+                IconButton(onClick = { model.showLogin(false) }) {
+                    Icon(Icons.Default.Close, tr(state.lang, "Close", "بستن"),
+                        tint = Palette.muted)
+                }
             }
-            TextButton(onClick = { uri.openUri("https://betvima.com/auth/register") },
-                modifier = Modifier.align(Alignment.CenterHorizontally)) {
-                Text(tr(state.lang, "New here? Create account", "حساب ندارید؟ ثبت‌نام کنید"),
-                    color = Palette.blue)
+            Surface(shape = RoundedCornerShape(14.dp), color = Color(0xFFEDEFF3)) {
+                Row(Modifier.fillMaxWidth().padding(4.dp)) {
+                    listOf(
+                        false to tr(state.lang, "Log in", "ورود"),
+                        true to tr(state.lang, "Sign up", "ثبت‌نام")
+                    ).forEach { (register, title) ->
+                        val selected = state.registerScreen == register
+                        val background by androidx.compose.animation.animateColorAsState(
+                            if (selected) Palette.blue else Color.Transparent,
+                            label = "authTabColor")
+                        Surface(
+                            color = background,
+                            shape = RoundedCornerShape(11.dp),
+                            modifier = Modifier.weight(1f).height(46.dp)
+                                .clickable { model.setRegisterScreen(register) }
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Text(title, color = if (selected) Color.White else Palette.text,
+                                    fontWeight = FontWeight.ExtraBold, fontSize = 14.sp)
+                            }
+                        }
+                    }
+                }
+            }
+            androidx.compose.animation.AnimatedContent(
+                targetState = state.registerScreen,
+                label = "authModeTransition",
+                transitionSpec = {
+                    (androidx.compose.animation.fadeIn() +
+                        androidx.compose.animation.slideInHorizontally { it / 5 })
+                        .togetherWith(androidx.compose.animation.fadeOut() +
+                            androidx.compose.animation.slideOutHorizontally { -it / 5 })
+                }
+            ) { registering ->
+                Column(verticalArrangement = Arrangement.spacedBy(13.dp)) {
+                    if (!registering) {
+                        Text(tr(state.lang, "Welcome back", "خوش آمدید"),
+                            fontSize = 24.sp, fontWeight = FontWeight.Black,
+                            color = Palette.text)
+                        Text(tr(state.lang,
+                            "Use your BetVima account credentials to access your wallet and tickets.",
+                            "با مشخصات حساب بت‌ویما وارد شوید و به کیف‌پول و شرط‌ها دسترسی داشته باشید."),
+                            fontSize = 12.sp, color = Palette.muted, lineHeight = 19.sp)
+                        OutlinedTextField(
+                            value = email, onValueChange = { email = it.trim().take(254) },
+                            label = { Text(tr(state.lang, "Email", "ایمیل")) },
+                            leadingIcon = { Icon(Icons.Default.Email, null) },
+                            modifier = Modifier.fillMaxWidth(),
+                            singleLine = true, shape = RoundedCornerShape(13.dp),
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email)
+                        )
+                        OutlinedTextField(
+                            value = password, onValueChange = { password = it.take(128) },
+                            label = { Text(tr(state.lang, "Password", "رمز عبور")) },
+                            leadingIcon = { Icon(Icons.Default.Lock, null) },
+                            trailingIcon = {
+                                IconButton(onClick = { visible = !visible }) {
+                                    Icon(if (visible) Icons.Default.VisibilityOff
+                                        else Icons.Default.Visibility,
+                                        tr(state.lang, "Show or hide password",
+                                            "نمایش یا پنهان‌کردن رمز"))
+                                }
+                            },
+                            modifier = Modifier.fillMaxWidth(), singleLine = true,
+                            shape = RoundedCornerShape(13.dp),
+                            visualTransformation = if (visible)
+                                androidx.compose.ui.text.input.VisualTransformation.None
+                            else PasswordVisualTransformation(),
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password)
+                        )
+                        Button(onClick = { model.signIn(email, password) },
+                            enabled = !state.busy && email.contains("@") &&
+                                password.length >= 8,
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = Palette.green, contentColor = Palette.ink),
+                            shape = RoundedCornerShape(13.dp),
+                            modifier = Modifier.fillMaxWidth().height(53.dp)) {
+                            if (state.busy) CircularProgressIndicator(Modifier.size(20.dp),
+                                color = Palette.ink, strokeWidth = 2.dp)
+                            else Text(tr(state.lang, "Log in securely", "ورود امن به حساب"),
+                                fontWeight = FontWeight.Black)
+                        }
+                        TextButton(
+                            onClick = {
+                                uri.openUri("https://betvima.com/auth/reset-password")
+                            },
+                            modifier = Modifier.align(Alignment.End)) {
+                            Text(tr(state.lang, "Forgot password?", "رمز را فراموش کرده‌اید؟"),
+                                color = Palette.blue, fontSize = 12.sp)
+                        }
+                    } else {
+                        Text(tr(state.lang, "Create your account", "ساخت حساب کاربری"),
+                            fontSize = 24.sp, fontWeight = FontWeight.Black,
+                            color = Palette.text)
+                        Text(tr(state.lang,
+                            "For your security, registration uses the verified BetVima form with age, terms and Cloudflare bot verification. Return here to log in after registration.",
+                            "برای امنیت حساب، ثبت‌نام در فرم رسمی بت‌ویما با تأیید سن، قوانین و بررسی ضدربات انجام می‌شود. پس از ثبت‌نام به اپ برگردید و وارد شوید."),
+                            fontSize = 12.sp, lineHeight = 20.sp, color = Palette.muted)
+                        BvInformationStrip(
+                            tr(state.lang,
+                                "Registration opens in a secure browser tab; no password is passed from the app.",
+                                "فرم ثبت‌نام در تب امن مرورگر باز می‌شود؛ هیچ رمزی از اپ به مرورگر ارسال نمی‌شود."),
+                            icon = Icons.Default.Shield, accent = Palette.blue)
+                        Button(onClick = browserRegistration,
+                            shape = RoundedCornerShape(13.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = Palette.green, contentColor = Palette.ink),
+                            modifier = Modifier.fillMaxWidth().height(53.dp)) {
+                            Icon(Icons.Default.OpenInBrowser, null, modifier = Modifier.size(20.dp))
+                            Spacer(Modifier.width(8.dp))
+                            Text(tr(state.lang, "Open verified registration", "ثبت‌نام امن بت‌ویما"),
+                                fontWeight = FontWeight.Black)
+                        }
+                        OutlinedButton(onClick = { model.setRegisterScreen(false) },
+                            shape = RoundedCornerShape(13.dp),
+                            modifier = Modifier.fillMaxWidth().height(49.dp)) {
+                            Text(tr(state.lang, "I registered — log in", "ثبت‌نام کردم؛ ورود به اپ"),
+                                color = Palette.blue, fontWeight = FontWeight.Bold)
+                        }
+                    }
+                }
             }
             ResponsibleNote(state.lang)
         }
