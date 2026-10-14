@@ -91,8 +91,7 @@ private fun walletIntentPayload(
                 put("quoteRateIrrPerUsd", quote.rateIrrPerUsd)
                 put("quoteTimestamp", quote.quotedAt)
                 put("quoteSignature", quote.signature)
-                val raw = walletInputMinor(amountMinor, "IRR")
-                // Caller passes the original wallet minor amount separately.
+                // Caller adds the original wallet amount in a separate field.
             }
         }
     }
@@ -213,7 +212,8 @@ private fun WalletReceipt(
     lang: Lang,
     onClose: () -> Unit,
     onCheck: () -> Unit,
-    checking: Boolean
+    checking: Boolean,
+    canCheckVoucher: Boolean
 ) {
     val clipboard = LocalClipboardManager.current
     val address = receipt.providerAddress
@@ -265,7 +265,7 @@ private fun WalletReceipt(
                     tint = wBlue)
             }
         }
-        if (receipt.status !in setOf("succeeded","failed") &&
+        if (canCheckVoucher && receipt.status !in setOf("succeeded","failed") &&
             address.isBlank() && receipt.publicId.isNotBlank()) {
             OutlinedButton(onClick = onCheck, enabled = !checking,
                 modifier = Modifier.fillMaxWidth()) {
@@ -354,7 +354,18 @@ fun WalletTransferSheet(
     }.orEmpty()
 
     fun submit() {
-        if (busy || issue != null || transactionMinor == null) return
+        // The user can leave a confirmation open long enough for an FX quote
+        // to expire. Validate again at the actual press, not only at render.
+        if (busy || transactionMinor == null) return
+        val freshIssue = walletTransferValidation(
+            direction,method,coin,network,currency,amount,destination,voucherCode,
+            wallet.availableMinor,wallet.integrity,methodEnabled,quote,usdRate
+        )
+        if (freshIssue != null) {
+            confirm = false
+            error = walletErrorText(freshIssue, lang)
+            return
+        }
         scope.launch {
             busy = true
             error = null
@@ -597,7 +608,8 @@ fun WalletTransferSheet(
                             } finally { busy = false }
                         }
                     },
-                    checking = busy
+                    checking = busy,
+                    canCheckVoucher = isDeposit && voucher
                 )
                 if (error != null) Text(error.orEmpty(), color = Color(0xFFBC344A),
                     fontSize = 11.sp)
