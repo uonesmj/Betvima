@@ -291,6 +291,14 @@ fun BetsPage(state: AppState, model: AppViewModel) {
                     }
                 }
             }
+            if (state.betsHasMore) item {
+                OutlinedButton(onClick = model::loadMoreBets, enabled = !state.moreBetsLoading,
+                    modifier = Modifier.fillMaxWidth()) {
+                    if (state.moreBetsLoading) CircularProgressIndicator(
+                        Modifier.size(17.dp), color = Palette.green, strokeWidth = 2.dp)
+                    else Text(tr(state.lang, "Load older bets", "نمایش شرط‌های قدیمی‌تر"))
+                }
+            }
         }
     }
 }
@@ -359,6 +367,15 @@ fun WalletPage(state: AppState, model: AppViewModel) {
                             Text(money(tx.amountMinor, wallet.currency), fontWeight = FontWeight.Bold,
                                 fontSize = 12.sp)
                         }
+                    }
+                }
+                if (wallet.hasMore) item {
+                    OutlinedButton(onClick = model::loadMoreWallet,
+                        enabled = !state.moreWalletLoading,
+                        modifier = Modifier.fillMaxWidth()) {
+                        if (state.moreWalletLoading) CircularProgressIndicator(
+                            Modifier.size(17.dp), color = Palette.green, strokeWidth = 2.dp)
+                        else Text(tr(state.lang, "Load more transactions", "تراکنش‌های بیشتر"))
                     }
                 }
             }
