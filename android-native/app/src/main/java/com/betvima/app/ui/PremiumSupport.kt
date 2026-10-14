@@ -439,7 +439,7 @@ private fun SupportNewTicketSheet(
                     verticalAlignment = Alignment.CenterVertically) {
                     Surface(color = supportMint.copy(alpha = .14f),
                         shape = RoundedCornerShape(14.dp)) {
-                        Icon(Icons.Default.EditSquare, null, tint = supportMint,
+                        Icon(Icons.Default.Edit, null, tint = supportMint,
                             modifier = Modifier.padding(11.dp).size(23.dp))
                     }
                     Spacer(Modifier.width(12.dp))
