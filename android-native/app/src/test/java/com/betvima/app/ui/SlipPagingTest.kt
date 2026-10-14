@@ -7,8 +7,21 @@ import org.junit.Test
 class SlipPagingTest {
     @Test fun boundedPagesAdaptToScreenHeight() {
         assertEquals(1, slipPageCapacity(600))
-        assertEquals(2, slipPageCapacity(760))
-        assertEquals(3, slipPageCapacity(940))
+        assertEquals(1, slipPageCapacity(749))
+        assertEquals(2, slipPageCapacity(750))
+        assertEquals(2, slipPageCapacity(1039))
+        assertEquals(3, slipPageCapacity(1040))
+    }
+
+    @Test fun fixedViewportNeverCutsOffLastCardOrPager() {
+        assertEquals(65, slipPickAreaHeightDp(0, 2))
+        assertEquals(86, slipPickAreaHeightDp(1, 2))
+        assertEquals(168, slipPickAreaHeightDp(2, 2))
+        assertEquals(208, slipPickAreaHeightDp(3, 2))
+        assertEquals(126, slipPickAreaHeightDp(2, 1))
+        assertEquals(250, slipPickAreaHeightDp(3, 3))
+        assertEquals(290, slipPickAreaHeightDp(20, 3))
+        assertTrue(slipPickAreaHeightDp(20, 2) < 220)
     }
 
     @Test fun everyOneOfTwentyPicksIsAccessibleWithoutScrolling() {
