@@ -262,7 +262,7 @@ fun NativeRegistrationForm(lang: Lang, onSuccess: (Boolean) -> Unit, onLogin: ()
                 label = { Text(tr(lang, "Password", "رمز عبور")) },
                 placeholder = { Text(tr(lang, "At least 8 characters", "حداقل ۸ کاراکتر"),
                     color = hint) },
-                leadingIcon = { Icon(Icons.Default.LockOutline, null) },
+                leadingIcon = { Icon(Icons.Default.Lock, null) },
                 trailingIcon = {
                     IconButton(onClick = { showPassword = !showPassword }) {
                         Icon(if (showPassword) Icons.Default.VisibilityOff
