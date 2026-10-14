@@ -290,7 +290,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         mutable.update { it.copy(showLogin = show, registerScreen = register, authError = null) }
     fun setRegisterScreen(register: Boolean) =
         mutable.update { it.copy(registerScreen = register, authError = null) }
-    fun signIn(email: String, password: String) = viewModelScope.launch {
+    fun signIn(email: String, password: String, navigateHome: Boolean = false) = viewModelScope.launch {
         if (state.value.busy) return@launch
         if (!email.trim().contains("@") || password.length !in 8..128) {
             mutable.update { it.copy(authError = tr(it.lang,
@@ -301,8 +301,15 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         try {
             vault.signIn(email.trim(), password, api)
             sessionGeneration++
-            mutable.update { it.copy(busy = false, showLogin = false, signedIn = true,
-                authError = null) }
+            mutable.update { it.copy(
+                busy = false, showLogin = false, signedIn = true, authError = null,
+                tab = if (navigateHome) Tab.HOME else it.tab,
+                homeMode = if (navigateHome) HomeMode.TOP else it.homeMode,
+                feature = if (navigateHome) Feature.NONE else it.feature,
+                detail = if (navigateHome) null else it.detail,
+                detailLoading = if (navigateHome) false else it.detailLoading
+            ) }
+            if (navigateHome) refreshAll()
             refreshAccount()
             if (state.value.tab == Tab.BETS) refreshBetHistory()
             refreshNotifications()
