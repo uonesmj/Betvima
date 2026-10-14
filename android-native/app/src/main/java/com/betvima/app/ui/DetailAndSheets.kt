@@ -3,6 +3,7 @@ package com.betvima.app.ui
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
@@ -312,7 +313,7 @@ fun SlipSheet(state: AppState, model: AppViewModel) {
                 BvInformationStrip(tr(state.lang,
                         "Real-money placement is disabled in this build pending verified regulatory approval, age and jurisdiction checks. Quotes do not place bets.",
                         "ثبت شرط واقعی در این نسخه تا تأیید مجوز قانونی، سن و منطقه کاربر غیرفعال است. استعلام ضریب به معنی ثبت شرط نیست."),
-                    icon = Icons.Default.InfoOutline, accent = Color(0xFF986015))
+                    icon = Icons.Default.Info, accent = Color(0xFF986015))
             }
         }
     }
