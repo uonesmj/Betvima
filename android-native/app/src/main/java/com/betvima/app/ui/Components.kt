@@ -29,37 +29,67 @@ fun tr(lang: Lang, en: String, fa: String) = if (lang == Lang.FA) fa else en
 
 @Composable
 fun BrandHeader(lang: Lang, onHome: () -> Unit, onLanguage: () -> Unit,
-    onAccount: () -> Unit, onNotifications: () -> Unit, unread: Int) {
-    Row(Modifier.fillMaxWidth().background(Palette.ink).padding(horizontal = 18.dp, vertical = 14.dp),
-        verticalAlignment = Alignment.CenterVertically) {
-        Column(Modifier.clickable(onClick = onHome)) {
-            Text("BETVIMA", fontSize = 23.sp, fontWeight = FontWeight.Black, letterSpacing = 1.6.sp,
-                color = Color.White)
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(Modifier.size(5.dp).clip(CircleShape).background(Palette.green))
-                Spacer(Modifier.width(5.dp))
-                Text(tr(lang, "SPORTSBOOK", "پلتفرم ورزشی"), fontSize = 9.sp,
-                    color = Color(0xFF99B2BD), letterSpacing = 1.sp, fontWeight = FontWeight.Bold)
+    onAccount: () -> Unit, onNotifications: () -> Unit, unread: Int,
+    walletBalance: String? = null, onWallet: () -> Unit = {}) {
+    Column(Modifier.fillMaxWidth().background(Palette.ink)) {
+        Row(Modifier.fillMaxWidth().heightIn(min = 66.dp)
+            .padding(horizontal = 13.dp, vertical = 7.dp),
+            verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.clickable(onClick = onHome).padding(vertical = 5.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(Modifier.size(width = 4.dp, height = 23.dp)
+                        .clip(RoundedCornerShape(8.dp)).background(Palette.green))
+                    Spacer(Modifier.width(7.dp))
+                    Text("BET", fontSize = 21.sp, fontWeight = FontWeight.Black,
+                        color = Color.White, letterSpacing = .6.sp)
+                    Text("VIMA", fontSize = 21.sp, fontWeight = FontWeight.Black,
+                        color = Palette.green, letterSpacing = .6.sp)
+                }
+                Text(tr(lang, "SPORTS & LIVE", "ورزش و مسابقات زنده"),
+                    fontSize = 9.sp, color = Color(0xFF9FB2BB),
+                    modifier = Modifier.padding(start = 11.dp))
             }
-        }
-        Spacer(Modifier.weight(1f))
-        IconButton(onClick = onLanguage) {
-            Icon(Icons.Default.Language, contentDescription = "Change language", tint = Color.White)
-        }
-        Box(contentAlignment = Alignment.Center) {
-            IconButton(onClick = onNotifications) {
-                Icon(Icons.Default.Notifications, contentDescription =
-                    tr(lang, "Notifications", "اعلان‌ها"), tint = Color.White)
+            Spacer(Modifier.weight(1f))
+            if (walletBalance != null) {
+                Surface(shape = RoundedCornerShape(12.dp), color = Palette.darkElevated,
+                    modifier = Modifier.clickable(onClick = onWallet)) {
+                    Column(Modifier.padding(horizontal = 9.dp, vertical = 7.dp)) {
+                        Text(tr(lang, "BALANCE", "موجودی"),
+                            color = Color(0xFFA8C2CE), fontSize = 8.sp)
+                        Text(walletBalance, color = Palette.green, fontSize = 10.sp,
+                            fontWeight = FontWeight.ExtraBold, maxLines = 1,
+                            overflow = TextOverflow.Ellipsis)
+                    }
+                }
             }
-            if (unread > 0) Box(Modifier.align(Alignment.TopEnd).padding(top = 3.dp, end = 4.dp)
-                .size(8.dp).clip(CircleShape).background(Palette.green))
-        }
-        Surface(shape = RoundedCornerShape(14.dp), color = Palette.dark,
-            modifier = Modifier.size(42.dp).clickable(onClick = onAccount)) {
+            IconButton(onClick = onLanguage, modifier = Modifier.size(39.dp)) {
+                Text(if (lang == Lang.FA) "EN" else "فا", color = Color.White,
+                    fontWeight = FontWeight.ExtraBold, fontSize = 11.sp)
+            }
             Box(contentAlignment = Alignment.Center) {
-                Icon(Icons.Default.PersonOutline, contentDescription = "Account", tint = Palette.green)
+                IconButton(onClick = onNotifications, modifier = Modifier.size(39.dp)) {
+                    Icon(Icons.Default.NotificationsNone,
+                        contentDescription = tr(lang, "Notifications", "اعلان‌ها"),
+                        tint = Color.White, modifier = Modifier.size(21.dp))
+                }
+                if (unread > 0) Surface(shape = CircleShape, color = Palette.green,
+                    modifier = Modifier.align(Alignment.TopEnd).size(15.dp)) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Text(if (unread > 9) "9+" else unread.toString(),
+                            fontSize = 8.sp, fontWeight = FontWeight.Black, color = Palette.ink)
+                    }
+                }
+            }
+            Surface(shape = RoundedCornerShape(12.dp), color = Palette.darkElevated,
+                modifier = Modifier.size(40.dp).clickable(onClick = onAccount)) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(Icons.Default.PersonOutline,
+                        contentDescription = tr(lang, "Account", "حساب کاربری"),
+                        tint = Palette.green, modifier = Modifier.size(22.dp))
+                }
             }
         }
+        HorizontalDivider(color = Color.White.copy(alpha = .08f), thickness = 1.dp)
     }
 }
 
