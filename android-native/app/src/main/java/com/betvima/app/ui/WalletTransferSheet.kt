@@ -14,6 +14,10 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clip
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.text.AnnotatedString
@@ -307,6 +311,7 @@ fun WalletTransferSheet(
     // Voucher codes are not persisted in Android's saved instance state.
     var voucherCode by remember { mutableStateOf("") }
     var picker by remember { mutableStateOf("") }
+    var coinSearch by remember { mutableStateOf("") }
     var confirm by remember { mutableStateOf(false) }
     var busy by remember { mutableStateOf(false) }
     var uncertainResult by rememberSaveable(direction) { mutableStateOf(false) }
@@ -424,44 +429,93 @@ fun WalletTransferSheet(
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             if (receipt == null) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Surface(color = Color(0xFFEEF4FF), shape = RoundedCornerShape(14.dp)) {
-                        Icon(if (isDeposit) Icons.Default.SouthWest else Icons.Default.NorthEast,
-                            null, tint = wBlue, modifier = Modifier.padding(10.dp).size(23.dp))
-                    }
-                    Spacer(Modifier.width(10.dp))
-                    Column(Modifier.weight(1f)) {
-                        Text(if (isDeposit) wTr(lang,"Add funds","واریز وجه")
-                            else wTr(lang,"Withdraw funds","برداشت وجه"),
-                            color = wText, fontSize = 20.sp, fontWeight = FontWeight.Black)
-                        Text(wTr(lang,"Secure BetVima wallet","کیف پول امن بت‌ویما"),
-                            color = wMuted, fontSize = 11.sp)
-                    }
-                    IconButton(onClick = onDismiss, enabled = !busy) {
-                        Icon(Icons.Default.Close, null)
+                Surface(
+                    shape = RoundedCornerShape(23.dp),
+                    color = Color(0xFF102953),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Box(Modifier.fillMaxWidth().background(
+                        Brush.linearGradient(listOf(
+                            Color(0xFF10284D),
+                            if (isDeposit) Color(0xFF0F5A65) else Color(0xFF133F93),
+                            Color(0xFF087FF5)
+                        )))) {
+                        Box(Modifier.align(Alignment.TopEnd)
+                            .offset(x = 40.dp, y = (-58).dp).size(154.dp)
+                            .clip(CircleShape).background(Color.White.copy(alpha = .07f)))
+                        Row(Modifier.fillMaxWidth().padding(
+                            start = 15.dp, end = 6.dp, top = 15.dp, bottom = 15.dp),
+                            verticalAlignment = Alignment.CenterVertically) {
+                            Surface(
+                                color = Color.White.copy(alpha = .13f),
+                                shape = RoundedCornerShape(14.dp),
+                                border = BorderStroke(1.dp, Color.White.copy(alpha = .19f))
+                            ) {
+                                Icon(
+                                    if (isDeposit) Icons.Default.SouthWest else Icons.Default.NorthEast,
+                                    null, tint = Color.White,
+                                    modifier = Modifier.padding(11.dp).size(22.dp))
+                            }
+                            Spacer(Modifier.width(11.dp))
+                            Column(Modifier.weight(1f)) {
+                                Text(
+                                    if (isDeposit) wTr(lang,"Add funds","واریز وجه")
+                                    else wTr(lang,"Withdraw funds","برداشت وجه"),
+                                    color = Color.White,
+                                    fontSize = 20.sp, fontWeight = FontWeight.Black)
+                                Text(wTr(lang,"BETVIMA · VERIFIED PAYMENT FLOW",
+                                    "بت‌ویما · عملیات مالی امن"),
+                                    color = Color.White.copy(alpha = .77f),
+                                    fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                            }
+                            IconButton(onClick = onDismiss, enabled = !busy) {
+                                Icon(Icons.Default.Close, wTr(lang,"Close","بستن"),
+                                    tint = Color.White)
+                            }
+                        }
                     }
                 }
+                Row(verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth()) {
+                    Icon(Icons.Default.VerifiedUser, null, tint = Color(0xFF0C9363),
+                        modifier = Modifier.size(17.dp))
+                    Spacer(Modifier.width(7.dp))
+                    Text(wTr(lang, "Payments use the same secure account as the website",
+                        "پرداخت‌ها با همان حساب امن سایت انجام می‌شوند"),
+                        color = wMuted, fontSize = 11.sp)
+                }
+                Text(wTr(lang,"PAYMENT METHOD","روش پرداخت"),
+                    color = wMuted, fontSize = 10.sp,
+                    fontWeight = FontWeight.Black, letterSpacing = .8.sp)
                 Row(horizontalArrangement = Arrangement.spacedBy(7.dp)) {
                     listOf("crypto","voucher_uvoucher","voucher_hotvoucher").forEach { option ->
                         val selected = method == option
                         Surface(
-                            color = if (selected) wBlue else Color(0xFFF3F6FA),
-                            border = BorderStroke(1.dp, if (selected) wBlue else wBorder),
-                            shape = RoundedCornerShape(13.dp),
+                            color = if (selected) Color(0xFFEAF3FF) else Color(0xFFF7F9FC),
+                            border = BorderStroke(if (selected) 1.6.dp else 1.dp,
+                                if (selected) wBlue else wBorder),
+                            shape = RoundedCornerShape(15.dp),
                             modifier = Modifier.weight(1f).clickable {
                                 if (!busy) { method = option; amount = ""; error = null }
                             }
                         ) {
                             Column(Modifier.padding(vertical = 10.dp),
                                 horizontalAlignment = Alignment.CenterHorizontally) {
-                                Text(if (option == "crypto") "₿" else if (option == "voucher_uvoucher")
-                                    "🎟" else "🎫", fontSize = 19.sp)
+                                Surface(
+                                    color = if (selected) wBlue else Color.White,
+                                    shape = CircleShape
+                                ) {
+                                    Text(if (option == "crypto") "₿" else if (option == "voucher_uvoucher")
+                                        "🎟" else "🎫", fontSize = 19.sp,
+                                        modifier = Modifier.padding(horizontal = 9.dp, vertical = 5.dp))
+                                }
+                                Spacer(Modifier.height(4.dp))
                                 Text(when (option) {
                                     "crypto" -> "Crypto"
                                     "voucher_uvoucher" -> "U-Voucher"
                                     else -> "HotVoucher"
-                                }, color = if (selected) Color.White else wText,
-                                    fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                                }, color = if (selected) wBlue else wText,
+                                    fontSize = 10.sp, fontWeight = FontWeight.Black)
                             }
                         }
                     }
@@ -522,6 +576,26 @@ fun WalletTransferSheet(
                             money(wallet.availableMinor,wallet.currency),
                             color = wMuted, fontSize = 10.sp)
                 }
+                if (selectedPaymentMethod != null && methodEnabled) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Default.Info, null, tint = wBlue,
+                            modifier = Modifier.size(15.dp))
+                        Spacer(Modifier.width(6.dp))
+                        val bounds = buildString {
+                            if (selectedPaymentMethod.minMinor != "0")
+                                append(wTr(lang,"Method minimum: ","حداقل این روش: ") +
+                                    money(selectedPaymentMethod.minMinor, lookupCurrency))
+                            if (selectedPaymentMethod.maxMinor != "0") {
+                                if (isNotEmpty()) append("  ·  ")
+                                append(wTr(lang,"Maximum: ","حداکثر: ") +
+                                    money(selectedPaymentMethod.maxMinor, lookupCurrency))
+                            }
+                        }
+                        Text(bounds.ifBlank {
+                            wTr(lang, "Provider limits apply", "محدودیت‌های درگاه اعمال می‌شوند")
+                        }, color = wMuted, fontSize = 10.sp)
+                    }
+                }
                 if (voucher && currency != "USD") {
                     Surface(color = Color(0xFFEEF4FF), shape = RoundedCornerShape(13.dp)) {
                         Column(Modifier.padding(11.dp)) {
@@ -574,6 +648,34 @@ fun WalletTransferSheet(
                             modifier = Modifier.padding(12.dp), color = Color(0xFFB5472F),
                             fontSize = 11.sp
                         )
+                    }
+                }
+                if (uncertainResult) {
+                    Surface(color = Color(0xFFFFF7E9), shape = RoundedCornerShape(15.dp),
+                        border = BorderStroke(1.dp, Color(0xFFF1D3A5))) {
+                        Column(Modifier.fillMaxWidth().padding(13.dp),
+                            verticalArrangement = Arrangement.spacedBy(9.dp)) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(Icons.Default.WarningAmber, null,
+                                    tint = Color(0xFF966214), modifier = Modifier.size(19.dp))
+                                Spacer(Modifier.width(7.dp))
+                                Text(wTr(lang, "Request needs reconciliation",
+                                    "وضعیت درخواست نیازمند بررسی است"),
+                                    color = Color(0xFF855913), fontSize = 12.sp,
+                                    fontWeight = FontWeight.Black)
+                            }
+                            Text(wTr(lang,
+                                "To avoid duplicate charges, sending again is locked. Check recent payments before starting another request.",
+                                "برای جلوگیری از تراکنش تکراری، ارسال مجدد قفل است. ابتدا پرداخت‌های اخیر را بررسی کنید."),
+                                color = wText, fontSize = 11.sp)
+                            OutlinedButton(onClick = onOpenHistory,
+                                modifier = Modifier.fillMaxWidth()) {
+                                Icon(Icons.Default.History, null,
+                                    modifier = Modifier.size(17.dp))
+                                Spacer(Modifier.width(6.dp))
+                                Text(wTr(lang, "Review payment history", "بررسی تاریخچه پرداخت"))
+                            }
+                        }
                     }
                 }
                 if (error != null) {
