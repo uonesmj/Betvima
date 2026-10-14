@@ -7,6 +7,28 @@ import org.json.JSONObject
 import org.junit.Test
 
 class FinancialFormattingTest {
+    @Test fun historyFiltersUseServerPaginationAndStableContract() {
+        val today = java.time.LocalDate.parse("2026-10-14")
+        assertEquals(
+            "/api/v1/bets?pageSize=30&page=1&sortBy=placed_at&sortDirection=desc",
+            betHistoryPath(BetHistoryQuery(), 1, today)
+        )
+        assertEquals(
+            "/api/v1/bets?pageSize=30&page=2&sortBy=placed_at&sortDirection=desc" +
+                "&status=pending%2Caccepted%2Cpartially_settled%2Cmanual_review" +
+                "&type=MULTIPLE&q=ABC+123&from=2026-09-14",
+            betHistoryPath(BetHistoryQuery(
+                status = "open", type = "multiple", search = " ABC 123 ", days = 30),
+                2, today)
+        )
+        assertTrue(betHistoryPath(BetHistoryQuery(status = "settled"), 1, today)
+            .contains("cashed_out"))
+        assertTrue(runCatching { betHistoryPath(BetHistoryQuery(status = "unknown"), 1) }
+            .isFailure)
+        assertTrue(runCatching { betHistoryPath(BetHistoryQuery(), 0) }.isFailure)
+        assertTrue(runCatching { betHistoryPath(BetHistoryQuery(days = 3), 1) }.isFailure)
+    }
+
     @Test fun nativeSearchEncodesTeamAndLeagueNames() {
         assertEquals("/api/v1/matches?live=true&page=1&pageSize=50&q=Real+Madrid",
             searchQueryPath(" Real Madrid ", true))
