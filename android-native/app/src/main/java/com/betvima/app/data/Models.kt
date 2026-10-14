@@ -69,3 +69,5 @@ fun money(minor: String, currency: String = "USD"): String = runCatching {
     val fraction = if (currency in setOf("IRT", "IRR")) 0 else 2
     BigDecimal(minor).movePointLeft(fraction).setScale(fraction, RoundingMode.HALF_UP).toPlainString() + " " + currency
 }.getOrDefault("—")
+
+data class SupportTicket(val id: String, val subject: String, val status: String, val category: String)
