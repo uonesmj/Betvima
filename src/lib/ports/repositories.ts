@@ -31,6 +31,8 @@ export interface CatalogRepository extends Repository {
   listLiveMatches(c: ActorContext, limit: number): Promise<Match[]>;
   listLiveSportCounts(c: ActorContext): Promise<Record<string, number>>;
   listUpcomingMatches(c: ActorContext, hours: number, limit: number): Promise<Match[]>;
+  /** Upcoming non-esports events with fresh, open odds; excludes unpriced fixtures. */
+  listTopBetMatches(c: ActorContext, hours: number, limit: number): Promise<Match[]>;
   search(c: ActorContext, query: string, limit: number): Promise<Match[]>;
 }
 export interface MatchFilter {

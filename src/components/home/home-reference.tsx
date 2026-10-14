@@ -9,7 +9,6 @@ import {
   ChevronRight,
   Clock3,
   Flame,
-  Gamepad2,
   Radio,
   Search,
   Star,
@@ -43,7 +42,6 @@ const SPORT_IMAGE_FILES: Record<string, string> = {
   mma: 'mma.png',
   boxing: 'boxing.png',
   'table-tennis': 'table-tennis.png',
-  esports: 'esports.png',
 };
 
 function formatHomeRelative(iso: string) {
@@ -576,13 +574,15 @@ function SportStrip() {
 export function HomeReference({  sports,
   live,
   upcoming,
-  esports,
+  topBets,
+  topBetsUnavailable = false,
   liveEnabled,
 }: {
   sports: Sport[];
   live: MatchView[];
   upcoming: MatchView[];
-  esports: MatchView[];
+  topBets: MatchView[];
+  topBetsUnavailable?: boolean;
   liveEnabled: boolean;
 }) {
 
@@ -591,25 +591,19 @@ export function HomeReference({  sports,
       !match.sportKey.toLowerCase().includes('esport'),
   );
 
-  const topBets = [...footballUpcoming]
-    .filter((match) =>
-      (match.topMarkets ?? []).some(
-        (market) =>
-          market.status === 'open' &&
-          market.selections.some(
-            (selection) => selection.status === 'open',
-          ),
-      ),
-    )
-    .sort(
-      (a, b) =>
-        (b.marketsCount ?? 0) -
-        (a.marketsCount ?? 0),
-    )
-    .slice(0, 6);
+  // The backend selects fresh, open odds before ranking; guard again on render.
+  const featuredBets = topBets.filter((match) =>
+    !match.isLive &&
+    match.isBettingAvailable &&
+    !match.sportKey.toLowerCase().includes('esport') &&
+    (match.topMarkets ?? []).some((market) =>
+      market.status === 'open' &&
+      market.selections.some((selection) => selection.status === 'open'),
+    ),
+  ).slice(0, 6);
 
   const topBetIds = new Set(
-    topBets.map((match) => match.id),
+    featuredBets.map((match) => match.id),
   );
 
   const upcomingOnly = footballUpcoming.filter(
@@ -651,12 +645,12 @@ export function HomeReference({  sports,
           title="Top Bets"
           href="/topbets"
           icon={<Flame size={17} />}
-          count={topBets.length}
+          count={featuredBets.length}
         />
 
-        {topBets.length > 0 ? (
+        {featuredBets.length > 0 ? (
           <div className="flex snap-x snap-mandatory gap-2.5 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden xl:grid xl:grid-cols-3 xl:overflow-visible xl:gap-3">
-            {topBets.map((match) => (
+            {featuredBets.map((match) => (
               <MatchCard
                 key={match.id}
                 match={match}
@@ -665,30 +659,7 @@ export function HomeReference({  sports,
             ))}
           </div>
         ) : (
-          <EmptyState text="No data available." />
-        )}
-      </section>
-
-      {/* Esports */}
-      <section className="mb-6">
-        <SectionHeader
-          title="Esports"
-          href="/sports/esports"
-          icon={<Gamepad2 size={17} />}
-          count={esports.length}
-        />
-        {esports.length > 0 ? (
-          <div className="flex snap-x snap-mandatory gap-2.5 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden xl:grid xl:grid-cols-3 xl:overflow-visible xl:gap-3">
-            {esports.slice(0, 6).map((match) => (
-              <MatchCard
-                key={match.id}
-                match={match}
-                liveEnabled={liveEnabled}
-              />
-            ))}
-          </div>
-        ) : (
-          <EmptyState text="No esports events available." />
+          <EmptyState text={topBetsUnavailable ? "Top bets are temporarily unavailable." : "No upcoming matches with active odds right now."} />
         )}
       </section>
 

@@ -13,11 +13,10 @@ export const dynamic = 'force-dynamic';
 export default async function TopBetsPage() {
   const services = createServices();
   const [matches, liveEnabled] = await Promise.all([
-    services.catalog.listUpcomingMatches(serviceRoleContext, 168, 50),
+    services.catalog.listTopBetMatches(serviceRoleContext, 168, 30),
     readLiveBettingEnabled(services.admin),
   ]);
-  const topBets = matches.filter((m) => m.sportKey.toLowerCase().includes('esport') === false).filter((m) => (m.topMarkets ?? []).some((market) => market.selections.length > 0)).sort((a, b) => (b.marketsCount ?? 0) - (a.marketsCount ?? 0)).slice(0, 30);
-    console.log('[TOPBETS_QUALIFIED]', 'qualified=' + topBets.length, 'nonEsports=' + matches.filter((m) => m.sportKey.toLowerCase().includes('esport') === false).length);
+  const topBets = matches;
   return (
     <PageShell title='Top Bets' subtitle='Popular upcoming events'>
       {!liveEnabled ? <ServiceNotice tone="warning" titleKey="page.liveBettingUnavailable" childrenKey="page.liveBettingUnavailableDetail" /> : null}

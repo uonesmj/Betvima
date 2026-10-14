@@ -425,6 +425,44 @@ export class PostgresCatalogRepository implements CatalogRepository {
     return rankUpcomingMatches(matches).slice(0, Math.min(limit, 100));
   }
 
+  /**
+   * Select candidates with fresh, open prematch odds BEFORE ranking. The generic
+   * upcoming catalogue is ranked by league, so a small result can contain only
+   * unpriced fixtures even when other matches have bookable selections.
+   * attachTopMarkets validates freshness again to avoid showing expired quotes.
+   */
+  async listTopBetMatches(_c: ActorContext, hours: number, limit: number): Promise<Match[]> {
+    const take = Math.min(Math.max(Math.trunc(limit), 1), 100);
+    const windowHours = Math.min(Math.max(Math.trunc(hours), 1), 168);
+    const rows = await this.db.query<Row>(
+      `select ${MATCH_SELECT} ${MATCH_FROM}
+        where ${ODDS_ONLY_MATCH_SQL}
+          and m.status = 'scheduled'
+          and m.scheduled_at between now() and now() + ($1::int * interval '1 hour')
+          and s.slug <> 'esports'
+          and exists (
+            select 1
+              from nova.markets mk
+              join nova.selections sel on sel.market_id = mk.id
+             where mk.match_id = m.id
+               and mk.status = 'open'
+               and sel.status = 'open'
+               and sel.provider = 'the_odds_api'
+               and sel.odds_updated_at >= now() - interval '300 seconds'
+          )
+        order by m.scheduled_at asc
+        limit $2`,
+      [windowHours, Math.min(500, Math.max(100, take * 10))],
+    );
+    const matches = await this.attachTopMarkets(rows);
+    return rankUpcomingMatches(matches.filter((match) =>
+      match.isBettingAvailable &&
+      match.sportKey !== 'esports' &&
+      // attachTopMarkets only returns open markets with open, fresh selections.
+      (match.topMarkets ?? []).some((market) => market.selections.length > 0),
+    )).slice(0, take);
+  }
+
   async search(_c: ActorContext, query: string, limit: number): Promise<Match[]> {
     const rows = await this.db.query<Row>(
       `select ${MATCH_SELECT} ${MATCH_FROM}

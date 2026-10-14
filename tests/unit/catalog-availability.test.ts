@@ -43,4 +43,41 @@ describe('catalog live availability', () => {
     expect(query.mock.calls[1]![0]).toContain("sel.provider = 'the_odds_api'");
 
   });
+  it('selects Top Bets from fresh open prematch odds, not stale high-ranked fixtures', async () => {
+    const query = vi.fn()
+      .mockResolvedValueOnce([{
+        id: 'match-test', status: 'scheduled', sport_slug: 'football',
+        scheduled_at: '2026-10-15T19:00:00Z', markets_count: 5,
+      }])
+      .mockResolvedValueOnce([{
+        id: 'market-test', match_id: 'match-test', key: 'h2h', status: 'open',
+        selection_id: 'selection-test', selection_market_id: 'market-test',
+        selection_status: 'open', selection_code: 'home', selection_name: 'Home',
+        selection_odds_scaled: '20000', selection_odds_version: 1,
+      }]);
+    const catalog = new PostgresCatalogRepository({ query } as unknown as Db);
+    const result = await catalog.listTopBetMatches({ userId: null, role: 'anon' }, 168, 6);
+    expect(result).toHaveLength(1);
+    expect(result[0]?.topMarkets?.[0]?.selections[0]?.id).toBe('selection-test');
+    const [sql, args] = query.mock.calls[0]!;
+    expect(sql).toContain("m.provider = 'the_odds_api'");
+    expect(sql).toContain("s.slug <> 'esports'");
+    expect(sql).toContain("mk.status = 'open'");
+    expect(sql).toContain("sel.status = 'open'");
+    expect(sql).toContain("sel.odds_updated_at >= now() - interval '300 seconds'");
+    expect(args).toEqual([168, 100]);
+  });
+
+  it('excludes a top bet when odds expire between discovery and hydration', async () => {
+    const query = vi.fn()
+      .mockResolvedValueOnce([{
+        id: 'match-test', status: 'scheduled', sport_slug: 'football',
+        scheduled_at: '2026-10-15T19:00:00Z',
+      }])
+      .mockResolvedValueOnce([{ id: 'market-test', match_id: 'match-test', key: 'h2h', status: 'open', selection_id: null }]);
+    const catalog = new PostgresCatalogRepository({ query } as unknown as Db);
+    const result = await catalog.listTopBetMatches({ userId: null, role: 'anon' }, 168, 6);
+    expect(result).toEqual([]);
+  });
+
 });
