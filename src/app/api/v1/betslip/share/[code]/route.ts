@@ -1,11 +1,9 @@
-import { z } from 'zod';
+import { isBetSlipShareCode } from '@/lib/betslip-share-code';
 import { ApiError, withErrorHandling, jsonOk } from '@/lib/errors';
 import { enforceRateLimit } from '@/server/http/request';
 import { createServices } from '@/server/services/container';
 
 export const dynamic = 'force-dynamic';
-
-const codeSchema = z.string().regex(/^NOVA-[A-HJ-NP-Z2-9]{8}$/);
 
 type StoredSelection = {
   matchId: string;
@@ -31,7 +29,7 @@ function availability(snapshot: { matchStatus: string; marketStatus: string; sel
 export const GET = withErrorHandling('betslip.share.load', async (ctx, request: Request, routeContext: { params: Promise<{ code: string }> }) => {
   const { code: rawCode } = await routeContext.params;
   const code = rawCode.trim().toUpperCase();
-  if (codeSchema.safeParse(code).success === false) throw new ApiError('BAD_REQUEST', 'Invalid bet slip code');
+  if (!isBetSlipShareCode(code)) throw new ApiError('BAD_REQUEST', 'Invalid bet slip code');
   const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown';
   await enforceRateLimit(`betslip-share-load:${ip}`, 60, 60);
   const services = createServices();
