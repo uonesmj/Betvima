@@ -51,7 +51,8 @@ data class BetDetail(val id: String, val publicId: String, val status: String,
     val currency: String, val stakeMinor: String, val potentialPayoutMinor: String,
     val settledPayoutMinor: String?, val netResultMinor: String?,
     val placedAt: String, val settledAt: String?, val legs: List<BetLegDetail>)
-data class Transaction(val id: String, val type: String, val amountMinor: String, val time: String)
+data class Transaction(val id: String, val type: String, val amountMinor: String,
+    val time: String, val direction: String = "", val status: String = "")
 data class Wallet(val availableMinor: String, val balanceMinor: String,
     val heldMinor: String, val currency: String, val integrity: String,
     val transactions: List<Transaction>, val page: Int = 1, val hasMore: Boolean = false)
