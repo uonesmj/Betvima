@@ -4,6 +4,7 @@ import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -11,6 +12,7 @@ import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
+import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -78,12 +80,15 @@ fun SportsRibbon(selected: String, lang: Lang, showEsports: Boolean = true,
 
 @Composable
 fun HomePage(state: AppState, model: AppViewModel, onSearch: () -> Unit) {
+    val footerListState = rememberLazyListState()
+    val footerScope = rememberCoroutineScope()
     // Featured games are real, bettable upcoming markets, never fabricated promotions.
     val featured = state.upcoming.filter { match ->
         match.bettingAvailable && match.featured?.available == true &&
             match.featured?.selections?.any { it.available } == true
     }.sortedWith(compareByDescending<Match> { it.marketsCount }.thenBy { it.starts })
-    LazyColumn(contentPadding = PaddingValues(bottom = 28.dp),
+    LazyColumn(state = footerListState,
+        contentPadding = PaddingValues(bottom = 0.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp)) {
         item { SportsbookTopTabs(state, model, onSearch) }
         item { ReferenceTournamentRibbon(state, model) }
@@ -154,13 +159,19 @@ fun HomePage(state: AppState, model: AppViewModel, onSearch: () -> Unit) {
                 }
             }
         }
-        item { ResponsibleNote(state.lang) }
+        item(key = "premium-home-footer") {
+            PremiumAppFooter(state, model) {
+                footerScope.launch { footerListState.animateScrollToItem(0) }
+            }
+        }
     }
 }
 
 @Composable
 fun CatalogPage(state: AppState, model: AppViewModel, live: Boolean,
     onSearch: () -> Unit) {
+    val footerListState = rememberLazyListState()
+    val footerScope = rememberCoroutineScope()
     var liveSport by rememberSaveable { mutableStateOf("top") }
     var selectedLeague by rememberSaveable(live, liveSport, state.sport, state.tournamentLeague) {
         mutableStateOf(if (live) "" else state.tournamentLeague)
@@ -173,7 +184,8 @@ fun CatalogPage(state: AppState, model: AppViewModel, live: Boolean,
     val visibleGroups = if (selectedLeague.isBlank()) groups else
         groups.filterKeys { it == selectedLeague }
 
-    LazyColumn(contentPadding = PaddingValues(bottom = 22.dp),
+    LazyColumn(state = footerListState,
+        contentPadding = PaddingValues(bottom = 0.dp),
         verticalArrangement = Arrangement.spacedBy(9.dp)) {
         item { SportsbookTopTabs(state, model, onSearch) }
         item {
@@ -262,7 +274,11 @@ fun CatalogPage(state: AppState, model: AppViewModel, live: Boolean,
                 }
             }
         }
-        item { ResponsibleNote(state.lang) }
+        item(key = "premium-catalog-footer") {
+            PremiumAppFooter(state, model) {
+                footerScope.launch { footerListState.animateScrollToItem(0) }
+            }
+        }
     }
     if (tournamentOpen) PremiumTournamentSheet(
         lang = state.lang, groups = groups, selected = selectedLeague,
