@@ -29,7 +29,8 @@ import java.util.UUID
 
 /** Mirrors the native site's authenticated partner reporting, without invented financial figures. */
 @Composable
-fun AffiliateOperations(state: AppState, model: AppViewModel, currency: String) {
+fun AffiliateOperations(state: AppState, model: AppViewModel, currency: String,
+    minimumPayoutMinor: String = "0") {
     val context = LocalContext.current
     val api = remember { ApiClient() }
     val vault = remember { SessionVault(context) }
@@ -58,6 +59,7 @@ fun AffiliateOperations(state: AppState, model: AppViewModel, currency: String) 
     var payoutAsset by rememberSaveable { mutableStateOf("USDT_TRC20") }
     var payoutAmount by rememberSaveable { mutableStateOf("") }
     var payoutConfirm by remember { mutableStateOf(false) }
+    var availableWalletAssets by remember { mutableStateOf<Set<String>>(emptySet()) }
     var payoutKey by remember { mutableStateOf(UUID.randomUUID().toString()) }
 
     LaunchedEffect(state.signedIn, selected, page, refresh) {
@@ -76,6 +78,13 @@ fun AffiliateOperations(state: AppState, model: AppViewModel, currency: String) 
                 else -> "/api/v1/affiliate/wallets"
             }
             val response = api.get(path, token)
+            if (selected == "payouts") {
+                // Fail closed if wallet availability cannot be verified server-side.
+                availableWalletAssets = emptySet()
+                val wallets = api.get("/api/v1/affiliate/wallets", token)
+                availableWalletAssets = wallets.arr("items").objects()
+                    .map { it.str("asset") }.filter(String::isNotBlank).toSet()
+            }
             val source = if (selected == "links") "links" else "items"
             val next = response.arr(source).objects()
             values = if (page == 1) next else (values + next).distinctBy { it.str("id", it.str("code")) }
@@ -187,14 +196,33 @@ fun AffiliateOperations(state: AppState, model: AppViewModel, currency: String) 
                                 onValueChange={ payoutAmount=it.filter { ch ->
                                     ch.isDigit() || ch=='.' }.take(16) },
                                 modifier=Modifier.fillMaxWidth(),singleLine=true,
-                                label={Text(tr(state.lang,"Amount in USD","مبلغ به دلار"))},
+                                label={Text(tr(state.lang,"Amount","مبلغ")+" ("+currency+")")},
                                 keyboardOptions=KeyboardOptions(keyboardType=KeyboardType.Decimal))
                             val minor = runCatching {
-                                BigDecimal(payoutAmount).setScale(2,RoundingMode.UNNECESSARY)
-                                    .movePointRight(2).toBigIntegerExact().toString()
+                                val decimals = if (currency in setOf("IRT","IRR")) 0 else 2
+                                BigDecimal(payoutAmount).setScale(decimals,RoundingMode.UNNECESSARY)
+                                    .movePointRight(decimals).toBigIntegerExact().toString()
                             }.getOrNull()
+                            val payable = data?.optJSONObject("payable")?.str("payableMinor")
+                                ?.toBigDecimalOrNull()
+                            val meetsMinimum = minor?.toBigDecimalOrNull()?.let {
+                                it >= (minimumPayoutMinor.toBigDecimalOrNull() ?: BigDecimal.ZERO)
+                            } ?: false
+                            val validBalance = minor?.toBigDecimalOrNull()?.let {
+                                payable != null && it <= payable
+                            } ?: false
+                            val walletReady = availableWalletAssets.contains(payoutAsset)
+                            if (!walletReady) Text(tr(state.lang,
+                                "Save a wallet for the chosen network before requesting a payout.",
+                                "قبل از برداشت، کیف پول شبکه انتخاب‌شده را ثبت کنید."),
+                                color=Palette.red,fontSize=11.sp)
+                            if (minimumPayoutMinor != "0") Text(tr(state.lang,
+                                "Minimum payout: ","حداقل برداشت: ") +
+                                money(minimumPayoutMinor,currency),
+                                color=Palette.muted,fontSize=11.sp)
                             Button(onClick={payoutConfirm=true},
-                                enabled=!actionBusy && minor!=null && minor.toBigDecimal()>BigDecimal.ZERO,
+                                enabled=!actionBusy && minor!=null && minor.toBigDecimal()>BigDecimal.ZERO &&
+                                    meetsMinimum && validBalance && walletReady,
                                 modifier=Modifier.fillMaxWidth(),
                                 colors=ButtonDefaults.buttonColors(containerColor=Palette.green)) {
                                 Text(tr(state.lang,"Review payout request","بررسی درخواست برداشت"),
