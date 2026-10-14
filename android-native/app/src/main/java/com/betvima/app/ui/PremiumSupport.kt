@@ -78,12 +78,18 @@ internal fun SupportStatusChip(status: String, lang: Lang) {
         color = color.copy(alpha = .095f),
         border = BorderStroke(1.dp, color.copy(alpha = .15f))
     ) {
-        Row(Modifier.padding(horizontal = 9.dp, vertical = 6.dp),
-            verticalAlignment = Alignment.CenterVertically) {
+        Row(
+            modifier = Modifier.widthIn(max = 190.dp)
+                .padding(horizontal = 9.dp, vertical = 6.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
             Box(Modifier.size(6.dp).clip(CircleShape).background(color))
-            Spacer(Modifier.width(5.dp))
-            Text(supportStatusName(status, lang), color = color,
-                fontSize = 10.sp, fontWeight = FontWeight.Bold)
+            Spacer(Modifier.width(6.dp))
+            Text(
+                supportStatusName(status, lang), color = color,
+                fontSize = 10.sp, fontWeight = FontWeight.Bold,
+                maxLines = 1, overflow = TextOverflow.Ellipsis
+            )
         }
     }
 }
