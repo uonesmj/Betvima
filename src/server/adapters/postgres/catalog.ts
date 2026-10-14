@@ -458,9 +458,8 @@ export class PostgresCatalogRepository implements CatalogRepository {
     return rankUpcomingMatches(matches.filter((match) =>
       match.isBettingAvailable &&
       match.sportKey !== 'esports' &&
-      (match.topMarkets ?? []).some((market) =>
-        market.selections.some((selection) => selection.status === 'open'),
-      ),
+      // attachTopMarkets only returns open markets with open, fresh selections.
+      (match.topMarkets ?? []).some((market) => market.selections.length > 0),
     )).slice(0, take);
   }
 
