@@ -103,4 +103,19 @@ fun money(minor: String, currency: String = "USD"): String = runCatching {
 data class UserNotification(val id: String, val eventKey: String, val title: String,
     val body: String, val createdAt: String, val readAt: String?)
 data class NotificationPage(val items: List<UserNotification>, val page: Int, val hasMore: Boolean)
-data class SupportTicket(val id: String, val subject: String, val status: String, val category: String)
+data class SupportTicket(
+    val id: String, val subject: String, val status: String, val category: String,
+    val createdAt: String = "", val updatedAt: String = "", val lastMessageAt: String = "",
+    val priority: String = "normal", val unreadMessages: Int = 0
+)
+data class SupportTicketPage(
+    val items: List<SupportTicket>, val page: Int, val total: Int, val hasMore: Boolean
+)
+data class SupportThreadMessage(
+    val id: String, val body: String, val senderRole: String, val createdAt: String,
+    val attachments: List<String> = emptyList()
+)
+data class SupportConversation(
+    val ticket: SupportTicket, val messages: List<SupportThreadMessage>
+)
+

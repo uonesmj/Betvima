@@ -4,156 +4,385 @@ import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Send
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.platform.LocalContext
 import com.betvima.app.data.*
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import org.json.JSONObject
 
-data class TicketMessage(val id: String, val content: String, val sender: String, val time: String)
+private val chatNavy = Color(0xFF0C1C34)
+private val chatBlue = Color(0xFF087FF5)
+private val chatMint = Color(0xFF00D47A)
+private val chatMuted = Color(0xFF7B8899)
+private val chatInk = Color(0xFF192438)
+private val chatLine = Color(0xFFE0E7F0)
+
+private fun formatSupportTime(value: String) =
+    value.take(16).replace('T', ' ').ifBlank { "—" }
+
+@Composable
+private fun ConversationMessage(message: SupportThreadMessage, lang: Lang) {
+    val own = message.senderRole.lowercase() in setOf("user", "customer")
+    Row(Modifier.fillMaxWidth(),
+        horizontalArrangement = if (own) Arrangement.End else Arrangement.Start) {
+        Column(
+            modifier = Modifier.fillMaxWidth(.91f),
+            horizontalAlignment = if (own) Alignment.End else Alignment.Start,
+            verticalArrangement = Arrangement.spacedBy(5.dp)
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Surface(color = if (own) Color(0xFFE7F0FF) else Color(0xFFE1F7EB),
+                    shape = CircleShape) {
+                    Icon(
+                        if (own) Icons.Default.Person else Icons.Default.SupportAgent,
+                        null, tint = if (own) chatBlue else Color(0xFF058753),
+                        modifier = Modifier.padding(6.dp).size(15.dp))
+                }
+                Spacer(Modifier.width(6.dp))
+                Text(if (own) tr(lang,"You","شما")
+                    else if (message.senderRole == "system")
+                        tr(lang,"System","سیستم")
+                    else tr(lang,"BetVima Support","پشتیبانی بت‌ویما"),
+                    color = chatMuted, fontWeight = FontWeight.Black, fontSize = 10.sp)
+            }
+            Surface(
+                color = if (own) Color(0xFFEBF2FF) else Color.White,
+                shape = RoundedCornerShape(
+                    topStart = 17.dp, topEnd = 17.dp,
+                    bottomStart = if (own) 17.dp else 5.dp,
+                    bottomEnd = if (own) 5.dp else 17.dp),
+                border = BorderStroke(1.dp,
+                    if (own) Color(0xFFD9E7FF) else chatLine),
+                shadowElevation = if (own) 0.dp else 1.dp
+            ) {
+                Column(Modifier.fillMaxWidth().padding(13.dp),
+                    verticalArrangement = Arrangement.spacedBy(9.dp)) {
+                    if (message.body.isNotBlank()) {
+                        Text(message.body, color = chatInk,
+                            fontSize = 13.sp, lineHeight = 21.sp)
+                    }
+                    if (message.attachments.isNotEmpty()) {
+                        HorizontalDivider(color = chatLine)
+                        message.attachments.forEach { attachment ->
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(Icons.Default.AttachFile, null,
+                                    tint = chatBlue, modifier = Modifier.size(16.dp))
+                                Spacer(Modifier.width(6.dp))
+                                Text(attachment, color = chatBlue, fontSize = 11.sp,
+                                    maxLines = 2, overflow = TextOverflow.Ellipsis)
+                            }
+                        }
+                    }
+                    Row(horizontalArrangement = Arrangement.End,
+                        modifier = Modifier.fillMaxWidth()) {
+                        Icon(Icons.Default.Schedule, null,
+                            tint = chatMuted, modifier = Modifier.size(12.dp))
+                        Spacer(Modifier.width(4.dp))
+                        Text(formatSupportTime(message.createdAt), color = chatMuted,
+                            fontSize = 9.sp)
+                    }
+                }
+            }
+        }
+    }
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun TicketThreadSheet(ticket: SupportTicket, lang: Lang, onDismiss: () -> Unit) {
+fun TicketThreadSheet(
+    ticket: SupportTicket,
+    lang: Lang,
+    onDismiss: () -> Unit,
+    onUpdated: () -> Unit = {}
+) {
     val context = LocalContext.current
     val api = remember { ApiClient() }
     val vault = remember { SessionVault(context) }
     val scope = rememberCoroutineScope()
-    var messages by remember(ticket.id) { mutableStateOf<List<TicketMessage>>(emptyList()) }
-    var text by remember(ticket.id) { mutableStateOf("") }
+    val scrollState = rememberLazyListState()
+    var activeTicket by remember(ticket.id) { mutableStateOf(ticket) }
+    var messages by remember(ticket.id) { mutableStateOf<List<SupportThreadMessage>>(emptyList()) }
+    var draft by remember(ticket.id) { mutableStateOf("") }
     var loading by remember(ticket.id) { mutableStateOf(true) }
     var sending by remember(ticket.id) { mutableStateOf(false) }
+    var uncertain by remember(ticket.id) { mutableStateOf(false) }
+    var closing by remember(ticket.id) { mutableStateOf(false) }
+    var askClose by remember(ticket.id) { mutableStateOf(false) }
     var error by remember(ticket.id) { mutableStateOf<String?>(null) }
+    var scrollToNew by remember(ticket.id) { mutableStateOf(false) }
 
-    suspend fun loadMessages() {
-        loading = true
+    suspend fun refresh(silent: Boolean = false) {
+        if (!silent) loading = true
         try {
-            val token = vault.accessToken(api) ?: throw IllegalStateException("Sign in required")
-            val response = api.get("/api/v1/support/" + ticket.id, token)
-            val payload = response.opt("messages")
-            val records = when (payload) {
-                is org.json.JSONArray -> payload
-                is JSONObject -> payload.optJSONArray("items") ?: org.json.JSONArray()
-                else -> org.json.JSONArray()
-            }
-            messages = records.objects().map { message ->
-                TicketMessage(
-                    message.str("id"),
-                    message.str("body", message.str("message")),
-                    message.str("senderRole", message.str("sender_role", "support")),
-                    message.str("createdAt", message.str("created_at"))
-                )
-            }
+            val jwt = vault.accessToken(api)
+                ?: throw IllegalStateException(tr(lang,"Please sign in again","لطفاً دوباره وارد شوید"))
+            val result = api.supportConversation(jwt, ticket.id)
+            val before = messages.size
+            messages = result.messages.distinctBy { it.id }
+            activeTicket = result.ticket
+            if (messages.size > before) scrollToNew = true
             error = null
+            if (!silent) uncertain = false
         } catch (ex: Exception) {
-            error = ex.message ?: "Messages unavailable"
-        } finally { loading = false }
+            if (!silent) error = ex.message ?: tr(lang,
+                "Could not load conversation","دریافت گفت‌وگو ممکن نشد")
+        } finally {
+            loading = false
+        }
     }
-    LaunchedEffect(ticket.id) { loadMessages() }
+    LaunchedEffect(ticket.id) {
+        refresh()
+        while (true) {
+            delay(25_000)
+            if (!sending && !closing) refresh(silent = true)
+        }
+    }
+    LaunchedEffect(messages.size, scrollToNew) {
+        if (scrollToNew && messages.isNotEmpty()) {
+            scrollState.animateScrollToItem(messages.lastIndex)
+            scrollToNew = false
+        }
+    }
 
-    ModalBottomSheet(onDismissRequest = onDismiss,
-        containerColor = Palette.paper, dragHandle = { BottomSheetDefaults.DragHandle() }) {
-        Column(Modifier.fillMaxWidth().fillMaxHeight(.8f).padding(horizontal = 17.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Column(Modifier.weight(1f)) {
-                    Text(ticket.subject, fontSize = 19.sp, fontWeight = FontWeight.Black)
-                    Text(tr(lang, "Support conversation", "گفت‌وگو با پشتیبانی"),
-                        color = Palette.muted, fontSize = 11.sp)
-                }
-                SmallPill(ticket.status, Palette.greenLight, Palette.ink)
-            }
-            Spacer(Modifier.height(15.dp))
-            if (loading) LinearProgressIndicator(Modifier.fillMaxWidth(), color = Palette.green)
-            if (error != null) {
-                Text(error.orEmpty(), color = Palette.red, fontSize = 12.sp)
-                TextButton(onClick = { scope.launch { loadMessages() } }) {
-                    Text(tr(lang, "Retry", "تلاش دوباره"))
-                }
-            }
-            LazyColumn(
-                modifier = Modifier.weight(1f).fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                if (!loading && messages.isEmpty()) {
-                    item {
-                        EmptyPanel(tr(lang, "No messages yet", "هنوز پیامی ثبت نشده"),
-                            tr(lang, "Replies will appear after they arrive from support.",
-                                "پاسخ‌های پشتیبانی پس از ثبت در اینجا نمایش داده می‌شوند."))
+    ModalBottomSheet(
+        onDismissRequest = { if (!sending && !closing) onDismiss() },
+        containerColor = Color(0xFFF6F8FC),
+        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    ) {
+        Column(Modifier.fillMaxWidth().fillMaxHeight(.85f)) {
+            Surface(color = chatNavy, shape = RoundedCornerShape(
+                topStart = 23.dp, topEnd = 23.dp)) {
+                Column(Modifier.fillMaxWidth().background(
+                    Brush.linearGradient(listOf(
+                        Color(0xFF10243F), Color(0xFF133F55), Color(0xFF102B49))))
+                    .padding(horizontal = 16.dp, vertical = 15.dp),
+                    verticalArrangement = Arrangement.spacedBy(11.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Surface(color = chatMint.copy(alpha = .15f),
+                            shape = RoundedCornerShape(13.dp)) {
+                            Icon(Icons.Default.Forum, null, tint = chatMint,
+                                modifier = Modifier.padding(11.dp).size(21.dp))
+                        }
+                        Spacer(Modifier.width(11.dp))
+                        Column(Modifier.weight(1f)) {
+                            Text(tr(lang,"SUPPORT CONVERSATION","گفت‌وگوی پشتیبانی"),
+                                color = Color(0xFFB6D3DB),
+                                fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                            Text(activeTicket.subject, color = Color.White,
+                                fontWeight = FontWeight.Black, fontSize = 16.sp,
+                                maxLines = 2, overflow = TextOverflow.Ellipsis)
+                        }
+                        IconButton(onClick = onDismiss, enabled = !sending && !closing) {
+                            Icon(Icons.Default.Close, tr(lang,"Close","بستن"),
+                                tint = Color.White)
+                        }
                     }
-                }
-                items(messages, key = { it.id }) { message ->
-                    val own = message.sender.lowercase() in setOf("user", "customer")
-                    Row(Modifier.fillMaxWidth(),
-                        horizontalArrangement = if (own) Arrangement.End else Arrangement.Start) {
-                        Surface(
-                            modifier = Modifier.fillMaxWidth(.9f),
-                            color = if (own) Palette.greenLight else Color.White,
-                            shape = RoundedCornerShape(16.dp),
-                            border = BorderStroke(1.dp,
-                                if (own) Palette.green.copy(alpha = .25f) else Palette.border)
-                        ) {
-                            Column(Modifier.padding(12.dp)) {
-                                Text(
-                                    if (own) tr(lang, "You", "شما")
-                                    else tr(lang, "Support", "پشتیبانی"),
-                                    fontSize = 10.sp, color = Palette.muted,
-                                    fontWeight = FontWeight.Bold
-                                )
-                                Text(message.content, fontSize = 13.sp,
-                                    color = Palette.text, modifier = Modifier.padding(top = 5.dp))
-                                Text(message.time.take(16).replace("T", " "),
-                                    fontSize = 9.sp, color = Palette.muted,
-                                    modifier = Modifier.padding(top = 8.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Surface(color = Color.White.copy(alpha = .10f),
+                            shape = RoundedCornerShape(50)) {
+                            Text("#" + activeTicket.id.take(8).uppercase(),
+                                color = Color.White, fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.padding(horizontal = 9.dp, vertical = 6.dp))
+                        }
+                        Spacer(Modifier.width(8.dp))
+                        Surface(color = Color.White) {
+                            SupportStatusChip(activeTicket.status, lang)
+                        }
+                        Spacer(Modifier.weight(1f))
+                        IconButton(onClick = { scope.launch { refresh() } },
+                            enabled = !loading && !sending && !closing) {
+                            Icon(Icons.Default.Refresh, tr(lang,"Refresh","تازه‌سازی"),
+                                tint = Color(0xFFB4DFF2))
+                        }
+                        if (supportActive(activeTicket.status)) {
+                            IconButton(onClick = { askClose = true }, enabled = !sending) {
+                                Icon(Icons.Default.TaskAlt,
+                                    tr(lang,"Close ticket","بستن درخواست"),
+                                    tint = Color(0xFFFFD29B))
                             }
                         }
                     }
                 }
             }
-            if (ticket.status !in setOf("closed", "resolved")) {
-                Row(Modifier.fillMaxWidth().padding(vertical = 12.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedTextField(value = text, onValueChange = { text = it.take(5000) },
-                        modifier = Modifier.weight(1f), minLines = 1, maxLines = 3,
-                        placeholder = { Text(tr(lang, "Type a message", "پیام بنویسید")) })
-                    FilledIconButton(
-                        onClick = {
-                            scope.launch {
-                                sending = true
-                                try {
-                                    val token = vault.accessToken(api)
-                                        ?: throw IllegalStateException("Sign in required")
-                                    api.post("/api/v1/support/" + ticket.id + "/messages",
-                                        JSONObject().put("body", text.trim()), token)
-                                    text = ""
-                                    loadMessages()
-                                } catch (ex: Exception) {
-                                    error = ex.message ?: "Unable to send"
-                                } finally { sending = false }
-                            }
-                        },
-                        enabled = !sending && text.isNotBlank(),
-                        colors = IconButtonDefaults.filledIconButtonColors(
-                            containerColor = Palette.green, contentColor = Palette.ink)
-                    ) {
-                        Icon(Icons.Default.Send,
-                            contentDescription = tr(lang, "Send", "ارسال"))
+            if (loading) LinearProgressIndicator(Modifier.fillMaxWidth(), color = chatMint)
+            if (error != null) {
+                Surface(color = Color(0xFFFFF0EB),
+                    modifier = Modifier.fillMaxWidth().padding(11.dp),
+                    shape = RoundedCornerShape(12.dp)) {
+                    Column(Modifier.padding(11.dp)) {
+                        Text(error.orEmpty(), color = Color(0xFFB2463B), fontSize = 11.sp)
+                        TextButton(onClick = { scope.launch { refresh() } }) {
+                            Text(tr(lang,"Retry","تلاش مجدد"))
+                        }
                     }
                 }
-            } else {
-                Text(tr(lang, "This ticket is closed.", "این درخواست بسته شده است."),
-                    modifier = Modifier.padding(vertical = 15.dp), color = Palette.muted)
+            }
+            LazyColumn(
+                state = scrollState,
+                modifier = Modifier.weight(1f).fillMaxWidth(),
+                contentPadding = PaddingValues(horizontal = 15.dp, vertical = 18.dp),
+                verticalArrangement = Arrangement.spacedBy(17.dp)
+            ) {
+                if (messages.isEmpty() && !loading) {
+                    item {
+                        Surface(color = Color.White,
+                            shape = RoundedCornerShape(17.dp),
+                            border = BorderStroke(1.dp, chatLine)) {
+                            Column(Modifier.fillMaxWidth().padding(22.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.spacedBy(9.dp)) {
+                                Icon(Icons.Default.MarkChatUnread, null,
+                                    tint = chatBlue, modifier = Modifier.size(29.dp))
+                                Text(tr(lang,"Conversation is ready","گفت‌وگو آماده است"),
+                                    color = chatInk, fontWeight = FontWeight.Black)
+                                Text(tr(lang,
+                                    "Messages from your support request appear here.",
+                                    "پیام‌های مربوط به این درخواست اینجا نمایش داده می‌شوند."),
+                                    color = chatMuted, fontSize = 11.sp)
+                            }
+                        }
+                    }
+                }
+                items(messages, key = { it.id }) { message ->
+                    ConversationMessage(message, lang)
+                }
+            }
+            Surface(color = Color.White, shadowElevation = 9.dp,
+                modifier = Modifier.fillMaxWidth()) {
+                Column(Modifier.fillMaxWidth().padding(horizontal = 13.dp, vertical = 11.dp),
+                    verticalArrangement = Arrangement.spacedBy(9.dp)) {
+                    if (supportActive(activeTicket.status)) {
+                        if (uncertain) {
+                            Surface(color = Color(0xFFFFF5E6),
+                                shape = RoundedCornerShape(12.dp)) {
+                                Text(tr(lang,
+                                    "Delivery is uncertain. Refresh the conversation before sending again.",
+                                    "وضعیت ارسال نامشخص است؛ پیش از ارسال دوباره گفت‌وگو را تازه‌سازی کنید."),
+                                    color = Color(0xFF95621F), fontSize = 11.sp,
+                                    modifier = Modifier.padding(11.dp))
+                            }
+                        }
+                        Row(Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.Bottom,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            OutlinedTextField(
+                                value = draft,
+                                onValueChange = { draft = it.take(5000) },
+                                modifier = Modifier.weight(1f),
+                                minLines = 1, maxLines = 4,
+                                placeholder = { Text(tr(lang,"Write your reply…","پاسخ خود را بنویسید…"),
+                                    fontSize = 12.sp) },
+                                shape = RoundedCornerShape(17.dp)
+                            )
+                            FilledIconButton(
+                                onClick = {
+                                    if (sending || uncertain || draft.isBlank()) return@FilledIconButton
+                                    scope.launch {
+                                        sending = true; error = null
+                                        try {
+                                            val token = vault.accessToken(api)
+                                                ?: throw IllegalStateException("Sign in required")
+                                            val sent = api.sendSupportMessage(token, ticket.id, draft)
+                                            draft = ""
+                                            messages = (messages + sent).distinctBy { it.id }
+                                            scrollToNew = true
+                                            refresh(silent = true)
+                                            onUpdated()
+                                        } catch (_: Exception) {
+                                            uncertain = true
+                                            error = tr(lang,
+                                                "Message status unknown. Please refresh before trying again.",
+                                                "نتیجه ارسال پیام نامشخص است؛ قبل از تلاش دوباره تازه‌سازی کنید.")
+                                        } finally { sending = false }
+                                    }
+                                },
+                                enabled = !sending && !uncertain && draft.isNotBlank(),
+                                modifier = Modifier.size(54.dp),
+                                shape = RoundedCornerShape(17.dp),
+                                colors = IconButtonDefaults.filledIconButtonColors(
+                                    containerColor = chatMint, contentColor = chatNavy)
+                            ) {
+                                if (sending) CircularProgressIndicator(Modifier.size(19.dp),
+                                    strokeWidth = 2.dp, color = chatNavy)
+                                else Icon(Icons.Default.Send,
+                                    tr(lang,"Send reply","ارسال پاسخ"))
+                            }
+                        }
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Default.Lock, null, tint = chatMuted,
+                                modifier = Modifier.size(12.dp))
+                            Spacer(Modifier.width(5.dp))
+                            Text(tr(lang,"Private ticket · Avoid sharing passwords",
+                                "تیکت خصوصی · از ارسال رمز عبور خودداری کنید"),
+                                color = chatMuted, fontSize = 10.sp,
+                                modifier = Modifier.weight(1f))
+                            Text("${draft.length}/5000", color = chatMuted, fontSize = 10.sp)
+                        }
+                    } else {
+                        Row(Modifier.fillMaxWidth().padding(8.dp),
+                            verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Default.TaskAlt, null, tint = Color(0xFF108B5C))
+                            Spacer(Modifier.width(9.dp))
+                            Text(tr(lang,
+                                "This conversation is finished. Open a new request if you need more help.",
+                                "این گفت‌وگو پایان یافته است. در صورت نیاز درخواست جدید ثبت کنید."),
+                                color = chatInk, fontSize = 11.sp)
+                        }
+                    }
+                }
             }
         }
+    }
+    if (askClose) {
+        AlertDialog(
+            onDismissRequest = { if (!closing) askClose = false },
+            icon = { Icon(Icons.Default.TaskAlt, null, tint = chatBlue) },
+            title = { Text(tr(lang,"Close support ticket?","بستن درخواست پشتیبانی؟")) },
+            text = { Text(tr(lang,
+                "You will not be able to reply to this ticket after closing it.",
+                "پس از بستن این درخواست، دیگر نمی‌توانید در همین گفت‌وگو پاسخ ارسال کنید.")) },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        scope.launch {
+                            closing = true
+                            try {
+                                val token = vault.accessToken(api)
+                                    ?: throw IllegalStateException("Sign in required")
+                                activeTicket = api.closeSupportTicket(token, ticket.id)
+                                askClose = false; error = null; onUpdated()
+                            } catch (ex: Exception) {
+                                askClose = false
+                                error = ex.message ?: tr(lang,
+                                    "Unable to close ticket","بستن درخواست ممکن نشد")
+                                refresh()
+                            } finally { closing = false }
+                        }
+                    }, enabled = !closing,
+                    colors = ButtonDefaults.buttonColors(containerColor = chatBlue)
+                ) { Text(tr(lang,"Close request","بستن درخواست")) }
+            },
+            dismissButton = {
+                TextButton(onClick = { askClose = false }, enabled = !closing) {
+                    Text(tr(lang,"Cancel","انصراف"))
+                }
+            }
+        )
     }
 }
