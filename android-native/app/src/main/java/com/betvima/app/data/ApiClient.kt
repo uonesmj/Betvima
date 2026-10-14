@@ -307,6 +307,17 @@ class ApiClient {
         return parseBonusCurrencyPage(data, currency, page)
     }
 
+    /** Exact active-grant query used by the website's Bonus Account selector. */
+    suspend fun availableBonusGrants(token: String, currency: String): List<BonusReward> {
+        require(currency in setOf("USD", "IRR", "IRT"))
+        val data = get("/api/v1/bonuses?currency=" + currency +
+            "&status=active&pageSize=100", token)
+        return parseBonusCurrencyPage(data,currency,1).items.filter {
+            it.currency == currency && it.status == "active" &&
+                (it.remainingMinor.toLongOrNull() ?: 0L) > 0
+        }
+    }
+
     /** Legacy account header uses the account's currency, not hardcoded USD. */
     suspend fun bonuses(token: String): List<Bonus> =
         get("/api/v1/bonuses", token).arr("items").objects().map {
