@@ -25,6 +25,6 @@ class NativeRegistrationTest {
     }
     @Test fun emptyReferralDoesNotCreateFakeAttribution() {
         val data = signupPayload("a@b.com", "strongPassword1", "IRR", "", "en", "x")
-        assertTrue(data.isNull("referralCode"))
+        assertFalse(data.has("referralCode"))
     }
 }
