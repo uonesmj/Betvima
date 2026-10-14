@@ -109,9 +109,6 @@ begin
   select count(*) into v_count from nova.vip_cashback_fx_blockers(v_week)
     where user_id=v_user;
   perform tests.assert(v_count=0,'verified historical samples fully cover user-week');
-  perform tests.assert(nova.vip_cb_fx_convert(150000000,'IRR',v_at+interval '2 hours')
-    is not null,'query returns exactly one conversion result, even if rate missing');
-
   -- Later settlement cannot reuse a rate older than 90 minutes.
   select count(*) into v_count from nova.vip_cb_fx_convert(150000000,'IRR',
      v_at+interval '2 hours') where usd_minor is null;
