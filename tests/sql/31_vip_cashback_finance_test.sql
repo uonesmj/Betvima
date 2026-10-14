@@ -200,6 +200,20 @@ begin
    where user_id=v_band_user;
   perform tests.assert(v_count=0,'mixed IRR/USD weekly results fail closed without trusted FX snapshot');
 
+  -- Native Monday scheduler: dry run must be strictly read-only.
+  v_credit := nova.vip_cashback_process_due_week(false);
+  perform tests.assert(v_credit->>'status'='preview','Monday batch dry-run returns preview');
+  select count(*) into v_count from nova.vip_cashback_run_audits;
+  perform tests.assert(v_count=0,'preview must not mutate even audit tables');
+
+  -- Finance cron has its own independent disabled-by-default switch.
+  v_credit := nova.vip_cashback_process_due_week(true);
+  perform tests.assert(v_credit->>'status'='disabled',
+    'Monday batch cannot pay without separate cron approval');
+  select count(*) into v_count from nova.vip_cashback_run_audits
+    where is_live and status='disabled';
+  perform tests.assert(v_count=1,'blocked live batch creates auditable disabled event');
+
   perform tests.assert(
     not has_function_privilege('authenticated','nova.vip_cashback_credit_user(date,uuid,boolean)','execute'),
     'ordinary authenticated users cannot call money-credit RPC'
