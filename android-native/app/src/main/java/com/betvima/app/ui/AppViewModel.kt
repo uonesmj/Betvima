@@ -253,6 +253,17 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             it.copy(picks = picks, quote = null, showSlip = picks.isNotEmpty())
         }
     }
+    /** Replace the sheet only after explicit import confirmation.
+     *  Odds must be refreshed from the public first-party share endpoint.
+     */
+    fun replacePicksFromCode(picks: List<Pick>) {
+        require(picks.size in 1..20)
+        require(picks.map { it.matchId }.distinct().size == picks.size)
+        quoteGeneration++
+        mutable.update { it.copy(
+            picks = picks, quote = null, busy = false, showSlip = true)
+        }
+    }
     fun clearPicks() {
         quoteGeneration++
         mutable.update { it.copy(picks = emptyList(), quote = null, busy = false) }
