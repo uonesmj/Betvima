@@ -138,8 +138,6 @@ fun BetvimaApp(model: AppViewModel) {
             bottomBar = {
                 ReferenceBottomBar(
                     state = state,
-                    showSlip = state.tab in setOf(Tab.HOME, Tab.LIVE, Tab.SPORTS) &&
-                        state.feature == Feature.NONE,
                     menuOpen = drawer.isOpen,
                     onNavigate = { destination ->
                         when (destination) {
@@ -150,10 +148,18 @@ fun BetvimaApp(model: AppViewModel) {
                             "sports" -> model.tab(Tab.SPORTS)
                             "language" -> languageOpen = true
                         }
-                    },
-                    onSlip = { model.showSlip(true) }
+                    }
                 )
             },
+            floatingActionButton = {
+                if (state.tab in setOf(Tab.HOME, Tab.LIVE, Tab.SPORTS) &&
+                    state.feature == Feature.NONE && !drawer.isOpen) {
+                    AnimatedFloatingBetslip(state.picks.size, state.lang) {
+                        model.showSlip(true)
+                    }
+                }
+            },
+            floatingActionButtonPosition = FabPosition.Center,
             snackbarHost = { SnackbarHost(snackbars) }
         ) { padding ->
             val filtered = state
