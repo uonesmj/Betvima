@@ -115,55 +115,7 @@ private fun VipPage(state: AppState) {
 
 @Composable
 private fun BonusPage(state: AppState, model: AppViewModel) {
-    LazyColumn(contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        item {
-            BvPageBanner(
-                eyebrow = tr(state.lang, "REWARDS", "پاداش‌ها"),
-                title = tr(state.lang, "Your bonuses", "پاداش‌های حساب شما"),
-                subtitle = tr(state.lang,
-                    "Every shown grant and balance comes from the BetVima server.",
-                    "همه بونوس‌ها و مانده‌ها مستقیماً از سرور بت‌ویما نمایش داده می‌شوند."),
-                icon = Icons.Default.CardGiftcard,
-                accent = Palette.gold
-            )
-        }
-        item { SectionHeading(tr(state.lang, "Deposit rewards", "پاداش واریز"),
-            tr(state.lang, "Your account's current bonus grants", "بونوس‌های ثبت‌شده حساب شما")) }
-        if (!state.signedIn) item {
-            LockedFeature(state.lang, tr(state.lang, "Sign in to view your rewards",
-                "برای مشاهده پاداش‌ها وارد شوید")) { model.showLogin(true) }
-        } else {
-            if (state.bonuses.isEmpty()) item {
-                EmptyPanel(tr(state.lang, "No bonuses available", "بونوسی موجود نیست"),
-                    tr(state.lang, "Rewards will appear here after server issuance.",
-                        "بونوس‌ها پس از صدور توسط سرور اینجا نمایش داده می‌شوند.")) { model.refreshAccount() }
-            }
-            items(state.bonuses) { bonus ->
-                Surface(color = Color.White, shape = RoundedCornerShape(19.dp),
-                    border = BorderStroke(1.dp, Palette.border), shadowElevation = 1.dp) {
-                    Column(Modifier.fillMaxWidth().padding(19.dp)) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Surface(color = Palette.greenLight, shape = RoundedCornerShape(11.dp)) {
-                                Icon(Icons.Default.CardGiftcard, null, tint = Palette.ink,
-                                    modifier = Modifier.padding(10.dp).size(21.dp))
-                            }
-                            Spacer(Modifier.width(9.dp))
-                            Text(bonus.title, color = Palette.text, fontWeight = FontWeight.Bold,
-                                modifier = Modifier.weight(1f))
-                            SmallPill(bonus.status, Palette.greenLight, Palette.ink)
-                        }
-                        Spacer(Modifier.height(20.dp))
-                        HorizontalDivider(color = Palette.border)
-                        Spacer(Modifier.height(10.dp))
-                        Text(tr(state.lang, "Remaining bonus", "مانده بونوس"),
-                            color = Palette.muted, fontSize = 11.sp)
-                        Text(money(bonus.remainingMinor, bonus.currency),
-                            color = Palette.blue, fontWeight = FontWeight.Black, fontSize = 24.sp)
-                    }
-                }
-            }
-        }
-    }
+    PremiumBonusesPage(state, model)
 }
 
 @Composable
