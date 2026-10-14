@@ -3,13 +3,19 @@ package com.betvima.app.data
 import org.json.JSONArray
 import org.json.JSONObject
 
-private val betSlipSharePattern = Regex("^NOVA-[A-HJ-NP-Z2-9]{8}$")
+// New share codes are exactly five characters, containing both letters and
+// digits. Historic NOVA-prefixed codes remain valid for imports only.
+private val betSlipSharePattern =
+    Regex("^(?=[A-HJ-NP-Z2-9]{5}$)(?=.*[A-HJ-NP-Z])(?=.*[2-9])[A-HJ-NP-Z2-9]{5}$")
+private val legacyBetSlipSharePattern = Regex("^NOVA-[A-HJ-NP-Z2-9]{8}$")
 
 fun normalizeBetSlipCode(input: String): String =
     input.trim().uppercase(java.util.Locale.ROOT)
 
 fun validBetSlipCode(input: String): Boolean =
-    betSlipSharePattern.matches(normalizeBetSlipCode(input))
+    normalizeBetSlipCode(input).let {
+        betSlipSharePattern.matches(it) || legacyBetSlipSharePattern.matches(it)
+    }
 
 fun shareSlipPayload(picks: List<Pick>, currency: String): JSONObject {
     require(currency in setOf("USD", "IRR", "IRT", "EUR", "GBP"))
