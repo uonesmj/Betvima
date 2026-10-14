@@ -255,10 +255,8 @@ begin
   ) then
     raise exception 'VIP_OPEN_DISCREPANCY_REVIEW_REQUIRED' using errcode = '42501';
   end if;
-  -- Separate finance threshold: unusually large credits must be reviewed.
-  if v_quote.cashback_minor > 100000 then
-    raise exception 'VIP_AMOUNT_REQUIRES_FINANCE_REVIEW' using errcode = '42501';
-  end if;
+  -- No arbitrary maximum reward cap: all verified eligible tiers pay automatically.
+  -- Suspended/frozen accounts and unresolved discrepancies remain blocked.
 
   v_key := 'vip-cashback:v1:' || p_week_start::text || ':' || p_user_id::text;
   v_result := nova.credit_wallet(
