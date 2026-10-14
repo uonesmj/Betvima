@@ -1,0 +1,39 @@
+name: Verify production mobile Turnstile configuration
+on:
+  push:
+    branches:
+      - verification/cloudflare-production-20261014
+    paths:
+      - .github/workflows/check-production-turnstile-20261014.yml
+permissions: {}
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    steps:
+      - name: Check public production endpoints without revealing site key
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json, urllib.request, urllib.error, re, time
+          url='https://betvima.com/api/v1/mobile/config'
+          request=urllib.request.Request(url,headers={'Accept':'application/json','Cache-Control':'no-store','User-Agent':'BetVima-Public-Mobile-Config-Check/1.0'})
+          try:
+              with urllib.request.urlopen(request,timeout=20) as response:
+                  code=response.status
+                  payload=json.loads(response.read(65536))
+          except Exception as err:
+              print('public_config_fetch=FAILED type='+type(err).__name__)
+              raise SystemExit(1)
+          data=payload.get('data',{}) if isinstance(payload.get('data'),dict) else payload
+          site=data.get('turnstileSiteKey','')
+          valid=isinstance(site,str) and bool(re.fullmatch('[A-Za-z0-9_-]{10,160}',site))
+          print('http_status='+str(code))
+          print('ok='+str(payload.get('ok') is True))
+          print('auth_configured='+str(data.get('authenticationConfigured') is True))
+          print('turnstile_site_key_field_present='+str('turnstileSiteKey' in data))
+          print('turnstile_site_key_nonempty_valid='+str(valid))
+          # The public key value is intentionally not printed.
+          if not (code == 200 and payload.get('ok') is True and valid):
+              raise SystemExit(1)
+          PY
