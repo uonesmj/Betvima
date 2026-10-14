@@ -22,6 +22,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.betvima.app.data.*
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.async
+import kotlinx.coroutines.supervisorScope
 import org.json.JSONObject
 
 data class GiftCode(val code: String, val uses: Int, val active: Boolean)
@@ -59,11 +61,11 @@ fun AffiliateDashboard(state: AppState, model: AppViewModel) {
             stats = overview.optJSONObject("stats")
             payable = overview.optJSONObject("payable")
             error = null
-            kotlinx.coroutines.supervisorScope {
-                val linksTask = kotlinx.coroutines.async {
+            supervisorScope {
+                val linksTask = async {
                     runCatching { api.get("/api/v1/affiliate/links", token) }
                 }
-                val giftsTask = kotlinx.coroutines.async {
+                val giftsTask = async {
                     runCatching { api.get("/api/v1/affiliate/gift-codes", token) }
                 }
                 val urls = linksTask.await().getOrNull()
