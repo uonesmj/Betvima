@@ -28,64 +28,110 @@ import com.betvima.app.data.*
 fun tr(lang: Lang, en: String, fa: String) = if (lang == Lang.FA) fa else en
 
 @Composable
-fun BrandHeader(lang: Lang, onHome: () -> Unit, onLanguage: () -> Unit,
-    onAccount: () -> Unit, onNotifications: () -> Unit, unread: Int,
-    walletBalance: String? = null, onWallet: () -> Unit = {}) {
-    // The sportsbook header remains visually LTR in both translations,
-    // while all screen content below it still respects RTL for Persian.
+fun BrandHeader(
+    lang: Lang,
+    signedIn: Boolean,
+    onHome: () -> Unit,
+    onLanguage: () -> Unit,
+    onAccount: () -> Unit,
+    onRegister: () -> Unit,
+    onNotifications: () -> Unit,
+    unread: Int,
+    walletBalance: String? = null,
+    onWallet: () -> Unit = {}
+) {
+    // The brand and action buttons retain a fixed left-to-right visual order
+    // even while content screens follow the selected text direction.
     CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
         Row(
-            Modifier.fillMaxWidth().heightIn(min = 72.dp)
+            Modifier.fillMaxWidth().heightIn(min = 71.dp)
                 .background(Color(0xFF121315))
-                .padding(horizontal = 13.dp, vertical = 9.dp),
+                .padding(horizontal = 11.dp, vertical = 7.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Row(Modifier.clickable(onClick = onHome)
-                .padding(vertical = 11.dp), verticalAlignment = Alignment.CenterVertically) {
-                Text("BET", fontSize = 20.sp, fontWeight = FontWeight.Black,
-                    color = Color.White, letterSpacing = (-.5).sp)
-                Text("VIMA", fontSize = 20.sp, fontWeight = FontWeight.Black,
-                    color = Palette.green, letterSpacing = (-.5).sp)
+            Row(Modifier.clickable(onClick = onHome).padding(vertical = 10.dp),
+                verticalAlignment = Alignment.CenterVertically) {
+                Text("BET", color = Color.White, fontSize = 19.sp,
+                    fontWeight = FontWeight.Black, letterSpacing = (-.6).sp)
+                Text("VIMA", color = Palette.green, fontSize = 19.sp,
+                    fontWeight = FontWeight.Black, letterSpacing = (-.6).sp)
             }
             Spacer(Modifier.weight(1f))
-            Column(Modifier.clickable(onClick = onAccount)
-                .padding(horizontal = 6.dp, vertical = 4.dp),
-                horizontalAlignment = Alignment.End) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(walletBalance?.substringAfterLast(" ", "USD") ?: "USD",
-                        color = Color(0xFFAAAEBB), fontSize = 11.sp,
-                        fontWeight = FontWeight.Bold)
-                    Icon(Icons.Default.KeyboardArrowDown, null,
-                        tint = Color(0xFFAAAEBB), modifier = Modifier.size(17.dp))
+            androidx.compose.animation.AnimatedContent(
+                targetState = signedIn, label = "guestMemberHeader",
+                transitionSpec = {
+                    androidx.compose.animation.fadeIn(
+                        animationSpec = androidx.compose.animation.core.tween(200)) togetherWith
+                    androidx.compose.animation.fadeOut(
+                        animationSpec = androidx.compose.animation.core.tween(140))
                 }
-                Text(walletBalance?.substringBeforeLast(" ", "—") ?: "—",
-                    color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.Black)
-            }
-            Spacer(Modifier.width(8.dp))
-            Surface(
-                color = Palette.green, shape = RoundedCornerShape(10.dp),
-                modifier = Modifier.clickable(onClick = onWallet)
-            ) {
-                Text(tr(lang, "Wallet", "کیف‌پول"),
-                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 13.dp),
-                    color = Palette.ink, fontSize = 12.sp,
-                    fontWeight = FontWeight.Black, maxLines = 1)
-            }
-            Spacer(Modifier.width(7.dp))
-            Box(contentAlignment = Alignment.Center) {
-                Surface(color = Color(0xFF2A2C2E),
-                    shape = RoundedCornerShape(11.dp),
-                    modifier = Modifier.size(43.dp).clickable(onClick = onNotifications)) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Icon(Icons.Default.Notifications,
-                            tr(lang, "Notifications", "اعلان‌ها"),
-                            tint = Color.White, modifier = Modifier.size(21.dp))
+            ) { authenticated ->
+                if (authenticated) {
+                    Row(verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+                        Column(Modifier.clickable(onClick = onAccount),
+                            horizontalAlignment = Alignment.End) {
+                            Text(walletBalance?.substringAfterLast(" ", "USD") ?: "USD",
+                                color = Color(0xFFABB2C1), fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold, maxLines = 1)
+                            Text(walletBalance?.substringBeforeLast(" ", "—") ?: "—",
+                                color = Color.White, fontSize = 14.sp,
+                                fontWeight = FontWeight.Black, maxLines = 1)
+                        }
+                        Surface(color = Palette.green,
+                            shape = RoundedCornerShape(10.dp),
+                            modifier = Modifier.clickable(onClick = onWallet)) {
+                            Text(tr(lang, "Wallet", "کیف‌پول"),
+                                color = Palette.ink, fontSize = 11.sp,
+                                fontWeight = FontWeight.ExtraBold,
+                                modifier = Modifier.padding(horizontal = 11.dp, vertical = 12.dp))
+                        }
+                        Box(contentAlignment = Alignment.Center) {
+                            Surface(color = Color(0xFF2A2C2E),
+                                shape = RoundedCornerShape(10.dp),
+                                modifier = Modifier.size(40.dp)
+                                    .clickable(onClick = onNotifications)) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    Icon(Icons.Default.Notifications, tr(lang,
+                                        "Notifications", "اعلان‌ها"), tint = Color.White,
+                                        modifier = Modifier.size(20.dp))
+                                }
+                            }
+                            if (unread > 0) Box(Modifier.align(Alignment.TopEnd).size(10.dp)
+                                .background(Color(0xFFFF602A), CircleShape))
+                        }
+                    }
+                } else {
+                    Row(horizontalArrangement = Arrangement.spacedBy(7.dp),
+                        verticalAlignment = Alignment.CenterVertically) {
+                        Surface(color = Color(0xFF292D33),
+                            shape = RoundedCornerShape(10.dp),
+                            border = BorderStroke(1.dp, Color.White.copy(alpha = .13f)),
+                            modifier = Modifier.clickable(onClick = onAccount)) {
+                            Text(tr(lang, "Log in", "ورود"),
+                                modifier = Modifier.padding(horizontal = 11.dp, vertical = 12.dp),
+                                color = Color.White, fontSize = 11.sp,
+                                fontWeight = FontWeight.ExtraBold)
+                        }
+                        Surface(color = Palette.green,
+                            shape = RoundedCornerShape(10.dp),
+                            modifier = Modifier.clickable(onClick = onRegister)) {
+                            Text(tr(lang, "Sign up", "ثبت‌نام"),
+                                modifier = Modifier.padding(horizontal = 11.dp, vertical = 12.dp),
+                                color = Palette.ink, fontSize = 11.sp,
+                                fontWeight = FontWeight.ExtraBold)
+                        }
                     }
                 }
-                if (unread > 0) Box(
-                    modifier = Modifier.align(Alignment.TopEnd)
-                        .size(11.dp).background(Color(0xFFFF602A), CircleShape)
-                )
+            }
+            Spacer(Modifier.width(5.dp))
+            Surface(color = Color(0xFF272B2F),
+                shape = RoundedCornerShape(10.dp),
+                modifier = Modifier.size(41.dp).clickable(onClick = onLanguage)) {
+                Box(contentAlignment = Alignment.Center) {
+                    Text(if (lang == Lang.FA) "🇮🇷" else "🇬🇧",
+                        fontSize = 21.sp)
+                }
             }
         }
     }
