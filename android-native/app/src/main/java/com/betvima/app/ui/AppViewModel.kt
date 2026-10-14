@@ -40,7 +40,11 @@ data class AppState(
     val notificationLoading: Boolean = false,
     val bonuses: List<Bonus> = emptyList(), val busy: Boolean = false,
     val accountLoading: Boolean = false,
-    val quote: String? = null, val notice: String? = null
+    val quote: String? = null, val notice: String? = null,
+    val searchTerm: String = "", val searchLoading: Boolean = false,
+    val searchLive: List<Match> = emptyList(),
+    val searchUpcoming: List<Match> = emptyList(),
+    val searchError: String? = null
 )
 
 /** Screen state lives outside composables; every value comes from BetVima API. */
@@ -54,6 +58,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     private var detailRequestNumber = 0
     private var accountRequestNumber = 0
     private var quoteGeneration = 0
+    private var searchGeneration = 0
     private var liveRequestInFlight = false
     private val mutable = MutableStateFlow(AppState(
         signedIn = vault.signedIn(),
@@ -158,6 +163,44 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             }
         }
     }
+    fun clearSearch() {
+        ++searchGeneration
+        mutable.update { it.copy(searchTerm = "", searchLive = emptyList(),
+            searchUpcoming = emptyList(), searchLoading = false, searchError = null) }
+    }
+
+    /**
+     * Accepts debounced queries from the native search sheet.
+     * Generation guards ensure a slower old request can never replace new results.
+     */
+    fun searchMatches(query: String) {
+        val term = query.trim()
+        val generation = ++searchGeneration
+        if (term.length < 2) {
+            mutable.update { it.copy(searchTerm = term, searchLoading = false,
+                searchLive = emptyList(), searchUpcoming = emptyList(), searchError = null) }
+            return
+        }
+        mutable.update { it.copy(searchTerm = term, searchLoading = true,
+            searchLive = emptyList(), searchUpcoming = emptyList(), searchError = null) }
+        viewModelScope.launch {
+            val found = supervisorScope {
+                val live = async { runCatching { api.searchMatches(term, true) } }
+                val upcoming = async { runCatching { api.searchMatches(term, false) } }
+                live.await() to upcoming.await()
+            }
+            if (generation != searchGeneration) return@launch
+            val liveMatches = found.first.getOrDefault(emptyList())
+            val upcomingMatches = found.second.getOrDefault(emptyList())
+            val bothFailed = found.first.isFailure && found.second.isFailure
+            mutable.update { it.copy(searchLoading = false, searchLive = liveMatches,
+                searchUpcoming = upcomingMatches,
+                searchError = if (bothFailed) tr(it.lang,
+                    "Search is temporarily unavailable. Please retry.",
+                    "جست‌وجو موقتاً در دسترس نیست؛ دوباره تلاش کنید.") else null) }
+        }
+    }
+
     fun openMatch(id: String) = viewModelScope.launch {
         val request = ++detailRequestNumber
         mutable.update { it.copy(detailLoading = true, detail = null) }
