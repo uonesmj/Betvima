@@ -14,11 +14,13 @@ import java.math.BigDecimal
 import java.math.RoundingMode
 
 enum class Tab { HOME, LIVE, SPORTS, BETS, WALLET }
+enum class HomeMode { TOP, TOP_BETS }
 enum class Feature { NONE, PROFILE, BONUSES, VIP, SUPPORT, CASINO, AFFILIATE, NOTIFICATIONS }
 enum class Lang { EN, FA }
 
 data class AppState(
-    val tab: Tab = Tab.HOME, val feature: Feature = Feature.NONE,
+    val tab: Tab = Tab.HOME, val homeMode: HomeMode = HomeMode.TOP,
+    val feature: Feature = Feature.NONE,
     val lang: Lang = Lang.FA, val sport: String = "football",
     val live: List<Match> = emptyList(), val upcoming: List<Match> = emptyList(),
     val liveLoading: Boolean = false, val upcomingLoading: Boolean = false,
@@ -68,9 +70,16 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         preferences.edit().putString("language", if (lang == Lang.FA) "fa" else "en").apply()
         mutable.update { it.copy(lang = lang) }
     }
+    fun homeMode(mode: HomeMode) {
+        detailRequestNumber++
+        mutable.update { it.copy(tab = Tab.HOME, homeMode = mode, feature = Feature.NONE,
+            detail = null, detailLoading = false) }
+        if (mode == HomeMode.TOP_BETS && state.value.upcoming.isEmpty()) refreshUpcoming()
+    }
     fun tab(tab: Tab) {
         detailRequestNumber++
         mutable.update { it.copy(tab = tab, feature = Feature.NONE,
+            homeMode = if (tab == Tab.HOME) HomeMode.TOP else it.homeMode,
             detail = null, detailLoading = false) }
         when (tab) {
             Tab.HOME -> refreshAll()
