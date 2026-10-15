@@ -32,6 +32,7 @@ import com.betvima.app.data.Selection
 import com.betvima.app.data.odds
 import kotlinx.coroutines.delay
 import java.time.Instant
+import java.time.LocalDateTime
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
@@ -45,7 +46,10 @@ internal fun searchKickoff(value: String, zone: ZoneId = ZoneId.systemDefault())
         DateTimeFormatter.ofPattern("HH:mm • dd/MM/yyyy", Locale.UK)
             .format(Instant.parse(value).atZone(zone))
     }.getOrElse {
-        value.take(16).replace("T", " • ").ifBlank { "—" }
+        runCatching {
+            DateTimeFormatter.ofPattern("HH:mm • dd/MM/yyyy", Locale.UK)
+                .format(LocalDateTime.parse(value))
+        }.getOrElse { value.take(16).replace("T", " • ").ifBlank { "—" } }
     }
 
 /**
