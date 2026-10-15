@@ -14,7 +14,7 @@ describe('Home original competition carousel', () => {
     for (let i = 0; i < HOME_COMPETITIONS.length; i++) {
       expect(competitionSprite(i).image).toBe(`/brand/league-shortcuts/row-${Math.floor(i / 4)}.webp`);
       expect(competitionSprite(i).offsetX).toBe(-((i % 4) * 112 + 16));
-      expect(HOME_COMPETITIONS[i].sportHref).toMatch(/^\/(sports\/[a-z-]+|topbets|live)$/);
+      expect(HOME_COMPETITIONS[i]!.sportHref).toMatch(/^\/(sports\/[a-z-]+|topbets|live)$/);
     }
     expect(() => competitionSprite(16)).toThrow();
     expect(() => competitionSprite(-1)).toThrow();
