@@ -11,7 +11,11 @@ data class CasinoGame(
     val providerName: String,
     val imageUrl: String?,
     val demoSupported: Boolean
-)
+) {
+    // SoftAggregator explicitly confirms some playable demos have a false
+    // catalogue flag; the backend safely tries getGameDemo, never getGame.
+    val canTryDemo: Boolean get() = id.isNotBlank()
+}
 
 data class CasinoPage(
     val games: List<CasinoGame>,
