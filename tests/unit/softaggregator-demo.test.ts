@@ -16,7 +16,7 @@ describe('SoftAggregator demo-only launch API', () => {
     process.env = { ...original };
   });
 
-  it('fetches catalogue, ensures player, and sends identity to getGameDemo', async () => {
+  it('launches a vendor-confirmed demo even when catalogue reports false, with player identity', async () => {
     const calls: Array<Record<string, unknown>> = [];
     const userAgents: string[] = [];
     vi.stubGlobal('fetch', vi.fn(async (_: string, options: RequestInit) => {
@@ -26,8 +26,8 @@ describe('SoftAggregator demo-only launch API', () => {
       calls.push(body);
       if (body.method === 'getGameList') return {
         ok: true, json: async () => ({ error: 0, response: [{
-          id_hash: 'studio/demo2026', name: 'Demo Game', game_type: 'slots',
-          provider: 'studio', play_for_fun_supported: true,
+          id_hash: 'x887bde40b16350c', name: 'Aviator', game_type: 'slots',
+          provider: 'studio', play_for_fun_supported: false,
         }] }),
       };
       if (body.method === 'createPlayer') return {
@@ -53,7 +53,7 @@ describe('SoftAggregator demo-only launch API', () => {
     expect(calls[1]).toHaveProperty('user_password');
     expect(calls[2]).toHaveProperty('user_username', calls[1]!.user_username);
     expect(calls[2]).toHaveProperty('user_password', calls[1]!.user_password);
-    expect(calls[2]).toHaveProperty('gameid', 'studio/demo2026');
+    expect(calls[2]).toHaveProperty('gameid', 'x887bde40b16350c');
   });
 
   it('refuses real-money game access independently of provider credentials', async () => {
