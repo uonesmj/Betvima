@@ -333,13 +333,13 @@ private fun LeagueSection(key: String, matches: List<Match>, first: Boolean,
                     tint = Palette.muted)
             }
             SmoothExpandedContent(expanded) {
-                Column {
-                    HorizontalDivider(color = Palette.border)
-                    matches.forEachIndexed { index, match ->
-                    ReferenceLeagueFixture(match, state, model)
-                    if (index != matches.lastIndex)
-                        HorizontalDivider(Modifier.padding(horizontal = 12.dp),
-                            color = Palette.border.copy(alpha = .7f))
+                Column(
+                    Modifier.fillMaxWidth().background(Color(0xFFF4F6F9))
+                        .padding(10.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    matches.forEach { match ->
+                        ReferenceLeagueFixture(match, state, model)
                     }
                 }
             }
