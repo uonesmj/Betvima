@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useApp } from '@/components/layout/providers';
 import { createPortal } from 'react-dom';
 import Link from 'next/link';
+import { HOME_COMPETITIONS, competitionSprite } from '@/lib/home-competitions';
 import { MatchCard, type MatchView } from "@/components/betting/match-card";
 import { usePathname, useSearchParams } from 'next/navigation';
 
@@ -465,7 +466,45 @@ export function ReferenceSportsNav({ showTournament = true, showSportsCarousel =
           </div>
         </div>
 
-        {showSportsCarousel ? (
+        {showSportsCarousel && pathname === '/' ? (
+          <div
+            aria-label="Featured competitions"
+            data-testid="featured-competition-carousel"
+            className="overflow-x-auto px-3 pb-3 pt-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          >
+            <div className="flex min-w-max items-start gap-3">
+              {HOME_COMPETITIONS.map((competition, index) => {
+                const sprite = competitionSprite(index);
+                return (
+                  <Link
+                    key={competition.label}
+                    href={competition.sportHref}
+                    title={`${competition.label} — browse ${competition.accessibleDestination}`}
+                    className="group flex w-[88px] shrink-0 flex-col items-center gap-2.5 text-center"
+                    aria-label={`${competition.label}: browse ${competition.accessibleDestination}`}
+                  >
+                    <span className="relative block h-[80px] w-[80px] overflow-hidden rounded-full bg-[#E8EDF5] shadow-[0_2px_6px_rgba(14,30,50,.12)] transition-transform duration-200 group-hover:scale-[1.06] group-focus-visible:outline group-focus-visible:outline-2 group-focus-visible:outline-offset-2 group-focus-visible:outline-[#087FF5]">
+                      <span
+                        aria-hidden="true"
+                        className="absolute inset-0 bg-no-repeat"
+                        style={{
+                          backgroundImage: `url("${sprite.image}")`,
+                          backgroundPosition: `${sprite.offsetX}px -16px`,
+                          backgroundSize: '448px 112px',
+                        }}
+                      />
+                    </span>
+                    <span className="block w-full text-[11px] font-extrabold leading-[1.2] text-[#19212D]">
+                      {competition.label}
+                    </span>
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
+        ) : null}
+
+        {showSportsCarousel && pathname !== '/' ? (
           <div
             ref={sportsScrollerRef}
             data-testid="sport-carousel"

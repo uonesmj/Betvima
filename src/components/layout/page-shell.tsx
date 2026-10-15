@@ -1021,7 +1021,7 @@ export function PageShell({ children, title, subtitle, titleKey, subtitleKey, ac
           ) : null}
         </>
       ) : <Header onSupportOpen={() => setSupportSheetOpen(true)} />}
-          <Suspense fallback={null}><ReferenceSportsNav showTournament={pathname === '/'} showSportsCarousel={pathname === '/live'} /></Suspense>
+          <Suspense fallback={null}><ReferenceSportsNav showTournament={false} showSportsCarousel={pathname === '/' || pathname === '/live'} /></Suspense>
       <PullToRefresh />
           <main className={`nova-container py-4 ${pathname === "/" || pathname === "/bonuses" ? "pb-0" : "pb-24 lg:pb-4"}`}>
         {(title || titleKey) ? (
