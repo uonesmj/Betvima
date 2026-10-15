@@ -1,5 +1,7 @@
 package com.betvima.app.ui
 
+import kotlinx.coroutines.launch
+
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -417,10 +419,18 @@ fun PremiumWalletPage(state: AppState, model: AppViewModel) {
         )
     }
     if (state.signedIn && wallet != null && activeSheet == "history") {
+        val historySheet = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+        val historyScope = rememberCoroutineScope()
+        val hideHistory = {
+            historyScope.launch {
+                historySheet.hide()
+                activeSheet = ""
+            }
+        }
         ModalBottomSheet(
-            onDismissRequest = { activeSheet = "" },
+            onDismissRequest = hideHistory,
             containerColor = Color(0xFFF8FAFD),
-            sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+            sheetState = historySheet
         ) {
             WalletHistorySheet(state, model, onDetail = { detail = it })
         }
