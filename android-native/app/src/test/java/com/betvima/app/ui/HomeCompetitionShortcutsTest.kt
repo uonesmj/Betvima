@@ -39,7 +39,8 @@ class HomeCompetitionShortcutsTest {
         assertEquals(88, HomeLeagueBadgeLayout.cardWidthDp)
         assertTrue(HomeLeagueBadgeLayout.diameterDp * 4 >= 64 * 5)
         assertTrue(HomeLeagueBadgeLayout.cardWidthDp * 4 >= 70 * 5)
-        assertTrue(HomeLeagueBadgeLayout.cropInsetPx > 0)
+        assertEquals(256, HomeLeagueBadgeLayout.sourceTilePx)
+        assertEquals(2, HomeLeagueBadgeLayout.cropInsetPx)
         assertEquals(
             HomeLeagueBadgeLayout.sourceTilePx,
             HomeLeagueBadgeLayout.cropSizePx +
