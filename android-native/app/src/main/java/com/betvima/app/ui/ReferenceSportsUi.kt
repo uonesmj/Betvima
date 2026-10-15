@@ -70,7 +70,7 @@ fun SportsbookTopTabs(state: AppState, model: AppViewModel, onSearch: () -> Unit
         .padding(start = 9.dp, end = 9.dp, top = 12.dp, bottom = 4.dp),
         verticalAlignment = Alignment.CenterVertically) {
         LazyRow(Modifier.weight(1f), state = tabListState,
-            horizontalArrangement = Arrangement.spacedBy(3.dp)) {
+            horizontalArrangement = Arrangement.spacedBy(3.dp), flingBehavior = rememberPremiumFlingBehavior()) {
             items(tabs, key = { it.first }) { (id, title) ->
                 val isActive = active == id
                 val pillColor by animateColorAsState(
@@ -152,7 +152,7 @@ fun ReferenceSportRibbon(state: AppState, model: AppViewModel, live: Boolean = f
     }
     LazyRow(state = sportListState,
         contentPadding = PaddingValues(horizontal = 13.dp, vertical = 10.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        horizontalArrangement = Arrangement.spacedBy(8.dp), flingBehavior = rememberPremiumFlingBehavior()) {
         items(sportChips, key = { it.key }) { sport ->
             val active = current == sport.key
             val events = if (live) state.live else state.upcoming
@@ -245,7 +245,7 @@ fun ReferenceTournamentRibbon(state: AppState, model: AppViewModel) {
     val ribbonState = rememberLazyListState()
     LazyRow(Modifier.fillMaxWidth(), state = ribbonState,
         contentPadding = PaddingValues(horizontal = 15.dp, vertical = 11.dp),
-        horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        horizontalArrangement = Arrangement.spacedBy(12.dp), flingBehavior = rememberPremiumFlingBehavior()) {
         item(key = "top-bets") {
             SportsBadgeShortcut(
                 label = tr(state.lang, "TOP Bets", "شرط‌های برتر"),
@@ -463,7 +463,7 @@ fun ReferenceMatchCarousel(
 ) {
     LazyRow(Modifier.fillMaxWidth(),
         contentPadding = PaddingValues(end = 1.dp),
-        horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        horizontalArrangement = Arrangement.spacedBy(10.dp), flingBehavior = rememberPremiumFlingBehavior()) {
         items(matches.take(10), key = { it.id }) { match ->
             ReferenceCarouselCard(match, state, model)
         }
