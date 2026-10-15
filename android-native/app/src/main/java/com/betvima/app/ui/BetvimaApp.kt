@@ -176,11 +176,11 @@ fun BetvimaApp(model: AppViewModel) {
                     targetState = screenId,
                     label = "mainScreenNavigation",
                     transitionSpec = {
-                        (slideInHorizontally(animationSpec = tween(240)) { it / 7 } +
-                            fadeIn(animationSpec = tween(230)))
+                        (slideInHorizontally(animationSpec = tween(350)) { it / 9 } +
+                            fadeIn(animationSpec = tween(300)))
                             .togetherWith(
-                                slideOutHorizontally(animationSpec = tween(190)) { -it / 7 } +
-                                    fadeOut(animationSpec = tween(190)))
+                                slideOutHorizontally(animationSpec = tween(280)) { -it / 9 } +
+                                    fadeOut(animationSpec = tween(230)))
                     }
                 ) { destination ->
                     pageStates.SaveableStateProvider(destination) {
