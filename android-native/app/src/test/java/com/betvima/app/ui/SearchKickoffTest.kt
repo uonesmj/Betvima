@@ -11,7 +11,7 @@ class SearchKickoffTest {
     }
 
     @Test fun safelyDisplaysProviderLocalTimeWhenOffsetMissing() {
-        assertEquals("18:45 • 25/10", searchKickoff("2026-10-25T18:45"))
+        assertEquals("18:45 • 25/10/2026", searchKickoff("2026-10-25T18:45"))
     }
 
     @Test fun missingStartRemainsUnknown() {
