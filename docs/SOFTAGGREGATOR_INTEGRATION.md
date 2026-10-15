@@ -32,6 +32,25 @@ remove the need to test a real catalog and game launch from the VPS.
 
 **The original API password and signing salt appeared in a chat screenshot. Rotate them before any deployment.** Store only in server-side secrets, never in GitHub sources or Android.
 
+## Provider-confirmed catalogue/demo status — 2026-10-15
+
+BetVima's VPS successfully requested `getCurrencies` and `getGameList`
+using `User-Agent: BetVima/1.0`: HTTP 200, API error 0, USD enabled, and
+**4,940** catalogue items returned. However, **all 4,940** reported
+`play_for_fun_supported: false`. A `getGameDemo` request for a slots title
+returned API `error: 1` (no launch URL). Do not present these games as
+playable demos or override the supplier's capability flag. Request explicit
+activation of demo/play-for-fun support from SoftAggregator, or use a
+separately isolated, verified test-wallet environment for supplier-supported
+money-flow tests. The supplier's $2 *operator prepaid credit* is not an
+individual player wallet balance.
+
+When demo is provisioned, SoftAggregator documents `getGameDemo` using the
+**same** `user_username`/`user_password` inputs as `getGame` after
+`createPlayer`. These API methods run only server-side. Real-money mode
+remains disabled while current credentials are exposed and the wallet migration
+and reconciliation tests have not been completed.
+
 ## Callback safety
 
 Documented provider protocol: signed GET parameters. Check timestamp (±30s), legacy MD5 key, **and** full payload X-Signature HMAC SHA-256. Duplicate keys and missing HMAC fail closed. Amounts and balances are integer USD cents. A callback is processed only when the real-money feature flag is explicitly enabled.
@@ -83,7 +102,7 @@ Do not declare real-money complete until then.
 4. Set the staging callback URL inside SoftAggregator portal. Production URL after signoff: `https://betvima.com/api/webhooks/softaggregator`.
 5. Confirm supplier's full-payload HMAC canonicalization and 30-second timestamp with actual signed **sandbox** traffic. No legacy signature-only acceptance.
 6. Test game catalog, demo launch, balances, debits, credits, rollbacks, duplicate IDs, changed replay amounts, concurrent retry, self exclusion, underage, country restriction, holds, over-limit bets, negative/zero amounts, free-spin win without a debit, DB failure/retry, full ledger reconciliation.
-7. The repository contains a Next.js backend and downloadable Android APKs, but no editable Android-native app source. Attach the separate Android repository to build/publish the UI; the app calls these backend endpoints and must not contain provider secrets.
+7. Android Compose source lives on the `feature/native-android-compose` branch. Its version 0.59.0 casino lobby calls the backend endpoints and does not store provider keys. Verify a newly built APK on a real device before release.
 8. After backup, verified staging tests, financial signoff and a properly authorized production release, opt in to real-money callbacks in protected server configuration.
 
 Account funding ($100 prepaid commission credit) is handled directly by the provider; integration never silently initiates payments.
