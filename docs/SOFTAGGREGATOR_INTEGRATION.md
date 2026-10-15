@@ -19,6 +19,33 @@ never calls the vendor endpoint directly. Credentials must remain server-only.
 This change does not enable wallet callbacks, override the rollout gates, or
 remove the need to test a real catalog and game launch from the VPS.
 
+## Zero-restart, demo-only runtime activation
+
+The production web server may optionally read
+`/etc/betvima/softaggregator-demo.json` **at request time**. The server
+accepts only a regular, root-owned, non-group-writable, non-world-accessible
+file, typically mode `0640` and group `novaadmin`. It holds
+`{enabled,apiLogin,apiPassword,playerSecret}` and is never committed to GitHub,
+bundled into Android, copied to preview or exposed in logs. Its existence
+**cannot** activate wagering or wallet callbacks:
+`SOFTAGGREGATOR_REAL_MONEY_ENABLED` and
+`SOFTAGGREGATOR_ENABLED` must *both* be enabled through the independently
+authorized runtime environment for real-money mode. Do not do so until
+financial sign-off and receipt migration approval.
+
+**After** an owner-approved production release on `main`, run the interactive
+root-only installer from the deployed release (run only after verifying the
+exact active commit hash and release directory):
+`sudo python3 /opt/nova-releases/COMMIT_SHA/ops/casino/install_demo_config.py`.
+The installer requests API login and password without echo, calls
+`getCurrencies` with provider-approved `BetVima/1.0`, preserves a stable
+player-secret on future credential rotations and atomically creates the
+protected file. It does **not** restart the web server or modify any wallet,
+DB migration or running worker. Verify via
+`https://betvima.com/api/v1/casino/games?limit=1` and a signed-in Android
+Demo launch. Deploying the APK alone is insufficient: the backend must run
+the new code and read that protected configuration.
+
 ## Private environment variables
 
 | Variable | Meaning |
