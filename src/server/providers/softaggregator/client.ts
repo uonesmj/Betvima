@@ -88,19 +88,16 @@ export async function launchCasinoGame(input: {
     lang: input.lang === 'fa' ? 'en' : 'en', // The provider's documented languages do not include Persian.
     device: input.device, homeurl: 'https://betvima.com',
   };
-  let url: string;
-  if (input.demo) {
-    // Provider's demo contract does NOT require createPlayer or wallet credentials.
-    url = await callSoftAggregator<string>('getGameDemo', base);
-  } else {
-    if (!input.userId) throw new Error('CASINO_PLAYER_REQUIRED');
-    const identity = casinoPlayerIdentity(input.userId);
-    await callSoftAggregator('createPlayer', { ...identity, currency: 'USD' });
-    url = await callSoftAggregator<string>('getGame', {
-      ...identity, ...base,
-      ...(input.country ? { country: input.country } : {}),
-    });
-  }
+  // SoftAggregator documents getGameDemo as using the same player credentials
+  // as getGame. Ensure the player before either launch. Neither mode can move
+  // funds here: wallet debits/credits are handled only by the signed callback.
+  if (!input.userId) throw new Error('CASINO_PLAYER_REQUIRED');
+  const identity = casinoPlayerIdentity(input.userId);
+  await callSoftAggregator('createPlayer', { ...identity, currency: 'USD' });
+  const url = await callSoftAggregator<string>(input.demo ? 'getGameDemo' : 'getGame', {
+    ...identity, ...base,
+    ...(!input.demo && input.country ? { country: input.country } : {}),
+  });
   if (typeof url !== 'string' || !/^https:\/\//i.test(url)) throw new Error('INVALID_CASINO_LAUNCH_URL');
   const parsed = new URL(url);
   if (parsed.username || parsed.password || !parsed.hostname.includes('.')) throw new Error('INVALID_CASINO_LAUNCH_URL');
