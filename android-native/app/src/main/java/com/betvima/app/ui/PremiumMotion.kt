@@ -149,6 +149,7 @@ private class PremiumFlingBehavior : FlingBehavior {
         val travel = (initialVelocity * .28f).coerceIn(-2350f, 2350f)
         var previous = 0f
         var remaining = 0f
+        var blocked = false
         animate(
             initialValue = 0f,
             targetValue = travel,
@@ -156,10 +157,12 @@ private class PremiumFlingBehavior : FlingBehavior {
         ) { value, velocity ->
             val delta = value - previous
             previous = value
-            val consumed = scrollBy(delta)
-            if (abs(delta - consumed) > 1f) {
-                remaining = velocity
-                cancelAnimation()
+            if (!blocked) {
+                val consumed = scrollBy(delta)
+                if (abs(delta - consumed) > 1f) {
+                    remaining = velocity
+                    blocked = true
+                }
             }
         }
         return remaining
