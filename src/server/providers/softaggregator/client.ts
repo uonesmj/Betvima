@@ -95,10 +95,15 @@ export async function launchCasinoGame(input: {
   if (!input.userId) throw new Error('CASINO_PLAYER_REQUIRED');
   const identity = casinoPlayerIdentity(input.userId);
   await callSoftAggregator('createPlayer', { ...identity, currency: 'USD' });
-  const url = await callSoftAggregator<string>(input.demo ? 'getGameDemo' : 'getGame', {
-    ...identity, ...base,
-    ...(!input.demo && input.country ? { country: input.country } : {}),
-  });
+  // Live supplier response is { error: 0, response: { gameurl: "https://..." } }.
+  // Some integrations return response as a direct string; handle both forms.
+  // Keep the token-bearing URL server-side until it is returned to its owning user.
+  const launch = await callSoftAggregator<string | { gameurl?: unknown }>(
+    input.demo ? 'getGameDemo' : 'getGame', {
+      ...identity, ...base,
+      ...(!input.demo && input.country ? { country: input.country } : {}),
+    });
+  const url = typeof launch === 'string' ? launch : launch?.gameurl;
   if (typeof url !== 'string' || !/^https:\/\//i.test(url)) throw new Error('INVALID_CASINO_LAUNCH_URL');
   const parsed = new URL(url);
   if (parsed.username || parsed.password || !parsed.hostname.includes('.')) throw new Error('INVALID_CASINO_LAUNCH_URL');
