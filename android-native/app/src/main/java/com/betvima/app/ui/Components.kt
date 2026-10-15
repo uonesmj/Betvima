@@ -1,6 +1,5 @@
 package com.betvima.app.ui
 
-import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
@@ -28,6 +27,12 @@ import com.betvima.app.data.*
 
 fun tr(lang: Lang, en: String, fa: String) = if (lang == Lang.FA) fa else en
 
+/**
+ * BetVima's compact sportsbook header, aligned to the supplied 1win reference.
+ *
+ * Only the header is affected: no sports tabs, wallet data, bottom navigation,
+ * login flow or notification data is replaced with mock values.
+ */
 @Composable
 fun BrandHeader(
     lang: Lang,
@@ -38,103 +43,144 @@ fun BrandHeader(
     onNotifications: () -> Unit,
     unread: Int,
     walletBalance: String? = null,
+    walletCurrency: String? = null,
     onWallet: () -> Unit = {},
     userName: String? = null
 ) {
-    // Keep the brand and financial controls in stable left-to-right order.
-    // Actual wallet and identity values come from authenticated backend responses.
+    val headerBlack = Color(0xFF111113)
+    val headerGreen = Color(0xFF0BC66B)
+    // Financial values must come from the current authenticated wallet.
+    // Never substitute a synthetic 0.00 or force USD/USDT.
+    val currency = walletCurrency?.trim()?.takeIf { it.isNotEmpty() } ?: "—"
+    val amount = walletBalance
+        ?.removeSuffix(" " + currency)
+        ?.trim()
+        ?.takeIf { it.isNotEmpty() } ?: "—"
+
+    // A LTR top bar matches the reference even in the Persian locale;
+    // the rest of the app retains its own RTL behavior.
     CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
-        Row(
-            Modifier.fillMaxWidth()
-                .background(Brush.horizontalGradient(
-                    listOf(Color(0xFF080E16), Color(0xFF15242D))))
-                .heightIn(min = 74.dp)
-                .padding(horizontal = 12.dp, vertical = 9.dp),
-            verticalAlignment = Alignment.CenterVertically
+        BoxWithConstraints(
+            modifier = Modifier.fillMaxWidth()
+                .background(headerBlack)
+                .height(82.dp)
         ) {
-            Column(Modifier.clickable(onClick = onHome).padding(vertical = 6.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("BET", color = Color.White, fontSize = 19.sp,
-                        fontWeight = FontWeight.Black, letterSpacing = (-.8).sp)
-                    Text("VIMA", color = Palette.green, fontSize = 19.sp,
-                        fontWeight = FontWeight.Black, letterSpacing = (-.8).sp)
+            val compact = maxWidth < 395.dp
+            val actionGap = if (compact) 6.dp else 9.dp
+            Row(
+                Modifier.fillMaxSize()
+                    .padding(horizontal = if (compact) 10.dp else 16.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(
+                    modifier = Modifier.clickable(onClick = onHome)
+                        .padding(vertical = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text("BET", color = Color.White,
+                        fontSize = if (compact) 17.sp else 19.sp,
+                        fontWeight = FontWeight.Black,
+                        letterSpacing = (-.9).sp,
+                        maxLines = 1)
+                    Text("VIMA", color = headerGreen,
+                        fontSize = if (compact) 17.sp else 19.sp,
+                        fontWeight = FontWeight.Black,
+                        letterSpacing = (-.9).sp,
+                        maxLines = 1)
                 }
-                Box(Modifier.padding(top = 4.dp).width(40.dp).height(2.dp)
-                    .background(Brush.horizontalGradient(
-                        listOf(Palette.blue, Palette.green)),
-                        RoundedCornerShape(99.dp)))
-            }
-            Spacer(Modifier.weight(1f))
-            androidx.compose.animation.AnimatedContent(
-                targetState = signedIn, label = "authenticatedHeader",
-                transitionSpec = {
-                    androidx.compose.animation.fadeIn(
-                        androidx.compose.animation.core.tween(220)) togetherWith
-                    androidx.compose.animation.fadeOut(
-                        androidx.compose.animation.core.tween(140))
-                }
-            ) { authenticated ->
-                if (authenticated) {
-                    Row(verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(7.dp)) {
-                        Surface(shape = RoundedCornerShape(16.dp),
-                            color = Color(0xFF172B31),
-                            border = BorderStroke(1.dp, Palette.green.copy(alpha = .45f)),
-                            shadowElevation = 4.dp,
-                            modifier = Modifier.clickable(onClick = onWallet)) {
-                            Row(Modifier.padding(horizontal = 11.dp, vertical = 9.dp),
-                                verticalAlignment = Alignment.CenterVertically) {
-                                Icon(Icons.Default.AccountBalanceWallet, null,
-                                    modifier = Modifier.size(18.dp), tint = Palette.green)
-                                Spacer(Modifier.width(8.dp))
-                                Column {
-                                    Text(tr(lang, "BALANCE", "موجودی"),
-                                        color = Color(0xFFA5BBC0),
-                                        fontSize = 9.sp, fontWeight = FontWeight.Bold)
-                                    Text(walletBalance ?: "—",
-                                        color = Color.White,
-                                        fontSize = 13.sp, fontWeight = FontWeight.Black,
-                                        maxLines = 1)
-                                }
-                            }
+                Spacer(Modifier.weight(1f))
+                if (signedIn) {
+                    // Two-line currency + available balance: reference arrangement.
+                    // Tap delegates to the existing authenticated wallet.
+                    Column(
+                        modifier = Modifier.width(if (compact) 68.dp else 88.dp)
+                            .clickable(onClick = onWallet)
+                            .padding(vertical = 5.dp),
+                        horizontalAlignment = Alignment.End,
+                        verticalArrangement = Arrangement.spacedBy(2.dp)
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.End) {
+                            Text(currency,
+                                fontSize = if (compact) 11.sp else 12.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFFB5B8C0),
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis)
+                            Icon(Icons.Default.KeyboardArrowDown,
+                                contentDescription = tr(lang, "Wallet", "کیف پول"),
+                                tint = Color(0xFF9EA2AA),
+                                modifier = Modifier.size(15.dp))
                         }
-                        Column(Modifier.clickable(onClick = onAccount)
-                            .widthIn(max = 95.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally) {
-                            Surface(color = Color(0xFF25383F),
-                                border = BorderStroke(1.dp, Color.White.copy(alpha = .18f)),
-                                shape = CircleShape) {
-                                Icon(Icons.Default.PersonOutline,
-                                    tr(lang, "Your profile", "حساب کاربری"),
-                                    tint = Palette.green,
-                                    modifier = Modifier.padding(8.dp).size(18.dp))
-                            }
-                            Spacer(Modifier.height(3.dp))
-                            Text(userName?.takeIf { it.isNotBlank() }
-                                ?: tr(lang, "Account", "حساب"),
-                                maxLines = 1, overflow = TextOverflow.Ellipsis,
-                                color = Color.White, fontSize = 9.sp,
-                                fontWeight = FontWeight.Bold)
+                        Text(amount,
+                            fontSize = if (compact) 13.sp else 15.sp,
+                            fontWeight = FontWeight.Black,
+                            color = Color.White,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis)
+                    }
+                    Spacer(Modifier.width(actionGap))
+                    Surface(
+                        modifier = Modifier.height(44.dp)
+                            .width(if (compact) 82.dp else 96.dp)
+                            .clickable(onClick = onWallet),
+                        color = headerGreen,
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Text(tr(lang, "Deposit", "واریز"),
+                                fontSize = if (compact) 12.sp else 13.sp,
+                                fontWeight = FontWeight.ExtraBold,
+                                color = Color.White,
+                                maxLines = 1)
+                        }
+                    }
+                    Spacer(Modifier.width(actionGap))
+                    Box(
+                        modifier = Modifier.size(43.dp)
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(Color(0xFF29292C))
+                            .clickable(onClick = onNotifications),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(Icons.Default.Notifications,
+                            contentDescription = tr(lang, "Notifications", "اعلان‌ها"),
+                            tint = Color.White, modifier = Modifier.size(22.dp))
+                        if (unread > 0) {
+                            Box(Modifier.align(Alignment.TopEnd)
+                                .padding(7.dp)
+                                .size(7.dp)
+                                .background(headerGreen, CircleShape))
                         }
                     }
                 } else {
-                    Row(horizontalArrangement = Arrangement.spacedBy(7.dp),
-                        verticalAlignment = Alignment.CenterVertically) {
-                        Surface(color = Color.White.copy(alpha = .08f),
-                            shape = RoundedCornerShape(12.dp),
-                            border = BorderStroke(1.dp, Color.White.copy(alpha = .16f)),
-                            modifier = Modifier.clickable(onClick = onAccount)) {
+                    // Guest actions remain functional without displaying a fake wallet.
+                    Surface(
+                        modifier = Modifier.height(44.dp)
+                            .clickable(onClick = onAccount),
+                        color = Color(0xFF232325),
+                        shape = RoundedCornerShape(12.dp),
+                        border = BorderStroke(1.dp, Color(0xFF4A4A50))
+                    ) {
+                        Box(Modifier.padding(horizontal = if (compact) 12.dp else 16.dp),
+                            contentAlignment = Alignment.Center) {
                             Text(tr(lang, "Log in", "ورود"),
-                                modifier = Modifier.padding(horizontal = 13.dp, vertical = 11.dp),
-                                color = Color.White, fontSize = 11.sp,
-                                fontWeight = FontWeight.ExtraBold)
+                                color = Color.White,
+                                fontSize = 12.sp, fontWeight = FontWeight.Bold)
                         }
-                        Surface(color = Palette.green,
-                            shape = RoundedCornerShape(12.dp),
-                            modifier = Modifier.clickable(onClick = onRegister)) {
+                    }
+                    Spacer(Modifier.width(actionGap))
+                    Surface(
+                        modifier = Modifier.height(44.dp)
+                            .clickable(onClick = onRegister),
+                        color = headerGreen,
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Box(Modifier.padding(horizontal = if (compact) 12.dp else 16.dp),
+                            contentAlignment = Alignment.Center) {
                             Text(tr(lang, "Sign up", "ثبت‌نام"),
-                                modifier = Modifier.padding(horizontal = 13.dp, vertical = 11.dp),
-                                color = Palette.ink, fontSize = 11.sp,
+                                color = Color.White,
+                                fontSize = 12.sp,
                                 fontWeight = FontWeight.ExtraBold)
                         }
                     }
