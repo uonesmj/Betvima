@@ -19,6 +19,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.Canvas
 import androidx.compose.ui.draw.clip
 import coil.compose.AsyncImage
 import androidx.compose.material.icons.Icons
@@ -30,6 +31,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -97,20 +100,20 @@ fun SportsbookTopTabs(state: AppState, model: AppViewModel, onSearch: () -> Unit
                         }
                     }) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Row(Modifier.heightIn(min = 43.dp)
-                        .padding(horizontal = 12.dp, vertical = 10.dp),
+                    Row(Modifier.heightIn(min = 47.dp)
+                        .padding(horizontal = 13.dp, vertical = 11.dp),
                         verticalAlignment = Alignment.CenterVertically) {
                         if (id == "bets") {
                             Surface(color = Color(0xFFFF4F20), shape = RoundedCornerShape(6.dp)) {
                                 Text("NEW", modifier = Modifier.padding(horizontal = 5.dp,
                                     vertical = 2.dp), fontWeight = FontWeight.Black,
-                                    fontSize = 8.sp, color = Color.White)
+                                    fontSize = 9.sp, color = Color.White)
                             }
                             Spacer(Modifier.width(5.dp))
                         }
                         Text(title, color = Palette.text, fontWeight =
                             if (active == id) FontWeight.Black else FontWeight.SemiBold,
-                            fontSize = 12.sp)
+                            fontSize = 14.sp)
                     }
                     Box(Modifier.height(2.dp).width(if (isActive) 25.dp else 0.dp)
                         .background(if (isActive) Palette.blue else Color.Transparent,
@@ -187,39 +190,153 @@ fun ReferenceSportRibbon(state: AppState, model: AppViewModel, live: Boolean = f
     }
 }
 
+/**
+ * Home feature logos, each with its own semantic shape and palette.
+ * The small corner symbol is part of the emblem, not a clickable status.
+ */
+internal enum class HomeSectionIdentity { LIVE, TOP_BETS, UPCOMING, OTHER }
+
+internal fun homeSectionIdentity(titleEn: String): HomeSectionIdentity = when (titleEn) {
+    "Live" -> HomeSectionIdentity.LIVE
+    "Top Bets" -> HomeSectionIdentity.TOP_BETS
+    "Upcoming" -> HomeSectionIdentity.UPCOMING
+    else -> HomeSectionIdentity.OTHER
+}
+
+@Composable
+private fun PremiumHomeSectionEmblem(
+    identity: HomeSectionIdentity, fallbackIcon: ImageVector, fallbackTint: Color
+) {
+    val startColor: Color
+    val endColor: Color
+    val emblem: ImageVector
+    val corner: ImageVector
+    val cornerColor: Color
+    when (identity) {
+        HomeSectionIdentity.LIVE -> {
+            startColor = Color(0xFF371B35)
+            endColor = Color(0xFFEC315D)
+            emblem = Icons.Default.Sensors
+            corner = Icons.Default.FiberManualRecord
+            cornerColor = Color(0xFFFF3D5A)
+        }
+        HomeSectionIdentity.TOP_BETS -> {
+            startColor = Color(0xFF08274D)
+            endColor = Palette.blue
+            emblem = Icons.Default.EmojiEvents
+            corner = Icons.Default.Star
+            cornerColor = Color(0xFFFFC653)
+        }
+        HomeSectionIdentity.UPCOMING -> {
+            startColor = Color(0xFF0B3540)
+            endColor = Color(0xFF05B982)
+            emblem = Icons.Default.EventAvailable
+            corner = Icons.Default.AccessTime
+            cornerColor = Color(0xFF00D47A)
+        }
+        HomeSectionIdentity.OTHER -> {
+            startColor = Palette.dark
+            endColor = fallbackTint
+            emblem = fallbackIcon
+            corner = Icons.Default.AutoAwesome
+            cornerColor = Palette.blue
+        }
+    }
+    Box(Modifier.size(61.dp), contentAlignment = Alignment.Center) {
+        Surface(
+            modifier = Modifier.size(57.dp),
+            shape = RoundedCornerShape(19.dp),
+            color = Color.White,
+            border = BorderStroke(1.dp, endColor.copy(alpha = .30f)),
+            shadowElevation = 4.dp
+        ) {
+            Box(
+                modifier = Modifier.fillMaxSize().padding(4.dp)
+                    .background(
+                        Brush.linearGradient(listOf(startColor, endColor)),
+                        RoundedCornerShape(15.dp)
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                Canvas(Modifier.fillMaxSize()) {
+                    // Subtle etched light and radial highlights add depth without assets or network.
+                    drawCircle(
+                        Color.White.copy(alpha = .16f), radius = size.minDimension * .41f,
+                        center = Offset(size.width * .90f, size.height * .12f)
+                    )
+                    drawCircle(
+                        Color.White.copy(alpha = .065f), radius = size.minDimension * .38f,
+                        center = Offset(size.width * .08f, size.height * .94f)
+                    )
+                    drawLine(
+                        Color.White.copy(alpha = .13f),
+                        start = Offset(size.width * .16f, size.height * .88f),
+                        end = Offset(size.width * .83f, size.height * .18f),
+                        strokeWidth = 1.dp.toPx()
+                    )
+                }
+                Icon(
+                    imageVector = emblem,
+                    contentDescription = null,
+                    tint = Color.White,
+                    modifier = Modifier.size(29.dp)
+                )
+            }
+        }
+        Surface(
+            modifier = Modifier.align(Alignment.BottomEnd).size(22.dp),
+            shape = CircleShape,
+            color = cornerColor,
+            border = BorderStroke(2.dp, Color.White),
+            shadowElevation = 2.dp
+        ) {
+            Box(contentAlignment = Alignment.Center) {
+                Icon(
+                    corner, contentDescription = null, tint = if (
+                        identity == HomeSectionIdentity.TOP_BETS ||
+                        identity == HomeSectionIdentity.UPCOMING
+                    ) Palette.ink else Color.White,
+                    modifier = Modifier.size(12.dp)
+                )
+            }
+        }
+    }
+}
+
 @Composable
 fun ReferenceSectionHeader(lang: Lang, titleEn: String, titleFa: String,
-    icon: androidx.compose.ui.graphics.vector.ImageVector, tint: Color,
-    onAll: () -> Unit) {
-    Row(Modifier.fillMaxWidth().padding(top = 17.dp, bottom = 11.dp),
+    icon: ImageVector, tint: Color, onAll: () -> Unit
+) {
+    Row(Modifier.fillMaxWidth().padding(top = 17.dp, bottom = 12.dp),
         verticalAlignment = Alignment.CenterVertically) {
-        Surface(color = tint.copy(alpha = .13f),
-            border = BorderStroke(1.dp, tint.copy(alpha = .27f)),
-            shape = RoundedCornerShape(14.dp)) {
-            Icon(icon, null, tint = tint,
-                modifier = Modifier.padding(11.dp).size(19.dp))
-        }
-        Spacer(Modifier.width(10.dp))
+        PremiumHomeSectionEmblem(homeSectionIdentity(titleEn), icon, tint)
+        Spacer(Modifier.width(11.dp))
         Column(Modifier.weight(1f)) {
             Text(tr(lang, titleEn, titleFa), fontWeight = FontWeight.Black,
-                fontSize = 19.sp, color = Palette.text)
-            Spacer(Modifier.height(3.dp))
-            Box(Modifier.width(35.dp).height(3.dp)
+                fontSize = 20.sp, color = Palette.text,
+                maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Spacer(Modifier.height(5.dp))
+            Box(Modifier.width(43.dp).height(3.dp)
                 .background(Brush.horizontalGradient(listOf(tint, Palette.green)),
                     RoundedCornerShape(99.dp)))
         }
-        Surface(color = Palette.ink, shape = RoundedCornerShape(14.dp),
+        Surface(
+            color = Palette.blue,
+            shape = RoundedCornerShape(13.dp),
             shadowElevation = 3.dp,
-            border = BorderStroke(1.dp, Palette.green.copy(alpha = .25f)),
-            modifier = Modifier.clickable(onClick = onAll)) {
-            Row(Modifier.heightIn(min = 43.dp)
-                .padding(horizontal = 13.dp, vertical = 9.dp),
-                verticalAlignment = Alignment.CenterVertically) {
-                Text(tr(lang, "View all", "مشاهده همه"), fontSize = 11.sp,
-                    fontWeight = FontWeight.ExtraBold, color = Color.White)
+            border = BorderStroke(1.dp, Color(0xFF68B6FF)),
+            modifier = Modifier.clickable(onClick = onAll)
+        ) {
+            Row(
+                Modifier.heightIn(min = 45.dp)
+                    .padding(horizontal = 12.dp, vertical = 9.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(tr(lang, "View all", "مشاهده همه"), fontSize = 12.sp,
+                    fontWeight = FontWeight.Black, color = Color.White)
                 Spacer(Modifier.width(5.dp))
                 Icon(Icons.Default.ArrowForward, null,
-                    tint = Palette.green, modifier = Modifier.size(17.dp))
+                    tint = Color.White, modifier = Modifier.size(17.dp))
             }
         }
     }
