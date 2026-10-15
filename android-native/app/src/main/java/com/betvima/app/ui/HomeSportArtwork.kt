@@ -84,13 +84,13 @@ fun SportsBadgeShortcut(
 
 /**
  * Curated competition artwork supplied by the user, offline and bundled with
- * the application. The 112px source tiles include a pale poster margin around
- * some emblems. Center-crop inside each source tile BEFORE circle clipping
+ * the application. Original artwork is now stored at 256 pixels per tile; a small
+ * 2px safety crop removes faint edge pixels. Crop before circle clipping
  * so that the artwork fills the control, without an extra inner/outer rim.
  */
 internal object HomeLeagueBadgeLayout {
-    const val sourceTilePx = 112
-    const val cropInsetPx = 12
+    const val sourceTilePx = 256
+    const val cropInsetPx = 2
     const val cropSizePx = sourceTilePx - 2 * cropInsetPx
     const val cardWidthDp = 88      // Previously 70dp: >= 25% wider
     const val diameterDp = 80       // Previously 64dp: exactly 25% larger
@@ -108,7 +108,10 @@ fun LeagueBadgeShortcut(label: String, index: Int, onClick: () -> Unit) {
         else -> R.drawable.betvima_league_row_3
     }
     val atlas = remember(context, resId) {
-        BitmapFactory.decodeResource(context.resources, resId).asImageBitmap()
+        // nodpi WebP atlas: decode at its exact intrinsic resolution, not
+        // screen-density scaled, then sample with high-quality filtering.
+        val options = BitmapFactory.Options().apply { inScaled = false }
+        BitmapFactory.decodeResource(context.resources, resId, options).asImageBitmap()
     }
     Column(
         Modifier.width(HomeLeagueBadgeLayout.cardWidthDp.dp).clickable(onClick = onClick),
