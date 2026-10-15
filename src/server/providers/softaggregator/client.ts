@@ -82,25 +82,23 @@ export async function launchCasinoGame(input: {
   const games = await casinoGames();
   const game = games.find((g) => g.id_hash === input.gameId);
   if (!game) throw new Error('CASINO_GAME_NOT_FOUND');
-  if (input.demo && !game.play_for_fun_supported) throw new Error('CASINO_DEMO_UNAVAILABLE');
+  // Provider confirms some demo titles (including Aviator) have a false catalogue flag.
+  // Attempt getGameDemo for any legitimate catalogued game and defer support to the API.
   const base = {
     gameid: input.gameId, currency: 'USD',
     lang: input.lang === 'fa' ? 'en' : 'en', // The provider's documented languages do not include Persian.
     device: input.device, homeurl: 'https://betvima.com',
   };
-  let url: string;
-  if (input.demo) {
-    // Provider's demo contract does NOT require createPlayer or wallet credentials.
-    url = await callSoftAggregator<string>('getGameDemo', base);
-  } else {
-    if (!input.userId) throw new Error('CASINO_PLAYER_REQUIRED');
-    const identity = casinoPlayerIdentity(input.userId);
-    await callSoftAggregator('createPlayer', { ...identity, currency: 'USD' });
-    url = await callSoftAggregator<string>('getGame', {
-      ...identity, ...base,
-      ...(input.country ? { country: input.country } : {}),
-    });
-  }
+  // SoftAggregator documents getGameDemo as using the same player credentials
+  // as getGame. Ensure the player before either launch. Neither mode can move
+  // funds here: wallet debits/credits are handled only by the signed callback.
+  if (!input.userId) throw new Error('CASINO_PLAYER_REQUIRED');
+  const identity = casinoPlayerIdentity(input.userId);
+  await callSoftAggregator('createPlayer', { ...identity, currency: 'USD' });
+  const url = await callSoftAggregator<string>(input.demo ? 'getGameDemo' : 'getGame', {
+    ...identity, ...base,
+    ...(!input.demo && input.country ? { country: input.country } : {}),
+  });
   if (typeof url !== 'string' || !/^https:\/\//i.test(url)) throw new Error('INVALID_CASINO_LAUNCH_URL');
   const parsed = new URL(url);
   if (parsed.username || parsed.password || !parsed.hostname.includes('.')) throw new Error('INVALID_CASINO_LAUNCH_URL');

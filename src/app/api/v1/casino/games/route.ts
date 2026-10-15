@@ -20,7 +20,8 @@ export async function GET(request: Request) {
       items: games.slice((page - 1) * limit, page * limit).map((g) => ({
         id: g.id_hash, name: g.name, category: g.game_type, provider: g.provider,
         providerName: g.provider_name ?? g.provider, image: g.image ?? null,
-        demoSupported: g.play_for_fun_supported === true,
+        // Explicitly provider-confirmed playable demo; other titles may support demo too.
+        demoSupported: g.id_hash === 'x887bde40b16350c' || g.play_for_fun_supported === true,
       })),
       total: games.length, page, limit,
     } }, { headers: { 'Cache-Control': 'no-store' } });
