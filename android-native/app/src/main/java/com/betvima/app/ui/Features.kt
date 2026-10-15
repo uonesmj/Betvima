@@ -46,69 +46,24 @@ fun FeaturePage(state: AppState, model: AppViewModel) {
                 }
                 Text(title, fontSize = 17.sp, fontWeight = FontWeight.Black,
                     color = Palette.text, modifier = Modifier.weight(1f))
-                Surface(color = Palette.greenLight, shape = RoundedCornerShape(10.dp)) {
-                    Icon(Icons.Default.VerifiedUser, null, tint = Palette.ink,
+                Surface(color = if (state.feature == Feature.VIP) Color(0xFFEAF4FF)
+                    else Palette.greenLight, shape = RoundedCornerShape(10.dp)) {
+                    Icon(if (state.feature == Feature.VIP) Icons.Default.WorkspacePremium
+                        else Icons.Default.VerifiedUser, null,
+                        tint = if (state.feature == Feature.VIP) Palette.blue else Palette.ink,
                         modifier = Modifier.padding(8.dp).size(19.dp))
                 }
             }
         }
         when (state.feature) {
             Feature.PROFILE -> ProfilePage(state, model)
-            Feature.VIP -> VipPage(state)
+            Feature.VIP -> PremiumVipClubPage(state, model)
             Feature.BONUSES -> BonusPage(state, model)
             Feature.SUPPORT -> SupportPage(state, model)
             Feature.CASINO -> CasinoLobby(state, model)
             Feature.AFFILIATE -> AffiliateDashboard(state, model)
             Feature.NOTIFICATIONS -> NotificationsPage(state, model)
             else -> Unit
-        }
-    }
-}
-
-@Composable
-private fun VipPage(state: AppState) {
-    val tiers = listOf(2000 to 3, 4000 to 5, 6000 to 6, 9000 to 8, 15000 to 11)
-    LazyColumn(contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        item {
-            BvPageBanner(
-                eyebrow = tr(state.lang, "VIP CLUB", "باشگاه VIP"),
-                title = tr(state.lang, "Loyalty has its rewards", "وفاداری شما ارزشمند است"),
-                subtitle = tr(state.lang,
-                    "Discover the weekly deposit tiers and eligible cashback percentages.",
-                    "سطح‌های واریز هفتگی و درصد کش‌بک مربوط به هر سطح را بشناسید."),
-                icon = Icons.Default.WorkspacePremium,
-                accent = Palette.gold
-            ) {
-                Spacer(Modifier.height(5.dp))
-                SmallPill(tr(state.lang, "Monday review", "بررسی روز دوشنبه"),
-                    Palette.gold.copy(alpha = .17f), Palette.gold)
-            }
-        }
-        item { SectionHeading(tr(state.lang, "Weekly cashback tiers", "سطوح کش‌بک هفتگی")) }
-        items(tiers) { (deposit, percent) ->
-            Surface(color = Color.White, shape = RoundedCornerShape(16.dp),
-                border = BorderStroke(1.dp, Palette.border)) {
-                Row(Modifier.fillMaxWidth().padding(17.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Surface(color = Palette.greenLight, shape = RoundedCornerShape(12.dp)) {
-                        Text(percent.toString() + "%", color = Palette.ink, fontSize = 24.sp,
-                            fontWeight = FontWeight.Black, modifier = Modifier.padding(12.dp))
-                    }
-                    Spacer(Modifier.width(15.dp))
-                    Column(Modifier.weight(1f)) {
-                        Text(tr(state.lang, "Weekly deposits", "واریز هفتگی"), color = Palette.muted, fontSize = 10.sp)
-                        Text(if (deposit == 15000) "$15,000+" else "$" + "%,d".format(deposit),
-                            color = Palette.text, fontWeight = FontWeight.Black, fontSize = 18.sp)
-                        Text(tr(state.lang, "Of eligible weekly net losses", "از خالص باخت واجد شرایط هفتگی"),
-                            color = Palette.muted, fontSize = 10.sp)
-                    }
-                }
-            }
-        }
-        item {
-            Text(tr(state.lang,
-                "Cashback is subject to the site's eligibility rules and verified server-side payout engine. This screen does not authorize or execute credits.",
-                "پرداخت کش‌بک تابع شرایط سایت و موتور پرداخت تأییدشده در سرور است. این صفحه هیچ مبلغی را تأیید یا واریز نمی‌کند."),
-                fontSize = 11.sp, color = Palette.muted, modifier = Modifier.padding(8.dp))
         }
     }
 }
