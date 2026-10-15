@@ -17,6 +17,7 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.Canvas
@@ -44,6 +45,7 @@ import com.betvima.app.data.Selection
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.platform.LocalContext
 import android.widget.Toast
+import kotlin.math.min
 
 /**
  * Dense reference-inspired sports layouts using server-owned fixtures and markets.
@@ -411,48 +413,132 @@ internal fun leagueMatchesShortcut(league: String, shortcut: HomeCompetitionShor
     }
 }
 
+/**
+ * The reveal strength is driven by actual item position rather than a timer.
+ * Items settle at 1f when clear of an edge and gently enter from 0.93f at
+ * the clipped viewport boundary. Pure function for deterministic tests.
+ */
+internal data class CompetitionRibbonReveal(
+    val scale: Float,
+    val alpha: Float,
+    val translationDp: Float
+)
+
+internal fun competitionRibbonReveal(
+    itemCenterPx: Float, viewportStartPx: Float,
+    viewportEndPx: Float, itemSizePx: Float
+): CompetitionRibbonReveal {
+    if (itemSizePx <= 0f || viewportEndPx <= viewportStartPx) {
+        return CompetitionRibbonReveal(1f, 1f, 0f)
+    }
+    val left = itemCenterPx - viewportStartPx
+    val right = viewportEndPx - itemCenterPx
+    val edgeDistance = min(left, right).coerceAtLeast(0f)
+    val visibility = (edgeDistance / (itemSizePx * .9f)).coerceIn(0f, 1f)
+    val slide = if (left < right) 1f else -1f
+    return CompetitionRibbonReveal(
+        scale = .93f + .07f * visibility,
+        alpha = .80f + .20f * visibility,
+        translationDp = slide * 6f * (1f - visibility)
+    )
+}
+
 @Composable
 fun ReferenceTournamentRibbon(state: AppState, model: AppViewModel) {
     val context = LocalContext.current
     val ribbonState = rememberLazyListState()
-    LazyRow(
-        Modifier.fillMaxWidth(), state = ribbonState,
-        contentPadding = PaddingValues(horizontal = 9.dp, vertical = 11.dp),
-        horizontalArrangement = Arrangement.spacedBy(4.dp),
-        flingBehavior = rememberPremiumFlingBehavior()
-    ) {
-        items(homeCompetitionShortcuts, key = { it.key }) { shortcut ->
-            LeagueBadgeShortcut(
-                label = shortcut.title, index = shortcut.picture
-            ) {
-                if (shortcut.goToMarkets) {
-                    model.homeMode(HomeMode.TOP_BETS)
-                } else {
-                    val future = state.upcoming.firstOrNull {
-                        leagueMatchesShortcut(it.league, shortcut)
-                    }
-                    val live = state.live.firstOrNull {
-                        leagueMatchesShortcut(it.league, shortcut)
-                    }
-                    when {
-                        future != null -> model.tournament(
-                            future.league + "|" + future.country
+    val edgeIntensity by animateFloatAsState(
+        targetValue = if (ribbonState.isScrollInProgress) .94f else .34f,
+        animationSpec = tween(durationMillis = 260),
+        label = "competitionCarouselEdgeGlow"
+    )
+    Box(Modifier.fillMaxWidth()) {
+        LazyRow(
+            Modifier.fillMaxWidth(),
+            state = ribbonState,
+            contentPadding = PaddingValues(horizontal = 9.dp, vertical = 11.dp),
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+            flingBehavior = rememberPremiumFlingBehavior()
+        ) {
+            itemsIndexed(homeCompetitionShortcuts, key = { _, entry -> entry.key }) { index, shortcut ->
+                Box(Modifier.graphicsLayer {
+                    // Access observable layout state inside the graphics layer,
+                    // avoiding full carousel recompositions during each scroll frame.
+                    val info = ribbonState.layoutInfo
+                    val visible = info.visibleItemsInfo.firstOrNull { it.index == index }
+                    if (visible == null) {
+                        scaleX = 1f; scaleY = 1f; alpha = 1f; translationX = 0f
+                    } else {
+                        val reveal = competitionRibbonReveal(
+                            visible.offset + visible.size / 2f,
+                            info.viewportStartOffset.toFloat(),
+                            info.viewportEndOffset.toFloat(),
+                            visible.size.toFloat()
                         )
-                        live != null -> model.tab(Tab.LIVE)
-                        else -> Toast.makeText(
-                            context,
-                            tr(state.lang,
-                                "No currently loaded fixtures for " + shortcut.title,
-                                "فعلاً بازی بارگذاری‌شده‌ای برای " + shortcut.title + " وجود ندارد"),
-                            Toast.LENGTH_SHORT
-                        ).show()
+                        scaleX = reveal.scale
+                        scaleY = reveal.scale
+                        alpha = reveal.alpha
+                        translationX = reveal.translationDp.dp.toPx()
+                    }
+                }) {
+                    LeagueBadgeShortcut(label = shortcut.title, index = shortcut.picture) {
+                        if (shortcut.goToMarkets) {
+                                            model.homeMode(HomeMode.TOP_BETS)
+                                        } else {
+                                            val future = state.upcoming.firstOrNull {
+                                                leagueMatchesShortcut(it.league, shortcut)
+                                            }
+                                            val live = state.live.firstOrNull {
+                                                leagueMatchesShortcut(it.league, shortcut)
+                                            }
+                                            when {
+                                                future != null -> model.tournament(
+                                                    future.league + "|" + future.country
+                                                )
+                                                live != null -> model.tab(Tab.LIVE)
+                                                else -> Toast.makeText(
+                                                    context,
+                                                    tr(state.lang,
+                                                        "No currently loaded fixtures for " + shortcut.title,
+                                                        "فعلاً بازی بارگذاری‌شده‌ای برای " + shortcut.title + " وجود ندارد"),
+                                                    Toast.LENGTH_SHORT
+                                                ).show()
+                                            }
+                                        }
                     }
                 }
             }
         }
+        // An unobtrusive light sweep at the viewport edges hints that more
+        // league artwork is available and reacts instantly to the drag.
+        if (ribbonState.canScrollBackward) {
+            Box(
+                Modifier.align(Alignment.CenterStart)
+                    .width(19.dp).height(92.dp)
+                    .graphicsLayer { alpha = edgeIntensity }
+                    .background(
+                        Brush.horizontalGradient(
+                            listOf(Color(0xFFDCEBFF), Palette.paper.copy(alpha = 0f))
+                        ),
+                        RoundedCornerShape(topEnd = 18.dp, bottomEnd = 18.dp)
+                    )
+            )
+        }
+        if (ribbonState.canScrollForward) {
+            Box(
+                Modifier.align(Alignment.CenterEnd)
+                    .width(19.dp).height(92.dp)
+                    .graphicsLayer { alpha = edgeIntensity }
+                    .background(
+                        Brush.horizontalGradient(
+                            listOf(Palette.paper.copy(alpha = 0f), Color(0xFFFFE3F1))
+                        ),
+                        RoundedCornerShape(topStart = 18.dp, bottomStart = 18.dp)
+                    )
+            )
+        }
     }
 }
-
 @Composable
 private fun TournamentShortcut(
     label: String, logo: String?,
