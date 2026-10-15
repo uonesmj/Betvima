@@ -186,13 +186,17 @@ class ApiClient {
         val match = data.optJSONObject("match") ?: throw ApiFailure(404, "Match unavailable")
         return parseMatch(match, data.optJSONArray("markets"))
     }
-    private fun parseBetLeg(leg: JSONObject): BetLegDetail {
+    internal fun parseBetLeg(leg: JSONObject): BetLegDetail {
         val match = leg.optJSONObject("match")
         fun integerOrNull(key: String) = match?.takeIf { !it.isNull(key) && it.has(key) }?.optInt(key)
         return BetLegDetail(
             matchLabel = leg.str("matchLabel"), marketLabel = leg.str("marketLabel"),
             selectionLabel = leg.str("selectionLabel"),
-            oddsScaled = leg.str("oddsAtPlacementScaled", "0"),
+            // Prefer the odds explicitly accepted by the customer if the
+            // placement snapshot includes a price movement. Never use live odds.
+            oddsScaled = leg.str("acceptedOddsScaled").takeIf {
+                it.toBigDecimalOrNull()?.signum() == 1
+            } ?: leg.str("oddsAtPlacementScaled", "0"),
             status = leg.str("status"), result = leg.str("grade"),
             league = match?.str("leagueName").orEmpty(), matchId = leg.str("matchId"),
             matchStatus = match?.str("status").orEmpty(),
