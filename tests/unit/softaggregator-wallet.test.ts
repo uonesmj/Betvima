@@ -22,8 +22,12 @@ function makeFakeDb(initial = 1000n, held = 200n) {
   let balance = initial;
   const receipts = new Map<string, { identity_hash: string; response_error: 0 | 1 | 2; response_balance_minor: string; action: string; wallet_amount_minor: string; round_id: string; game_id: string; amount_minor: string; reversed: boolean }>();
   const postings: Array<Record<string, unknown>> = [];
+  const rounds = new Map<string, { wallet_currency: string }>();
   const fake = {
     queryOne: vi.fn(async (sql: string, params: unknown[]) => {
+      if (sql.includes('from nova.softaggregator_round_fx')) {
+        return rounds.get(String(params[1]) + ':' + String(params[2])) ?? null;
+      }
       if (sql.includes('from nova.softaggregator_callback_receipts r')) {
         for (const [callId, receipt] of receipts) {
           if (receipt.action === 'debit' && receipt.response_error === 0 &&
@@ -54,6 +58,9 @@ function makeFakeDb(initial = 1000n, held = 200n) {
       throw new Error('Unexpected query: ' + sql);
     }),
     query: vi.fn(async (sql: string, params: unknown[]) => {
+      if (sql.includes('insert into nova.softaggregator_round_fx')) {
+        rounds.set(String(params[1]) + ':' + String(params[2]), { wallet_currency: 'USD' });
+      }
       if (sql.includes('insert into nova.softaggregator_callback_receipts')) {
         receipts.set(String(params[0]), {
           identity_hash: String(params[1]),
