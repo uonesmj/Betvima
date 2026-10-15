@@ -1,6 +1,19 @@
 package com.betvima.app.ui
 
 import android.provider.Settings
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.core.animate
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.foundation.gestures.FlingBehavior
+import androidx.compose.foundation.gestures.ScrollScope
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material3.Icon
+import androidx.compose.runtime.remember
+import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.graphics.vector.ImageVector
+import kotlin.math.abs
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -122,4 +135,75 @@ fun PremiumLoadingOverlay(visible: Boolean, lang: Lang) {
             }
         }
     }
+}
+
+/**
+ * Shared motion language for BetVima Android.
+ *
+ * Finger drag stays completely native; only inertial release is smoothed.
+ * A consumed-edge check prevents scrolling past content and preserves nested
+ * scrolling handoff. The animation system obeys Android reduced-motion scale.
+ */
+private class PremiumFlingBehavior : FlingBehavior {
+    override suspend fun ScrollScope.performFling(initialVelocity: Float): Float {
+        if (!initialVelocity.isFinite() || abs(initialVelocity) < 40f) return 0f
+        val travel = (initialVelocity * .28f).coerceIn(-2350f, 2350f)
+        var previous = 0f
+        var remaining = 0f
+        animate(
+            initialValue = 0f,
+            targetValue = travel,
+            animationSpec = tween(460, easing = FastOutSlowInEasing)
+        ) { value, velocity ->
+            val delta = value - previous
+            previous = value
+            val consumed = scrollBy(delta)
+            if (abs(delta - consumed) > 1f) {
+                remaining = velocity
+                cancelAnimation()
+            }
+        }
+        return remaining
+    }
+}
+
+@Composable
+fun rememberPremiumFlingBehavior(): FlingBehavior =
+    remember { PremiumFlingBehavior() }
+
+/** Coordinated expansion and fading, instead of instant if(expanded) removal. */
+@Composable
+fun SmoothExpandedContent(
+    expanded: Boolean,
+    content: @Composable () -> Unit
+) {
+    AnimatedVisibility(
+        visible = expanded,
+        enter = expandVertically(animationSpec = tween(310, easing = FastOutSlowInEasing)) +
+            fadeIn(animationSpec = tween(220)),
+        exit = shrinkVertically(animationSpec = tween(270, easing = FastOutSlowInEasing)) +
+            fadeOut(animationSpec = tween(170))
+    ) {
+        content()
+    }
+}
+
+@Composable
+fun SmoothExpandChevron(
+    expanded: Boolean,
+    description: String? = null,
+    tint: Color = Color(0xFF9CA3AF),
+    modifier: Modifier = Modifier
+) {
+    val rotation by animateFloatAsState(
+        targetValue = if (expanded) 180f else 0f,
+        animationSpec = tween(290, easing = FastOutSlowInEasing),
+        label = "betvimaChevron"
+    )
+    Icon(
+        Icons.Default.ExpandMore,
+        contentDescription = description,
+        tint = tint,
+        modifier = modifier.rotate(rotation)
+    )
 }
