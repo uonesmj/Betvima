@@ -264,7 +264,7 @@ fun PremiumWalletPage(state: AppState, model: AppViewModel) {
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(horizontal = 15.dp, vertical = 13.dp),
         verticalArrangement = Arrangement.spacedBy(13.dp)
-    ) {
+    , flingBehavior = rememberPremiumFlingBehavior()) {
         item {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
@@ -499,7 +499,7 @@ private fun WalletHistorySheet(
             }
         }
         LazyColumn(Modifier.fillMaxWidth().heightIn(max = 430.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            verticalArrangement = Arrangement.spacedBy(8.dp), flingBehavior = rememberPremiumFlingBehavior()) {
             if (mode == "ledger") {
                 val entries = wallet.transactions.filter {
                     filter == "all" || it.direction == filter
