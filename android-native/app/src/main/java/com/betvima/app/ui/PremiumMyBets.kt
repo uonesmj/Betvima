@@ -2,15 +2,12 @@ package com.betvima.app.ui
 
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -41,6 +38,7 @@ import kotlinx.coroutines.delay
 fun PremiumMyBetsPage(state: AppState, model: AppViewModel) {
     val filter = state.historyQuery
     var search by rememberSaveable { mutableStateOf(filter.search) }
+    var activeFilter by rememberSaveable { mutableStateOf<String?>(null) }
     LaunchedEffect(search) {
         delay(380)
         if (search.trim() != state.historyQuery.search) {
@@ -124,11 +122,6 @@ fun PremiumMyBetsPage(state: AppState, model: AppViewModel) {
                 }
             }
             item {
-                StatusSegment(state.lang, filter.status) { status ->
-                    model.setBetHistoryQuery(filter.copy(status = status))
-                }
-            }
-            item {
                 OutlinedTextField(
                     value = search, onValueChange = { search = it.take(70) },
                     modifier = Modifier.fillMaxWidth(),
@@ -148,29 +141,47 @@ fun PremiumMyBetsPage(state: AppState, model: AppViewModel) {
                     }
                 )
             }
-            item {
-                LazyRow(horizontalArrangement = Arrangement.spacedBy(7.dp), flingBehavior = rememberPremiumFlingBehavior()) {
-                    val typeValues = listOf(
-                        "all" to tr(state.lang, "All types", "همه نوع‌ها"),
-                        "single" to tr(state.lang, "Single", "تکی"),
-                        "multiple" to tr(state.lang, "Multiple", "میکس"))
-                    items(typeValues, key = { "type-"+it.first }) { (type, title) ->
-                        HistoryChip(title, filter.type == type) {
-                            model.setBetHistoryQuery(filter.copy(type = type))
-                        }
+            item(key = "history-filters") {
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        HistoryFilterTrigger(
+                            title = tr(state.lang, "Status", "وضعیت"),
+                            selected = when(filter.status) {
+                                "open" -> tr(state.lang, "Open", "باز")
+                                "settled" -> tr(state.lang, "Finished", "نهایی")
+                                else -> tr(state.lang, "All", "همه")
+                            },
+                            active = filter.status != "all",
+                            modifier = Modifier.weight(1f)
+                        ) { activeFilter = "status" }
+                        HistoryFilterTrigger(
+                            title = tr(state.lang, "Bet type", "نوع شرط"),
+                            selected = when(filter.type) {
+                                "single" -> tr(state.lang, "Single", "تکی")
+                                "multiple" -> tr(state.lang, "Multiple", "میکس")
+                                else -> tr(state.lang, "All", "همه")
+                            },
+                            active = filter.type != "all",
+                            modifier = Modifier.weight(1f)
+                        ) { activeFilter = "type" }
+                        HistoryFilterTrigger(
+                            title = tr(state.lang, "Date", "تاریخ"),
+                            selected = if (filter.days == 0) tr(state.lang, "Any time", "همه")
+                                else tr(state.lang, "${filter.days} days", "${filter.days} روز"),
+                            active = filter.days != 0,
+                            modifier = Modifier.weight(1f)
+                        ) { activeFilter = "days" }
                     }
-                }
-            }
-            item {
-                LazyRow(horizontalArrangement = Arrangement.spacedBy(7.dp), flingBehavior = rememberPremiumFlingBehavior()) {
-                    val dates = listOf(
-                        0 to tr(state.lang, "All dates", "همه تاریخ‌ها"),
-                        7 to tr(state.lang, "7 days", "۷ روز"),
-                        30 to tr(state.lang, "30 days", "۳۰ روز"),
-                        90 to tr(state.lang, "90 days", "۹۰ روز"))
-                    items(dates, key = { "date-"+it.first }) { (days, title) ->
-                        HistoryChip(title, filter.days == days) {
-                            model.setBetHistoryQuery(filter.copy(days = days))
+                    if (filter.status != "all" || filter.type != "all" || filter.days != 0 ||
+                        filter.search.isNotBlank()) {
+                        TextButton(onClick = {
+                            search = ""
+                            model.setBetHistoryQuery(BetHistoryQuery())
+                        }, modifier = Modifier.align(Alignment.End)) {
+                            Icon(Icons.Default.RestartAlt, null, modifier = Modifier.size(16.dp))
+                            Spacer(Modifier.width(6.dp))
+                            Text(tr(state.lang, "Clear all filters", "پاک‌کردن همه فیلترها"),
+                                fontWeight = FontWeight.Bold, fontSize = 11.sp)
                         }
                     }
                 }
@@ -233,46 +244,139 @@ fun PremiumMyBetsPage(state: AppState, model: AppViewModel) {
             }
         }
     }
+    if (activeFilter != null && state.signedIn) {
+        HistoryFilterPopup(
+            kind = activeFilter!!, filter = state.historyQuery, lang = state.lang,
+            onSelect = { next ->
+                activeFilter = null
+                model.setBetHistoryQuery(next)
+            },
+            onClose = { activeFilter = null }
+        )
+    }
 }
 
 @Composable
-private fun StatusSegment(lang: Lang, value: String, onChange: (String) -> Unit) {
-    val options = listOf("all" to tr(lang, "All", "همه"),
-        "open" to tr(lang, "Open", "باز"),
-        "settled" to tr(lang, "Finished", "نهایی‌شده"))
-    Surface(color = Color(0xFFE2E5EB), shape = RoundedCornerShape(16.dp)) {
-        Row(Modifier.fillMaxWidth().padding(4.dp)) {
-            options.forEach { (key, label) ->
-                val active = value == key
-                val bg by animateColorAsState(
-                    if (active) Palette.blue else Color.Transparent,
-                    animationSpec = tween(170), label = "ticketStatusColor")
-                Surface(
-                    color = bg, shape = RoundedCornerShape(12.dp),
-                    modifier = Modifier.weight(1f).heightIn(min = 46.dp)
-                        .clickable { onChange(key) }
-                ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Text(label, color = if (active) Color.White else Palette.text,
-                            fontSize = 13.sp, fontWeight = FontWeight.Black)
-                    }
-                }
+private fun HistoryFilterTrigger(
+    title: String, selected: String, active: Boolean,
+    modifier: Modifier = Modifier, onClick: () -> Unit
+) {
+    Surface(
+        modifier = modifier.clickable(onClick = onClick),
+        shape = RoundedCornerShape(15.dp),
+        color = if (active) Color(0xFFEAF4FF) else Color.White,
+        border = BorderStroke(1.dp, if (active) Palette.blue else Color(0xFFDCE4ED))
+    ) {
+        Column(Modifier.fillMaxWidth().padding(horizontal = 11.dp, vertical = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Text(title, fontSize = 10.sp, color = Palette.muted,
+                maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(selected, modifier = Modifier.weight(1f),
+                    color = if (active) Palette.blue else Palette.text,
+                    fontSize = 12.sp, fontWeight = FontWeight.Black,
+                    maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Icon(Icons.Default.KeyboardArrowDown, null,
+                    modifier = Modifier.size(17.dp),
+                    tint = if (active) Palette.blue else Palette.muted)
             }
         }
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun HistoryChip(label: String, chosen: Boolean, action: () -> Unit) {
-    Surface(
-        color = if (chosen) Palette.ink else Color(0xFFEDF0F5),
-        border = BorderStroke(1.dp, if (chosen) Palette.ink else Palette.border),
-        shape = RoundedCornerShape(13.dp),
-        modifier = Modifier.clickable(onClick = action)
+private fun HistoryFilterPopup(
+    kind: String, filter: BetHistoryQuery, lang: Lang,
+    onSelect: (BetHistoryQuery) -> Unit, onClose: () -> Unit
+) {
+    val options: List<Triple<String, String, String>> = when(kind) {
+        "status" -> listOf(
+            Triple("all", tr(lang, "All tickets", "همه بلیت‌ها"),
+                tr(lang, "Open and finished tickets", "بلیت‌های باز و نهایی‌شده")),
+            Triple("open", tr(lang, "Open", "باز"),
+                tr(lang, "Pending and active bets", "شرط‌های در انتظار و باز")),
+            Triple("settled", tr(lang, "Finished", "نهایی‌شده"),
+                tr(lang, "Settled, voided and refunded", "تسویه‌شده، باطل و برگشتی"))
+        )
+        "type" -> listOf(
+            Triple("all", tr(lang, "All bet types", "همه نوع شرط‌ها"),
+                tr(lang, "Single and multiple", "شرط‌های تکی و میکس")),
+            Triple("single", tr(lang, "Single", "تکی"),
+                tr(lang, "One selection per ticket", "یک انتخاب در هر بلیت")),
+            Triple("multiple", tr(lang, "Multiple", "میکس"),
+                tr(lang, "Combined selections", "چند انتخاب در یک بلیت"))
+        )
+        else -> listOf(
+            Triple("0", tr(lang, "All dates", "همه تاریخ‌ها"),
+                tr(lang, "No date restriction", "بدون محدودیت زمانی")),
+            Triple("7", tr(lang, "Last 7 days", "۷ روز گذشته"),
+                tr(lang, "Recent bets", "شرط‌های اخیر")),
+            Triple("30", tr(lang, "Last 30 days", "۳۰ روز گذشته"),
+                tr(lang, "This month", "ماه اخیر")),
+            Triple("90", tr(lang, "Last 90 days", "۹۰ روز گذشته"),
+                tr(lang, "Last three months", "سه ماه اخیر"))
+        )
+    }
+    val chosen = when (kind) {
+        "status" -> filter.status
+        "type" -> filter.type
+        else -> filter.days.toString()
+    }
+    val heading = when (kind) {
+        "status" -> tr(lang, "Ticket status", "وضعیت بلیت‌ها")
+        "type" -> tr(lang, "Bet type", "نوع شرط")
+        else -> tr(lang, "Time period", "بازه زمانی")
+    }
+    ModalBottomSheet(
+        onDismissRequest = onClose,
+        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+        containerColor = Color.White,
+        shape = RoundedCornerShape(topStart = 26.dp, topEnd = 26.dp)
     ) {
-        Text(label, color = if (chosen) Color.White else Palette.text,
-            fontSize = 11.sp, fontWeight = FontWeight.Bold,
-            modifier = Modifier.padding(horizontal = 13.dp, vertical = 12.dp))
+        Column(Modifier.fillMaxWidth().padding(start = 20.dp, end = 20.dp, bottom = 30.dp),
+            verticalArrangement = Arrangement.spacedBy(11.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text(heading, fontSize = 20.sp, fontWeight = FontWeight.Black,
+                        color = Palette.text)
+                    Text(tr(lang, "Choose one filter", "یک گزینه انتخاب کنید"),
+                        fontSize = 12.sp, color = Palette.muted)
+                }
+                IconButton(onClick = onClose) {
+                    Icon(Icons.Default.Close, tr(lang, "Close", "بستن"), tint = Palette.muted)
+                }
+            }
+            options.forEach { (key, label, subtitle) ->
+                val selected = key == chosen
+                Surface(
+                    modifier = Modifier.fillMaxWidth().clickable {
+                        onSelect(when (kind) {
+                            "status" -> filter.copy(status = key)
+                            "type" -> filter.copy(type = key)
+                            else -> filter.copy(days = key.toInt())
+                        })
+                    },
+                    shape = RoundedCornerShape(15.dp),
+                    color = if (selected) Color(0xFFEAF5FF) else Color(0xFFF7F9FC),
+                    border = BorderStroke(1.dp,
+                        if (selected) Palette.blue else Color(0xFFE2E7EE))
+                ) {
+                    Row(Modifier.fillMaxWidth().padding(14.dp),
+                        verticalAlignment = Alignment.CenterVertically) {
+                        Column(Modifier.weight(1f)) {
+                            Text(label, fontWeight = FontWeight.Bold,
+                                color = Palette.text, fontSize = 14.sp)
+                            Spacer(Modifier.height(3.dp))
+                            Text(subtitle, color = Palette.muted, fontSize = 11.sp)
+                        }
+                        Icon(if (selected) Icons.Default.RadioButtonChecked
+                            else Icons.Default.RadioButtonUnchecked, null,
+                            tint = if (selected) Palette.blue else Palette.muted)
+                    }
+                }
+            }
+        }
     }
 }
 

@@ -149,6 +149,7 @@ internal fun BetSelectionOverview(
     ) {
         Column(Modifier.fillMaxWidth().padding(13.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            TicketSelectionSpotlight(leg, lang, result, outcomeColor)
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Default.SportsSoccer, null,
                     tint = Palette.blue, modifier = Modifier.size(17.dp))
@@ -213,31 +214,68 @@ internal fun BetSelectionOverview(
                         color = ticketMuted, fontSize = 11.sp)
                 }
             }
-            HorizontalDivider(color = ticketBorder)
-            Text(tr(lang,"Your selection","انتخاب شما"), fontSize = 10.sp,
-                color = ticketMuted, fontWeight = FontWeight.Bold)
-            Text(leg.selectionLabel.ifBlank { tr(lang,"Selection unavailable","انتخاب نامشخص") },
-                color = ticketInk, fontWeight = FontWeight.Black,
-                fontSize = 15.sp, maxLines = 3)
-            Text(leg.marketLabel.ifBlank { tr(lang,"Market unavailable","مارکت نامشخص") },
-                color = ticketMuted, fontSize = 11.sp, maxLines = 2)
-            Row(
-                Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Surface(color = Color(0xFFE8F2FF), shape = RoundedCornerShape(9.dp)) {
-                    Text(tr(lang, "Accepted odds ", "ضریب ثبت‌شده ") + odds(leg.oddsScaled),
-                        modifier = Modifier.padding(horizontal = 9.dp, vertical = 6.dp),
-                        color = Palette.blue, fontWeight = FontWeight.ExtraBold,
-                        fontSize = 11.sp)
-                }
-                Surface(color = outcomeColor.copy(alpha = .10f),
-                    shape = RoundedCornerShape(9.dp)) {
-                    Text(legResultLabel(result, lang),
-                        modifier = Modifier.padding(horizontal = 9.dp, vertical = 6.dp),
-                        color = outcomeColor, fontSize = 11.sp,
-                        fontWeight = FontWeight.Black)
+
+        }
+    }
+}
+
+/**
+ * Primary visual hierarchy: the server-recorded market, selection, and
+ * accepted price appear BEFORE the fixture scoreboard. No score is interpreted
+ * as a winning selection; only the settlement grade controls the outcome pill.
+ */
+@Composable
+private fun TicketSelectionSpotlight(
+    leg: BetLegDetail, lang: Lang, result: String, outcomeColor: Color
+) {
+    Surface(
+        shape = RoundedCornerShape(15.dp),
+        color = Color(0xFFEDFBF4),
+        border = BorderStroke(1.dp, Color(0xFF9DDFC1))
+    ) {
+        Row(Modifier.fillMaxWidth().padding(13.dp), verticalAlignment = Alignment.Top) {
+            Surface(color = Color(0xFF00A86B), shape = RoundedCornerShape(11.dp)) {
+                Icon(Icons.Default.GpsFixed, null, tint = Color.White,
+                    modifier = Modifier.padding(10.dp).size(20.dp))
+            }
+            Spacer(Modifier.width(10.dp))
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text(tr(lang, "YOUR BET · EXACT SELECTION", "شرط شما · انتخاب ثبت‌شده"),
+                    color = Color(0xFF16704B), fontSize = 10.sp,
+                    fontWeight = FontWeight.Black)
+                // Never derive a pick from the score, selected team, or market key.
+                Text(leg.selectionLabel.ifBlank {
+                    tr(lang, "Selection unavailable", "انتخاب نامشخص")
+                }, fontWeight = FontWeight.Black,
+                    fontSize = 18.sp, lineHeight = 23.sp, color = Color(0xFF122E23))
+                HorizontalDivider(color = Color(0xFFBBE8D2))
+                Text(tr(lang, "MARKET", "نوع بازار"),
+                    color = Color(0xFF547C69), fontSize = 10.sp,
+                    fontWeight = FontWeight.Bold)
+                Text(leg.marketLabel.ifBlank {
+                    tr(lang, "Market unavailable", "مارکت نامشخص")
+                }, color = Color(0xFF244A38), fontSize = 13.sp,
+                    lineHeight = 19.sp, fontWeight = FontWeight.SemiBold)
+                val validOdds = leg.oddsScaled.toBigDecimalOrNull()?.signum() == 1
+                Row(
+                    Modifier.fillMaxWidth().padding(top = 3.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Surface(color = Color.White, shape = RoundedCornerShape(9.dp),
+                        border = BorderStroke(1.dp, Color(0xFFAAD9C3))) {
+                        Text(tr(lang, "Accepted odds ", "ضریب ثبت‌شده ") +
+                            if (validOdds) odds(leg.oddsScaled) else "—",
+                            color = Color(0xFF176E4B), fontSize = 11.sp,
+                            fontWeight = FontWeight.Black,
+                            modifier = Modifier.padding(horizontal = 9.dp, vertical = 7.dp))
+                    }
+                    Surface(color = outcomeColor.copy(alpha = .10f),
+                        shape = RoundedCornerShape(9.dp)) {
+                        Text(legResultLabel(result, lang), color = outcomeColor,
+                            fontSize = 10.sp, fontWeight = FontWeight.Bold,
+                            modifier = Modifier.padding(horizontal = 9.dp, vertical = 7.dp))
+                    }
                 }
             }
         }
