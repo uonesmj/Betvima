@@ -81,14 +81,16 @@ fun parseMarket(o: JSONObject) = Market(o.str("id"), o.str("key"),
     version = if (o.has("version") && !o.isNull("version")) o.optInt("version") else null)
 fun parseMatch(o: JSONObject, overrideMarkets: JSONArray? = null): Match = Match(
     id = o.str("id"), league = o.str("leagueName", "Football"),
-    leagueLogo = o.str("leagueLogoUrl").takeIf(String::isNotBlank),
-    sport = o.str("sportKey", "football"), country = o.str("countryCode"),
+    leagueLogo = o.str("leagueLogoUrl", o.str("leagueLogo")).takeIf(String::isNotBlank),
+    sport = o.str("sportKey", "football"),
+    country = o.str("countryCode", o.str("countryName", o.str("country"))),
     starts = o.str("scheduledAt"), live = o.optBoolean("isLive", false),
     bettingAvailable = o.optBoolean("isBettingAvailable", false),
     minute = o.numberOrNull("minute"), homeScore = o.numberOrNull("homeScore"),
     awayScore = o.numberOrNull("awayScore"),
     teams = o.arr("participants").objects().map {
-        Team(it.str("name", "TBD"), it.str("role"), it.str("logoUrl").takeIf(String::isNotBlank))
+        Team(it.str("name", "TBD"), it.str("role"),
+            it.str("logoUrl", it.str("logo")).takeIf(String::isNotBlank))
     },
     markets = (overrideMarkets ?: o.optJSONArray("topMarkets") ?: o.optJSONArray("markets") ?: JSONArray())
         .objects().map(::parseMarket),
