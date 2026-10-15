@@ -54,7 +54,13 @@ fun MatchDetailPage(state: AppState, model: AppViewModel) {
         "corners" to tr(state.lang, "Corners", "کرنرها"),
         "cards" to tr(state.lang, "Cards", "کارت‌ها")
     )
-    val filteredMarkets = match.markets.filterIndexed { index, market ->
+    // Filter and lookup indexes only when market data or filter changes; live
+    // price updates and selection toggles no longer rebuild the full search.
+    val marketIndexById = remember(match.markets) {
+        match.markets.withIndex().associate { it.value.id to it.index }
+    }
+    val filteredMarkets = remember(match.markets, selectedMarketGroup, marketSearch) {
+        match.markets.filterIndexed { index, market ->
         val term = (market.key + " " + market.name + " " + market.nameFa).lowercase()
         val groupMatch = when (selectedMarketGroup) {
             "all" -> true
@@ -72,8 +78,9 @@ fun MatchDetailPage(state: AppState, model: AppViewModel) {
             "cards" -> term.contains("card") || term.contains("کارت")
             else -> true
         }
-        groupMatch && (marketSearch.isBlank() ||
-            term.contains(marketSearch.trim().lowercase()))
+            groupMatch && (marketSearch.isBlank() ||
+                term.contains(marketSearch.trim().lowercase()))
+        }
     }
     LazyColumn(contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp), flingBehavior = rememberPremiumFlingBehavior()) {
@@ -203,8 +210,8 @@ fun MatchDetailPage(state: AppState, model: AppViewModel) {
                 selectedMarketGroup = "all"; marketSearch = ""
             }
         }
-        items(filteredMarkets, key = { it.id }) { market ->
-            val index = match.markets.indexOfFirst { it.id == market.id }
+        items(filteredMarkets, key = { it.id }, contentType = { "market" }) { market ->
+            val index = marketIndexById[market.id] ?: 0
             var expanded by rememberSaveable(market.id) { mutableStateOf(index < 3) }
             Surface(color = Color.White, shape = RoundedCornerShape(21.dp),
                 border = BorderStroke(1.dp, Palette.border), shadowElevation = 4.dp) {
