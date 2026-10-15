@@ -65,3 +65,27 @@ fun casinoCategoryLabel(category: String, persian: Boolean): String =
         "other" -> if (persian) "سایر بازی‌ها" else "Other"
         else -> if (persian) "همه بازی‌ها" else "All games"
     }
+
+/**
+ * Casino live/slot titles are not all available as free demos.
+ * Never claim that a failed demo is a real-money wallet issue or offer a
+ * wagering fallback while wallet callbacks are disabled.
+ */
+fun casinoDemoFailure(code: Int?, confirmedDemo: Boolean, persian: Boolean): String =
+    when (code) {
+        401, 403 -> if (persian)
+            "برای اجرای بازی آزمایشی دوباره وارد حساب کاربری شوید."
+        else "Please sign in again to start this demo."
+        429 -> if (persian)
+            "درخواست‌های زیادی ارسال شده است؛ کمی بعد دوباره تلاش کنید."
+        else "Too many requests. Please retry in a moment."
+        else -> if (confirmedDemo) {
+            if (persian)
+                "اجرای آزمایشی این بازی در حال حاضر ناموفق بود. اتصال اینترنت و ورود به حساب را بررسی کنید و دوباره تلاش کنید."
+            else "This confirmed demo failed to launch. Check your connection and sign-in, then retry."
+        } else {
+            if (persian)
+                "حالت آزمایشی این بازی در حال حاضر در دسترس نیست. بعضی اسلات‌ها و بازی‌های کازینو زنده فقط با حساب واقعی ارائه می‌شوند؛ شرط‌بندی با پول واقعی هنوز در اپ فعال نیست. برای تست، دمو Aviator را امتحان کنید."
+            else "This title has no available demo right now. Some slots and live casino titles require real-money access, which is not enabled in the app. Try the Aviator demo instead."
+        }
+    }
