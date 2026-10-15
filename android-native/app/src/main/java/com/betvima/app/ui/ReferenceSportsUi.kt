@@ -391,22 +391,23 @@ internal val homeCompetitionShortcuts: List<HomeCompetitionShortcut> = listOf(
         listOf("europa league", "uefa europa"))
 )
 
-private fun normalizeCompetition(value: String): Set<String> =
+private fun normalizeCompetition(value: String): String =
     value.lowercase(java.util.Locale.ROOT)
         .replace(Regex("[^a-z0-9]+"), " ")
         .trim()
-        .split(' ')
-        .filter(String::isNotBlank).toSet()
+        .replace(Regex(" +"), " ")
 
 /**
- * Matches provider league names by full words, not misleading substrings
- * (e.g. NBA Pre-season never silently resolves to an ordinary NBA game).
+ * Match full, consecutive words. A fixture in "Europa Conference League"
+ * must never be mistaken for "Europa League"; likewise NBA preseason is
+ * not an ordinary NBA league.
  */
 internal fun leagueMatchesShortcut(league: String, shortcut: HomeCompetitionShortcut): Boolean {
-    val leagueWords = normalizeCompetition(league)
+    val normalizedLeague = normalizeCompetition(league)
     return shortcut.leagueAliases.any { alias ->
-        val aliasWords = normalizeCompetition(alias)
-        aliasWords.isNotEmpty() && leagueWords.containsAll(aliasWords)
+        val normalizedAlias = normalizeCompetition(alias)
+        normalizedAlias.isNotBlank() &&
+            (" $normalizedLeague ").contains(" $normalizedAlias ")
     }
 }
 
