@@ -168,6 +168,43 @@ class ApiClient {
             }
         }
 
+    /** Casino games are fetched from BetVima, never directly from the provider. */
+    suspend fun casinoGames(
+        page: Int = 1, category: String = "", query: String = "", provider: String = ""
+    ): CasinoPage {
+        require(page in 1..1000)
+        require(category.length <= 40 && query.length <= 80 && provider.length <= 80)
+        val route = buildString {
+            append("/api/v1/casino/games?page=")
+            append(page)
+            append("&limit=40")
+            if (category.isNotEmpty()) append("&category=" + URLEncoder.encode(category, "UTF-8"))
+            if (query.isNotBlank()) append("&q=" + URLEncoder.encode(query.trim(), "UTF-8"))
+            if (provider.isNotEmpty()) append("&provider=" + URLEncoder.encode(provider, "UTF-8"))
+        }
+        return parseCasinoPage(get(route))
+    }
+
+    /** A provider launch URL is a short-lived session credential: never log or persist it. */
+    suspend fun casinoLaunch(token: String, gameId: String, demo: Boolean = true): String {
+        require(gameId.isNotBlank() && gameId.length <= 200)
+        if (!demo && !BuildConfig.ENABLE_WAGERING) {
+            throw ApiFailure(403, "Real-money casino has not been enabled")
+        }
+        val response = request(
+            "/api/v1/casino/launch", token,
+            JSONObject().put("gameId", gameId).put("demo", demo)
+                .put("device", "mobile").put("lang", "en")
+        )
+        val url = response.optString("url")
+        val uri = android.net.Uri.parse(url)
+        if (!url.startsWith("https://") || uri.scheme != "https" ||
+            uri.host.isNullOrBlank() || uri.userInfo != null) {
+            throw ApiFailure(502, "Provider returned an invalid launch URL")
+        }
+        return url
+    }
+
     suspend fun live(): Pair<List<Match>, Boolean> {
         val data = get("/api/v1/live?limit=100")
         return data.arr("matches").objects().map(::parseMatch) to
