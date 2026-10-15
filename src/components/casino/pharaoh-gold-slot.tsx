@@ -292,7 +292,9 @@ export function PharaohGoldSlot() {
 
           <div className={styles.subtitle}><span className={styles.diamond}>◆</span> ORIGINAL BETVIMA CASINO <span className={styles.diamond}>◆</span></div>
           <img className={styles.gameLogo} src="/casino/pharaoh-gold/logo.svg" alt="Pharaoh Gold"/>
-          <p className={styles.currencyAlert}>{t.usd} <span>•</span> {t.minimum}</p>
+          <p className={styles.currencyAlert} dir={lang === 'fa' ? 'rtl' : 'ltr'}>
+            <span>{t.usd}</span><span aria-hidden="true">•</span><span>{t.minimum}</span>
+          </p>
         </div>
 
         <section className={styles.machine} aria-label="Pharaoh Gold demo slot machine" data-impact={spinBusy && settledCount > 0 ? 'true' : 'false'}>
@@ -313,12 +315,12 @@ export function PharaohGoldSlot() {
             </div>
             <div className={styles.sideOrnaments} aria-hidden="true"><span>✶</span><span>✶</span><span>✶</span></div>
           </div>
-          <div className={styles.machineFoot}>
-            <span><Sparkles size={14}/>{t.lines}</span>
-            <span>{freeSpins > 0 ? t.free + ': ' + freeSpins : t.ready}</span>
-            <span>USD · $0.10 MIN</span>
-          </div>
         </section>
+        <div className={styles.machineFoot} role="status" aria-live="polite">
+          <span><Sparkles size={14}/>{t.lines}</span>
+          <span>{freeSpins > 0 ? t.free + ': ' + freeSpins : t.ready}</span>
+          <span dir="ltr">USD · $0.10 MIN</span>
+        </div>
 
         <section className={styles.winDisplay} aria-live="polite">
           {celebration && <div className={styles.celebration} data-kind={celebration} aria-live="polite">
@@ -336,21 +338,21 @@ export function PharaohGoldSlot() {
           <div className={styles.winning} data-active={hitWin ? 'true' : 'false'}>
             <Award size={21}/>
             {hitWin ? (lastSpin!.winCents >= betCents * 20 ? t.big : t.winTitle) : 'PHARAOH GOLD'}
-            <strong><CountUpCents cents={phase === 'spinning' ? 0 : (lastSpin?.winCents ?? 0)} reduced={reduceMotion}/></strong>
+            <strong dir="ltr" lang="en"><CountUpCents cents={phase === 'spinning' ? 0 : (lastSpin?.winCents ?? 0)} reduced={reduceMotion}/></strong>
           </div>
           {notice && <p role="alert" className={styles.error}>{notice}</p>}
         </section>
 
         <section className={styles.controlDeck} aria-label="Game controls">
           <div className={styles.metrics}>
-            <div className={styles.metric}><span><Coins size={15}/>{t.balance}</span><strong>{cash(balanceCents)}</strong><small>USD • DEMO</small></div>
-            <div className={styles.metric}><span><Award size={15}/>{t.win}</span><strong>{cash(phase === 'spinning' ? 0 : (lastSpin?.winCents ?? 0))}</strong><small>USD</small></div>
+            <div className={styles.metric}><span><Coins size={15}/>{t.balance}</span><strong dir="ltr" lang="en">{cash(balanceCents)}</strong><small>USD • DEMO</small></div>
+            <div className={styles.metric}><span><Award size={15}/>{t.win}</span><strong dir="ltr" lang="en">{cash(phase === 'spinning' ? 0 : (lastSpin?.winCents ?? 0))}</strong><small>USD</small></div>
           </div>
           <div className={styles.betBox}>
             <span className={styles.betTitle}>{t.bet} <b>USD</b></span>
             <div className={styles.betRow}>
               <button type="button" onClick={() => changeBet(-1)} aria-label="Decrease bet" disabled={uiDisabled || !creditsReady || betCents <= MIN_BET_CENTS}><Minus size={20}/></button>
-              <strong aria-live="polite">{cash(betCents)}</strong>
+              <strong dir="ltr" lang="en" aria-live="polite">{cash(betCents)}</strong>
               <button type="button" onClick={() => changeBet(1)} aria-label="Increase bet" disabled={uiDisabled || !creditsReady || betCents >= MAX_BET_CENTS}><Plus size={20}/></button>
             </div>
             <div className={styles.betShortcuts}>
