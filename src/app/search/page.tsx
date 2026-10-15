@@ -3,7 +3,7 @@
 import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { ArrowLeft, Bell, CalendarDays, ChevronRight, Flame, LockKeyhole, Radio, Search, Tv, X } from 'lucide-react';
+import { ArrowLeft, CalendarDays, ChevronRight, Flame, LockKeyhole, Radio, Search, Tv, X } from 'lucide-react';
 import { useApp } from '@/components/layout/providers';
 import { TeamLogo } from '@/components/ui/logo';
 import { primaryBettingMarket } from '@/lib/primary-betting-market';
@@ -316,7 +316,7 @@ function SearchPageContent() {
       <nav className="fixed inset-x-0 bottom-0 z-40 flex h-[66px] items-center justify-around border-t border-[#323236] bg-[#141416] pb-[env(safe-area-inset-bottom)] text-[#B7BBC7]">
         <Link href="/" className="text-xs">{fa ? 'خانه' : 'Home'}</Link>
         <Link href="/sports/football" className="text-xs">{fa ? 'ورزش‌ها' : 'Sports'}</Link>
-        <Link href="/my-bets" className="text-xs">{fa ? 'شرط‌های من' : 'My Bets'}</Link>
+        <Link href="/bets" className="text-xs">{fa ? 'شرط‌های من' : 'My Bets'}</Link>
         <Link href="/wallet" className="text-xs">{fa ? 'کیف پول' : 'Wallet'}</Link>
       </nav>
     </main>
