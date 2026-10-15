@@ -1,6 +1,8 @@
 import { playerPassword, playerUsername } from './contract';
 
 const ENDPOINT = 'https://api.softaggregator.com/api/v1';
+// Provider-confirmed allowlisted client signature; Node's default UA can be blocked by Cloudflare.
+export const SOFTAGGREGATOR_USER_AGENT = 'BetVima/1.0';
 
 type ProviderEnvelope<T> = { error: number; response?: T; message?: string };
 
@@ -36,7 +38,7 @@ export async function callSoftAggregator<T>(method: string, values: Record<strin
   const { login, password } = requiredEnv();
   const response = await fetch(ENDPOINT, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', 'User-Agent': SOFTAGGREGATOR_USER_AGENT },
     cache: 'no-store',
     body: JSON.stringify({ api_login: login, api_password: password, method, ...values }),
     signal: AbortSignal.timeout(12_000),

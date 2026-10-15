@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { casinoGames, launchCasinoGame } from '@/server/providers/softaggregator/client';
+import { casinoGames, launchCasinoGame, SOFTAGGREGATOR_USER_AGENT } from '@/server/providers/softaggregator/client';
 
 describe('SoftAggregator demo-only launch API', () => {
   const original = { ...process.env };
@@ -18,7 +18,10 @@ describe('SoftAggregator demo-only launch API', () => {
 
   it('fetches real catalogue and requests getGameDemo without creating a provider player', async () => {
     const calls: Array<Record<string, unknown>> = [];
+    const userAgents: string[] = [];
     vi.stubGlobal('fetch', vi.fn(async (_: string, options: RequestInit) => {
+      const headers = new Headers(options.headers);
+      userAgents.push(headers.get('user-agent') ?? '');
       const body = JSON.parse(String(options.body)) as Record<string, unknown>;
       calls.push(body);
       if (body.method === 'getGameList') return {
@@ -40,6 +43,7 @@ describe('SoftAggregator demo-only launch API', () => {
     });
     expect(url.startsWith('https://cdn.provider.test/')).toBe(true);
     expect(calls.map((c) => c.method)).toEqual(['getGameList', 'getGameDemo']);
+    expect(userAgents).toEqual([SOFTAGGREGATOR_USER_AGENT, SOFTAGGREGATOR_USER_AGENT]);
     expect(calls[1]).toHaveProperty('currency', 'USD');
     expect(calls[1]).not.toHaveProperty('user_username');
   });

@@ -9,6 +9,16 @@ This integration is **staging-only by default**. A GitHub commit does not activa
 - POST /api/v1/casino/launch — authenticated (Supabase cookies or Bearer JWT). Example JSON: `{"gameId":"provider/GameName","demo":true,"device":"mobile","lang":"en"}`. Returns launch URL; don't store or log it.
 - GET /api/webhooks/softaggregator — server-to-server provider callback. Required callback URL.
 
+## Cloudflare client identity
+
+SoftAggregator support confirmed on 2026-10-15 that the default `Python-urllib/3.12`
+User-Agent is blocked by their Cloudflare edge with HTTP 403 / error 1010. Their
+verified allowed signature is `User-Agent: BetVima/1.0`. The server-side API
+client and read-only diagnostic always send that exact header; the Android app
+never calls the vendor endpoint directly. Credentials must remain server-only.
+This change does not enable wallet callbacks, override the rollout gates, or
+remove the need to test a real catalog and game launch from the VPS.
+
 ## Private environment variables
 
 | Variable | Meaning |
