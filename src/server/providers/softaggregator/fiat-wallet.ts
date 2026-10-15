@@ -36,7 +36,7 @@ function allowed(profile: Profile): boolean {
   return profile.status === 'active' && profile.age_verified && !profile.self_excluded && !profile.restricted;
 }
 
-async function readProfile(db: Db, userId: string): Promise<Profile | null> {
+async function readProfile(db: Db, userId: string, walletCurrency?: FiatCurrency): Promise<Profile | null> {
   return db.queryOne<Profile>([
     "select p.status::text as status, p.age_verified, p.preferred_currency as currency,",
     "coalesce(l.self_excluded_until > now(), false) as self_excluded,",
@@ -46,9 +46,9 @@ async function readProfile(db: Db, userId: string): Promise<Profile | null> {
     "l.max_stake_per_bet_minor::text, l.max_stake_per_day_minor::text,",
     "l.loss_limit_daily_minor::text, l.loss_limit_weekly_minor::text",
     "from nova.profiles p left join nova.user_limits l",
-    "on l.user_id = p.id and l.currency = p.preferred_currency",
+    "on l.user_id = p.id and l.currency = coalesce($2::text, p.preferred_currency)",
     "where p.id = $1",
-  ].join(' '), [userId]);
+  ].join(' '), [userId, walletCurrency ?? null]);
 }
 
 async function readWallet(db: Db, userId: string, currency: FiatCurrency, locked: boolean): Promise<Wallet | null> {
@@ -155,6 +155,11 @@ export async function settleFiatCasinoCallback(
         rate_observed_at: freshFx.observedAt };
     }
 
+    // Limits must be read for the frozen round currency, not a potentially
+    // changed preferred_currency. Never let a preference switch bypass limits.
+    const roundCurrencyProfile = await readProfile(tx, userId, currency);
+    if (!roundCurrencyProfile) return fail;
+
     await tx.query('select pg_advisory_xact_lock(hashtext($1))',
       ['wallet:' + userId + ':' + currency]);
     await tx.query('insert into nova.wallets(user_id,currency,balance_minor) ' +
@@ -186,8 +191,8 @@ export async function settleFiatCasinoCallback(
     let transactionId: string | null = null;
     if (w.is_frozen) {
       error = 2;
-    } else if (isDebit && (!allowed(profile) || event.amountMinor! < 20n ||
-      local > before || !(await limitsAllow(tx, userId, currency, local, profile)))) {
+    } else if (isDebit && (!allowed(roundCurrencyProfile) || event.amountMinor! < 20n ||
+      local > before || !(await limitsAllow(tx, userId, currency, local, roundCurrencyProfile)))) {
       error = 1;
     } else if (local < 1n) {
       error = 2;
