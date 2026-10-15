@@ -73,8 +73,34 @@ catalogue/currencies checks remain non-mutating.
 
 This confirms *supplier API launch URL creation*, not yet that the game was
 rendered in an Android WebView. Production remains gated by owner-approved
-deployment, protected secrets and the unapplied `0208` migration registry
-requirements. `SOFTAGGREGATOR_REAL_MONEY_ENABLED` remains false.
+deployment and protected secrets. The unapplied `0208` receipt migration is
+archived outside the active migration directory for **demo-only** publication;
+its eventual financial activation requires a separately reviewed DB migration,
+verified backup, callback-signature agreement and complete ledger tests. `SOFTAGGREGATOR_REAL_MONEY_ENABLED` remains false.
+
+## Demo-only web publication readiness
+
+The active web revision `620352e3a4ea3dfe3154eee151804a94c2dabd86`
+has the same existing `supabase/migrations` SQL files as this demo-only
+candidate. The only extra database migration in the earlier casino branch,
+`0208_softaggregator_callback_receipts.sql`, has **not** been applied to
+production. Its original SQL is preserved verbatim under
+`docs/pending-financial-migrations/`, outside the production migration runner.
+This is a web-only release that does not run, register or require any new
+migration. The callback financial gate `SOFTAGGREGATOR_REAL_MONEY_ENABLED`
+**must remain false**. Activating that gate is prohibited without independently
+approved migration, verified provider HMAC callback format, isolated wallet
+reconciliation tests and credential rotation. Never inject fictitious credits
+into production wallets.
+
+The production rollout requires an authorized owner-initiated GitHub Actions
+workflow dispatch on `main` with `approve_production=true`. That controller
+takes a verified full DB backup and performs health checks/rollback. Do not
+use a direct SSH git pull or restart to bypass this control. The API login,
+password and stable player identity secret are injected solely into the
+private **web** process environment, never into source, preview, APK or CI
+secrets. `SOFTAGGREGATOR_ENABLED=true` permits catalogue and supported demos
+only; wallet mutations remain disabled.
 
 ## Callback safety
 
@@ -122,7 +148,7 @@ Do not declare real-money complete until then.
 ## Go-live checklist — not yet completed
 
 1. Rotate compromised API credentials in provider portal.
-2. Back up staging PostgreSQL and apply `0208_softaggregator_callback_receipts.sql` there only.
+2. Back up isolated staging PostgreSQL and apply `docs/pending-financial-migrations/0208_softaggregator_callback_receipts.sql` there only. Promote the file back into `supabase/migrations` only as a separately reviewed, previously-applied financial migration.
 3. Set server-side secrets and `SOFTAGGREGATOR_ENABLED=true`; **keep SOFTAGGREGATOR_REAL_MONEY_ENABLED=false**.
 4. Set the staging callback URL inside SoftAggregator portal. Production URL after signoff: `https://betvima.com/api/webhooks/softaggregator`.
 5. Confirm supplier's full-payload HMAC canonicalization and 30-second timestamp with actual signed **sandbox** traffic. No legacy signature-only acceptance.
