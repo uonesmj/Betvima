@@ -3,17 +3,13 @@ package com.betvima.app.ui
 import android.provider.Settings
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
-import androidx.compose.animation.core.animate
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.gestures.FlingBehavior
-import androidx.compose.foundation.gestures.ScrollScope
+import androidx.compose.foundation.gestures.ScrollableDefaults
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material3.Icon
-import androidx.compose.runtime.remember
 import androidx.compose.ui.draw.rotate
-import androidx.compose.ui.graphics.vector.ImageVector
-import kotlin.math.abs
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -137,41 +133,13 @@ fun PremiumLoadingOverlay(visible: Boolean, lang: Lang) {
 }
 
 /**
- * Shared motion language for BetVima Android.
- *
- * Finger drag stays completely native; only inertial release is smoothed.
- * A consumed-edge check prevents scrolling past content and preserves nested
- * scrolling handoff. The animation system obeys Android reduced-motion scale.
+ * Native Android velocity-based spline fling for vertical and horizontal feeds.
+ * The old 460ms tween + hard 2350px travel cap made long lists feel sticky.
+ * Compose's default decay permits gesture interruption and nested scrolling.
  */
-private class PremiumFlingBehavior : FlingBehavior {
-    override suspend fun ScrollScope.performFling(initialVelocity: Float): Float {
-        if (!initialVelocity.isFinite() || abs(initialVelocity) < 40f) return 0f
-        val travel = (initialVelocity * .28f).coerceIn(-2350f, 2350f)
-        var previous = 0f
-        var remaining = 0f
-        var blocked = false
-        animate(
-            initialValue = 0f,
-            targetValue = travel,
-            animationSpec = tween(460, easing = FastOutSlowInEasing)
-        ) { value, velocity ->
-            val delta = value - previous
-            previous = value
-            if (!blocked) {
-                val consumed = scrollBy(delta)
-                if (abs(delta - consumed) > 1f) {
-                    remaining = velocity
-                    blocked = true
-                }
-            }
-        }
-        return remaining
-    }
-}
-
 @Composable
 fun rememberPremiumFlingBehavior(): FlingBehavior =
-    remember { PremiumFlingBehavior() }
+    ScrollableDefaults.flingBehavior()
 
 /** Coordinated expansion and fading, instead of instant if(expanded) removal. */
 @Composable
