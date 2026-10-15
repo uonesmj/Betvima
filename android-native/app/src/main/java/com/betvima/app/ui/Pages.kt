@@ -83,15 +83,18 @@ fun HomePage(state: AppState, model: AppViewModel, onSearch: () -> Unit) {
     val footerListState = rememberLazyListState()
     val footerScope = rememberCoroutineScope()
     // Featured games are real, bettable upcoming markets, never fabricated promotions.
-    val featured = state.upcoming.filter { match ->
-        match.bettingAvailable && match.featured?.available == true &&
-            match.featured?.selections?.any { it.available } == true
-    }.sortedWith(compareByDescending<Match> { it.marketsCount }.thenBy { it.starts })
+    // Avoid re-sorting cards on every wallet, slip, or live score state update.
+    val featured = remember(state.upcoming) {
+        state.upcoming.filter { match ->
+            match.bettingAvailable && match.featured?.available == true &&
+                match.featured?.selections?.any { it.available } == true
+        }.sortedWith(compareByDescending<Match> { it.marketsCount }.thenBy { it.starts })
+    }
     LazyColumn(state = footerListState,
         contentPadding = PaddingValues(bottom = 0.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp), flingBehavior = rememberPremiumFlingBehavior()) {
-        item { SportsbookTopTabs(state, model, onSearch) }
-        item { ReferenceTournamentRibbon(state, model) }
+        item(key = "sportsbook-tabs", contentType = "tabs") { SportsbookTopTabs(state, model, onSearch) }
+        item(key = "home-ribbon", contentType = "ribbon") { ReferenceTournamentRibbon(state, model) }
         if (state.homeMode == HomeMode.TOP_BETS) {
             item {
                 Column(Modifier.padding(horizontal = 15.dp)) {
@@ -111,7 +114,7 @@ fun HomePage(state: AppState, model: AppViewModel, onSearch: () -> Unit) {
                         }
                     }
                 }
-            } else items(featured.take(25), key = { "top-" + it.id }) { match ->
+            } else items(featured.take(25), key = { "top-" + it.id }, contentType = { "match" }) { match ->
                 Box(Modifier.padding(horizontal = 15.dp, vertical = 3.dp)) {
                     ReferenceTopBetCard(match, state, model)
                 }
@@ -159,7 +162,7 @@ fun HomePage(state: AppState, model: AppViewModel, onSearch: () -> Unit) {
                 }
             }
         }
-        item(key = "premium-home-footer") {
+        item(key = "premium-home-footer", contentType = "footer") {
             PremiumAppFooter(state, model) {
                 footerScope.launch { footerListState.animateScrollToItem(0) }
             }
@@ -178,11 +181,17 @@ fun CatalogPage(state: AppState, model: AppViewModel, live: Boolean,
     }
     var tournamentOpen by remember { mutableStateOf(false) }
     val allMatches = if (live) state.live else state.upcoming
-    val matches = if (live && liveSport != "top")
-        allMatches.filter { it.sport == liveSport } else allMatches
-    val groups = matches.groupBy { it.league + "|" + it.country }
-    val visibleGroups = if (selectedLeague.isBlank()) groups else
-        groups.filterKeys { it == selectedLeague }
+    // Remember catalogue transformations; state can update independently from
+    // a user's scroll (balance, notifications, slip picks and live polling).
+    val matches = remember(allMatches, live, liveSport) {
+        if (live && liveSport != "top")
+            allMatches.filter { it.sport == liveSport } else allMatches
+    }
+    val groups = remember(matches) { matches.groupBy { it.league + "|" + it.country } }
+    val visibleGroups = remember(groups, selectedLeague) {
+        if (selectedLeague.isBlank()) groups else
+            groups.filterKeys { it == selectedLeague }
+    }
 
     LazyColumn(state = footerListState,
         contentPadding = PaddingValues(bottom = 0.dp),
@@ -268,13 +277,13 @@ fun CatalogPage(state: AppState, model: AppViewModel, live: Boolean,
             }
         }
         visibleGroups.entries.forEachIndexed { index, group ->
-            item(key = "league-"+group.key) {
+            item(key = "league-"+group.key, contentType = "league") {
                 Box(Modifier.padding(horizontal = 13.dp)) {
                     LeagueSection(group.key, group.value, index == 0, state, model)
                 }
             }
         }
-        item(key = "premium-catalog-footer") {
+        item(key = "premium-catalog-footer", contentType = "footer") {
             PremiumAppFooter(state, model) {
                 footerScope.launch { footerListState.animateScrollToItem(0) }
             }
