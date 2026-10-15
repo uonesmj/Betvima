@@ -10,8 +10,8 @@ android {
         applicationId = "com.betvima.app"
         minSdk = 26
         targetSdk = 35
-        versionCode = 42
-        versionName = "0.42.0"
+        versionCode = 43
+        versionName = "0.43.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         buildConfigField("String", "API_BASE_URL", "\"https://betvima.com/\"")
         // No real-money action is compiled on by default. Approval requires backend compliance checks.
