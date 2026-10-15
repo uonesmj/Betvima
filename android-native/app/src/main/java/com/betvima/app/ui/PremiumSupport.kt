@@ -433,9 +433,16 @@ private fun SupportNewTicketSheet(
     var busy by remember { mutableStateOf(false) }
     var uncertain by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
-    ModalBottomSheet(onDismissRequest = { if (!busy) onDismiss() },
+    val sheet = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val closeSheet = {
+        if (!busy) scope.launch {
+            sheet.hide()
+            onDismiss()
+        }
+    }
+    ModalBottomSheet(onDismissRequest = closeSheet,
         containerColor = Color.White,
-        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)) {
+        sheetState = sheet) {
         Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState(), flingBehavior = rememberPremiumFlingBehavior())
             .padding(horizontal = 17.dp).padding(bottom = 26.dp),
             verticalArrangement = Arrangement.spacedBy(13.dp)) {
