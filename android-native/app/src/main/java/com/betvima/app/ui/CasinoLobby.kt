@@ -66,9 +66,9 @@ fun CasinoLobby(state: AppState, model: AppViewModel) {
     var refreshSerial by remember { mutableIntStateOf(0) }
     var launching by remember { mutableStateOf<String?>(null) }
     var sessionUrl by remember { mutableStateOf<String?>(null) }
-    var launchError by remember { mutableStateOf<String?>(null) }
+    var launchError by remember { mutableStateOf<Pair<String, String>?>(null) }
 
-    fun tryDemo(gameId: String, confirmedDemo: Boolean) {
+    fun tryDemo(gameId: String, gameName: String, confirmedDemo: Boolean) {
         if (launching != null) return
         launchError = null
         if (!state.signedIn) {
@@ -82,9 +82,10 @@ fun CasinoLobby(state: AppState, model: AppViewModel) {
             } catch (cancel: CancellationException) {
                 throw cancel
             } catch (failure: Exception) {
-                launchError = casinoDemoFailure(
-                    (failure as? ApiFailure)?.code, confirmedDemo, fa
-                )
+                val status = (failure as? ApiFailure)?.code
+                val details = casinoDemoFailure(status, confirmedDemo, fa)
+                val safeStatus = status?.takeIf { it in 400..599 }
+                launchError = gameName to (details + if (safeStatus != null) " (HTTP $safeStatus)" else "")
             } finally {
                 launching = null
             }
@@ -187,7 +188,7 @@ fun CasinoLobby(state: AppState, model: AppViewModel) {
                         )
                     }
                     Button(
-                        onClick = { tryDemo("x887bde40b16350c", true) },
+                        onClick = { tryDemo("x887bde40b16350c", "Aviator", true) },
                         enabled = launching == null,
                         colors = ButtonDefaults.buttonColors(containerColor = Palette.ink),
                         shape = RoundedCornerShape(12.dp)
@@ -301,7 +302,7 @@ fun CasinoLobby(state: AppState, model: AppViewModel) {
         }
         items(games, key = { it.id }) { game ->
             CasinoGameCard(game, state.lang, launching == game.id) {
-                tryDemo(game.id, game.demoSupported)
+                tryDemo(game.id, game.name, game.demoSupported)
             }
         }
         if (games.isNotEmpty() && loading) {
@@ -332,13 +333,16 @@ fun CasinoLobby(state: AppState, model: AppViewModel) {
     sessionUrl?.let { secureUrl ->
         CasinoGameDialog(secureUrl, state.lang) { sessionUrl = null }
     }
-    launchError?.let { message ->
+    launchError?.let { (gameName, message) ->
         AlertDialog(
             onDismissRequest = { launchError = null },
             icon = { Icon(Icons.Default.Info, null, tint = Palette.blue) },
             title = {
-                Text(tr(state.lang, "Demo not available", "اجرای بازی آزمایشی"),
-                    fontWeight = FontWeight.Bold)
+                Column {
+                    Text(tr(state.lang, "Demo launch failed", "خطا در اجرای دمو"),
+                        fontWeight = FontWeight.Bold)
+                    Text(gameName, style = MaterialTheme.typography.titleSmall)
+                }
             },
             text = { Text(message, lineHeight = 23.sp) },
             confirmButton = {

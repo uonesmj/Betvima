@@ -42,10 +42,10 @@ class CasinoModelsTest {
 
     @Test fun demoFailureExplainsUnlicensedDemoWithoutClaimingWalletAccess() {
         val noDemoFa = casinoDemoFailure(500, false, true)
-        assertTrue(noDemoFa.contains("آزمایشی"))
+        assertTrue(noDemoFa.contains("ناموفق"))
         assertTrue(noDemoFa.contains("Aviator"))
-        assertTrue(casinoDemoFailure(500, false, false).contains("real-money"))
-        assertTrue(casinoDemoFailure(503, true, false).contains("confirmed demo"))
+        assertTrue(casinoDemoFailure(500, false, false).contains("Real-money"))
+        assertTrue(casinoDemoFailure(503, true, false).contains("verified demo"))
         assertTrue(casinoDemoFailure(401, true, true).contains("وارد"))
         assertTrue(casinoDemoFailure(429, false, false).contains("Too many"))
     }
