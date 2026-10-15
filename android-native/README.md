@@ -26,3 +26,8 @@ Google requires adult-only rating, per-jurisdiction gaming licences and app appr
 CI runners produce debug APKs signed by their own ephemeral debug keystore. A newer CI APK may be rejected as an *update* over an older test installation because the certificates differ; back up local-only test data and uninstall the old debug app before installing the new artifact. No production signing key is committed to this public repository. A stable app-signing key should be created and retained in a protected signing service or GitHub encrypted secrets before a proper release.
 
 Production web deployment is separately gated and is not triggered or implied by this Android PR.
+
+## Debug version 0.53.0 — premium social footer
+
+- WhatsApp, Telegram and X vector icons in the native Compose footer, plus native Sharesheet and copy link with confirmation.
+- This APK is a debug build for direct installation/testing. The website is not changed by this Android release.
