@@ -127,7 +127,7 @@ fun BrandHeader(
                         color = headerGreen,
                         shape = RoundedCornerShape(12.dp)
                     ) {
-                        Box(contentAlignment = Alignment.Center) {
+                        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                             Text(tr(lang, "Deposit", "واریز"),
                                 fontSize = if (compact) 12.sp else 13.sp,
                                 fontWeight = FontWeight.ExtraBold,
@@ -162,7 +162,8 @@ fun BrandHeader(
                         shape = RoundedCornerShape(12.dp),
                         border = BorderStroke(1.dp, Color(0xFF4A4A50))
                     ) {
-                        Box(Modifier.padding(horizontal = if (compact) 12.dp else 16.dp),
+                        Box(Modifier.fillMaxHeight()
+                            .padding(horizontal = if (compact) 12.dp else 16.dp),
                             contentAlignment = Alignment.Center) {
                             Text(tr(lang, "Log in", "ورود"),
                                 color = Color.White,
