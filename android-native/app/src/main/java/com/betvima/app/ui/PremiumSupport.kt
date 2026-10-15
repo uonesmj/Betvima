@@ -259,7 +259,7 @@ fun PremiumSupportPage(state: AppState, model: AppViewModel) {
     }
     LazyColumn(Modifier.fillMaxSize().background(supportBg),
         contentPadding = PaddingValues(start = 15.dp, end = 15.dp, top = 15.dp, bottom = 26.dp),
-        verticalArrangement = Arrangement.spacedBy(14.dp)) {
+        verticalArrangement = Arrangement.spacedBy(14.dp), flingBehavior = rememberPremiumFlingBehavior()) {
         item { SupportHero(lang, total, needsReply) }
         item {
             Surface(color = Color.White, shape = RoundedCornerShape(18.dp),
@@ -436,7 +436,7 @@ private fun SupportNewTicketSheet(
     ModalBottomSheet(onDismissRequest = { if (!busy) onDismiss() },
         containerColor = Color.White,
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)) {
-        Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState())
+        Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState(), flingBehavior = rememberPremiumFlingBehavior())
             .padding(horizontal = 17.dp).padding(bottom = 26.dp),
             verticalArrangement = Arrangement.spacedBy(13.dp)) {
             Surface(shape = RoundedCornerShape(20.dp), color = supportNavy) {
