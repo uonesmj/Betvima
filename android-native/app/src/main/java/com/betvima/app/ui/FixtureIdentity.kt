@@ -25,11 +25,18 @@ import com.betvima.app.data.Match
 import java.util.Locale
 
 /** Identity is never guessed from a similar-sounding club or league. */
-internal fun verifiedLogoUrl(candidate: String?): String? =
-    candidate?.trim()?.takeIf {
-        it.startsWith("https://", ignoreCase = true) &&
-            !it.contains(' ') && it.length <= 2048
+internal fun verifiedLogoUrl(candidate: String?): String? {
+    val value = candidate?.trim()?.takeIf {
+        it.isNotEmpty() && it.length <= 2048 &&
+            it.none { char -> char.isWhitespace() || char == '\\' }
+    } ?: return null
+    return when {
+        value.startsWith("https://", ignoreCase = true) -> value
+        value.startsWith("/") && !value.startsWith("//") ->
+            "https://betvima.com" + value
+        else -> null
     }
+}
 
 internal fun teamBadgeInitials(team: String): String {
     val words = team.trim().split(Regex("\\s+")).filter { it.isNotBlank() }
