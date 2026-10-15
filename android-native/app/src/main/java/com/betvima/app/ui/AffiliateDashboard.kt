@@ -128,9 +128,23 @@ fun AffiliateDashboard(state: AppState, model: AppViewModel) {
                             "ممکن است حساب به تأیید همکار نیاز داشته باشد. برای ثبت‌نام یا بررسی وضعیت به پنل همکاران بروید."),
                             color = Palette.muted, fontSize = 12.sp,
                             modifier = Modifier.padding(top = 8.dp))
-                        TextButton(onClick = { uri.openUri("https://betvima.com/affiliate") }) {
-                            Text(tr(state.lang, "Partner portal", "پنل همکاران"),
-                                color = Palette.blue)
+                        Row(horizontalArrangement=Arrangement.spacedBy(8.dp)) {
+                            OutlinedButton(onClick={
+                                vault.clear()
+                                affiliateAuthenticated=false
+                                partner=null;stats=null;payable=null
+                            },shape=RoundedCornerShape(12.dp)) {
+                                Icon(Icons.Default.LockReset,null,
+                                    tint=affiliateBlue,modifier=Modifier.size(17.dp))
+                                Spacer(Modifier.width(5.dp))
+                                Text(tr(state.lang,"Sign in again","ورود مجدد"),
+                                    color=affiliateBlue,fontWeight=FontWeight.Bold)
+                            }
+                            TextButton(onClick = { scope.launch { reload() } }) {
+                                Icon(Icons.Default.Refresh,null,tint=affiliateBlue,
+                                    modifier=Modifier.size(16.dp))
+                                Text(tr(state.lang,"Retry","تلاش مجدد"),color=affiliateBlue)
+                            }
                         }
                     }
                 }
