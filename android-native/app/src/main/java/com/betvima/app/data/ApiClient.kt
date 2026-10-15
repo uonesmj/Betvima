@@ -199,7 +199,11 @@ class ApiClient {
             scheduledAt = match?.str("scheduledAt").orEmpty(),
             minute = integerOrNull("minute"), clock = match?.str("clock").orEmpty(),
             period = match?.str("period").orEmpty(),
-            homeScore = integerOrNull("homeScore"), awayScore = integerOrNull("awayScore")
+            homeScore = integerOrNull("homeScore"), awayScore = integerOrNull("awayScore"),
+            homeTeamName = match?.str("homeTeamName").orEmpty(),
+            awayTeamName = match?.str("awayTeamName").orEmpty(),
+            homeTeamLogoUrl = match?.str("homeTeamLogoUrl").orEmpty(),
+            awayTeamLogoUrl = match?.str("awayTeamLogoUrl").orEmpty()
         )
     }
 
