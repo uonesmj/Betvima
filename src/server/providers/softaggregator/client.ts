@@ -73,8 +73,13 @@ export function casinoEnabled() {
 }
 export function casinoRealMoneyEnabled() {
   // An on-disk demo config can NEVER authorize wagering or wallet callbacks.
+  // The active demo-only file cannot enable real money. The operator must
+  // separately attest the audited callback migration and provision a signing
+  // secret before a single pilot wagering session may be created.
   return process.env.SOFTAGGREGATOR_ENABLED === 'true' &&
-    process.env.SOFTAGGREGATOR_REAL_MONEY_ENABLED === 'true';
+    process.env.SOFTAGGREGATOR_REAL_MONEY_ENABLED === 'true' &&
+    process.env.SOFTAGGREGATOR_FINANCIAL_SCHEMA_READY === 'true' &&
+    (process.env.SOFTAGGREGATOR_SALT_KEY ?? '').length >= 12;
 }
 /**
  * Explicit one-account pilot allowlist. Enabling the provider's real-money flag
