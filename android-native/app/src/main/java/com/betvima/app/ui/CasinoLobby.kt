@@ -37,7 +37,9 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import coil.compose.AsyncImage
 import com.betvima.app.data.CasinoGame
+import com.betvima.app.data.ApiFailure
 import com.betvima.app.data.casinoCategoryLabel
+import com.betvima.app.data.casinoDemoFailure
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
@@ -64,6 +66,30 @@ fun CasinoLobby(state: AppState, model: AppViewModel) {
     var refreshSerial by remember { mutableIntStateOf(0) }
     var launching by remember { mutableStateOf<String?>(null) }
     var sessionUrl by remember { mutableStateOf<String?>(null) }
+    var launchError by remember { mutableStateOf<String?>(null) }
+
+    fun tryDemo(gameId: String, confirmedDemo: Boolean) {
+        if (launching != null) return
+        launchError = null
+        if (!state.signedIn) {
+            model.showLogin(true)
+            return
+        }
+        launching = gameId
+        scope.launch {
+            try {
+                sessionUrl = model.casinoDemoLaunch(gameId)
+            } catch (cancel: CancellationException) {
+                throw cancel
+            } catch (failure: Exception) {
+                launchError = casinoDemoFailure(
+                    (failure as? ApiFailure)?.code, confirmedDemo, fa
+                )
+            } finally {
+                launching = null
+            }
+        }
+    }
 
     LaunchedEffect(query) {
         delay(330)
@@ -137,6 +163,39 @@ fun CasinoLobby(state: AppState, model: AppViewModel) {
                 "Demo mode uses no real money. Real-money play is not enabled in this version.",
                 "حالت آزمایشی بدون پول واقعی اجرا می‌شود. بازی با پول واقعی در این نسخه فعال نیست."),
                 icon = Icons.Default.VerifiedUser, accent = Palette.blue)
+        }
+        item(span = { GridItemSpan(maxLineSpan) }) {
+            Surface(
+                shape = RoundedCornerShape(16.dp),
+                color = Palette.greenLight,
+                border = BorderStroke(1.dp, Palette.green.copy(alpha = .35f))
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(13.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(9.dp)
+                ) {
+                    Column(Modifier.weight(1f)) {
+                        Text(
+                            tr(state.lang, "Aviator · Verified demo", "Aviator · دموی تأییدشده"),
+                            fontWeight = FontWeight.Bold, fontSize = 13.sp, color = Palette.ink
+                        )
+                        Text(
+                            tr(state.lang, "Not every slot or live casino game has a free demo.",
+                                "همه اسلات‌ها و بازی‌های کازینو زنده نسخه آزمایشی ندارند."),
+                            fontSize = 11.sp, color = Palette.text, lineHeight = 17.sp
+                        )
+                    }
+                    Button(
+                        onClick = { tryDemo("x887bde40b16350c", true) },
+                        enabled = launching == null,
+                        colors = ButtonDefaults.buttonColors(containerColor = Palette.ink),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Text(tr(state.lang, "Play demo", "اجرای دمو"), fontSize = 11.sp)
+                    }
+                }
+            }
         }
         item(span = { GridItemSpan(maxLineSpan) }) {
             OutlinedTextField(
@@ -242,24 +301,7 @@ fun CasinoLobby(state: AppState, model: AppViewModel) {
         }
         items(games, key = { it.id }) { game ->
             CasinoGameCard(game, state.lang, launching == game.id) {
-                if (!game.canTryDemo || launching != null) return@CasinoGameCard
-                if (!state.signedIn) {
-                    model.showLogin(true)
-                } else {
-                    launching = game.id
-                    scope.launch {
-                        try { sessionUrl = model.casinoDemoLaunch(game.id) }
-                        catch (cancel: CancellationException) {
-                            throw cancel
-                        } catch (_: Exception) {
-                            model.notice(tr(state.lang,
-                                "This demo cannot be launched right now.",
-                                "این بازی آزمایشی فعلاً قابل اجرا نیست."))
-                        } finally {
-                            launching = null
-                        }
-                    }
-                }
+                tryDemo(game.id, game.demoSupported)
             }
         }
         if (games.isNotEmpty() && loading) {
@@ -290,6 +332,23 @@ fun CasinoLobby(state: AppState, model: AppViewModel) {
     sessionUrl?.let { secureUrl ->
         CasinoGameDialog(secureUrl, state.lang) { sessionUrl = null }
     }
+    launchError?.let { message ->
+        AlertDialog(
+            onDismissRequest = { launchError = null },
+            icon = { Icon(Icons.Default.Info, null, tint = Palette.blue) },
+            title = {
+                Text(tr(state.lang, "Demo not available", "اجرای بازی آزمایشی"),
+                    fontWeight = FontWeight.Bold)
+            },
+            text = { Text(message, lineHeight = 23.sp) },
+            confirmButton = {
+                TextButton(onClick = { launchError = null }) {
+                    Text(tr(state.lang, "Understood", "متوجه شدم"))
+                }
+            },
+            shape = RoundedCornerShape(20.dp)
+        )
+    }
 }
 
 @Composable
@@ -315,7 +374,8 @@ private fun CasinoProviderChip(label: String, selected: Boolean, onClick: () -> 
 @Composable
 private fun CasinoGameCard(game: CasinoGame, lang: Lang, launching: Boolean, onClick: () -> Unit) {
     Surface(
-        modifier = Modifier.fillMaxWidth().clickable(enabled = game.canTryDemo, onClick = onClick),
+        onClick = onClick, enabled = game.canTryDemo,
+        modifier = Modifier.fillMaxWidth(),
         color = Color.White, shape = RoundedCornerShape(18.dp),
         border = BorderStroke(1.dp, Palette.border), shadowElevation = 2.dp
     ) {

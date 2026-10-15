@@ -82,6 +82,14 @@ class ApiClient {
     // Money-mutating POSTs must never be automatically replayed by OkHttp.
     private val financialClient = client.newBuilder()
         .retryOnConnectionFailure(false).build()
+    // The casino launch endpoint may check the catalogue, create the provider
+    // player and request a session URL sequentially. The generic 20s deadline
+    // can expire before a valid Demo URL arrives. Never apply this to money POSTs.
+    private val casinoDemoClient = client.newBuilder()
+        .readTimeout(55, TimeUnit.SECONDS)
+        .callTimeout(65, TimeUnit.SECONDS)
+        .retryOnConnectionFailure(false)
+        .build()
     // A mobile upload can take longer than a typical JSON request.
     // Do not automatically retry a POST that could already be stored.
     private val supportUploadClient = client.newBuilder()
@@ -123,7 +131,7 @@ class ApiClient {
 
     private suspend fun request(path: String, token: String? = null, body: JSONObject? = null,
         verb: String = "POST", idempotencyKey: String? = null,
-        emptyPost: Boolean = false): JSONObject =
+        emptyPost: Boolean = false, casinoDemo: Boolean = false): JSONObject =
         withContext(Dispatchers.IO) {
             require(path.startsWith("/api/v1/"))
             val builder = Request.Builder().url(base + path)
@@ -132,7 +140,9 @@ class ApiClient {
             if (idempotencyKey != null) builder.header("Idempotency-Key", idempotencyKey)
             if (body != null) builder.method(verb, body.toString().toRequestBody(jsonType))
             else if (emptyPost) builder.post(ByteArray(0).toRequestBody(null))
-            (if (idempotencyKey == null && !emptyPost) client else financialClient)
+            (if (casinoDemo) casinoDemoClient
+             else if (idempotencyKey == null && !emptyPost) client
+             else financialClient)
                 .newCall(builder.build()).execute().use(::apiJson)
         }
 
@@ -194,7 +204,8 @@ class ApiClient {
         val response = request(
             "/api/v1/casino/launch", token,
             JSONObject().put("gameId", gameId).put("demo", demo)
-                .put("device", "mobile").put("lang", "en")
+                .put("device", "mobile").put("lang", "en"),
+            casinoDemo = demo
         )
         val url = response.optString("url")
         val uri = android.net.Uri.parse(url)

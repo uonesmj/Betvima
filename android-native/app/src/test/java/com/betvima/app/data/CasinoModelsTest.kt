@@ -40,6 +40,16 @@ class CasinoModelsTest {
         assertTrue(result.games.first().canTryDemo)
     }
 
+    @Test fun demoFailureExplainsUnlicensedDemoWithoutClaimingWalletAccess() {
+        val noDemoFa = casinoDemoFailure(500, false, true)
+        assertTrue(noDemoFa.contains("آزمایشی"))
+        assertTrue(noDemoFa.contains("Aviator"))
+        assertTrue(casinoDemoFailure(500, false, false).contains("real-money"))
+        assertTrue(casinoDemoFailure(503, true, false).contains("confirmed demo"))
+        assertTrue(casinoDemoFailure(401, true, true).contains("وارد"))
+        assertTrue(casinoDemoFailure(429, false, false).contains("Too many"))
+    }
+
     @Test fun categoriesHavePersianAndEnglishLabels() {
         assertEquals("اسلات", casinoCategoryLabel("slots", true))
         assertEquals("Live Casino", casinoCategoryLabel("live", false))
