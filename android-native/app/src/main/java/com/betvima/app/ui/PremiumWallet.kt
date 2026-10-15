@@ -421,7 +421,7 @@ fun PremiumWalletPage(state: AppState, model: AppViewModel) {
     if (state.signedIn && wallet != null && activeSheet == "history") {
         val historySheet = rememberModalBottomSheetState(skipPartiallyExpanded = true)
         val historyScope = rememberCoroutineScope()
-        val hideHistory = {
+        val hideHistory: () -> Unit = {
             historyScope.launch {
                 historySheet.hide()
                 activeSheet = ""
