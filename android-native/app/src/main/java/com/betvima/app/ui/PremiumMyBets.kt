@@ -284,6 +284,7 @@ private fun HistoryFilterTrigger(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun HistoryFilterPopup(
     kind: String, filter: BetHistoryQuery, lang: Lang,
