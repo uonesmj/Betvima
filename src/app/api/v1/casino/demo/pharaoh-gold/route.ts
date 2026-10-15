@@ -5,25 +5,27 @@ import { createDemoSpin, validateBetCents } from '@/lib/casino/pharaoh-gold';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-/** DEMO ONLY. Never debits, credits, reads or modifies a customer's wallet. */
-export async function POST(request: Request) {
+/**
+ * DEMO ONLY. GET is intentionally side-effect-free: this endpoint creates an
+ * unredeemable random display result, NOT a wager or financial transaction.
+ * The isolated Preview proxy only permits GET/HEAD/OPTIONS; never open its
+ * POST write surface or reuse this endpoint as a real-money betting API.
+ */
+export async function GET(request: Request) {
   try {
-    if (Number(request.headers.get('content-length') || '0') > 1024)
-      return NextResponse.json({ error: 'Payload too large' }, { status: 413 });
-    const payload: unknown = await request.json();
-    if (!payload || typeof payload !== 'object' || Array.isArray(payload))
-      return NextResponse.json({ error: 'Invalid request' }, { status: 400 });
-    const { betCents, freeSpin } = payload as Record<string, unknown>;
-    if (typeof betCents !== 'number' || typeof freeSpin !== 'boolean')
-      return NextResponse.json({ error: 'Invalid bet' }, { status: 400 });
-    validateBetCents(betCents);
-    const result = createDemoSpin(betCents, freeSpin, randomInt, randomUUID());
+    const params = new URL(request.url).searchParams;
+    const betRaw = params.get('betCents');
+    const freeRaw = params.get('freeSpin');
+    if (!betRaw || !/^(0|[1-9]\d{0,4})$/.test(betRaw) || (freeRaw !== 'true' && freeRaw !== 'false'))
+      return NextResponse.json({ error: 'Invalid demo request' }, { status: 400, headers: { 'Cache-Control': 'no-store' } });
+    const betCents = validateBetCents(Number(betRaw));
+    const result = createDemoSpin(betCents, freeRaw === 'true', randomInt, randomUUID());
     return NextResponse.json({ mode: 'demo', currency: 'USD', result }, {
-      headers: { 'Cache-Control': 'no-store' },
+      headers: { 'Cache-Control': 'private, no-store, no-cache, must-revalidate', 'Pragma': 'no-cache' },
     });
   } catch (err) {
-    if (err instanceof RangeError || err instanceof SyntaxError || (err instanceof Error && err.message.startsWith('Invalid')))
-      return NextResponse.json({ error: 'Invalid game request' }, { status: 400 });
-    return NextResponse.json({ error: 'Demo spin unavailable' }, { status: 503 });
+    if (err instanceof RangeError || (err instanceof Error && err.message.startsWith('Invalid')))
+      return NextResponse.json({ error: 'Invalid game request' }, { status: 400, headers: { 'Cache-Control': 'no-store' } });
+    return NextResponse.json({ error: 'Demo spin unavailable' }, { status: 503, headers: { 'Cache-Control': 'no-store' } });
   }
 }
