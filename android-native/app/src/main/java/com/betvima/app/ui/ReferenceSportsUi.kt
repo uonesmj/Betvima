@@ -67,13 +67,20 @@ fun SportsbookTopTabs(state: AppState, model: AppViewModel, onSearch: () -> Unit
     val tabListState = rememberLazyListState()
     LaunchedEffect(active) {
         val index = tabs.indexOfFirst { it.first == active }
-        if (index >= 0) tabListState.animateScrollToItem(index)
+        // Keep a visible tab in place instead of unnecessarily jumping the ribbon.
+        // If it is offscreen, scroll directly to it; the trailing inset lets the
+        // final tab become completely visible even on a narrow handset.
+        if (index >= 0 && tabListState.layoutInfo.visibleItemsInfo.none { it.index == index }) {
+            tabListState.animateScrollToItem(index)
+        }
     }
     Row(Modifier.fillMaxWidth().background(Palette.paper)
-        .padding(start = 9.dp, end = 9.dp, top = 12.dp, bottom = 4.dp),
+        .padding(start = 6.dp, end = 6.dp, top = 10.dp, bottom = 4.dp),
         verticalAlignment = Alignment.CenterVertically) {
         LazyRow(Modifier.weight(1f), state = tabListState,
-            horizontalArrangement = Arrangement.spacedBy(3.dp), flingBehavior = rememberPremiumFlingBehavior()) {
+            contentPadding = PaddingValues(end = 10.dp),
+            horizontalArrangement = Arrangement.spacedBy(1.dp),
+            flingBehavior = rememberPremiumFlingBehavior()) {
             items(tabs, key = { it.first }) { (id, title) ->
                 val isActive = active == id
                 val pillColor by animateColorAsState(
@@ -100,8 +107,8 @@ fun SportsbookTopTabs(state: AppState, model: AppViewModel, onSearch: () -> Unit
                         }
                     }) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Row(Modifier.heightIn(min = 47.dp)
-                        .padding(horizontal = 13.dp, vertical = 11.dp),
+                    Row(Modifier.heightIn(min = 46.dp)
+                        .padding(horizontal = 9.dp, vertical = 10.dp),
                         verticalAlignment = Alignment.CenterVertically) {
                         if (id == "bets") {
                             Surface(color = Color(0xFFFF4F20), shape = RoundedCornerShape(6.dp)) {
@@ -113,7 +120,7 @@ fun SportsbookTopTabs(state: AppState, model: AppViewModel, onSearch: () -> Unit
                         }
                         Text(title, color = Palette.text, fontWeight =
                             if (active == id) FontWeight.Black else FontWeight.SemiBold,
-                            fontSize = 14.sp)
+                            fontSize = 14.sp, maxLines = 1, softWrap = false)
                     }
                     Box(Modifier.height(2.dp).width(if (isActive) 25.dp else 0.dp)
                         .background(if (isActive) Palette.blue else Color.Transparent,
