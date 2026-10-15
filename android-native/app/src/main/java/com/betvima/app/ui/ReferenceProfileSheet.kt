@@ -26,7 +26,7 @@ import com.betvima.app.data.money
 fun ReferenceProfileSheet(state: AppState, model: AppViewModel, onClose: () -> Unit) {
     ModalBottomSheet(onDismissRequest = onClose, containerColor = Color.White,
         dragHandle = null, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)) {
-        Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState())
+        Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState(), flingBehavior = rememberPremiumFlingBehavior())
             .padding(horizontal = 16.dp).padding(bottom = 28.dp),
             verticalArrangement = Arrangement.spacedBy(18.dp)) {
             Row(Modifier.fillMaxWidth().padding(top = 20.dp, bottom = 3.dp),
