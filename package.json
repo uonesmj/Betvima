@@ -14,6 +14,7 @@
     "lint": "next lint",
     "test": "vitest run",
     "test:watch": "vitest",
+    "casino:diagnose": "node scripts/softaggregator-diagnose.mjs",
     "test:unit": "vitest run tests/unit",
     "test:integration": "vitest run tests/integration",
     "test:coverage": "vitest run --coverage",
