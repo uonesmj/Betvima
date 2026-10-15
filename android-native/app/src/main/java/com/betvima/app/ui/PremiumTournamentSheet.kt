@@ -1,5 +1,7 @@
 package com.betvima.app.ui
 
+import kotlinx.coroutines.launch
+
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -39,9 +41,17 @@ fun PremiumTournamentSheet(
                 fixture?.country?.contains(search.trim(), ignoreCase = true) == true
         }.sortedBy { it.value.firstOrNull()?.league.orEmpty() }
     }
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val scope = rememberCoroutineScope()
+    val animatedDismiss = {
+        scope.launch {
+            sheetState.hide()
+            onDismiss()
+        }
+    }
     ModalBottomSheet(
-        onDismissRequest = onDismiss,
-        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+        onDismissRequest = animatedDismiss,
+        sheetState = sheetState,
         containerColor = Palette.paper,
         shape = RoundedCornerShape(topStart = 30.dp, topEnd = 30.dp),
         dragHandle = {
@@ -72,7 +82,7 @@ fun PremiumTournamentSheet(
                             Text(tr(lang, "Explore competitions", "جست‌وجوی لیگ‌ها و مسابقات"),
                                 color = Color(0xFFBACAD0), fontSize = 11.sp)
                         }
-                        IconButton(onClick = onDismiss) {
+                        IconButton(onClick = animatedDismiss) {
                             Icon(Icons.Default.Close, tr(lang, "Close", "بستن"),
                                 tint = Color.White)
                         }
@@ -112,7 +122,7 @@ fun PremiumTournamentSheet(
                         subtitle = tr(lang, "Every available league", "نمایش تمام لیگ‌ها"),
                         count = groups.values.sumOf { it.size },
                         checked = selected.isEmpty(),
-                        onClick = { onSelect(""); onDismiss() })
+                        onClick = { onSelect(""); animatedDismiss() })
                 }
                 items(visible, key = { it.key }) { entry ->
                     val first = entry.value.first()
@@ -121,7 +131,7 @@ fun PremiumTournamentSheet(
                         subtitle = first.country,
                         count = entry.value.size,
                         checked = selected == entry.key,
-                        onClick = { onSelect(entry.key); onDismiss() })
+                        onClick = { onSelect(entry.key); animatedDismiss() })
                 }
                 if (visible.isEmpty()) item {
                     Text(tr(lang, "No competition matches your search.",
