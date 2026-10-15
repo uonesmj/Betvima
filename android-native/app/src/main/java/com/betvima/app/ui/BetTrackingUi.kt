@@ -216,3 +216,12 @@ internal fun BetSelectionOverview(
         }
     }
 }
+
+/** Prefer a fresh live catalogue event over cached match metadata. */
+internal fun AppState.matchForLeg(leg: BetLegDetail): Match? {
+    if (leg.matchId.isBlank()) return null
+    return live.firstOrNull { it.id == leg.matchId }
+        ?: ticketMatches[leg.matchId]
+        ?: upcoming.firstOrNull { it.id == leg.matchId }
+        ?: detail?.takeIf { it.id == leg.matchId }
+}
