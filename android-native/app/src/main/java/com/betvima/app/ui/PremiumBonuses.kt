@@ -312,8 +312,11 @@ private val rules=listOf(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable private fun RulesSheet(lang: Lang,onClose:()->Unit) {
-    ModalBottomSheet(onDismissRequest=onClose,containerColor=Color(0xFFF8FAFA),
-        sheetState=rememberModalBottomSheetState(skipPartiallyExpanded=true)) {
+    val sheet = rememberModalBottomSheetState(skipPartiallyExpanded=true)
+    val scope = rememberCoroutineScope()
+    val smoothClose = { scope.launch { sheet.hide(); onClose() } }
+    ModalBottomSheet(onDismissRequest=smoothClose,containerColor=Color(0xFFF8FAFA),
+        sheetState=sheet) {
         Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState(), flingBehavior = rememberPremiumFlingBehavior())
             .padding(horizontal=16.dp,vertical=17.dp),
             verticalArrangement=Arrangement.spacedBy(10.dp)) {
@@ -355,8 +358,11 @@ private val rules=listOf(
 @Composable private fun BonusReceipt(item:BonusReward,lang:Lang,
     now:Long,onClose:()->Unit,onRules:()->Unit) {
     val clipboard=LocalClipboardManager.current
-    ModalBottomSheet(onDismissRequest=onClose,containerColor=Color.White,
-        sheetState=rememberModalBottomSheetState(skipPartiallyExpanded=true)) {
+    val sheet = rememberModalBottomSheetState(skipPartiallyExpanded=true)
+    val scope = rememberCoroutineScope()
+    val smoothClose = { scope.launch { sheet.hide(); onClose() } }
+    ModalBottomSheet(onDismissRequest=smoothClose,containerColor=Color.White,
+        sheetState=sheet) {
         Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState(), flingBehavior = rememberPremiumFlingBehavior())
             .padding(horizontal=17.dp,vertical=16.dp),
             verticalArrangement=Arrangement.spacedBy(12.dp)) {
