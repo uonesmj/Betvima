@@ -29,7 +29,7 @@ import com.betvima.app.data.money
 fun ReferenceProfileSheet(state: AppState, model: AppViewModel, onClose: () -> Unit) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val scope = rememberCoroutineScope()
-    val animatedDismiss = {
+    val animatedDismiss: () -> Unit = {
         scope.launch {
             sheetState.hide()
             onClose()
