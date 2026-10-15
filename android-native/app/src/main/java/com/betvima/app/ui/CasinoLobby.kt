@@ -39,6 +39,7 @@ import coil.compose.AsyncImage
 import com.betvima.app.data.CasinoGame
 import com.betvima.app.data.casinoCategoryLabel
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 
 private val casinoCategories = listOf("", "slots", "live", "crash", "table", "instant",
@@ -77,6 +78,8 @@ fun CasinoLobby(state: AppState, model: AppViewModel) {
             games = (previous + result.games).distinctBy { it.id }
             hasMore = result.hasMore && result.games.isNotEmpty()
             total = result.total
+        } catch (cancel: CancellationException) {
+            throw cancel
         } catch (_: Exception) {
             error = tr(state.lang,
                 "The casino catalogue is not available yet. Please try again.",
@@ -189,7 +192,7 @@ fun CasinoLobby(state: AppState, model: AppViewModel) {
                 }
             }
         }
-        if (availableProviders.size >= 2) {
+        if (availableProviders.isNotEmpty()) {
             item(span = { GridItemSpan(maxLineSpan) }) {
                 LazyRow(horizontalArrangement = Arrangement.spacedBy(7.dp),
                     verticalAlignment = Alignment.CenterVertically) {
@@ -246,7 +249,9 @@ fun CasinoLobby(state: AppState, model: AppViewModel) {
                     launching = game.id
                     scope.launch {
                         try { sessionUrl = model.casinoDemoLaunch(game.id) }
-                        catch (_: Exception) {
+                        catch (cancel: CancellationException) {
+                            throw cancel
+                        } catch (_: Exception) {
                             model.notice(tr(state.lang,
                                 "This demo cannot be launched right now.",
                                 "این بازی آزمایشی فعلاً قابل اجرا نیست."))
