@@ -568,3 +568,55 @@
   .spinButton,.spinButton:not([data-busy=true]){animation:none!important}
 }
 .page[data-reduced-motion=true] .spinButton{animation:none!important}
+
+
+/* FINAL ART PASS — image-backed awards and interactive royal buttons.
+   Scenic artwork remains static; only reels, outcome rewards and controls move. */
+.celebrationBadge{
+  width:min(530px,90vw);
+  height:auto;
+  max-height:168px;
+  object-fit:contain;
+  filter:drop-shadow(0 8px 12px #000c) drop-shadow(0 0 24px #f8c56e99);
+  transform:translateZ(0);
+}
+.celebration[data-kind=bonus] .celebrationBadge{
+  filter:drop-shadow(0 8px 12px #000d) drop-shadow(0 0 25px #28dfd682);
+}
+.celebrationAmount{
+  font-variant-numeric:tabular-nums;
+  line-height:1.1;
+  position:relative;
+  z-index:1;
+  color:#fff5c1;
+}
+.bottomTools button{
+  background:url('/casino/pharaoh-gold/royal-button.svg') center / 100% 100% no-repeat;
+  border:0;
+  border-radius:10px;
+  color:#ffedc2;
+  box-shadow:0 6px 13px #020312ad;
+  transition:filter .16s ease-out,transform .16s ease-out;
+}
+.bottomTools button:hover{filter:brightness(1.18) saturate(1.13)}
+.bottomTools button:active{transform:scale(.965)}
+.bottomTools button[data-active=true]{
+  background:linear-gradient(#008c65aa,#004e3ac9),url('/casino/pharaoh-gold/royal-button.svg') center / 100% 100% no-repeat;
+  color:#defff3;
+  filter:drop-shadow(0 0 7px #00d88b7a);
+}
+.bottomTools button:focus-visible,.spinButton:focus-visible{
+  outline:3px solid #a3ffe2;outline-offset:5px;
+}
+@media(max-width:620px){
+  .celebrationBadge{max-height:115px;width:min(410px,94vw)}
+  .celebrationAmount{font-size:clamp(21px,5.8vw,35px)}
+  .bottomTools button{background-size:100% 100%}
+  .bottomTools button[data-active=true]{
+    background:linear-gradient(#008c65aa,#004e3ac9),url('/casino/pharaoh-gold/royal-button.svg') center / 100% 100% no-repeat;
+  }
+}
+@media(prefers-reduced-motion:reduce){
+  .bottomTools button,.celebrationBadge{transition:none!important;transform:none!important}
+}
+.page[data-reduced-motion=true] .bottomTools button{transition:none!important;transform:none!important}
