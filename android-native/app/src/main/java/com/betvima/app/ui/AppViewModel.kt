@@ -10,6 +10,8 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.async
 import kotlinx.coroutines.supervisorScope
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
 import java.math.BigDecimal
 import java.math.RoundingMode
 
@@ -29,6 +31,7 @@ data class AppState(
     val liveEnabled: Boolean = false, val detail: Match? = null,
     val betDetail: BetDetail? = null, val betDetailLoading: Boolean = false,
     val betDetailVisible: Boolean = false,
+    val ticketMatches: Map<String, Match> = emptyMap(),
     val picks: List<Pick> = emptyList(), val showSlip: Boolean = false,
     val showLogin: Boolean = false, val registerScreen: Boolean = false,
     val authError: String? = null,
@@ -67,6 +70,9 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     private var historyRequest = 0
     private var searchGeneration = 0
     private var liveRequestInFlight = false
+    private val ticketLookupFailures = mutableSetOf<String>()
+    private val ticketLookupInFlight = mutableSetOf<String>()
+    private val ticketLookupSemaphore = Semaphore(2)
     private val mutable = MutableStateFlow(AppState(
         signedIn = vault.signedIn(),
         lang = if (preferences.getString("language", "fa") == "en") Lang.EN else Lang.FA
@@ -281,6 +287,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             if (generation == sessionGeneration && state.value.betDetailVisible) mutable.update {
                 it.copy(betDetail = detail, betDetailLoading = false)
             }
+            resolveTicketMatches(detail.legs.map { it.matchId })
         } catch (ex: Exception) {
             if (generation == sessionGeneration) mutable.update {
                 it.copy(betDetailLoading = false, betDetailVisible = false,
@@ -291,6 +298,35 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     }
     fun closeBet() = mutable.update {
         it.copy(betDetailVisible = false, betDetailLoading = false, betDetail = null)
+    }
+
+    /** Best-effort name/score enrichment, independent from financial settlement. */
+    private fun resolveTicketMatches(ids: List<String>) {
+        val target = ids.filter { id ->
+            id.matches(Regex("[0-9a-fA-F-]{36}")) &&
+                id !in state.value.ticketMatches &&
+                id !in ticketLookupFailures && id !in ticketLookupInFlight
+        }.distinct().take(8)
+        val generation = sessionGeneration
+        for (id in target) {
+            ticketLookupInFlight.add(id)
+            viewModelScope.launch {
+                try {
+                    ticketLookupSemaphore.withPermit {
+                        val match = api.match(id)
+                        if (generation == sessionGeneration && state.value.signedIn) {
+                            mutable.update {
+                                it.copy(ticketMatches = it.ticketMatches + (id to match))
+                            }
+                        }
+                    }
+                } catch (_: Exception) {
+                    if (generation == sessionGeneration) ticketLookupFailures.add(id)
+                } finally {
+                    ticketLookupInFlight.remove(id)
+                }
+            }
+        }
     }
     fun clearQuote() {
         quoteGeneration++
@@ -473,6 +509,12 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                     historyPage = response.page, historyHasMore = response.hasMore,
                     historyLoading = false, historyMoreLoading = false,
                     historyError = null)
+            }
+            if (generation == sessionGeneration && request == historyRequest &&
+                state.value.signedIn) {
+                resolveTicketMatches(response.items.flatMap { bet ->
+                    bet.selections.map { it.matchId }
+                })
             }
         } catch (ex: Exception) {
             if (!silent && generation == sessionGeneration && request == historyRequest) mutable.update {
