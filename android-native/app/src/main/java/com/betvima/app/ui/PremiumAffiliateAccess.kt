@@ -139,11 +139,11 @@ fun AffiliateAccessPanel(lang: Lang, api: ApiClient, vault: SessionVault,
     var working by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
     var message by remember { mutableStateOf<String?>(null) }
-    val validEmail = email.trim().matches(Regex("^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$"))
-    val validPassword = password.length in 8..128
-    val validRegister = validEmail && validPassword &&
-        username.trim().matches(Regex("^[a-zA-Z0-9_]{3,32}$")) &&
-        payoutAccount.trim().length in 4..120
+    val validEmail = AffiliateInputRules.validEmail(email)
+    val validPassword = AffiliateInputRules.validPassword(password)
+    val validRegister = AffiliateInputRules.validRegistration(
+        email, username, password, payoutAccount
+    )
     Surface(color=Color.White,shape=RoundedCornerShape(24.dp),
         border=BorderStroke(1.dp,affiliateOutline),shadowElevation=2.dp) {
         Column(Modifier.fillMaxWidth().padding(17.dp),
