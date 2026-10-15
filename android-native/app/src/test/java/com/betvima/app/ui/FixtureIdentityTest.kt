@@ -27,6 +27,16 @@ class FixtureIdentityTest {
         assertEquals("Japan", countryDisplayName("JP"))
     }
 
+    @Test fun knownFirstPartyLeagueBadgesAreExactAndNeverSwapped() {
+        assertEquals("https://betvima.com/sports/leagues/europa-league.svg",
+            firstPartyLeagueLogo("Europe. UEFA Europa League"))
+        assertEquals("https://betvima.com/sports/leagues/mls.svg",
+            firstPartyLeagueLogo("MLS"))
+        assertNull(firstPartyLeagueLogo("UEFA Europa Conference League"))
+        assertNull(firstPartyLeagueLogo("NBA Preseason"))
+        assertNull(firstPartyLeagueLogo("World. Men. Setka Cup"))
+    }
+
     @Test fun continentsAndUnknownCountriesNeverGetFakeFlags() {
         assertNull(countryFlag("Europe"))
         assertNull(countryFlag("World"))
