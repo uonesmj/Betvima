@@ -6,6 +6,8 @@ import org.junit.Test
 class FixtureIdentityTest {
     @Test fun usesHttpsOnlyForProviderSuppliedImages() {
         assertEquals("https://cdn.example.org/club.svg", verifiedLogoUrl(" https://cdn.example.org/club.svg "))
+        assertEquals("https://betvima.com/team-logos/club.svg", verifiedLogoUrl("/team-logos/club.svg"))
+        assertNull(verifiedLogoUrl("//external.example/club.svg"))
         assertNull(verifiedLogoUrl("http://example.org/club.png"))
         assertNull(verifiedLogoUrl("javascript:alert(1)"))
         assertNull(verifiedLogoUrl(null))
