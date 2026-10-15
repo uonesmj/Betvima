@@ -16,19 +16,22 @@ const schema = z.object({
   lang: z.enum(['en', 'fa']).default('en'),
 });
 
-export const POST = withErrorHandling('casino.launch', async (ctx, request) => {
+export const POST = withErrorHandling('casino.launch', async (ctx, request: Request) => {
   const { user } = await withUser(request, ctx);
   if (!casinoEnabled()) return NextResponse.json({ error: 'CASINO_DISABLED' }, { status: 503 });
   await enforceRateLimit('casino:launch:' + user.id, 20, 60);
   const input = await readJson(request, schema, ctx);
-  if (!input.demo && !casinoRealMoneyEnabled()) {
+  const demo = input.demo ?? true;
+  const device = input.device ?? 'mobile';
+  const lang = input.lang ?? 'en';
+  if (!demo && !casinoRealMoneyEnabled()) {
     return NextResponse.json({ error: 'CASINO_REAL_MONEY_DISABLED' }, { status: 503 });
   }
-  const eligibility = input.demo ? null : await casinoPlayerMayLaunch(user.id);
+  const eligibility = demo ? null : await casinoPlayerMayLaunch(user.id);
   const url = await launchCasinoGame({
-    userId: user.id, gameId: input.gameId, demo: input.demo,
-    device: input.device, lang: input.lang, country: eligibility?.country,
+    userId: user.id, gameId: input.gameId, demo,
+    device, lang, country: eligibility?.country,
   });
-  return NextResponse.json({ ok: true, data: { url, currency: 'USD', demo: input.demo } },
+  return NextResponse.json({ ok: true, data: { url, currency: 'USD', demo } },
     { headers: { 'Cache-Control': 'no-store' } });
 });
