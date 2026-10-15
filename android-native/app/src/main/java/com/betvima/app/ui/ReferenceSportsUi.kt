@@ -42,6 +42,8 @@ import com.betvima.app.data.Market
 import com.betvima.app.data.Pick
 import com.betvima.app.data.Selection
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.platform.LocalContext
+import android.widget.Toast
 
 /**
  * Dense reference-inspired sports layouts using server-owned fixtures and markets.
@@ -349,44 +351,104 @@ fun ReferenceSectionHeader(lang: Lang, titleEn: String, titleFa: String,
     }
 }
 
-/** Circular competition shortcuts, populated exclusively from returned catalogue. */
+/**
+ * Exact order of the 16 user-supplied competition icons. The first five
+ * remain leading items while the remaining 11 are revealed by horizontal scroll.
+ * These are artwork navigation shortcuts, not a claim of available games.
+ */
+internal data class HomeCompetitionShortcut(
+    val key: String, val title: String, val picture: Int,
+    val leagueAliases: List<String>, val goToMarkets: Boolean = false
+)
+
+internal val homeCompetitionShortcuts: List<HomeCompetitionShortcut> = listOf(
+    HomeCompetitionShortcut("wnba", "WNBA", 0, listOf("wnba")),
+    HomeCompetitionShortcut("ufc", "UFC Fight Night", 1,
+        listOf("ufc fight night", "ufc")),
+    HomeCompetitionShortcut("wta-wuhan", "WTA Wuhan", 2,
+        listOf("wta wuhan", "wta 1000 wuhan", "wuhan open")),
+    HomeCompetitionShortcut("markets", "Markets", 3, emptyList(), goToMarkets = true),
+    HomeCompetitionShortcut("nba-preseason", "NBA Pre-season", 4,
+        listOf("nba preseason", "nba pre season")),
+    HomeCompetitionShortcut("usa-grand-prix", "USA Grand Prix", 5,
+        listOf("usa grand prix", "united states grand prix")),
+    HomeCompetitionShortcut("nfl", "NFL", 6, listOf("nfl")),
+    HomeCompetitionShortcut("mlb", "MLB", 7, listOf("mlb")),
+    HomeCompetitionShortcut("setka", "Setka Cup", 8, listOf("setka cup", "setka")),
+    HomeCompetitionShortcut("cyberfifa", "CyberFIFA", 9,
+        listOf("cyberfifa", "cyber fifa")),
+    HomeCompetitionShortcut("eurocup", "Eurocup", 10,
+        listOf("eurocup", "basketball eurocup")),
+    HomeCompetitionShortcut("nba-replays", "NBA Replays", 11,
+        listOf("nba replays", "nba replay")),
+    HomeCompetitionShortcut("euroleague", "Euroleague", 12,
+        listOf("euroleague", "euro league basketball")),
+    HomeCompetitionShortcut("atp-shanghai", "ATP Shanghai", 13,
+        listOf("atp shanghai", "shanghai masters")),
+    HomeCompetitionShortcut("conference", "Conference League", 14,
+        listOf("conference league", "uefa conference")),
+    HomeCompetitionShortcut("europa", "Europa League", 15,
+        listOf("europa league"))
+)
+
+private fun normalizeCompetition(value: String): String =
+    value.lowercase(java.util.Locale.ROOT)
+        .replace(Regex("[^a-z0-9]+"), " ")
+        .trim()
+        .replace(Regex(" +"), " ")
+
+/**
+ * Match full, consecutive words. A fixture in "Europa Conference League"
+ * must never be mistaken for "Europa League"; likewise NBA preseason is
+ * not an ordinary NBA league.
+ */
+internal fun leagueMatchesShortcut(league: String, shortcut: HomeCompetitionShortcut): Boolean {
+    val normalizedLeague = normalizeCompetition(league)
+    return shortcut.leagueAliases.any { alias ->
+        val normalizedAlias = normalizeCompetition(alias)
+        normalizedAlias.isNotBlank() &&
+            (" $normalizedLeague ").contains(" $normalizedAlias ")
+    }
+}
+
 @Composable
 fun ReferenceTournamentRibbon(state: AppState, model: AppViewModel) {
-    val categories = listOf(
-        Triple("football", tr(state.lang, "Football", "فوتبال"), 0),
-        Triple("tennis", tr(state.lang, "Tennis", "تنیس"), 1),
-        Triple("basketball", tr(state.lang, "Basketball", "بسکتبال"), 2),
-        Triple("hockey", tr(state.lang, "Ice hockey", "هاکی"), 3),
-        Triple("table-tennis", tr(state.lang, "Table tennis", "پینگ‌پنگ"), 4),
-        Triple("volleyball", tr(state.lang, "Volleyball", "والیبال"), 5),
-        Triple("baseball", tr(state.lang, "Baseball", "بیسبال"), 6),
-        Triple("esports", tr(state.lang, "Esports", "ورزش الکترونیک"), 7)
-    )
-    val competitions = (state.live + state.upcoming)
-        .filter { it.league.isNotBlank() && it.league != "Football" }
-        .distinctBy { it.league + "|" + it.country }
-        .take(7)
+    val context = LocalContext.current
     val ribbonState = rememberLazyListState()
-    LazyRow(Modifier.fillMaxWidth(), state = ribbonState,
-        contentPadding = PaddingValues(horizontal = 15.dp, vertical = 11.dp),
-        horizontalArrangement = Arrangement.spacedBy(12.dp), flingBehavior = rememberPremiumFlingBehavior()) {
-        item(key = "top-bets") {
-            SportsBadgeShortcut(
-                label = tr(state.lang, "TOP Bets", "شرط‌های برتر"),
-                index = 0, selected = false
-            ) { model.homeMode(HomeMode.TOP_BETS) }
-        }
-        items(categories, key = { it.first }) { (sport, name, picture) ->
-            SportsBadgeShortcut(label = name, index = picture, selected = false) {
-                model.sport(sport)
-                model.tab(Tab.SPORTS)
+    LazyRow(
+        Modifier.fillMaxWidth(), state = ribbonState,
+        contentPadding = PaddingValues(horizontal = 9.dp, vertical = 11.dp),
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+        flingBehavior = rememberPremiumFlingBehavior()
+    ) {
+        items(homeCompetitionShortcuts, key = { it.key }) { shortcut ->
+            LeagueBadgeShortcut(
+                label = shortcut.title, index = shortcut.picture
+            ) {
+                if (shortcut.goToMarkets) {
+                    model.homeMode(HomeMode.TOP_BETS)
+                } else {
+                    val future = state.upcoming.firstOrNull {
+                        leagueMatchesShortcut(it.league, shortcut)
+                    }
+                    val live = state.live.firstOrNull {
+                        leagueMatchesShortcut(it.league, shortcut)
+                    }
+                    when {
+                        future != null -> model.tournament(
+                            future.league + "|" + future.country
+                        )
+                        live != null -> model.tab(Tab.LIVE)
+                        else -> Toast.makeText(
+                            context,
+                            tr(state.lang,
+                                "No currently loaded fixtures for " + shortcut.title,
+                                "فعلاً بازی بارگذاری‌شده‌ای برای " + shortcut.title + " وجود ندارد"),
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    }
+                }
             }
-        }
-        items(competitions, key = { it.league + "|" + it.country }) { competition ->
-            TournamentShortcut(
-                label = competition.league, logo = competition.leagueLogo,
-                icon = Icons.Default.EmojiEvents, active = false
-            ) { model.tournament(competition.league + "|" + competition.country) }
         }
     }
 }

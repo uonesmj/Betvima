@@ -80,3 +80,57 @@ fun SportsBadgeShortcut(
             overflow = TextOverflow.Ellipsis)
     }
 }
+
+
+/**
+ * Curated competition artwork supplied by the user, offline and bundled with
+ * the application. Four strips contain exactly 16 original round badges, with
+ * no poster captions or network dependency. Each tile is 112 x 112 pixels.
+ */
+@Composable
+fun LeagueBadgeShortcut(label: String, index: Int, onClick: () -> Unit) {
+    require(index in 0..15) { "Unknown competition artwork index: $index" }
+    val context = LocalContext.current
+    val strip = index / 4
+    val resId = when (strip) {
+        0 -> R.drawable.betvima_league_row_0
+        1 -> R.drawable.betvima_league_row_1
+        2 -> R.drawable.betvima_league_row_2
+        else -> R.drawable.betvima_league_row_3
+    }
+    val atlas = remember(context, resId) {
+        BitmapFactory.decodeResource(context.resources, resId).asImageBitmap()
+    }
+    Column(
+        Modifier.width(70.dp).clickable(onClick = onClick),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Surface(
+            modifier = Modifier.size(64.dp),
+            shape = CircleShape,
+            color = Color.White,
+            border = BorderStroke(1.dp, Color(0xFFD4DEE8))
+        ) {
+            Canvas(Modifier.fillMaxSize().clip(CircleShape)) {
+                drawImage(
+                    image = atlas,
+                    srcOffset = IntOffset((index % 4) * 112, 0),
+                    srcSize = IntSize(112, 112),
+                    dstOffset = IntOffset.Zero,
+                    dstSize = IntSize(size.width.toInt(), size.height.toInt()),
+                    filterQuality = FilterQuality.High
+                )
+            }
+        }
+        Spacer(Modifier.height(6.dp))
+        Text(
+            label, textAlign = TextAlign.Center,
+            color = Palette.text,
+            fontWeight = FontWeight.ExtraBold,
+            fontSize = 10.sp,
+            lineHeight = 13.sp,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis
+        )
+    }
+}
