@@ -8,6 +8,7 @@ import {
   Settings2, ShieldCheck, Sparkles, Volume2, VolumeX, X,
 } from 'lucide-react';
 import { PharaohAudio, type PharaohSound } from '@/lib/casino/pharaoh-audio';
+import { PharaohDepth } from './pharaoh-depth';
 import {
   MAX_BET_CENTS, MIN_BET_CENTS, PAYLINES, PAYTABLE, SYMBOL_LABELS,
   type ReelGrid, type SpinResult, type SymbolId,
@@ -213,6 +214,7 @@ export function PharaohGoldSlot() {
   return (
     <div className={styles.page} dir="ltr" data-reduced-motion={reduceMotion ? 'true' : 'false'}>
       <div className={styles.stars} aria-hidden="true"/>
+      <PharaohDepth disabled={reduceMotion} />
       <header className={styles.topbar}>
         <Link href="/casino" className={styles.back}><ArrowLeft size={18}/><span>{t.quit}</span></Link>
         <div className={styles.brand}><img src="/brand/betvima-logo-transparent.png" alt="BetVima"/></div>
