@@ -2,11 +2,12 @@ import { createHash } from 'node:crypto';
 import { getDb } from '@/server/db';
 import type { Db } from '@/lib/ports/db';
 import { callbackResponse, type SignedCallback, userIdFromUsername } from './contract';
-import { casinoRealMoneyEnabled } from './client';
+import { casinoRealMoneyUserAllowed } from './client';
+import { fiatCasinoBalance, settleFiatCasinoCallback } from './fiat-wallet';
 
 export type CasinoBalanceResponse = { error: 0 | 1 | 2; balance: number };
 type ProfileRow = {
-  status: string; age_verified: boolean; country: string | null;
+  status: string; age_verified: boolean; country: string | null; currency: string;
   self_excluded: boolean; restricted: boolean;
   max_stake_per_bet_minor: string | null; max_stake_per_day_minor: string | null;
   loss_limit_daily_minor: string | null; loss_limit_weekly_minor: string | null;
@@ -16,7 +17,7 @@ type ReceiptRow = { identity_hash: string; response_error: 0 | 1 | 2; response_b
 
 async function getProfile(db: Db, userId: string): Promise<ProfileRow | null> {
   const sql = [
-    "select p.status::text as status, p.age_verified, p.jurisdiction as country,",
+    "select p.status::text as status, p.age_verified, p.jurisdiction as country, p.preferred_currency as currency,",
     "coalesce(l.self_excluded_until > now(), false) as self_excluded,",
     "exists (select 1 from nova.user_restrictions r where r.user_id = p.id and r.is_active",
     "and r.kind in ('self_exclusion', 'cooling_off', 'account_restriction')",
@@ -36,9 +37,11 @@ export async function casinoPlayerMayLaunch(userId: string): Promise<{ country: 
   const p = await getProfile(db, userId);
   if (!p || !accountCanBet(p)) throw new Error('CASINO_PLAYER_NOT_ELIGIBLE');
   if (!p.country || !/^[A-Z]{2}$/.test(p.country)) throw new Error('CASINO_COUNTRY_REQUIRED');
+  if (!casinoRealMoneyUserAllowed(userId)) throw new Error('CASINO_REAL_MONEY_DISABLED');
+  if (!["USD", "IRT", "IRR"].includes(p.currency)) throw new Error('CASINO_WALLET_CURRENCY_UNSUPPORTED');
   const wallet = await db.queryOne<WalletRow>(
-    "select balance_minor::text, locked_minor::text, is_frozen from nova.wallets where user_id = $1 and currency = 'USD'",
-    [userId],
+    "select balance_minor::text, locked_minor::text, is_frozen from nova.wallets where user_id = $1 and currency = $2",
+    [userId, p.currency],
   );
   if (wallet?.is_frozen) throw new Error('CASINO_WALLET_FROZEN');
   return { country: p.country };
@@ -81,14 +84,33 @@ async function limitAllows(db: Db, userId: string, amount: bigint, p: ProfileRow
 }
 export async function settleCasinoCallback(event: SignedCallback): Promise<CasinoBalanceResponse> {
   const userId = userIdFromUsername(event.username);
-  if (!userId || !casinoRealMoneyEnabled()) return { error: 2, balance: 0 };
+  if (!userId || !casinoRealMoneyUserAllowed(userId)) return { error: 2, balance: 0 };
+  if (event.rollback && event.action !== 'credit') return { error: 2, balance: 0 };
   const db = getDb();
+  const currencyProfile = await getProfile(db, userId);
+  if (!currencyProfile) return { error: 2, balance: 0 };
+  // Always settle a pre-existing round to its ORIGINAL native currency,
+  // even if the user switches preferred_currency during an active game.
+  const originalRound = event.roundId && event.gameId
+    ? await db.queryOne<{ wallet_currency: string }>(
+      'select wallet_currency from nova.softaggregator_round_fx ' +
+      'where user_id=$1 and round_id=$2 and game_id=$3',
+      [userId, event.roundId, event.gameId],
+    )
+    : null;
+  const currency = originalRound?.wallet_currency ?? currencyProfile.currency;
+  if (currency === 'IRT' || currency === 'IRR') {
+    return event.action === 'balance'
+      ? fiatCasinoBalance(db, userId)
+      : settleFiatCasinoCallback(db, userId, event);
+  }
+  if (currency !== 'USD') return { error: 2, balance: 0 };
   if (event.action === 'balance') {
     const p = await getProfile(db, userId);
     if (!p || !accountCanBet(p)) return { error: 2, balance: 0 };
     return safeResponse(0, available(await walletRow(db, userId, false)));
   }
-  if (!event.callId || !event.identityHash || !event.amountMinor) return { error: 2, balance: 0 };
+  if (!event.callId || !event.identityHash || !event.amountMinor || !event.roundId || !event.gameId) return { error: 2, balance: 0 };
   return db.transaction(async (tx) => {
     // Serialize concurrent retries independently from the per-wallet financial lock.
     await tx.query('select pg_advisory_xact_lock(hashtext($1), hashtext($2))', [
@@ -101,6 +123,25 @@ export async function settleCasinoCallback(event: SignedCallback): Promise<Casin
     if (existing) {
       if (existing.identity_hash !== event.identityHash) return { error: 2, balance: 0 };
       return safeResponse(existing.response_error, BigInt(existing.response_balance_minor));
+    }
+    // Lock the immutable round before wallet accounting; matching orders
+    // prevent a concurrent credit from silently changing wallet currency.
+    await tx.query('select pg_advisory_xact_lock(hashtext($1),hashtext($2))', [
+      'softaggregator-round:' + userId, event.roundId! + ':' + event.gameId!,
+    ]);
+    const round = await tx.queryOne<{ wallet_currency: string }>(
+      'select wallet_currency from nova.softaggregator_round_fx ' +
+      'where user_id=$1 and round_id=$2 and game_id=$3 for update',
+      [userId, event.roundId!, event.gameId!],
+    );
+    if (round && round.wallet_currency !== 'USD') return { error: 2, balance: 0 };
+    if (!round) {
+      await tx.query(
+        'insert into nova.softaggregator_round_fx ' +
+        '(user_id,round_id,game_id,wallet_currency,rate_source) ' +
+        "values ($1,$2,$3,'USD','native_usd')",
+        [userId, event.roundId!, event.gameId!],
+      );
     }
     // Follow the same advisory-lock ordering as post_wallet_entry before locking wallet row.
     await tx.query('select pg_advisory_xact_lock(hashtext($1))', ['wallet:' + userId + ':USD']);
@@ -117,10 +158,27 @@ export async function settleCasinoCallback(event: SignedCallback): Promise<Casin
     let error: 0 | 1 | 2 = 0;
     let resultBalance = before;
     let entryId: string | null = null;
+    let originalDebitCallId: string | null = null;
+    // A rollback is a refund of the EXACT earlier debit, not an arbitrary
+    // vendor credit. Do not permit two successful refunds for the same debit.
+    if (event.rollback) {
+      const original = await tx.queryOne<{ call_id: string; wallet_amount_minor: string }>(
+        "select r.call_id,r.wallet_amount_minor::text from nova.softaggregator_callback_receipts r " +
+        "where r.user_id=$1 and r.action='debit' and r.round_id=$2 and r.game_id=$3 " +
+        "and r.amount_minor=$4 and r.response_error=0 and r.rollback=false " +
+        "and not exists(select 1 from nova.softaggregator_callback_receipts x " +
+        "where x.original_debit_call_id=r.call_id and x.response_error=0) " +
+        "order by r.created_at,r.call_id limit 1 for update",
+        [userId, event.roundId, event.gameId, event.amountMinor!.toString()],
+      );
+      if (!original || BigInt(original.wallet_amount_minor) !== event.amountMinor)
+        return { error: 2, balance: 0 };
+      originalDebitCallId = original.call_id;
+    }
     if (w.is_frozen) {
       error = 2;
     } else if (isDebit &&
-      (!accountCanBet(p) || before < event.amountMinor! ||
+      (!accountCanBet(p) || event.amountMinor! < 20n || before < event.amountMinor! ||
         !(await limitAllows(tx, userId, event.amountMinor!, p)))) {
       error = 1;
     } else {
@@ -140,9 +198,15 @@ export async function settleCasinoCallback(event: SignedCallback): Promise<Casin
     }
     // The receipt and the ledger mutation commit together.
     await tx.query(
-      'insert into nova.softaggregator_callback_receipts (call_id,identity_hash,user_id,action,amount_minor,response_error,response_balance_minor,ledger_transaction_id) values ($1,$2,$3,$4,$5,$6,$7,$8)',
+      'insert into nova.softaggregator_callback_receipts ' +
+      '(call_id,identity_hash,user_id,action,amount_minor,response_error,response_balance_minor,' +
+      'ledger_transaction_id,wallet_currency,wallet_amount_minor,round_id,game_id,rollback,original_debit_call_id) ' +
+      'values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)',
       [event.callId!, event.identityHash!, userId, event.action,
-        event.amountMinor!.toString(), error, resultBalance.toString(), entryId],
+        event.amountMinor!.toString(), error, resultBalance.toString(), entryId,
+        'USD', entryId ? event.amountMinor!.toString() : '0',
+        event.roundId!, event.gameId!, event.rollback,
+        error === 0 ? originalDebitCallId : null],
     );
     return safeResponse(error, resultBalance);
   });

@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { casinoGames, launchCasinoGame, parsePrivateDemoConfig, casinoRealMoneyEnabled, SOFTAGGREGATOR_USER_AGENT } from '@/server/providers/softaggregator/client';
+import { casinoGames, launchCasinoGame, parsePrivateDemoConfig, casinoRealMoneyEnabled, casinoRealMoneyUserAllowed, SOFTAGGREGATOR_USER_AGENT } from '@/server/providers/softaggregator/client';
 
 describe('SoftAggregator demo-only launch API', () => {
   const original = { ...process.env };
@@ -127,6 +127,32 @@ describe('SoftAggregator demo-only launch API', () => {
     })).toEqual({
       enabled: false, apiLogin: '', apiPassword: '', playerSecret: '',
     });
+  });
+
+  it('never grants real-money play without a specific allowlisted account', () => {
+    const pilot = '00000000-0000-4000-8000-000000000001';
+    const other = '00000000-0000-4000-8000-000000000002';
+    process.env.SOFTAGGREGATOR_ENABLED = 'true';
+    process.env.SOFTAGGREGATOR_REAL_MONEY_ENABLED = 'true';
+    process.env.SOFTAGGREGATOR_FINANCIAL_SCHEMA_READY = 'true';
+    process.env.SOFTAGGREGATOR_SALT_KEY = 'staging-contract-test-salt';
+    delete process.env.SOFTAGGREGATOR_TEST_USER_ID;
+    expect(casinoRealMoneyUserAllowed(pilot)).toBe(false);
+    process.env.SOFTAGGREGATOR_TEST_USER_ID = pilot;
+    expect(casinoRealMoneyUserAllowed(pilot)).toBe(true);
+    expect(casinoRealMoneyUserAllowed(other)).toBe(false);
+    process.env.SOFTAGGREGATOR_TEST_USER_ID = '*';
+    expect(casinoRealMoneyUserAllowed(pilot)).toBe(false);
+    process.env.SOFTAGGREGATOR_FINANCIAL_SCHEMA_READY = 'false';
+    process.env.SOFTAGGREGATOR_TEST_USER_ID = pilot;
+    expect(casinoRealMoneyUserAllowed(pilot)).toBe(false);
+    process.env.SOFTAGGREGATOR_FINANCIAL_SCHEMA_READY = 'true';
+    delete process.env.SOFTAGGREGATOR_SALT_KEY;
+    expect(casinoRealMoneyUserAllowed(pilot)).toBe(false);
+    process.env.SOFTAGGREGATOR_SALT_KEY = 'staging-contract-test-salt';
+    process.env.SOFTAGGREGATOR_REAL_MONEY_ENABLED = 'false';
+    process.env.SOFTAGGREGATOR_TEST_USER_ID = pilot;
+    expect(casinoRealMoneyUserAllowed(pilot)).toBe(false);
   });
 
   it('refuses real-money game access independently of provider credentials', async () => {

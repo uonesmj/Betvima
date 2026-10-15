@@ -129,6 +129,49 @@ private **web** process environment, never into source, preview, APK or CI
 secrets. `SOFTAGGREGATOR_ENABLED=true` permits catalogue and supported demos
 only; wallet mutations remain disabled.
 
+## Native-wallet USD game settlement — pilot implementation
+
+**Currency policy:** Every SoftAggregator game and callback uses USD **cents**.
+The original BetVima wallet is the only ledger: USD wallets settle USD cents,
+`IRT` wallets settle in toman wallet units, and `IRR` wallets settle in rial
+wallet units. The selected wallet is the user's `preferred_currency` when a
+round starts; it cannot change for that round even if preferences change.
+
+**FX source:** Arzhaam `getUsdIrtRate` returns toman per USD. Server-side
+`bigint` math applies the IRR 10× scaling. Never use a floating-point value or
+a client rate for money. The provider's round keeps an immutable, timestamped
+rate and currency snapshot in `nova.softaggregator_round_fx`. Debits round
+**up** in wallet units, winnings round **down**, and the rollback credits the
+**exact local amount originally debited**, regardless of later market rates.
+`balance` returns the wallet's available funds converted into USD cents;
+locked funds and currency mismatches are not spendable.
+
+**Financial journal:** Every debit, win and rollback is an atomic
+`nova.post_wallet_entry` + uniquely identified SoftAggregator receipt inside
+one database transaction. Callback `call_id` is idempotent, per-round
+advisory locks serialize competing movements, and source/wallet metadata
+retain the USD amount, local amount and rate snapshot. Rollbacks can refund
+only a prior successful unrefunded debit, once. Minimum bet is 20 USD cents.
+User wallet limits and existing account restrictions are checked server-side.
+
+**Pilot release:** The app 0.63.0 checks authenticated
+`GET /api/v1/casino/eligibility` and shows `Play USD` only for an approved
+account. Server access requires **all** of these private runtime controls:
+`SOFTAGGREGATOR_ENABLED=true`,
+`SOFTAGGREGATOR_REAL_MONEY_ENABLED=true`,
+`SOFTAGGREGATOR_FINANCIAL_SCHEMA_READY=true`,
+a configured `SOFTAGGREGATOR_SALT_KEY`, and
+`SOFTAGGREGATOR_TEST_USER_ID=<single test-user UUID>`.
+The root-owned demo JSON file alone can never enable money. The one-user
+allowlist is enforced again for each launch and Callback.
+
+The original `0208` receipt SQL and subsequent `0209` native-wallet/round
+SQL remain in `docs/pending-financial-migrations/`. **They are NOT deployed
+or run against Production.** Do not set the real-money feature flags without
+a separate verified DB backup, migration on an isolated test database, real
+signed provider callback conformance, and atomic balance/debit/credit/rollback
+reconciliation. No provider keys belong in Android or GitHub.
+
 ## Callback safety
 
 Documented provider protocol: signed GET parameters. Check timestamp (±30s), legacy MD5 key, **and** full payload X-Signature HMAC SHA-256. Duplicate keys and missing HMAC fail closed. Amounts and balances are integer USD cents. A callback is processed only when the real-money feature flag is explicitly enabled.

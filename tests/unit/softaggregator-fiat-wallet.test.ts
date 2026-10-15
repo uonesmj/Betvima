@@ -1,0 +1,155 @@
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type { Db } from '@/lib/ports/db';
+import { getUsdIrtRate } from '@/server/providers/arzhaam/client';
+import { fiatCasinoBalance, settleFiatCasinoCallback } from '@/server/providers/softaggregator/fiat-wallet';
+import type { SignedCallback } from '@/server/providers/softaggregator/contract';
+
+vi.mock('@/server/providers/arzhaam/client', () => ({ getUsdIrtRate: vi.fn() }));
+const userId = '16d08a54-4223-484d-aaf8-0055bc1e57e1';
+const username = 'bv_' + userId.replace(/-/g, '');
+
+function fakeDb(walletCurrency: 'IRT' | 'IRR' = 'IRT', original = 2_500_000n) {
+  let balance = original;
+  let preferred: string = walletCurrency;
+  const posted: Array<Record<string, unknown>> = [];
+  const entries = new Map<string, Record<string, unknown>>();
+  const receipts = new Map<string, Record<string, unknown>>();
+  const rounds = new Map<string, Record<string, unknown>>();
+  const db = {
+    queryOne: vi.fn(async (sql: string, args: unknown[] = []) => {
+      if (sql.includes('from nova.profiles p')) return {
+        status: 'active', age_verified: true, currency: preferred,
+        restricted: false, self_excluded: false,
+        max_stake_per_bet_minor: null, max_stake_per_day_minor: null,
+        loss_limit_daily_minor: null, loss_limit_weekly_minor: null,
+      };
+      if (sql.includes('from nova.wallets')) {
+        return { balance_minor: String(balance), locked_minor: '0', is_frozen: false };
+      }
+      if (sql.includes('from nova.wallet_transactions')) {
+        return { day_stake: '0', day_loss: '0', week_loss: '0' };
+      }
+      if (sql.includes('from nova.softaggregator_round_fx')) {
+        return rounds.get(String(args[1]) + ':' + String(args[2])) ?? null;
+      }
+      if (sql.includes('from nova.softaggregator_callback_receipts r')) {
+        for (const [key, receipt] of receipts) {
+          if (receipt.action === 'debit' && receipt.response_error === 0 &&
+            receipt.round_id === args[1] && receipt.game_id === args[2] &&
+            receipt.amount_minor === args[3] && !receipt.reversed) {
+            return { call_id: key, wallet_amount_minor: receipt.wallet_amount_minor };
+          }
+        }
+        return null;
+      }
+      if (sql.includes('from nova.softaggregator_callback_receipts')) {
+        return receipts.get(String(args[0])) ?? null;
+      }
+      throw new Error('UNEXPECTED_SQL_QUERY: ' + sql);
+    }),
+    query: vi.fn(async (sql: string, args: unknown[] = []) => {
+      if (sql.includes('insert into nova.softaggregator_round_fx')) {
+        rounds.set(String(args[1]) + ':' + String(args[2]), {
+          wallet_currency: args[3], rate_irt_per_usd: args[4], rate_observed_at: args[5],
+        });
+      }
+      if (sql.includes('insert into nova.softaggregator_callback_receipts')) {
+        const receipt = {
+          identity_hash: args[1], response_error: args[5],
+          response_balance_minor: args[6], wallet_amount_minor: args[9],
+          action: args[3], amount_minor: args[4],
+          round_id: args[10], game_id: args[11], reversed: false,
+        };
+        receipts.set(String(args[0]), receipt);
+        if (args[13]) {
+          const original = receipts.get(String(args[13]));
+          if (original) original.reversed = true;
+        }
+      }
+      return [];
+    }),
+    rpc: vi.fn(async (_function: string, args: Record<string, unknown>) => {
+      posted.push(args);
+      balance += BigInt(String(args.p_amount_minor));
+      const id = String(posted.length);
+      entries.set(id, args);
+      return { transaction_id: id, balance_after_minor: String(balance) };
+    }),
+    transaction: async (cb: (db: Db) => Promise<unknown>) => cb(db as unknown as Db),
+  };
+  return { db: db as unknown as Db, posted, receipts, getBalance: () => balance,
+    setPreferredCurrency: (currency: string) => { preferred = currency; } };
+}
+
+function event(id: string, action: 'debit' | 'credit', amountMinor: bigint, rollback = false): SignedCallback {
+  return {
+    action, username, currency: 'USD', callId: id, amountMinor,
+    gameId: 'aviator', roundId: 'round-1', rollback,
+    identityHash: [id, action, String(amountMinor), String(rollback)].join(':'),
+  };
+}
+
+describe('Casino fiat settle staging contract', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(getUsdIrtRate).mockResolvedValue({
+      value: '250000.00000000', timestamp: new Date().toISOString(),
+    });
+  });
+
+  it('quotes existing IRT wallet as USD without changing funds', async () => {
+    const t = fakeDb('IRT');
+    expect(await fiatCasinoBalance(t.db, userId)).toEqual({ error: 0, balance: 1000 });
+    expect(t.getBalance()).toBe(2_500_000n);
+    expect(t.posted).toHaveLength(0);
+  });
+
+  it('makes a USD bet, credits a USD win, preserves IRT ledger and duplicate safety', async () => {
+    const t = fakeDb('IRT');
+    const debit = event('bet-one', 'debit', 20n);
+    expect(await settleFiatCasinoCallback(t.db, userId, debit)).toEqual({ error: 0, balance: 980 });
+    expect(t.posted[0]?.p_currency).toBe('IRT');
+    expect(t.posted[0]?.p_amount_minor).toBe('-50000');
+    expect(await settleFiatCasinoCallback(t.db, userId, debit)).toEqual({ error: 0, balance: 980 });
+    expect(t.posted).toHaveLength(1);
+    const credit = event('win-one', 'credit', 40n);
+    expect(await settleFiatCasinoCallback(t.db, userId, credit)).toEqual({ error: 0, balance: 1020 });
+    expect(t.posted[1]?.p_amount_minor).toBe('100000');
+    expect(t.getBalance()).toBe(2_550_000n);
+  });
+
+  it('keeps the original IRT round currency after preferred account switches', async () => {
+    const t = fakeDb('IRT');
+    expect((await settleFiatCasinoCallback(t.db, userId, event('local-debit', 'debit', 20n))).error).toBe(0);
+    t.setPreferredCurrency('USD');
+    expect((await settleFiatCasinoCallback(t.db, userId, event('local-win', 'credit', 40n))).error).toBe(0);
+    expect(t.posted.every((p) => p.p_currency === 'IRT')).toBe(true);
+  });
+
+  it('refunds the exact original IRT amount and refuses a duplicate rollback', async () => {
+    const t = fakeDb('IRT');
+    const debit = event('bet-two', 'debit', 20n);
+    expect((await settleFiatCasinoCallback(t.db, userId, debit)).error).toBe(0);
+    vi.mocked(getUsdIrtRate).mockResolvedValue({
+      value: '300000.00000000', timestamp: new Date().toISOString(),
+    });
+    expect((await settleFiatCasinoCallback(t.db, userId, event('refund-one', 'credit', 20n, true))).error).toBe(0);
+    expect(t.posted[1]?.p_amount_minor).toBe('50000');
+    expect(t.getBalance()).toBe(2_500_000n);
+    expect((await settleFiatCasinoCallback(t.db, userId, event('refund-two', 'credit', 20n, true))).error).toBe(2);
+  });
+
+  it('denies wagers with insufficient available funds or under 20 USD cents', async () => {
+    const t = fakeDb('IRR', 1000n);
+    expect((await settleFiatCasinoCallback(t.db, userId, event('too-small', 'debit', 19n))).error).toBe(1);
+    expect((await settleFiatCasinoCallback(t.db, userId, event('no-funds', 'debit', 200n))).error).toBe(1);
+    expect(t.posted).toHaveLength(0);
+  });
+
+  it('rejects missing round IDs before making any ledger change', async () => {
+    const t = fakeDb();
+    expect(await settleFiatCasinoCallback(t.db, userId, { ...event('missing-round', 'debit', 50n), roundId: null }))
+      .toEqual({ error: 2, balance: 0 });
+    expect(t.posted).toHaveLength(0);
+  });
+});
