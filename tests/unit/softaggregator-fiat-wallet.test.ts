@@ -10,6 +10,7 @@ const username = 'bv_' + userId.replace(/-/g, '');
 
 function fakeDb(walletCurrency: 'IRT' | 'IRR' = 'IRT', original = 2_500_000n) {
   let balance = original;
+  let preferred: string = walletCurrency;
   const posted: Array<Record<string, unknown>> = [];
   const entries = new Map<string, Record<string, unknown>>();
   const receipts = new Map<string, Record<string, unknown>>();
@@ -17,7 +18,7 @@ function fakeDb(walletCurrency: 'IRT' | 'IRR' = 'IRT', original = 2_500_000n) {
   const db = {
     queryOne: vi.fn(async (sql: string, args: unknown[] = []) => {
       if (sql.includes('from nova.profiles p')) return {
-        status: 'active', age_verified: true, currency: walletCurrency,
+        status: 'active', age_verified: true, currency: preferred,
         restricted: false, self_excluded: false,
         max_stake_per_bet_minor: null, max_stake_per_day_minor: null,
         loss_limit_daily_minor: null, loss_limit_weekly_minor: null,
@@ -76,7 +77,8 @@ function fakeDb(walletCurrency: 'IRT' | 'IRR' = 'IRT', original = 2_500_000n) {
     }),
     transaction: async (cb: (db: Db) => Promise<unknown>) => cb(db as unknown as Db),
   };
-  return { db: db as unknown as Db, posted, receipts, getBalance: () => balance };
+  return { db: db as unknown as Db, posted, receipts, getBalance: () => balance,
+    setPreferredCurrency: (currency: string) => { preferred = currency; } };
 }
 
 function event(id: string, action: 'debit' | 'credit', amountMinor: bigint, rollback = false): SignedCallback {
@@ -114,6 +116,14 @@ describe('Casino fiat settle staging contract', () => {
     expect(await settleFiatCasinoCallback(t.db, userId, credit)).toEqual({ error: 0, balance: 1020 });
     expect(t.posted[1]?.p_amount_minor).toBe('100000');
     expect(t.getBalance()).toBe(2_550_000n);
+  });
+
+  it('keeps the original IRT round currency after preferred account switches', async () => {
+    const t = fakeDb('IRT');
+    expect((await settleFiatCasinoCallback(t.db, userId, event('local-debit', 'debit', 20n))).error).toBe(0);
+    t.setPreferredCurrency('USD');
+    expect((await settleFiatCasinoCallback(t.db, userId, event('local-win', 'credit', 40n))).error).toBe(0);
+    expect(t.posted.every((p) => p.p_currency === 'IRT')).toBe(true);
   });
 
   it('refunds the exact original IRT amount and refuses a duplicate rollback', async () => {
