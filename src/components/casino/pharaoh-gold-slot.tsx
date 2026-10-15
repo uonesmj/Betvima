@@ -10,7 +10,7 @@ import {
 import { PharaohAudio, type PharaohSound } from '@/lib/casino/pharaoh-audio';
 import { PharaohDepth } from './pharaoh-depth';
 import {
-  MAX_BET_CENTS, MIN_BET_CENTS, PAYLINES, PAYTABLE, SYMBOL_LABELS,
+  DEMO_START_CENTS, MAX_BET_CENTS, MIN_BET_CENTS, PAYLINES, PAYTABLE, SYMBOL_LABELS, parseDemoBalance,
   type ReelGrid, type SpinResult, type SymbolId,
 } from '@/lib/casino/pharaoh-gold';
 import styles from './pharaoh-gold.module.css';
@@ -73,7 +73,8 @@ export function PharaohGoldSlot() {
   const t = lang === 'fa' ? FA : EN;
   const [reels,setReels] = useState<ReelGrid>(INITIAL_REELS);
   const [betCents,setBetCents] = useState(20);
-  const [balanceCents,setBalanceCents] = useState(100000);
+  const [balanceCents,setBalanceCents] = useState(DEMO_START_CENTS);
+  const [creditsReady,setCreditsReady] = useState(false);
   const [freeSpins,setFreeSpins] = useState(0);
   const [phase,setPhase] = useState<'idle'|'spinning'|'result'>('idle');
   const [lastSpin,setLastSpin] = useState<SpinResult | null>(null);
@@ -98,10 +99,11 @@ export function PharaohGoldSlot() {
     mountedRef.current = true;
     audioRef.current = new PharaohAudio();
     try {
-      const stored = Number(window.localStorage.getItem('betvima:pharaoh:demo-balance:v1'));
-      if (Number.isSafeInteger(stored) && stored >= 0 && stored <= 10000000)
-        setBalanceCents(stored);
-    } catch { /* storage unavailable */ }
+      // V2 clears incorrect V1 balances caused by Number(null) === 0.
+      const raw = window.localStorage.getItem('betvima:pharaoh:demo-balance:v2');
+      setBalanceCents(parseDemoBalance(raw));
+    } catch { /* storage unavailable: use the in-memory demo bankroll */ }
+    setCreditsReady(true);
     return () => {
       mountedRef.current = false;
       audioRef.current?.dispose();
@@ -109,8 +111,9 @@ export function PharaohGoldSlot() {
     };
   }, []);
   useEffect(() => {
-    try { window.localStorage.setItem('betvima:pharaoh:demo-balance:v1', String(balanceCents)); } catch { /* storage unavailable */ }
-  }, [balanceCents]);
+    if (!creditsReady) return;
+    try { window.localStorage.setItem('betvima:pharaoh:demo-balance:v2', String(balanceCents)); } catch { /* storage unavailable */ }
+  }, [balanceCents, creditsReady]);
   useEffect(() => { audioRef.current?.setSoundVolume(soundOn ? soundVolume : 0); }, [soundOn,soundVolume]);
   useEffect(() => { audioRef.current?.setMusicVolume(musicVolume); if (musicOn) audioRef.current?.startMusic(); else audioRef.current?.stopMusic(); }, [musicOn,musicVolume]);
 
@@ -119,11 +122,11 @@ export function PharaohGoldSlot() {
     if (phase !== 'idle' || freeSpins > 0) return;
     const index = BET_STEPS.findIndex(value => value === betCents);
     const next = Math.max(0,Math.min(BET_STEPS.length - 1, index + delta));
-    setBetCents(BET_STEPS[next]!); sfx('tap');
+    setBetCents(BET_STEPS[next]!); setNotice(''); sfx('tap');
   };
   const handleSpin = useCallback(async () => {
     if (spinningRef.current) { quickStopRef.current = true; return; }
-    if (modal) return;
+    if (modal || !creditsReady) return;
     if (freeSpins === 0 && balanceCents < betCents) {
       setNotice(t.noFunds);setAutoRemaining(0);sfx('error');return;
     }
@@ -137,9 +140,10 @@ export function PharaohGoldSlot() {
     sfx('spin');
     const isBonus = freeSpins > 0;
     try {
-      const response = await fetch('/api/v1/casino/demo/pharaoh-gold', {
-        method:'POST',headers:{'Content-Type':'application/json','Cache-Control':'no-store'},
-        body:JSON.stringify({betCents,freeSpin:isBonus}),cache:'no-store',
+      // Read-only demo RNG. Preview deliberately rejects POST for every user-facing route.
+      const params = new URLSearchParams({betCents:String(betCents),freeSpin:String(isBonus),nonce:crypto.randomUUID()});
+      const response = await fetch('/api/v1/casino/demo/pharaoh-gold?' + params, {
+        method:'GET', cache:'no-store', credentials:'same-origin', headers:{'Accept':'application/json'},
       });
       if (!response.ok) throw new Error('Spin unavailable');
       const packet: {mode?:string;currency?:string;result?:SpinResult} = await response.json();
@@ -180,16 +184,16 @@ export function PharaohGoldSlot() {
       quickStopRef.current = false;
       if (mountedRef.current) setPhase('idle');
     }
-  }, [balanceCents,betCents,freeSpins,modal,reduceMotion,t.error,t.noFunds,turbo,sfx]);
+  }, [balanceCents,betCents,creditsReady,freeSpins,modal,reduceMotion,t.error,t.noFunds,turbo,sfx]);
 
   useEffect(() => {
-    if (autoRemaining < 1 || phase !== 'idle' || modal || spinningRef.current) return;
+    if (autoRemaining < 1 || phase !== 'idle' || modal || spinningRef.current || !creditsReady) return;
     const id = window.setTimeout(() => {
       setAutoRemaining(n => Math.max(0,n - 1));
       void handleSpin();
     }, turbo ? 260 : 900);
     return () => clearTimeout(id);
-  }, [autoRemaining,phase,modal,turbo,handleSpin]);
+  }, [autoRemaining,phase,modal,turbo,handleSpin,creditsReady]);
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
@@ -269,17 +273,17 @@ export function PharaohGoldSlot() {
           <div className={styles.betBox}>
             <span className={styles.betTitle}>{t.bet} <b>USD</b></span>
             <div className={styles.betRow}>
-              <button type="button" onClick={() => changeBet(-1)} aria-label="Decrease bet" disabled={uiDisabled || betCents <= MIN_BET_CENTS}><Minus size={20}/></button>
+              <button type="button" onClick={() => changeBet(-1)} aria-label="Decrease bet" disabled={uiDisabled || !creditsReady || betCents <= MIN_BET_CENTS}><Minus size={20}/></button>
               <strong aria-live="polite">{cash(betCents)}</strong>
-              <button type="button" onClick={() => changeBet(1)} aria-label="Increase bet" disabled={uiDisabled || betCents >= MAX_BET_CENTS}><Plus size={20}/></button>
+              <button type="button" onClick={() => changeBet(1)} aria-label="Increase bet" disabled={uiDisabled || !creditsReady || betCents >= MAX_BET_CENTS}><Plus size={20}/></button>
             </div>
             <div className={styles.betShortcuts}>
-              {[10,50,100,500].map(value => <button type="button" key={value} disabled={uiDisabled} data-active={betCents === value} onClick={() => {setBetCents(value);sfx('tap');}}>{cash(value)}</button>)}
-              <button type="button" disabled={uiDisabled} onClick={() => {setBetCents(MAX_BET_CENTS);sfx('tap');}}>{t.max}</button>
+              {[10,50,100,500].map(value => <button type="button" key={value} disabled={uiDisabled || !creditsReady} data-active={betCents === value} onClick={() => {setBetCents(value);setNotice('');sfx('tap');}}>{cash(value)}</button>)}
+              <button type="button" disabled={uiDisabled || !creditsReady} onClick={() => {setBetCents(MAX_BET_CENTS);setNotice('');sfx('tap');}}>{t.max}</button>
             </div>
           </div>
           <div className={styles.spinGroup}>
-            <button type="button" aria-label={spinBusy ? t.stop : t.spin} onClick={() => {void handleSpin();}} className={styles.spinButton} data-busy={spinBusy} >
+            <button type="button" aria-label={spinBusy ? t.stop : t.spin} disabled={!creditsReady} onClick={() => {void handleSpin();}} className={styles.spinButton} data-busy={spinBusy} >
               {spinBusy ? <FastForward size={30}/> : <RotateCcw size={36} strokeWidth={2.4}/>}
               <span>{spinBusy ? t.stop : freeSpins > 0 ? t.free : t.spin}</span>
             </button>
@@ -332,7 +336,7 @@ export function PharaohGoldSlot() {
             <label className={styles.settingRow}>{t.music}<input type="checkbox" checked={musicOn} onChange={e=>setMusicOn(e.target.checked)}/></label>
             <label className={styles.settingSlider}>MUSIC VOLUME <input type="range" min="0" max=".5" step=".01" value={musicVolume} onChange={e=>setMusicVolume(Number(e.target.value))}/></label>
             <label className={styles.settingRow}>{t.reduce}<input type="checkbox" checked={reduceMotion} onChange={e=>setReduceMotion(e.target.checked)}/></label>
-            <button type="button" className={styles.resetButton} disabled={spinBusy || freeSpins>0} onClick={() => {setBalanceCents(100000);setRounds([]);setLastSpin(null);setAutoRemaining(0);setModal(null);}}><RotateCcw size={17}/>{t.reset}</button>
+            <button type="button" className={styles.resetButton} disabled={spinBusy || freeSpins>0} onClick={() => {setBalanceCents(DEMO_START_CENTS);setNotice('');setRounds([]);setLastSpin(null);setAutoRemaining(0);setModal(null);}}><RotateCcw size={17}/>{t.reset}</button>
           </div>}
           {modal === 'auto' && <>
             <p className={styles.modalText}>{t.autoHint}</p>
