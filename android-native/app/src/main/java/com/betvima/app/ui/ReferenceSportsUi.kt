@@ -388,7 +388,7 @@ internal val homeCompetitionShortcuts: List<HomeCompetitionShortcut> = listOf(
     HomeCompetitionShortcut("conference", "Conference League", 14,
         listOf("conference league", "uefa conference")),
     HomeCompetitionShortcut("europa", "Europa League", 15,
-        listOf("europa league", "uefa europa"))
+        listOf("europa league"))
 )
 
 private fun normalizeCompetition(value: String): String =
