@@ -620,3 +620,115 @@
   .bottomTools button,.celebrationBadge{transition:none!important;transform:none!important}
 }
 .page[data-reduced-motion=true] .bottomTools button{transition:none!important;transform:none!important}
+
+
+/* Pharaoh Gold v3.2 — mobile production polish.
+   The illustrated machine is a static asset. No decorative scene animation. */
+.page {overflow-x:clip}
+.content {max-width:1220px}
+.titleRow,.machine,.machineFoot,.controlDeck,.bottomTools {min-width:0}
+.currencyAlert {display:flex;justify-content:center;align-items:center;column-gap:11px;row-gap:4px;flex-wrap:wrap;text-align:center}
+.machine {
+  --frame-pad-x:clamp(23px,5.2vw,70px);
+  padding-left:var(--frame-pad-x);
+  padding-right:var(--frame-pad-x);
+  padding-bottom:clamp(23px,3.2vw,40px);
+}
+.machineFoot {
+  position:relative;
+  z-index:3;
+  width:min(920px,calc(100% - 36px));
+  max-width:920px;
+  margin:0 auto;
+  padding:8px 13px;
+  min-height:42px;
+  display:grid;
+  grid-template-columns:1fr minmax(145px,1.55fr) 1fr;
+  gap:8px;
+  align-items:center;
+  border:1px solid #cba35b7a;
+  border-top:0;
+  border-radius:0 0 13px 13px;
+  background:linear-gradient(180deg,#3f2b24ee,#171221fa);
+  box-shadow:0 6px 22px #000a,inset 0 1px 2px #ffdfa533;
+  color:#ffe6ae;
+  line-height:1.5;
+  font-size:clamp(9px,1.2vw,11px);
+  letter-spacing:0;
+  text-shadow:0 1px 5px #000;
+}
+.machineFoot span {display:flex;align-items:center;gap:5px;min-width:0}
+.machineFoot span:nth-child(2){justify-content:center;text-align:center;color:#fff6da;font-weight:800;font-size:inherit}
+.machineFoot span:last-child{justify-content:flex-end;white-space:nowrap;color:#e5bd78;font-variant-numeric:tabular-nums}
+.metric strong,.betRow strong,.winning strong,.celebrationAmount{unicode-bidi:isolate;font-variant-numeric:tabular-nums;white-space:nowrap}
+.metric{min-width:0}
+.metric span{min-width:0}
+.metric strong{flex-shrink:0}
+.winning {max-width:min(680px,calc(100% - 36px));flex-wrap:wrap;justify-content:center;gap:9px 14px}
+.spinButton,.bottomTools button,.betRow button{touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+.bottomTools button {min-width:0;white-space:normal;text-wrap:balance}
+@media(max-width:1050px) {
+  .content{padding-inline:clamp(8px,1.8vw,24px)}
+  .titleRow{min-height:184px;padding-top:12px;padding-bottom:9px}
+  .gameLogo{height:137px;max-height:137px;width:min(520px,90%)}
+  .machine{width:min(940px,100%);--frame-pad-x:clamp(20px,5vw,48px);padding-top:clamp(24px,4vw,43px);padding-bottom:clamp(16px,2.5vw,28px)}
+  .reelColumn{height:clamp(220px,34vw,320px)}
+  .machineFoot{width:min(880px,calc(100% - 38px))}
+}
+@media(max-width:620px) {
+  .content{padding-inline:7px}
+  .titleRow{min-height:151px;padding:8px 0 6px}
+  .gameLogo{height:107px;max-height:107px;width:min(430px,89%);margin:0 auto}
+  .subtitle{font-size:8px;letter-spacing:.15em}
+  .currencyAlert{font-size:9px;gap:3px 9px;max-width:100%;padding-inline:6px}
+  .machine{width:100%;--frame-pad-x:clamp(13px,4.4vw,23px);padding-top:clamp(17px,4.7vw,28px);padding-bottom:clamp(13px,3.5vw,22px);box-shadow:0 12px 22px #0009}
+  .machineOrnament img{height:clamp(25px,8vw,40px);top:-28px;max-width:42%}
+  .reelGrid{gap:2px}
+  .reelColumn{height:clamp(173px,49vw,245px)}
+  .reelPanel{padding:2px}
+  .symbolCell{min-width:0}
+  .symbolArt{width:96%;height:94%}
+  .machineFoot {
+    width:calc(100% - 26px);
+    min-height:0;
+    margin:-1px auto 0;
+    padding:7px 8px;
+    grid-template-columns:1fr 1.5fr;
+    border-radius:0 0 10px 10px;
+    font-size:9px;
+    gap:5px 9px;
+  }
+  .machineFoot span{align-items:center}
+  .machineFoot span:nth-child(2){font-size:9px;text-align:end;justify-content:flex-end}
+  .machineFoot span:last-child{grid-column:1 / -1;justify-content:center;font-size:8px;letter-spacing:.07em}
+  .winDisplay{margin:12px auto 13px;min-height:42px}
+  .winning{width:min(390px,calc(100% - 20px));gap:6px;padding:8px 10px;font-size:10px}
+  .winning strong{font-size:18px}
+  .controlDeck{width:100%;padding:clamp(10px,3.2vw,16px);gap:8px;grid-template-columns:minmax(0,1fr) minmax(92px,.63fr);border-radius:15px}
+  .metric{padding:8px;gap:5px}
+  .metric span{font-size:9px}
+  .metric strong{font-size:clamp(13px,3.9vw,18px)}
+  .betRow{height:43px;gap:4px}
+  .betRow button{height:32px;width:32px}
+  .betRow strong{font-size:clamp(15px,4vw,20px)}
+  .spinGroup{min-width:0}
+  .spinButton,.spinButton[data-busy=true]{width:clamp(86px,25vw,112px);height:clamp(86px,25vw,112px)}
+  .spinHint{font-size:8px;line-height:1.2;text-align:center}
+  .betShortcuts{gap:3px}
+  .betShortcuts button{padding:7px 2px;font-size:8px;white-space:nowrap}
+  .bottomTools{padding-inline:3px;gap:6px;margin-top:12px}
+  .bottomTools button{flex:1 1 calc(33.333% - 6px);min-height:45px;padding:7px 6px;font-size:9px;line-height:1.25}
+  .bottomTools button svg{width:15px;height:15px;flex-shrink:0}
+}
+@media(max-width:385px) {
+  .titleRow{min-height:145px}
+  .gameLogo{height:98px;max-height:98px}
+  .machine{--frame-pad-x:13px;padding-top:16px;padding-bottom:13px}
+  .reelColumn{height:clamp(163px,49vw,190px)}
+  .machineFoot{font-size:8px}
+  .machineFoot span:nth-child(2){font-size:8px}
+  .controlDeck{grid-template-columns:minmax(0,1fr) 90px}
+  .metric strong{font-size:13px}
+  .spinButton,.spinButton[data-busy=true]{width:84px;height:84px}
+  .bottomTools button{font-size:8px}
+}
