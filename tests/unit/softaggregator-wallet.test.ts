@@ -20,10 +20,20 @@ const identity = (callId: string, action: 'credit' | 'debit', amount: bigint): S
 
 function makeFakeDb(initial = 1000n, held = 200n) {
   let balance = initial;
-  const receipts = new Map<string, { identity_hash: string; response_error: 0 | 1 | 2; response_balance_minor: string }>();
+  const receipts = new Map<string, { identity_hash: string; response_error: 0 | 1 | 2; response_balance_minor: string; action: string; wallet_amount_minor: string; round_id: string; game_id: string; amount_minor: string; reversed: boolean }>();
   const postings: Array<Record<string, unknown>> = [];
   const fake = {
     queryOne: vi.fn(async (sql: string, params: unknown[]) => {
+      if (sql.includes('from nova.softaggregator_callback_receipts r')) {
+        for (const [callId, receipt] of receipts) {
+          if (receipt.action === 'debit' && receipt.response_error === 0 &&
+              receipt.round_id === params[1] && receipt.game_id === params[2] &&
+              receipt.amount_minor === params[3] && !receipt.reversed) {
+            return { call_id: callId, wallet_amount_minor: receipt.wallet_amount_minor };
+          }
+        }
+        return null;
+      }
       if (sql.includes('from nova.softaggregator_callback_receipts')) {
         return receipts.get(String(params[0])) ?? null;
       }
@@ -49,7 +59,14 @@ function makeFakeDb(initial = 1000n, held = 200n) {
           identity_hash: String(params[1]),
           response_error: params[5] as 0 | 1 | 2,
           response_balance_minor: String(params[6]),
+          action: String(params[3]), amount_minor: String(params[4]),
+          wallet_amount_minor: String(params[9]),
+          round_id: String(params[10]), game_id: String(params[11]), reversed: false,
         });
+        if (params[13]) {
+          const original = receipts.get(String(params[13]));
+          if (original) original.reversed = true;
+        }
       }
       return [];
     }),
@@ -95,6 +112,25 @@ describe('SoftAggregator financial callback behavior (isolated DB contract)', ()
       .toEqual({ error: 0, balance: 1800 });
     expect(await settleCasinoCallback(refused)).toEqual({ error: 1, balance: 800 });
     expect(t.postings).toHaveLength(1);
+  });
+
+  it('returns original USD debit on a rollback, never twice', async () => {
+    const t = makeFakeDb(1000n, 0n);
+    vi.mocked(getDb).mockReturnValue(t.fake as unknown as Db);
+    expect((await settleCasinoCallback(identity('debit-rollback', 'debit', 200n))).error).toBe(0);
+    const refund: SignedCallback = { ...identity('credit-rollback', 'credit', 200n), rollback: true };
+    expect(await settleCasinoCallback(refund)).toEqual({ error: 0, balance: 1000 });
+    expect(t.postings[1]?.p_type).toBe('bet_refund');
+    expect((await settleCasinoCallback({ ...refund, callId: 'credit-rollback-new',
+      identityHash: 'credit:credit-rollback-new:200:rollback' })).error).toBe(2);
+    expect(t.postings).toHaveLength(2);
+  });
+
+  it('blocks wagers smaller than 20 USD cents', async () => {
+    const t = makeFakeDb(1000n, 0n);
+    vi.mocked(getDb).mockReturnValue(t.fake as unknown as Db);
+    expect((await settleCasinoCallback(identity('small-stake', 'debit', 19n))).error).toBe(1);
+    expect(t.postings).toHaveLength(0);
   });
 
   it('rejects conflicting reuse of the same provider transaction ID', async () => {
