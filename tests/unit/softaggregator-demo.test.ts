@@ -9,14 +9,14 @@ describe('SoftAggregator demo-only launch API', () => {
     process.env.SOFTAGGREGATOR_REAL_MONEY_ENABLED = 'false';
     process.env.SOFTAGGREGATOR_API_LOGIN = 'dummy-test-login';
     process.env.SOFTAGGREGATOR_API_PASSWORD = 'dummy-test-password';
-    delete process.env.SOFTAGGREGATOR_PLAYER_SECRET;
+    process.env.SOFTAGGREGATOR_PLAYER_SECRET = 'test-secret-at-least-32-characters-long';
   });
   afterEach(() => {
     vi.unstubAllGlobals();
     process.env = { ...original };
   });
 
-  it('fetches real catalogue and requests getGameDemo without creating a provider player', async () => {
+  it('fetches catalogue, ensures player, and sends identity to getGameDemo', async () => {
     const calls: Array<Record<string, unknown>> = [];
     const userAgents: string[] = [];
     vi.stubGlobal('fetch', vi.fn(async (_: string, options: RequestInit) => {
@@ -30,6 +30,9 @@ describe('SoftAggregator demo-only launch API', () => {
           provider: 'studio', play_for_fun_supported: true,
         }] }),
       };
+      if (body.method === 'createPlayer') return {
+        ok: true, json: async () => ({ error: 0, response: { created: true } }),
+      };
       if (body.method === 'getGameDemo') return {
         ok: true, json: async () => ({ error: 0, response: 'https://cdn.provider.test/play?token=random' }),
       };
@@ -39,13 +42,18 @@ describe('SoftAggregator demo-only launch API', () => {
     const list = await casinoGames();
     expect(list).toHaveLength(1);
     const url = await launchCasinoGame({
+      userId: '00000000-0000-4000-8000-000000000001',
       gameId: list[0]!.id_hash, demo: true, lang: 'en', device: 'mobile',
     });
     expect(url.startsWith('https://cdn.provider.test/')).toBe(true);
-    expect(calls.map((c) => c.method)).toEqual(['getGameList', 'getGameDemo']);
-    expect(userAgents).toEqual([SOFTAGGREGATOR_USER_AGENT, SOFTAGGREGATOR_USER_AGENT]);
+    expect(calls.map((c) => c.method)).toEqual(['getGameList', 'createPlayer', 'getGameDemo']);
+    expect(userAgents).toEqual(Array(3).fill(SOFTAGGREGATOR_USER_AGENT));
     expect(calls[1]).toHaveProperty('currency', 'USD');
-    expect(calls[1]).not.toHaveProperty('user_username');
+    expect(calls[1]).toHaveProperty('user_username');
+    expect(calls[1]).toHaveProperty('user_password');
+    expect(calls[2]).toHaveProperty('user_username', calls[1]!.user_username);
+    expect(calls[2]).toHaveProperty('user_password', calls[1]!.user_password);
+    expect(calls[2]).toHaveProperty('gameid', 'studio/demo2026');
   });
 
   it('refuses real-money game access independently of provider credentials', async () => {
