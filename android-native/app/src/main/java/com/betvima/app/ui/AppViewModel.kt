@@ -119,6 +119,16 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         if (feature == Feature.BONUSES && state.value.signedIn) refreshAccount()
         if (feature == Feature.NOTIFICATIONS && state.value.signedIn) refreshNotifications()
     }
+    /** Casino is a native screen; the server owns the provider credentials and wallet. */
+    suspend fun casinoGames(page: Int, category: String, query: String, provider: String): CasinoPage =
+        api.casinoGames(page, category, query, provider)
+
+    suspend fun casinoDemoLaunch(gameId: String): String {
+        val token = vault.accessToken(api)?.takeIf(String::isNotBlank)
+            ?: throw ApiFailure(401, "Please sign in to open a demo game")
+        return api.casinoLaunch(token, gameId, demo = true)
+    }
+
     fun tournament(leagueKey: String) {
         detailRequestNumber++
         mutable.update {
