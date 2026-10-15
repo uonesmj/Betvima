@@ -68,8 +68,8 @@ async function main() {
 
   const gameId = process.env.SOFTAGGREGATOR_PROBE_GAME_ID ?? '';
   if (gameId) {
-    const game = demoAvailable.find(g => g.id_hash === gameId);
-    if (!game) return refuse('demo_game_missing_or_unsupported');
+    const game = valid.find(g => g.id_hash === gameId);
+    if (!game) return refuse('demo_game_not_in_catalogue');
     const params = {
       gameid: gameId, lang: 'en', currency: 'USD', device: 'mobile',
       homeurl: 'https://betvima.com',
@@ -84,7 +84,8 @@ async function main() {
     } catch {
       return refuse('demo_launch_failed');
     }
-    if (typeof launch !== 'string' || !launch.startsWith('https://')) {
+    const url = typeof launch === 'string' ? launch : launch?.gameurl;
+    if (typeof url !== 'string' || !url.startsWith('https://')) {
       return refuse('invalid_demo_launch_url');
     }
   }
