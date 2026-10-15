@@ -464,7 +464,10 @@ private fun CasinoProviderChip(label: String, selected: Boolean, onClick: () -> 
 }
 
 @Composable
-private fun CasinoGameCard(game: CasinoGame, lang: Lang, launching: Boolean, onClick: () -> Unit) {
+private fun CasinoGameCard(
+    game: CasinoGame, lang: Lang, launching: Boolean,
+    realMoneyEnabled: Boolean, onRealClick: () -> Unit, onClick: () -> Unit
+) {
     Surface(
         onClick = onClick, enabled = game.canTryDemo,
         modifier = Modifier.fillMaxWidth(),
@@ -500,6 +503,20 @@ private fun CasinoGameCard(game: CasinoGame, lang: Lang, launching: Boolean, onC
                     overflow = TextOverflow.Ellipsis, minLines = 2)
                 Text(game.providerName, fontSize = 11.sp, color = Palette.muted,
                     maxLines = 1, overflow = TextOverflow.Ellipsis)
+                if (realMoneyEnabled) {
+                    Button(
+                        onClick = onRealClick,
+                        modifier = Modifier.fillMaxWidth(),
+                        enabled = !launching,
+                        colors = ButtonDefaults.buttonColors(containerColor = Palette.ink),
+                        shape = RoundedCornerShape(10.dp)
+                    ) {
+                        Icon(Icons.Default.AccountBalanceWallet, null,
+                            modifier = Modifier.size(16.dp))
+                        Spacer(Modifier.width(5.dp))
+                        Text(tr(lang, "Play USD", "بازی با دلار"), fontSize = 12.sp)
+                    }
+                }
                 Surface(color = if (game.demoSupported) Palette.greenLight else Palette.paper,
                     shape = RoundedCornerShape(9.dp)) {
                     Row(Modifier.fillMaxWidth().padding(vertical = 9.dp, horizontal = 8.dp),
@@ -539,7 +556,7 @@ private fun CasinoEmptyState(message: String, lang: Lang, failed: Boolean, retry
 
 /** Provider HTML5 sessions run inside the native Android app, not on BetVima website. */
 @Composable
-private fun CasinoGameDialog(url: String, lang: Lang, onClose: () -> Unit) {
+private fun CasinoGameDialog(url: String, lang: Lang, realMoney: Boolean, onClose: () -> Unit) {
     val context = LocalContext.current
     var loading by remember(url) { mutableStateOf(true) }
     var pageFailed by remember(url) { mutableStateOf(false) }
@@ -565,7 +582,8 @@ private fun CasinoGameDialog(url: String, lang: Lang, onClose: () -> Unit) {
                         Icon(Icons.Default.Close, tr(lang, "Close game", "بستن بازی"),
                             tint = Color.White)
                     }
-                    Text(tr(lang, "Casino · Demo", "کازینو · آزمایشی"),
+                    Text(if (realMoney) tr(lang, "Casino · USD", "کازینو · دلاری")
+                        else tr(lang, "Casino · Demo", "کازینو · آزمایشی"),
                         color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.Bold,
                         modifier = Modifier.weight(1f))
                     CasinoTag("USD", Palette.gold)
