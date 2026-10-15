@@ -7,6 +7,7 @@ import type { SignedCallback } from '@/server/providers/softaggregator/contract'
 vi.mock('@/server/db', () => ({ getDb: vi.fn() }));
 vi.mock('@/server/providers/softaggregator/client', () => ({
   casinoRealMoneyEnabled: () => true,
+  casinoRealMoneyUserAllowed: () => true,
 }));
 
 const userId = '7aa50699-cba1-4767-b7b4-dcd644399816';
@@ -28,7 +29,7 @@ function makeFakeDb(initial = 1000n, held = 200n) {
       }
       if (sql.includes('from nova.profiles p')) {
         return {
-          status: 'active', age_verified: true, country: 'DE',
+          status: 'active', age_verified: true, country: 'DE', currency: 'USD',
           self_excluded: false, restricted: false,
           max_stake_per_bet_minor: null, max_stake_per_day_minor: null,
           loss_limit_daily_minor: null, loss_limit_weekly_minor: null,
