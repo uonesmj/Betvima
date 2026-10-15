@@ -130,6 +130,7 @@ fun BetvimaApp(model: AppViewModel) {
                         walletBalance = if (state.signedIn && state.wallet != null)
                             com.betvima.app.data.money(state.wallet!!.availableMinor,
                                 state.wallet!!.currency) else null,
+                        walletCurrency = if (state.signedIn) state.wallet?.currency else null,
                         onWallet = { model.tab(Tab.WALLET) },
                         userName = state.accountName)
 
