@@ -15,6 +15,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -148,7 +149,7 @@ fun LeagueIdentityBadge(match: Match, size: Int = 41) {
                     onError = { loaded = false },
                     modifier = Modifier.fillMaxSize().padding(4.dp)
                         .clip(RoundedCornerShape((size / 4).dp))
-                        .then(if (loaded) Modifier else Modifier.background(Color.Transparent))
+                        .graphicsLayer { alpha = if (loaded) 1f else 0f }
                 )
             }
         }
