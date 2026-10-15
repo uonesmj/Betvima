@@ -39,8 +39,8 @@ class MyBetsSelectionFilterTest {
 
     @Test fun fallsBackToPlacementOddsWhenAcceptedPriceMissingOrNull() {
         assertEquals("18700", api.parseBetLeg(leg().put("acceptedOddsScaled", JSONObject.NULL)).oddsScaled)
-        assertEquals("18700", api.parseBetLeg(leg().remove("acceptedOddsScaled").let { leg() }
-            .apply { remove("acceptedOddsScaled") }).oddsScaled)
+        val noAcceptedPrice = leg().apply { remove("acceptedOddsScaled") }
+        assertEquals("18700", api.parseBetLeg(noAcceptedPrice).oddsScaled)
         assertEquals("18700", api.parseBetLeg(leg().put("acceptedOddsScaled", "0")).oddsScaled)
     }
 
