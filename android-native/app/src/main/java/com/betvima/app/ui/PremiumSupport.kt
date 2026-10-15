@@ -434,7 +434,7 @@ private fun SupportNewTicketSheet(
     var uncertain by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
     val sheet = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-    val closeSheet = {
+    val closeSheet: () -> Unit = {
         if (!busy) scope.launch {
             sheet.hide()
             onDismiss()
