@@ -28,6 +28,8 @@ export function HomeHeader({ onMenu }: { onMenu?: () => void }) {
             />
           </Link>
 
+          <Link href="/casino" className="hidden rounded-xl border border-[#bf985650] bg-[#2a251c] px-4 py-2.5 text-xs font-black tracking-[.08em] text-[#f8d594] transition hover:border-[#f8d594] hover:bg-[#3e3022] lg:inline-flex">CASINO</Link>
+
           <div className="ml-auto flex items-center gap-2">
             {sessionLoading ? (
               <div className="flex items-center gap-2" aria-hidden="true">
