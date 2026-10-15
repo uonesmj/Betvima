@@ -308,7 +308,7 @@ fun AffiliateOperations(state: AppState, model: AppViewModel, currency: String,
                             OutlinedTextField(campaign,{campaign=it.take(60)},
                                 label={Text(tr(state.lang,"Campaign name","نام کمپین"))},
                                 singleLine=true,modifier=Modifier.fillMaxWidth())
-                            Button(enabled=!actionBusy && campaign.trim().length in 2..60,
+                            Button(enabled=!actionBusy && AffiliateInputRules.validCampaign(campaign),
                                 onClick={
                                     runAction { token ->
                                         api.post("/api/v1/affiliate/links",
