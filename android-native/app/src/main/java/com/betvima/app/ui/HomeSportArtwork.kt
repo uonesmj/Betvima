@@ -84,9 +84,18 @@ fun SportsBadgeShortcut(
 
 /**
  * Curated competition artwork supplied by the user, offline and bundled with
- * the application. Four strips contain exactly 16 original round badges, with
- * no poster captions or network dependency. Each tile is 112 x 112 pixels.
+ * the application. The 112px source tiles include a pale poster margin around
+ * some emblems. Center-crop inside each source tile BEFORE circle clipping
+ * so that the artwork fills the control, without an extra inner/outer rim.
  */
+internal object HomeLeagueBadgeLayout {
+    const val sourceTilePx = 112
+    const val cropInsetPx = 12
+    const val cropSizePx = sourceTilePx - 2 * cropInsetPx
+    const val cardWidthDp = 88      // Previously 70dp: >= 25% wider
+    const val diameterDp = 80       // Previously 64dp: exactly 25% larger
+}
+
 @Composable
 fun LeagueBadgeShortcut(label: String, index: Int, onClick: () -> Unit) {
     require(index in 0..15) { "Unknown competition artwork index: $index" }
@@ -102,33 +111,41 @@ fun LeagueBadgeShortcut(label: String, index: Int, onClick: () -> Unit) {
         BitmapFactory.decodeResource(context.resources, resId).asImageBitmap()
     }
     Column(
-        Modifier.width(70.dp).clickable(onClick = onClick),
+        Modifier.width(HomeLeagueBadgeLayout.cardWidthDp.dp).clickable(onClick = onClick),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
+        // Artwork itself is the circular emblem. Do not add a second white
+        // Surface border, which used to look like unwanted concentric rings.
         Surface(
-            modifier = Modifier.size(64.dp),
+            modifier = Modifier.size(HomeLeagueBadgeLayout.diameterDp.dp),
             shape = CircleShape,
-            color = Color.White,
-            border = BorderStroke(1.dp, Color(0xFFD4DEE8))
+            color = Color.Transparent
         ) {
             Canvas(Modifier.fillMaxSize().clip(CircleShape)) {
                 drawImage(
                     image = atlas,
-                    srcOffset = IntOffset((index % 4) * 112, 0),
-                    srcSize = IntSize(112, 112),
+                    srcOffset = IntOffset(
+                        (index % 4) * HomeLeagueBadgeLayout.sourceTilePx +
+                            HomeLeagueBadgeLayout.cropInsetPx,
+                        HomeLeagueBadgeLayout.cropInsetPx
+                    ),
+                    srcSize = IntSize(
+                        HomeLeagueBadgeLayout.cropSizePx,
+                        HomeLeagueBadgeLayout.cropSizePx
+                    ),
                     dstOffset = IntOffset.Zero,
                     dstSize = IntSize(size.width.toInt(), size.height.toInt()),
                     filterQuality = FilterQuality.High
                 )
             }
         }
-        Spacer(Modifier.height(6.dp))
+        Spacer(Modifier.height(8.dp))
         Text(
             label, textAlign = TextAlign.Center,
             color = Palette.text,
             fontWeight = FontWeight.ExtraBold,
-            fontSize = 10.sp,
-            lineHeight = 13.sp,
+            fontSize = 11.sp,
+            lineHeight = 15.sp,
             maxLines = 2,
             overflow = TextOverflow.Ellipsis
         )
