@@ -314,7 +314,7 @@ private val rules=listOf(
 @Composable private fun RulesSheet(lang: Lang,onClose:()->Unit) {
     ModalBottomSheet(onDismissRequest=onClose,containerColor=Color(0xFFF8FAFA),
         sheetState=rememberModalBottomSheetState(skipPartiallyExpanded=true)) {
-        Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState())
+        Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState(), flingBehavior = rememberPremiumFlingBehavior())
             .padding(horizontal=16.dp,vertical=17.dp),
             verticalArrangement=Arrangement.spacedBy(10.dp)) {
             Row(verticalAlignment=Alignment.CenterVertically) {
@@ -357,7 +357,7 @@ private val rules=listOf(
     val clipboard=LocalClipboardManager.current
     ModalBottomSheet(onDismissRequest=onClose,containerColor=Color.White,
         sheetState=rememberModalBottomSheetState(skipPartiallyExpanded=true)) {
-        Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState())
+        Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState(), flingBehavior = rememberPremiumFlingBehavior())
             .padding(horizontal=17.dp,vertical=16.dp),
             verticalArrangement=Arrangement.spacedBy(12.dp)) {
             Row(verticalAlignment=Alignment.CenterVertically) {
@@ -476,7 +476,7 @@ private val rules=listOf(
     val promotion=current?.promotion ?: pages.values.firstOrNull()?.promotion
     LazyColumn(Modifier.fillMaxSize().background(surface),
         contentPadding=PaddingValues(horizontal=14.dp,vertical=14.dp),
-        verticalArrangement=Arrangement.spacedBy(15.dp)) {
+        verticalArrangement=Arrangement.spacedBy(15.dp), flingBehavior = rememberPremiumFlingBehavior()) {
         item {
             BonusHero(lang,promotion,onWallet={
                 if(state.signedIn) model.tab(Tab.WALLET)
