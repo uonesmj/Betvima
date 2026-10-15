@@ -1,3 +1,4 @@
+import { closeSync, constants, fstatSync, openSync, readFileSync } from 'node:fs';
 import { playerPassword, playerUsername } from './contract';
 
 const ENDPOINT = 'https://api.softaggregator.com/api/v1';
@@ -16,18 +17,64 @@ export type CasinoGame = {
   play_for_fun_supported?: boolean;
 };
 
+/**
+ * Optional demo-only operator config, never copied into the repository, APK or
+ * server build. Root-owned and group-readable by novaadmin, mode 0640.
+ * In particular, this file CANNOT enable real-money wallet callbacks.
+ */
+type PrivateDemoConfig = {
+  enabled?: boolean;
+  apiLogin?: string;
+  apiPassword?: string;
+  playerSecret?: string;
+};
+const DEMO_CONFIG_PATH = '/etc/betvima/softaggregator-demo.json';
+
+export function parsePrivateDemoConfig(data: unknown): PrivateDemoConfig {
+  if (!data || typeof data !== 'object' || Array.isArray(data)) return {};
+  const input = data as Record<string, unknown>;
+  return {
+    enabled: input.enabled === true,
+    apiLogin: typeof input.apiLogin === 'string' && input.apiLogin.length <= 256 ? input.apiLogin : '',
+    apiPassword: typeof input.apiPassword === 'string' && input.apiPassword.length <= 1024 ? input.apiPassword : '',
+    playerSecret: typeof input.playerSecret === 'string' && input.playerSecret.length >= 32 &&
+      input.playerSecret.length <= 512 ? input.playerSecret : '',
+  };
+}
+
+function privateDemoConfig(): PrivateDemoConfig {
+  let fd: number | undefined;
+  try {
+    fd = openSync(DEMO_CONFIG_PATH, constants.O_RDONLY | constants.O_NOFOLLOW);
+    const info = fstatSync(fd);
+    // Only root-owned, non-group-writable, non-world-accessible regular files.
+    if (!info.isFile() || info.uid !== 0 || (info.mode & 0o027) !== 0 ||
+        info.size > 8192) return {};
+    return parsePrivateDemoConfig(JSON.parse(readFileSync(fd, 'utf8')));
+  } catch {
+    // No secret file (CI/preview) or wrong permissions => feature stays off.
+    return {};
+  } finally {
+    if (fd !== undefined) closeSync(fd);
+  }
+}
+
 function requiredEnv() {
-  const login = process.env.SOFTAGGREGATOR_API_LOGIN ?? '';
-  const password = process.env.SOFTAGGREGATOR_API_PASSWORD ?? '';
+  const privateConfig = privateDemoConfig();
+  const login = process.env.SOFTAGGREGATOR_API_LOGIN || privateConfig.apiLogin || '';
+  const password = process.env.SOFTAGGREGATOR_API_PASSWORD || privateConfig.apiPassword || '';
   if (!login || !password) throw new Error('SOFTAGGREGATOR_NOT_CONFIGURED');
   return { login, password };
 }
 
 export function casinoEnabled() {
-  return process.env.SOFTAGGREGATOR_ENABLED === 'true';
+  return process.env.SOFTAGGREGATOR_ENABLED === 'true' ||
+    privateDemoConfig().enabled === true;
 }
 export function casinoRealMoneyEnabled() {
-  return casinoEnabled() && process.env.SOFTAGGREGATOR_REAL_MONEY_ENABLED === 'true';
+  // An on-disk demo config can NEVER authorize wagering or wallet callbacks.
+  return process.env.SOFTAGGREGATOR_ENABLED === 'true' &&
+    process.env.SOFTAGGREGATOR_REAL_MONEY_ENABLED === 'true';
 }
 export function requireCasinoEnabled() {
   if (!casinoEnabled()) throw new Error('CASINO_DISABLED');
@@ -65,7 +112,7 @@ export async function casinoGames(): Promise<CasinoGame[]> {
 }
 
 export function casinoPlayerIdentity(userId: string) {
-  const playerSecret = process.env.SOFTAGGREGATOR_PLAYER_SECRET ?? '';
+  const playerSecret = process.env.SOFTAGGREGATOR_PLAYER_SECRET || privateDemoConfig().playerSecret || '';
   if (playerSecret.length < 32) throw new Error('SOFTAGGREGATOR_PLAYER_SECRET_NOT_CONFIGURED');
   return {
     user_username: playerUsername(userId),
