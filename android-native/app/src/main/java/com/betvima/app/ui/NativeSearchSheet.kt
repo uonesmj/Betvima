@@ -1,8 +1,6 @@
 package com.betvima.app.ui
 
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -25,11 +23,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import coil.compose.AsyncImage
 import com.betvima.app.data.Match
-import com.betvima.app.data.Market
-import com.betvima.app.data.Selection
-import com.betvima.app.data.odds
 import kotlinx.coroutines.delay
 import java.time.Instant
 import java.time.LocalDateTime
@@ -170,7 +164,7 @@ fun NativeSearchSheet(state: AppState, model: AppViewModel, onDismiss: () -> Uni
                                 Color(0xFFED0064), true)
                         }
                         items(state.searchLive, key = { "live-${it.id}" }, contentType = { "fixture" }) { match ->
-                            SearchResultCard(match, state, model, openMatch)
+                            PremiumFixtureCard(match, state, model, onOpen = openMatch)
                         }
                     }
                     if (state.searchUpcoming.isNotEmpty()) {
@@ -180,7 +174,7 @@ fun NativeSearchSheet(state: AppState, model: AppViewModel, onDismiss: () -> Uni
                                 state.searchUpcoming.size, Color(0xFF02C76C), false)
                         }
                         items(state.searchUpcoming, key = { "pre-${it.id}" }, contentType = { "fixture" }) { match ->
-                            SearchResultCard(match, state, model, openMatch)
+                            PremiumFixtureCard(match, state, model, onOpen = openMatch)
                         }
                     }
                 }
@@ -209,145 +203,3 @@ private fun SearchResultSection(label: String, count: Int, color: Color, live: B
     }
 }
 
-@Composable
-private fun SearchResultCard(
-    match: Match,
-    state: AppState,
-    model: AppViewModel,
-    onOpen: (String) -> Unit
-) {
-    val market = match.featured
-    val lang = state.lang
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(20.dp),
-        color = Color.White
-    ) {
-        Column {
-            Row(
-                Modifier.fillMaxWidth().clickable { onOpen(match.id) }
-                    .padding(horizontal = 13.dp, vertical = 12.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Icon(Icons.Default.EmojiEvents, null, tint = Color(0xFF138DE9),
-                    modifier = Modifier.size(25.dp))
-                Spacer(Modifier.width(9.dp))
-                val logo = match.leagueLogo?.takeIf { it.startsWith("https://") }
-                if (logo != null) {
-                    AsyncImage(model = logo, contentDescription = null,
-                        modifier = Modifier.size(25.dp))
-                    Spacer(Modifier.width(8.dp))
-                }
-                Column(Modifier.weight(1f)) {
-                    Text(match.league, color = searchText, fontWeight = FontWeight.ExtraBold,
-                        fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    Text(match.sport.replace("-", " ").replaceFirstChar { it.uppercase() },
-                        color = searchGray, fontSize = 11.sp)
-                }
-            }
-            HorizontalDivider(color = Color(0xFFE5E6EB), thickness = .8.dp)
-            Column(Modifier.fillMaxWidth().padding(horizontal = 13.dp, vertical = 12.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                Row(
-                    Modifier.fillMaxWidth().clickable { onOpen(match.id) },
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(if (match.live) Icons.Default.Sensors else Icons.Default.LocalFireDepartment,
-                        null, tint = if (match.live) Color(0xFFED0064) else Color(0xFFF45E15),
-                        modifier = Modifier.size(17.dp))
-                    Spacer(Modifier.width(6.dp))
-                    Surface(shape = RoundedCornerShape(40.dp), color = Color(0xFFF7F8FA),
-                        border = BorderStroke(1.dp, Color(0xFFE7E9ED))) {
-                        Text(if (match.live)
-                            tr(lang, "Live", "زنده") +
-                                (match.minute?.let { " · ${it}′" } ?: "")
-                            else searchKickoff(match.starts),
-                            modifier = Modifier.padding(horizontal = 9.dp, vertical = 5.dp),
-                            fontSize = 11.sp, fontWeight = FontWeight.Bold, color = searchText)
-                    }
-                }
-                listOf(match.home to match.homeScore, match.away to match.awayScore)
-                    .forEach { (team, score) ->
-                        Row(Modifier.fillMaxWidth().clickable { onOpen(match.id) },
-                            verticalAlignment = Alignment.CenterVertically) {
-                            TeamBadge(team, 25)
-                            Spacer(Modifier.width(8.dp))
-                            Text(team.name, modifier = Modifier.weight(1f),
-                                maxLines = 1, overflow = TextOverflow.Ellipsis,
-                                color = searchText, fontSize = 13.sp,
-                                fontWeight = FontWeight.Bold)
-                            if (match.live && score != null) {
-                                Surface(color = Color(0xFFF0F2F6), shape = RoundedCornerShape(5.dp)) {
-                                    Text(score.toString(), modifier = Modifier.padding(
-                                        horizontal = 6.dp, vertical = 3.dp),
-                                        fontSize = 12.sp, fontWeight = FontWeight.Black,
-                                        color = searchText)
-                                }
-                            }
-                        }
-                    }
-                Text(market?.label(lang == Lang.FA) ?: tr(lang, "Odds unavailable", "ضریب موجود نیست"),
-                    color = searchGray, fontSize = 11.sp, maxLines = 1,
-                    overflow = TextOverflow.Ellipsis)
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(5.dp)) {
-                    repeat(3) { index ->
-                        val selection = market?.selections?.getOrNull(index)
-                        Box(Modifier.weight(1f)) {
-                            if (market != null && selection != null) {
-                                SearchOdds(match, market, selection, index, state, model)
-                            } else {
-                                Box(Modifier.fillMaxWidth().height(45.dp)
-                                    .background(Color(0xFFF0F1F5), RoundedCornerShape(7.dp)))
-                            }
-                        }
-                    }
-                    Surface(
-                        modifier = Modifier.width(48.dp).height(45.dp)
-                            .clickable { onOpen(match.id) },
-                        shape = RoundedCornerShape(8.dp), color = Color(0xFFF0F1F5)
-                    ) {
-                        Box(contentAlignment = Alignment.Center) {
-                            Text(if (match.marketsCount > 0) "+${match.marketsCount}" else "›",
-                                fontWeight = FontWeight.Black, fontSize = 11.sp, color = searchText)
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun SearchOdds(
-    match: Match,
-    market: Market,
-    selection: Selection,
-    index: Int,
-    state: AppState,
-    model: AppViewModel
-) {
-    val enabled = match.bettingAvailable && market.available && selection.available &&
-        (!match.live || state.liveEnabled)
-    val selected = state.picks.any { it.selectionId == selection.id }
-    Surface(
-        modifier = Modifier.fillMaxWidth().height(45.dp)
-            .clickable(enabled = enabled) { model.togglePick(match, market, selection) },
-        shape = RoundedCornerShape(7.dp),
-        color = if (selected) Color(0xFFDCEAFF) else Color(0xFFF0F1F5),
-        border = if (selected) BorderStroke(1.dp, Color(0xFF188DF6)) else null
-    ) {
-        Row(Modifier.fillMaxSize().padding(horizontal = 6.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween) {
-            Text(if (market.key == "h2h" && market.selections.size >= 3)
-                listOf("1", "X", "2")[index] else selection.label(state.lang == Lang.FA),
-                color = searchGray, fontSize = 10.sp, maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.weight(1f))
-            if (enabled) Text(odds(selection.oddsScaled), color = searchText,
-                fontSize = 12.sp, fontWeight = FontWeight.Black, maxLines = 1)
-            else Icon(Icons.Default.Lock, null, tint = searchGray,
-                modifier = Modifier.size(14.dp))
-        }
-    }
-}
