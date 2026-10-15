@@ -4,6 +4,7 @@ import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
+import com.betvima.app.R
 import android.widget.Toast
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.AnimatedVisibility
@@ -26,10 +27,12 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
@@ -37,6 +40,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.delay
 
 private val footerInk = Color(0xFF111214)
 private val footerPanel = Color(0xFF202124)
@@ -59,6 +63,13 @@ fun PremiumAppFooter(
     var informationOpen by rememberSaveable { mutableStateOf(false) }
     var categoriesOpen by rememberSaveable { mutableStateOf(false) }
     var languageOpen by rememberSaveable { mutableStateOf(false) }
+    var linkCopied by remember { mutableStateOf(false) }
+    LaunchedEffect(linkCopied) {
+        if (linkCopied) {
+            delay(2_000)
+            linkCopied = false
+        }
+    }
     val uriHandler = LocalUriHandler.current
     val context = LocalContext.current
     val lang = state.lang
@@ -86,23 +97,34 @@ fun PremiumAppFooter(
             type = "text/plain"
             putExtra(Intent.EXTRA_TEXT, invite)
         }
-        val target = Intent(base).apply { if (targetPackage != null) setPackage(targetPackage) }
-        // Don't claim an account belongs to BetVima or force an uninstalled app.
-        runCatching {
-            context.startActivity(Intent.createChooser(target,
-                tr(lang, "Share BetVima", "اشتراک‌گذاری بت‌ویما")))
-        }.onFailure {
+        val chooserTitle = tr(lang, "Share BetVima", "اشتراک‌گذاری بت‌ویما")
+        // Open the selected app directly when installed; fall back to Android Sharesheet.
+        // Never invent official BetVima social account URLs.
+        val directTarget = targetPackage?.let { Intent(base).apply { setPackage(it) } }
+        val launched = directTarget?.let { runCatching { context.startActivity(it) }.isSuccess } ?: false
+        if (!launched) {
             runCatching {
-                context.startActivity(Intent.createChooser(base,
-                    tr(lang, "Share BetVima", "اشتراک‌گذاری بت‌ویما")))
+                context.startActivity(Intent.createChooser(base, chooserTitle))
+            }.onFailure {
+                Toast.makeText(context,
+                    tr(lang, "No sharing app available", "برنامه‌ای برای اشتراک‌گذاری یافت نشد"),
+                    Toast.LENGTH_SHORT).show()
             }
         }
     }
     fun copyLink() {
-        val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager
-        clipboard?.setPrimaryClip(ClipData.newPlainText("BetVima", "https://betvima.com"))
-        Toast.makeText(context,
-            tr(lang, "Link copied", "لینک کپی شد"), Toast.LENGTH_SHORT).show()
+        runCatching {
+            val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager
+                ?: error("Clipboard unavailable")
+            clipboard.setPrimaryClip(ClipData.newPlainText("BetVima", "https://betvima.com"))
+            linkCopied = true
+            Toast.makeText(context,
+                tr(lang, "Link copied", "لینک کپی شد"), Toast.LENGTH_SHORT).show()
+        }.onFailure {
+            Toast.makeText(context,
+                tr(lang, "Could not copy link", "کپی لینک امکان‌پذیر نیست"),
+                Toast.LENGTH_SHORT).show()
+        }
     }
 
     Column(
@@ -259,24 +281,61 @@ fun PremiumAppFooter(
             }
         }
 
-        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            Text(tr(lang, "SHARE BETVIMA", "اشتراک‌گذاری بت‌ویما"),
-                fontSize = 11.sp, fontWeight = FontWeight.Bold, color = footerMuted,
-                letterSpacing = 1.sp)
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(9.dp)) {
-                FooterSocialAction("WhatsApp", "WA", Modifier.weight(1f)) {
-                    share("com.whatsapp")
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(22.dp),
+            color = Color(0xFF17191F),
+            border = BorderStroke(1.dp, Color.White.copy(alpha = .12f))
+        ) {
+            Column(
+                Modifier.fillMaxWidth()
+                    .background(Brush.verticalGradient(listOf(
+                        Color(0xFF1E2026), Color(0xFF14161B), Color(0xFF101319))))
+                    .padding(horizontal = 13.dp, vertical = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(14.dp)
+            ) {
+                Text(tr(lang, "SHARE BETVIMA", "اشتراک‌گذاری بت‌ویما"),
+                    fontSize = 11.sp, fontWeight = FontWeight.ExtraBold, color = Color(0xFFC4CBD7),
+                    letterSpacing = 1.sp)
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    FooterSocialAction(
+                        label = "WhatsApp", accent = Color(0xFF25D366),
+                        modifier = Modifier.weight(1f), onClick = { share("com.whatsapp") }
+                    ) {
+                        Icon(painterResource(R.drawable.ic_social_whatsapp), null,
+                            tint = Color.Unspecified, modifier = Modifier.size(27.dp))
+                    }
+                    FooterSocialAction(
+                        label = "Telegram", accent = Color(0xFF28A8EA),
+                        modifier = Modifier.weight(1f), onClick = { share("org.telegram.messenger") }
+                    ) {
+                        Icon(painterResource(R.drawable.ic_social_telegram), null,
+                            tint = Color.Unspecified, modifier = Modifier.size(27.dp))
+                    }
+                    FooterSocialAction(
+                        label = "X", accent = Color.White,
+                        modifier = Modifier.weight(1f), onClick = { share("com.twitter.android") }
+                    ) {
+                        Icon(painterResource(R.drawable.ic_social_x), null,
+                            tint = Color.Unspecified, modifier = Modifier.size(22.dp))
+                    }
+                    FooterSocialAction(
+                        label = tr(lang, "Share", "اشتراک‌گذاری"), accent = Color(0xFFC7D7EF),
+                        modifier = Modifier.weight(1f), onClick = { share() }
+                    ) {
+                        Icon(Icons.Default.Share, null, tint = Color(0xFFE4ECFA),
+                            modifier = Modifier.size(25.dp))
+                    }
+                    FooterSocialAction(
+                        label = tr(lang, "Copy link", "کپی لینک"),
+                        accent = if (linkCopied) Palette.green else Color(0xFFC7D7EF),
+                        modifier = Modifier.weight(1f), onClick = { copyLink() }
+                    ) {
+                        Icon(if (linkCopied) Icons.Default.Check else Icons.Default.Link,
+                            null, tint = if (linkCopied) Palette.green else Color(0xFFE4ECFA),
+                            modifier = Modifier.size(25.dp))
+                    }
                 }
-                FooterSocialAction("Telegram", "TG", Modifier.weight(1f)) {
-                    share("org.telegram.messenger")
-                }
-                FooterSocialAction("X", "X", Modifier.weight(1f)) {
-                    share("com.twitter.android")
-                }
-                FooterSocialAction(tr(lang, "Share", "اشتراک‌گذاری"), "↗",
-                    Modifier.weight(1f)) { share() }
-                FooterSocialAction(tr(lang, "Copy link", "کپی لینک"), "⛓",
-                    Modifier.weight(1f)) { copyLink() }
             }
         }
 
@@ -375,18 +434,29 @@ private fun FooterContactRow(
 
 @Composable
 private fun FooterSocialAction(
-    label: String, mark: String, modifier: Modifier = Modifier, onClick: () -> Unit
+    label: String,
+    accent: Color,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit,
+    icon: @Composable () -> Unit
 ) {
+    val shape = RoundedCornerShape(16.dp)
     Surface(
-        modifier = modifier.height(50.dp).clickable(role = Role.Button, onClick = onClick),
-        shape = RoundedCornerShape(15.dp),
-        color = Color(0xFF292A2D),
-        border = BorderStroke(1.dp, Color.White.copy(alpha = .045f))
+        modifier = modifier.height(52.dp)
+            .shadow(5.dp, shape)
+            .clip(shape)
+            .clickable(onClickLabel = label, role = Role.Button, onClick = onClick),
+        shape = shape,
+        color = Color(0xFF252830),
+        border = BorderStroke(1.dp, accent.copy(alpha = .20f))
     ) {
-        Box(contentAlignment = Alignment.Center) {
-            Text(mark, color = Color.White, fontWeight = FontWeight.Black,
-                fontSize = if (mark.length > 1) 15.sp else 21.sp,
-                maxLines = 1, textAlign = TextAlign.Center)
+        Box(
+            Modifier.fillMaxSize()
+                .background(Brush.linearGradient(listOf(
+                    Color(0xFF31343C), Color(0xFF1C1F26)))),
+            contentAlignment = Alignment.Center
+        ) {
+            icon()
         }
     }
 }
