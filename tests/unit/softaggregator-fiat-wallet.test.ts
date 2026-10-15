@@ -11,6 +11,7 @@ const username = 'bv_' + userId.replace(/-/g, '');
 function fakeDb(walletCurrency: 'IRT' | 'IRR' = 'IRT', original = 2_500_000n) {
   let balance = original;
   let preferred: string = walletCurrency;
+  const perCurrencyStakeLimit = new Map<string, bigint>();
   const posted: Array<Record<string, unknown>> = [];
   const entries = new Map<string, Record<string, unknown>>();
   const receipts = new Map<string, Record<string, unknown>>();
@@ -20,7 +21,8 @@ function fakeDb(walletCurrency: 'IRT' | 'IRR' = 'IRT', original = 2_500_000n) {
       if (sql.includes('from nova.profiles p')) return {
         status: 'active', age_verified: true, currency: preferred,
         restricted: false, self_excluded: false,
-        max_stake_per_bet_minor: null, max_stake_per_day_minor: null,
+        max_stake_per_bet_minor: perCurrencyStakeLimit.get(String(args[1] ?? preferred))?.toString() ?? null,
+        max_stake_per_day_minor: null,
         loss_limit_daily_minor: null, loss_limit_weekly_minor: null,
       };
       if (sql.includes('from nova.wallets')) {
@@ -78,7 +80,8 @@ function fakeDb(walletCurrency: 'IRT' | 'IRR' = 'IRT', original = 2_500_000n) {
     transaction: async (cb: (db: Db) => Promise<unknown>) => cb(db as unknown as Db),
   };
   return { db: db as unknown as Db, posted, receipts, getBalance: () => balance,
-    setPreferredCurrency: (currency: string) => { preferred = currency; } };
+    setPreferredCurrency: (currency: string) => { preferred = currency; },
+    setStakeLimit: (currency: string, minor: bigint) => { perCurrencyStakeLimit.set(currency, minor); } };
 }
 
 function event(id: string, action: 'debit' | 'credit', amountMinor: bigint, rollback = false): SignedCallback {
@@ -124,6 +127,16 @@ describe('Casino fiat settle staging contract', () => {
     t.setPreferredCurrency('USD');
     expect((await settleFiatCasinoCallback(t.db, userId, event('local-win', 'credit', 40n))).error).toBe(0);
     expect(t.posted.every((p) => p.p_currency === 'IRT')).toBe(true);
+  });
+
+  it('keeps IRT wager limits after a mid-round preference switch to USD', async () => {
+    const t = fakeDb('IRT');
+    expect((await settleFiatCasinoCallback(t.db, userId, event('limit-stake-1', 'debit', 20n))).error).toBe(0);
+    t.setStakeLimit('IRT', 40_000n);
+    t.setPreferredCurrency('USD');
+    const blocked = await settleFiatCasinoCallback(t.db, userId, event('limit-stake-2', 'debit', 20n));
+    expect(blocked.error).toBe(1);
+    expect(t.posted).toHaveLength(1);
   });
 
   it('refunds the exact original IRT amount and refuses a duplicate rollback', async () => {
