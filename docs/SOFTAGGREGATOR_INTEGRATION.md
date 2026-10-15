@@ -30,6 +30,41 @@ Financial operations use the authoritative `nova.post_wallet_entry` with wallet 
 
 USD is a separate wallet. **There is no automatic conversion of IRT/IRR/USDT.** That must be specified, rated, funded and tested as a separate financial workflow. The provider's 2 USD testing credit is *not* a player's USD wallet balance.
 
+
+## Safe activation when key rotation is deferred
+
+Registering the callback URL in the operator portal does **not** change the server's
+`SOFTAGGREGATOR_ENABLED` switch or install the operator secrets. The partner API
+cannot be called until the server receives the credentials through a protected
+secret store or its private runtime environment. **Never** copy keys into repository
+files, GitHub Actions output, API responses, Android resources or web assets.
+
+For a catalogue/demo-only rollout, an authorized VPS operator can set the
+server-side `SOFTAGGREGATOR_API_LOGIN` and `SOFTAGGREGATOR_API_PASSWORD` and
+`SOFTAGGREGATOR_ENABLED=true`, while explicitly keeping
+`SOFTAGGREGATOR_REAL_MONEY_ENABLED=false`. The catalogue and test game launching
+can then operate without crediting/debiting player wallets.
+
+After private configuration, run `npm run casino:diagnose` on the server. It
+makes only `getCurrencies` and `getGameList` requests and reports counts and
+category breakdowns, never credentials or launch URLs. To test one demo launch
+without exposing its URL, also set `SOFTAGGREGATOR_PROBE_GAME_ID` to a real
+demo-supported `id_hash`. Some studios may require a test username/password;
+these can be set in `SOFTAGGREGATOR_PROBE_USER` and
+`SOFTAGGREGATOR_PROBE_PASSWORD` via private server environment.
+
+A successful dry-run is not a live-money release: the production workflow is
+explicitly owner-dispatched on `main`, and any new migrations must first be
+registered and independently validated. The preview intentionally has no
+partner keys, payment credentials or production database access.
+
+**Security condition for enabling real-money callbacks:** the provider API
+password and callback salt shown in a prior chat screenshot must be rotated,
+their replacements installed privately, the callback source/network
+trust verified, database receipts migration applied with an audited backup,
+and real provider signed callback+ledger reconciliation tests passed.
+Do not declare real-money complete until then.
+
 ## Go-live checklist — not yet completed
 
 1. Rotate compromised API credentials in provider portal.
