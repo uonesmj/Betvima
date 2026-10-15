@@ -15,6 +15,7 @@ import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
@@ -245,18 +246,46 @@ fun SmallPill(text: String, background: Color, foreground: Color) {
     }
 }
 
+/** Real server-provided crest first; show a deterministic initials mark while loading
+ * and whenever the URL is absent or broken. Never guess another club's badge. */
 @Composable
 fun TeamBadge(team: Team, size: Int = 34) {
-    val safe = team.logo?.takeIf { it.startsWith("https://") }
-    Surface(shape = CircleShape, color = Palette.paper, modifier = Modifier.size(size.dp),
-        border = BorderStroke(1.dp, Palette.border)) {
+    val safe = verifiedLogoUrl(team.logo)
+    var loaded by remember(safe, team.name) { mutableStateOf(false) }
+    val initials = remember(team.name) { teamBadgeInitials(team.name) }
+    val hue = remember(team.name) {
+        val palette = listOf(
+            Color(0xFF0A69C6), Color(0xFF1B8B6E),
+            Color(0xFF7853B9), Color(0xFFB05B43), Color(0xFF304D83)
+        )
+        palette[(team.name.hashCode().toLong() and 0x7fffffff) .rem(palette.size.toLong()).toInt()]
+    }
+    Surface(
+        shape = CircleShape, color = Color.White,
+        modifier = Modifier.size(size.dp),
+        border = BorderStroke(1.dp, Color(0xFFDDE5EE))
+    ) {
         Box(contentAlignment = Alignment.Center) {
+            if (!loaded) {
+                Box(Modifier.fillMaxSize().padding(2.dp)
+                    .background(hue.copy(alpha = .105f), CircleShape),
+                    contentAlignment = Alignment.Center) {
+                    Text(initials, fontWeight = FontWeight.Black,
+                        fontSize = (size * .34f).sp,
+                        color = hue, maxLines = 1)
+                }
+            }
             if (safe != null) {
-                AsyncImage(model = safe, contentDescription = team.name,
-                    modifier = Modifier.fillMaxSize().padding(4.dp))
-            } else {
-                Text(team.name.take(1).uppercase(), fontWeight = FontWeight.Black,
-                    fontSize = (size / 2.4).sp, color = Palette.muted)
+                AsyncImage(
+                    model = safe,
+                    contentDescription = team.name,
+                    contentScale = androidx.compose.ui.layout.ContentScale.Fit,
+                    onSuccess = { loaded = true },
+                    onError = { loaded = false },
+                    modifier = Modifier.fillMaxSize()
+                        .padding((size * .09f).dp)
+                        .graphicsLayer { alpha = if (loaded) 1f else 0f }
+                )
             }
         }
     }
