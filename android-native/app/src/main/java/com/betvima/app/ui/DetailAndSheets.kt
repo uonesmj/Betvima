@@ -1,5 +1,7 @@
 package com.betvima.app.ui
 
+import kotlinx.coroutines.launch
+
 import androidx.compose.animation.togetherWith
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.*
@@ -263,10 +265,18 @@ fun LoginSheet(state: AppState, model: AppViewModel) {
     var password by remember { mutableStateOf("") }
     var visible by rememberSaveable { mutableStateOf(false) }
     val uri = LocalUriHandler.current
+    val sheet = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val closeScope = rememberCoroutineScope()
+    val smoothClose = {
+        closeScope.launch {
+            sheet.hide()
+            model.showLogin(false)
+        }
+    }
     ModalBottomSheet(
-        onDismissRequest = { model.showLogin(false) },
+        onDismissRequest = smoothClose,
         containerColor = Color.White,
-        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+        sheetState = sheet,
         dragHandle = { BottomSheetDefaults.DragHandle() }
     ) {
         Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState(), flingBehavior = rememberPremiumFlingBehavior())
