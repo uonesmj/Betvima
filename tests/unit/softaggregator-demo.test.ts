@@ -134,6 +134,8 @@ describe('SoftAggregator demo-only launch API', () => {
     const other = '00000000-0000-4000-8000-000000000002';
     process.env.SOFTAGGREGATOR_ENABLED = 'true';
     process.env.SOFTAGGREGATOR_REAL_MONEY_ENABLED = 'true';
+    process.env.SOFTAGGREGATOR_FINANCIAL_SCHEMA_READY = 'true';
+    process.env.SOFTAGGREGATOR_SALT_KEY = 'staging-contract-test-salt';
     delete process.env.SOFTAGGREGATOR_TEST_USER_ID;
     expect(casinoRealMoneyUserAllowed(pilot)).toBe(false);
     process.env.SOFTAGGREGATOR_TEST_USER_ID = pilot;
@@ -141,6 +143,13 @@ describe('SoftAggregator demo-only launch API', () => {
     expect(casinoRealMoneyUserAllowed(other)).toBe(false);
     process.env.SOFTAGGREGATOR_TEST_USER_ID = '*';
     expect(casinoRealMoneyUserAllowed(pilot)).toBe(false);
+    process.env.SOFTAGGREGATOR_FINANCIAL_SCHEMA_READY = 'false';
+    process.env.SOFTAGGREGATOR_TEST_USER_ID = pilot;
+    expect(casinoRealMoneyUserAllowed(pilot)).toBe(false);
+    process.env.SOFTAGGREGATOR_FINANCIAL_SCHEMA_READY = 'true';
+    delete process.env.SOFTAGGREGATOR_SALT_KEY;
+    expect(casinoRealMoneyUserAllowed(pilot)).toBe(false);
+    process.env.SOFTAGGREGATOR_SALT_KEY = 'staging-contract-test-salt';
     process.env.SOFTAGGREGATOR_REAL_MONEY_ENABLED = 'false';
     process.env.SOFTAGGREGATOR_TEST_USER_ID = pilot;
     expect(casinoRealMoneyUserAllowed(pilot)).toBe(false);
