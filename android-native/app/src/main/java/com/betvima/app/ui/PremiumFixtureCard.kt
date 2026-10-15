@@ -67,28 +67,24 @@ fun PremiumFixtureCard(
                     .padding(start = 12.dp, end = 12.dp, top = 11.dp, bottom = 10.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Surface(
-                    modifier = Modifier.size(37.dp),
-                    shape = RoundedCornerShape(11.dp),
-                    color = Color.White,
-                    border = BorderStroke(1.dp, fixtureStroke)
-                ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        val logo = match.leagueLogo?.takeIf { it.startsWith("https://") }
-                        if (logo != null) AsyncImage(
-                            model = logo, contentDescription = match.league,
-                            modifier = Modifier.size(27.dp))
-                        else Icon(Icons.Default.EmojiEvents, null,
-                            modifier = Modifier.size(21.dp), tint = fixtureBlue)
-                    }
-                }
+                LeagueIdentityBadge(match, size = 41)
                 Spacer(Modifier.width(9.dp))
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                     Text(match.league, color = fixtureInk, fontSize = 13.sp,
                         fontWeight = FontWeight.ExtraBold, maxLines = 1,
                         overflow = TextOverflow.Ellipsis)
-                    Text(match.sport.replace("-", " ").replaceFirstChar { it.uppercase() },
-                        color = fixtureSubtle, fontSize = 10.sp, maxLines = 1)
+                    Row(verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+                        CountryIdentity(match.country)
+                        Text(match.country.takeIf { it.isNotBlank() }?.let(::countryDisplayName)
+                            ?: tr(state.lang, "International", "بین‌المللی"),
+                            color = fixtureSubtle, fontSize = 9.sp, maxLines = 1,
+                            overflow = TextOverflow.Ellipsis)
+                        Text("•", color = fixtureStroke, fontSize = 10.sp)
+                        Text(match.sport.replace("-", " ").replaceFirstChar { it.uppercase() },
+                            color = fixtureSubtle, fontSize = 10.sp, maxLines = 1,
+                            overflow = TextOverflow.Ellipsis)
+                    }
                 }
                 Spacer(Modifier.width(4.dp))
                 Surface(
