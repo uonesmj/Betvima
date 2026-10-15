@@ -50,7 +50,9 @@ data class BetLegDetail(val matchLabel: String, val marketLabel: String,
     val league: String, val result: String,
     val matchId: String = "", val matchStatus: String = "", val scheduledAt: String = "",
     val minute: Int? = null, val clock: String = "", val period: String = "",
-    val homeScore: Int? = null, val awayScore: Int? = null)
+    val homeScore: Int? = null, val awayScore: Int? = null,
+    val homeTeamName: String = "", val awayTeamName: String = "",
+    val homeTeamLogoUrl: String = "", val awayTeamLogoUrl: String = "")
 data class BetDetail(val id: String, val publicId: String, val status: String,
     val currency: String, val stakeMinor: String, val potentialPayoutMinor: String,
     val settledPayoutMinor: String?, val netResultMinor: String?,
