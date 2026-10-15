@@ -8,7 +8,6 @@ import {
   Settings2, ShieldCheck, Sparkles, Volume2, VolumeX, X,
 } from 'lucide-react';
 import { PharaohAudio, type PharaohSound } from '@/lib/casino/pharaoh-audio';
-import { PharaohDepth } from './pharaoh-depth';
 import {
   DEMO_START_CENTS, MAX_BET_CENTS, MIN_BET_CENTS, PAYLINES, PAYTABLE, SYMBOL_LABELS, parseDemoBalance,
   type ReelGrid, type SpinResult, type SymbolId,
@@ -277,8 +276,7 @@ export function PharaohGoldSlot() {
   const hitWin = lastSpin && lastSpin.winCents > 0 && phase !== 'spinning';
   return (
     <div className={styles.page} dir="ltr" data-reduced-motion={reduceMotion ? 'true' : 'false'}>
-      <div className={styles.stars} aria-hidden="true"/>
-      <PharaohDepth disabled={reduceMotion} />
+
       <header className={styles.topbar}>
         <Link href="/casino" className={styles.back}><ArrowLeft size={18}/><span>{t.quit}</span></Link>
         <div className={styles.brand}><img src="/brand/betvima-logo-transparent.png" alt="BetVima"/></div>
@@ -291,19 +289,14 @@ export function PharaohGoldSlot() {
 
       <main className={styles.content}>
         <div className={styles.titleRow}>
-          <div className={styles.templeGuardianLeft} aria-hidden="true"><img src="/casino/pharaoh-gold/guardian.svg" alt=""/></div>
-          <div className={styles.templeGuardianRight} aria-hidden="true"><img src="/casino/pharaoh-gold/guardian.svg" alt=""/></div>
+
           <div className={styles.subtitle}><span className={styles.diamond}>◆</span> ORIGINAL BETVIMA CASINO <span className={styles.diamond}>◆</span></div>
           <img className={styles.gameLogo} src="/casino/pharaoh-gold/logo.svg" alt="Pharaoh Gold"/>
           <p className={styles.currencyAlert}>{t.usd} <span>•</span> {t.minimum}</p>
         </div>
 
         <section className={styles.machine} aria-label="Pharaoh Gold demo slot machine" data-impact={spinBusy && settledCount > 0 ? 'true' : 'false'}>
-          <div className={styles.machineOrnament} aria-hidden="true">
-            <img src="/casino/pharaoh-gold/winged-crest.svg" alt=""/>
-          </div>
-          <div className={styles.templeLightLeft} aria-hidden="true" />
-          <div className={styles.templeLightRight} aria-hidden="true" />
+          <div className={styles.machineOrnament} aria-hidden="true"><img src="/casino/pharaoh-gold/winged-crest.svg" alt=""/></div>
           <div className={styles.reelPanel}>
             <div className={styles.reelGrid} aria-live="off">
               {reels.map((reel,col) => {
@@ -362,10 +355,9 @@ export function PharaohGoldSlot() {
             </div>
           </div>
           <div className={styles.spinGroup}>
-            <div className={styles.spinGuardians} aria-hidden="true"><img src="/casino/pharaoh-gold/guardian.svg" alt=""/><img src="/casino/pharaoh-gold/guardian.svg" alt=""/></div>
-            <div className={styles.spinHalo} aria-hidden="true" />
+
             <button type="button" aria-label={spinBusy ? t.stop : t.spin} disabled={!creditsReady} onClick={() => {void handleSpin();}} className={styles.spinButton} data-busy={spinBusy} >
-              {spinBusy ? <FastForward size={30}/> : <RotateCcw size={36} strokeWidth={2.4}/>}
+              {spinBusy ? <FastForward size={27}/> : <Play size={32} fill="currentColor" />}
               <span>{spinBusy ? t.stop : freeSpins > 0 ? t.free : t.spin}</span>
             </button>
             <span className={styles.spinHint}>{spinBusy ? 'QUICK STOP AVAILABLE' : freeSpins > 0 ? freeSpins+' FREE SPINS LEFT' : 'SPACE TO SPIN'}</span>
