@@ -32,7 +32,7 @@ function validMarket(raw: unknown): MarketView | null {
   return {
     id: String(market.id ?? ''), key: String(market.key ?? ''),
     name: String(market.name ?? market.nameEn ?? market.nameFa ?? ''),
-    status: String(market.status ?? 'closed').toLowerCase(),
+    status: String(market.status ?? 'closed').toLowerCase() === 'active' ? 'open' : String(market.status ?? 'closed').toLowerCase(),
     selections: market.selections.map((value: unknown) => {
       const v = (value ?? {}) as Record<string, unknown>;
       return {
@@ -40,7 +40,7 @@ function validMarket(raw: unknown): MarketView | null {
         name: String(v.name ?? v.nameEn ?? v.nameFa ?? ''),
         oddsScaled: String(v.oddsScaled ?? '0'),
         previousOddsScaled: v.previousOddsScaled == null ? null : String(v.previousOddsScaled),
-        status: String(v.status ?? 'closed').toLowerCase(),
+        status: String(v.status ?? 'closed').toLowerCase() === 'active' ? 'open' : String(v.status ?? 'closed').toLowerCase(),
         oddsVersion: Number(v.oddsVersion ?? 0),
         movement: v.movement === 'UP' || v.movement === 'DOWN' ? v.movement : 'STABLE',
       };
