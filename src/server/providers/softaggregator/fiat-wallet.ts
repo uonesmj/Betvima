@@ -220,7 +220,7 @@ export async function settleFiatCasinoCallback(
       [event.callId!, event.identityHash!, userId, event.action, event.amountMinor!.toString(),
         error, usdBalance.toString(), transactionId, currency,
         transactionId ? local.toString() : '0', event.roundId!, event.gameId!,
-        event.rollback, originalDebitId],
+        event.rollback, error === 0 ? originalDebitId : null],
     );
     return respond(error, usdBalance);
   });
