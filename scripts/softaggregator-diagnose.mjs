@@ -9,6 +9,8 @@
  *   SOFTAGGREGATOR_PROBE_GAME_ID='provider/Game' node scripts/softaggregator-diagnose.mjs
  */
 const endpoint = 'https://api.softaggregator.com/api/v1';
+// This UA has been verified by SoftAggregator to pass its Cloudflare edge.
+const userAgent = 'BetVima/1.0';
 const login = process.env.SOFTAGGREGATOR_API_LOGIN ?? '';
 const password = process.env.SOFTAGGREGATOR_API_PASSWORD ?? '';
 const enabled = process.env.SOFTAGGREGATOR_ENABLED === 'true';
@@ -22,7 +24,7 @@ function refuse(reason) {
 async function call(method, fields = {}) {
   const response = await fetch(endpoint, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', 'User-Agent': userAgent },
     body: JSON.stringify({ api_login: login, api_password: password, method, ...fields }),
     signal: AbortSignal.timeout(15_000),
     cache: 'no-store',
