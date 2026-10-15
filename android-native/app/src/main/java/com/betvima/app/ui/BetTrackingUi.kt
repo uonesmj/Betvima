@@ -51,14 +51,16 @@ internal fun ticketResultColor(bet: Bet): Color = when (bet.status.lowercase()) 
 }
 
 internal fun legResultLabel(raw: String, lang: Lang): String = when(raw.uppercase()) {
-    "WON" -> tr(lang,"Won","برد")
-    "LOST" -> tr(lang,"Lost","باخت")
+    "WON", "WIN" -> tr(lang,"Won","برد")
+    "LOST", "LOSS", "LOSE" -> tr(lang,"Lost","باخت")
     "VOID" -> tr(lang,"Void","باطل")
     "REFUNDED" -> tr(lang,"Refunded","برگشتی")
     "HALF_WON" -> tr(lang,"Half won","نیم‌برد")
     "HALF_LOST" -> tr(lang,"Half lost","نیم‌باخت")
     "PENDING", "OPEN", "ACCEPTED", "" -> tr(lang,"Pending","در انتظار")
     "MANUAL_REVIEW", "PENDING_REVIEW" -> tr(lang,"Under review","در حال بررسی")
+    "SETTLED" -> tr(lang,"Settled","تسویه‌شده")
+    "CASHED_OUT" -> tr(lang,"Cashed out","تسویه زودهنگام")
     else -> raw.replace("_"," ")
 }
 private val livePhases = setOf("live","in_play","inplay","first_half","second_half",
@@ -96,10 +98,16 @@ internal fun validPublicMatchLabel(raw: String): Boolean {
 }
 
 internal fun fixtureTitle(leg: BetLegDetail, match: Match?, lang: Lang): String {
-    if (match != null && match.home.name != "TBD" && match.away.name != "TBD")
+    // The bet-history API already includes official home and away names.
+    // Prefer that server-owned snapshot over raw provider keys or inferred teams.
+    if (validPublicMatchLabel(leg.homeTeamName) && validPublicMatchLabel(leg.awayTeamName))
+        return leg.homeTeamName.trim() + " — " + leg.awayTeamName.trim()
+    if (match != null && validPublicMatchLabel(match.home.name) &&
+        validPublicMatchLabel(match.away.name) &&
+        match.home.name != "TBD" && match.away.name != "TBD")
         return match.home.name + " — " + match.away.name
     if (validPublicMatchLabel(leg.matchLabel)) return leg.matchLabel.trim()
-    return tr(lang, "Match details unavailable", "نام مسابقه در دسترس نیست")
+    return tr(lang, "Teams unavailable from provider", "نام تیم‌ها از منبع داده دریافت نشده")
 }
 
 internal fun betLegOutcomeColor(leg: BetLegDetail): Color = when (
@@ -160,9 +168,25 @@ internal fun BetSelectionOverview(
                         color = phaseColor, fontSize = 10.sp, fontWeight = FontWeight.Black)
                 }
             }
-            Text(fixtureTitle(leg, resolvedMatch, lang), color = ticketInk,
-                fontWeight = FontWeight.Black, fontSize = 14.sp, maxLines = 3,
-                overflow = TextOverflow.Ellipsis)
+            val homeName = leg.homeTeamName.ifBlank { resolvedMatch?.home?.name.orEmpty() }
+            val awayName = leg.awayTeamName.ifBlank { resolvedMatch?.away?.name.orEmpty() }
+            if (validPublicMatchLabel(homeName) && validPublicMatchLabel(awayName) &&
+                homeName != "TBD" && awayName != "TBD") {
+                Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(7.dp)) {
+                    TicketTeamScoreRow(
+                        homeName, leg.homeTeamLogoUrl.ifBlank { resolvedMatch?.home?.logo.orEmpty() },
+                        scoreHome, lang
+                    )
+                    TicketTeamScoreRow(
+                        awayName, leg.awayTeamLogoUrl.ifBlank { resolvedMatch?.away?.logo.orEmpty() },
+                        scoreAway, lang
+                    )
+                }
+            } else {
+                Text(fixtureTitle(leg, resolvedMatch, lang), color = ticketInk,
+                    fontWeight = FontWeight.Black, fontSize = 14.sp, maxLines = 3,
+                    overflow = TextOverflow.Ellipsis)
+            }
             if (scoreHome != null && scoreAway != null) {
                 Row(
                     Modifier.fillMaxWidth()
@@ -178,7 +202,7 @@ internal fun BetSelectionOverview(
                         color = ticketMuted, fontSize = 10.sp,
                         modifier = Modifier.weight(1f))
                     Text("${scoreHome} : ${scoreAway}", color = ticketInk,
-                        fontSize = 17.sp, fontWeight = FontWeight.Black)
+                        fontSize = 16.sp, fontWeight = FontWeight.Black)
                 }
             } else if (leg.scheduledAt.isNotBlank()) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -227,4 +251,23 @@ internal fun AppState.matchForLeg(leg: BetLegDetail): Match? {
         ?: ticketMatches[leg.matchId]
         ?: upcoming.firstOrNull { it.id == leg.matchId }
         ?: detail?.takeIf { it.id == leg.matchId }
+}
+
+/** Display the API's official teams next to their own score, never a provider identifier. */
+@Composable
+private fun TicketTeamScoreRow(name: String, logo: String, score: Int?, lang: Lang) {
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        TeamBadge(com.betvima.app.data.Team(name, "", logo.takeIf { it.startsWith("https://") }), 27)
+        Spacer(Modifier.width(8.dp))
+        Text(name, modifier = Modifier.weight(1f),
+            fontWeight = FontWeight.ExtraBold, fontSize = 13.sp,
+            color = ticketInk, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        if (score != null) Surface(
+            color = Color(0xFFEAF0F7), shape = RoundedCornerShape(7.dp)
+        ) {
+            Text(score.toString(), color = ticketInk, fontSize = 13.sp,
+                fontWeight = FontWeight.Black,
+                modifier = Modifier.padding(horizontal = 9.dp, vertical = 5.dp))
+        }
+    }
 }
