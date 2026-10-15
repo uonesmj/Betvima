@@ -75,8 +75,12 @@ fun BetvimaApp(model: AppViewModel) {
     LaunchedEffect(state.tab, state.feature, state.signedIn, isForeground) {
         if (isForeground && state.signedIn && state.tab == Tab.BETS &&
             state.feature == Feature.NONE) {
+            // Live scores update while My Bets is visible, not only on Home/Live.
+            // The account ledger is still refreshed by its own authenticated API.
+            model.refreshLive(silent = true)
             while (true) {
                 delay(18_000)
+                model.refreshLive(silent = true)
                 model.refreshBetHistory(silent = true)
             }
         }
