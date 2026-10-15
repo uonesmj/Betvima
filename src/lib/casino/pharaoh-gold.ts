@@ -65,7 +65,7 @@ export function evaluateGrid(grid: ReelGrid, betCents: number, freeSpin = false)
     throw new Error('Invalid reel grid');
   const wins: LineWin[] = [];
   PAYLINES.forEach((line, index) => {
-    const sequence = line.map((row, reel) => grid[reel][row]);
+    const sequence = line.map((row, reel) => grid[reel]![row]!);
     const firstPaying = sequence.find(symbol => symbol !== 'wild');
     const match = (firstPaying === 'scatter' ? undefined : firstPaying) || (sequence.every(x => x === 'wild') ? 'wild' : undefined);
     if (!match) return;
@@ -75,7 +75,7 @@ export function evaluateGrid(grid: ReelGrid, betCents: number, freeSpin = false)
       else break;
     }
     if (count < 3) return;
-    const multiplier = PAYTABLE[match as Exclude<SymbolId,'scatter'>][count - 3] * (freeSpin ? 2 : 1);
+    const multiplier = PAYTABLE[match as Exclude<SymbolId,'scatter'>][count - 3]! * (freeSpin ? 2 : 1);
     wins.push({ line: index + 1, symbol: match, count, multiplier,
       amountCents: Math.round((betCents * multiplier) / PAYLINES.length) });
   });
