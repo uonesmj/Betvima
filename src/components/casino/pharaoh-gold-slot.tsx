@@ -326,7 +326,11 @@ export function PharaohGoldSlot() {
             <div className={styles.celebrationCoins} aria-hidden="true">
               {Array.from({length:14},(_,index) => <span key={index} style={{'--coin-angle':(index*25.714)+'deg','--coin-delay':(index%5*0.08)+'s'} as React.CSSProperties}>✦</span>)}
             </div>
-            <div className={styles.celebrationTitle}>{celebration === 'bonus'?t.bonusTitle:celebration === 'big'?t.big:t.winTitle}</div>
+            {celebration !== 'win' ? (
+              <img className={styles.celebrationBadge}
+                src={celebration === 'bonus' ? '/casino/pharaoh-gold/free-spins-badge.svg' : '/casino/pharaoh-gold/big-win-badge.svg'}
+                alt="" aria-hidden="true" decoding="async"/>
+            ) : <div className={styles.celebrationTitle}>{t.winTitle}</div>}
             <div className={styles.celebrationAmount}>{celebration === 'bonus' ? resultBonusLabel(lastSpin) : <CountUpCents cents={lastSpin?.winCents ?? 0} reduced={reduceMotion}/>}</div>
           </div>}
           <div className={styles.winning} data-active={hitWin ? 'true' : 'false'}>
