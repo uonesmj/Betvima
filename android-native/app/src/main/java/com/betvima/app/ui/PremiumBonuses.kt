@@ -314,7 +314,7 @@ private val rules=listOf(
 @Composable private fun RulesSheet(lang: Lang,onClose:()->Unit) {
     val sheet = rememberModalBottomSheetState(skipPartiallyExpanded=true)
     val scope = rememberCoroutineScope()
-    val smoothClose = { scope.launch { sheet.hide(); onClose() } }
+    val smoothClose: () -> Unit = { scope.launch { sheet.hide(); onClose() } }
     ModalBottomSheet(onDismissRequest=smoothClose,containerColor=Color(0xFFF8FAFA),
         sheetState=sheet) {
         Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState(), flingBehavior = rememberPremiumFlingBehavior())
@@ -360,7 +360,7 @@ private val rules=listOf(
     val clipboard=LocalClipboardManager.current
     val sheet = rememberModalBottomSheetState(skipPartiallyExpanded=true)
     val scope = rememberCoroutineScope()
-    val smoothClose = { scope.launch { sheet.hide(); onClose() } }
+    val smoothClose: () -> Unit = { scope.launch { sheet.hide(); onClose() } }
     ModalBottomSheet(onDismissRequest=smoothClose,containerColor=Color.White,
         sheetState=sheet) {
         Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState(), flingBehavior = rememberPremiumFlingBehavior())
