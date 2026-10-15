@@ -242,7 +242,7 @@ fun CasinoLobby(state: AppState, model: AppViewModel) {
         }
         items(games, key = { it.id }) { game ->
             CasinoGameCard(game, state.lang, launching == game.id) {
-                if (!game.demoSupported || launching != null) return@CasinoGameCard
+                if (!game.canTryDemo || launching != null) return@CasinoGameCard
                 if (!state.signedIn) {
                     model.showLogin(true)
                 } else {
@@ -315,7 +315,7 @@ private fun CasinoProviderChip(label: String, selected: Boolean, onClick: () -> 
 @Composable
 private fun CasinoGameCard(game: CasinoGame, lang: Lang, launching: Boolean, onClick: () -> Unit) {
     Surface(
-        modifier = Modifier.fillMaxWidth().clickable(enabled = game.demoSupported, onClick = onClick),
+        modifier = Modifier.fillMaxWidth().clickable(enabled = game.canTryDemo, onClick = onClick),
         color = Color.White, shape = RoundedCornerShape(18.dp),
         border = BorderStroke(1.dp, Palette.border), shadowElevation = 2.dp
     ) {
@@ -353,13 +353,13 @@ private fun CasinoGameCard(game: CasinoGame, lang: Lang, launching: Boolean, onC
                     Row(Modifier.fillMaxWidth().padding(vertical = 9.dp, horizontal = 8.dp),
                         horizontalArrangement = Arrangement.Center,
                         verticalAlignment = Alignment.CenterVertically) {
-                        Icon(if (game.demoSupported) Icons.Default.PlayArrow else Icons.Default.Lock,
+                        Icon(Icons.Default.PlayArrow,
                             null, tint = if (game.demoSupported) Palette.ink else Palette.muted,
                             modifier = Modifier.size(17.dp))
                         Spacer(Modifier.width(3.dp))
                         Text(if (game.demoSupported)
                             tr(lang, "Play demo", "بازی آزمایشی")
-                            else tr(lang, "Demo unavailable", "آزمایشی ندارد"),
+                            else tr(lang, "Try demo", "امتحان دمو"),
                             color = if (game.demoSupported) Palette.ink else Palette.muted,
                             fontSize = 11.sp, fontWeight = FontWeight.Bold)
                     }
