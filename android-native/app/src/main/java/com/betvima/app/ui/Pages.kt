@@ -46,7 +46,7 @@ fun SportsRibbon(selected: String, lang: Lang, showEsports: Boolean = true,
     onChange: (String) -> Unit) {
     val visibleSports = if (showEsports) sports else sports.filterNot { it == "esports" }
     LazyRow(contentPadding = PaddingValues(vertical = 5.dp, horizontal = 1.dp),
-        horizontalArrangement = Arrangement.spacedBy(9.dp)) {
+        horizontalArrangement = Arrangement.spacedBy(9.dp), flingBehavior = rememberPremiumFlingBehavior()) {
         items(visibleSports, key = { it }) { sport ->
             val active = selected == sport
             val label = if (lang == Lang.FA) when (sport) {
@@ -89,7 +89,7 @@ fun HomePage(state: AppState, model: AppViewModel, onSearch: () -> Unit) {
     }.sortedWith(compareByDescending<Match> { it.marketsCount }.thenBy { it.starts })
     LazyColumn(state = footerListState,
         contentPadding = PaddingValues(bottom = 0.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        verticalArrangement = Arrangement.spacedBy(8.dp), flingBehavior = rememberPremiumFlingBehavior()) {
         item { SportsbookTopTabs(state, model, onSearch) }
         item { ReferenceTournamentRibbon(state, model) }
         if (state.homeMode == HomeMode.TOP_BETS) {
@@ -186,7 +186,7 @@ fun CatalogPage(state: AppState, model: AppViewModel, live: Boolean,
 
     LazyColumn(state = footerListState,
         contentPadding = PaddingValues(bottom = 0.dp),
-        verticalArrangement = Arrangement.spacedBy(9.dp)) {
+        verticalArrangement = Arrangement.spacedBy(9.dp), flingBehavior = rememberPremiumFlingBehavior()) {
         item { SportsbookTopTabs(state, model, onSearch) }
         item {
             ReferenceSportRibbon(state, model, live = live,
