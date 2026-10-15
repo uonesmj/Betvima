@@ -313,7 +313,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             viewModelScope.launch {
                 try {
                     ticketLookupSemaphore.withPermit {
-                        val match = api.match(id)
+                        val match = api.detail(id)
                         if (generation == sessionGeneration && state.value.signedIn) {
                             mutable.update {
                                 it.copy(ticketMatches = it.ticketMatches + (id to match))
