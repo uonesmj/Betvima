@@ -1,5 +1,7 @@
 package com.betvima.app.ui
 
+import kotlinx.coroutines.launch
+
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
@@ -24,8 +26,16 @@ import com.betvima.app.data.money
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ReferenceProfileSheet(state: AppState, model: AppViewModel, onClose: () -> Unit) {
-    ModalBottomSheet(onDismissRequest = onClose, containerColor = Color.White,
-        dragHandle = null, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)) {
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val scope = rememberCoroutineScope()
+    val animatedDismiss = {
+        scope.launch {
+            sheetState.hide()
+            onClose()
+        }
+    }
+    ModalBottomSheet(onDismissRequest = animatedDismiss, containerColor = Color.White,
+        dragHandle = null, sheetState = sheetState) {
         Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState(), flingBehavior = rememberPremiumFlingBehavior())
             .padding(horizontal = 16.dp).padding(bottom = 28.dp),
             verticalArrangement = Arrangement.spacedBy(18.dp)) {
@@ -34,7 +44,7 @@ fun ReferenceProfileSheet(state: AppState, model: AppViewModel, onClose: () -> U
                 Text(tr(state.lang, "Profile", "پروفایل"), fontSize = 24.sp,
                     fontWeight = FontWeight.Black, color = Palette.text,
                     modifier = Modifier.weight(1f))
-                IconButton(onClick = onClose, modifier = Modifier.size(45.dp)) {
+                IconButton(onClick = animatedDismiss, modifier = Modifier.size(45.dp)) {
                     Icon(Icons.Default.Close, tr(state.lang, "Close", "بستن"),
                         tint = Palette.muted, modifier = Modifier.size(24.dp))
                 }
