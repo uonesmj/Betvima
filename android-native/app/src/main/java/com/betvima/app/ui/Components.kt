@@ -258,7 +258,7 @@ fun TeamBadge(team: Team, size: Int = 34) {
             Color(0xFF0A69C6), Color(0xFF1B8B6E),
             Color(0xFF7853B9), Color(0xFFB05B43), Color(0xFF304D83)
         )
-        palette[(team.name.hashCode().toLong() and 0x7fffffff) .rem(palette.size.toLong()).toInt()]
+        palette[((team.name.hashCode().toLong() and 0x7fffffffL) % palette.size.toLong()).toInt()]
     }
     Surface(
         shape = CircleShape, color = Color.White,
