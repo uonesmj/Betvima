@@ -329,16 +329,21 @@ private fun PremiumTicket(bet: Bet, lang: Lang, onOpen: () -> Unit) {
                 }
             }
             if (bet.selections.isNotEmpty()) {
-                val visible = if (expanded) bet.selections else bet.selections.take(2)
                 Column(Modifier.fillMaxWidth().padding(horizontal = 13.dp, vertical = 7.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    visible.forEach { leg ->
+                    bet.selections.take(2).forEach { leg ->
                         BetSelectionOverview(leg, lang, Modifier.fillMaxWidth())
                     }
                     if (bet.selections.size > 2) {
+                        SmoothExpandedContent(expanded) {
+                            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                bet.selections.drop(2).forEach { leg ->
+                                    BetSelectionOverview(leg, lang, Modifier.fillMaxWidth())
+                                }
+                            }
+                        }
                         TextButton(onClick = { expanded = !expanded }) {
-                            Icon(if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
-                                null, tint = Palette.blue)
+                            SmoothExpandChevron(expanded, tint = Palette.blue)
                             Spacer(Modifier.width(4.dp))
                             Text(if (expanded) tr(lang, "Show fewer", "نمایش کمتر")
                                 else tr(lang, "Show all selections", "نمایش همه انتخاب‌ها"),
