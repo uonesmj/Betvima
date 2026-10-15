@@ -120,7 +120,10 @@ fun BetvimaApp(model: AppViewModel) {
                 Column {
                     BrandHeader(state.lang,
                         signedIn = state.signedIn,
-                        onHome = { model.tab(Tab.HOME) },
+                        onHome = {
+                            if (searchOpen) { searchOpen = false; model.clearSearch() }
+                            model.tab(Tab.HOME)
+                        },
                         onAccount = {
                             if (state.signedIn) accountOpen = true else model.showLogin(true)
                         },
@@ -141,6 +144,7 @@ fun BetvimaApp(model: AppViewModel) {
                     state = state,
                     menuOpen = drawer.isOpen,
                     onNavigate = { destination ->
+                        if (searchOpen) { searchOpen = false; model.clearSearch() }
                         when (destination) {
                             "menu" -> drawerScope.launch { drawer.open() }
                             "home" -> model.tab(Tab.HOME)
@@ -166,6 +170,7 @@ fun BetvimaApp(model: AppViewModel) {
             val filtered = state
             Box(Modifier.fillMaxSize().padding(padding)) {
                 val screenId = when {
+                    searchOpen -> "search"
                     state.detailLoading || state.detail != null ->
                         "match-" + (state.detail?.id ?: "loading")
                     state.feature != Feature.NONE -> "feature-" + state.feature.name
@@ -185,6 +190,8 @@ fun BetvimaApp(model: AppViewModel) {
                 ) { destination ->
                     pageStates.SaveableStateProvider(destination) {
                         when {
+                            destination == "search" ->
+                                NativeSearchSheet(state, model) { searchOpen = false }
                             destination.startsWith("match-") ->
                                 MatchDetailPage(state, model)
                             destination.startsWith("feature-") ->
@@ -214,9 +221,6 @@ fun BetvimaApp(model: AppViewModel) {
         }
         }
 
-        if (searchOpen) NativeSearchSheet(state, model) {
-            searchOpen = false
-        }
         if (state.showSlip) SlipSheet(state, model)
         if (state.showLogin) LoginSheet(state, model)
         if (state.betDetailVisible) BetReceiptSheet(state, model)
