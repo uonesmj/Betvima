@@ -37,8 +37,8 @@ class HomeCompetitionShortcutsTest {
     @Test fun enlargedCircularBadgesHaveSafeFullBleedSourceCrop() {
         assertEquals(80, HomeLeagueBadgeLayout.diameterDp)
         assertEquals(88, HomeLeagueBadgeLayout.cardWidthDp)
-        assertTrue(HomeLeagueBadgeLayout.diameterDp >= 64 * 1.25)
-        assertTrue(HomeLeagueBadgeLayout.cardWidthDp >= 70 * 1.25)
+        assertTrue(HomeLeagueBadgeLayout.diameterDp * 4 >= 64 * 5)
+        assertTrue(HomeLeagueBadgeLayout.cardWidthDp * 4 >= 70 * 5)
         assertTrue(HomeLeagueBadgeLayout.cropInsetPx > 0)
         assertEquals(
             HomeLeagueBadgeLayout.sourceTilePx,
