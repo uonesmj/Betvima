@@ -71,27 +71,6 @@ function toMatchView(raw: SearchMatch): MatchView {
   };
 }
 
-function searchLabel(match: MatchView, fa: boolean) {
-  const sport = match.sportKey.replaceAll('-', ' ');
-  if (!fa) return sport ? sport[0]?.toUpperCase() + sport.slice(1) : '';
-  return ({ football: 'فوتبال', basketball: 'بسکتبال', hockey: 'هاکی روی یخ',
-    tennis: 'تنیس', baseball: 'بیسبال' } as Record<string, string>)[match.sportKey] ?? sport;
-}
-
-function gameDate(s: string, locale: string) {
-  const date = new Date(s);
-  if (!s || Number.isNaN(date.getTime())) return '—';
-  return new Intl.DateTimeFormat(locale === 'fa' ? 'fa-IR' : 'en-GB', {
-    hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric',
-  }).format(date).replace(',', ' •');
-}
-
-function countryFlag(code: string | null) {
-  if (!code || !/^[A-Za-z]{2}$/.test(code)) return '🌐';
-  const upper = code.toUpperCase();
-  return String.fromCodePoint(...Array.from(upper).map(char => char.charCodeAt(0) + 127397));
-}
-
 function SearchFixture({ match }: { match: MatchView }) {
   return (
     <div data-testid="search-fixture" data-live={match.isLive}>
