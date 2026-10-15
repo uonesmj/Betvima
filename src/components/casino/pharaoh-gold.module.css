@@ -376,3 +376,195 @@
   .symbolCell[data-win=true] .symbolArt {animation:none!important}
 }
 .page[data-reduced-motion=true] .symbolCell[data-win=true] .symbolArt{animation:none!important}
+
+
+/* PHARAOH GOLD V3 — image-led architecture. All full-scene art is STATIC.
+   Motion is restricted to reels, win indicators and interactive buttons. */
+.page {
+  background-color:#060918;
+  background-image:linear-gradient(180deg,#02081715 0%,#05071965 60%,#020713c9 100%),url('/casino/pharaoh-gold/scene.svg');
+  background-size:cover;
+  background-position:center top;
+  background-repeat:no-repeat;
+  background-attachment:fixed;
+}
+.stars,.templeLightLeft,.templeLightRight,.spinHalo {display:none}
+.content {max-width:1220px;position:relative;z-index:2}
+.topbar{background:linear-gradient(#060b1af5,#080b17df);border-bottom:1px solid #d19b5680;box-shadow:0 4px 22px #020309ad}
+.titleRow{min-height:230px;padding:18px 0 20px}
+.titleRow:before{background:radial-gradient(ellipse,#ffb44a33,transparent 75%);filter:blur(18px)}
+.subtitle{position:relative;z-index:2;letter-spacing:.26em;font-size:11px}
+.gameLogo{height:175px;max-height:175px;width:min(580px,85%);position:relative;z-index:3;margin:-4px auto -4px;filter:drop-shadow(0 5px 10px #000e) drop-shadow(0 0 15px #ffc36c45)}
+.currencyAlert{position:relative;z-index:4;color:#fff0d6;line-height:1.5;margin:0}
+.machine {
+  isolation:isolate;
+  width:min(980px,100%);
+  max-width:980px;
+  margin:0 auto;
+  padding:clamp(31px,4vw,60px) clamp(27px,6.15vw,72px) clamp(17px,2.45vw,32px);
+  background:url('/casino/pharaoh-gold/royal-frame.svg') center center / 100% 100% no-repeat;
+  background-color:transparent;
+  border:0;
+  border-radius:0;
+  box-shadow:0 23px 52px #000a,0 0 56px #efba4428;
+  transform:none;
+}
+.machine:before,.machine:after {display:none}
+.machine[data-impact=true]{animation:none}
+.machineOrnament{height:0;margin:0;position:relative;z-index:3}
+.machineOrnament img{position:absolute;top:-49px;left:50%;transform:translateX(-50%);width:38%;height:70px;object-fit:contain;filter:drop-shadow(0 4px 9px #000b);opacity:.94}
+.reelPanel{
+  background:#070818;
+  border:1px solid #cc9552;
+  padding:3px;
+  border-radius:7px;
+  box-shadow:inset 0 0 17px #000,0 0 0 3px #0a0a15,0 0 16px #dab36655;
+  width:100%;
+}
+.reelGrid {
+  background:#080d1b;
+  border:0;
+  box-shadow:none;
+  gap:3px;
+  border-radius:3px;
+}
+.reelGrid:after{background:linear-gradient(170deg,#ffffff0d,transparent 17%,transparent 75%,#ffffff10)}
+.reelColumn{
+  height:clamp(240px,33vw,420px);
+  gap:3px;
+  background:#0b0a20;
+}
+.reelColumn[data-spinning=true]{filter:none;transform:none}
+.symbolCell{
+  border:1px solid #98652d;
+  border-radius:2px;
+  background:
+    radial-gradient(ellipse at 51% 39%,#443047 0%,#1b1632 65%,#090a1a 100%);
+  box-shadow:inset 0 0 11px #000b,inset 0 1px 3px #ecd08055;
+}
+.symbolCell:before{inset:2px;border:1px solid #f4cd7337;background:none}
+.symbolCell:after{animation:none;display:none}
+.cellInner{filter:none}
+.symbolArt{width:min(92%,140px);height:min(91%,133px);filter:drop-shadow(0 7px 4px #000a) contrast(1.12) saturate(1.18)}
+.sideOrnaments{display:none}
+.machineFoot{padding:13px 8px 0;color:#ffe0a0;letter-spacing:.045em;text-shadow:0 2px 6px #000e;font-size:11px}
+.machineFoot span:nth-child(2){color:#fff8dc}
+.winDisplay{min-height:70px;margin:19px auto 19px}
+.winning{
+  display:flex;
+  align-items:center;
+  background-image:linear-gradient(90deg,transparent,#22162ecb 14%,#0b1723e9 50%,#22162ecb 86%,transparent);
+  border:1px solid #e6b46982;border-radius:17px;padding:12px 28px;
+  box-shadow:0 0 21px #d5a55922,inset 0 1px 4px #ffe4a824;
+}
+.winning strong{font-size:32px}
+.controlDeck{
+  max-width:980px;
+  background:url('/casino/pharaoh-gold/control-plate.svg') center center / 100% 100% no-repeat;
+  border:0;border-radius:20px;box-shadow:0 16px 34px #000c;
+  grid-template-columns:1fr 1fr minmax(155px,.68fr);
+  padding:25px 33px;
+  gap:16px;
+}
+.controlDeck:before{display:none}
+.metrics{gap:10px}
+.metric{background:linear-gradient(130deg,#080d1df5,#1b1622f0);border:1px solid #e6bb7290;box-shadow:inset 0 1px 4px #fff4b321;padding:13px}
+.metric strong{font-size:clamp(18px,2.4vw,23px)}
+.betTitle{color:#ffdb89;font-size:12px}
+.betRow{border:2px solid #d5aa65;border-radius:11px;background:#090d1eec;height:62px}
+.betRow button{height:49px;width:48px;border:1px solid #f3c97f;background:linear-gradient(160deg,#644526,#171b2c)}
+.betRow strong{font-size:26px}
+.betShortcuts button{background:#11182a;border-color:#ae8a59;color:#eed2a9;font-size:10px}
+.betShortcuts button[data-active=true]{background:#064332;border-color:#00e18c;color:#d9ffec}
+.spinGuardians{display:none}
+.spinGroup{gap:8px}
+.spinButton,
+.spinButton[data-busy=true]{
+  width:146px;height:146px;min-width:0;min-height:0;
+  flex-shrink:0;
+  border:0!important;
+  color:#f5e9a0!important;
+  font-size:17px!important;
+  font-family:Georgia,serif!important;
+  font-weight:1000!important;
+  text-shadow:0 2px 2px #032013,0 0 12px #096c56;
+  background:transparent url('/casino/pharaoh-gold/spin-medallion.svg') center center / 100% 100% no-repeat!important;
+  box-shadow:none!important;
+  border-radius:50%;
+  filter:drop-shadow(0 8px 14px #00dd8465);
+  transition:transform .18s ease-out,filter .18s ease-out;
+}
+.spinButton:not([data-busy=true]){animation:spinBreathSoft 2.6s ease-in-out infinite}
+.spinButton[data-busy=true]{filter:hue-rotate(-54deg) drop-shadow(0 8px 11px #c5a0506b)}
+.spinButton:hover{transform:scale(1.04);filter:brightness(1.12) drop-shadow(0 8px 13px #00d47a80)}
+.spinButton svg{filter:drop-shadow(0 2px 2px #054332)}
+.spinButton span{font-size:14px;letter-spacing:.045em}
+.spinHint{font-size:10px;color:#e5d5b5}
+.bottomTools{max-width:1010px;gap:10px;margin:17px auto 0}
+.bottomTools button{
+  background:
+    linear-gradient(180deg,#0b1a2ac4,#070b17e8),
+    url('/casino/pharaoh-gold/control-plate.svg') center / cover no-repeat;
+  border:1.5px solid #d6ab6f;
+  box-shadow:inset 0 1px 5px #ffdc8440,0 6px 14px #0009;
+  border-radius:11px;color:#ffe5b0;
+  padding:11px 14px;min-height:50px;
+}
+.bottomTools button:hover{border-color:#fff1be;filter:brightness(1.15)}
+.bottomTools button[data-active=true]{background:linear-gradient(180deg,#106748dd,#082f27ea);border-color:#63ffc4;color:#e3fff0}
+.celebration{z-index:30;filter:drop-shadow(0 0 12px #edb35566)}
+.celebrationFlare{background:radial-gradient(ellipse,#e9ae4799,#a05d2259 38%,transparent 70%)}
+@keyframes spinBreathSoft{0%,100%{transform:scale(1)}50%{transform:scale(1.035)}}
+@media(max-width:900px){
+  .machine{padding:clamp(23px,3.4vw,39px) clamp(23px,5vw,40px) 12px}
+  .reelColumn{height:clamp(210px,39vw,340px)}
+  .controlDeck{grid-template-columns:1fr 1fr;gap:17px;padding:20px 24px}
+  .spinGroup{grid-column:2;grid-row:1 / span 2}
+  .spinButton,.spinButton[data-busy=true]{width:134px;height:134px}
+}
+@media(max-width:620px){
+  .page{background-size:auto 100%,auto 100%;background-position:center top;background-attachment:scroll}
+  .topbar{min-height:58px}
+  .titleRow{min-height:167px;padding:10px 0}
+  .gameLogo{height:121px;max-height:121px;margin:0 auto -2px}
+  .currencyAlert{font-size:9px;gap:7px}
+  .machine{padding:clamp(19px,5vw,27px) clamp(17px,5vw,23px) 10px;border-radius:0;box-shadow:0 10px 24px #0009}
+  .machineOrnament img{width:39%;height:38px;top:-29px}
+  .reelPanel{border-width:1px;padding:2px}
+  .reelGrid{gap:2px}
+  .reelColumn{height:clamp(180px,53vw,290px);gap:2px}
+  .symbolArt{width:96%;height:91%}
+  .machineFoot{padding:7px 2px 0;font-size:8px}
+  .machineFoot span:nth-child(2){font-size:8px}
+  .winDisplay{min-height:45px;margin:14px auto}
+  .winning{padding:8px 10px;border-radius:10px;font-size:9px}
+  .winning strong{font-size:20px}
+  .controlDeck{grid-template-columns:minmax(0,1fr) 110px;padding:12px;gap:9px;background-size:100% 100%}
+  .metrics,.betBox{grid-column:1}
+  .spinGroup{grid-column:2;grid-row:1 / span 2;align-self:center}
+  .spinButton,.spinButton[data-busy=true]{width:100px;height:100px;font-size:13px!important}
+  .spinButton svg{width:23px;height:23px}
+  .spinButton span{font-size:11px}
+  .spinHint{font-size:8px}
+  .metric{padding:8px}
+  .metric strong{font-size:16px}
+  .betTitle{font-size:10px}
+  .betRow{height:43px}
+  .betRow button{height:32px;width:31px}
+  .betRow strong{font-size:17px}
+  .betShortcuts button{font-size:8px;padding:7px 2px}
+  .bottomTools{gap:6px}
+  .bottomTools button{min-height:50px;padding:7px 4px;font-size:8px}
+  .celebration{top:-190px}
+}
+@media(max-width:365px){
+  .machine{padding:18px 16px 9px}
+  .reelColumn{height:179px}
+  .controlDeck{grid-template-columns:1fr 100px}
+  .spinButton,.spinButton[data-busy=true]{width:90px;height:90px}
+  .betRow strong{font-size:15px}
+}
+@media(prefers-reduced-motion:reduce){
+  .spinButton,.spinButton:not([data-busy=true]){animation:none!important}
+}
+.page[data-reduced-motion=true] .spinButton{animation:none!important}
