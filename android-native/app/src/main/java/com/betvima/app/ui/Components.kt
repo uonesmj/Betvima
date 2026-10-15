@@ -66,6 +66,7 @@ fun BrandHeader(
                 .height(82.dp)
         ) {
             val compact = maxWidth < 395.dp
+            val narrow = maxWidth < 340.dp
             val actionGap = if (compact) 6.dp else 9.dp
             Row(
                 Modifier.fillMaxSize()
@@ -157,7 +158,6 @@ fun BrandHeader(
                     // Reference guest actions: flat charcoal Login and green
                     // Registration, aligned on one baseline. Keep the existing
                     // account/register callbacks and localized labels intact.
-                    val narrow = maxWidth < 340.dp
                     val loginWidth = when {
                         narrow -> 62.dp
                         compact -> 72.dp
