@@ -367,7 +367,7 @@ private fun SlipPickList(
         userScrollEnabled = true,
         contentPadding = PaddingValues(horizontal = 13.dp, vertical = 5.dp),
         verticalArrangement = Arrangement.spacedBy(SLIP_CARD_SPACING_DP.dp)
-    ) {
+    , flingBehavior = rememberPremiumFlingBehavior()) {
         itemsIndexed(state.picks, key = { _, pick -> pick.selectionId }) { index, pick ->
             SlipPickCard(pick, state.lang, index + 1) {
                 model.removePick(pick.selectionId)
@@ -607,7 +607,7 @@ fun PremiumSlipSheet(state: AppState,model: AppViewModel) {
                 Modifier.fillMaxWidth()
                     .then(if (funding == "bonus") {
                         Modifier.heightIn(max = viewport * .37f)
-                            .verticalScroll(rememberScrollState())
+                            .verticalScroll(rememberScrollState(), flingBehavior = rememberPremiumFlingBehavior())
                     } else Modifier)
                     .background(Color.White)
                     .navigationBarsPadding()
