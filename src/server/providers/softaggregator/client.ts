@@ -82,7 +82,8 @@ export async function launchCasinoGame(input: {
   const games = await casinoGames();
   const game = games.find((g) => g.id_hash === input.gameId);
   if (!game) throw new Error('CASINO_GAME_NOT_FOUND');
-  if (input.demo && !game.play_for_fun_supported) throw new Error('CASINO_DEMO_UNAVAILABLE');
+  // Provider confirms some demo titles (including Aviator) have a false catalogue flag.
+  // Attempt getGameDemo for any legitimate catalogued game and defer support to the API.
   const base = {
     gameid: input.gameId, currency: 'USD',
     lang: input.lang === 'fa' ? 'en' : 'en', // The provider's documented languages do not include Persian.
