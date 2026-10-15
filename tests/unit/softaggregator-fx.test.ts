@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   parseIrtUsdRate, casinoUsdToLocalMinor,
-  casinoLocalMinorToUsd, exactCasinoRefund,
+  casinoLocalMinorToUsd, exactCasinoRefund, validateCasinoFxSnapshot,
 } from '@/server/providers/softaggregator/fx';
 
 describe('SoftAggregator USD cents with native IRT/IRR wallets', () => {
@@ -35,6 +35,19 @@ describe('SoftAggregator USD cents with native IRT/IRR wallets', () => {
     }
     expect(() => casinoUsdToLocalMinor(-1n, 'IRT', rate, 'up')).toThrow();
     expect(() => casinoLocalMinorToUsd(-1n, 'IRR', rate)).toThrow();
+  });
+
+  it('requires a recent source timestamp for a rate quote', () => {
+    const now = Date.parse('2026-10-16T10:00:00Z');
+    const good = {
+      source: 'arzhaam' as const,
+      rateIrtPerUsd: rate,
+      observedAt: '2026-10-16T09:59:30Z',
+      fetchedAt: '2026-10-16T09:59:55Z',
+    };
+    expect(validateCasinoFxSnapshot(good, now)).toBe(parseIrtUsdRate(rate));
+    expect(() => validateCasinoFxSnapshot({ ...good, observedAt: '2026-10-16T09:54:00Z' }, now)).toThrow();
+    expect(() => validateCasinoFxSnapshot({ ...good, fetchedAt: '2026-10-16T10:02:00Z' }, now)).toThrow();
   });
 
   it('has a stable exact value across a USD game win and a local wallet credit', () => {
