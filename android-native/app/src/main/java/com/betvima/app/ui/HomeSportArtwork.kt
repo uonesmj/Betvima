@@ -102,11 +102,11 @@ fun LeagueBadgeShortcut(label: String, index: Int, onClick: () -> Unit) {
         BitmapFactory.decodeResource(context.resources, resId).asImageBitmap()
     }
     Column(
-        Modifier.width(91.dp).clickable(onClick = onClick),
+        Modifier.width(70.dp).clickable(onClick = onClick),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Surface(
-            modifier = Modifier.size(76.dp),
+            modifier = Modifier.size(64.dp),
             shape = CircleShape,
             color = Color.White,
             border = BorderStroke(1.dp, Color(0xFFD4DEE8))
