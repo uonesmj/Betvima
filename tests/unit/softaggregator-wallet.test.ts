@@ -20,6 +20,7 @@ const identity = (callId: string, action: 'credit' | 'debit', amount: bigint): S
 
 function makeFakeDb(initial = 1000n, held = 200n) {
   let balance = initial;
+  let preferredCurrency = 'USD';
   const receipts = new Map<string, { identity_hash: string; response_error: 0 | 1 | 2; response_balance_minor: string; action: string; wallet_amount_minor: string; round_id: string; game_id: string; amount_minor: string; reversed: boolean }>();
   const postings: Array<Record<string, unknown>> = [];
   const rounds = new Map<string, { wallet_currency: string }>();
@@ -43,7 +44,7 @@ function makeFakeDb(initial = 1000n, held = 200n) {
       }
       if (sql.includes('from nova.profiles p')) {
         return {
-          status: 'active', age_verified: true, country: 'DE', currency: 'USD',
+          status: 'active', age_verified: true, country: 'DE', currency: preferredCurrency,
           self_excluded: false, restricted: false,
           max_stake_per_bet_minor: null, max_stake_per_day_minor: null,
           loss_limit_daily_minor: null, loss_limit_weekly_minor: null,
@@ -84,7 +85,8 @@ function makeFakeDb(initial = 1000n, held = 200n) {
     }),
     transaction: async (fn: (db: Db) => Promise<unknown>) => fn(fake as unknown as Db),
   };
-  return { fake, receipts, postings, getBalance: () => balance };
+  return { fake, receipts, postings, getBalance: () => balance,
+    setPreferredCurrency: (currency: string) => { preferredCurrency = currency; } };
 }
 
 describe('SoftAggregator financial callback behavior (isolated DB contract)', () => {
@@ -131,6 +133,16 @@ describe('SoftAggregator financial callback behavior (isolated DB contract)', ()
     expect((await settleCasinoCallback({ ...refund, callId: 'credit-rollback-new',
       identityHash: 'credit:credit-rollback-new:200:rollback' })).error).toBe(2);
     expect(t.postings).toHaveLength(2);
+  });
+
+  it('settles a USD round to USD even if preferred wallet changes mid-round', async () => {
+    const t = makeFakeDb(1000n, 0n);
+    vi.mocked(getDb).mockReturnValue(t.fake as unknown as Db);
+    expect((await settleCasinoCallback(identity('usd-first', 'debit', 200n))).error).toBe(0);
+    t.setPreferredCurrency('IRT');
+    expect((await settleCasinoCallback(identity('usd-win', 'credit', 400n))).error).toBe(0);
+    expect(t.postings).toHaveLength(2);
+    expect(t.postings.every((p) => p.p_currency === 'USD')).toBe(true);
   });
 
   it('blocks wagers smaller than 20 USD cents', async () => {
