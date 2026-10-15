@@ -53,7 +53,8 @@ class MyBetsSelectionFilterTest {
         assertTrue(url.contains("status="))
         assertTrue(url.contains("q=Over+2.5"))
         assertTrue(url.contains("from=2026-10-08"))
-        assertFalse(url.contains("settled%2C"))
+        assertTrue(url.contains("pending%2Caccepted%2Cpartially_settled"))
+        assertFalse(url.contains("status=settled%2C"))
         assertEquals("all", query.copy(status = "all").status)
         assertEquals(0, query.copy(days = 0).days)
     }
