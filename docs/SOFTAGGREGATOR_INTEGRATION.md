@@ -36,14 +36,18 @@ remove the need to test a real catalog and game launch from the VPS.
 
 BetVima's VPS successfully requested `getCurrencies` and `getGameList`
 using `User-Agent: BetVima/1.0`: HTTP 200, API error 0, USD enabled, and
-**4,940** catalogue items returned. However, **all 4,940** reported
-`play_for_fun_supported: false`. A `getGameDemo` request for a slots title
-returned API `error: 1` (no launch URL). Do not present these games as
-playable demos or override the supplier's capability flag. Request explicit
-activation of demo/play-for-fun support from SoftAggregator, or use a
-separately isolated, verified test-wallet environment for supplier-supported
-money-flow tests. The supplier's $2 *operator prepaid credit* is not an
-individual player wallet balance.
+**4,940** catalogue items returned. All **4,940** reported
+`play_for_fun_supported: false`; `getGameDemo` with one non-supported
+slots title returned API `error: 1`. SoftAggregator support subsequently
+confirmed the catalogue flag is **not reliable** and explicitly confirmed
+Aviator (`id_hash: x887bde40b16350c`) launches as a USD demo. The backend
+therefore allows a demo attempt for a game present in the licensed catalogue,
+without relying on the flag. It marks Aviator as a known demo-supported title;
+the Android UI can offer "Try demo" for others with graceful handling of
+unsupported titles. Never route a demo attempt through `getGame` or mutate a
+wallet. Use a separately isolated, verified test-wallet environment for
+supplier-supported money-flow tests. The supplier's $2 *operator prepaid
+credit* is not an individual player wallet balance.
 
 When demo is provisioned, SoftAggregator documents `getGameDemo` using the
 **same** `user_username`/`user_password` inputs as `getGame` after
