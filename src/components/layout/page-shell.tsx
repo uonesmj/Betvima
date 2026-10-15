@@ -6,7 +6,7 @@ import { useApiQuery } from "@/lib/hooks/useApi";
 
 import Image from 'next/image';
 import Link from 'next/link';
-import { Facebook, Globe2, Instagram, MessageCircle, Send, Share2, Link2, Check } from 'lucide-react';
+import { Facebook, Globe2, Instagram, MessageCircle, Send } from 'lucide-react';
 import { usePathname, useRouter } from 'next/navigation';
 import { Suspense, useCallback, useEffect, useState } from 'react';
 import SupportClient from '@/components/support/support-client';
@@ -541,60 +541,6 @@ export function Footer({
   const pathname = usePathname();
   const copy = (english: string, persian: string) => locale === 'fa' ? persian : english;
 
-  const [socialLinkCopied, setSocialLinkCopied] = useState(false);
-  const socialShareUrl = 'https://betvima.com/';
-  const socialShareText = 'BetVima — The Game. Elevated.';
-  const socialLinks = {
-    whatsapp: 'https://api.whatsapp.com/send?text=' + encodeURIComponent(socialShareText + ' ' + socialShareUrl),
-    telegram: 'https://t.me/share/url?url=' + encodeURIComponent(socialShareUrl) + '&text=' + encodeURIComponent(socialShareText),
-    x: 'https://twitter.com/intent/tweet?url=' + encodeURIComponent(socialShareUrl) + '&text=' + encodeURIComponent(socialShareText),
-  };
-
-  const copySocialLink = async () => {
-    let copied = false;
-    try {
-      if (navigator.clipboard?.writeText) {
-        await navigator.clipboard.writeText(socialShareUrl);
-        copied = true;
-      }
-    } catch {
-      // Some webviews block clipboard access; try the legacy copy fallback.
-    }
-    if (!copied) {
-      const field = document.createElement('textarea');
-      field.value = socialShareUrl;
-      field.setAttribute('readonly', '');
-      field.style.position = 'fixed';
-      field.style.opacity = '0';
-      document.body.appendChild(field);
-      field.select();
-      try {
-        copied = document.execCommand('copy');
-      } finally {
-        field.remove();
-      }
-    }
-    if (copied) {
-      setSocialLinkCopied(true);
-      window.setTimeout(() => setSocialLinkCopied(false), 2200);
-    } else {
-      window.prompt(copy('Copy BetVima link:', 'لینک بت‌ویما را کپی کنید:'), socialShareUrl);
-    }
-  };
-
-  const shareSocialLink = async () => {
-    if (navigator.share) {
-      try {
-        await navigator.share({ title: 'BetVima', text: socialShareText, url: socialShareUrl });
-        return;
-      } catch (error) {
-        if (error instanceof DOMException && error.name === 'AbortError') return;
-      }
-    }
-    await copySocialLink();
-  };
-
-
   const featuredTeams = [
     { logo: 'manchester-united', name: 'Manchester United', short: 'Man United', fa: 'منچستر' },
     { logo: 'liverpool', name: 'Liverpool', short: 'Liverpool', fa: 'لیورپول' },
@@ -762,54 +708,6 @@ export function Footer({
           </section>
         </div>
 
-
-        {/* One-tap sharing of the public BetVima homepage; no unverified social account URLs. */}
-        <section aria-label={copy('Share BetVima', 'اشتراک‌گذاری بت‌ویما')}
-          className="my-3 min-w-0 rounded-[22px] border border-white/[0.10] bg-gradient-to-b from-[#17191F] via-[#14161B] to-[#0C0F14] p-3.5 shadow-[0_14px_32px_rgba(0,0,0,.2)] sm:p-5">
-          <h3 className="mb-3.5 text-[11px] font-extrabold uppercase tracking-[0.12em] text-[#AEB5C1]">
-            {copy('Share BetVima', 'اشتراک‌گذاری بت‌ویما')}
-          </h3>
-          <div className="grid min-w-0 grid-cols-5 gap-2 sm:gap-3">
-            <a href={socialLinks.whatsapp} target="_blank" rel="noopener noreferrer"
-              aria-label={copy('Share on WhatsApp', 'اشتراک‌گذاری در واتساپ')}
-              title="WhatsApp"
-              className="group flex aspect-square min-h-12 min-w-0 items-center justify-center rounded-[16px] border border-white/[0.12] bg-gradient-to-br from-[#2C2E35] to-[#17191F] text-[#25D366] shadow-[0_7px_16px_rgba(0,0,0,.25),inset_0_1px_0_rgba(255,255,255,.06)] transition duration-200 hover:-translate-y-0.5 hover:border-[#25D366]/50 hover:bg-[#26372E] active:scale-95 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#25D366]">
-              <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" className="h-6 w-6 transition-transform group-hover:scale-110 sm:h-7 sm:w-7" stroke="currentColor" strokeWidth="1.85" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M20.2 11.8a8.2 8.2 0 0 1-12 7.3L4 20.3l1.3-4A8.2 8.2 0 1 1 20.2 11.8Z" />
-                <path d="M8.5 8.6c.4 2.5 2.9 5.1 5.4 5.7l1.1-1.1 2.1 1c-.2 1.4-1.3 2.2-2.5 2-3.9-.7-6.9-3.6-7.8-7.3-.2-1.2.6-2.3 1.9-2.5l.8 2.1-1.1 1.1Z" transform="translate(1.5 0)" />
-              </svg>
-            </a>
-            <a href={socialLinks.telegram} target="_blank" rel="noopener noreferrer"
-              aria-label={copy('Share on Telegram', 'اشتراک‌گذاری در تلگرام')}
-              title="Telegram"
-              className="group flex aspect-square min-h-12 min-w-0 items-center justify-center rounded-[16px] border border-white/[0.12] bg-gradient-to-br from-[#2C2E35] to-[#17191F] text-[#28A8EA] shadow-[0_7px_16px_rgba(0,0,0,.25),inset_0_1px_0_rgba(255,255,255,.06)] transition duration-200 hover:-translate-y-0.5 hover:border-[#28A8EA]/50 active:scale-95 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#28A8EA]">
-              <svg aria-hidden="true" viewBox="0 0 24 24" className="h-6 w-6 transition-transform group-hover:scale-110 sm:h-7 sm:w-7" fill="currentColor">
-                <path d="M21.8 3.2 2.4 10.8c-1.1.4-1 1.1 0 1.4l4.9 1.5 1.9 5.6c.3.7.5.9.9.9.3 0 .5-.2.9-.5l2.5-2.5 4.9 3.6c.9.5 1.5.2 1.7-.9l3.1-15.1c.2-1.2-.4-1.9-1.4-1.6ZM8.5 13.3l10.8-7.2-8.9 9.1-.4 3.2-1.5-5.1Z" />
-              </svg>
-            </a>
-            <a href={socialLinks.x} target="_blank" rel="noopener noreferrer"
-              aria-label={copy('Share on X', 'اشتراک‌گذاری در ایکس')}
-              title="X"
-              className="group flex aspect-square min-h-12 min-w-0 items-center justify-center rounded-[16px] border border-white/[0.12] bg-gradient-to-br from-[#2C2E35] to-[#17191F] text-white shadow-[0_7px_16px_rgba(0,0,0,.25),inset_0_1px_0_rgba(255,255,255,.06)] transition duration-200 hover:-translate-y-0.5 hover:border-white/35 active:scale-95 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white">
-              <svg aria-hidden="true" viewBox="0 0 24 24" fill="currentColor" className="h-5 w-5 transition-transform group-hover:scale-110 sm:h-6 sm:w-6">
-                <path d="M18.9 1.15h3.68l-8.04 9.19L24 22.85h-7.4l-5.8-7.58-6.64 7.58H.47l8.6-9.83L0 1.15h7.59l5.25 6.94 6.06-6.94ZM17.61 20.64h2.04L6.49 3.24H4.3l13.31 17.4Z" />
-              </svg>
-            </a>
-            <button type="button" onClick={() => void shareSocialLink()}
-              aria-label={copy('Share BetVima using another app', 'اشتراک‌گذاری بت‌ویما با برنامه دیگر')}
-              title={copy('Share', 'اشتراک‌گذاری')}
-              className="group flex aspect-square min-h-12 min-w-0 items-center justify-center rounded-[16px] border border-white/[0.12] bg-gradient-to-br from-[#2C2E35] to-[#17191F] text-[#E4E9F2] shadow-[0_7px_16px_rgba(0,0,0,.25),inset_0_1px_0_rgba(255,255,255,.06)] transition duration-200 hover:-translate-y-0.5 hover:border-[#087FF5]/60 active:scale-95 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#087FF5]">
-              <Share2 aria-hidden="true" className="h-6 w-6 transition-transform group-hover:scale-110 sm:h-7 sm:w-7" strokeWidth={2.2} />
-            </button>
-            <button type="button" onClick={() => void copySocialLink()}
-              aria-label={copy('Copy BetVima link', 'کپی لینک بت‌ویما')}
-              title={socialLinkCopied ? copy('Copied!', 'کپی شد!') : copy('Copy link', 'کپی لینک')}
-              className="group flex aspect-square min-h-12 min-w-0 items-center justify-center rounded-[16px] border border-white/[0.12] bg-gradient-to-br from-[#2C2E35] to-[#17191F] text-[#E4E9F2] shadow-[0_7px_16px_rgba(0,0,0,.25),inset_0_1px_0_rgba(255,255,255,.06)] transition duration-200 hover:-translate-y-0.5 hover:border-[#087FF5]/60 active:scale-95 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#087FF5]">
-              {socialLinkCopied ? <Check aria-hidden="true" className="h-6 w-6 text-[#00D47A]" strokeWidth={2.2} /> : <Link2 aria-hidden="true" className="h-6 w-6 transition-transform group-hover:scale-110 sm:h-7 sm:w-7" strokeWidth={2.2} />}
-            </button>
-          </div>
-          <span aria-live="polite" className="sr-only">{socialLinkCopied ? copy('BetVima link copied', 'لینک بت‌ویما کپی شد') : ''}</span>
-        </section>
 
         <div className="flex flex-col gap-2 border-t border-white/[0.09] py-3 text-[11px] font-medium text-[#8795A6] sm:flex-row sm:items-center sm:justify-between">
           <p>© {new Date().getFullYear()} BetVima. {copy("All rights reserved.", "تمام حقوق محفوظ است.")}</p>
