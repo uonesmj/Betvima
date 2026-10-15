@@ -31,3 +31,23 @@ export function exactCasinoRefund(originalLocalDebit: bigint, originalUsdDebit: 
     throw new Error('ORIGINAL_DEBIT_REQUIRED');
   return originalLocalDebit;
 }
+
+export type CasinoFxSnapshot = Readonly<{
+  source: 'arzhaam';
+  rateIrtPerUsd: string;
+  observedAt: string;
+  fetchedAt: string;
+}>;
+
+/** Fail closed on missing, stale, or future-dated rate observations. */
+export function validateCasinoFxSnapshot(snapshot: CasinoFxSnapshot, now = Date.now()): bigint {
+  if (snapshot.source !== 'arzhaam') throw new Error('INVALID_CASINO_FX_SOURCE');
+  const rate = parseIrtUsdRate(snapshot.rateIrtPerUsd);
+  const observedAt = Date.parse(snapshot.observedAt);
+  const fetchedAt = Date.parse(snapshot.fetchedAt);
+  if (!Number.isFinite(observedAt) || !Number.isFinite(fetchedAt) ||
+      observedAt > now + 10_000 || fetchedAt > now + 10_000 ||
+      observedAt < now - 120_000 || fetchedAt < now - 30_000 ||
+      fetchedAt + 10_000 < observedAt) throw new Error('STALE_CASINO_FX_QUOTE');
+  return rate;
+}
