@@ -76,6 +76,16 @@ export function casinoRealMoneyEnabled() {
   return process.env.SOFTAGGREGATOR_ENABLED === 'true' &&
     process.env.SOFTAGGREGATOR_REAL_MONEY_ENABLED === 'true';
 }
+/**
+ * Explicit one-account pilot allowlist. Enabling the provider's real-money flag
+ * never opens wagering for every user. A configured UUID is required.
+ */
+export function casinoRealMoneyUserAllowed(userId: string): boolean {
+  if (!casinoRealMoneyEnabled()) return false;
+  const pilotUser = (process.env.SOFTAGGREGATOR_TEST_USER_ID ?? '').trim().toLowerCase();
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(pilotUser) &&
+    pilotUser === userId.toLowerCase();
+}
 export function requireCasinoEnabled() {
   if (!casinoEnabled()) throw new Error('CASINO_DISABLED');
 }
@@ -125,7 +135,7 @@ export async function launchCasinoGame(input: {
   country?: string;
 }): Promise<string> {
   requireCasinoEnabled();
-  if (!input.demo && !casinoRealMoneyEnabled()) throw new Error('CASINO_REAL_MONEY_DISABLED');
+  if (!input.demo && (!input.userId || !casinoRealMoneyUserAllowed(input.userId))) throw new Error('CASINO_REAL_MONEY_DISABLED');
   const games = await casinoGames();
   const game = games.find((g) => g.id_hash === input.gameId);
   if (!game) throw new Error('CASINO_GAME_NOT_FOUND');
