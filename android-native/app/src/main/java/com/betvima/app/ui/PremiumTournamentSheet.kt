@@ -43,7 +43,7 @@ fun PremiumTournamentSheet(
     }
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val scope = rememberCoroutineScope()
-    val animatedDismiss = {
+    val animatedDismiss: () -> Unit = {
         scope.launch {
             sheetState.hide()
             onDismiss()
