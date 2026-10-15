@@ -84,14 +84,22 @@ fun SportsBadgeShortcut(
 
 /**
  * Curated competition artwork supplied by the user, offline and bundled with
- * the application. Original artwork is now stored at 256 pixels per tile; a small
- * 2px safety crop removes faint edge pixels. Crop before circle clipping
+ * the application. Original artwork is sampled from 512-pixel tiles with
+ * high quality filtering. Two optically smaller original emblems (WTA Wuhan
+ * and NBA Pre-season) receive a dedicated zoom crop within the same 80dp
+ * physical circle, so all 16 have consistent perceived size. Crop before circle clipping
  * so that the artwork fills the control, without an extra inner/outer rim.
  */
 internal object HomeLeagueBadgeLayout {
-    const val sourceTilePx = 256
-    const val cropInsetPx = 2
+    const val sourceTilePx = 512
+    const val cropInsetPx = 4
     const val cropSizePx = sourceTilePx - 2 * cropInsetPx
+
+    fun cropInsetFor(index: Int): Int = when (index) {
+        2, 4 -> 20 // WTA Wuhan and NBA Pre-season have extra whitespace in originals
+        else -> cropInsetPx
+    }
+    fun cropSizeFor(index: Int): Int = sourceTilePx - 2 * cropInsetFor(index)
     const val cardWidthDp = 88      // Previously 70dp: >= 25% wider
     const val diameterDp = 80       // Previously 64dp: exactly 25% larger
 }
@@ -125,17 +133,15 @@ fun LeagueBadgeShortcut(label: String, index: Int, onClick: () -> Unit) {
             color = Color.Transparent
         ) {
             Canvas(Modifier.fillMaxSize().clip(CircleShape)) {
+                val inset = HomeLeagueBadgeLayout.cropInsetFor(index)
+                val tileCrop = HomeLeagueBadgeLayout.cropSizeFor(index)
                 drawImage(
                     image = atlas,
                     srcOffset = IntOffset(
-                        (index % 4) * HomeLeagueBadgeLayout.sourceTilePx +
-                            HomeLeagueBadgeLayout.cropInsetPx,
-                        HomeLeagueBadgeLayout.cropInsetPx
+                        (index % 4) * HomeLeagueBadgeLayout.sourceTilePx + inset,
+                        inset
                     ),
-                    srcSize = IntSize(
-                        HomeLeagueBadgeLayout.cropSizePx,
-                        HomeLeagueBadgeLayout.cropSizePx
-                    ),
+                    srcSize = IntSize(tileCrop, tileCrop),
                     dstOffset = IntOffset.Zero,
                     dstSize = IntSize(size.width.toInt(), size.height.toInt()),
                     filterQuality = FilterQuality.High

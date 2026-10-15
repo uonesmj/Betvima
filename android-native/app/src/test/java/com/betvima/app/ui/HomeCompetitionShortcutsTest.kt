@@ -39,14 +39,54 @@ class HomeCompetitionShortcutsTest {
         assertEquals(88, HomeLeagueBadgeLayout.cardWidthDp)
         assertTrue(HomeLeagueBadgeLayout.diameterDp * 4 >= 64 * 5)
         assertTrue(HomeLeagueBadgeLayout.cardWidthDp * 4 >= 70 * 5)
-        assertEquals(256, HomeLeagueBadgeLayout.sourceTilePx)
-        assertEquals(2, HomeLeagueBadgeLayout.cropInsetPx)
+        assertEquals(512, HomeLeagueBadgeLayout.sourceTilePx)
+        assertEquals(4, HomeLeagueBadgeLayout.cropInsetPx)
         assertEquals(
             HomeLeagueBadgeLayout.sourceTilePx,
             HomeLeagueBadgeLayout.cropSizePx +
                 (2 * HomeLeagueBadgeLayout.cropInsetPx)
         )
         assertTrue(HomeLeagueBadgeLayout.cropSizePx > 0)
+    }
+
+    @Test fun opticalCroppingIsCorrectedWithoutChangingCircleDimensions() {
+        assertEquals(20, HomeLeagueBadgeLayout.cropInsetFor(2))
+        assertEquals(20, HomeLeagueBadgeLayout.cropInsetFor(4))
+        assertEquals(4, HomeLeagueBadgeLayout.cropInsetFor(0))
+        assertEquals(4, HomeLeagueBadgeLayout.cropInsetFor(15))
+        assertEquals(
+            HomeLeagueBadgeLayout.sourceTilePx,
+            HomeLeagueBadgeLayout.cropSizeFor(2) +
+                HomeLeagueBadgeLayout.cropInsetFor(2) * 2
+        )
+        assertTrue(HomeLeagueBadgeLayout.cropSizeFor(2) > 0)
+        assertEquals(80, HomeLeagueBadgeLayout.diameterDp)
+    }
+
+    @Test fun carouselRevealIsBoundedAndFadesOnlyNearEdges() {
+        val center = competitionRibbonReveal(
+            itemCenterPx = 500f, viewportStartPx = 0f,
+            viewportEndPx = 1000f, itemSizePx = 90f
+        )
+        assertEquals(1f, center.scale, .0001f)
+        assertEquals(1f, center.alpha, .0001f)
+        assertEquals(0f, center.translationDp, .0001f)
+
+        val entering = competitionRibbonReveal(
+            itemCenterPx = 0f, viewportStartPx = 0f,
+            viewportEndPx = 1000f, itemSizePx = 90f
+        )
+        assertTrue(entering.scale in .93f..1f)
+        assertTrue(entering.alpha in .80f..1f)
+        assertTrue(entering.translationDp > 0f)
+
+        val leaving = competitionRibbonReveal(
+            itemCenterPx = 1000f, viewportStartPx = 0f,
+            viewportEndPx = 1000f, itemSizePx = 90f
+        )
+        assertTrue(leaving.translationDp < 0f)
+        val invalid = competitionRibbonReveal(0f, 0f, 100f, 0f)
+        assertEquals(1f, invalid.scale, .0001f)
     }
 
     @Test fun marketsOpensRealTopBetsInsteadOfFabricatedFixtures() {
