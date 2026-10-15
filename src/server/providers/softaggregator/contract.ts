@@ -34,7 +34,7 @@ export function playerUsername(userId: string): string {
 export function userIdFromUsername(username: string): string | null {
   const m = /^bv_([0-9a-f]{32})$/.exec(username);
   if (!m) return null;
-  const id = m[1];
+  const id = m[1]!;
   return id.slice(0, 8) + '-' + id.slice(8, 12) + '-' + id.slice(12, 16) + '-' + id.slice(16, 20) + '-' + id.slice(20);
 }
 
@@ -58,7 +58,7 @@ export function validateCallback(url: URL, signature: string | null, salt: strin
   if (!equalHex(md5, key)) return null;
   // Full-payload HMAC is mandatory; MD5(timestamp + salt) alone does NOT authenticate the amount.
   if (!signature) return null;
-  const canonical = [...params.entries()].sort(([a], [b]) => a.localeCompare(b, 'en'))
+  const canonical = [...params.entries()].sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0)
     .map(([name, value]) => name + '=' + value).join('&');
   const expected = createHmac('sha256', salt).update(canonical).digest('hex');
   if (!equalHex(expected, signature.trim())) return null;
