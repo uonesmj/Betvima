@@ -55,6 +55,27 @@ When demo is provisioned, SoftAggregator documents `getGameDemo` using the
 remains disabled while current credentials are exposed and the wallet migration
 and reconciliation tests have not been completed.
 
+## Verified launch response shape — 2026-10-15
+
+The BetVima VPS verified `createPlayer` and `getGameDemo` for the
+supplier-confirmed Aviator game `x887bde40b16350c`. Both calls returned
+HTTP 200 and supplier `error: 0`. The launch URL was not a top-level string:
+the supplier returned `response: { gameurl: "https://..." }` with a valid
+HTTPS hostname. The first standalone test incorrectly reported FAILED because
+it checked only a top-level string, **not** because Aviator failed to launch.
+
+The backend now extracts a verified HTTPS `gameurl` from the response object,
+while tolerating a legacy direct-string response. It never logs launch URLs,
+rejects URL credentials / non-HTTPS values, and returns the URL only to the
+authenticated app user. The opt-in diagnostic uses the same response shape and
+requires a pre-existing provider test player when testing a demo; its default
+catalogue/currencies checks remain non-mutating.
+
+This confirms *supplier API launch URL creation*, not yet that the game was
+rendered in an Android WebView. Production remains gated by owner-approved
+deployment, protected secrets and the unapplied `0208` migration registry
+requirements. `SOFTAGGREGATOR_REAL_MONEY_ENABLED` remains false.
+
 ## Callback safety
 
 Documented provider protocol: signed GET parameters. Check timestamp (±30s), legacy MD5 key, **and** full payload X-Signature HMAC SHA-256. Duplicate keys and missing HMAC fail closed. Amounts and balances are integer USD cents. A callback is processed only when the real-money feature flag is explicitly enabled.
@@ -80,11 +101,11 @@ can then operate without crediting/debiting player wallets.
 
 After private configuration, run `npm run casino:diagnose` on the server. It
 makes only `getCurrencies` and `getGameList` requests and reports counts and
-category breakdowns, never credentials or launch URLs. To test one demo launch
-without exposing its URL, also set `SOFTAGGREGATOR_PROBE_GAME_ID` to a real
-demo-supported `id_hash`. Some studios may require a test username/password;
-these can be set in `SOFTAGGREGATOR_PROBE_USER` and
-`SOFTAGGREGATOR_PROBE_PASSWORD` via private server environment.
+category breakdowns, never credentials or launch URLs. To test one demo launch without exposing its URL, explicitly set
+`SOFTAGGREGATOR_PROBE_GAME_ID=x887bde40b16350c` (or another licensed game)
+with `SOFTAGGREGATOR_PROBE_USER` and `SOFTAGGREGATOR_PROBE_PASSWORD` for an
+**already-created** supplier test player in the private server environment.
+The provider's `play_for_fun_supported` flag is not a reliable indicator.
 
 A successful dry-run is not a live-money release: the production workflow is
 explicitly owner-dispatched on `main`, and any new migrations must first be

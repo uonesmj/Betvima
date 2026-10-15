@@ -34,7 +34,7 @@ describe('SoftAggregator demo-only launch API', () => {
         ok: true, json: async () => ({ error: 0, response: { created: true } }),
       };
       if (body.method === 'getGameDemo') return {
-        ok: true, json: async () => ({ error: 0, response: 'https://cdn.provider.test/play?token=random' }),
+        ok: true, json: async () => ({ error: 0, response: { gameurl: 'https://cdn.provider.test/play?token=random' } }),
       };
       throw new Error('Unexpected provider method: ' + body.method);
     }));
@@ -54,6 +54,54 @@ describe('SoftAggregator demo-only launch API', () => {
     expect(calls[2]).toHaveProperty('user_username', calls[1]!.user_username);
     expect(calls[2]).toHaveProperty('user_password', calls[1]!.user_password);
     expect(calls[2]).toHaveProperty('gameid', 'x887bde40b16350c');
+  });
+
+
+  it('retains compatibility with a direct-string launch response', async () => {
+    vi.stubGlobal('fetch', vi.fn(async (_: string, options: RequestInit) => {
+      const body = JSON.parse(String(options.body)) as Record<string, unknown>;
+      if (body.method === 'getGameList') return {
+        ok: true, json: async () => ({ error: 0, response: [{
+          id_hash: 'x887bde40b16350c', name: 'Aviator', game_type: 'crash',
+          provider: 'studio', play_for_fun_supported: false,
+        }] }),
+      };
+      if (body.method === 'createPlayer') return {
+        ok: true, json: async () => ({ error: 0, response: { created: true } }),
+      };
+      if (body.method === 'getGameDemo') return {
+        ok: true, json: async () => ({ error: 0, response: 'https://cdn.provider.test/legacy' }),
+      };
+      throw new Error('Unexpected method');
+    }));
+    const url = await launchCasinoGame({
+      userId: '00000000-0000-4000-8000-000000000001',
+      gameId: 'x887bde40b16350c', demo: true, lang: 'en', device: 'mobile',
+    });
+    expect(url).toBe('https://cdn.provider.test/legacy');
+  });
+
+  it('rejects malformed or insecure gameurl responses', async () => {
+    vi.stubGlobal('fetch', vi.fn(async (_: string, options: RequestInit) => {
+      const body = JSON.parse(String(options.body)) as Record<string, unknown>;
+      if (body.method === 'getGameList') return {
+        ok: true, json: async () => ({ error: 0, response: [{
+          id_hash: 'x887bde40b16350c', name: 'Aviator', game_type: 'crash',
+          provider: 'studio', play_for_fun_supported: false,
+        }] }),
+      };
+      if (body.method === 'createPlayer') return {
+        ok: true, json: async () => ({ error: 0, response: { created: true } }),
+      };
+      if (body.method === 'getGameDemo') return {
+        ok: true, json: async () => ({ error: 0, response: { gameurl: 'http://insecure.test/play' } }),
+      };
+      throw new Error('Unexpected method');
+    }));
+    await expect(launchCasinoGame({
+      userId: '00000000-0000-4000-8000-000000000001',
+      gameId: 'x887bde40b16350c', demo: true, lang: 'en', device: 'mobile',
+    })).rejects.toThrow('INVALID_CASINO_LAUNCH_URL');
   });
 
   it('refuses real-money game access independently of provider credentials', async () => {
