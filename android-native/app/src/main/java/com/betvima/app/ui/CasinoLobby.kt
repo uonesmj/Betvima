@@ -165,6 +165,39 @@ fun CasinoLobby(state: AppState, model: AppViewModel) {
                 icon = Icons.Default.VerifiedUser, accent = Palette.blue)
         }
         item(span = { GridItemSpan(maxLineSpan) }) {
+            Surface(
+                shape = RoundedCornerShape(16.dp),
+                color = Palette.greenLight,
+                border = BorderStroke(1.dp, Palette.green.copy(alpha = .35f))
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(13.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(9.dp)
+                ) {
+                    Column(Modifier.weight(1f)) {
+                        Text(
+                            tr(state.lang, "Aviator · Verified demo", "Aviator · دموی تأییدشده"),
+                            fontWeight = FontWeight.Bold, fontSize = 13.sp, color = Palette.ink
+                        )
+                        Text(
+                            tr(state.lang, "Not every slot or live casino game has a free demo.",
+                                "همه اسلات‌ها و بازی‌های کازینو زنده نسخه آزمایشی ندارند."),
+                            fontSize = 11.sp, color = Palette.text, lineHeight = 17.sp
+                        )
+                    }
+                    Button(
+                        onClick = { tryDemo("x887bde40b16350c", true) },
+                        enabled = launching == null,
+                        colors = ButtonDefaults.buttonColors(containerColor = Palette.ink),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Text(tr(state.lang, "Play demo", "اجرای دمو"), fontSize = 11.sp)
+                    }
+                }
+            }
+        }
+        item(span = { GridItemSpan(maxLineSpan) }) {
             OutlinedTextField(
                 value = query,
                 onValueChange = {
