@@ -1,16 +1,121 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" aria-hidden="true">
 <defs>
-<linearGradient id="g" x2=".85" y2="1"><stop stop-color="#fff2b1"/><stop offset=".32" stop-color="#eaba62"/><stop offset=".72" stop-color="#a56528"/><stop offset="1" stop-color="#f8db91"/></linearGradient>
-<linearGradient id="b" x2=".9" y2="1"><stop stop-color="#86fbf5"/><stop offset=".48" stop-color="#15b6a4"/><stop offset="1" stop-color="#055e78"/></linearGradient>
-<linearGradient id="p" x2=".9" y2="1"><stop stop-color="#e6a9ff"/><stop offset=".5" stop-color="#9050c4"/><stop offset="1" stop-color="#30205b"/></linearGradient>
-<linearGradient id="r" x2=".8" y2="1"><stop stop-color="#fcb5a0"/><stop offset=".5" stop-color="#bf4e69"/><stop offset="1" stop-color="#4c2559"/></linearGradient>
-<symbol id="ankh" viewBox="0 0 100 100"><path d="M50 14C20 14 22 51 50 59c28-8 30-45 0-45Zm0 11c18 0 15 21 0 25-15-4-18-25 0-25Z" fill="url(#g)" stroke="#543519" stroke-width="2"/><path d="M44 55h12v30H44zM18 61h64v12H18z" fill="url(#g)" stroke="#513519" stroke-width="2"/><circle cx="50" cy="19" r="2" fill="#fff4bc"/></symbol>
-<symbol id="scarab" viewBox="0 0 100 100"><path d="M50 23c-17-15-28-3-25 10l13 13-9 27 21 9 21-9-9-27 13-13C78 20 67 8 50 23Z" fill="url(#b)" stroke="#d4ba70" stroke-width="4"/><path d="M50 29v50M34 44h32M38 62h24M16 42l18 9M84 42l-18 9M17 73l15-11M83 73 68 62" stroke="#f2d18d" stroke-width="4" fill="none"/><circle cx="50" cy="20" r="5" fill="url(#g)"/></symbol>
-<symbol id="lotus" viewBox="0 0 100 100"><path d="M50 81C27 69 19 49 33 30c13 4 18 13 17 25 0-20 9-37 19-39 12 18 8 35-4 47 8-10 16-15 25-13-2 22-16 33-40 31Z" fill="url(#p)" stroke="#efcf91" stroke-width="3"/><path d="M50 78c-11-20-8-43 1-64 12 22 10 45-1 64Z" fill="url(#g)"/><path d="M19 82h62" stroke="#f2d58a" stroke-width="6" stroke-linecap="round"/></symbol>
-<symbol id="eye" viewBox="0 0 100 100"><path d="M10 49Q50 10 90 49 50 86 10 49Z" fill="url(#g)" stroke="#52361d" stroke-width="4"/><path d="M17 49Q50 22 83 49 50 73 17 49Z" fill="#e5ebe6"/><circle cx="50" cy="49" r="17" fill="url(#b)"/><circle cx="50" cy="49" r="9" fill="#16182b"/><path d="m68 63 7 18 13-5M32 62 21 79" stroke="url(#g)" stroke-width="5" fill="none"/></symbol>
-<symbol id="queen" viewBox="0 0 100 100"><path d="M24 89q3-26 26-28 23 2 26 28Z" fill="url(#p)" stroke="#e1b866" stroke-width="3"/><path d="M32 38q0-24 18-24 18 0 18 24v12q-7 21-18 21T32 50Z" fill="url(#r)" stroke="#4d293b" stroke-width="3"/><path d="M20 37 26 7l24 9L74 7l6 30-30-5Z" fill="url(#g)" stroke="#593c20" stroke-width="3"/><path d="M40 15h20l-10 15Z" fill="url(#b)"/><path d="M34 48h12M54 48h12" stroke="#33263c" stroke-width="3"/></symbol>
-<symbol id="anubis" viewBox="0 0 100 100"><path d="M25 12 43 32 50 22 57 32 75 12l-3 40-9 22H37L28 52Z" fill="#1c2437" stroke="#d9b16d" stroke-width="4"/><path d="M31 16 37 38M69 16 63 38" stroke="#6d53a6" stroke-width="5"/><path d="M36 44h11M53 44h11" stroke="#79efe0" stroke-width="4"/><path d="m45 55 5 8 5-8M42 71l8 18 8-18" fill="url(#g)" stroke="#b78a42" stroke-width="3"/><path d="M25 77h50v11H25z" fill="url(#p)"/></symbol>
-<symbol id="pharaoh" viewBox="0 0 100 100"><path d="M22 19q28-32 56 0l6 65-27 5-7-19-7 19-27-5Z" fill="url(#b)" stroke="#e8c06f" stroke-width="4"/><path d="M29 18q21-19 42 0l-4 36-17 18-17-18Z" fill="url(#g)" stroke="#603818" stroke-width="3"/><path d="M20 30h16M64 30h16M18 48h20M62 48h20M19 65h20M61 65h20" stroke="#e0bb73" stroke-width="5"/><path d="M37 40h10M53 40h10M44 57h12" stroke="#432d27" stroke-width="3"/><path d="m50 7 8 13-8 16-8-16Z" fill="url(#r)" stroke="#ffe09d" stroke-width="2"/></symbol>
-<symbol id="wild" viewBox="0 0 100 100"><path d="M50 5 60 30 88 16 76 44l19 17-28 3-17 28-17-28-28-3 19-17-12-28 28 14Z" fill="url(#g)" stroke="#fff1b3" stroke-width="3"/><circle cx="50" cy="48" r="22" fill="#392845" stroke="#ffe5a0" stroke-width="4"/><path d="M36 38 42 60l8-14 8 14 6-22" stroke="#fff1c3" stroke-width="6" fill="none" stroke-linecap="round"/></symbol>
-<symbol id="scatter" viewBox="0 0 100 100"><path d="M50 6 93 82H7Z" fill="url(#g)" stroke="#fff0b3" stroke-width="3"/><path d="M50 6v76M22 59h56M13 76h74" stroke="#79512d" stroke-width="3"/><circle cx="50" cy="55" r="12" fill="url(#b)" stroke="#fdf0c4" stroke-width="3"/><circle cx="50" cy="55" r="5" fill="#e4fcf0"/></symbol>
-</defs></svg>
+  <linearGradient id="gold" x1=".03" y1=".02" x2=".95" y2=".98"><stop stop-color="#fffbdc"/><stop offset=".19" stop-color="#f6cc68"/><stop offset=".4" stop-color="#a76523"/><stop offset=".62" stop-color="#ffe8a1"/><stop offset=".84" stop-color="#bd752d"/><stop offset="1" stop-color="#653310"/></linearGradient>
+  <linearGradient id="oldgold" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#fbe39c"/><stop offset=".55" stop-color="#a46024"/><stop offset="1" stop-color="#fff4ba"/></linearGradient>
+  <linearGradient id="blue" x1="0" y1="0" x2=".85" y2="1"><stop stop-color="#b3fffa"/><stop offset=".17" stop-color="#4adedf"/><stop offset=".48" stop-color="#0e99bb"/><stop offset=".69" stop-color="#064077"/><stop offset="1" stop-color="#021b3e"/></linearGradient>
+  <linearGradient id="deepblue" x1="0" y1="0" x2="1" y2=".7"><stop stop-color="#264679"/><stop offset=".5" stop-color="#080b29"/><stop offset="1" stop-color="#256cac"/></linearGradient>
+  <radialGradient id="ruby" cx=".35" cy=".2" r=".85"><stop stop-color="#fff0ce"/><stop offset=".13" stop-color="#ff8d91"/><stop offset=".42" stop-color="#d01e49"/><stop offset=".76" stop-color="#76173b"/><stop offset="1" stop-color="#310f2b"/></radialGradient>
+  <radialGradient id="violet" cx=".32" cy=".17" r=".92"><stop stop-color="#fef2c1"/><stop offset=".12" stop-color="#d691f9"/><stop offset=".48" stop-color="#8540cb"/><stop offset=".8" stop-color="#3d276c"/><stop offset="1" stop-color="#1f143f"/></radialGradient>
+  <linearGradient id="skin" x1="0" y1="0" x2=".9" y2="1"><stop stop-color="#fff2bb"/><stop offset=".22" stop-color="#efbc78"/><stop offset=".67" stop-color="#be7750"/><stop offset="1" stop-color="#6d3a35"/></linearGradient>
+  <linearGradient id="black" x1="0" y1="0" x2="1" y2=".9"><stop stop-color="#617693"/><stop offset=".24" stop-color="#172b49"/><stop offset=".57" stop-color="#070d21"/><stop offset=".81" stop-color="#182b3d"/><stop offset="1" stop-color="#050711"/></linearGradient>
+  <radialGradient id="aura"><stop stop-color="#fff9c6" stop-opacity=".54"/><stop offset=".3" stop-color="#e3b960" stop-opacity=".25"/><stop offset="1" stop-color="#ffce70" stop-opacity="0"/></radialGradient>
+  <filter id="goldGlow" x="-35%" y="-35%" width="170%" height="170%"><feGaussianBlur stdDeviation="1.4"/></filter>
+  <g id="gem"><path d="M0-12 11-4 8 8 0 15-8 8-11-4Z" fill="url(#blue)" stroke="#ffedaa" stroke-width="2"/><path d="M0-9 6-4 0 11-5-3Z" fill="#d0ffff" opacity=".44"/></g>
+  <g id="jewel"><path d="M0-10 9-4 9 5 0 11-9 5-9-4Z" fill="url(#ruby)" stroke="#ffdb87" stroke-width="2"/></g>
+
+  <symbol id="ankh" viewBox="0 0 100 100">
+    <ellipse cx="50" cy="53" rx="43" ry="42" fill="url(#aura)"/>
+    <path d="M50 8C21 8 22 48 40 56L43 61H16v12h28v17h12V73h28V61H57l3-5C78 48 79 8 50 8Zm0 11c16 0 16 18 5 27l-5 4-5-4C34 37 34 19 50 19Z" fill="url(#gold)" stroke="#563211" stroke-width="2.8" stroke-linejoin="round"/>
+    <path d="M50 22c9 0 12 9 9 14M45 59h10M21 66h20M59 66h20M47 76v10" stroke="#fff1b5" stroke-width="2" stroke-linecap="round" opacity=".9"/>
+    <circle cx="50" cy="65" r="5.5" fill="url(#ruby)" stroke="#ffe4a1" stroke-width="1.5"/>
+    <path d="M13 91h74" stroke="#ca975a" stroke-width="2" opacity=".6"/>
+  </symbol>
+
+  <symbol id="scarab" viewBox="0 0 100 100">
+    <ellipse cx="50" cy="52" rx="45" ry="46" fill="url(#aura)"/>
+    <path d="M30 37 11 24l1 20 16 12-13 16 19-4M70 37l19-13-1 20-16 12 13 16-19-4" fill="url(#gold)" stroke="#633d21" stroke-width="2.2" stroke-linejoin="round"/>
+    <path d="M37 26q-17-3-16 20t17 30l12 9 12-9q18-7 17-30T63 26Z" fill="url(#blue)" stroke="url(#gold)" stroke-width="5"/>
+    <path d="M37 43Q50 36 63 43l7 13-11 18-9 4-9-4-11-18Z" fill="url(#blue)" stroke="#fff0ad" stroke-width="2"/>
+    <path d="M50 32v47M33 51h34M37 66h26" stroke="#ffdf8d" stroke-width="3" opacity=".86"/>
+    <path d="M35 28 41 15h18l6 13" fill="url(#gold)" stroke="#4b2b17" stroke-width="2"/>
+    <circle cx="50" cy="18" r="6.5" fill="url(#ruby)" stroke="#fff0b4" stroke-width="2"/>
+    <path d="m17 31 10 18m56-18-10 18" stroke="#fff1aa" stroke-width="2"/>
+  </symbol>
+
+  <symbol id="lotus" viewBox="0 0 100 100">
+    <ellipse cx="50" cy="52" rx="45" ry="45" fill="url(#aura)"/>
+    <path d="M49 79Q8 63 16 36q22 4 33 21Q32 26 38 16q19 9 14 38Q56 17 65 12q18 25-3 48 14-22 29-20Q93 65 52 80Z" fill="url(#violet)" stroke="#ffdc89" stroke-width="3.5" stroke-linejoin="round"/>
+    <path d="M50 79q-19-33 0-67 18 34 0 67Z" fill="url(#gold)" stroke="#ffe7ab" stroke-width="2.4"/>
+    <path d="M29 38Q34 64 47 73M72 35Q66 65 53 74" fill="none" stroke="#ffe0aa" stroke-width="2"/>
+    <path d="M16 77q32 8 68 0l-11 10H27Z" fill="url(#gold)" stroke="#7a471f" stroke-width="2"/>
+    <use href="#gem" transform="translate(50 81) scale(.47)"/>
+    <path d="M12 91q38 7 76 0" stroke="#f9d48e" stroke-width="2" fill="none"/>
+  </symbol>
+
+  <symbol id="eye" viewBox="0 0 100 100">
+    <ellipse cx="50" cy="52" rx="47" ry="43" fill="url(#aura)"/>
+    <path d="M5 49q46-43 90 0-44 39-90 0Z" fill="url(#gold)" stroke="#583716" stroke-width="3"/>
+    <path d="M13 49q35-33 74 0-39 30-74 0Z" fill="#fff5dc" stroke="#996037" stroke-width="2"/>
+    <circle cx="50" cy="48" r="22" fill="url(#blue)" stroke="#b47d33" stroke-width="4"/>
+    <circle cx="50" cy="48" r="13" fill="#092444" stroke="#74f1f0" stroke-width="2"/>
+    <circle cx="50" cy="48" r="8" fill="#020b1a"/>
+    <ellipse cx="44" cy="40" rx="5" ry="7" fill="#eafffa" opacity=".93" transform="rotate(28 44 40)"/>
+    <path d="m26 64-13 17m55-14 8 19 12-8" stroke="url(#gold)" stroke-width="6" stroke-linecap="round" fill="none"/>
+    <path d="M15 38q36-30 69-7M36 19l7-7" stroke="#ffe69c" stroke-width="3" fill="none"/>
+  </symbol>
+
+  <symbol id="queen" viewBox="0 0 100 100">
+    <ellipse cx="50" cy="53" rx="47" ry="46" fill="url(#aura)"/>
+    <path d="M10 98Q17 77 32 72l8-8h20l8 8q18 5 23 26Z" fill="url(#blue)" stroke="url(#gold)" stroke-width="3.3"/>
+    <path d="M25 92 33 73l16 7 17-7 10 19" fill="none" stroke="#fff4ad" stroke-width="5"/>
+    <path d="M26 40q-2-24 23-26 29 1 25 26L68 64l-11 13H43L32 64Z" fill="#171324" stroke="#b78442" stroke-width="3"/>
+    <path d="M34 38q0-23 16-22t16 22l-3 25-13 11-13-11Z" fill="url(#skin)" stroke="#e7b66e" stroke-width="1.7"/>
+    <path d="M37 46q6-5 11-1M53 45q5-4 11 1" fill="none" stroke="#2d1520" stroke-width="2.1"/>
+    <ellipse cx="43" cy="47" rx="2.3" ry="1.6" fill="#112135"/><ellipse cx="59" cy="47" rx="2.3" ry="1.6" fill="#112135"/>
+    <path d="m51 47-3 12 5 1m-10 7q9 4 16-1" fill="none" stroke="#8d4c42" stroke-width="1.7"/>
+    <path d="M18 36Q17 13 31 7l19 6 20-6q16 6 12 29l-10 11-4-28-18 8-18-8-4 28Z" fill="url(#blue)" stroke="url(#gold)" stroke-width="3"/>
+    <path d="M21 24h57M23 31h10m34 0h10M29 13l21 10 20-10" stroke="#ffe6aa" stroke-width="4"/>
+    <use href="#gem" transform="translate(50 18) scale(.55)"/>
+    <path d="M38 74 50 83l12-9" fill="none" stroke="#f9d18a" stroke-width="3"/>
+    <circle cx="29" cy="58" r="4" fill="url(#gold)"/><circle cx="71" cy="58" r="4" fill="url(#gold)"/>
+  </symbol>
+
+  <symbol id="anubis" viewBox="0 0 100 100">
+    <ellipse cx="50" cy="50" rx="43" ry="44" fill="url(#aura)"/>
+    <path d="M18 98Q11 75 34 69l11-10h22l13 10 8 29Z" fill="url(#black)" stroke="url(#gold)" stroke-width="4"/>
+    <path d="m22 20 6-17 18 26L61 9l12-8 1 38 12 14-7 17-12 15-20 3-19-17-4-29Z" fill="url(#black)" stroke="url(#gold)" stroke-width="3"/>
+    <path d="M28 6 33 32 42 39 36 20ZM70 6l-7 32 6 12 5-19Z" fill="url(#blue)" stroke="#ffde8d" stroke-width="1.5"/>
+    <path d="m48 43 13-8 14 9 15 4-6 12-24 7-13 12-13-11Z" fill="#0a1429" stroke="url(#gold)" stroke-width="2.5"/>
+    <path d="m39 47 13-3 7 6-7 4-16-2Z" fill="#54f1e9" stroke="#fff8cd" stroke-width="1.8"/>
+    <circle cx="49" cy="49" r="2" fill="#f8ffff"/>
+    <path d="m73 54 14-5-6 10-8 2" fill="url(#gold)" stroke="#543315" stroke-width="1.4"/>
+    <path d="m57 70-6 10 17-2 9-12" fill="none" stroke="#d8ad65" stroke-width="2.8"/>
+    <path d="M29 77q23 9 43-3m-39 10q18 8 35-3m-31 9q14 6 25-1" stroke="url(#gold)" stroke-width="4"/>
+    <use href="#gem" transform="translate(52 86) scale(.33)"/>
+  </symbol>
+
+  <symbol id="pharaoh" viewBox="0 0 100 100">
+    <ellipse cx="50" cy="50" rx="45" ry="46" fill="url(#aura)"/>
+    <path d="M19 95 12 46q0-28 14-37 24-16 49 0 14 10 13 37L81 95 61 81 50 93 37 81Z" fill="url(#blue)" stroke="url(#gold)" stroke-width="4"/>
+    <path d="M33 21q17-15 35 0l-3 39-15 18-15-18Z" fill="url(#gold)" stroke="#855125" stroke-width="2.5"/>
+    <path d="M37 38q6-5 11-1m4 1q7-5 12 0" fill="none" stroke="#3c2d29" stroke-width="2.2"/>
+    <path d="M39 41h9m7 0h9M50 43l-3 13h6m-10 8q7 4 14 0" stroke="#603a25" stroke-width="1.8" fill="none"/>
+    <path d="M17 31q14-29 33-20 19-8 33 20l-11 4-10-13-12 8-12-8-10 13Z" fill="url(#blue)" stroke="url(#gold)" stroke-width="4"/>
+    <path d="M25 31h14M61 31h14M21 44h17M62 44h17M21 56h18M61 56h18M19 70h23M57 70h24M20 82h22M58 82h22" stroke="#f9d47e" stroke-width="4.5" stroke-linecap="round"/>
+    <path d="m49 6 10 11-9 20-8-20Z" fill="url(#ruby)" stroke="#fff3a5" stroke-width="2.5"/>
+    <circle cx="50" cy="13" r="3.5" fill="#fdfbe2"/>
+    <path d="M37 78q13 9 25 0l-4 11-8 7-8-7Z" fill="url(#oldgold)" stroke="#8a5e2c" stroke-width="2"/>
+  </symbol>
+
+  <symbol id="wild" viewBox="0 0 100 100">
+    <ellipse cx="50" cy="49" rx="48" ry="44" fill="url(#aura)"/>
+    <path d="M50 4 61 22 84 12 79 37l18 16-26 9-6 26-15-13-15 13-6-26-26-9 18-16-5-25 23 10Z" fill="url(#gold)" stroke="#fff3bb" stroke-width="2.6" stroke-linejoin="round"/>
+    <path d="M50 16 60 32 81 27 72 46 84 53 64 61l-14 19-14-19-20-8 12-7-9-19 21 5Z" fill="url(#ruby)" stroke="#9b431e" stroke-width="2.5"/>
+    <path d="m24 42 14 12 12-15 12 15 15-12" fill="none" stroke="#ffeab8" stroke-width="5" stroke-linecap="round"/>
+    <path d="m33 54 9 13 8-10 8 10 9-13" fill="none" stroke="#ffc768" stroke-width="3"/>
+    <text x="50" y="96" font-family="Georgia,serif" font-size="13" font-weight="900" text-anchor="middle" letter-spacing=".5" fill="#ffe6a7" stroke="#442319" stroke-width="1.7" paint-order="stroke">WILD</text>
+  </symbol>
+
+  <symbol id="scatter" viewBox="0 0 100 100">
+    <ellipse cx="50" cy="51" rx="49" ry="47" fill="url(#aura)"/>
+    <path d="M50 5 94 78H6Z" fill="url(#gold)" stroke="#fff4b8" stroke-width="3"/>
+    <path d="M50 10 79 69H21Z" fill="#6e4525" stroke="#fff1b3" stroke-width="1.4"/>
+    <path d="M50 11 79 69H50Z" fill="#d6a458" opacity=".78"/>
+    <path d="M22 59h56M27 48h46M32 38h36M38 27h24M14 73h72" stroke="#503117" stroke-width="3"/>
+    <path d="M30 56h13m12-14h11m-31-5h11m6 23h15" stroke="#ffe4a0" stroke-width="1.6"/>
+    <circle cx="50" cy="50" r="8" fill="url(#blue)" stroke="#ffecad" stroke-width="2"/>
+    <path d="M50 34v-8m0 48v-7m16-17h9m-49 0h9" stroke="#e1edb1" stroke-width="2"/>
+    <text x="50" y="93" font-family="Georgia,serif" font-size="11" font-weight="900" text-anchor="middle" letter-spacing=".1" fill="#ffe6aa" stroke="#583012" stroke-width="1.6" paint-order="stroke">SCATTER</text>
+  </symbol>
+</defs>
+</svg>
