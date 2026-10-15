@@ -1,12 +1,12 @@
 'use client';
 
 import Link from 'next/link';
-import { Tv } from 'lucide-react';
+import { CalendarDays, ChevronRight, LockKeyhole, Radio } from 'lucide-react';
 import { useApp } from '@/components/layout/providers';
-import { translateSportName, translateVisibleText, translateBettingSelection } from '@/lib/i18n/ui-phrases';
-import { formatOddsScaled, formatRelative } from '@/lib/i18n';
+import { translateSportName, translateBettingSelection } from '@/lib/i18n/ui-phrases';
+import { formatOddsScaled } from '@/lib/i18n';
 import { useBetSlip, type SlipItem } from '@/lib/store/betslip';
-import { TeamLogo } from '@/components/ui/logo';
+import { TeamLogo, LeagueLogo } from '@/components/ui/logo';
 import { primaryBettingMarket } from '@/lib/primary-betting-market';
 import { matchMinuteLabel } from '@/lib/live-match-minute';
 
@@ -55,117 +55,98 @@ export interface MatchView {
   topMarkets?: MarketView[];
 }
 
+/**
+ * Shared fixture layout. Search, catalogue, live, upcoming and Top Bets render
+ * exactly the same information hierarchy; only the content width can differ.
+ * Prices and scores always come from the official match API.
+ */
 export function MatchCard({
-  match,
-  compact = false,
-  onSelectionAdded,
+  match, compact = false, onSelectionAdded,
 }: {
-  match: MatchView;
-  compact?: boolean;
-  onSelectionAdded?: () => void;
+  match: MatchView; compact?: boolean; onSelectionAdded?: () => void;
 }) {
   const { t, locale } = useApp();
   const market = primaryBettingMarket(match.topMarkets, match.isLive);
-  const home = match.participants.find((p) => p.role === 'HOME');
-  const away = match.participants.find((p) => p.role === 'AWAY');
-
+  const home = match.participants.find((p) => p.role === 'HOME') ?? match.participants[0];
+  const away = match.participants.find((p) => p.role === 'AWAY') ?? match.participants[1];
+  const kickoffDate = new Date(match.scheduledAt);
+  const validKickoff = !Number.isNaN(kickoffDate.getTime());
+  const kickoff = validKickoff
+    ? new Intl.DateTimeFormat(locale === 'fa' ? 'fa-IR' : 'en-GB', {
+        hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric',
+      }).format(kickoffDate).replace(',', ' •')
+    : '—';
+  const marketName = market?.name ?? (locale === 'fa' ? 'ضریب موجود نیست' : 'Odds unavailable');
+  const teams = [
+    { team: home, score: match.homeScore },
+    { team: away, score: match.awayScore },
+  ];
   return (
-    <article
-      className={`nova-match-card bg-white transition-colors hover:bg-[#FAFBFC] ${compact ? "rounded-none" : "rounded-xl"}`}
-      data-testid="match-card"
-      data-match-id={match.id}
+    <article data-testid="match-card" data-match-id={match.id}
       data-live={match.isLive ? 'true' : 'false'}
-    >
-      <div className={`grid items-center ${compact ? "grid-cols-[52px_minmax(0,1fr)] gap-2.5 px-3 py-2.5" : "grid-cols-[68px_minmax(220px,1fr)_minmax(270px,1fr)] gap-3.5 px-3.5 py-3 max-md:grid-cols-[56px_minmax(0,1fr)] max-md:gap-2.5 max-md:px-3 max-md:py-2.5"}`}>
-        <Link
-          href={`/match/${match.id}`}
-          className="flex min-w-0 flex-col justify-center gap-0.5"
-        >
-          {match.isLive ? (
-            <>
-              <span className="text-[11px] font-extrabold leading-4 text-[#F04A63]">
-                {matchMinuteLabel(match.minute, match.period)}
-              </span>
-            </>
-          ) : (
-            <>
-              <span className="text-[11px] font-extrabold leading-4 text-[#5E6670]">
-                {new Date(match.scheduledAt).toLocaleTimeString('en-GB', {
-                  hour: '2-digit',
-                  minute: '2-digit',
-                })}
-              </span>
-              <span className="text-[10px] font-medium text-[#9298A1]">
-                {new Date(match.scheduledAt).toLocaleDateString('en-GB')}
-              </span>
-            </>
-          )}
+      className="nova-match-card overflow-hidden rounded-[21px] border border-[#E2E7EC] bg-white shadow-[0_3px_13px_rgba(18,35,51,.055)]" data-compact={compact}>
+      <Link href={`/match/${match.id}`}
+        className="flex min-w-0 items-center gap-2.5 border-b border-[#E2E7EC] bg-gradient-to-r from-[#F1F7F9] to-[#FCFDFE] px-3.5 py-3">
+        <span className="grid h-[37px] w-[37px] shrink-0 place-items-center rounded-xl border border-[#E2E7EC] bg-white">
+          <LeagueLogo url={match.leagueLogoUrl} name={match.leagueName} sportKey={match.sportKey} size={26} />
+        </span>
+        <span className="min-w-0 flex-1">
+          <strong className="block truncate text-[13px] font-extrabold text-[#202832]">
+            {match.leagueName ?? match.sportKey}
+          </strong>
+          <span className="block truncate text-[10px] capitalize text-[#798592]">
+            {match.sportKey.replaceAll('-', ' ')}
+          </span>
+        </span>
+        <span className={`inline-flex shrink-0 items-center gap-1 rounded-lg px-2 py-[6px] text-[10px] font-extrabold ${match.isLive
+          ? 'bg-[#FFEAF2] text-[#C71961]' : 'bg-[#E8F8F1] text-[#008957]'}`}>
+          {match.isLive ? <Radio size={12}/> : <CalendarDays size={12}/>}
+          {match.isLive ? (locale === 'fa' ? 'زنده' : 'LIVE') : (locale === 'fa' ? 'آینده' : 'PRE')}
+        </span>
+      </Link>
+      <div className="space-y-2.5 px-3.5 pb-3.5 pt-2.5">
+        <Link href={`/match/${match.id}`} className="flex items-center gap-2">
+          <span className={match.isLive ? 'text-[#E91F70]' : 'text-[#00A66A]'}>
+            {match.isLive ? <Radio size={15}/> : <CalendarDays size={15}/>}
+          </span>
+          <span className="rounded-lg bg-[#F3F6F9] px-2.5 py-[6px] text-[11px] font-bold text-[#202832]">
+            {match.isLive ? matchMinuteLabel(match.minute, match.period) : kickoff}
+          </span>
+          {match.isLive && (match.homeScore !== null || match.awayScore !== null) &&
+            <span className="ml-auto text-[9px] font-bold text-[#798592]">{locale === 'fa' ? 'نتیجه' : 'SCORE'}</span>}
         </Link>
-
-        <Link
-          href={`/match/${match.id}`}
-          className="min-w-0 rounded-xl py-0.5"
-        >
-          <div className="flex min-w-0 items-center gap-2.5">
-            <TeamLogo url={home?.logoUrl} name={home?.name} size={compact ? 24 : 28} />
-
-            <span className={`min-w-0 truncate font-extrabold text-[#20242A] ${compact ? "text-[11px] leading-4" : "text-[12px] leading-5"}`}>
-              {locale === 'fa' ? translateSportName(home?.name ?? 'TBD') : home?.name ?? 'TBD'}
-            </span>
-
-            {match.homeScore !== null ? (
-              <strong className="ml-auto shrink-0 text-sm font-black tabular-nums text-[#20242A]">
-                {match.homeScore}
+        <Link href={`/match/${match.id}`} className="block space-y-2">
+          {teams.map(({ team, score }, i) => (
+            <div key={i} className="flex min-w-0 items-center gap-2">
+              <TeamLogo url={team?.logoUrl} name={team?.name} size={27} />
+              <strong className="min-w-0 flex-1 truncate text-[13px] font-extrabold text-[#202832]">
+                {locale === 'fa' ? translateSportName(team?.name ?? 'TBD') : team?.name ?? 'TBD'}
               </strong>
-            ) : null}
-          </div>
-
-          <div className={`${compact ? "my-1 h-px" : "my-1.5 h-px"} bg-[#ECEEF1]`} />
-
-          <div className="flex min-w-0 items-center gap-2.5">
-            <TeamLogo url={away?.logoUrl} name={away?.name} size={compact ? 24 : 28} />
-
-            <span className={`min-w-0 truncate font-extrabold text-[#20242A] ${compact ? "text-[11px] leading-4" : "text-[12px] leading-5"}`}>
-              {locale === 'fa' ? translateSportName(away?.name ?? 'TBD') : away?.name ?? 'TBD'}
-            </span>
-
-            {match.awayScore !== null ? (
-              <strong className="ml-auto shrink-0 text-sm font-black tabular-nums text-[#20242A]">
-                {match.awayScore}
-              </strong>
-            ) : null}
-          </div>
+              {match.isLive && score !== null &&
+                <span className="min-w-[26px] rounded-[7px] bg-[#EDF1F5] px-2 py-1 text-center text-[13px] font-black tabular-nums text-[#202832]">{score}</span>}
+            </div>
+          ))}
         </Link>
-
-        {market ? (
-          <div className="col-span-2 grid min-w-0 grid-cols-[repeat(3,minmax(0,1fr))_46px] items-center gap-2 max-md:grid-cols-[repeat(3,minmax(0,1fr))_42px] max-md:gap-1.5">
-            {market.selections.slice(0, 3).map((selection) => (
-              <OddsButton
-                key={`${selection.id}-${selection.oddsVersion}-${selection.oddsScaled}`}
-                match={match}
-                market={market}
-                selection={selection}
+        <div className="h-px bg-[#E2E7EC]/70" />
+        <div className="flex min-w-0 items-center justify-between gap-2">
+          <span className="min-w-0 truncate text-[11px] text-[#798592]">{marketName}</span>
+          <span className="shrink-0 text-[9px] font-bold text-[#798592]">{locale === 'fa' ? 'ضرایب' : 'ODDS'}</span>
+        </div>
+        <div className="grid grid-cols-[repeat(3,minmax(0,1fr))_46px] gap-1.5">
+          {Array.from({length:3},(_,index)=>{
+            const selection = market?.selections[index];
+            return market && selection ? (
+              <OddsButton key={selection.id} match={match} market={market}
+                selection={selection} disabled={!match.isBettingAvailable}
                 onSelectionAdded={onSelectionAdded}
-                disabled={
-                  !match.isBettingAvailable ||
-                  market.status !== 'open'
-                }
-              />
-            ))}
-
-            <Link
-              href={`/match/${match.id}`}
-              className="grid h-[42px] min-w-0 place-items-center rounded-[10px] border border-[#DDE1E6] bg-[#EEF0F3] text-xs font-extrabold tabular-nums text-[#4F5660] transition hover:bg-[#E6E9ED]"
-              aria-label={t('match.allMarkets')}
-            >
-              +{Math.max((match.marketsCount ?? 1) - 1, 1)}
-            </Link>
-          </div>
-        ) : (
-          <div className={`flex items-center justify-center rounded-[10px] border border-[#E5E8EC] bg-[#F5F6F8] text-[11px] font-semibold text-[#969CA5] max-md:col-span-2 ${compact ? "h-9" : "h-[46px]"}`}>
-            {locale === 'fa' ? translateVisibleText('Odds unavailable') : 'Odds unavailable'}
-          </div>
-        )}
+                shortLabel={market.key === 'h2h' && market.selections.length >= 3 ? ['1','X','2'][index] : undefined} />
+            ) : <div key={index} className="grid h-[53px] place-items-center rounded-[10px] bg-[#F3F6F9] text-sm text-[#798592]">—</div>;
+          })}
+          <Link href={`/match/${match.id}`} aria-label={t('match.allMarkets')}
+            className="grid h-[53px] place-items-center rounded-[10px] border border-[#D4E5F8] bg-[#EAF3FF] text-[12px] font-black text-[#087FF5]">
+            {match.marketsCount ? `+${match.marketsCount}` : <ChevronRight size={17}/>}
+          </Link>
+        </div>
       </div>
     </article>
   );
@@ -177,12 +158,14 @@ export function OddsButton({
   selection,
   disabled,
   onSelectionAdded,
+  shortLabel,
 }: {
   match: MatchView;
   market: MarketView;
   selection: SelectionView;
   disabled?: boolean;
   onSelectionAdded?: () => void;
+  shortLabel?: string;
 }) {
   const { locale } = useApp();
   const addSelection = useBetSlip((s) => s.toggle);
@@ -193,8 +176,9 @@ export function OddsButton({
 
   const locked =
     disabled ||
-    market.status !== 'open' ||
-    selection.status !== 'open';
+    !['open', 'active'].includes(market.status) ||
+    !['open', 'active'].includes(selection.status) ||
+    !/^\\d+$/.test(selection.oddsScaled) || Number(selection.oddsScaled) <= 10000;
 
   const item: SlipItem = {
     selectionId: selection.id,
@@ -210,33 +194,20 @@ export function OddsButton({
   };
 
   return (
-    <button
-      key={`${selection.id}-${selection.oddsVersion}`}
-      type="button"
-      className={`odds-btn nova-odds-motion h-[42px] min-w-0 flex-1 rounded-[10px] border border-[#DCE1E6] bg-[#F7F8F9] px-2.5 transition-colors duration-150 disabled:cursor-not-allowed disabled:opacity-50 max-md:px-1.5 ${
-        selection.movement === 'UP'
-          ? 'nova-odds-flash-up'
-          : selection.movement === 'DOWN'
-            ? 'nova-odds-flash-down'
-            : ''
-      }`}
-      data-selected={selected}
-      data-locked={locked}
-      data-testid="odds-button"
-      disabled={locked}
+    <button key={`${selection.id}-${selection.oddsVersion}`} type="button"
+      disabled={locked} data-selected={selected} data-locked={locked}
+      data-testid="odds-button" aria-pressed={selected}
+      aria-label={`${selection.name}: ${locked ? 'Unavailable' : formatOddsScaled(selection.oddsScaled)}`}
       title={locked ? 'Odds paused — waiting for a valid current price' : 'Add to bet slip'}
-      aria-pressed={selected}
-      onClick={() => {
-        addSelection(item);
-        onSelectionAdded?.();
-      }}
-    >
-      <span className="block truncate text-[10px] text-[#5D646D]">
-        {locale === 'fa' ? translateBettingSelection(selection.name) : selection.name}
+      className={`odds-btn nova-odds-motion flex h-[53px] min-w-0 flex-col items-center justify-center rounded-[10px] border px-1.5 py-1 transition-colors duration-150 disabled:cursor-not-allowed
+        ${selected ? 'border-[#087FF5] bg-[#E0EDFF] text-[#087FF5]' : 'border-[#E9EDF2] bg-[#F3F6F9] text-[#202832]'}
+        ${selection.movement === 'UP' && !locked ? 'nova-odds-flash-up' : selection.movement === 'DOWN' && !locked ? 'nova-odds-flash-down' : ''}`}
+      onClick={() => { addSelection(item); onSelectionAdded?.(); }}>
+      <span className="w-full truncate text-center text-[10px] leading-[14px] text-[#798592]">
+        {shortLabel ?? (locale === 'fa' ? translateBettingSelection(selection.name) : selection.name)}
       </span>
-
-      <span className="block text-sm font-extrabold tabular-nums text-[#20242A]">
-        {locked ? 'Paused' : formatOddsScaled(selection.oddsScaled)}
+      <span className="mt-0.5 flex items-center gap-1 text-[14px] font-black tabular-nums">
+        {locked ? <LockKeyhole size={13} className="text-[#798592]"/> : formatOddsScaled(selection.oddsScaled)}
       </span>
     </button>
   );
