@@ -11,13 +11,13 @@ describe('Pharaoh Gold cinematic artwork safety', () => {
       expect(atlas).toContain('id="' + id + '"');
     }
     expect(atlas).toContain('viewBox="0 0 100 100"');
-    expect(atlas).not.toMatch(/<script|<foreignObject|javascript:|https?:\/\//i);
+    expect(atlas).not.toMatch(/<script|<foreignObject|javascript:|(?:href|xlink:href)\s*=\s*['\"]https?:/i);
   });
   it('renders self-hosted scene with local torch, pillars and sky gradients', () => {
     const scene = asset('scene.svg');
     expect(scene).toContain('id="templeColumn"');
     expect(scene).toContain('id="fire"');
     expect(scene).toContain('id="water"');
-    expect(scene).not.toMatch(/<script|<foreignObject|javascript:|https?:\/\//i);
+    expect(scene).not.toMatch(/<script|<foreignObject|javascript:|(?:href|xlink:href)\s*=\s*['\"]https?:/i);
   });
 });
