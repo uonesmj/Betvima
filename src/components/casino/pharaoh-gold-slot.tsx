@@ -118,7 +118,7 @@ export function PharaohGoldSlot() {
     if (phase !== 'idle' || freeSpins > 0) return;
     const index = BET_STEPS.findIndex(value => value === betCents);
     const next = Math.max(0,Math.min(BET_STEPS.length - 1, index + delta));
-    setBetCents(BET_STEPS[next]); sfx('tap');
+    setBetCents(BET_STEPS[next]!); sfx('tap');
   };
   const handleSpin = useCallback(async () => {
     if (spinningRef.current) { quickStopRef.current = true; return; }
@@ -204,7 +204,7 @@ export function PharaohGoldSlot() {
   const winningCells = new Set<string>();
   if (phase !== 'spinning' && lastSpin?.roundId === activeRound) {
     lastSpin.wins.forEach(win => {
-      PAYLINES[win.line - 1].forEach((row,col) => {if (col < win.count) winningCells.add(col + '-' + row);});
+      PAYLINES[win.line - 1]!.forEach((row,col) => {if (col < win.count) winningCells.add(col + '-' + row);});
     });
   }
   const spinBusy = phase === 'spinning';
