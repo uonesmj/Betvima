@@ -18,6 +18,16 @@ class BetTrackingPresentationTest {
         assertEquals("نام مسابقه در دسترس نیست", fixtureTitle(leg(), null, Lang.FA))
     }
 
+    @Test fun historicalBetIncludesOfficialTeamsEvenWhenProviderMatchLabelIsOpaque() {
+        val serverBetLeg = leg().copy(
+            homeTeamName = "Real Salt Lake",
+            awayTeamName = "LA Galaxy",
+            homeTeamLogoUrl = "https://example.org/logo-home.png"
+        )
+        assertEquals("Real Salt Lake — LA Galaxy",
+            fixtureTitle(serverBetLeg, null, Lang.EN))
+    }
+
     @Test fun readableMatchNamesSurvive() {
         val selected = leg("Real Salt Lake — LA Galaxy")
         assertTrue(validPublicMatchLabel(selected.matchLabel))
