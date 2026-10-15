@@ -74,7 +74,7 @@ internal fun matchPhase(raw: String, lang: Lang): String = when {
     raw.lowercase() == "postponed" -> tr(lang,"POSTPONED","به‌تعویق‌افتاده")
     raw.lowercase() in setOf("cancelled","canceled") -> tr(lang,"CANCELLED","لغوشده")
     raw.lowercase() in setOf("suspended","interrupted") -> tr(lang,"SUSPENDED","متوقف‌شده")
-    raw.isBlank() -> tr(lang,"Status unavailable","وضعیت نامشخص")
+    raw.isBlank() -> tr(lang,"Unknown phase","وضعیت نامشخص")
     else -> raw.replace("_"," ")
 }
 internal fun matchPhaseColor(status: String): Color = when(status.lowercase()) {
