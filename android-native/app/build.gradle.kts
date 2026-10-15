@@ -10,11 +10,11 @@ android {
         applicationId = "com.betvima.app"
         minSdk = 26
         targetSdk = 35
-        versionCode = 62
-        versionName = "0.62.0"
+        versionCode = 63
+        versionName = "0.63.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         buildConfigField("String", "API_BASE_URL", "\"https://betvima.com/\"")
-        // No real-money action is compiled on by default. Approval requires backend compliance checks.
+        // Server-side allowlist and finance gate remain authoritative for any wagering.
         buildConfigField("boolean", "ENABLE_WAGERING", "false")
     }
     buildTypes {
