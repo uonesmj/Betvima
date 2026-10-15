@@ -107,7 +107,7 @@ internal fun fixtureTitle(leg: BetLegDetail, match: Match?, lang: Lang): String 
         match.home.name != "TBD" && match.away.name != "TBD")
         return match.home.name + " — " + match.away.name
     if (validPublicMatchLabel(leg.matchLabel)) return leg.matchLabel.trim()
-    return tr(lang, "Teams unavailable from provider", "نام تیم‌ها از منبع داده دریافت نشده")
+    return tr(lang, "Match details unavailable", "نام مسابقه در دسترس نیست")
 }
 
 internal fun betLegOutcomeColor(leg: BetLegDetail): Color = when (
@@ -175,11 +175,11 @@ internal fun BetSelectionOverview(
                 Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(7.dp)) {
                     TicketTeamScoreRow(
                         homeName, leg.homeTeamLogoUrl.ifBlank { resolvedMatch?.home?.logo.orEmpty() },
-                        scoreHome, lang
+                        scoreHome
                     )
                     TicketTeamScoreRow(
                         awayName, leg.awayTeamLogoUrl.ifBlank { resolvedMatch?.away?.logo.orEmpty() },
-                        scoreAway, lang
+                        scoreAway
                     )
                 }
             } else {
@@ -255,7 +255,7 @@ internal fun AppState.matchForLeg(leg: BetLegDetail): Match? {
 
 /** Display the API's official teams next to their own score, never a provider identifier. */
 @Composable
-private fun TicketTeamScoreRow(name: String, logo: String, score: Int?, lang: Lang) {
+private fun TicketTeamScoreRow(name: String, logo: String, score: Int?) {
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         TeamBadge(com.betvima.app.data.Team(name, "", logo.takeIf { it.startsWith("https://") }), 27)
         Spacer(Modifier.width(8.dp))
