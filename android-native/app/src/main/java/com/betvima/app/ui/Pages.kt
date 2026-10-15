@@ -319,17 +319,19 @@ private fun LeagueSection(key: String, matches: List<Match>, first: Boolean,
                         color = Palette.muted, fontSize = 10.sp)
                 }
                 SmallPill(matches.size.toString(), Palette.paper, Palette.text)
-                Icon(if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                SmoothExpandChevron(expanded,
                     tr(state.lang, "Toggle league", "نمایش یا بستن لیگ"),
                     tint = Palette.muted)
             }
-            if (expanded) {
-                HorizontalDivider(color = Palette.border)
-                matches.forEachIndexed { index, match ->
+            SmoothExpandedContent(expanded) {
+                Column {
+                    HorizontalDivider(color = Palette.border)
+                    matches.forEachIndexed { index, match ->
                     ReferenceLeagueFixture(match, state, model)
                     if (index != matches.lastIndex)
                         HorizontalDivider(Modifier.padding(horizontal = 12.dp),
                             color = Palette.border.copy(alpha = .7f))
+                    }
                 }
             }
         }
