@@ -169,7 +169,7 @@ export async function settleCasinoCallback(event: SignedCallback): Promise<Casin
         "and not exists(select 1 from nova.softaggregator_callback_receipts x " +
         "where x.original_debit_call_id=r.call_id and x.response_error=0) " +
         "order by r.created_at,r.call_id limit 1 for update",
-        [userId, event.roundId, event.gameId, event.amountMinor.toString()],
+        [userId, event.roundId, event.gameId, event.amountMinor!.toString()],
       );
       if (!original || BigInt(original.wallet_amount_minor) !== event.amountMinor)
         return { error: 2, balance: 0 };
