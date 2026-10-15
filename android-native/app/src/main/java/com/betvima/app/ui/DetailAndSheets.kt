@@ -267,7 +267,7 @@ fun LoginSheet(state: AppState, model: AppViewModel) {
     val uri = LocalUriHandler.current
     val sheet = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val closeScope = rememberCoroutineScope()
-    val smoothClose = {
+    val smoothClose: () -> Unit = {
         closeScope.launch {
             sheet.hide()
             model.showLogin(false)
