@@ -308,24 +308,26 @@ private fun LeagueSection(key: String, matches: List<Match>, first: Boolean,
             Row(Modifier.fillMaxWidth().clickable { expanded = !expanded }
                 .padding(horizontal = 13.dp, vertical = 12.dp),
                 verticalAlignment = Alignment.CenterVertically) {
-                val logo = matches.first().leagueLogo
-                Surface(color = Palette.paper, shape = RoundedCornerShape(12.dp)) {
-                    Box(Modifier.size(40.dp), contentAlignment = Alignment.Center) {
-                        if (logo?.startsWith("https://") == true)
-                            AsyncImage(model = logo, contentDescription = matches.first().league,
-                                modifier = Modifier.size(30.dp))
-                        else Icon(Icons.Default.EmojiEvents, null, tint = Palette.blue,
-                            modifier = Modifier.size(22.dp))
-                    }
-                }
+                LeagueIdentityBadge(matches.first(), size = 43)
                 Spacer(Modifier.width(9.dp))
                 Column(Modifier.weight(1f)) {
                     Text(matches.first().league, color = Palette.text,
                         fontWeight = FontWeight.ExtraBold, fontSize = 13.sp,
                         maxLines = 2)
-                    Text(matches.first().country.ifBlank {
-                        tr(state.lang, "Competition", "رقابت") },
-                        color = Palette.muted, fontSize = 10.sp)
+                    Row(verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+                        CountryIdentity(matches.first().country)
+                        Text(
+                            matches.first().country.takeIf { it.isNotBlank() }
+                                ?.let(::countryDisplayName)
+                                ?: tr(state.lang, "International", "بین‌المللی"),
+                            color = Palette.muted, fontSize = 10.sp, maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                        Text("•", color = Palette.border)
+                        Text(sportName(matches.first().sport),
+                            color = Palette.muted, fontSize = 10.sp)
+                    }
                 }
                 SmallPill(matches.size.toString(), Palette.paper, Palette.text)
                 SmoothExpandChevron(expanded,
