@@ -272,3 +272,107 @@
 .page[data-reduced-motion=true] .machine[data-impact=true],.page[data-reduced-motion=true] .celebration,
 .page[data-reduced-motion=true] .spinHalo,.page[data-reduced-motion=true] .spinButton,
 .page[data-reduced-motion=true] .celebrationCoins span{animation:none!important}
+
+
+/* V2.1 cinematic fidelity & mobile legibility */
+.page {
+  background-image:
+    linear-gradient(180deg,rgba(3,5,15,.1) 0%,rgba(3,6,18,.22) 39%,rgba(2,4,13,.8) 90%),
+    url('/casino/pharaoh-gold/scene.svg');
+  background-size:cover;
+  background-position:center center;
+}
+.titleRow { min-height:218px;padding-bottom:20px }
+.titleRow:before {
+  background:radial-gradient(ellipse at 48% 45%,#ffd5833c,#a4582c1d 55%,transparent 75%);
+  width:min(700px,94%);
+  height:205px
+}
+.subtitle { position:relative;z-index:3 }
+.gameLogo {
+  height:164px;
+  max-height:164px;
+  margin: -4px 0 0;
+  position:relative;z-index:3;
+  filter:drop-shadow(0 2px 1px #200a0b) drop-shadow(0 6px 2px #180d19) drop-shadow(0 10px 18px #f1ab4566);
+}
+.currencyAlert {margin: -2px 0 6px;position:relative;z-index:4}
+.templeGuardianLeft,.templeGuardianRight {
+  opacity:.94;
+  filter:drop-shadow(0 10px 3px #070311) drop-shadow(0 0 18px #e8a54b66);
+}
+.templeGuardianLeft:before,.templeGuardianRight:before {
+  content:'';position:absolute;inset:16% 12% 5%;
+  background:radial-gradient(ellipse,#ffb65333,transparent 76%);
+  filter:blur(15px);
+}
+.machine {
+  border:3px solid #e3b367;
+  box-shadow:
+    0 0 0 2px #2f1c21,0 0 0 5px #f5d792,
+    0 0 0 7px #6a3b22,0 12px 0 #4e2918,
+    0 18px 0 #1b1020,0 31px 65px #000d,
+    0 0 50px #ffd18122,inset 0 1px 3px #fff6d1a0
+}
+.machineOrnament img {
+  filter:drop-shadow(0 2px 4px #04040c) drop-shadow(0 0 11px #f1bf6366) saturate(1.12)
+}
+.reelPanel {
+  box-shadow:0 0 0 3px #2e1919,0 0 0 6px #bc8a4d,
+    0 0 30px #ffcb603d,inset 0 0 9px #000
+}
+.symbolCell {background:
+  radial-gradient(ellipse at 50% 33%,#6d3c42,#261d3c 60%,#0e1022 100%)}
+.symbolArt {
+  overflow:visible;
+  filter:drop-shadow(0 7px 2px #000a)
+    drop-shadow(0 0 7px #f5ca7033)
+    saturate(1.26) contrast(1.12);
+}
+.symbolCell[data-win=true] .symbolArt {
+  animation:symbolTrophy .96s ease-in-out infinite alternate;
+}
+.spinTile svg { filter:drop-shadow(0 7px 3px #000d) saturate(1.24)}
+.spinGuardians img {filter:drop-shadow(0 0 9px #e1ac6770)}
+.winning {box-shadow:0 2px 13px #0008,inset 0 1px 3px #ffd28433}
+.bonusDialog {background:radial-gradient(ellipse at 50% 38%,#efac3d19,transparent 76%)}
+@keyframes symbolTrophy {
+  from{transform:translateY(1px) scale(1);filter:drop-shadow(0 0 7px #d6a65166)}
+  to{transform:translateY(-3px) scale(1.06);filter:drop-shadow(0 0 13px #ffd184df)}
+}
+@media(max-width:900px) {
+  .titleRow { min-height:198px }
+  .gameLogo {height:148px}
+}
+@media(max-width:620px) {
+  .page {background-size: auto 100%,auto 100%; background-position:center top}
+  .titleRow {min-height:188px;padding:15px 0 14px}
+  .titleRow:before {top:14px;height:154px}
+  .subtitle {font-size:8px;line-height:1.25}
+  .gameLogo {height:124px;max-height:124px;width:86%;margin:0}
+  .currencyAlert {margin:0 0 4px;gap:8px;font-size:9px;line-height:1.45}
+  .templeGuardianLeft,.templeGuardianRight {top:12px;width:88px;height:156px;opacity:.89}
+  .templeGuardianLeft {left:-4px}
+  .templeGuardianRight {right:-4px}
+  .machine {margin-top:6px}
+  .machineOrnament {margin-top:-27px;height:29px}
+  .machineOrnament img{width:67%;height:58px}
+  .reelPanel{padding:3px;border-width:2px}
+  .symbolCell{border-color:#e7b9687f}
+  .symbolArt{width:97%;height:93%}
+  .controlDeck {background:linear-gradient(130deg,#7a4c1b36,transparent 12%,transparent 83%,#8050251a),
+    repeating-linear-gradient(90deg,transparent 0 22px,#e1aa6710 23px,transparent 24px 32px),
+    linear-gradient(145deg,#272331,#070b17 67%,#23182a)}
+  .machineFoot{color:#fff3ce}
+  .machineFoot span:nth-child(2){font-size:9px}
+}
+@media(max-width:365px){
+  .titleRow{min-height:176px}
+  .gameLogo{height:113px}
+  .currencyAlert{font-size:8px}
+  .templeGuardianLeft,.templeGuardianRight {height:144px;width:77px}
+}
+@media(prefers-reduced-motion:reduce) {
+  .symbolCell[data-win=true] .symbolArt {animation:none!important}
+}
+.page[data-reduced-motion=true] .symbolCell[data-win=true] .symbolArt{animation:none!important}
