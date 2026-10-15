@@ -171,6 +171,7 @@ export async function settleFiatCasinoCallback(
     const isDebit = event.action === 'debit';
     let local = casinoUsdToLocalMinor(event.amountMinor!, currency, rate, isDebit ? 'up' : 'down');
     let originalDebitId: string | null = null;
+    let originalCreditId: string | null = null;
 
     if (event.rollback && !isDebit) {
       const original = await tx.queryOne<OriginalDebit>([
@@ -184,6 +185,20 @@ export async function settleFiatCasinoCallback(
       if (!original) return fail;
       originalDebitId = original.call_id;
       local = exactCasinoRefund(BigInt(original.wallet_amount_minor), event.amountMinor!, event.amountMinor!);
+    } else if (event.rollback && isDebit) {
+      // The provider can also reverse a previously credited win. Reclaim the
+      // exact original local-currency credit, never re-rate and never twice.
+      const original = await tx.queryOne<OriginalDebit>([
+        "select r.call_id,r.wallet_amount_minor::text from nova.softaggregator_callback_receipts r",
+        "where r.user_id=$1 and r.round_id=$2 and r.game_id=$3 and r.action='credit'",
+        "and r.rollback=false and r.response_error=0 and r.amount_minor=$4",
+        "and not exists(select 1 from nova.softaggregator_callback_receipts t",
+        "where t.original_credit_call_id=r.call_id and t.response_error=0)",
+        "order by r.created_at,r.call_id limit 1 for update",
+      ].join(' '), [userId, event.roundId!, event.gameId!, event.amountMinor!.toString()]);
+      if (!original || BigInt(original.wallet_amount_minor) <= 0n) return fail;
+      originalCreditId = original.call_id;
+      local = BigInt(original.wallet_amount_minor);
     }
 
     let error: 0 | 1 | 2 = 0;
@@ -191,15 +206,18 @@ export async function settleFiatCasinoCallback(
     let transactionId: string | null = null;
     if (w.is_frozen) {
       error = 2;
-    } else if (isDebit && (!allowed(roundCurrencyProfile) || event.amountMinor! < 20n ||
-      local > before || !(await limitsAllow(tx, userId, currency, local, roundCurrencyProfile)))) {
+    } else if (isDebit && (local > before ||
+      (!event.rollback && (!allowed(roundCurrencyProfile) || event.amountMinor! < 20n ||
+        !(await limitsAllow(tx, userId, currency, local, roundCurrencyProfile)))))) {
       error = 1;
     } else if (local < 1n) {
       error = 2;
     } else {
       const posted = await tx.rpc<{ transaction_id: string; balance_after_minor: string }>('post_wallet_entry', {
         p_user_id: userId,
-        p_type: isDebit ? 'bet_debit' : (event.rollback ? 'bet_refund' : 'win_credit'),
+        p_type: event.rollback
+          ? (isDebit ? 'reversal' : 'bet_refund')
+          : (isDebit ? 'bet_debit' : 'win_credit'),
         p_amount_minor: (isDebit ? -local : local).toString(),
         p_currency: currency,
         p_idempotency_key: 'sa:' + createHash('sha256').update(event.callId!).digest('hex'),
@@ -209,6 +227,7 @@ export async function settleFiatCasinoCallback(
           supplier_usd_minor: event.amountMinor!.toString(), rate_irt_per_usd: rate,
           rate_observed_at: round.rate_observed_at, rollback: event.rollback,
           original_debit_call_id: originalDebitId,
+          original_credit_call_id: originalCreditId,
         },
         p_balance_floor: isDebit ? w.locked_minor : null,
       });
@@ -220,12 +239,14 @@ export async function settleFiatCasinoCallback(
     await tx.query(
       'insert into nova.softaggregator_callback_receipts ' +
       '(call_id,identity_hash,user_id,action,amount_minor,response_error,response_balance_minor,' +
-      'ledger_transaction_id,wallet_currency,wallet_amount_minor,round_id,game_id,rollback,original_debit_call_id) ' +
-      'values($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)',
+      'ledger_transaction_id,wallet_currency,wallet_amount_minor,round_id,game_id,rollback,' +
+      'original_debit_call_id,original_credit_call_id) ' +
+      'values($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)',
       [event.callId!, event.identityHash!, userId, event.action, event.amountMinor!.toString(),
         error, usdBalance.toString(), transactionId, currency,
         transactionId ? local.toString() : '0', event.roundId!, event.gameId!,
-        event.rollback, error === 0 ? originalDebitId : null],
+        event.rollback, error === 0 ? originalDebitId : null,
+        error === 0 ? originalCreditId : null],
     );
     return respond(error, usdBalance);
   });
