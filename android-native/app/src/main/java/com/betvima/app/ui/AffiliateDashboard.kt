@@ -205,8 +205,20 @@ fun AffiliateDashboard(state: AppState, model: AppViewModel) {
                             Spacer(Modifier.height(14.dp))
                             Text(tr(state.lang, "Your partner code", "کد همکاری شما"),
                                 fontSize = 11.sp, color = Color(0xFFA9BDC6))
-                            Text(partner?.str("code", "—") ?: "—", fontWeight = FontWeight.Black,
-                                fontSize = 28.sp, color = Color(0xFF9BD1FF))
+                            Row(verticalAlignment=Alignment.CenterVertically) {
+                                Text(partner?.str("code", "—") ?: "—",
+                                    fontWeight=FontWeight.Black, fontSize=26.sp,
+                                    color=Color(0xFF9BD1FF),
+                                    modifier=Modifier.weight(1f),maxLines=1)
+                                IconButton(onClick={
+                                    clipboard.setText(AnnotatedString(partner?.str("code") ?: ""))
+                                    model.notice(tr(state.lang,"Partner code copied","کد همکاری کپی شد"))
+                                }) {
+                                    Icon(Icons.Default.ContentCopy,
+                                        tr(state.lang,"Copy partner code","کپی کد همکاری"),
+                                        tint=Color(0xFFFFA9D9))
+                                }
+                            }
                             Spacer(Modifier.height(10.dp))
                             if (link.isNotBlank()) {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -235,6 +247,24 @@ fun AffiliateDashboard(state: AppState, model: AppViewModel) {
                                 }
                             }
                         }
+                    }
+                }
+                item(key="partner-terms") {
+                    Row(horizontalArrangement=Arrangement.spacedBy(9.dp)) {
+                        val commissionBps=partner?.optInt("commissionRateBps", -1) ?: -1
+                        val rate=if(commissionBps>=0) {
+                            java.math.BigDecimal(commissionBps)
+                                .movePointLeft(2).stripTrailingZeros()
+                                .toPlainString() + "%"
+                        } else "—"
+                        AffiliateMetric(Modifier.weight(1f),
+                            tr(state.lang,"Your commission rate","نرخ کمیسیون شما"),
+                            rate,affiliateBlue)
+                        AffiliateMetric(Modifier.weight(1f),
+                            tr(state.lang,"Min. payout","حداقل برداشت"),
+                            partner?.str("minPayoutMinor")?.takeIf { it.isNotBlank() }
+                                ?.let { money(it,partner?.str("currency","USD") ?: "USD") }
+                                ?: "—",affiliatePink)
                     }
                 }
                 item {
@@ -288,6 +318,11 @@ fun AffiliateDashboard(state: AppState, model: AppViewModel) {
                                 ?.let { money(it, partner?.str("currency", "USD") ?: "USD") } ?: "—",
                             Palette.blue)
                     }
+                }
+                item(key = "native-affiliate-operations") {
+                    AffiliateOperations(state, model,
+                        partner?.str("currency", "USD") ?: "USD",
+                        partner?.str("minPayoutMinor", "0") ?: "0")
                 }
                 item {
                     SectionHeading(tr(state.lang, "Registration gift codes", "کدهای هدیه ثبت‌نام"),
@@ -357,11 +392,7 @@ fun AffiliateDashboard(state: AppState, model: AppViewModel) {
                         }
                     }
                 }
-                item(key = "native-affiliate-operations") {
-                    AffiliateOperations(state, model,
-                        partner?.str("currency", "USD") ?: "USD",
-                        partner?.str("minPayoutMinor", "0") ?: "0")
-                }
+
             }
         }
     }
