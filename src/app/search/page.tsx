@@ -3,13 +3,9 @@
 import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { ArrowLeft, CalendarDays, ChevronRight, Flame, LockKeyhole, Radio, Search, Tv, X } from 'lucide-react';
+import { ArrowLeft, CalendarDays, Radio, Search, X } from 'lucide-react';
 import { useApp } from '@/components/layout/providers';
-import { TeamLogo } from '@/components/ui/logo';
-import { primaryBettingMarket } from '@/lib/primary-betting-market';
-import { formatOddsScaled } from '@/lib/i18n';
-import { useBetSlip, type SlipItem } from '@/lib/store/betslip';
-import { type MarketView, type MatchView } from '@/components/betting/match-card';
+import { MatchCard, type MarketView, type MatchView } from '@/components/betting/match-card';
 
 type SearchMatch = {
   id: string; leagueId?: string | null; leagueName?: string | null;
@@ -96,96 +92,11 @@ function countryFlag(code: string | null) {
   return String.fromCodePoint(...Array.from(upper).map(char => char.charCodeAt(0) + 127397));
 }
 
-function SearchOdds({ match, market, selection, index }: {
-  match: MatchView; market: MarketView; selection: MarketView['selections'][number]; index: number
-}) {
-  const { locale } = useApp();
-  const selected = useBetSlip(s => s.items.some(item => item.selectionId === selection.id));
-  const toggle = useBetSlip(s => s.toggle);
-  const locked = !match.isBettingAvailable || market.status !== 'open' ||
-    selection.status !== 'open' || !/^\d+$/.test(selection.oddsScaled) ||
-    Number(selection.oddsScaled) <= 10000;
-  const label = market.key === 'h2h' && market.selections.length >= 3
-    ? ['1', 'X', '2'][index] : selection.name;
-  const item: SlipItem = {
-    selectionId: selection.id, marketId: market.id, matchId: match.id,
-    label: selection.name, marketLabel: market.name,
-    matchLabel: match.participants.map(p => p.name).join(' - '),
-    sportSlug: match.sportKey, oddsScaled: selection.oddsScaled,
-    oddsVersionSeen: selection.oddsVersion, addedAt: Date.now(),
-  };
-  return (
-    <button type="button" disabled={locked} aria-pressed={selected}
-      aria-label={`${label} ${locked ? 'unavailable' : formatOddsScaled(selection.oddsScaled)}`}
-      onClick={() => toggle(item)}
-      className={`flex h-[46px] min-w-0 items-center justify-between gap-1 rounded-[7px] px-2.5 transition-colors ${selected
-        ? 'bg-[#DCEAFB] ring-1 ring-[#1889F5]' : 'bg-[#F0F1F5]'} ${locked ? 'cursor-not-allowed opacity-65' : 'active:bg-[#D8E7F8]'}`}>
-      <span className="truncate text-[11px] font-medium text-[#50545C]">{label}</span>
-      {locked ? <LockKeyhole size={15} className="shrink-0 text-[#A6ABB4]" /> :
-        <strong className="tabular-nums text-sm font-bold text-[#24262C]">{formatOddsScaled(selection.oddsScaled)}</strong>}
-    </button>
-  );
-}
-
 function SearchFixture({ match }: { match: MatchView }) {
-  const { locale } = useApp();
-  const fa = locale === 'fa';
-  const home = match.participants.find(p => p.role === 'HOME') ?? match.participants[0];
-  const away = match.participants.find(p => p.role === 'AWAY') ?? match.participants[1];
-  const market = primaryBettingMarket(match.topMarkets, match.isLive);
-  const badge = match.isLive ? <Radio size={17} className="text-[#EE0065]" /> :
-    <Flame size={17} className="text-[#F45117]" />;
   return (
-    <article className="overflow-hidden rounded-[20px] bg-white text-[#24262C]" data-testid="search-fixture" data-live={match.isLive}>
-      <Link href={`/match/${match.id}`} className="flex items-center gap-2.5 border-b border-[#E3E5EB] px-4 py-3.5">
-        <span className="flex shrink-0 items-center gap-0.5 text-xl">{countryFlag(match.countryCode)}</span>
-        <TeamLogo url={match.leagueLogoUrl} name={match.leagueName ?? ''} size={30}/>
-        <span className="min-w-0 flex-1">
-          <strong className="block truncate text-sm font-extrabold">{match.leagueName ?? 'Competition'}</strong>
-          <span className="block text-xs text-[#696C75]">{searchLabel(match, fa)}</span>
-        </span>
-      </Link>
-      <div className="px-4 pb-3.5 pt-3">
-        <Link href={`/match/${match.id}`} className="mb-3 flex items-center gap-2">
-          {badge}
-          <span className="rounded-full border border-[#E4E5EC] px-2 py-1 text-[11px] font-semibold">
-            {match.isLive
-              ? `${match.period ?? (fa ? 'زنده' : 'Live')}${match.minute == null ? '' : ` ${match.minute}′`}`
-              : gameDate(match.scheduledAt, locale)}
-          </span>
-          {match.isLive ? <span className="inline-flex items-center gap-1 rounded-full border border-[#E4E5EC] px-2 py-1 text-[10px] font-semibold text-[#747A85]"><Tv size={12} /> LIVE</span> : null}
-        </Link>
-        <Link href={`/match/${match.id}`} className="mb-3 block space-y-2">
-          {([home, away] as const).map((team, i) => (
-            <div className="flex items-center gap-2" key={i}>
-              <TeamLogo url={team?.logoUrl} name={team?.name ?? 'TBD'} size={23} />
-              <strong className="min-w-0 flex-1 truncate text-[13px] font-bold">{team?.name || 'TBD'}</strong>
-              {match.isLive && (i === 0 ? match.homeScore : match.awayScore) != null ? (
-                <span className="grid min-w-6 place-items-center rounded-md bg-[#EEF0F4] px-1 py-0.5 text-xs font-bold tabular-nums">
-                  {i === 0 ? match.homeScore : match.awayScore}
-                </span>
-              ) : null}
-            </div>
-          ))}
-        </Link>
-        <div className="mb-2 truncate text-xs text-[#777C87]">
-          {market?.name ?? (fa ? 'ضرایب در دسترس نیست' : 'Odds unavailable')}
-        </div>
-        <div className="grid grid-cols-[repeat(3,minmax(0,1fr))_48px] gap-1.5">
-          {market ? Array.from({ length: 3 }, (_, index) => {
-            const selection = market.selections[index];
-            return selection ? <SearchOdds key={selection.id} match={match} market={market} selection={selection} index={index}/> :
-              <span key={index} className="rounded-[7px] bg-[#F0F1F5]" />;
-          }) : <div className="col-span-3 flex h-[46px] items-center justify-center rounded-[7px] bg-[#F0F1F5] text-xs text-[#818694]">
-            {fa ? 'بازار فعال موجود نیست' : 'No open market'}
-          </div>}
-          <Link href={`/match/${match.id}`} aria-label={fa ? 'تمام مارکت‌ها' : 'All markets'}
-            className="flex h-[46px] items-center justify-center rounded-[9px] bg-[#F0F1F5] text-xs font-extrabold text-[#272931]">
-            {match.marketsCount ? `+${match.marketsCount}` : <ChevronRight size={19}/>}
-          </Link>
-        </div>
-      </div>
-    </article>
+    <div data-testid="search-fixture" data-live={match.isLive}>
+      <MatchCard match={match} />
+    </div>
   );
 }
 
