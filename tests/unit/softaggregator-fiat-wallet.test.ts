@@ -36,7 +36,8 @@ function fakeDb(walletCurrency: 'IRT' | 'IRR' = 'IRT', original = 2_500_000n) {
       }
       if (sql.includes('from nova.softaggregator_callback_receipts r')) {
         for (const [key, receipt] of receipts) {
-          if (receipt.action === 'debit' && receipt.response_error === 0 &&
+          if (receipt.action === (sql.includes("r.action='credit'") ? 'credit' : 'debit') &&
+            receipt.response_error === 0 &&
             receipt.round_id === args[1] && receipt.game_id === args[2] &&
             receipt.amount_minor === args[3] && !receipt.reversed) {
             return { call_id: key, wallet_amount_minor: receipt.wallet_amount_minor };
@@ -63,9 +64,11 @@ function fakeDb(walletCurrency: 'IRT' | 'IRR' = 'IRT', original = 2_500_000n) {
           round_id: args[10], game_id: args[11], reversed: false,
         };
         receipts.set(String(args[0]), receipt);
-        if (args[13]) {
-          const original = receipts.get(String(args[13]));
-          if (original) original.reversed = true;
+        for (const key of [args[13], args[14]]) {
+          if (key) {
+            const original = receipts.get(String(key));
+            if (original) original.reversed = true;
+          }
         }
       }
       return [];
@@ -150,6 +153,21 @@ describe('Casino fiat settle staging contract', () => {
     expect(t.posted[1]?.p_amount_minor).toBe('50000');
     expect(t.getBalance()).toBe(2_500_000n);
     expect((await settleFiatCasinoCallback(t.db, userId, event('refund-two', 'credit', 20n, true))).error).toBe(2);
+  });
+
+  it('reverses a credited win at exact historic IRT value and rejects double reversal', async () => {
+    const t = fakeDb('IRT');
+    expect((await settleFiatCasinoCallback(t.db, userId, event('win-credit', 'credit', 40n))).error).toBe(0);
+    vi.mocked(getUsdIrtRate).mockResolvedValue({
+      value: '350000.00000000', timestamp: new Date().toISOString(),
+    });
+    const rollback = event('win-reversal-1', 'debit', 40n, true);
+    expect((await settleFiatCasinoCallback(t.db, userId, rollback)).error).toBe(0);
+    expect(t.posted[1]?.p_type).toBe('reversal');
+    expect(t.posted[1]?.p_amount_minor).toBe('-100000');
+    expect(t.getBalance()).toBe(2_500_000n);
+    expect((await settleFiatCasinoCallback(t.db, userId, event('win-reversal-2', 'debit', 40n, true))).error).toBe(2);
+    expect(t.posted).toHaveLength(2);
   });
 
   it('denies wagers with insufficient available funds or under 20 USD cents', async () => {
