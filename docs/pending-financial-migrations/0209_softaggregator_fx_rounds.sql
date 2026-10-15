@@ -49,11 +49,11 @@ alter table nova.softaggregator_callback_receipts
 -- Exchange rates and settled receipts are immutable audit facts; even a
 -- privileged runtime role may only append, never rewrite historic rounds.
 create or replace function nova.reject_casino_financial_ledger_rewrite()
-returns trigger language plpgsql as $
+returns trigger language plpgsql as $casino_audit$
 begin
   raise exception 'CASINO_FINANCIAL_AUDIT_IMMUTABLE' using errcode = '42501';
 end;
-$;
+$casino_audit$;
 create trigger sa_fx_round_immutable
   before update or delete on nova.softaggregator_round_fx
   for each row execute function nova.reject_casino_financial_ledger_rewrite();
