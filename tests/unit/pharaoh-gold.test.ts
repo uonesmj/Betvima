@@ -1,6 +1,15 @@
 import { describe, expect, it } from 'vitest';
-import { createDemoSpin, evaluateGrid, MAX_BET_CENTS, MIN_BET_CENTS, PAYLINES, SYMBOLS, validateBetCents, type ReelGrid } from '@/lib/casino/pharaoh-gold';
+import { createDemoSpin, evaluateGrid, parseDemoBalance, DEMO_START_CENTS, MAX_BET_CENTS, MIN_BET_CENTS, PAYLINES, SYMBOLS, validateBetCents, type ReelGrid } from '@/lib/casino/pharaoh-gold';
 describe('Pharaoh Gold demo-only game engine', () => {
+  it('starts a new browser session with USD $1000, never treating a missing key as zero', () => {
+    expect(parseDemoBalance(null)).toBe(DEMO_START_CENTS);
+    expect(parseDemoBalance('')).toBe(DEMO_START_CENTS);
+    expect(parseDemoBalance('NaN')).toBe(DEMO_START_CENTS);
+    expect(parseDemoBalance('-1')).toBe(DEMO_START_CENTS);
+    expect(parseDemoBalance('10000001')).toBe(DEMO_START_CENTS);
+    expect(parseDemoBalance('0')).toBe(0);
+    expect(parseDemoBalance('99500')).toBe(99500);
+  });
   it('enforces USD ten-cent minimum, integer cents and max', () => {
     expect(validateBetCents(MIN_BET_CENTS)).toBe(10);
     expect(validateBetCents(MAX_BET_CENTS)).toBe(10000);
