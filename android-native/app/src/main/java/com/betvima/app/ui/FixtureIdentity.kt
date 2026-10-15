@@ -110,9 +110,34 @@ fun CountryIdentity(country: String, modifier: Modifier = Modifier, compact: Boo
     }
 }
 
+/** First-party league artwork already served by the BetVima website.
+ * Matches strict competition phrases so one league cannot borrow another's crest.
+ * Provider/logo-worker artwork always has priority over these local assets.
+ */
+internal fun firstPartyLeagueLogo(league: String): String? {
+    val name = league.lowercase(Locale.ROOT)
+        .replace(Regex("[^a-z0-9]+"), " ").trim()
+    fun includes(term: String) = (" $name ").contains(" $term ")
+    val asset = when {
+        includes("europa league") && !includes("conference") -> "europa-league.svg"
+        includes("champions league") -> "champions-league.svg"
+        includes("premier league") && !includes("russia") -> "premier-league.svg"
+        includes("la liga") || includes("laliga") -> "laliga.svg"
+        includes("bundesliga") && !includes("austria") -> "bundesliga.svg"
+        includes("serie a") && !includes("brazil") -> "serie-a.svg"
+        includes("ligue 1") -> "ligue-1.png"
+        includes("eredivisie") -> "eredivisie.svg"
+        includes("primeira liga") || includes("liga portugal") -> "liga-portugal.svg"
+        includes("major league soccer") || includes("mls") -> "mls.svg"
+        includes("nba") && !includes("preseason") && !includes("replays") -> "nba.svg"
+        else -> null
+    }
+    return asset?.let { "https://betvima.com/sports/leagues/$it" }
+}
+
 @Composable
 fun LeagueIdentityBadge(match: Match, size: Int = 41) {
-    val safe = verifiedLogoUrl(match.leagueLogo)
+    val safe = verifiedLogoUrl(match.leagueLogo) ?: firstPartyLeagueLogo(match.league)
     var loaded by remember(safe) { mutableStateOf(false) }
     val tint = when (match.sport.lowercase(Locale.ROOT)) {
         "football" -> Color(0xFF087FF5)
