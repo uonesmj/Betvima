@@ -74,7 +74,7 @@ fun MatchDetailPage(state: AppState, model: AppViewModel) {
             term.contains(marketSearch.trim().lowercase()))
     }
     LazyColumn(contentPadding = PaddingValues(16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        verticalArrangement = Arrangement.spacedBy(12.dp), flingBehavior = rememberPremiumFlingBehavior()) {
         item {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 IconButton(onClick = model::closeMatch) {
@@ -164,7 +164,7 @@ fun MatchDetailPage(state: AppState, model: AppViewModel) {
             SectionHeading(tr(state.lang, "All markets", "تمام بازارها"),
                 tr(state.lang, "Server-sourced selections", "بازارهای دریافت‌شده از سرور"))
             LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp),
-                contentPadding = PaddingValues(vertical = 5.dp)) {
+                contentPadding = PaddingValues(vertical = 5.dp), flingBehavior = rememberPremiumFlingBehavior()) {
                 items(marketGroups, key = { it.first }) { (key, label) ->
                     val selected = selectedMarketGroup == key
                     Surface(shape = RoundedCornerShape(13.dp),
@@ -268,7 +268,7 @@ fun LoginSheet(state: AppState, model: AppViewModel) {
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
         dragHandle = { BottomSheetDefaults.DragHandle() }
     ) {
-        Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState())
+        Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState(), flingBehavior = rememberPremiumFlingBehavior())
             .padding(horizontal = 14.dp).padding(bottom = 10.dp),
             verticalArrangement = Arrangement.spacedBy(9.dp)) {
             // Premium, compact masthead. Branding and trust signal share one row
