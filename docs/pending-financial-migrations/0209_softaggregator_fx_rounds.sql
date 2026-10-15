@@ -32,6 +32,35 @@ alter table nova.softaggregator_callback_receipts
   add column if not exists rollback boolean not null default false;
 alter table nova.softaggregator_callback_receipts
   add column if not exists original_debit_call_id text;
+-- A rollback may refer only to an existing callback receipt. Its target is
+-- checked as a successful original debit by the transaction processor.
+alter table nova.softaggregator_callback_receipts
+  add constraint sa_original_debit_receipt_fk
+  foreign key (original_debit_call_id)
+  references nova.softaggregator_callback_receipts(call_id) on delete restrict;
+
+-- Successful rollbacks must record the specific original debit; rejected
+-- rollbacks remain unlinked so a retry does not consume an original debit.
+alter table nova.softaggregator_callback_receipts
+  add constraint sa_successful_rollback_has_original
+  check (not (rollback and action = 'credit' and response_error = 0)
+         or original_debit_call_id is not null);
+
+-- Exchange rates and settled receipts are immutable audit facts; even a
+-- privileged runtime role may only append, never rewrite historic rounds.
+create or replace function nova.reject_casino_financial_ledger_rewrite()
+returns trigger language plpgsql as $
+begin
+  raise exception 'CASINO_FINANCIAL_AUDIT_IMMUTABLE' using errcode = '42501';
+end;
+$;
+create trigger sa_fx_round_immutable
+  before update or delete on nova.softaggregator_round_fx
+  for each row execute function nova.reject_casino_financial_ledger_rewrite();
+create trigger sa_receipt_immutable
+  before update or delete on nova.softaggregator_callback_receipts
+  for each row execute function nova.reject_casino_financial_ledger_rewrite();
+
 create unique index if not exists sa_unique_reversed_debit
   on nova.softaggregator_callback_receipts (original_debit_call_id)
   where original_debit_call_id is not null;
