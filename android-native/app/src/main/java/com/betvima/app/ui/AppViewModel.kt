@@ -383,7 +383,9 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         historyRequest++
         sessionGeneration++
         vault.clear()
-        mutable.update { it.copy(signedIn = false, accountName = null, wallet = null, bets = emptyList(),
+        ticketLookupFailures.clear()
+        ticketLookupInFlight.clear()
+        mutable.update { it.copy(signedIn = false, accountName = null, wallet = null, bets = emptyList(), ticketMatches = emptyMap(),
             bonuses = emptyList(), quote = null, showLogin = false,
             authError = null, accountLoading = false,
             betsPage = 1, betsHasMore = false, moreBetsLoading = false,
