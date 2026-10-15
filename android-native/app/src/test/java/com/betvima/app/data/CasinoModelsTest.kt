@@ -37,6 +37,7 @@ class CasinoModelsTest {
         assertNull(result.games.first().imageUrl)
         assertFalse(result.hasMore)
         assertFalse(result.games.first().demoSupported)
+        assertTrue(result.games.first().canTryDemo)
     }
 
     @Test fun categoriesHavePersianAndEnglishLabels() {
