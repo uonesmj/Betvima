@@ -123,6 +123,19 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     suspend fun casinoGames(page: Int, category: String, query: String, provider: String): CasinoPage =
         api.casinoGames(page, category, query, provider)
 
+    suspend fun casinoEligibility(): com.betvima.app.data.CasinoEligibility {
+        val token = vault.accessToken(api)?.takeIf(String::isNotBlank)
+            ?: throw ApiFailure(401, "Please sign in to view casino eligibility")
+        return api.casinoEligibility(token)
+    }
+
+    suspend fun casinoRealMoneyLaunch(gameId: String): String {
+        val token = vault.accessToken(api)?.takeIf(String::isNotBlank)
+            ?: throw ApiFailure(401, "Please sign in to open a game")
+        // Backend rechecks test-account allowlist and wallet eligibility.
+        return api.casinoLaunch(token, gameId, demo = false)
+    }
+
     suspend fun casinoDemoLaunch(gameId: String): String {
         val token = vault.accessToken(api)?.takeIf(String::isNotBlank)
             ?: throw ApiFailure(401, "Please sign in to open a demo game")

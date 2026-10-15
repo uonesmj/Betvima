@@ -50,6 +50,28 @@ class CasinoModelsTest {
         assertTrue(casinoDemoFailure(429, false, false).contains("Too many"))
     }
 
+    @Test fun pilotEligibilityDefaultsToDisabledAndPreservesExactCents() {
+        val empty = parseCasinoEligibility(JSONObject())
+        assertFalse(empty.realMoneyEnabled)
+        assertEquals("USD", empty.walletCurrency)
+        assertEquals("0.00", empty.displayedUsd)
+
+        val allowed = parseCasinoEligibility(JSONObject()
+            .put("realMoneyEnabled", true)
+            .put("walletCurrency", "IRT")
+            .put("availableUsdMinor", "123456")
+            .put("minStakeUsdMinor", "20"))
+        assertTrue(allowed.realMoneyEnabled)
+        assertEquals("IRT", allowed.walletCurrency)
+        assertEquals("1234.56", allowed.displayedUsd)
+
+        val malformed = parseCasinoEligibility(JSONObject()
+            .put("walletCurrency", "EUR")
+            .put("availableUsdMinor", "-999"))
+        assertEquals("USD", malformed.walletCurrency)
+        assertEquals("0.00", malformed.displayedUsd)
+    }
+
     @Test fun categoriesHavePersianAndEnglishLabels() {
         assertEquals("اسلات", casinoCategoryLabel("slots", true))
         assertEquals("Live Casino", casinoCategoryLabel("live", false))

@@ -2,6 +2,35 @@ package com.betvima.app.data
 
 import org.json.JSONObject
 
+/**
+ * Pilot permission and balance are always returned by BetVima's authenticated
+ * backend, not inferred from a client-side build flag or preferred display text.
+ * USD cents are strings to avoid floating-point or JSON integer precision loss.
+ */
+data class CasinoEligibility(
+    val realMoneyEnabled: Boolean,
+    val walletCurrency: String,
+    val availableUsdMinor: String,
+    val minStakeUsdMinor: String
+) {
+    val displayedUsd: String get() {
+        val cents = availableUsdMinor.toLongOrNull()?.coerceAtLeast(0L) ?: 0L
+        return (cents / 100L).toString() + "." +
+            (cents % 100L).toString().padStart(2, '0')
+    }
+}
+
+fun parseCasinoEligibility(json: JSONObject): CasinoEligibility = CasinoEligibility(
+    realMoneyEnabled = json.optBoolean("realMoneyEnabled", false),
+    walletCurrency = json.optString("walletCurrency", "USD").takeIf {
+        it in setOf("USD", "IRT", "IRR")
+    } ?: "USD",
+    availableUsdMinor = json.optString("availableUsdMinor", "0").takeIf {
+        it.matches(Regex("[0-9]{1,16}"))
+    } ?: "0",
+    minStakeUsdMinor = json.optString("minStakeUsdMinor", "20")
+)
+
 /** Provider-supplied catalogue entries. No bundled or fabricated casino titles. */
 data class CasinoGame(
     val id: String,

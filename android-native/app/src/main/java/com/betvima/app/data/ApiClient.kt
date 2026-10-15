@@ -195,17 +195,22 @@ class ApiClient {
         return parseCasinoPage(get(route))
     }
 
+    /** Server verifies account, wallet currency and pilot-only real-money access. */
+    suspend fun casinoEligibility(token: String): CasinoEligibility =
+        parseCasinoEligibility(get("/api/v1/casino/eligibility", token))
+
     /** A provider launch URL is a short-lived session credential: never log or persist it. */
     suspend fun casinoLaunch(token: String, gameId: String, demo: Boolean = true): String {
         require(gameId.isNotBlank() && gameId.length <= 200)
-        if (!demo && !BuildConfig.ENABLE_WAGERING) {
-            throw ApiFailure(403, "Real-money casino has not been enabled")
-        }
+        // Server is the sole authority: allowlist, FX readiness and financial
+        // feature gate are independently enforced for every real-money launch.
         val response = request(
             "/api/v1/casino/launch", token,
             JSONObject().put("gameId", gameId).put("demo", demo)
                 .put("device", "mobile").put("lang", "en"),
-            casinoDemo = demo
+            // Both launch modes involve sequential provider session creation.
+            // The dedicated client never retries these stateful requests.
+            casinoDemo = true
         )
         val url = response.optString("url")
         val uri = android.net.Uri.parse(url)
