@@ -1,4 +1,3 @@
-import { createHmac } from 'node:crypto';
 import { playerPassword, playerUsername } from './contract';
 
 const ENDPOINT = 'https://api.softaggregator.com/api/v1';
@@ -18,9 +17,8 @@ export type CasinoGame = {
 function requiredEnv() {
   const login = process.env.SOFTAGGREGATOR_API_LOGIN ?? '';
   const password = process.env.SOFTAGGREGATOR_API_PASSWORD ?? '';
-  const playerSecret = process.env.SOFTAGGREGATOR_PLAYER_SECRET ?? '';
-  if (!login || !password || playerSecret.length < 32) throw new Error('SOFTAGGREGATOR_NOT_CONFIGURED');
-  return { login, password, playerSecret };
+  if (!login || !password) throw new Error('SOFTAGGREGATOR_NOT_CONFIGURED');
+  return { login, password };
 }
 
 export function casinoEnabled() {
@@ -65,7 +63,8 @@ export async function casinoGames(): Promise<CasinoGame[]> {
 }
 
 export function casinoPlayerIdentity(userId: string) {
-  const { playerSecret } = requiredEnv();
+  const playerSecret = process.env.SOFTAGGREGATOR_PLAYER_SECRET ?? '';
+  if (playerSecret.length < 32) throw new Error('SOFTAGGREGATOR_PLAYER_SECRET_NOT_CONFIGURED');
   return {
     user_username: playerUsername(userId),
     user_password: playerPassword(userId, playerSecret),
@@ -73,7 +72,7 @@ export function casinoPlayerIdentity(userId: string) {
 }
 
 export async function launchCasinoGame(input: {
-  userId: string; gameId: string; demo: boolean; lang: string; device: 'mobile' | 'desktop';
+  userId?: string; gameId: string; demo: boolean; lang: string; device: 'mobile' | 'desktop';
   country?: string;
 }): Promise<string> {
   requireCasinoEnabled();
@@ -82,14 +81,24 @@ export async function launchCasinoGame(input: {
   const game = games.find((g) => g.id_hash === input.gameId);
   if (!game) throw new Error('CASINO_GAME_NOT_FOUND');
   if (input.demo && !game.play_for_fun_supported) throw new Error('CASINO_DEMO_UNAVAILABLE');
-  const identity = casinoPlayerIdentity(input.userId);
-  await callSoftAggregator('createPlayer', { ...identity, currency: 'USD' });
-  const url = await callSoftAggregator<string>(input.demo ? 'getGameDemo' : 'getGame', {
-    ...identity, gameid: input.gameId, currency: 'USD',
-    lang: input.lang === 'fa' ? 'fa' : 'en',
+  const base = {
+    gameid: input.gameId, currency: 'USD',
+    lang: input.lang === 'fa' ? 'en' : 'en', // The provider's documented languages do not include Persian.
     device: input.device, homeurl: 'https://betvima.com',
-    ...(input.country ? { country: input.country } : {}),
-  });
+  };
+  let url: string;
+  if (input.demo) {
+    // Provider's demo contract does NOT require createPlayer or wallet credentials.
+    url = await callSoftAggregator<string>('getGameDemo', base);
+  } else {
+    if (!input.userId) throw new Error('CASINO_PLAYER_REQUIRED');
+    const identity = casinoPlayerIdentity(input.userId);
+    await callSoftAggregator('createPlayer', { ...identity, currency: 'USD' });
+    url = await callSoftAggregator<string>('getGame', {
+      ...identity, ...base,
+      ...(input.country ? { country: input.country } : {}),
+    });
+  }
   if (typeof url !== 'string' || !/^https:\/\//i.test(url)) throw new Error('INVALID_CASINO_LAUNCH_URL');
   const parsed = new URL(url);
   if (parsed.username || parsed.password || !parsed.hostname.includes('.')) throw new Error('INVALID_CASINO_LAUNCH_URL');
