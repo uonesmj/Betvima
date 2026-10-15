@@ -14,6 +14,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
+import android.content.Intent
+import java.time.Instant
+import java.time.temporal.ChronoUnit
+import java.net.URLEncoder
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
@@ -36,11 +40,13 @@ data class GiftCode(val code: String, val uses: Int, val active: Boolean)
 fun AffiliateDashboard(state: AppState, model: AppViewModel) {
     val context = LocalContext.current
     val api = remember { ApiClient() }
-    val vault = remember { SessionVault(context) }
+    val vault = remember { SessionVault(context, "affiliate") }
     val scope = rememberCoroutineScope()
     val clipboard = LocalClipboardManager.current
     val uri = LocalUriHandler.current
 
+    var affiliateAuthenticated by remember { mutableStateOf(vault.signedIn()) }
+    var selectedDays by remember { mutableIntStateOf(7) }
     var busy by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
     var partner by remember { mutableStateOf<JSONObject?>(null) }
@@ -56,7 +62,9 @@ fun AffiliateDashboard(state: AppState, model: AppViewModel) {
         try {
             val token = vault.accessToken(api) ?: throw IllegalStateException("Sign in required")
             // Overview controls partner authorization. Optional widgets must not blank it out.
-            val overview = api.get("/api/v1/affiliate/overview", token)
+            val from = URLEncoder.encode(
+                Instant.now().minus(selectedDays.toLong(), ChronoUnit.DAYS).toString(), "UTF-8")
+            val overview = api.get("/api/v1/affiliate/overview?from=" + from, token)
             partner = overview.optJSONObject("affiliate")
             stats = overview.optJSONObject("stats")
             payable = overview.optJSONObject("payable")
@@ -86,34 +94,26 @@ fun AffiliateDashboard(state: AppState, model: AppViewModel) {
                 "Affiliate access unavailable", "دسترسی به پنل افیلیت ممکن نیست")
         } finally { busy = false }
     }
-    LaunchedEffect(state.signedIn) {
-        if (state.signedIn) reload()
+    LaunchedEffect(affiliateAuthenticated, selectedDays) {
+        if (affiliateAuthenticated) reload()
         else {
             partner = null; stats = null; payable = null
             link = ""; gifts = emptyList(); error = null
         }
     }
-    LazyColumn(contentPadding = PaddingValues(16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        item {
-            BvPageBanner(
-                eyebrow = tr(state.lang, "BETVIMA PARTNERS", "همکاران بت‌ویما"),
-                title = tr(state.lang, "Your partner dashboard", "داشبورد همکاری شما"),
-                subtitle = tr(state.lang,
-                    "Track referrals and gift codes without leaving the native app.",
-                    "گزارش زیرمجموعه‌ها و کدهای معرفی را در خود اپ ببینید."),
-                icon = Icons.Default.Groups, accent = Palette.green
-            )
+    LazyColumn(
+        modifier = Modifier.fillMaxSize().background(affiliateCanvas),
+        contentPadding = PaddingValues(start = 14.dp,end = 14.dp,top = 14.dp,bottom = 28.dp),
+        verticalArrangement = Arrangement.spacedBy(13.dp),
+        flingBehavior = rememberPremiumFlingBehavior()
+    ) {
+        item(key = "affiliate-hero") {
+            AffiliateHeroBanner(state.lang, authenticated = affiliateAuthenticated)
         }
-        item {
-            SectionHeading(tr(state.lang, "Partner command center", "پنل مدیریت همکاری"),
-                tr(state.lang, "Referrals, codes and results from your account",
-                    "زیرمجموعه‌ها، کدهای هدیه و گزارش‌های واقعی"))
-        }
-        if (!state.signedIn) item {
-            LockedFeature(state.lang,
-                tr(state.lang, "Sign in with your partner account",
-                    "با حساب همکار خود وارد شوید")) { model.showLogin(true) }
+        if (!affiliateAuthenticated) item(key="affiliate-authentication") {
+            AffiliateAccessPanel(state.lang, api, vault) {
+                affiliateAuthenticated = true
+            }
         } else {
             if (busy) item {
                 LinearProgressIndicator(Modifier.fillMaxWidth(), color = Palette.green)
@@ -128,31 +128,97 @@ fun AffiliateDashboard(state: AppState, model: AppViewModel) {
                             "ممکن است حساب به تأیید همکار نیاز داشته باشد. برای ثبت‌نام یا بررسی وضعیت به پنل همکاران بروید."),
                             color = Palette.muted, fontSize = 12.sp,
                             modifier = Modifier.padding(top = 8.dp))
-                        TextButton(onClick = { uri.openUri("https://betvima.com/affiliate") }) {
-                            Text(tr(state.lang, "Partner portal", "پنل همکاران"),
-                                color = Palette.blue)
+                        Row(horizontalArrangement=Arrangement.spacedBy(8.dp)) {
+                            OutlinedButton(onClick={
+                                vault.clear()
+                                affiliateAuthenticated=false
+                                partner=null;stats=null;payable=null
+                            },shape=RoundedCornerShape(12.dp)) {
+                                Icon(Icons.Default.LockReset,null,
+                                    tint=affiliateBlue,modifier=Modifier.size(17.dp))
+                                Spacer(Modifier.width(5.dp))
+                                Text(tr(state.lang,"Sign in again","ورود مجدد"),
+                                    color=affiliateBlue,fontWeight=FontWeight.Bold)
+                            }
+                            TextButton(onClick = { scope.launch { reload() } }) {
+                                Icon(Icons.Default.Refresh,null,tint=affiliateBlue,
+                                    modifier=Modifier.size(16.dp))
+                                Text(tr(state.lang,"Retry","تلاش مجدد"),color=affiliateBlue)
+                            }
                         }
                     }
                 }
             }
             if (partner != null) {
-                item {
-                    Surface(color = Palette.ink, shape = RoundedCornerShape(22.dp)) {
+                item(key="affiliate-toolbar") {
+                    Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
+                        Text(tr(state.lang,"Partner command center","مرکز مدیریت همکاری"),
+                            fontSize=17.sp,fontWeight=FontWeight.Black,
+                            color=affiliateInk,modifier=Modifier.weight(1f))
+                        IconButton(onClick={scope.launch { reload() }},enabled=!busy) {
+                            Icon(Icons.Default.Refresh,
+                                tr(state.lang,"Refresh","تازه‌سازی"),tint=affiliateBlue)
+                        }
+                        IconButton(onClick={
+                            vault.clear()
+                            affiliateAuthenticated=false
+                            partner=null;stats=null;payable=null;gifts=emptyList();link=""
+                        }) {
+                            Icon(Icons.Default.Logout,
+                                tr(state.lang,"Sign out partner","خروج از حساب همکار"),tint=affiliatePink)
+                        }
+                    }
+                }
+                item(key="affiliate-period") {
+                    Row(horizontalArrangement=Arrangement.spacedBy(7.dp)) {
+                        listOf(1,7,30).forEach { days ->
+                            val on=selectedDays==days
+                            Surface(modifier=Modifier.weight(1f)
+                                .clickable { selectedDays=days },
+                                shape=RoundedCornerShape(12.dp),
+                                color=if(on)affiliateBlue else Color.White,
+                                border=BorderStroke(1.dp,
+                                    if(on)affiliateBlue else affiliateOutline)) {
+                                Box(Modifier.padding(vertical=11.dp),
+                                    contentAlignment=Alignment.Center) {
+                                    Text(if(days==1)tr(state.lang,"Today","امروز")
+                                        else tr(state.lang,"$days days","$days روز"),
+                                        color=if(on)Color.White else affiliateInk,
+                                        fontSize=11.sp,fontWeight=FontWeight.Black)
+                                }
+                            }
+                        }
+                    }
+                }
+                item(key="affiliate-primary") {
+                    Surface(color = affiliateInk, shape = RoundedCornerShape(23.dp)) {
                         Column(Modifier.padding(21.dp)) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
-                                Icon(Icons.Default.Groups, null, tint = Palette.green)
+                                Icon(Icons.Default.Hub, null, tint = Color(0xFF95D6FF))
                                 Spacer(Modifier.width(10.dp))
                                 Text(tr(state.lang, "BETVIMA PARTNERS", "همکاران بت‌ویما"),
                                     fontSize = 15.sp, fontWeight = FontWeight.Black,
                                     color = Color.White, modifier = Modifier.weight(1f))
-                                SmallPill(partner?.str("status", "active") ?: "active",
-                                    Palette.green.copy(alpha = .12f), Palette.green)
+                                SmallPill(partner?.str("status", "—") ?: "—",
+                                    Color(0xFF243A51),Color(0xFF8EDDFF))
                             }
                             Spacer(Modifier.height(14.dp))
                             Text(tr(state.lang, "Your partner code", "کد همکاری شما"),
                                 fontSize = 11.sp, color = Color(0xFFA9BDC6))
-                            Text(partner?.str("code", "—") ?: "—", fontWeight = FontWeight.Black,
-                                fontSize = 28.sp, color = Palette.green)
+                            Row(verticalAlignment=Alignment.CenterVertically) {
+                                Text(partner?.str("code", "—") ?: "—",
+                                    fontWeight=FontWeight.Black, fontSize=26.sp,
+                                    color=Color(0xFF9BD1FF),
+                                    modifier=Modifier.weight(1f),maxLines=1)
+                                IconButton(onClick={
+                                    clipboard.setText(AnnotatedString(partner?.str("code") ?: ""))
+                                    model.notice(tr(state.lang,"Partner code copied","کد همکاری کپی شد"))
+                                }) {
+                                    Icon(Icons.Default.ContentCopy,
+                                        tr(state.lang,"Copy partner code","کپی کد همکاری"),
+                                        tint=Color(0xFFFFA9D9))
+                                }
+                            }
                             Spacer(Modifier.height(10.dp))
                             if (link.isNotBlank()) {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -161,13 +227,44 @@ fun AffiliateDashboard(state: AppState, model: AppViewModel) {
                                         overflow = TextOverflow.Ellipsis, fontSize = 11.sp)
                                     IconButton(onClick = {
                                         clipboard.setText(AnnotatedString(link))
+                                        model.notice(tr(state.lang,"Link copied","لینک کپی شد"))
                                     }) {
-                                        Icon(Icons.Default.ContentCopy, "Copy referral link",
-                                            tint = Palette.green)
+                                        Icon(Icons.Default.ContentCopy,
+                                            tr(state.lang,"Copy link","کپی لینک"),tint=Color(0xFF9BD1FF))
+                                    }
+                                    IconButton(onClick = {
+                                        val intent = Intent(Intent.ACTION_SEND).apply {
+                                            type="text/plain"
+                                            putExtra(Intent.EXTRA_TEXT, link)
+                                        }
+                                        context.startActivity(Intent.createChooser(intent,
+                                            tr(state.lang,"Share referral link","اشتراک لینک")))
+                                    }) {
+                                        Icon(Icons.Default.Share,
+                                            tr(state.lang,"Share link","اشتراک لینک"),
+                                            tint=Color(0xFFFFA9D9))
                                     }
                                 }
                             }
                         }
+                    }
+                }
+                item(key="partner-terms") {
+                    Row(horizontalArrangement=Arrangement.spacedBy(9.dp)) {
+                        val commissionBps=partner?.optInt("commissionRateBps", -1) ?: -1
+                        val rate=if(commissionBps>=0) {
+                            java.math.BigDecimal(commissionBps)
+                                .movePointLeft(2).stripTrailingZeros()
+                                .toPlainString() + "%"
+                        } else "—"
+                        AffiliateMetric(Modifier.weight(1f),
+                            tr(state.lang,"Your commission rate","نرخ کمیسیون شما"),
+                            rate,affiliateBlue)
+                        AffiliateMetric(Modifier.weight(1f),
+                            tr(state.lang,"Min. payout","حداقل برداشت"),
+                            partner?.str("minPayoutMinor")?.takeIf { it.isNotBlank() }
+                                ?.let { money(it,partner?.str("currency","USD") ?: "USD") }
+                                ?: "—",affiliatePink)
                     }
                 }
                 item {
@@ -222,6 +319,11 @@ fun AffiliateDashboard(state: AppState, model: AppViewModel) {
                             Palette.blue)
                     }
                 }
+                item(key = "native-affiliate-operations") {
+                    AffiliateOperations(state, model,
+                        partner?.str("currency", "USD") ?: "USD",
+                        partner?.str("minPayoutMinor", "0") ?: "0")
+                }
                 item {
                     SectionHeading(tr(state.lang, "Registration gift codes", "کدهای هدیه ثبت‌نام"),
                         tr(state.lang, "Maximum 10 codes, 4–8 letters or digits",
@@ -238,7 +340,7 @@ fun AffiliateDashboard(state: AppState, model: AppViewModel) {
                                     singleLine = true, modifier = Modifier.weight(1f))
                                 Spacer(Modifier.width(9.dp))
                                 Button(enabled = !giftSaving && gifts.size < 10 &&
-                                    codeInput.matches(Regex("[A-Z0-9]{4,8}")),
+                                    AffiliateInputRules.validGiftCode(codeInput),
                                     onClick = {
                                         scope.launch {
                                             giftSaving = true
@@ -290,11 +392,7 @@ fun AffiliateDashboard(state: AppState, model: AppViewModel) {
                         }
                     }
                 }
-                item(key = "native-affiliate-operations") {
-                    AffiliateOperations(state, model,
-                        partner?.str("currency", "USD") ?: "USD",
-                        partner?.str("minPayoutMinor", "0") ?: "0")
-                }
+
             }
         }
     }
@@ -306,7 +404,7 @@ private fun AffiliateMetric(modifier: Modifier, label: String, value: String, ti
         Column(Modifier.padding(15.dp)) {
             Text(label, color = Palette.muted, fontSize = 11.sp, maxLines = 1)
             Spacer(Modifier.height(8.dp))
-            Text(value, color = tint, fontSize = 24.sp, fontWeight = FontWeight.Black)
+            Text(value, color = tint, fontSize = 19.sp, fontWeight = FontWeight.Black, maxLines = 1)
         }
     }
 }

@@ -12,6 +12,9 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -33,7 +36,8 @@ fun AffiliateOperations(state: AppState, model: AppViewModel, currency: String,
     minimumPayoutMinor: String = "0") {
     val context = LocalContext.current
     val api = remember { ApiClient() }
-    val vault = remember { SessionVault(context) }
+    val vault = remember { SessionVault(context, "affiliate") }
+    val clipboard = LocalClipboardManager.current
     val scope = rememberCoroutineScope()
     val tabs = listOf(
         "referrals" to tr(state.lang, "Referrals", "زیرمجموعه‌ها"),
@@ -62,11 +66,7 @@ fun AffiliateOperations(state: AppState, model: AppViewModel, currency: String,
     var availableWalletAssets by remember { mutableStateOf<Set<String>>(emptySet()) }
     var payoutKey by remember { mutableStateOf(UUID.randomUUID().toString()) }
 
-    LaunchedEffect(state.signedIn, selected, page, refresh) {
-        if (!state.signedIn) {
-            data = null; values = emptyList(); error = null
-            return@LaunchedEffect
-        }
+    LaunchedEffect(selected, page, refresh) {
         busy = true; error = null
         try {
             val token = vault.accessToken(api) ?: throw IllegalStateException("Sign in required")
@@ -117,18 +117,36 @@ fun AffiliateOperations(state: AppState, model: AppViewModel, currency: String,
     }
 
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        SectionHeading(tr(state.lang, "Partner management", "مدیریت پنل همکاری"),
-            tr(state.lang, "Server-owned reporting and requests", "گزارش‌ها و درخواست‌های ثبت‌شده در سرور"))
-        LazyRow(horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+        SectionHeading(tr(state.lang, "Partner workspace", "فضای کاری افیلیت"),
+            tr(state.lang, "Secure referrals, statements and payout actions", "زیرمجموعه‌ها، صورتحساب و درخواست برداشت امن"))
+        LazyRow(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            contentPadding=PaddingValues(vertical=3.dp)
+        ) {
             items(tabs, key = { it.first }) { tab ->
                 val active = tab.first == selected
-                Surface(shape = RoundedCornerShape(13.dp),
-                    color = if (active) Palette.ink else Color.White,
-                    border = BorderStroke(1.dp, if (active) Palette.green else Palette.border),
-                    modifier = Modifier.clickable { switch(tab.first) }) {
-                    Text(tab.second, color = if (active) Color.White else Palette.text,
-                        fontSize = 11.sp, fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(horizontal = 13.dp, vertical = 12.dp))
+                val typeIcon = when(tab.first) {
+                    "referrals" -> Icons.Default.Groups
+                    "ledger" -> Icons.Default.ReceiptLong
+                    "payouts" -> Icons.Default.Payments
+                    "links" -> Icons.Default.Link
+                    else -> Icons.Default.AccountBalanceWallet
+                }
+                Surface(shape = RoundedCornerShape(15.dp),
+                    color = if(active) affiliateBlue else Color.White,
+                    border = BorderStroke(1.dp,if(active) affiliateBlue else affiliateOutline),
+                    shadowElevation=if(active)2.dp else 0.dp,
+                    modifier = Modifier.clickable(enabled=!actionBusy) { switch(tab.first) }) {
+                    Row(Modifier.padding(horizontal=13.dp,vertical=13.dp),
+                        verticalAlignment=Alignment.CenterVertically,
+                        horizontalArrangement=Arrangement.spacedBy(7.dp)) {
+                        Icon(typeIcon,null,
+                            tint=if(active)Color.White else affiliatePink,
+                            modifier=Modifier.size(17.dp))
+                        Text(tab.second,
+                            color=if(active)Color.White else affiliateInk,
+                            fontSize=12.sp,fontWeight=FontWeight.Black)
+                    }
                 }
             }
         }
@@ -258,12 +276,29 @@ fun AffiliateOperations(state: AppState, model: AppViewModel, currency: String,
                 }
                 "links" -> {
                     values.forEach { row ->
-                        PartnerRow(
-                            title=row.str("campaign",row.str("code")),
-                            subtitle=row.str("url"),
-                            value=row.optInt("clicks").toString()+" "+tr(state.lang,"clicks","کلیک"),
-                            icon=Icons.Default.Link
-                        )
+                        val destination = row.str("url")
+                        Column(verticalArrangement=Arrangement.spacedBy(5.dp)) {
+                            PartnerRow(
+                                title=row.str("campaign",row.str("code")),
+                                subtitle=destination,
+                                value=row.optInt("clicks").toString()+" "+tr(state.lang,"clicks","کلیک"),
+                                icon=Icons.Default.Link
+                            )
+                            if(destination.startsWith("https://")) {
+                                OutlinedButton(onClick={
+                                    clipboard.setText(AnnotatedString(destination))
+                                    actionMessage=tr(state.lang,"Campaign URL copied","لینک کمپین کپی شد")
+                                },modifier=Modifier.fillMaxWidth(),
+                                    border=BorderStroke(1.dp,affiliateOutline),
+                                    shape=RoundedCornerShape(11.dp)) {
+                                    Icon(Icons.Default.ContentCopy,null,
+                                        modifier=Modifier.size(16.dp),tint=affiliateBlue)
+                                    Spacer(Modifier.width(6.dp))
+                                    Text(tr(state.lang,"Copy campaign link","کپی لینک کمپین"),
+                                        color=affiliateBlue,fontWeight=FontWeight.Bold)
+                                }
+                            }
+                        }
                     }
                     Surface(color=Color.White,shape=RoundedCornerShape(18.dp),
                         border=BorderStroke(1.dp,Palette.border)) {
@@ -273,7 +308,7 @@ fun AffiliateOperations(state: AppState, model: AppViewModel, currency: String,
                             OutlinedTextField(campaign,{campaign=it.take(60)},
                                 label={Text(tr(state.lang,"Campaign name","نام کمپین"))},
                                 singleLine=true,modifier=Modifier.fillMaxWidth())
-                            Button(enabled=!actionBusy && campaign.trim().length in 2..60,
+                            Button(enabled=!actionBusy && AffiliateInputRules.validCampaign(campaign),
                                 onClick={
                                     runAction { token ->
                                         api.post("/api/v1/affiliate/links",

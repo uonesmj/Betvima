@@ -97,6 +97,10 @@ class ApiClient {
     /** Registration requires a Cloudflare-verified public API call, never a bearer session. */
     suspend fun registerAccount(payload: JSONObject): JSONObject =
         request("/api/v1/auth/register", body = payload)
+    /** Partner signup is a separate public flow; monetary setup stays server-owned. */
+    suspend fun registerAffiliate(payload: JSONObject): JSONObject =
+        request("/api/v1/affiliate/register", body = payload)
+
 
     suspend fun post(path: String, value: JSONObject, token: String): JSONObject =
         request(path, token, value)

@@ -13,8 +13,13 @@ import javax.crypto.KeyGenerator
 import javax.crypto.spec.GCMParameterSpec
 
 /** Android Keystore encrypted sessions; no backup or plaintext token fallback. */
-class SessionVault(context: Context) {
-    private val prefs = context.applicationContext.getSharedPreferences("native_session", Context.MODE_PRIVATE)
+class SessionVault(context: Context, scope: String = "member") {
+    // Keep affiliate credentials in a separate encrypted store. No accidental
+    // crossover into the sportsbook's financial/member session.
+    private val prefs = context.applicationContext.getSharedPreferences(
+        if (scope == "affiliate") "native_session_affiliate" else "native_session",
+        Context.MODE_PRIVATE
+    )
     private val keyAlias = "betvima_session_aes_v1"
     private val mutex = Mutex()
     private var memory: JSONObject? = null
@@ -69,6 +74,24 @@ class SessionVault(context: Context) {
         save(value.put("local_expires_at", System.currentTimeMillis() / 1000L +
             value.optLong("expires_in", 3600)))
     }
+    /** Log in to a *separate* partner identity using its registered email.
+     * Supabase authenticates; BetVima's withAffiliate guard must then verify
+     * role, ownership and partner association before persisting this session.
+     */
+    suspend fun signInAffiliate(email: String, password: String, api: ApiClient) = mutex.withLock {
+        val session = api.login(email.trim(), password)
+        val jwt = session.optString("access_token")
+        require(jwt.isNotBlank() && session.optString("refresh_token").isNotBlank()) {
+            "Incomplete partner authentication response"
+        }
+        val overview = api.get("/api/v1/affiliate/overview", jwt)
+        require(overview.optJSONObject("affiliate")?.optString("id").orEmpty().isNotBlank()) {
+            "No authorized affiliate account"
+        }
+        save(session.put("local_expires_at", System.currentTimeMillis() / 1000L +
+            session.optLong("expires_in", 3600)))
+    }
+
     suspend fun accessToken(api: ApiClient): String? = mutex.withLock {
         val current = read() ?: return@withLock null
         if (current.optLong("local_expires_at", 0) > System.currentTimeMillis() / 1000L + 90) {
