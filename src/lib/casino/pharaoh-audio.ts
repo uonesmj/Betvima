@@ -57,7 +57,7 @@ export class PharaohAudio {
     if (this.musicTimer) return;
     const notes = [110, 164.81, 196, 220, 164.81, 146.83, 196, 164.81];
     const tick = () => {
-      const note = notes[this.step % notes.length];
+      const note = notes[this.step % notes.length]!;
       this.tone(note, 1.15, this.musicVolume * 0.29, 0, 'triangle');
       this.tone(note * 2, 0.7, this.musicVolume * 0.075, 0.18, 'sine');
       if (this.step % 4 === 0) this.tone(55, 1.9, this.musicVolume * 0.27, 0, 'sine');
