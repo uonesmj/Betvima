@@ -68,6 +68,43 @@ function BadgeArt({symbol}: {symbol: SymbolId}) {
     </svg>
   );
 }
+function resultBonusLabel(result: SpinResult | null): string {
+  return result ? result.freeSpinsAwarded + ' FREE SPINS' : 'FREE SPINS';
+}
+const SPIN_SEQUENCE: SymbolId[] = [
+  'ankh', 'queen', 'scarab', 'eye', 'anubis', 'lotus',
+  'pharaoh', 'wild', 'scatter', 'ankh', 'queen', 'scarab',
+];
+
+/** Rendered motion is decorative. The server determines each result before reveal. */
+function RollingReel({ column }: { column: number }) {
+  const sequence = Array.from({length: 12}, (_, index) => SPIN_SEQUENCE[(index + column * 3) % 9]!);
+  return <div className={styles.spinViewport} aria-hidden="true">
+    <div className={styles.spinStrip} style={{animationDuration:(.51 + column * .075) + 's'}}>
+      {sequence.map((symbol,index) => <div className={styles.spinTile} key={column+'-'+index}>
+        <BadgeArt symbol={symbol}/>
+      </div>)}
+    </div>
+  </div>;
+}
+function CountUpCents({ cents, reduced }: { cents: number; reduced: boolean }) {
+  const [display,setDisplay] = useState(cents);
+  useEffect(() => {
+    if (reduced || cents <= 0) { setDisplay(cents); return; }
+    let frame = 0;
+    const start = performance.now();
+    const animate = (stamp: number) => {
+      const elapsed = Math.min(1,(stamp - start)/850);
+      const eased = 1 - Math.pow(1 - elapsed, 3);
+      setDisplay(Math.round(cents * eased));
+      if (elapsed < 1) frame = requestAnimationFrame(animate);
+    };
+    frame = requestAnimationFrame(animate);
+    return () => cancelAnimationFrame(frame);
+  },[cents,reduced]);
+  return <>{cash(display)}</>;
+}
+
 export function PharaohGoldSlot() {
   const [lang,setLang] = useState<Lang>('en');
   const t = lang === 'fa' ? FA : EN;
@@ -89,6 +126,9 @@ export function PharaohGoldSlot() {
   const [musicVolume,setMusicVolume] = useState(.11);
   const [autoRemaining,setAutoRemaining] = useState(0);
   const [activeRound,setActiveRound] = useState('');
+  const [settledCount,setSettledCount] = useState(5);
+  const [celebration,setCelebration] = useState<'win'|'big'|'bonus'|null>(null);
+  const celebrationTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const audioRef = useRef<PharaohAudio | null>(null);
   const spinningRef = useRef(false);
   const quickStopRef = useRef(false);
@@ -106,6 +146,7 @@ export function PharaohGoldSlot() {
     setCreditsReady(true);
     return () => {
       mountedRef.current = false;
+      if (celebrationTimer.current) clearTimeout(celebrationTimer.current);
       audioRef.current?.dispose();
       audioRef.current = null;
     };
@@ -135,6 +176,9 @@ export function PharaohGoldSlot() {
     spinningRef.current = true;
     quickStopRef.current = false;
     setPhase('spinning');
+    setSettledCount(0);
+    setCelebration(null);
+    if (celebrationTimer.current) clearTimeout(celebrationTimer.current);
     setNotice('');
     setActiveRound('');
     sfx('spin');
@@ -152,19 +196,34 @@ export function PharaohGoldSlot() {
       const result = packet.result;
       if (result.betCents !== betCents || !Array.isArray(result.reels) || result.reels.length !== 5 || !Number.isSafeInteger(result.winCents))
         throw new Error('Invalid spin response');
-      const delay = reduceMotion ? 100 : turbo ? 400 : 1720;
-      const until = Date.now() + delay;
+      const minWait = reduceMotion ? 70 : turbo ? 440 : 1350;
+      const until = Date.now() + minWait;
       while (Date.now() < until && !quickStopRef.current) {
-        await new Promise(resolve => setTimeout(resolve, Math.min(70, Math.max(0,until - Date.now()))));
+        await new Promise(resolve => setTimeout(resolve, Math.min(50, Math.max(0, until - Date.now()))));
       }
       if (!mountedRef.current) return;
-      setReels(result.reels);
+      for (let column = 0; column < 5; column++) {
+        const completedReel = result.reels[column]!;
+        setReels(previous => previous.map((symbols,index) =>
+          index === column ? completedReel : symbols));
+        setSettledCount(column + 1);
+        sfx('reel');
+        await new Promise(resolve => setTimeout(resolve,
+          reduceMotion || quickStopRef.current ? 40 : turbo ? 90 : 195));
+        if (!mountedRef.current) return;
+      }
       setLastSpin(result);
       setActiveRound(result.roundId);
       setBalanceCents(balance => balance - (isBonus ? 0 : betCents) + result.winCents);
       setFreeSpins(current => Math.max(0, current - (isBonus ? 1 : 0)) + result.freeSpinsAwarded);
       setRounds(current => [result,...current].slice(0,40));
       setPhase('result');
+      const winEffect = result.freeSpinsAwarded > 0 ? 'bonus' :
+        result.winCents >= betCents * 20 ? 'big' : result.winCents > 0 ? 'win' : null;
+      setCelebration(winEffect);
+      if (winEffect) celebrationTimer.current = setTimeout(() => {
+        if (mountedRef.current) setCelebration(null);
+      }, reduceMotion ? 1200 : 3000);
       if (result.freeSpinsAwarded > 0) {
         sfx('bonus');
         setAutoRemaining(0);
@@ -176,13 +235,14 @@ export function PharaohGoldSlot() {
     } catch {
       if (mountedRef.current) {
         setNotice(t.error);
+        setSettledCount(5);
         setAutoRemaining(0);
         sfx('error');
       }
     } finally {
       spinningRef.current = false;
       quickStopRef.current = false;
-      if (mountedRef.current) setPhase('idle');
+      if (mountedRef.current) {setPhase('idle');setSettledCount(5);}
     }
   }, [balanceCents,betCents,creditsReady,freeSpins,modal,reduceMotion,t.error,t.noFunds,turbo,sfx]);
 
@@ -231,21 +291,32 @@ export function PharaohGoldSlot() {
 
       <main className={styles.content}>
         <div className={styles.titleRow}>
+          <div className={styles.templeGuardianLeft} aria-hidden="true"><img src="/casino/pharaoh-gold/guardian.svg" alt=""/></div>
+          <div className={styles.templeGuardianRight} aria-hidden="true"><img src="/casino/pharaoh-gold/guardian.svg" alt=""/></div>
           <div className={styles.subtitle}><span className={styles.diamond}>◆</span> ORIGINAL BETVIMA CASINO <span className={styles.diamond}>◆</span></div>
           <img className={styles.gameLogo} src="/casino/pharaoh-gold/logo.svg" alt="Pharaoh Gold"/>
           <p className={styles.currencyAlert}>{t.usd} <span>•</span> {t.minimum}</p>
         </div>
 
-        <section className={styles.machine} aria-label="Pharaoh Gold demo slot machine">
-          <div className={styles.machineOrnament} aria-hidden="true"><span>✦</span><span>𓂀</span><span>✦</span></div>
+        <section className={styles.machine} aria-label="Pharaoh Gold demo slot machine" data-impact={spinBusy && settledCount > 0 ? 'true' : 'false'}>
+          <div className={styles.machineOrnament} aria-hidden="true">
+            <img src="/casino/pharaoh-gold/winged-crest.svg" alt=""/>
+          </div>
+          <div className={styles.templeLightLeft} aria-hidden="true" />
+          <div className={styles.templeLightRight} aria-hidden="true" />
           <div className={styles.reelPanel}>
             <div className={styles.reelGrid} aria-live="off">
-              {reels.map((reel,col) => <div className={styles.reelColumn} key={col} style={{animationDelay:(col*0.085)+'s'}} data-spinning={spinBusy ? 'true':'false'}>
-                {reel.map((symbol,row) => <div className={styles.symbolCell} key={col+'-'+row} data-win={winningCells.has(col+'-'+row) ? 'true':'false'}>
-                  <span className={styles.cellInner}><BadgeArt symbol={symbol}/></span>
-                  {winningCells.has(col+'-'+row) && !spinBusy ? <span className={styles.cellGlow} aria-hidden="true"/> : null}
-                </div>)}
-              </div>)}
+              {reels.map((reel,col) => {
+                const isSpinning = spinBusy && col >= settledCount;
+                const justLanded = spinBusy && col === settledCount - 1;
+                return <div className={styles.reelColumn} key={col} data-spinning={isSpinning ? 'true':'false'} data-landed={justLanded ? 'true':'false'}>
+                  {isSpinning ? <RollingReel column={col}/> : reel.map((symbol,row) =>
+                    <div className={styles.symbolCell} key={col+'-'+row} data-win={winningCells.has(col+'-'+row) ? 'true':'false'}>
+                      <span className={styles.cellInner}><BadgeArt symbol={symbol}/></span>
+                      {winningCells.has(col+'-'+row) && !spinBusy ? <span className={styles.cellGlow} aria-hidden="true"/> : null}
+                    </div>)}
+                </div>;
+              })}
             </div>
             <div className={styles.sideOrnaments} aria-hidden="true"><span>✶</span><span>✶</span><span>✶</span></div>
           </div>
@@ -257,10 +328,18 @@ export function PharaohGoldSlot() {
         </section>
 
         <section className={styles.winDisplay} aria-live="polite">
+          {celebration && <div className={styles.celebration} data-kind={celebration} aria-live="polite">
+            <div className={styles.celebrationFlare} aria-hidden="true" />
+            <div className={styles.celebrationCoins} aria-hidden="true">
+              {Array.from({length:14},(_,index) => <span key={index} style={{'--coin-angle':(index*25.714)+'deg','--coin-delay':(index%5*0.08)+'s'} as React.CSSProperties}>✦</span>)}
+            </div>
+            <div className={styles.celebrationTitle}>{celebration === 'bonus'?t.bonusTitle:celebration === 'big'?t.big:t.winTitle}</div>
+            <div className={styles.celebrationAmount}>{celebration === 'bonus' ? resultBonusLabel(lastSpin) : <CountUpCents cents={lastSpin?.winCents ?? 0} reduced={reduceMotion}/>}</div>
+          </div>}
           <div className={styles.winning} data-active={hitWin ? 'true' : 'false'}>
             <Award size={21}/>
             {hitWin ? (lastSpin!.winCents >= betCents * 20 ? t.big : t.winTitle) : 'PHARAOH GOLD'}
-            <strong>{cash(phase === 'spinning' ? 0 : (lastSpin?.winCents ?? 0))}</strong>
+            <strong><CountUpCents cents={phase === 'spinning' ? 0 : (lastSpin?.winCents ?? 0)} reduced={reduceMotion}/></strong>
           </div>
           {notice && <p role="alert" className={styles.error}>{notice}</p>}
         </section>
@@ -283,6 +362,8 @@ export function PharaohGoldSlot() {
             </div>
           </div>
           <div className={styles.spinGroup}>
+            <div className={styles.spinGuardians} aria-hidden="true"><img src="/casino/pharaoh-gold/guardian.svg" alt=""/><img src="/casino/pharaoh-gold/guardian.svg" alt=""/></div>
+            <div className={styles.spinHalo} aria-hidden="true" />
             <button type="button" aria-label={spinBusy ? t.stop : t.spin} disabled={!creditsReady} onClick={() => {void handleSpin();}} className={styles.spinButton} data-busy={spinBusy} >
               {spinBusy ? <FastForward size={30}/> : <RotateCcw size={36} strokeWidth={2.4}/>}
               <span>{spinBusy ? t.stop : freeSpins > 0 ? t.free : t.spin}</span>
