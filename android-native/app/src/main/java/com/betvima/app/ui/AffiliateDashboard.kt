@@ -340,7 +340,7 @@ fun AffiliateDashboard(state: AppState, model: AppViewModel) {
                                     singleLine = true, modifier = Modifier.weight(1f))
                                 Spacer(Modifier.width(9.dp))
                                 Button(enabled = !giftSaving && gifts.size < 10 &&
-                                    codeInput.matches(Regex("[A-Z0-9]{4,8}")),
+                                    AffiliateInputRules.validGiftCode(codeInput),
                                     onClick = {
                                         scope.launch {
                                             giftSaving = true
