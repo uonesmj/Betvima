@@ -417,8 +417,8 @@ fun ReferenceTournamentRibbon(state: AppState, model: AppViewModel) {
     val ribbonState = rememberLazyListState()
     LazyRow(
         Modifier.fillMaxWidth(), state = ribbonState,
-        contentPadding = PaddingValues(horizontal = 15.dp, vertical = 11.dp),
-        horizontalArrangement = Arrangement.spacedBy(7.dp),
+        contentPadding = PaddingValues(horizontal = 9.dp, vertical = 11.dp),
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
         flingBehavior = rememberPremiumFlingBehavior()
     ) {
         items(homeCompetitionShortcuts, key = { it.key }) { shortcut ->
