@@ -37,6 +37,7 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import coil.compose.AsyncImage
 import com.betvima.app.data.CasinoGame
+import com.betvima.app.data.CasinoEligibility
 import com.betvima.app.data.ApiFailure
 import com.betvima.app.data.casinoCategoryLabel
 import com.betvima.app.data.casinoDemoFailure
@@ -67,6 +68,47 @@ fun CasinoLobby(state: AppState, model: AppViewModel) {
     var launching by remember { mutableStateOf<String?>(null) }
     var sessionUrl by remember { mutableStateOf<String?>(null) }
     var launchError by remember { mutableStateOf<Pair<String, String>?>(null) }
+    var pilot by remember { mutableStateOf<CasinoEligibility?>(null) }
+    var pendingRealGame by remember { mutableStateOf<CasinoGame?>(null) }
+    var gameUsesRealMoney by remember { mutableStateOf(false) }
+    var failedRealMoneyLaunch by remember { mutableStateOf(false) }
+
+    LaunchedEffect(state.signedIn, refreshSerial) {
+        pilot = null
+        if (state.signedIn) {
+            try { pilot = model.casinoEligibility() }
+            catch (cancel: CancellationException) { throw cancel }
+            catch (_: Exception) { pilot = null } // Deny by default.
+        }
+    }
+
+    fun launchWithRealWallet(game: CasinoGame) {
+        if (launching != null || pilot?.realMoneyEnabled != true) return
+        pendingRealGame = null
+        launchError = null
+        failedRealMoneyLaunch = false
+        launching = game.id
+        scope.launch {
+            try {
+                val url = model.casinoRealMoneyLaunch(game.id)
+                gameUsesRealMoney = true
+                sessionUrl = url
+            } catch (cancel: CancellationException) {
+                throw cancel
+            } catch (failure: Exception) {
+                failedRealMoneyLaunch = true
+                val status = (failure as? ApiFailure)?.code?.takeIf { it in 400..599 }
+                launchError = game.name to (
+                    tr(state.lang,
+                        "Real-money game launch was denied. The server must approve this test account and its wallet.",
+                        "اجرای بازی با پول واقعی از طرف سرور تأیید نشد. حساب آزمایشی و کیف پول آن باید مجاز باشند.") +
+                    (if (status != null) " (HTTP $status)" else "")
+                )
+            } finally {
+                launching = null
+            }
+        }
+    }
 
     fun tryDemo(gameId: String, gameName: String, confirmedDemo: Boolean) {
         if (launching != null) return
@@ -78,7 +120,10 @@ fun CasinoLobby(state: AppState, model: AppViewModel) {
         launching = gameId
         scope.launch {
             try {
-                sessionUrl = model.casinoDemoLaunch(gameId)
+                val url = model.casinoDemoLaunch(gameId)
+                gameUsesRealMoney = false
+                failedRealMoneyLaunch = false
+                sessionUrl = url
             } catch (cancel: CancellationException) {
                 throw cancel
             } catch (failure: Exception) {
@@ -160,10 +205,23 @@ fun CasinoLobby(state: AppState, model: AppViewModel) {
             }
         }
         item(span = { GridItemSpan(maxLineSpan) }) {
-            BvInformationStrip(tr(state.lang,
-                "Demo mode uses no real money. Real-money play is not enabled in this version.",
-                "حالت آزمایشی بدون پول واقعی اجرا می‌شود. بازی با پول واقعی در این نسخه فعال نیست."),
-                icon = Icons.Default.VerifiedUser, accent = Palette.blue)
+            val permission = pilot
+            BvInformationStrip(
+                if (permission?.realMoneyEnabled == true) {
+                    tr(state.lang,
+                        "Game balance: USD $" + permission.displayedUsd +
+                            " (wallet: " + permission.walletCurrency +
+                            "). All game amounts are USD; wins and losses settle in your wallet currency.",
+                        "موجودی بازی: $" + permission.displayedUsd +
+                            " دلار (کیف پول: " + permission.walletCurrency +
+                            "). مبالغ بازی دلاری است و برد و باخت در ارز کیف پول تسویه می‌شود.")
+                } else {
+                    tr(state.lang,
+                        "Demo mode is available. Real-money games require server-approved testing.",
+                        "حالت آزمایشی فعال است. بازی با پول واقعی فقط پس از تأیید حساب آزمایشی در سرور فعال می‌شود.")
+                },
+                icon = Icons.Default.VerifiedUser, accent = Palette.blue
+            )
         }
         item(span = { GridItemSpan(maxLineSpan) }) {
             Surface(
@@ -301,9 +359,12 @@ fun CasinoLobby(state: AppState, model: AppViewModel) {
             }
         }
         items(games, key = { it.id }) { game ->
-            CasinoGameCard(game, state.lang, launching == game.id) {
-                tryDemo(game.id, game.name, game.demoSupported)
-            }
+            CasinoGameCard(
+                game = game, lang = state.lang, launching = launching == game.id,
+                realMoneyEnabled = pilot?.realMoneyEnabled == true,
+                onRealClick = { pendingRealGame = game },
+                onClick = { tryDemo(game.id, game.name, game.demoSupported) }
+            )
         }
         if (games.isNotEmpty() && loading) {
             item(span = { GridItemSpan(maxLineSpan) }) {
@@ -331,7 +392,32 @@ fun CasinoLobby(state: AppState, model: AppViewModel) {
         }
     }
     sessionUrl?.let { secureUrl ->
-        CasinoGameDialog(secureUrl, state.lang) { sessionUrl = null }
+        CasinoGameDialog(secureUrl, state.lang, gameUsesRealMoney) { sessionUrl = null }
+    }
+    pendingRealGame?.let { game ->
+        AlertDialog(
+            onDismissRequest = { pendingRealGame = null },
+            icon = { Icon(Icons.Default.Casino, null, tint = Palette.green) },
+            title = { Text(tr(state.lang, "Play with USD", "اجرای بازی دلاری"),
+                fontWeight = FontWeight.Bold) },
+            text = {
+                Text(tr(state.lang,
+                    game.name + "\nThe game uses USD. Bets and wins are settled in your " +
+                        (pilot?.walletCurrency ?: "USD") + " wallet.",
+                    game.name + "\nمبلغ بازی دلار است؛ برداشت و پرداخت برد در کیف پول " +
+                        (pilot?.walletCurrency ?: "USD") + " انجام می‌شود."))
+            },
+            confirmButton = {
+                Button(onClick = { launchWithRealWallet(game) }) {
+                    Text(tr(state.lang, "Open game", "ورود به بازی"))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { pendingRealGame = null }) {
+                    Text(tr(state.lang, "Cancel", "انصراف"))
+                }
+            }
+        )
     }
     launchError?.let { (gameName, message) ->
         AlertDialog(
@@ -339,7 +425,9 @@ fun CasinoLobby(state: AppState, model: AppViewModel) {
             icon = { Icon(Icons.Default.Info, null, tint = Palette.blue) },
             title = {
                 Column {
-                    Text(tr(state.lang, "Demo launch failed", "خطا در اجرای دمو"),
+                    Text(if (failedRealMoneyLaunch)
+                        tr(state.lang, "Game launch failed", "خطا در اجرای بازی")
+                        else tr(state.lang, "Demo launch failed", "خطا در اجرای دمو"),
                         fontWeight = FontWeight.Bold)
                     Text(gameName, style = MaterialTheme.typography.titleSmall)
                 }
