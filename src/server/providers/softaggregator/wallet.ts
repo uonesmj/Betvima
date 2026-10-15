@@ -2,11 +2,12 @@ import { createHash } from 'node:crypto';
 import { getDb } from '@/server/db';
 import type { Db } from '@/lib/ports/db';
 import { callbackResponse, type SignedCallback, userIdFromUsername } from './contract';
-import { casinoRealMoneyEnabled } from './client';
+import { casinoRealMoneyUserAllowed } from './client';
+import { fiatCasinoBalance, settleFiatCasinoCallback } from './fiat-wallet';
 
 export type CasinoBalanceResponse = { error: 0 | 1 | 2; balance: number };
 type ProfileRow = {
-  status: string; age_verified: boolean; country: string | null;
+  status: string; age_verified: boolean; country: string | null; currency: string;
   self_excluded: boolean; restricted: boolean;
   max_stake_per_bet_minor: string | null; max_stake_per_day_minor: string | null;
   loss_limit_daily_minor: string | null; loss_limit_weekly_minor: string | null;
@@ -16,7 +17,7 @@ type ReceiptRow = { identity_hash: string; response_error: 0 | 1 | 2; response_b
 
 async function getProfile(db: Db, userId: string): Promise<ProfileRow | null> {
   const sql = [
-    "select p.status::text as status, p.age_verified, p.jurisdiction as country,",
+    "select p.status::text as status, p.age_verified, p.jurisdiction as country, p.preferred_currency as currency,",
     "coalesce(l.self_excluded_until > now(), false) as self_excluded,",
     "exists (select 1 from nova.user_restrictions r where r.user_id = p.id and r.is_active",
     "and r.kind in ('self_exclusion', 'cooling_off', 'account_restriction')",
@@ -36,9 +37,11 @@ export async function casinoPlayerMayLaunch(userId: string): Promise<{ country: 
   const p = await getProfile(db, userId);
   if (!p || !accountCanBet(p)) throw new Error('CASINO_PLAYER_NOT_ELIGIBLE');
   if (!p.country || !/^[A-Z]{2}$/.test(p.country)) throw new Error('CASINO_COUNTRY_REQUIRED');
+  if (!casinoRealMoneyUserAllowed(userId)) throw new Error('CASINO_REAL_MONEY_DISABLED');
+  if (!["USD", "IRT", "IRR"].includes(p.currency)) throw new Error('CASINO_WALLET_CURRENCY_UNSUPPORTED');
   const wallet = await db.queryOne<WalletRow>(
-    "select balance_minor::text, locked_minor::text, is_frozen from nova.wallets where user_id = $1 and currency = 'USD'",
-    [userId],
+    "select balance_minor::text, locked_minor::text, is_frozen from nova.wallets where user_id = $1 and currency = $2",
+    [userId, p.currency],
   );
   if (wallet?.is_frozen) throw new Error('CASINO_WALLET_FROZEN');
   return { country: p.country };
@@ -81,8 +84,17 @@ async function limitAllows(db: Db, userId: string, amount: bigint, p: ProfileRow
 }
 export async function settleCasinoCallback(event: SignedCallback): Promise<CasinoBalanceResponse> {
   const userId = userIdFromUsername(event.username);
-  if (!userId || !casinoRealMoneyEnabled()) return { error: 2, balance: 0 };
+  if (!userId || !casinoRealMoneyUserAllowed(userId)) return { error: 2, balance: 0 };
+  if (event.rollback && event.action !== 'credit') return { error: 2, balance: 0 };
   const db = getDb();
+  const currencyProfile = await getProfile(db, userId);
+  if (!currencyProfile) return { error: 2, balance: 0 };
+  if (currencyProfile.currency === 'IRT' || currencyProfile.currency === 'IRR') {
+    return event.action === 'balance'
+      ? fiatCasinoBalance(db, userId)
+      : settleFiatCasinoCallback(db, userId, event);
+  }
+  if (currencyProfile.currency !== 'USD') return { error: 2, balance: 0 };
   if (event.action === 'balance') {
     const p = await getProfile(db, userId);
     if (!p || !accountCanBet(p)) return { error: 2, balance: 0 };
