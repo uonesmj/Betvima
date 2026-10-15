@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { CalendarDays, ChevronRight, LockKeyhole, Radio, Tv } from 'lucide-react';
+import { CalendarDays, ChevronRight, LockKeyhole, Radio } from 'lucide-react';
 import { useApp } from '@/components/layout/providers';
 import { translateSportName, translateBettingSelection } from '@/lib/i18n/ui-phrases';
 import { formatOddsScaled } from '@/lib/i18n';
@@ -84,7 +84,7 @@ export function MatchCard({
   return (
     <article data-testid="match-card" data-match-id={match.id}
       data-live={match.isLive ? 'true' : 'false'}
-      className={`nova-match-card overflow-hidden rounded-[21px] border border-[#E2E7EC] bg-white shadow-[0_3px_13px_rgba(18,35,51,.055)] ${compact ? '' : ''}`}>
+      className="nova-match-card overflow-hidden rounded-[21px] border border-[#E2E7EC] bg-white shadow-[0_3px_13px_rgba(18,35,51,.055)]" data-compact={compact}>
       <Link href={`/match/${match.id}`}
         className="flex min-w-0 items-center gap-2.5 border-b border-[#E2E7EC] bg-gradient-to-r from-[#F1F7F9] to-[#FCFDFE] px-3.5 py-3">
         <span className="grid h-[37px] w-[37px] shrink-0 place-items-center rounded-xl border border-[#E2E7EC] bg-white">
