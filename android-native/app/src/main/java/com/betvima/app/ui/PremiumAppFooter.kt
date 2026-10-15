@@ -314,21 +314,20 @@ private fun FooterAccordion(
     onToggle: () -> Unit,
     content: @Composable ColumnScope.() -> Unit
 ) {
-    Column(Modifier.fillMaxWidth().animateContentSize()) {
+    Column(Modifier.fillMaxWidth()) {
         Row(Modifier.fillMaxWidth().heightIn(min = 55.dp)
             .clickable(role = Role.Button, onClick = onToggle),
             verticalAlignment = Alignment.CenterVertically) {
             Text(title, color = Color.White, fontSize = 18.sp,
                 fontWeight = FontWeight.ExtraBold,
                 modifier = Modifier.weight(1f))
-            Icon(if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
-                contentDescription = title,
+            SmoothExpandChevron(expanded, description = title,
                 tint = Color(0xFF959BA9), modifier = Modifier.size(27.dp))
         }
         AnimatedVisibility(
             visible = expanded,
-            enter = expandVertically() + fadeIn(),
-            exit = shrinkVertically() + fadeOut()
+            enter = expandVertically(animationSpec = tween(310)) + fadeIn(tween(210)),
+            exit = shrinkVertically(animationSpec = tween(270)) + fadeOut(tween(180))
         ) {
             Column(Modifier.padding(bottom = 8.dp),
                 verticalArrangement = Arrangement.spacedBy(2.dp),
