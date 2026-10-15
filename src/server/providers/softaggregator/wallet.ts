@@ -100,7 +100,7 @@ export async function settleCasinoCallback(event: SignedCallback): Promise<Casin
     if (!p || !accountCanBet(p)) return { error: 2, balance: 0 };
     return safeResponse(0, available(await walletRow(db, userId, false)));
   }
-  if (!event.callId || !event.identityHash || !event.amountMinor) return { error: 2, balance: 0 };
+  if (!event.callId || !event.identityHash || !event.amountMinor || !event.roundId || !event.gameId) return { error: 2, balance: 0 };
   return db.transaction(async (tx) => {
     // Serialize concurrent retries independently from the per-wallet financial lock.
     await tx.query('select pg_advisory_xact_lock(hashtext($1), hashtext($2))', [
@@ -129,10 +129,27 @@ export async function settleCasinoCallback(event: SignedCallback): Promise<Casin
     let error: 0 | 1 | 2 = 0;
     let resultBalance = before;
     let entryId: string | null = null;
+    let originalDebitCallId: string | null = null;
+    // A rollback is a refund of the EXACT earlier debit, not an arbitrary
+    // vendor credit. Do not permit two successful refunds for the same debit.
+    if (event.rollback) {
+      const original = await tx.queryOne<{ call_id: string; wallet_amount_minor: string }>(
+        "select r.call_id,r.wallet_amount_minor::text from nova.softaggregator_callback_receipts r " +
+        "where r.user_id=$1 and r.action='debit' and r.round_id=$2 and r.game_id=$3 " +
+        "and r.amount_minor=$4 and r.response_error=0 and r.rollback=false " +
+        "and not exists(select 1 from nova.softaggregator_callback_receipts x " +
+        "where x.original_debit_call_id=r.call_id and x.response_error=0) " +
+        "order by r.created_at,r.call_id limit 1 for update",
+        [userId, event.roundId, event.gameId, event.amountMinor.toString()],
+      );
+      if (!original || BigInt(original.wallet_amount_minor) !== event.amountMinor)
+        return { error: 2, balance: 0 };
+      originalDebitCallId = original.call_id;
+    }
     if (w.is_frozen) {
       error = 2;
     } else if (isDebit &&
-      (!accountCanBet(p) || before < event.amountMinor! ||
+      (!accountCanBet(p) || event.amountMinor! < 20n || before < event.amountMinor! ||
         !(await limitAllows(tx, userId, event.amountMinor!, p)))) {
       error = 1;
     } else {
@@ -152,9 +169,15 @@ export async function settleCasinoCallback(event: SignedCallback): Promise<Casin
     }
     // The receipt and the ledger mutation commit together.
     await tx.query(
-      'insert into nova.softaggregator_callback_receipts (call_id,identity_hash,user_id,action,amount_minor,response_error,response_balance_minor,ledger_transaction_id) values ($1,$2,$3,$4,$5,$6,$7,$8)',
+      'insert into nova.softaggregator_callback_receipts ' +
+      '(call_id,identity_hash,user_id,action,amount_minor,response_error,response_balance_minor,' +
+      'ledger_transaction_id,wallet_currency,wallet_amount_minor,round_id,game_id,rollback,original_debit_call_id) ' +
+      'values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)',
       [event.callId!, event.identityHash!, userId, event.action,
-        event.amountMinor!.toString(), error, resultBalance.toString(), entryId],
+        event.amountMinor!.toString(), error, resultBalance.toString(), entryId,
+        'USD', entryId ? event.amountMinor!.toString() : '0',
+        event.roundId!, event.gameId!, event.rollback,
+        error === 0 ? originalDebitCallId : null],
     );
     return safeResponse(error, resultBalance);
   });
