@@ -119,7 +119,7 @@ fun SportsbookTopTabs(state: AppState, model: AppViewModel, onSearch: () -> Unit
                             Spacer(Modifier.width(5.dp))
                         }
                         Text(title, color = Palette.text, fontWeight =
-                            if (active == id) FontWeight.Black else FontWeight.SemiBold,
+                            if (active == id) FontWeight.Black else FontWeight.ExtraBold,
                             fontSize = 14.sp, maxLines = 1, softWrap = false)
                     }
                     Box(Modifier.height(2.dp).width(if (isActive) 25.dp else 0.dp)
