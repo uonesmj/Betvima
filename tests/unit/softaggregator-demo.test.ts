@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { casinoGames, launchCasinoGame, SOFTAGGREGATOR_USER_AGENT } from '@/server/providers/softaggregator/client';
+import { casinoGames, launchCasinoGame, parsePrivateDemoConfig, casinoRealMoneyEnabled, SOFTAGGREGATOR_USER_AGENT } from '@/server/providers/softaggregator/client';
 
 describe('SoftAggregator demo-only launch API', () => {
   const original = { ...process.env };
@@ -102,6 +102,31 @@ describe('SoftAggregator demo-only launch API', () => {
       userId: '00000000-0000-4000-8000-000000000001',
       gameId: 'x887bde40b16350c', demo: true, lang: 'en', device: 'mobile',
     })).rejects.toThrow('INVALID_CASINO_LAUNCH_URL');
+  });
+
+  it('parses only expected demo-only private fields', () => {
+    const parsed = parsePrivateDemoConfig({
+      enabled: true,
+      apiLogin: 'sample-login',
+      apiPassword: 'sample-password',
+      playerSecret: 'a'.repeat(64),
+      realMoneyEnabled: true,
+    });
+    expect(parsed).toEqual({
+      enabled: true, apiLogin: 'sample-login',
+      apiPassword: 'sample-password', playerSecret: 'a'.repeat(64),
+    });
+    expect(casinoRealMoneyEnabled()).toBe(false);
+    expect(parsePrivateDemoConfig(null)).toEqual({});
+    expect(parsePrivateDemoConfig(['incorrect'])).toEqual({});
+    expect(parsePrivateDemoConfig({
+      enabled: 'true',
+      apiLogin: 1,
+      apiPassword: true,
+      playerSecret: 'short',
+    })).toEqual({
+      enabled: false, apiLogin: '', apiPassword: '', playerSecret: '',
+    });
   });
 
   it('refuses real-money game access independently of provider credentials', async () => {
