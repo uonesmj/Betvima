@@ -154,35 +154,49 @@ fun BrandHeader(
                         }
                     }
                 } else {
-                    // Guest actions remain functional without displaying a fake wallet.
-                    Surface(
-                        modifier = Modifier.height(44.dp)
-                            .clickable(onClick = onAccount),
-                        color = Color(0xFF232325),
-                        shape = RoundedCornerShape(12.dp),
-                        border = BorderStroke(1.dp, Color(0xFF4A4A50))
-                    ) {
-                        Box(Modifier.fillMaxHeight()
-                            .padding(horizontal = if (compact) 12.dp else 16.dp),
-                            contentAlignment = Alignment.Center) {
-                            Text(tr(lang, "Log in", "ورود"),
-                                color = Color.White,
-                                fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                        }
+                    // Reference guest actions: flat charcoal Login and green
+                    // Registration, aligned on one baseline. Keep the existing
+                    // account/register callbacks and localized labels intact.
+                    val narrow = maxWidth < 340.dp
+                    val loginWidth = when {
+                        narrow -> 62.dp
+                        compact -> 72.dp
+                        else -> 82.dp
                     }
-                    Spacer(Modifier.width(actionGap))
+                    val registerWidth = when {
+                        narrow -> 96.dp
+                        compact -> 113.dp
+                        else -> 126.dp
+                    }
                     Surface(
-                        modifier = Modifier.height(44.dp)
-                            .clickable(onClick = onRegister),
-                        color = headerGreen,
+                        modifier = Modifier.width(loginWidth).height(46.dp)
+                            .clickable(onClick = onAccount),
+                        color = Color(0xFF2B2B2D),
                         shape = RoundedCornerShape(12.dp)
                     ) {
-                        Box(Modifier.padding(horizontal = if (compact) 12.dp else 16.dp),
-                            contentAlignment = Alignment.Center) {
-                            Text(tr(lang, "Sign up", "ثبت‌نام"),
+                        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                            Text(tr(lang, "Login", "ورود"),
                                 color = Color.White,
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.ExtraBold)
+                                fontSize = if (narrow) 12.sp else 13.sp,
+                                fontWeight = FontWeight.Bold,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis)
+                        }
+                    }
+                    Spacer(Modifier.width(if (compact) 9.dp else 11.dp))
+                    Surface(
+                        modifier = Modifier.width(registerWidth).height(46.dp)
+                            .clickable(onClick = onRegister),
+                        color = Color(0xFF08CA60),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                            Text(tr(lang, "Registration", "ثبت‌نام"),
+                                color = Color.White,
+                                fontSize = if (narrow) 11.sp else 13.sp,
+                                fontWeight = FontWeight.ExtraBold,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis)
                         }
                     }
                 }
