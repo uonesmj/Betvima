@@ -404,7 +404,7 @@ fun PremiumSlipSheet(state: AppState,model: AppViewModel) {
     }
     val sheet=rememberModalBottomSheetState(skipPartiallyExpanded=true)
     val closeScope = rememberCoroutineScope()
-    val animatedDismiss = {
+    val animatedDismiss: () -> Unit = {
         closeScope.launch {
             sheet.hide()
             model.showSlip(false)
