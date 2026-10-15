@@ -120,14 +120,17 @@ internal fun BetSelectionOverview(
     resolvedMatch: Match? = null
 ) {
     val result = leg.result.ifBlank { leg.status }
-    val liveMatch = resolvedMatch?.takeIf { it.live }
-    val live = leg.matchStatus.lowercase() in livePhases || liveMatch != null
-    val scoreHome = liveMatch?.homeScore ?: leg.homeScore
-    val scoreAway = liveMatch?.awayScore ?: leg.awayScore
-    val minute = liveMatch?.minute ?: leg.minute
-    val phase = if (liveMatch != null) tr(lang,"LIVE","زنده")
+    val terminalPhase = leg.matchStatus.lowercase() in finalPhases
+    val liveMatch = resolvedMatch?.takeIf { it.live && !terminalPhase }
+    val live = !terminalPhase && (leg.matchStatus.lowercase() in livePhases || liveMatch != null)
+    val scoreHome = liveMatch?.homeScore ?: leg.homeScore ?: resolvedMatch?.homeScore
+    val scoreAway = liveMatch?.awayScore ?: leg.awayScore ?: resolvedMatch?.awayScore
+    val minute = if (live) liveMatch?.minute ?: leg.minute else null
+    val phase = if (terminalPhase) matchPhase(leg.matchStatus, lang)
+        else if (liveMatch != null) tr(lang,"LIVE","زنده")
         else matchPhase(leg.matchStatus, lang)
-    val phaseColor = if (liveMatch != null) Palette.red else matchPhaseColor(leg.matchStatus)
+    val phaseColor = if (terminalPhase) Palette.green
+        else if (liveMatch != null) Palette.red else matchPhaseColor(leg.matchStatus)
     val outcomeColor = betLegOutcomeColor(leg)
 
     Surface(
