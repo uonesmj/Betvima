@@ -89,12 +89,22 @@ export async function settleCasinoCallback(event: SignedCallback): Promise<Casin
   const db = getDb();
   const currencyProfile = await getProfile(db, userId);
   if (!currencyProfile) return { error: 2, balance: 0 };
-  if (currencyProfile.currency === 'IRT' || currencyProfile.currency === 'IRR') {
+  // Always settle a pre-existing round to its ORIGINAL native currency,
+  // even if the user switches preferred_currency during an active game.
+  const originalRound = event.roundId && event.gameId
+    ? await db.queryOne<{ wallet_currency: string }>(
+      'select wallet_currency from nova.softaggregator_round_fx ' +
+      'where user_id=$1 and round_id=$2 and game_id=$3',
+      [userId, event.roundId, event.gameId],
+    )
+    : null;
+  const currency = originalRound?.wallet_currency ?? currencyProfile.currency;
+  if (currency === 'IRT' || currency === 'IRR') {
     return event.action === 'balance'
       ? fiatCasinoBalance(db, userId)
       : settleFiatCasinoCallback(db, userId, event);
   }
-  if (currencyProfile.currency !== 'USD') return { error: 2, balance: 0 };
+  if (currency !== 'USD') return { error: 2, balance: 0 };
   if (event.action === 'balance') {
     const p = await getProfile(db, userId);
     if (!p || !accountCanBet(p)) return { error: 2, balance: 0 };
@@ -113,6 +123,25 @@ export async function settleCasinoCallback(event: SignedCallback): Promise<Casin
     if (existing) {
       if (existing.identity_hash !== event.identityHash) return { error: 2, balance: 0 };
       return safeResponse(existing.response_error, BigInt(existing.response_balance_minor));
+    }
+    // Lock the immutable round before wallet accounting; matching orders
+    // prevent a concurrent credit from silently changing wallet currency.
+    await tx.query('select pg_advisory_xact_lock(hashtext($1),hashtext($2))', [
+      'softaggregator-round:' + userId, event.roundId! + ':' + event.gameId!,
+    ]);
+    const round = await tx.queryOne<{ wallet_currency: string }>(
+      'select wallet_currency from nova.softaggregator_round_fx ' +
+      'where user_id=$1 and round_id=$2 and game_id=$3 for update',
+      [userId, event.roundId!, event.gameId!],
+    );
+    if (round && round.wallet_currency !== 'USD') return { error: 2, balance: 0 };
+    if (!round) {
+      await tx.query(
+        'insert into nova.softaggregator_round_fx ' +
+        '(user_id,round_id,game_id,wallet_currency,rate_source) ' +
+        "values ($1,$2,$3,'USD','native_usd')",
+        [userId, event.roundId!, event.gameId!],
+      );
     }
     // Follow the same advisory-lock ordering as post_wallet_entry before locking wallet row.
     await tx.query('select pg_advisory_xact_lock(hashtext($1))', ['wallet:' + userId + ':USD']);
