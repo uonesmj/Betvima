@@ -27,7 +27,7 @@ fun ReferenceMenuDrawer(
 ) {
     ModalDrawerSheet(modifier = Modifier.width(306.dp),
         drawerContainerColor = Color(0xFF1B1C20)) {
-        Column(Modifier.fillMaxHeight().verticalScroll(rememberScrollState())) {
+        Column(Modifier.fillMaxHeight().verticalScroll(rememberScrollState(), flingBehavior = rememberPremiumFlingBehavior())) {
             Row(Modifier.fillMaxWidth().padding(19.dp),
                 verticalAlignment = Alignment.CenterVertically) {
                 Surface(shape = RoundedCornerShape(14.dp),
