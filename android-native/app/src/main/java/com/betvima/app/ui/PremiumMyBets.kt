@@ -51,7 +51,7 @@ fun PremiumMyBetsPage(state: AppState, model: AppViewModel) {
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(horizontal = 14.dp, vertical = 16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
+    , flingBehavior = rememberPremiumFlingBehavior()) {
         item {
             BvPageBanner(
                 eyebrow = tr(state.lang, "SECURE TICKET HISTORY", "تاریخچه امن بلیت‌ها"),
@@ -143,7 +143,7 @@ fun PremiumMyBetsPage(state: AppState, model: AppViewModel) {
                 )
             }
             item {
-                LazyRow(horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+                LazyRow(horizontalArrangement = Arrangement.spacedBy(7.dp), flingBehavior = rememberPremiumFlingBehavior()) {
                     val typeValues = listOf(
                         "all" to tr(state.lang, "All types", "همه نوع‌ها"),
                         "single" to tr(state.lang, "Single", "تکی"),
@@ -156,7 +156,7 @@ fun PremiumMyBetsPage(state: AppState, model: AppViewModel) {
                 }
             }
             item {
-                LazyRow(horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+                LazyRow(horizontalArrangement = Arrangement.spacedBy(7.dp), flingBehavior = rememberPremiumFlingBehavior()) {
                     val dates = listOf(
                         0 to tr(state.lang, "All dates", "همه تاریخ‌ها"),
                         7 to tr(state.lang, "7 days", "۷ روز"),
