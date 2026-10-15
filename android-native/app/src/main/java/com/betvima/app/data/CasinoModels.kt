@@ -81,11 +81,11 @@ fun casinoDemoFailure(code: Int?, confirmedDemo: Boolean, persian: Boolean): Str
         else "Too many requests. Please retry in a moment."
         else -> if (confirmedDemo) {
             if (persian)
-                "اجرای آزمایشی این بازی در حال حاضر ناموفق بود. اتصال اینترنت و ورود به حساب را بررسی کنید و دوباره تلاش کنید."
-            else "This confirmed demo failed to launch. Check your connection and sign-in, then retry."
+                "اجرای دموی تأییدشده ناموفق بود؛ ممکن است مشکل موقت اتصال یا سرویس‌دهنده باشد. دوباره تلاش کنید. اگر ادامه داشت، کد خطا را گزارش دهید."
+            else "This verified demo failed to launch. It may be a temporary connection or provider error. Please retry and report the error code if it persists."
         } else {
             if (persian)
-                "حالت آزمایشی این بازی در حال حاضر در دسترس نیست. بعضی اسلات‌ها و بازی‌های کازینو زنده فقط با حساب واقعی ارائه می‌شوند؛ شرط‌بندی با پول واقعی هنوز در اپ فعال نیست. برای تست، دمو Aviator را امتحان کنید."
-            else "This title has no available demo right now. Some slots and live casino titles require real-money access, which is not enabled in the app. Try the Aviator demo instead."
+                "درخواست اجرای این بازی ناموفق بود. ممکن است این عنوان دمو نداشته باشد یا سرویس‌دهنده موقتاً در دسترس نباشد. بازی با پول واقعی غیرفعال است؛ برای مقایسه، دموی تأییدشده Aviator را امتحان کنید."
+            else "This demo launch failed. This title might not support demo, or the provider may be temporarily unavailable. Real-money play is disabled. Try the verified Aviator demo to compare."
         }
     }
