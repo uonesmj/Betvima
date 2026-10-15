@@ -1,5 +1,5 @@
 /* Synthesis-only original sound design. No remote audio, recordings or licensed samples. */
-export type PharaohSound = 'tap' | 'spin' | 'stop' | 'win' | 'big' | 'scatter' | 'error' | 'bonus';
+export type PharaohSound = 'tap' | 'spin' | 'reel' | 'stop' | 'win' | 'big' | 'scatter' | 'error' | 'bonus';
 export class PharaohAudio {
   private context: AudioContext | null = null;
   private musicTimer: ReturnType<typeof setInterval> | null = null;
@@ -38,6 +38,11 @@ export class PharaohAudio {
     if (effect === 'spin') {
       this.tone(140, 0.45, v * 0.14, 0, 'triangle', 45);
       this.tone(320, 0.27, v * 0.05, 0.10, 'sawtooth', 100);
+    }
+    if (effect === 'reel') {
+      this.tone(145, 0.17, v * 0.15, 0, 'triangle', 82);
+      this.tone(380, 0.085, v * 0.052, 0.025, 'sine', 290);
+      this.tone(660, 0.12, v * 0.032, 0.09, 'sine', 510);
     }
     if (effect === 'stop') { this.tone(210, 0.13, v * 0.20, 0, 'triangle', 80); this.tone(780, 0.12, v * 0.035, 0.04); }
     if (effect === 'error') { this.tone(245, 0.32, v * 0.10, 0, 'triangle', 135); }
