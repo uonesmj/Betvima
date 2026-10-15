@@ -214,12 +214,12 @@ fun MatchDetailPage(state: AppState, model: AppViewModel) {
                             fontWeight = FontWeight.Bold, color = Palette.text, fontSize = 13.sp)
                         SmallPill(market.selections.size.toString(),
                             Palette.paper, Palette.muted)
-                        Icon(if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
-                            null, tint = Palette.muted)
+                        SmoothExpandChevron(expanded, tint = Palette.muted)
                     }
-                    if (expanded) {
-                        HorizontalDivider(color = Palette.border)
-                        market.selections.chunked(3).forEach { row ->
+                    SmoothExpandedContent(expanded) {
+                        Column {
+                            HorizontalDivider(color = Palette.border)
+                            market.selections.chunked(3).forEach { row ->
                             Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 5.dp),
                                 horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                 row.forEach { selection ->
@@ -233,7 +233,8 @@ fun MatchDetailPage(state: AppState, model: AppViewModel) {
                                 repeat(3 - row.size) { Spacer(Modifier.weight(1f)) }
                             }
                         }
-                        Spacer(Modifier.height(5.dp))
+                            Spacer(Modifier.height(5.dp))
+                        }
                     }
                 }
             }
