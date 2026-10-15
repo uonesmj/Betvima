@@ -3,6 +3,14 @@
  * Production requires audited RNG, certified paytable/RTP and atomic wallet integration.
  */
 export const MIN_BET_CENTS = 10;
+export const DEMO_START_CENTS = 100000;
+/** A missing key is not a $0 balance. Keep 0 only if it was explicitly stored. */
+export function parseDemoBalance(raw: string | null): number {
+  if (raw === null || !/^(0|[1-9]\d{0,7})$/.test(raw)) return DEMO_START_CENTS;
+  const cents = Number(raw);
+  return Number.isSafeInteger(cents) && cents <= 10000000 ? cents : DEMO_START_CENTS;
+}
+
 export const MAX_BET_CENTS = 10000;
 export const PAYLINES = [
   [1,1,1,1,1],[0,0,0,0,0],[2,2,2,2,2],
