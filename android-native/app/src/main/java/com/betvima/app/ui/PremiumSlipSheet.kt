@@ -1,5 +1,7 @@
 package com.betvima.app.ui
 
+import kotlinx.coroutines.launch
+
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -401,8 +403,15 @@ fun PremiumSlipSheet(state: AppState,model: AppViewModel) {
         }
     }
     val sheet=rememberModalBottomSheetState(skipPartiallyExpanded=true)
+    val closeScope = rememberCoroutineScope()
+    val animatedDismiss = {
+        closeScope.launch {
+            sheet.hide()
+            model.showSlip(false)
+        }
+    }
     ModalBottomSheet(
-        onDismissRequest={model.showSlip(false)},
+        onDismissRequest=animatedDismiss,
         sheetState=sheet,
         dragHandle={
             Surface(color=slipNavy,modifier=Modifier.fillMaxWidth()) {
@@ -431,7 +440,7 @@ fun PremiumSlipSheet(state: AppState,model: AppViewModel) {
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     IconButton(
-                        onClick = { model.showSlip(false) },
+                        onClick = animatedDismiss,
                         modifier = Modifier.size(33.dp)
                     ) {
                         Icon(
