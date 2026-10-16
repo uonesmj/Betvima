@@ -190,11 +190,14 @@ private fun MainAccountSlipControls(
     state: AppState, model: AppViewModel, mode: String, compact: Boolean
 ) {
     val lang=state.lang
-    var stake by rememberSaveable { mutableStateOf("5.00") }
+    val curr=state.wallet?.currency ?: "USD"
+    var stake by rememberSaveable(curr) {
+        mutableStateOf(if (curr in setOf("IRR", "IRT")) "10000" else "5.00")
+    }
     val canQuote=state.picks.isNotEmpty() &&
         ((mode=="single" && state.picks.size==1) ||
             (mode=="multiple" && state.picks.size>=2))
-    val curr=state.wallet?.currency ?: "USD"
+    val review = state.mainBetReview
     Column(Modifier.fillMaxWidth(),
         verticalArrangement=Arrangement.spacedBy(8.dp)) {
         if(state.picks.isNotEmpty()) {
@@ -208,7 +211,7 @@ private fun MainAccountSlipControls(
                         }
                     },
                     singleLine=true,
-                    label={Text(tr(lang,"Stake (USD)","مبلغ شرط (دلار)"),fontSize=11.sp)},
+                    label={Text(tr(lang,"Stake (" + curr + ")","مبلغ شرط (" + curr + ")"),fontSize=11.sp)},
                     modifier=Modifier.weight(1f),
                     shape=RoundedCornerShape(12.dp),
                     keyboardOptions=KeyboardOptions(keyboardType=KeyboardType.Decimal)
@@ -224,7 +227,8 @@ private fun MainAccountSlipControls(
                 }
             }
             if (!compact) Row(horizontalArrangement=Arrangement.spacedBy(7.dp)) {
-                listOf("1.00","5.00","10.00","20.00").forEach { preset ->
+                (if (curr in setOf("IRR","IRT")) listOf("10000","50000","100000","200000")
+                else listOf("1.00","5.00","10.00","20.00")).forEach { preset ->
                     Surface(
                         color=if(stake==preset)slipBlue else Color(0xFFF0F3F7),
                         shape=RoundedCornerShape(9.dp),
@@ -233,7 +237,7 @@ private fun MainAccountSlipControls(
                         }
                     ) {
                         Box(contentAlignment=Alignment.Center) {
-                            Text("$"+preset.removeSuffix(".00"),
+                            Text((if(curr=="USD") "$" else "") + preset.removeSuffix(".00"),
                                 fontSize=11.sp,fontWeight=FontWeight.Black,
                                 color=if(stake==preset)Color.White else slipText)
                         }
@@ -357,29 +361,60 @@ private fun MainAccountSlipControls(
                 }
             }
         }
+        if (review != null && review.changes.isNotEmpty()) {
+            Surface(color = Color(0xFFFFF4E5),shape = RoundedCornerShape(11.dp),
+                border = BorderStroke(1.dp,Color(0xFFFFD4A1))) {
+                Column(Modifier.fillMaxWidth().padding(10.dp),
+                    verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                    Text(tr(lang,"Odds changed — review before confirming:",
+                        "ضرایب تغییر کرده‌اند؛ پیش از تأیید بررسی کنید:"),
+                        fontSize=11.sp,fontWeight=FontWeight.Black,color=Color(0xFF8C5D23))
+                    review.changes.forEach { change ->
+                        val name=state.picks.find { it.selectionId==change.selectionId }
+                            ?.selection ?: change.selectionId
+                        Text(name+" · "+odds(change.beforeScaled)+" → "+odds(change.afterScaled),
+                            fontSize=11.sp,color=Color(0xFF8C5D23))
+                    }
+                }
+            }
+        }
+        if (state.mainBetUncertain) {
+            Text(tr(lang,
+                "Bet status is uncertain. Check My Bets before any new submission.",
+                "وضعیت شرط نامشخص است؛ پیش از ارسال مجدد، شرط‌های من را بررسی کنید."),
+                color=Color(0xFFB03842),fontSize=11.sp,fontWeight=FontWeight.Bold)
+        }
         Button(
             onClick={
                 if(!state.signedIn) {
                     model.showSlip(false)
                     model.showLogin(true)
-                } else model.quote(stake)
+                } else if(review != null) {
+                    model.placeMainBet(stake)
+                } else {
+                    model.quote(stake)
+                }
             },
-            enabled=canQuote && !state.busy,
+            enabled=canQuote && !state.busy && !state.mainBetUncertain,
             modifier=Modifier.fillMaxWidth().height(47.dp),
             shape=RoundedCornerShape(13.dp),
             colors=ButtonDefaults.buttonColors(
                 containerColor=slipGreen,contentColor=slipNavy)
         ) {
-            Icon(Icons.Default.CheckCircle,null,modifier=Modifier.size(17.dp))
+            if(state.busy) {
+                CircularProgressIndicator(Modifier.size(16.dp),strokeWidth=2.dp,
+                    color=slipNavy)
+            } else Icon(Icons.Default.CheckCircle,null,modifier=Modifier.size(17.dp))
             Spacer(Modifier.width(8.dp))
-            Text(if(!state.signedIn)
-                tr(lang,"Bet","ثبت")
-            else tr(lang,"Bet","ثبت"),
-                fontWeight=FontWeight.Black,fontSize=12.sp)
+            Text(when {
+                !state.signedIn -> tr(lang,"Login to bet","ورود برای شرط")
+                review != null -> tr(lang,"Confirm and place bet","تأیید و ثبت شرط")
+                else -> tr(lang,"Get official quote","دریافت استعلام رسمی")
+            },fontWeight=FontWeight.Black,fontSize=12.sp)
         }
         if (!compact) Text(tr(lang,
-            "Main Account: preview only. Real bonus wagering is available under Bonus Account.",
-            "حساب اصلی: فقط پیش‌نمایش. ثبت شرط بونوسی در بخش حساب بونوس فعال است."),
+            "A server-signed quote is required. Your balance is charged only after your explicit confirmation.",
+            "ثبت شرط فقط پس از استعلام رسمی سرور و تأیید صریح شما انجام می‌شود."),
             color=slipMuted,fontSize=9.sp,lineHeight=13.sp,maxLines=2)
     }
 }
