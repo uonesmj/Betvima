@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { useApp } from '@/components/layout/providers';
 import { useBetSlip } from '@/lib/store/betslip';
+import { BetProbabilityCard, useBetSlipProbabilityFeed, type ProbabilityFeed } from '@/components/betting/bet-probability-card';
 import { isCurrentQuote, placementIntentFingerprint, quoteContextFingerprint } from '@/lib/bet-placement-fingerprint';
 import { formatMinor, formatOddsScaled } from '@/lib/i18n';
 import { ApiClientError, apiRequest } from '@/lib/hooks/useApi';
@@ -153,6 +154,7 @@ export function BetSlipRail() {
   }, []);
   // Open = the user asked for it from a dedicated control and has not closed it since.
   const visible = useMemo(() => slip.isOpen && !slip.userClosed, [slip.isOpen, slip.userClosed]);
+  const probabilityFeed = useBetSlipProbabilityFeed(slip.items.map((item) => item.matchId), visible);
   const [quoteError, setQuoteError] = useState<string | null>(null);
   const [pendingQuoteState, setPendingQuoteState] = useState<QuoteResponse['quote'] | null>(
     readStoredPendingQuote,
@@ -607,7 +609,7 @@ export function BetSlipRail() {
         aria-label={t('betslip.title')} data-testid="betslip-rail" data-betslip-panel="rail"
       >
         <BetSlipBody
-          quoteError={quoteError} pendingQuote={pendingQuote} combinedOdds={combinedOdds} potentialPayout={potentialPayout}
+          quoteError={quoteError} pendingQuote={pendingQuote} combinedOdds={combinedOdds} potentialPayout={potentialPayout} probabilityFeed={probabilityFeed}
           onPlace={place} onDismissQuote={() => { setPendingQuote(null); setQuoteError(null); }}
         />
       </aside>
@@ -635,6 +637,7 @@ export function BetSlipRail() {
                 pendingQuote={pendingQuote}
                 combinedOdds={combinedOdds}
                 potentialPayout={potentialPayout}
+                probabilityFeed={probabilityFeed}
                 onPlace={place}
                 onDismissQuote={() => {
                   setPendingQuote(null);
@@ -651,12 +654,13 @@ export function BetSlipRail() {
 }
 
 function BetSlipBody({
-  quoteError, pendingQuote, combinedOdds, potentialPayout, onPlace, onDismissQuote,
+  quoteError, pendingQuote, combinedOdds, potentialPayout, probabilityFeed, onPlace, onDismissQuote,
 }: {
   quoteError: string | null;
   pendingQuote: QuoteResponse['quote'] | null;
   combinedOdds: bigint;
   potentialPayout: bigint;
+  probabilityFeed: ProbabilityFeed;
   onPlace: () => void;
   onDismissQuote: () => void;
 }) {
@@ -1024,6 +1028,9 @@ function BetSlipBody({
                 );
               })}
             </ul>
+
+            {/* Live / pre-match market-implied win, loss and refund estimate */}
+            <BetProbabilityCard feed={probabilityFeed} />
 
             {/* Funding account */}
             <div className="rounded-[16px] border border-[#E5E7EB] bg-white p-3">
