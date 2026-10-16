@@ -11,7 +11,7 @@ settled supplier round or a gambling licence.
   and existing legacy wallet infrastructure but **does not have**
   `nova.softaggregator_callback_receipts` or `nova.softaggregator_round_fx`.
   Their presence was checked read-only through catalog metadata.
-- Financial migrations `0208`, `0209`, `0210`, `0211` exist under
+- Financial migrations `0208`, `0209`, `0210`, `0211`, `0212` exist under
   `docs/pending-financial-migrations/` only; they are NOT registered in
   the Production migrations directory. Do not copy/migrate blindly.
 - Repository includes provider callback verification, idempotent receipt
@@ -43,7 +43,7 @@ settled supplier round or a gambling licence.
 4. Allocate an **isolated** development database with authorized cost,
    apply the complete canonical financial schema and migrations in order,
    and run a complete consistency audit: append-only triggers, unique
-   rollback indexes, receipt foreign keys, ledger RPC, row permissions,
+   rollback indexes, receipt foreign keys, exact receipt-to-ledger integrity trigger, ledger RPC, row permissions,
    debit balance floor and holdings. Keep Production unchanged.
 5. From supplier-origin **actually signed** sandbox traffic, inspect one
    balance, debit, credit, free-spin/no-debit win, rejected insufficient
