@@ -30,8 +30,8 @@ describe('football live research data contract (never production trading)', () =
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(result.fixtures).toHaveLength(3);
-    expect(result.fixtures[0].markets.length).toBeGreaterThan(8);
-    expect(result.fixtures[0].incidents[0].type).toBe('goal');
+    expect(result.fixtures[0]!.markets.length).toBeGreaterThan(8);
+    expect(result.fixtures[0]!.incidents[0]!.type).toBe('goal');
     expect(result.readOnly).toBe(true);
     expect(FOOTBALL_PREVIEW_BETTING_ENABLED).toBe(false);
   });
@@ -41,7 +41,7 @@ describe('football live research data contract (never production trading)', () =
     expect(parseLicensedFootballFeed(value, now + 20_001)).toEqual({
       ok: false, reason: 'feed_stale', fixtures: [], readOnly: true,
     });
-    value.fixtures[0].markets[0].lastPriceChangeUtc = '2026-10-01T00:00:00Z';
+    value.fixtures[0]!.markets[0]!.lastPriceChangeUtc = '2026-10-01T00:00:00Z';
     // Last price *change* is not a feed heartbeat.
     expect(parseLicensedFootballFeed(value, now).ok).toBe(true);
     value.receivedAtUtc = new Date(now + 6_000).toISOString();
@@ -50,18 +50,18 @@ describe('football live research data contract (never production trading)', () =
 
   it('rejects duplicate events, markets and selections without partial updates', () => {
     const value = payload();
-    value.fixtures.push(structuredClone(value.fixtures[0]));
+    value.fixtures.push(structuredClone(value.fixtures[0]!));
     expect(parseLicensedFootballFeed(value, now).ok).toBe(false);
     value.fixtures.pop();
-    value.fixtures[0].markets.push(structuredClone(value.fixtures[0].markets[0]));
+    value.fixtures[0]!.markets.push(structuredClone(value.fixtures[0]!.markets[0]!));
     expect(parseLicensedFootballFeed(value, now).ok).toBe(false);
-    value.fixtures[0].markets.pop();
-    value.fixtures[0].markets[0].selections.push(structuredClone(value.fixtures[0].markets[0].selections[0]));
+    value.fixtures[0]!.markets.pop();
+    value.fixtures[0]!.markets[0]!.selections.push(structuredClone(value.fixtures[0]!.markets[0]!.selections[0]!));
     expect(parseLicensedFootballFeed(value, now).ok).toBe(false);
   });
 
   it('suspends missing, closed, and halftime-closed odds for display', () => {
-    const choice = DEMO_LIVE_FOOTBALL_FIXTURES[0].markets[0].selections[0];
+    const choice = DEMO_LIVE_FOOTBALL_FIXTURES[0]!.markets[0]!.selections[0]!;
     expect(renderableOdds('live', 'open', choice)).toBe('2.16');
     expect(renderableOdds('live', 'closed', choice)).toBe('—');
     expect(renderableOdds('suspended', 'open', choice)).toBe('—');
@@ -78,7 +78,7 @@ describe('football live research data contract (never production trading)', () =
     expect(parseLicensedFootballFeed({ ...payload(), fixtures: [{ id: 'incomplete' }] }, now).ok)
       .toBe(false);
     const value = payload();
-    value.fixtures[0].markets[0].selections[0].decimalOdds = -1;
+    value.fixtures[0]!.markets[0]!.selections[0]!.decimalOdds = -1;
     expect(parseLicensedFootballFeed(value, now).ok).toBe(false);
   });
 });
