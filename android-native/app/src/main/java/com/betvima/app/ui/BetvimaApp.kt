@@ -129,7 +129,11 @@ fun BetvimaApp(model: AppViewModel) {
                     openAccount = {
                         if (state.signedIn) accountOpen = true else model.showLogin(true)
                     },
-                    openLanguage = { languageOpen = true })
+                    openLanguage = { languageOpen = true },
+                    openNotifications = {
+                        notificationPopupOpen = true
+                        if (state.signedIn) model.refreshNotifications(silent = true)
+                    })
             }
         ) {
         Scaffold(
