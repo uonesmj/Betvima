@@ -16,6 +16,7 @@ import {
 import { useApp } from '@/components/layout/providers';
 import { useBetSlip } from '@/lib/store/betslip';
 import { isCurrentQuote, placementIntentFingerprint, quoteContextFingerprint } from '@/lib/bet-placement-fingerprint';
+import { actualOddsMovement, hasExplicitOddsConsent, type SignedOddsConsent } from '@/lib/odds/explicit-consent';
 import { formatMinor, formatOddsScaled } from '@/lib/i18n';
 import { ApiClientError, apiRequest } from '@/lib/hooks/useApi';
 
@@ -154,6 +155,8 @@ export function BetSlipRail() {
   // Open = the user asked for it from a dedicated control and has not closed it since.
   const visible = useMemo(() => slip.isOpen && !slip.userClosed, [slip.isOpen, slip.userClosed]);
   const [quoteError, setQuoteError] = useState<string | null>(null);
+  const [explicitOddsConsent, setExplicitOddsConsent] = useState<SignedOddsConsent | null>(null);
+  const [wagerOutcomeUncertain, setWagerOutcomeUncertain] = useState(false);
   const [pendingQuoteState, setPendingQuoteState] = useState<QuoteResponse['quote'] | null>(
     readStoredPendingQuote,
   );
@@ -171,11 +174,27 @@ export function BetSlipRail() {
         items: current.items,
       }),
     } : null;
+    setExplicitOddsConsent(null);
     setPendingQuoteState(scoped);
     persistPendingQuote(scoped);
   }, [session?.user?.id, session?.user?.currency]);
   const pendingQuote = isCurrentQuote(pendingQuoteState, currentContext)
     ? pendingQuoteState : null;
+
+  const oddsConsentCurrent = hasExplicitOddsConsent(
+    explicitOddsConsent, pendingQuote?.quoteToken, currentContext, pendingQuote?.oddsChanges,
+  );
+  const acceptNewOdds = useCallback(() => {
+    if (!pendingQuote?.oddsChanges?.length || !pendingQuote.quoteToken ||
+        new Date(pendingQuote.expiresAt).getTime() <= Date.now()) {
+      setQuoteError(t('betslip.oddsChanged'));
+      return;
+    }
+    // This is consent to specific prices ONLY; it never submits a wager.
+    setExplicitOddsConsent({ quoteToken: pendingQuote.quoteToken, contextKey: currentContext });
+    setQuoteError(null);
+    slip.setError(null);
+  }, [pendingQuote, currentContext, slip, t]);
 
   const stake = BigInt(slip.stakeMinor || '0');
 
@@ -291,7 +310,11 @@ export function BetSlipRail() {
   ]);
 
   const place = useCallback(async () => {
-    if (submittingRef.current) return;
+    if (submittingRef.current || wagerOutcomeUncertain) return;
+    if (pendingQuote?.oddsChanges?.length && !oddsConsentCurrent) {
+      setQuoteError('Review both old and new odds, then accept them before placing a bet.');
+      return;
+    }
     if (!session?.authenticated) {
       window.location.href = '/auth/login';
       return;
@@ -377,7 +400,14 @@ export function BetSlipRail() {
       if (!quote) {
         throw new Error('Missing quote');
       }
-
+      if (!hasExplicitOddsConsent(
+        explicitOddsConsent, quote.quoteToken, contextAtStart, quote.oddsChanges,
+      )) {
+        setPendingQuote(quote);
+        setQuoteError('Odds changed. Review the prices and explicitly accept their changes.');
+        slip.setSubmitting(false);
+        return;
+      }
       const acceptedOdds: Record<string, string> = {};
       const acceptedChanges = new Map<string, string>();
 
@@ -432,21 +462,8 @@ export function BetSlipRail() {
       const idempotencyKey = previous?.intent === intent ? previous.key : crypto.randomUUID();
       lastPlacementRef.current = { intent, key: idempotencyKey };
 
-      // The button now means the user's explicit acceptance is remembered.
-      // If the POST rejects because the price *really* moved again, the next
-      // quote compares against the last price they approved rather than the
-      // original stale selection; never silently accept the next movement.
-      if (pendingQuote?.oddsChanges?.length) {
-        const store = useBetSlip.getState();
-        for (const change of quote.oddsChanges ?? []) {
-          store.applyAcceptedOdds(
-            change.selectionId,
-            change.currentOddsScaled,
-            change.currentOddsVersion,
-          );
-        }
-        setPendingQuote(null);
-      }
+      // Preserve the original selection and accepted signed quote until the
+      // server confirms placement; no speculative mutation on failed POST.
 
       const result = await apiRequest<{ bet: { publicId: string }; balanceAfterMinor: string }>('/api/v1/bets', {
         method: 'POST',
@@ -461,6 +478,7 @@ export function BetSlipRail() {
       window.location.href = `/bets?highlight=${result.bet.publicId}`;
     } catch (error) {
       if (error instanceof ApiClientError && (error.code === 'ODDS_CHANGED' || error.code === 'STALE_ODDS' || error.code === 'ODDS_EXPIRED')) {
+        lastPlacementRef.current = null;
         const details = error.details as {
           oddsChanges?: QuoteResponse['quote']['oddsChanges'];
           quoteToken?: string;
@@ -531,17 +549,24 @@ export function BetSlipRail() {
           }
         }
       } else if (error instanceof ApiClientError) {
+        if (error.status >= 400 && error.status < 500 &&
+            error.status !== 408 && error.status !== 429) {
+          lastPlacementRef.current = null;
+        } else {
+          setWagerOutcomeUncertain(true);
+        }
         setQuoteError(error.message);
         slip.setError(error.message);
       } else {
-        setQuoteError(t('common.error'));
-        slip.setError(t('common.error'));
+        setWagerOutcomeUncertain(true);
+        setQuoteError('Bet status uncertain. Check My Bets before trying again.');
+        slip.setError('Bet status uncertain. Check My Bets before trying again.');
       }
       slip.setSubmitting(false);
     } finally {
       submittingRef.current = false;
     }
-  }, [pendingQuote, session, setPendingQuote, slip, t, currentContext]);
+  }, [pendingQuote, session, setPendingQuote, slip, t, currentContext, explicitOddsConsent, oddsConsentCurrent, wagerOutcomeUncertain]);
   // The mobile sheet renders whenever the slip is open - an empty slip shows its own empty
   // state instead of the control appearing to do nothing on a phone.
   const isMobileSheet = slip.isOpen;
@@ -608,7 +633,8 @@ export function BetSlipRail() {
       >
         <BetSlipBody
           quoteError={quoteError} pendingQuote={pendingQuote} combinedOdds={combinedOdds} potentialPayout={potentialPayout}
-          onPlace={place} onDismissQuote={() => { setPendingQuote(null); setQuoteError(null); }}
+          onPlace={place} onAcceptOdds={acceptNewOdds} oddsConsentCurrent={oddsConsentCurrent}
+                 wagerOutcomeUncertain={wagerOutcomeUncertain} onDismissQuote={() => { setPendingQuote(null); setQuoteError(null); }}
         />
       </aside>
 
@@ -635,7 +661,8 @@ export function BetSlipRail() {
                 pendingQuote={pendingQuote}
                 combinedOdds={combinedOdds}
                 potentialPayout={potentialPayout}
-                onPlace={place}
+                onPlace={place} onAcceptOdds={acceptNewOdds} oddsConsentCurrent={oddsConsentCurrent}
+                 wagerOutcomeUncertain={wagerOutcomeUncertain}
                 onDismissQuote={() => {
                   setPendingQuote(null);
                   setQuoteError(null);
@@ -651,13 +678,17 @@ export function BetSlipRail() {
 }
 
 function BetSlipBody({
-  quoteError, pendingQuote, combinedOdds, potentialPayout, onPlace, onDismissQuote,
+  quoteError, pendingQuote, combinedOdds, potentialPayout, onPlace, onAcceptOdds,
+  oddsConsentCurrent, wagerOutcomeUncertain, onDismissQuote,
 }: {
   quoteError: string | null;
   pendingQuote: QuoteResponse['quote'] | null;
   combinedOdds: bigint;
   potentialPayout: bigint;
   onPlace: () => void;
+  onAcceptOdds: () => void;
+  oddsConsentCurrent: boolean;
+  wagerOutcomeUncertain: boolean;
   onDismissQuote: () => void;
 }) {
   const { t, locale, session } = useApp();
