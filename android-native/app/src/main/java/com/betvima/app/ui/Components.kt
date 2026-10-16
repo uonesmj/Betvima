@@ -46,9 +46,10 @@ fun BrandHeader(
     walletBalance: String? = null,
     walletCurrency: String? = null,
     onWallet: () -> Unit = {},
-    userName: String? = null
+    userName: String? = null,
+    casinoStyle: Boolean = false
 ) {
-    val headerBlack = Color(0xFF111113)
+    val headerBlack = if (casinoStyle) Color(0xFF0A1020) else Color(0xFF111113)
     val headerGreen = Color(0xFF0BC66B)
     // Financial values must come from the current authenticated wallet.
     // Never substitute a synthetic 0.00 or force USD/USDT.
