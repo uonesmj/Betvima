@@ -41,7 +41,7 @@ async function run(): Promise<void> {
     skipped: summary.filter((x) => x.status === 'skipped').length,
   };
   console.log(JSON.stringify({ readOnly: true, providerRounds: summary.length, counts }));
-  if (counts.mismatch || counts.missing || !counts.matched) {
+  if (counts.mismatch || counts.missing || counts.skipped || !counts.matched) {
     // Do not include game URLs, user ID, vendor credentials, wallet identifiers.
     throw new Error('CASINO_RECONCILIATION_NOT_PASSED');
   }
