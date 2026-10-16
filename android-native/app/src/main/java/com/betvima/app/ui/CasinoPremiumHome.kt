@@ -319,7 +319,7 @@ fun CasinoPremiumHome(
                     }
                 }
             }
-            if (games.isEmpty()) {
+            if (gridGames.isEmpty()) {
                 item(key = "casino-state") {
                     Column(Modifier.fillMaxWidth().padding(22.dp),
                         horizontalAlignment = Alignment.CenterHorizontally,
