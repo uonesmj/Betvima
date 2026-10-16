@@ -11,6 +11,8 @@ describe('SoftAggregator live-wallet release schema gate', () => {
     for (const required of [
       'softaggregator_callback_receipts',
       'softaggregator_round_fx',
+      'softaggregator_player_wallet_bindings',
+      'sa_player_wallet_binding_immutable',
       'sa_unique_reversed_debit',
       'sa_unique_reversed_credit',
       'original_credit_call_id',
