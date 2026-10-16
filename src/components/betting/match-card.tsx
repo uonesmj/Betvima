@@ -8,6 +8,7 @@ import { formatOddsScaled } from '@/lib/i18n';
 import { useBetSlip, type SlipItem } from '@/lib/store/betslip';
 import { TeamLogo, LeagueLogo } from '@/components/ui/logo';
 import { primaryBettingMarket } from '@/lib/primary-betting-market';
+import { isDisplayBettableSelection } from '@/lib/odds/selection-eligibility';
 import { matchMinuteLabel } from '@/lib/live-match-minute';
 
 export interface SelectionView {
@@ -174,11 +175,12 @@ export function OddsButton({
     (i) => i.selectionId === selection.id,
   );
 
-  const locked =
-    disabled ||
-    !['open', 'active'].includes(market.status) ||
-    !['open', 'active'].includes(selection.status) ||
-    !/^\\d+$/.test(selection.oddsScaled) || Number(selection.oddsScaled) <= 10000;
+  const locked = !isDisplayBettableSelection({
+    matchBettingAvailable: !disabled,
+    marketStatus: market.status,
+    selectionStatus: selection.status,
+    oddsScaled: selection.oddsScaled,
+  });
 
   const item: SlipItem = {
     selectionId: selection.id,
