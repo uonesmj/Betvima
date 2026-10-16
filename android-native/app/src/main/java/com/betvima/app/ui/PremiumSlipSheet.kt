@@ -342,7 +342,7 @@ private fun MainAccountSlipControls(
                             )
                         }
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Default.InfoOutline, null,
+                            Icon(Icons.Default.Info, null,
                                 tint = slipMuted, modifier = Modifier.size(11.dp))
                             Spacer(Modifier.width(4.dp))
                             Text(
