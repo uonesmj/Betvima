@@ -31,6 +31,7 @@ data class AppState(
     val liveLoading: Boolean = false, val upcomingLoading: Boolean = false,
     val detailLoading: Boolean = false,
     val liveEnabled: Boolean = false, val detail: Match? = null,
+    val focusedMarketId: String? = null,
     val betDetail: BetDetail? = null, val betDetailLoading: Boolean = false,
     val betDetailVisible: Boolean = false,
     val ticketMatches: Map<String, Match> = emptyMap(),
@@ -242,6 +243,11 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
+    fun openPickMarket(pick: Pick) {
+        mutable.update { it.copy(focusedMarketId = pick.marketId, showSlip = false) }
+        openMatch(pick.matchId)
+    }
+
     fun openMatch(id: String) = viewModelScope.launch {
         val request = ++detailRequestNumber
         mutable.update { it.copy(detailLoading = true, detail = null) }
@@ -259,16 +265,21 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     }
     fun closeMatch() {
         detailRequestNumber++
-        mutable.update { it.copy(detail = null, detailLoading = false) }
+        mutable.update { it.copy(detail = null, detailLoading = false, focusedMarketId = null) }
     }
     /** Purely informational odds polling. Never touches quotes or financial state. */
     suspend fun slipProbabilitySnapshots(matchIds: List<String>): Map<String, SlipOddsMatch> =
-        coroutineScope {
-            require(matchIds.size <= 20)
+        supervisorScope {
+            // A temporary failure on one event must never blank the entire mix.
+            // The pure estimator separately labels every leg using a price-only fallback.
             val semaphore = Semaphore(4)
-            matchIds.distinct().map { id ->
-                async { semaphore.withPermit { api.slipProbabilityOdds(id) } }
-            }.awaitAll().associateBy { it.matchId }
+            matchIds.distinct().take(20).map { id ->
+                async {
+                    semaphore.withPermit {
+                        runCatching { api.slipProbabilityOdds(id) }.getOrNull()
+                    }
+                }
+            }.awaitAll().filterNotNull().associateBy { it.matchId }
         }
 
     fun togglePick(match: Match, market: Market, selection: Selection) {
