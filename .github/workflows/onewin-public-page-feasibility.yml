@@ -31,5 +31,5 @@ jobs:
         run: |
           npm ci --ignore-scripts
           node scripts/onewin-browser-observation.mjs
-      - name: Public browser DOM sample: 1win and Betvima
+      - name: "Public browser DOM sample: 1win and Betvima"
         run: node scripts/onewin-dom-discovery.mjs
