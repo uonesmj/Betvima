@@ -54,12 +54,17 @@ class SlipProbabilityTest {
     }
 
     @Test fun unavailableMarketNeverProducesInventedPercentages() {
-        assertNull(estimateSlipOutcome(listOf(pick("m1")), emptyMap()))
+        val approximate = estimateSlipOutcome(listOf(pick("m1")), emptyMap())!!
+        assertEquals(1, approximate.approximatedLegs)
+        assertFalse(approximate.refundKnown)
+        assertEquals(1.0, approximate.win + approximate.lose, 0.000000001)
         val suspended = game()
         val blocked = suspended.copy(markets = listOf(
             suspended.markets[0].copy(status = "suspended")
         ))
-        assertNull(estimateSlipOutcome(listOf(pick("m1")), mapOf("m1" to blocked)))
+        val suspendedMarket = estimateSlipOutcome(listOf(pick("m1")), mapOf("m1" to blocked))!!
+        assertFalse(suspendedMarket.refundKnown)
+        assertEquals(1, suspendedMarket.approximatedLegs)
         assertNull(estimateSlipOutcome(listOf(pick("m1")),
             mapOf("m1" to game().copy(status = "finished"))))
     }
@@ -82,8 +87,10 @@ class SlipProbabilityTest {
         val asian = SlipOddsMarket("asian", "spreads", "open", "2.0", false, listOf(
             outcome("a", "HOME", "19000"), outcome("b", "AWAY", "19000")
         ))
-        assertNull(estimateSlipOutcome(listOf(pick("m1", "asian", "a")),
-            mapOf("m1" to source.copy(markets = listOf(asian)))))
+        val partial = estimateSlipOutcome(listOf(pick("m1", "asian", "a")),
+            mapOf("m1" to source.copy(markets = listOf(asian))))!!
+        assertFalse(partial.refundKnown)
+        assertEquals(1, partial.approximatedLegs)
     }
 
     @Test fun percentRoundingHasNoOnePercentGap() {
@@ -92,4 +99,31 @@ class SlipProbabilityTest {
             slipOutcomePercents(SlipOutcome(1.0 / 3, 1.0 / 3, 1.0 / 3, false))
         )
     }
+    @Test fun missingThirdMatchDoesNotBlankEntireMix() {
+        val picks = listOf(pick("m1"), pick("m2"), pick("m3"))
+        val calculation = estimateSlipOutcome(picks, mapOf("m1" to game()))!!
+        assertEquals(2, calculation.approximatedLegs)
+        assertFalse(calculation.refundKnown)
+        assertTrue(calculation.win > 0.0)
+        assertEquals(100, slipOutcomePercents(calculation).let {
+            it.win + it.lose + it.refund
+        })
+    }
+
+    @Test fun twentyLegsWithUnavailableFeedsRemainValid() {
+        val legs = (1..20).map { pick("fixture-$it") }
+        val calculation = estimateSlipOutcome(legs, emptyMap())!!
+        assertEquals(20, calculation.approximatedLegs)
+        assertFalse(calculation.refundKnown)
+        assertTrue(calculation.win > 0.0)
+        assertEquals(100, slipOutcomePercents(calculation).let {
+            it.win + it.lose + it.refund
+        })
+    }
+
+    @Test fun invalidSelectedPriceStillFailsClosed() {
+        val invalid = pick("m1").copy(oddsScaled = "invalid")
+        assertNull(estimateSlipOutcome(listOf(invalid), emptyMap()))
+    }
+
 }
