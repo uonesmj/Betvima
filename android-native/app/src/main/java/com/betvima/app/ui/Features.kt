@@ -31,6 +31,9 @@ fun FeaturePage(state: AppState, model: AppViewModel) {
         CasinoLobby(state, model)
         return
     }
+    // Never draw the legacy full notifications page, including for a single
+    // frame while BetvimaApp's navigation compatibility effect runs.
+    if (state.feature == Feature.NOTIFICATIONS) return
     val title = when (state.feature) {
         Feature.PROFILE -> tr(state.lang, "Your profile", "پروفایل کاربری")
         Feature.BONUSES -> tr(state.lang, "My Bonuses", "بونوس‌های من")
@@ -68,7 +71,7 @@ fun FeaturePage(state: AppState, model: AppViewModel) {
             Feature.SUPPORT -> SupportPage(state, model)
             Feature.CASINO -> CasinoLobby(state, model)
             Feature.AFFILIATE -> AffiliateDashboard(state, model)
-            Feature.NOTIFICATIONS -> NotificationsPage(state, model)
+            Feature.NOTIFICATIONS -> Unit
             else -> Unit
         }
     }
