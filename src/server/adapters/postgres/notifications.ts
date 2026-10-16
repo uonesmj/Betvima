@@ -56,15 +56,25 @@ export class PostgresNotificationRepository implements NotificationRepository {
     const pageSize = Math.min(100, Math.max(1, filter.pageSize ?? 20));
     const rows = await this.db.query<Row>(
       `select id, event_key, title, body, data, created_at, read_at from nova.notifications
-        where user_id = $1 and channel = 'in_app' and ($2::boolean is not true or read_at is null)
+        where user_id = $1 and channel = 'in_app'
+          and scheduled_at <= now()
+          and ($2::boolean is not true or read_at is null)
         order by created_at desc limit $3 offset $4`,
       [userId, filter.unreadOnly ?? false, pageSize, (page - 1) * pageSize],
     );
     const count = await this.db.queryOne<Row>(
-      `select count(*) as total from nova.notifications where user_id = $1 and channel = 'in_app'`, [userId],
+      `select count(*) as total from nova.notifications where user_id = $1 and channel = 'in_app'
+         and scheduled_at <= now() and ($2::boolean is not true or read_at is null)`,
+      [userId, filter.unreadOnly ?? false],
+    );
+    const unread = await this.db.queryOne<Row>(
+      `select count(*) as unread from nova.notifications where user_id = $1
+         and channel = 'in_app' and scheduled_at <= now() and read_at is null`,
+      [userId],
     );
     const total = toNum(count?.total);
     return {
+      unreadCount: toNum(unread?.unread),
       items: rows.map((r) => ({
         id: toStr(r.id), eventKey: toStr(r.event_key, 'system.maintenance'), title: toStr(r.title), body: toStr(r.body),
         createdAt: toIso(r.created_at), readAt: toIsoOrNull(r.read_at), data: toJson<Record<string, unknown> | null>(r.data, null),
@@ -76,7 +86,9 @@ export class PostgresNotificationRepository implements NotificationRepository {
   async markRead(userId: UUID, ids: UUID[]): Promise<number> {
     if (ids.length === 0) return 0;
     const rows = await this.db.query<Row>(
-      `update nova.notifications set read_at = now() where user_id = $1 and id = any($2::uuid[]) and read_at is null returning id`,
+      `update nova.notifications set read_at = now()
+         where user_id = $1 and id = any($2::uuid[]) and read_at is null
+           and channel = 'in_app' and scheduled_at <= now() returning id`,
       [userId, pgArray(ids)],
     );
     return rows.length;
@@ -84,7 +96,9 @@ export class PostgresNotificationRepository implements NotificationRepository {
 
   async markAllRead(userId: UUID): Promise<number> {
     const rows = await this.db.query<Row>(
-      `update nova.notifications set read_at = now() where user_id = $1 and read_at is null returning id`, [userId],
+      `update nova.notifications set read_at = now()
+         where user_id = $1 and read_at is null
+           and channel = 'in_app' and scheduled_at <= now() returning id`, [userId],
     );
     return rows.length;
   }

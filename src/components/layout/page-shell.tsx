@@ -19,6 +19,7 @@ import { useBetSlip } from '@/lib/store/betslip';
 import { HomeHeader } from "@/components/home/home-header";
 import { BetSlipRail } from '@/components/betting/bet-slip';
 import { TopWalletBalance } from '@/components/layout/top-wallet-balance';
+import { NotificationsBell } from '@/components/layout/notifications-bell';
 import { AccountSummary } from '@/components/layout/account-summary';
 import { LanguageSelector } from '@/components/layout/language-selector';
 import { ReferenceSportsNav } from '@/components/home/reference-sports-nav';
@@ -149,6 +150,7 @@ export function Header({
               </>
             )}
 
+            <NotificationsBell />
             <div className="hidden sm:block">
               <LanguageSelector />
             </div>
