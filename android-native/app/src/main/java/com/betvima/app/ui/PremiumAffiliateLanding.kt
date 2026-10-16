@@ -629,24 +629,27 @@ private fun PartnerGallery(lang: Lang, active: Boolean) {
         tiles.chunked(2).forEachIndexed { row, group ->
             Row(horizontalArrangement=Arrangement.spacedBy(12.dp)) {
                 group.forEachIndexed { col, tile ->
-                    val tone=when(row*2+col) {
-                        0 -> listOf(Color(0xFF1B56E9),Color(0xFF222449))
-                        1 -> listOf(Color(0xFF118C88),Color(0xFF11253B))
-                        2 -> listOf(Color(0xFF8D49B7),Color(0xFF292052))
-                        else -> listOf(Color(0xFF00A57A),Color(0xFF19354F))
-                    }
-                    Column(Modifier.weight(1f).height(178.dp)
-                        .clip(RoundedCornerShape(22.dp))
-                        .background(Brush.linearGradient(tone))
-                        .padding(16.dp),
-                        verticalArrangement=Arrangement.Center,
-                        horizontalAlignment=Alignment.CenterHorizontally) {
-                        Icon(tile.first,null,tint=Color.White,
-                            modifier=Modifier.size(52.dp))
-                        Spacer(Modifier.height(15.dp))
-                        Text(tile.second+"\n"+tile.third,
-                            color=Color.White,fontSize=13.sp,
-                            fontWeight=FontWeight.Black,textAlign=TextAlign.Center)
+                    AffiliateReveal(visible=active,delayMillis=(row*2+col)*95,
+                        modifier=Modifier.weight(1f)) {
+                        AffiliateCinematicPhoto(
+                            when(row*2+col) {
+                                0 -> AffiliateScene.MOBILE
+                                1 -> AffiliateScene.SPORTS
+                                2 -> AffiliateScene.CASINO
+                                else -> AffiliateScene.JOIN
+                            },
+                            Modifier.fillMaxWidth().height(183.dp),active,corner=22
+                        ) {
+                            Column(
+                                Modifier.align(Alignment.BottomStart)
+                                    .padding(start=13.dp,end=11.dp,bottom=15.dp)
+                            ) {
+                                Text(tile.second+"\n"+tile.third,
+                                    color=Color.White,fontSize=14.sp,
+                                    fontWeight=FontWeight.Black,
+                                    lineHeight=17.sp)
+                            }
+                        }
                     }
                 }
             }
@@ -659,6 +662,11 @@ private fun PartnerGallery(lang: Lang, active: Boolean) {
 private fun PartnerSignup(lang: Lang, active: Boolean, onGetStarted: () -> Unit) {
     Column(Modifier.fillMaxWidth().background(partnerNight)
         .padding(horizontal=23.dp,vertical=58.dp)) {
+        AffiliateReveal(visible=active,modifier=Modifier.fillMaxWidth()) {
+            AffiliateCinematicPhoto(AffiliateScene.JOIN,
+                Modifier.fillMaxWidth().height(205.dp),active,corner=24)
+        }
+        Spacer(Modifier.height(24.dp))
         Text("JOIN US",color=partnerMint,fontSize=11.sp,letterSpacing=2.sp,
             fontWeight=FontWeight.Black)
         Spacer(Modifier.height(13.dp))
