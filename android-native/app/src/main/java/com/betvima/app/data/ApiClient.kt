@@ -18,7 +18,7 @@ import java.io.IOException
 import java.net.URLEncoder
 import java.util.concurrent.TimeUnit
 
-class ApiFailure(val code: Int, override val message: String) : IOException(message)
+class ApiFailure(val code: Int, override val message: String, val serverCode: String? = null) : IOException(message)
 
 /** Omit the sport filter for Top. The web catalogue treats absent sport as all sports. */
 fun upcomingQueryPath(sport: String): String {
@@ -122,9 +122,13 @@ class ApiClient {
         val raw = response.body?.string().orEmpty()
         val wrapper = runCatching { JSONObject(raw) }.getOrDefault(JSONObject())
         if (!response.isSuccessful || !wrapper.optBoolean("ok", false)) {
+            val apiError = wrapper.optJSONObject("error")
+            val machineCode = apiError?.optString("code").orEmpty()
+                .takeIf { it.matches(Regex("[A-Z_]{3,64}")) }
             throw ApiFailure(response.code,
-                wrapper.optJSONObject("error")?.optString("message").orEmpty()
-                    .ifBlank { "Request failed: " + response.code })
+                apiError?.optString("message").orEmpty()
+                    .ifBlank { "Request failed: " + response.code },
+                serverCode = machineCode)
         }
         return wrapper.optJSONObject("data") ?: wrapper
     }

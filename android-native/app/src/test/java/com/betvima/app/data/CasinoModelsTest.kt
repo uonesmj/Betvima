@@ -53,6 +53,17 @@ class CasinoModelsTest {
         assertTrue(casinoDemoFailure(429, false, false).contains("Too many"))
     }
 
+    @Test fun declinedSupplierDemoIsNeverMisrepresentedAsCashLaunch() {
+        val fa = casinoDemoFailure(422, false, true, "CASINO_DEMO_UNAVAILABLE")
+        val en = casinoDemoFailure(422, true, false, "CASINO_DEMO_UNAVAILABLE")
+        assertTrue(fa.contains("دموی"))
+        assertTrue(fa.contains("پول واقعی"))
+        assertTrue(en.contains("no available demo"))
+        assertTrue(en.contains("No real-money game"))
+        // Generic HTTP 422 from other APIs must not be confused with supplier refusal.
+        assertFalse(casinoDemoFailure(422, false, false).contains("no available demo"))
+    }
+
     @Test fun pilotEligibilityDefaultsToDisabledAndPreservesExactCents() {
         val empty = parseCasinoEligibility(JSONObject())
         assertFalse(empty.realMoneyEnabled)
