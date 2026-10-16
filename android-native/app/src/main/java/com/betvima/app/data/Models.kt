@@ -104,9 +104,24 @@ fun money(minor: String, currency: String = "USD"): String = runCatching {
     BigDecimal(minor).movePointLeft(fraction).setScale(fraction, RoundingMode.HALF_UP).toPlainString() + " " + currency
 }.getOrDefault("—")
 
-data class UserNotification(val id: String, val eventKey: String, val title: String,
-    val body: String, val createdAt: String, val readAt: String?)
-data class NotificationPage(val items: List<UserNotification>, val page: Int, val hasMore: Boolean)
+/** Inbox metadata is always server-provided; no synthetic campaign or player data. */
+data class UserNotification(
+    val id: String,
+    val eventKey: String,
+    val title: String,
+    val body: String,
+    val createdAt: String,
+    val readAt: String?,
+    val audience: String = "personal",
+    val ctaLabel: String? = null,
+    val ctaHref: String? = null
+)
+data class NotificationPage(
+    val items: List<UserNotification>,
+    val page: Int,
+    val hasMore: Boolean,
+    val unreadCount: Int = 0
+)
 data class SupportTicket(
     val id: String, val subject: String, val status: String, val category: String,
     val createdAt: String = "", val updatedAt: String = "", val lastMessageAt: String = "",
