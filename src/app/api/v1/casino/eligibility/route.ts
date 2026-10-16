@@ -5,6 +5,7 @@ import { getDb } from '@/server/db';
 import { casinoRealMoneyUserAllowed } from '@/server/providers/softaggregator/client';
 import { casinoPlayerMayLaunch } from '@/server/providers/softaggregator/wallet';
 import { fiatCasinoBalance } from '@/server/providers/softaggregator/fiat-wallet';
+import { verifiedCasinoLocation } from '@/server/providers/softaggregator/edge-location';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -28,6 +29,9 @@ export const GET = withErrorHandling('casino.eligibility', async (ctx, request: 
   }
   try {
     const eligibility = await casinoPlayerMayLaunch(user.id);
+    const verifiedCountry = verifiedCasinoLocation(request);
+    if (!verifiedCountry || verifiedCountry !== eligibility.country)
+      throw new Error('CASINO_GEO_VERIFICATION_REQUIRED');
     const db = getDb();
     const nativeCurrency = eligibility.walletCurrency;
     let balance: bigint;
