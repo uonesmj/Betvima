@@ -132,7 +132,7 @@ fun PremiumAppFooter(
             .padding(top = if (state.feature == Feature.CASINO) 0.dp else 26.dp)
             .background(
                 Brush.verticalGradient(listOf(
-                    if (state.feature == Feature.CASINO) Color(0xFF0A1020) else Color(0xFF18191C),
+                    if (state.feature == Feature.CASINO) Color(0xFF141414) else Color(0xFF18191C),
                     footerInk, Color(0xFF0C0D0F))))
             .padding(start = 18.dp, end = 18.dp, top = 27.dp, bottom = 30.dp),
         verticalArrangement = Arrangement.spacedBy(20.dp)
