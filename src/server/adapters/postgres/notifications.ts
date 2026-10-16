@@ -67,8 +67,14 @@ export class PostgresNotificationRepository implements NotificationRepository {
          and scheduled_at <= now() and ($2::boolean is not true or read_at is null)`,
       [userId, filter.unreadOnly ?? false],
     );
+    const unread = await this.db.queryOne<Row>(
+      `select count(*) as unread from nova.notifications where user_id = $1
+         and channel = 'in_app' and scheduled_at <= now() and read_at is null`,
+      [userId],
+    );
     const total = toNum(count?.total);
     return {
+      unreadCount: toNum(unread?.unread),
       items: rows.map((r) => ({
         id: toStr(r.id), eventKey: toStr(r.event_key, 'system.maintenance'), title: toStr(r.title), body: toStr(r.body),
         createdAt: toIso(r.created_at), readAt: toIsoOrNull(r.read_at), data: toJson<Record<string, unknown> | null>(r.data, null),
