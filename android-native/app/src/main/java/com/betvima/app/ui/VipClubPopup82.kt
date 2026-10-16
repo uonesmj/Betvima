@@ -85,10 +85,11 @@ fun VipClubPopup82(
 ) {
     var expanded by rememberSaveable { mutableIntStateOf(-1) }
 
-    Dialog(onDismissRequest = onDismiss,
-        properties = DialogProperties(usePlatformDefaultWidth = false)) {
+    PremiumMotionDialog(onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false)) { motion, closeWith ->
         Column(
             Modifier.fillMaxWidth().fillMaxHeight(.96f)
+                .then(motion)
                 .padding(horizontal = 7.dp)
                 .clip(RoundedCornerShape(29.dp))
                 .background(clubBg)
@@ -121,7 +122,7 @@ fun VipClubPopup82(
                             color = Color.White, fontSize = 23.sp,
                             fontWeight = FontWeight.Black)
                     }
-                    IconButton(onClick = onDismiss,
+                    IconButton(onClick = { closeWith({}) },
                         modifier = Modifier.clip(CircleShape)
                             .background(Color.White.copy(alpha = .1f))) {
                         Icon(Icons.Default.Close,
@@ -291,7 +292,7 @@ fun VipClubPopup82(
                 .padding(horizontal = 16.dp, vertical = 12.dp),
                 horizontalArrangement = Arrangement.spacedBy(10.dp),
                 verticalAlignment = Alignment.CenterVertically) {
-                OutlinedButton(onClick = onBonuses,
+                OutlinedButton(onClick = { closeWith(onBonuses) },
                     modifier = Modifier.weight(.86f).height(50.dp),
                     shape = RoundedCornerShape(15.dp),
                     border = BorderStroke(1.dp, Color.White.copy(alpha = .24f)),
@@ -299,7 +300,7 @@ fun VipClubPopup82(
                     Text(tr(lang, "Bonuses", "بونوس‌ها"),
                         fontSize = 12.sp, fontWeight = FontWeight.Bold)
                 }
-                Button(onClick = onSupport,
+                Button(onClick = { closeWith(onSupport) },
                     modifier = Modifier.weight(1.2f).height(50.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = clubGreen),
                     shape = RoundedCornerShape(15.dp)) {
