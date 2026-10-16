@@ -40,10 +40,10 @@ import androidx.compose.ui.unit.sp
 
 // A genuinely native, illustrated and animated Partners landing.
 // Does not embed 1win content, third-party media, or an external website.
-private val partnerNight = Color(0xFF0A0C15)
+private val partnerNight = Color(0xFF0B0C10)
 private val partnerBlue = Color(0xFF355CFA)
 private val partnerViolet = Color(0xFF8559E9)
-private val partnerMint = Color(0xFF00D47A)
+private val partnerMint = Color(0xFF92BFFF)
 private val partnerPaper = Color(0xFFF3F4F8)
 private val partnerMuted = Color(0xFF818A9D)
 private val partnerWhite = Color.White
@@ -84,7 +84,7 @@ fun PremiumAffiliateSheet(state: AppState, model: AppViewModel, onClose: () -> U
         ) {
             Row(
                 Modifier.fillMaxWidth().height(64.dp)
-                    .background(Color(0xFF081320))
+                    .background(Color(0xFF17181D))
                     .padding(horizontal=14.dp),
                 verticalAlignment=Alignment.CenterVertically
             ) {
@@ -293,7 +293,7 @@ private fun PartnerHero(lang: Lang, active: Boolean, onGetStarted: () -> Unit, o
                 Modifier.fillMaxSize().padding(top = 8.dp), active,
                 corner=23, showMark=false)
             Box(Modifier.size(310.dp).align(Alignment.Center).background(
-                Brush.radialGradient(listOf(Color(0xFF6B58C6).copy(alpha = .23f),
+                Brush.radialGradient(listOf(Color(0xFF7A76B3).copy(alpha = .15f),
                     Color.Transparent)), CircleShape))
             Box(Modifier.align(Alignment.BottomCenter)
                 .graphicsLayer {
