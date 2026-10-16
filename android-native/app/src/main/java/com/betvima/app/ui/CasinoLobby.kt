@@ -173,236 +173,82 @@ fun CasinoLobby(state: AppState, model: AppViewModel) {
             listOfNotNull(provider.takeIf(String::isNotBlank)))
             .filter(String::isNotBlank).distinct()
     }
-    LazyVerticalGrid(
-        columns = GridCells.Fixed(2),
-        state = gridState,
-        modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(start = 15.dp, end = 15.dp, top = 16.dp, bottom = 26.dp),
-        horizontalArrangement = Arrangement.spacedBy(11.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        item(span = { GridItemSpan(maxLineSpan) }) {
-            Box(
-                Modifier.fillMaxWidth().clip(RoundedCornerShape(24.dp))
-                    .background(Brush.linearGradient(listOf(Palette.ink, Palette.dark, Color(0xFF0E5646))))
-                    .padding(20.dp)
-            ) {
-                Column(verticalArrangement = Arrangement.spacedBy(9.dp)) {
-                    Row(verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Icon(Icons.Default.Casino, null, tint = Palette.gold,
-                            modifier = Modifier.size(20.dp))
-                        Text("BETVIMA  /  CASINO", color = Palette.gold,
-                            fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                    }
-                    Text(tr(state.lang, "Casino games", "بازی‌های کازینو"),
-                        color = Color.White, fontSize = 26.sp, fontWeight = FontWeight.Black)
-                    Text(tr(state.lang,
-                        "Slots, live casino, crash and more — from our connected game providers.",
-                        "اسلات، کازینوی زنده، کراش و بازی‌های متنوع از ارائه‌دهندگان متصل."),
-                        color = Color(0xFFD7E5E3), fontSize = 12.sp, lineHeight = 19.sp)
-                    Row(horizontalArrangement = Arrangement.spacedBy(7.dp),
-                        verticalAlignment = Alignment.CenterVertically) {
-                        CasinoTag("USD", Palette.gold)
-                        CasinoTag(tr(state.lang, "Demo play", "بازی آزمایشی"), Palette.green)
-                        if (total > 0) CasinoTag("$total " +
-                            tr(state.lang, "games", "بازی"), Color.White)
-                    }
-                }
-            }
-        }
-        item(span = { GridItemSpan(maxLineSpan) }) {
-            val permission = pilot
-            BvInformationStrip(
-                if (permission?.realMoneyEnabled == true) {
-                    tr(state.lang,
-                        "Game balance: USD $" + permission.displayedUsd +
-                            " (wallet: " + permission.walletCurrency +
-                            "). All game amounts are USD; wins and losses settle in your wallet currency. Minimum wager: $" +
-                            permission.displayedMinimumUsd + ".",
-                        "موجودی بازی: $" + permission.displayedUsd +
-                            " دلار (کیف پول: " + permission.walletCurrency +
-                            "). مبالغ بازی دلاری است و برد و باخت در ارز کیف پول تسویه می‌شود. حداقل شرط: $" +
-                            permission.displayedMinimumUsd + ".")
-                } else {
-                    tr(state.lang,
-                        "Demo play can be attempted. Real-money games require server approval (minimum wager: $0.20).",
-                        "اجرای دمو قابل امتحان است. بازی با پول واقعی به تأیید سرور نیاز دارد (حداقل شرط: ۰٫۲۰ دلار).")
-                },
-                icon = Icons.Default.VerifiedUser, accent = Palette.blue
-            )
-        }
-        item(span = { GridItemSpan(maxLineSpan) }) {
-            Surface(
-                shape = RoundedCornerShape(16.dp),
-                color = Palette.greenLight,
-                border = BorderStroke(1.dp, Palette.green.copy(alpha = .35f))
-            ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(13.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(9.dp)
-                ) {
-                    Column(Modifier.weight(1f)) {
-                        Text(
-                            tr(state.lang, "Aviator · Verified demo", "Aviator · دموی تأییدشده"),
-                            fontWeight = FontWeight.Bold, fontSize = 13.sp, color = Palette.ink
-                        )
-                        Text(
-                            tr(state.lang, "Not every slot or live casino game has a free demo.",
-                                "همه اسلات‌ها و بازی‌های کازینو زنده نسخه آزمایشی ندارند."),
-                            fontSize = 11.sp, color = Palette.text, lineHeight = 17.sp
-                        )
-                    }
-                    Button(
-                        onClick = { tryDemo("x887bde40b16350c", "Aviator", true) },
-                        enabled = launching == null,
-                        colors = ButtonDefaults.buttonColors(containerColor = Palette.ink),
-                        shape = RoundedCornerShape(12.dp)
-                    ) {
-                        Text(tr(state.lang, "Play demo", "اجرای دمو"), fontSize = 11.sp)
-                    }
-                }
-            }
-        }
-        item(span = { GridItemSpan(maxLineSpan) }) {
-            OutlinedTextField(
-                value = query,
-                onValueChange = {
-                    if (it.length <= 80) {
-                        query = it
-                        page = 1
-                        games = emptyList()
-                    }
-                },
-                placeholder = {
-                    Text(tr(state.lang, "Search games...", "جست‌وجوی بازی‌ها..."),
-                        fontSize = 13.sp)
-                },
-                leadingIcon = { Icon(Icons.Default.Search, null, tint = Palette.muted) },
-                trailingIcon = {
-                    if (query.isNotEmpty()) IconButton(onClick = { query = ""; debouncedQuery = "";
-                        page = 1; games = emptyList() }) {
-                        Icon(Icons.Default.Close, tr(state.lang, "Clear", "پاک کردن"))
-                    }
-                },
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true,
-                shape = RoundedCornerShape(18.dp),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedContainerColor = Color.White, unfocusedContainerColor = Color.White,
-                    focusedBorderColor = Palette.green, unfocusedBorderColor = Palette.border)
-            )
-        }
-        item(span = { GridItemSpan(maxLineSpan) }) {
-            LazyRow(horizontalArrangement = Arrangement.spacedBy(7.dp)) {
-                items(casinoCategories) { item ->
-                    val selected = category == item
-                    FilterChip(
-                        selected = selected,
-                        onClick = {
-                            if (!selected) {
-                                category = item; provider = ""; page = 1; games = emptyList()
-                                scope.launch { gridState.animateScrollToItem(0) }
-                            }
-                        },
-                        label = {
-                            Text(if (item.isEmpty()) tr(state.lang, "All", "همه")
-                                else casinoCategoryLabel(item, fa), fontSize = 12.sp)
-                        },
-                        shape = RoundedCornerShape(12.dp),
-                        colors = FilterChipDefaults.filterChipColors(
-                            selectedContainerColor = Palette.ink,
-                            selectedLabelColor = Color.White,
-                            containerColor = Color.White)
-                    )
-                }
-            }
-        }
-        if (availableProviders.isNotEmpty()) {
-            item(span = { GridItemSpan(maxLineSpan) }) {
-                LazyRow(horizontalArrangement = Arrangement.spacedBy(7.dp),
-                    verticalAlignment = Alignment.CenterVertically) {
-                    item { Text(tr(state.lang, "Studio", "سازنده") + ":",
-                        color = Palette.muted, fontWeight = FontWeight.Bold,
-                        fontSize = 12.sp) }
-                    item {
-                        CasinoProviderChip(tr(state.lang, "All", "همه"), provider.isEmpty()) {
-                            provider = ""; page = 1; games = emptyList()
+    // Each shelf is populated from the real SoftAggregator catalogue via BetVima's API.
+    // We request a first page for the major category tabs so they are not empty
+    // simply because the global first page happens to contain mostly slots.
+    var categoryShowcase by remember { mutableStateOf<Map<String, List<CasinoGame>>>(emptyMap()) }
+    LaunchedEffect(category, provider, debouncedQuery, refreshSerial) {
+        if (category.isBlank() && provider.isBlank() && debouncedQuery.isBlank()) {
+            val types = listOf("slots", "live", "instant", "crash", "table")
+            val loaded = kotlinx.coroutines.coroutineScope {
+                types.map { type ->
+                    kotlinx.coroutines.async {
+                        try {
+                            type to model.casinoGames(1, type, "", "").games
+                        } catch (cancel: CancellationException) {
+                            throw cancel
+                        } catch (_: Exception) {
+                            type to emptyList<CasinoGame>()
                         }
                     }
-                    items(availableProviders) { p ->
-                        CasinoProviderChip(p, provider == p) {
-                            provider = p; page = 1; games = emptyList()
-                        }
-                    }
-                }
+                }.let { kotlinx.coroutines.awaitAll(*it.toTypedArray()) }.toMap()
             }
-        }
-        item(span = { GridItemSpan(maxLineSpan) }) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Column(Modifier.weight(1f)) {
-                    Text(tr(state.lang, "Explore games", "کاوش بازی‌ها"),
-                        fontSize = 18.sp, fontWeight = FontWeight.Black, color = Palette.text)
-                    if (total > 0) Text("$total " + tr(state.lang, "available titles", "عنوان موجود"),
-                        fontSize = 12.sp, color = Palette.muted)
-                }
-                IconButton(onClick = { page = 1; games = emptyList(); refreshSerial++ }) {
-                    Icon(Icons.Default.Refresh, tr(state.lang, "Refresh", "بارگذاری مجدد"),
-                        tint = Palette.blue)
-                }
-            }
-        }
-        if (games.isEmpty() && loading) {
-            item(span = { GridItemSpan(maxLineSpan) }) {
-                Box(Modifier.fillMaxWidth().padding(30.dp), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator(color = Palette.green)
-                }
-            }
-        } else if (games.isEmpty()) {
-            item(span = { GridItemSpan(maxLineSpan) }) {
-                CasinoEmptyState(error ?: tr(state.lang, "No games match these filters.",
-                    "بازی‌ای با این فیلترها پیدا نشد."), state.lang, error != null) {
-                    refreshSerial++
-                }
-            }
-        }
-        items(games, key = { it.id }) { game ->
-            CasinoGameCard(
-                game = game, lang = state.lang, launching = launching == game.id,
-                realMoneyEnabled = state.signedIn && pilot?.realMoneyEnabled == true,
-                onRealClick = {
-                    realMoneyAcknowledged = false
-                    pendingRealGame = game
-                },
-                onClick = { tryDemo(game.id, game.name, game.demoSupported) }
-            )
-        }
-        if (games.isNotEmpty() && loading) {
-            item(span = { GridItemSpan(maxLineSpan) }) {
-                LinearProgressIndicator(Modifier.fillMaxWidth(), color = Palette.green)
-            }
-        } else if (error != null && games.isNotEmpty()) {
-            item(span = { GridItemSpan(maxLineSpan) }) {
-                TextButton(onClick = { refreshSerial++ }, modifier = Modifier.fillMaxWidth()) {
-                    Text(tr(state.lang, "Retry loading", "تلاش مجدد"))
-                }
-            }
-        } else if (hasMore) {
-            item(span = { GridItemSpan(maxLineSpan) }) {
-                Button(onClick = { page++ }, modifier = Modifier.fillMaxWidth(),
-                    colors = ButtonDefaults.buttonColors(containerColor = Palette.ink),
-                    shape = RoundedCornerShape(14.dp)) {
-                    Text(tr(state.lang, "Load more games", "نمایش بازی‌های بیشتر"))
-                    Spacer(Modifier.width(8.dp))
-                    Icon(Icons.Default.ExpandMore, null, Modifier.size(18.dp))
-                }
-            }
-        }
-        item(span = { GridItemSpan(maxLineSpan) }) {
-            Spacer(Modifier.height(18.dp))
+            categoryShowcase = loaded
+        } else {
+            categoryShowcase = emptyMap()
         }
     }
+
+    CasinoPremiumHome(
+        state = state,
+        model = model,
+        games = games,
+        showcase = categoryShowcase,
+        category = category,
+        provider = provider,
+        providers = availableProviders,
+        query = query,
+        total = total,
+        hasMore = hasMore,
+        loading = loading,
+        error = error,
+        launching = launching,
+        eligibility = pilot,
+        onCategory = { selected ->
+            if (category != selected || provider.isNotBlank() || query.isNotBlank()) {
+                category = selected
+                provider = ""
+                query = ""
+                debouncedQuery = ""
+                page = 1
+                games = emptyList()
+            }
+        },
+        onProvider = { selected ->
+            provider = selected
+            page = 1
+            games = emptyList()
+        },
+        onQuery = { search ->
+            query = search
+            if (search.isBlank()) debouncedQuery = ""
+            page = 1
+            games = emptyList()
+        },
+        onRetry = {
+            page = 1
+            games = emptyList()
+            refreshSerial++
+        },
+        onMore = { if (!loading && hasMore) page++ },
+        onDemo = { game -> tryDemo(game.id, game.name, game.demoSupported) },
+        onReal = { game ->
+            if (pilot?.realMoneyEnabled == true && state.signedIn) {
+                realMoneyAcknowledged = false
+                pendingRealGame = game
+            }
+        }
+    )
     sessionUrl?.let { secureUrl ->
         CasinoGameDialog(secureUrl, state.lang, gameUsesRealMoney) {
             sessionUrl = null
