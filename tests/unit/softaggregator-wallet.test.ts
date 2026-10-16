@@ -32,6 +32,9 @@ function makeFakeDb(initial = 1000n, held = 200n) {
       if (sql.includes("as ready") && sql.includes("sa_unique_reversed_credit")) {
         return { ready: financialSchemaReady };
       }
+      if (sql.includes('from nova.softaggregator_player_wallet_bindings')) {
+        return { wallet_currency: 'USD' };
+      }
       if (sql.includes('from nova.softaggregator_round_fx')) {
         return rounds.get(String(params[1]) + ':' + String(params[2])) ?? null;
       }
