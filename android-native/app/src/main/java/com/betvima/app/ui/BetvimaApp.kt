@@ -119,7 +119,8 @@ fun BetvimaApp(model: AppViewModel) {
             }
         ) {
         Scaffold(
-            containerColor = Palette.paper,
+            containerColor = if (state.feature == Feature.CASINO)
+                Color(0xFF0A1020) else Palette.paper,
             topBar = {
                 Column {
                     BrandHeader(state.lang,
@@ -139,7 +140,8 @@ fun BetvimaApp(model: AppViewModel) {
                                 state.wallet!!.currency) else null,
                         walletCurrency = if (state.signedIn) state.wallet?.currency else null,
                         onWallet = { model.tab(Tab.WALLET) },
-                        userName = state.accountName)
+                        userName = state.accountName,
+                        casinoStyle = state.feature == Feature.CASINO)
 
                 }
             },
