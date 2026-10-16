@@ -12,7 +12,7 @@ import { playerUsername } from '../src/server/providers/softaggregator/contract'
 import { readCompleteCasinoHistory, type CasinoHistoryPage } from '../src/server/providers/softaggregator/history-pages';
 import {
   compareCasinoHistory,
-  type ProviderRound, type SignedReceipt,
+  type SignedReceipt,
 } from '../src/server/providers/softaggregator/reconcile';
 
 async function run(): Promise<void> {
