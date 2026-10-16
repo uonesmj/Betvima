@@ -1,6 +1,8 @@
 package com.betvima.app.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
@@ -51,9 +53,10 @@ internal fun LocalPinGate87(locked: Boolean, onUnlock: () -> Unit) {
     Dialog(onDismissRequest = {}, properties = DialogProperties(
         usePlatformDefaultWidth = false, dismissOnBackPress = false,
         dismissOnClickOutside = false)) {
-        Column(Modifier.fillMaxWidth(.91f)
+        Column(Modifier.fillMaxWidth(.98f).heightIn(max = 720.dp)
             .background(Color(0xFF17181E), RoundedCornerShape(27.dp))
-            .padding(horizontal = 23.dp, vertical = 21.dp),
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = 14.dp, vertical = 17.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(13.dp)) {
             Icon(Icons.Default.Shield, null, tint = Color(0xFF168CFF),
