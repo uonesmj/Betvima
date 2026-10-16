@@ -13,23 +13,41 @@ data class CasinoEligibility(
     val availableUsdMinor: String,
     val minStakeUsdMinor: String
 ) {
-    val displayedUsd: String get() {
-        val cents = availableUsdMinor.toLongOrNull()?.coerceAtLeast(0L) ?: 0L
-        return (cents / 100L).toString() + "." +
-            (cents % 100L).toString().padStart(2, '0')
-    }
+    val displayedUsd: String get() = formatCasinoUsd(availableUsdMinor)
+    val displayedMinimumUsd: String get() = formatCasinoUsd(minStakeUsdMinor)
 }
 
-fun parseCasinoEligibility(json: JSONObject): CasinoEligibility = CasinoEligibility(
-    realMoneyEnabled = json.optBoolean("realMoneyEnabled", false),
-    walletCurrency = json.optString("walletCurrency", "USD").takeIf {
+private val casinoMinorPattern = Regex("[0-9]{1,16}")
+
+/** Display-only conversion. No currency conversion or wagering is performed on-device. */
+private fun formatCasinoUsd(minor: String): String {
+    val cents = minor.toLongOrNull()?.coerceAtLeast(0L) ?: 0L
+    return (cents / 100L).toString() + "." +
+        (cents % 100L).toString().padStart(2, '0')
+}
+
+/**
+ * Malformed server eligibility must never make the native app show Play USD.
+ * The server independently enforces its allowlist and audited financial gates.
+ */
+fun parseCasinoEligibility(json: JSONObject): CasinoEligibility {
+    val currency = json.optString("walletCurrency", "").takeIf {
         it in setOf("USD", "IRT", "IRR")
-    } ?: "USD",
-    availableUsdMinor = json.optString("availableUsdMinor", "0").takeIf {
-        it.matches(Regex("[0-9]{1,16}"))
-    } ?: "0",
-    minStakeUsdMinor = json.optString("minStakeUsdMinor", "20")
-)
+    }
+    val balance = json.optString("availableUsdMinor", "").takeIf {
+        it.matches(casinoMinorPattern) && it.toLongOrNull() != null
+    }
+    val minimum = json.optString("minStakeUsdMinor", "").takeIf {
+        it.matches(casinoMinorPattern) && (it.toLongOrNull() ?: 0L) >= 20L
+    }
+    return CasinoEligibility(
+        realMoneyEnabled = json.optBoolean("realMoneyEnabled", false) &&
+            currency != null && balance != null && minimum != null,
+        walletCurrency = currency ?: "USD",
+        availableUsdMinor = balance ?: "0",
+        minStakeUsdMinor = minimum ?: "20"
+    )
+}
 
 /** Provider-supplied catalogue entries. No bundled or fabricated casino titles. */
 data class CasinoGame(
@@ -50,7 +68,8 @@ data class CasinoPage(
     val games: List<CasinoGame>,
     val total: Int,
     val page: Int,
-    val pageSize: Int
+    val pageSize: Int,
+    val providers: List<String> = emptyList()
 ) {
     val hasMore: Boolean get() = page.toLong() * pageSize.toLong() < total.toLong()
 }
@@ -74,9 +93,16 @@ fun parseCasinoPage(json: JSONObject): CasinoPage {
             ))
         }
     }
+    val options = json.optJSONArray("providers")
+    val providers = buildList {
+        if (options != null) for (index in 0 until options.length()) {
+            val name = (options.opt(index) as? String)?.trim() ?: continue
+            if (name.length in 1..80) add(name)
+        }
+    }.distinct()
     return CasinoPage(games, json.optInt("total").coerceAtLeast(0),
         json.optInt("page", 1).coerceAtLeast(1),
-        json.optInt("limit", 40).coerceIn(1, 100))
+        json.optInt("limit", 40).coerceIn(1, 100), providers)
 }
 
 fun casinoCategoryLabel(category: String, persian: Boolean): String =

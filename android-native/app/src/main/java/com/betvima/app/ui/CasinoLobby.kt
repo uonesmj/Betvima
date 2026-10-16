@@ -60,6 +60,7 @@ fun CasinoLobby(state: AppState, model: AppViewModel) {
     var debouncedQuery by remember { mutableStateOf("") }
     var page by remember { mutableIntStateOf(1) }
     var games by remember { mutableStateOf<List<CasinoGame>>(emptyList()) }
+    var providerOptions by remember { mutableStateOf<List<String>>(emptyList()) }
     var total by remember { mutableIntStateOf(0) }
     var hasMore by remember { mutableStateOf(false) }
     var loading by remember { mutableStateOf(true) }
@@ -69,11 +70,12 @@ fun CasinoLobby(state: AppState, model: AppViewModel) {
     var sessionUrl by remember { mutableStateOf<String?>(null) }
     var launchError by remember { mutableStateOf<Pair<String, String>?>(null) }
     var pilot by remember { mutableStateOf<CasinoEligibility?>(null) }
+    var pilotRefreshSerial by remember { mutableIntStateOf(0) }
     var pendingRealGame by remember { mutableStateOf<CasinoGame?>(null) }
     var gameUsesRealMoney by remember { mutableStateOf(false) }
     var failedRealMoneyLaunch by remember { mutableStateOf(false) }
 
-    LaunchedEffect(state.signedIn, refreshSerial) {
+    LaunchedEffect(state.signedIn, pilotRefreshSerial) {
         pilot = null
         if (state.signedIn) {
             try { pilot = model.casinoEligibility() }
@@ -90,7 +92,7 @@ fun CasinoLobby(state: AppState, model: AppViewModel) {
         launching = game.id
         scope.launch {
             try {
-                val url = model.casinoRealMoneyLaunch(game.id)
+                val url = model.casinoRealMoneyLaunch(game.id, state.lang)
                 gameUsesRealMoney = true
                 sessionUrl = url
             } catch (cancel: CancellationException) {
@@ -120,7 +122,7 @@ fun CasinoLobby(state: AppState, model: AppViewModel) {
         launching = gameId
         scope.launch {
             try {
-                val url = model.casinoDemoLaunch(gameId)
+                val url = model.casinoDemoLaunch(gameId, state.lang)
                 gameUsesRealMoney = false
                 failedRealMoneyLaunch = false
                 sessionUrl = url
@@ -149,6 +151,7 @@ fun CasinoLobby(state: AppState, model: AppViewModel) {
             val previous = if (page == 1) emptyList() else games
             games = (previous + result.games).distinctBy { it.id }
             hasMore = result.hasMore && result.games.isNotEmpty()
+            providerOptions = result.providers
             total = result.total
         } catch (cancel: CancellationException) {
             throw cancel
@@ -162,9 +165,12 @@ fun CasinoLobby(state: AppState, model: AppViewModel) {
         }
     }
 
-    val availableProviders = remember(games, provider) {
-        (games.map { it.provider }.filter(String::isNotBlank).distinct().take(14) +
-            listOfNotNull(provider.takeIf(String::isNotBlank))).distinct()
+    // The API returns studios across all matching titles, not only the loaded page.
+    // Older servers without facets still work with the visible-card fallback.
+    val availableProviders = remember(games, provider, providerOptions) {
+        ((providerOptions.ifEmpty { games.map { it.provider } }) +
+            listOfNotNull(provider.takeIf(String::isNotBlank)))
+            .filter(String::isNotBlank).distinct()
     }
     LazyVerticalGrid(
         columns = GridCells.Fixed(2),
@@ -211,14 +217,16 @@ fun CasinoLobby(state: AppState, model: AppViewModel) {
                     tr(state.lang,
                         "Game balance: USD $" + permission.displayedUsd +
                             " (wallet: " + permission.walletCurrency +
-                            "). All game amounts are USD; wins and losses settle in your wallet currency.",
+                            "). All game amounts are USD; wins and losses settle in your wallet currency. Minimum wager: $" +
+                            permission.displayedMinimumUsd + ".",
                         "موجودی بازی: $" + permission.displayedUsd +
                             " دلار (کیف پول: " + permission.walletCurrency +
-                            "). مبالغ بازی دلاری است و برد و باخت در ارز کیف پول تسویه می‌شود.")
+                            "). مبالغ بازی دلاری است و برد و باخت در ارز کیف پول تسویه می‌شود. حداقل شرط: $" +
+                            permission.displayedMinimumUsd + ".")
                 } else {
                     tr(state.lang,
-                        "Demo mode is available. Real-money games require server-approved testing.",
-                        "حالت آزمایشی فعال است. بازی با پول واقعی فقط پس از تأیید حساب آزمایشی در سرور فعال می‌شود.")
+                        "Demo play can be attempted. Real-money games require server approval (minimum wager: $0.20).",
+                        "اجرای دمو قابل امتحان است. بازی با پول واقعی به تأیید سرور نیاز دارد (حداقل شرط: ۰٫۲۰ دلار).")
                 },
                 icon = Icons.Default.VerifiedUser, accent = Palette.blue
             )
@@ -361,7 +369,7 @@ fun CasinoLobby(state: AppState, model: AppViewModel) {
         items(games, key = { it.id }) { game ->
             CasinoGameCard(
                 game = game, lang = state.lang, launching = launching == game.id,
-                realMoneyEnabled = pilot?.realMoneyEnabled == true,
+                realMoneyEnabled = state.signedIn && pilot?.realMoneyEnabled == true,
                 onRealClick = { pendingRealGame = game },
                 onClick = { tryDemo(game.id, game.name, game.demoSupported) }
             )
@@ -392,7 +400,16 @@ fun CasinoLobby(state: AppState, model: AppViewModel) {
         }
     }
     sessionUrl?.let { secureUrl ->
-        CasinoGameDialog(secureUrl, state.lang, gameUsesRealMoney) { sessionUrl = null }
+        CasinoGameDialog(secureUrl, state.lang, gameUsesRealMoney) {
+            sessionUrl = null
+            if (gameUsesRealMoney && state.signedIn) {
+                // After returning from a game, fetch the authoritative wallet
+                // balance again. Never change the displayed balance locally.
+                pilot = null
+                pilotRefreshSerial++
+                model.refreshAccount()
+            }
+        }
     }
     pendingRealGame?.let { game ->
         AlertDialog(
@@ -616,6 +633,16 @@ private fun CasinoGameDialog(url: String, lang: Lang, realMoney: Boolean, onClos
                                 ): Boolean = request.url.scheme != "https"
                                 override fun onPageFinished(view: WebView, url: String) {
                                     loading = false
+                                }
+                                override fun onReceivedHttpError(
+                                    view: WebView,
+                                    request: WebResourceRequest,
+                                    errorResponse: android.webkit.WebResourceResponse
+                                ) {
+                                    if (request.isForMainFrame && errorResponse.statusCode >= 400) {
+                                        loading = false
+                                        pageFailed = true
+                                    }
                                 }
                                 override fun onReceivedError(
                                     view: WebView,
