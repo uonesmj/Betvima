@@ -88,9 +88,9 @@ async function limitsAllow(db: Db, userId: string, currency: FiatCurrency, amoun
     "select coalesce(sum(case when type='bet_debit' and created_at >= date_trunc('day',now() at time zone 'UTC') at time zone 'UTC'",
     "then -amount_minor else 0 end),0)::text as day_stake,",
     "coalesce(sum(case when created_at >= date_trunc('day',now() at time zone 'UTC') at time zone 'UTC'",
-    "and type in ('bet_debit','win_credit','bet_refund','void_refund') then -amount_minor else 0 end),0)::text as day_loss,",
+    "and (type in ('bet_debit','win_credit','bet_refund','void_refund') or (type='reversal' and reference like 'softaggregator:%')) then -amount_minor else 0 end),0)::text as day_loss,",
     "coalesce(sum(case when created_at >= date_trunc('week',now() at time zone 'UTC') at time zone 'UTC'",
-    "and type in ('bet_debit','win_credit','bet_refund','void_refund') then -amount_minor else 0 end),0)::text as week_loss",
+    "and (type in ('bet_debit','win_credit','bet_refund','void_refund') or (type='reversal' and reference like 'softaggregator:%')) then -amount_minor else 0 end),0)::text as week_loss",
     "from nova.wallet_transactions where user_id=$1 and currency=$2",
   ].join(' '), [userId, currency]);
   if (!usage) return false;

@@ -164,6 +164,30 @@ async function main(){
     assert.equal(Number(afterOverdraft.rows[0].total), await balance(),
       'all concurrent outcomes must reconcile with the append-only ledger');
 
+    // A provider reversal of a previously paid win is a real debit. It must
+    // undo the earlier win's contribution to daily net-loss calculations.
+    // Otherwise a player can exceed an approved loss limit after a reversed win.
+    const lossBefore = await sql.query(
+      "select coalesce(sum(case when type in " +
+      "('bet_debit','win_credit','bet_refund','void_refund') " +
+      "or (type='reversal' and reference like 'softaggregator:%') " +
+      "then -amount_minor else 0 end),0)::bigint as used " +
+      "from nova.wallet_transactions where user_id=$1 and currency='USD' " +
+      "and created_at >= date_trunc('day',now() at time zone 'UTC') at time zone 'UTC'",
+      [uid]);
+    const netLoss = BigInt(lossBefore.rows[0].used);
+    assert(netLoss > 0n, 'test requires a positive net loss after reversed winning');
+    const currentBalance = await balance();
+    assert(currentBalance >= 20, 'test player must have enough cash to expose bypass');
+    await sql.query(
+      'insert into nova.user_limits(user_id,currency,loss_limit_daily_minor) ' +
+      "values($1,'USD',$2)",
+      [uid,(netLoss + 19n).toString()]);
+    assert.deepEqual(await signed('debit','isolated-reversed-win-loss-limit',20),
+      {error:1,balance:currentBalance},
+      'a reversed supplier win must count toward daily net-loss before authorizing a bet');
+    assert.equal(await balance(),currentBalance,'denied stake must not mutate available cash');
+
     process.stdout.write('CASINO_INTEGRATED_SIGNED_CALLBACK_POSTGRES_PASS; synthetic USD, no production funds\n');
   } finally {
     await sql.end();
