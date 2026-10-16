@@ -142,9 +142,26 @@ internal fun firstPartyLeagueLogo(league: String): String? {
     return asset?.let { "https://betvima.com/sports/leagues/$it" }
 }
 
+/** Fallback artwork is sport-specific and is never presented as an official crest. */
+internal fun sportFallbackAsset(sport: String): String? = when (
+    sport.lowercase(Locale.ROOT).replace("-", " ").trim()
+) {
+    "tennis", "table tennis" -> "https://betvima.com/sports/leagues/tennis.svg"
+    "volleyball" -> "https://betvima.com/sports/leagues/volleyball.svg"
+    "cricket" -> "https://betvima.com/sports/leagues/cricket.svg"
+    "esports", "e sports" -> "https://betvima.com/sports/leagues/esports.svg"
+    "mma", "ufc", "boxing", "mixed martial arts" ->
+        "https://betvima.com/sports/leagues/mma.svg"
+    else -> null
+}
+
 @Composable
 fun LeagueIdentityBadge(match: Match, size: Int = 41) {
-    val safe = verifiedLogoUrl(match.leagueLogo) ?: firstPartyLeagueLogo(match.league)
+    // Prefer the competition logo from our API; then first-party known league
+    // artwork; finally an honest sport-specific pictogram when no crest exists.
+    val safe = verifiedLogoUrl(match.leagueLogo)
+        ?: firstPartyLeagueLogo(match.league)
+        ?: sportFallbackAsset(match.sport)
     var loaded by remember(safe) { mutableStateOf(false) }
     val tint = when (match.sport.lowercase(Locale.ROOT)) {
         "football" -> Color(0xFF087FF5)
@@ -162,13 +179,22 @@ fun LeagueIdentityBadge(match: Match, size: Int = 41) {
         Box(contentAlignment = Alignment.Center) {
             if (!loaded) {
                 val sportIcon = when (match.sport.lowercase(Locale.ROOT)) {
-                    "football" -> Icons.Default.SportsSoccer
+                    "football", "soccer" -> Icons.Default.SportsSoccer
                     "basketball" -> Icons.Default.SportsBasketball
                     "tennis", "table-tennis" -> Icons.Default.SportsTennis
                     "baseball" -> Icons.Default.SportsBaseball
                     "volleyball" -> Icons.Default.SportsVolleyball
-                    "hockey" -> Icons.Default.SportsHockey
+                    "hockey", "ice-hockey" -> Icons.Default.SportsHockey
                     "esports" -> Icons.Default.SportsEsports
+                    "mma", "boxing", "ufc" -> Icons.Default.SportsMma
+                    "cricket" -> Icons.Default.SportsCricket
+                    "american-football" -> Icons.Default.SportsFootball
+                    "rugby" -> Icons.Default.SportsRugby
+                    "golf" -> Icons.Default.SportsGolf
+                    "motorsport", "formula-1", "formula1" -> Icons.Default.SportsMotorsports
+                    "cycling" -> Icons.Default.DirectionsBike
+                    "darts" -> Icons.Default.GpsFixed
+                    "snooker", "billiards" -> Icons.Default.Sports
                     else -> Icons.Default.EmojiEvents
                 }
                 Icon(sportIcon, contentDescription = null, tint = tint,
