@@ -509,23 +509,32 @@ private fun CasinoMainTabs(category: String, lang: Lang, onSelect: (String) -> U
 @Composable
 private fun CasinoShortcuts(category: String, lang: Lang, onSelect: (String) -> Unit) {
     Row(Modifier.fillMaxWidth().padding(horizontal = 15.dp),
-        horizontalArrangement = Arrangement.spacedBy(7.dp)) {
-        listOf(Triple("", tr(lang,"Lobby","لابی"), Icons.Default.ViewCarousel),
-            Triple("slots", tr(lang,"Slots","اسلات"), Icons.Default.Casino),
-            Triple("crash", tr(lang,"Quick games","بازی‌های سریع"), Icons.Default.Bolt))
-            .forEach { (key, name, icon) ->
-                Row(Modifier.weight(1f).height(42.dp).clip(RoundedCornerShape(12.dp))
-                    .background(if (category == key) accent else panel)
-                    .casinoBounce { onSelect(key) },
-                    horizontalArrangement = Arrangement.Center,
-                    verticalAlignment = Alignment.CenterVertically) {
-                    Icon(icon, null, tint = Color.White, modifier = Modifier.size(16.dp))
-                    Spacer(Modifier.width(5.dp))
-                    Text(name, color = Color.White, fontSize = 11.sp,
-                        fontWeight = FontWeight.SemiBold, maxLines = 1,
-                        overflow = TextOverflow.Ellipsis)
-                }
+        horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        listOf(
+            Triple("", tr(lang, "Lobby", "لابی"), Icons.Default.ViewCarousel),
+            Triple("slots", tr(lang, "Slots", "اسلات"), Icons.Default.Casino),
+            Triple("crash", tr(lang, "Quick games", "بازی‌های سریع"), Icons.Default.Bolt)
+        ).forEach { (key, name, icon) ->
+            val selected = category == key
+            val fill by animateColorAsState(
+                if (selected) accent else panel,
+                animationSpec = tween(230), label = "casinoShortcutState")
+            Row(Modifier.weight(1f).height(48.dp)
+                .shadow(if (selected) 3.dp else 1.dp, RoundedCornerShape(15.dp))
+                .clip(RoundedCornerShape(15.dp))
+                .background(fill)
+                .border(1.dp, if (selected) Color(0xFF3798FF) else edge,
+                    RoundedCornerShape(15.dp))
+                .casinoBounce { onSelect(key) },
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically) {
+                Icon(icon, null, tint = Color.White, modifier = Modifier.size(17.dp))
+                Spacer(Modifier.width(6.dp))
+                Text(name, color = Color.White, fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold, maxLines = 1,
+                    overflow = TextOverflow.Ellipsis)
             }
+        }
     }
 }
 
@@ -533,27 +542,42 @@ private fun CasinoShortcuts(category: String, lang: Lang, onSelect: (String) -> 
 private fun CasinoSearch(
     query: String, lang: Lang, onGames: () -> Unit, onProviders: () -> Unit
 ) {
+    val shape = RoundedCornerShape(17.dp)
     Row(Modifier.fillMaxWidth().padding(horizontal = 15.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        Row(Modifier.weight(1f).height(54.dp).clip(RoundedCornerShape(15.dp))
-            .background(panel)
-            .border(1.dp, Color(0xFF334766), RoundedCornerShape(15.dp))
-            .casinoBounce(onGames).padding(horizontal = 13.dp),
+        horizontalArrangement = Arrangement.spacedBy(9.dp)) {
+        Row(Modifier.weight(1f).height(57.dp)
+            .shadow(2.dp, shape).clip(shape)
+            .background(Brush.verticalGradient(listOf(Color(0xFF2D2D30), panel)))
+            .border(1.dp, edge, shape)
+            .casinoBounce(onGames).padding(horizontal = 12.dp),
             verticalAlignment = Alignment.CenterVertically) {
-            Icon(Icons.Default.Search, null, tint = secondary, modifier = Modifier.size(20.dp))
+            Box(Modifier.size(32.dp).clip(RoundedCornerShape(10.dp))
+                .background(Color(0xFF3B3B3F)),
+                contentAlignment = Alignment.Center) {
+                Icon(Icons.Default.Search, null,
+                    tint = Color(0xFFDBDBDF), modifier = Modifier.size(19.dp))
+            }
             Spacer(Modifier.width(9.dp))
-            Text(tr(lang,"Search","جست‌وجو"), color = secondary, fontSize = 14.sp)
+            Text(tr(lang, "Search", "جست‌وجو"), color = Color(0xFFDEDEE3),
+                fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
         }
-        Row(Modifier.weight(.85f).height(54.dp).clip(RoundedCornerShape(15.dp))
-            .background(panel)
-            .border(1.dp, Color(0xFF334766), RoundedCornerShape(15.dp))
-            .casinoBounce(onProviders),
+        Row(Modifier.weight(1f).height(57.dp)
+            .shadow(2.dp, shape).clip(shape)
+            .background(Brush.verticalGradient(listOf(Color(0xFF2D2D30), panel)))
+            .border(1.dp, edge, shape)
+            .casinoBounce(onProviders).padding(horizontal = 8.dp),
             horizontalArrangement = Arrangement.Center,
             verticalAlignment = Alignment.CenterVertically) {
-            CasinoBrandMark(size = 18.dp)
-            Spacer(Modifier.width(7.dp))
-            Text(tr(lang,"Providers","سازندگان"), color = Color.White,
-                fontSize = 13.sp, fontWeight = FontWeight.Bold)
+            Box(Modifier.size(32.dp).clip(RoundedCornerShape(10.dp))
+                .background(Color(0xFF3B3B3F)),
+                contentAlignment = Alignment.Center) {
+                Icon(Icons.Default.GridView, null, tint = Color.White,
+                    modifier = Modifier.size(18.dp))
+            }
+            Spacer(Modifier.width(8.dp))
+            Text(tr(lang, "Providers", "سازندگان"), color = Color.White,
+                fontSize = 13.sp, fontWeight = FontWeight.Bold, maxLines = 1,
+                overflow = TextOverflow.Ellipsis)
         }
     }
 }
@@ -593,10 +617,11 @@ private fun CasinoGenrePill(
     val fill by animateColorAsState(
         if (selected) accent else panel,
         animationSpec = tween(230), label = "casinoGenreColor")
-    Row(Modifier.height(44.dp).clip(RoundedCornerShape(13.dp))
+    Row(Modifier.height(48.dp).shadow(1.dp, RoundedCornerShape(14.dp))
+        .clip(RoundedCornerShape(14.dp))
         .background(fill)
-        .border(1.dp, if (selected) Color(0xFF63B9FF)
-            else Color(0xFF344864), RoundedCornerShape(13.dp))
+        .border(1.dp, if (selected) Color(0xFF3197FF)
+            else edge, RoundedCornerShape(14.dp))
         .casinoBounce(onClick).padding(horizontal = 14.dp),
         verticalAlignment = Alignment.CenterVertically) {
         Icon(icon, null, tint = Color.White, modifier = Modifier.size(18.dp))
