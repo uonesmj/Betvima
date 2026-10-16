@@ -74,7 +74,7 @@ and market naming conventions can yield false mismatches. Verify manually.
 
 The report contains:
 - sampled fixtures (live and pre-match), scores-present flag;
-- market count, market names and timestamp freshness per sampled fixture;
+- market count, market names and timestamps of the last price change (not feed freshness) per sampled fixture;
 - reference fixture and market gaps (if the reference file was provided);
 - API request count and errors.
 
