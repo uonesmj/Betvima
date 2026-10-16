@@ -67,10 +67,10 @@ fun PremiumFixtureCard(
                     .background(Brush.horizontalGradient(
                         listOf(Color(0xFFF1F7F9), Color(0xFFFCFDFE))))
                     .clickable { onOpen(match.id) }
-                    .padding(start = 12.dp, end = 12.dp, top = 11.dp, bottom = 10.dp),
+                    .padding(start = 12.dp, end = 12.dp, top = 8.dp, bottom = 7.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                LeagueIdentityBadge(match, size = 41)
+                LeagueIdentityBadge(match, size = 34)
                 Spacer(Modifier.width(9.dp))
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                     Text(match.league, color = fixtureInk, fontSize = 13.sp,
@@ -115,8 +115,8 @@ fun PremiumFixtureCard(
             HorizontalDivider(color = fixtureStroke, thickness = .7.dp)
             Column(
                 Modifier.fillMaxWidth().padding(start = 13.dp, end = 13.dp,
-                    top = 10.dp, bottom = 13.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp)
+                    top = 7.dp, bottom = 9.dp),
+                verticalArrangement = Arrangement.spacedBy(7.dp)
             ) {
                 Row(
                     modifier = Modifier.fillMaxWidth().clickable { onOpen(match.id) },
@@ -131,7 +131,7 @@ fun PremiumFixtureCard(
                             if (match.live) tr(state.lang, "In play", "در حال بازی") +
                                 (match.minute?.let { " · ${it}′" } ?: "")
                             else searchKickoff(match.starts),
-                            modifier = Modifier.padding(horizontal = 9.dp, vertical = 6.dp),
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
                             color = fixtureInk, fontSize = 11.sp,
                             fontWeight = FontWeight.Bold, maxLines = 1
                         )
@@ -144,7 +144,7 @@ fun PremiumFixtureCard(
                 }
                 Column(
                     modifier = Modifier.fillMaxWidth().clickable { onOpen(match.id) },
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                    verticalArrangement = Arrangement.spacedBy(5.dp)
                 ) {
                     FixtureTeamLine(match.home, if (match.live) match.homeScore else null)
                     FixtureTeamLine(match.away, if (match.live) match.awayScore else null)
@@ -166,7 +166,7 @@ fun PremiumFixtureCard(
                         Box(Modifier.weight(1f)) {
                             if (market != null && selection != null)
                                 PremiumFixtureOdd(match, market, selection, index, state, model)
-                            else Box(Modifier.fillMaxWidth().height(53.dp)
+                            else Box(Modifier.fillMaxWidth().height(45.dp)
                                 .background(fixtureCanvas, RoundedCornerShape(10.dp)),
                                 contentAlignment = Alignment.Center) {
                                 Text("—", color = fixtureSubtle, fontSize = 13.sp)
@@ -174,7 +174,7 @@ fun PremiumFixtureCard(
                         }
                     }
                     Surface(
-                        modifier = Modifier.width(46.dp).height(53.dp)
+                        modifier = Modifier.width(46.dp).height(45.dp)
                             .clickable { onOpen(match.id) },
                         color = Color(0xFFEAF3FF),
                         shape = RoundedCornerShape(10.dp),
@@ -195,8 +195,8 @@ fun PremiumFixtureCard(
 @Composable
 private fun FixtureTeamLine(team: Team, score: Int?) {
     Row(verticalAlignment = Alignment.CenterVertically) {
-        TeamBadge(team, 27)
-        Spacer(Modifier.width(8.dp))
+        TeamBadge(team, 23)
+        Spacer(Modifier.width(7.dp))
         Text(
             team.name, color = fixtureInk,
             modifier = Modifier.weight(1f),
@@ -226,7 +226,7 @@ private fun PremiumFixtureOdd(
         listOf("1", "X", "2")[index]
     else selection.label(state.lang == Lang.FA)
     Surface(
-        modifier = Modifier.fillMaxWidth().height(53.dp)
+        modifier = Modifier.fillMaxWidth().height(45.dp)
             .onGloballyPositioned { oddCenter = it.boundsInWindow().center }
             .clickable(enabled = enabled) {
                 model.togglePick(match, market, selection, oddCenter.x, oddCenter.y)
