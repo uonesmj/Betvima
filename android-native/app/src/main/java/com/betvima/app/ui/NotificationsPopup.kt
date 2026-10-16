@@ -3,6 +3,8 @@ package com.betvima.app.ui
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.Crossfade
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -24,6 +26,8 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -55,33 +59,60 @@ fun NotificationsPopup(
 ) {
     var category by remember { mutableStateOf(NotificationCategory.ALL) }
     val lang = state.lang
-    val fa = lang == Lang.FA
     val notices = state.notifications.filter { notificationMatchesCategory(it, category) }
     Dialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(usePlatformDefaultWidth = false)
     ) {
         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.BottomCenter) {
+            val popupShape = RoundedCornerShape(topStart = 30.dp, topEnd = 30.dp)
             Column(
                 Modifier.fillMaxWidth().fillMaxHeight(.94f)
-                    .clip(RoundedCornerShape(topStart = 30.dp, topEnd = 30.dp))
+                    .shadow(22.dp, popupShape)
+                    .clip(popupShape)
                     .background(notificationPaper)
             ) {
+                // A tactile sheet grabber and an unobstructed, reference-style title.
+                Box(Modifier.fillMaxWidth().padding(top = 10.dp, bottom = 5.dp),
+                    contentAlignment = Alignment.Center) {
+                    Box(Modifier.size(width = 43.dp, height = 4.dp)
+                        .clip(CircleShape).background(Color(0xFFD9DADD)))
+                }
                 Row(
-                    Modifier.fillMaxWidth().padding(start = 20.dp, end = 15.dp, top = 17.dp, bottom = 12.dp),
+                    Modifier.fillMaxWidth().padding(start = 22.dp, end = 18.dp,
+                        top = 7.dp, bottom = 13.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(tr(lang, "Notifications", "اعلان‌ها"),
-                        fontSize = 25.sp, fontWeight = FontWeight.Bold,
-                        color = Color(0xFF111111),
-                        modifier = Modifier.weight(1f), maxLines = 1,
-                        overflow = TextOverflow.Ellipsis)
-                    IconButton(onClick = onDismiss, modifier = Modifier.size(43.dp)) {
+                    Column(Modifier.weight(1f)) {
+                        Text(tr(lang, "Notifications", "اعلان‌ها"),
+                            fontSize = 27.sp, fontWeight = FontWeight.Black,
+                            letterSpacing = (-.6).sp,
+                            color = Color(0xFF151517),
+                            maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        if (state.signedIn && state.notificationUnreadCount > 0) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Box(Modifier.size(7.dp).clip(CircleShape)
+                                    .background(Color(0xFFFF6330)))
+                                Spacer(Modifier.width(6.dp))
+                                Text(
+                                    tr(lang, "Unread notifications", "اعلان‌های خوانده‌نشده")
+                                        + " · " + state.notificationUnreadCount,
+                                    color = Color(0xFF858993), fontSize = 11.sp,
+                                    fontWeight = FontWeight.Medium
+                                )
+                            }
+                        }
+                    }
+                    IconButton(
+                        onClick = onDismiss,
+                        modifier = Modifier.size(42.dp)
+                            .clip(CircleShape).background(Color(0xFFF2F3F5))
+                    ) {
                         Icon(Icons.Default.Close,
                             contentDescription = tr(lang, "Close", "بستن"),
-                            tint = Color(0xFF777B85),
-                            modifier = Modifier.size(27.dp))
+                            tint = Color(0xFF737883),
+                            modifier = Modifier.size(25.dp))
                     }
                 }
                 NotificationCategoryTabs(category, lang) { category = it }
@@ -198,6 +229,7 @@ private fun NotificationCategoryTabs(
         Modifier.fillMaxWidth().padding(horizontal = 16.dp)
             .clip(RoundedCornerShape(17.dp))
             .background(notificationTabGray)
+            .border(1.dp, Color(0xFFF0F0F2), RoundedCornerShape(17.dp))
             .padding(3.dp)
     ) {
         val cellWidth = maxWidth / 3
@@ -208,6 +240,7 @@ private fun NotificationCategoryTabs(
             label = "notificationTabSlide"
         )
         Box(Modifier.offset(x = offset).width(cellWidth).height(49.dp)
+            .shadow(4.dp, RoundedCornerShape(14.dp))
             .clip(RoundedCornerShape(14.dp)).background(notificationBlue))
         Row(Modifier.fillMaxWidth()) {
             values.forEach { tab ->
@@ -246,10 +279,13 @@ private fun NotificationReferenceCard(
     val destination = notificationDestination(note.ctaHref)
     val hasAction = destination != null && !note.ctaLabel.isNullOrBlank()
     Column(
-        Modifier.fillMaxWidth().clip(RoundedCornerShape(23.dp))
-            .background(notificationCardGray)
+        Modifier.fillMaxWidth()
+            .shadow(2.dp, RoundedCornerShape(23.dp))
+            .clip(RoundedCornerShape(23.dp))
+            .background(Brush.verticalGradient(listOf(Color(0xFFEDEEF1), notificationCardGray)))
+            .border(1.dp, Color(0xFFF4F4F6), RoundedCornerShape(23.dp))
             .clickable(enabled = note.readAt == null) { onMarkRead() }
-            .padding(horizontal = 16.dp, vertical = 17.dp)
+            .padding(horizontal = 18.dp, vertical = 19.dp)
     ) {
         Row(Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
@@ -274,7 +310,7 @@ private fun NotificationReferenceCard(
         }
         Spacer(Modifier.height(5.dp))
         Text(note.title, color = Color(0xFF161616), fontSize = 18.sp,
-            fontWeight = FontWeight.Bold, lineHeight = 25.sp)
+            fontWeight = FontWeight.Black, lineHeight = 25.sp)
         Spacer(Modifier.height(6.dp))
         Text(note.body, color = Color(0xFF61636D), fontSize = 14.sp,
             lineHeight = 22.sp)
@@ -282,8 +318,9 @@ private fun NotificationReferenceCard(
             Spacer(Modifier.height(14.dp))
             Button(
                 onClick = { onAction(destination) },
-                modifier = Modifier.fillMaxWidth().height(49.dp),
-                shape = RoundedCornerShape(13.dp),
+                modifier = Modifier.fillMaxWidth().height(52.dp)
+                    .shadow(3.dp, RoundedCornerShape(14.dp)),
+                shape = RoundedCornerShape(14.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = notificationBlue),
                 contentPadding = PaddingValues(horizontal = 14.dp)
             ) {
@@ -314,11 +351,16 @@ private fun NotificationEmpty(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        Icon(Icons.Default.Notifications,
-            contentDescription = null,
-            tint = Color(0xFF626873),
-            modifier = Modifier.size(59.dp))
-        Spacer(Modifier.height(20.dp))
+        Box(Modifier.size(102.dp)
+            .clip(CircleShape)
+            .background(Color(0xFFF3F4F6)),
+            contentAlignment = Alignment.Center) {
+            Icon(Icons.Default.Notifications,
+                contentDescription = null,
+                tint = Color(0xFF626873),
+                modifier = Modifier.size(58.dp))
+        }
+        Spacer(Modifier.height(22.dp))
         Text(title, fontWeight = FontWeight.Bold,
             color = Color(0xFF151515), fontSize = 22.sp,
             textAlign = TextAlign.Center)
