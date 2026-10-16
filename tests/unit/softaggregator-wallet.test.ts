@@ -236,11 +236,15 @@ describe('SoftAggregator financial callback behavior (isolated DB contract)', ()
     expect(t.postings).toHaveLength(2);
   });
 
-  it('blocks wagers smaller than 20 USD cents', async () => {
+  it('enforces the 10-cent minimum in USD and accepts exactly 10 cents', async () => {
     const t = makeFakeDb(1000n, 0n);
     vi.mocked(getDb).mockReturnValue(t.fake as unknown as Db);
-    expect((await settleCasinoCallback(identity('small-stake', 'debit', 19n))).error).toBe(1);
+    expect((await settleCasinoCallback(identity('small-stake', 'debit', 9n))).error).toBe(1);
     expect(t.postings).toHaveLength(0);
+    expect(await settleCasinoCallback(identity('ten-cent-stake', 'debit', 10n)))
+      .toEqual({ error: 0, balance: 990 });
+    expect(t.postings).toHaveLength(1);
+    expect(t.postings[0]?.p_amount_minor).toBe('-10');
   });
 
   it('rejects conflicting reuse of the same provider transaction ID', async () => {
