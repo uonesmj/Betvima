@@ -65,14 +65,22 @@ fun BrandHeader(
         BoxWithConstraints(
             modifier = Modifier.fillMaxWidth()
                 .background(headerBlack)
-                .height(82.dp)
+                // System status bar is already handled by decorFitsSystemWindows.
+                // Reserve visual breathing room BELOW it, without double insets.
+                .height(106.dp)
         ) {
             val compact = maxWidth < 395.dp
             val narrow = maxWidth < 340.dp
             val actionGap = if (compact) 6.dp else 9.dp
             Row(
-                Modifier.fillMaxSize()
-                    .padding(horizontal = if (compact) 10.dp else 16.dp),
+                Modifier.fillMaxWidth()
+                    .align(Alignment.BottomCenter)
+                    .height(70.dp)
+                    .padding(
+                        start = if (compact) 10.dp else 16.dp,
+                        end = if (compact) 10.dp else 16.dp,
+                        bottom = 6.dp
+                    ),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Row(
