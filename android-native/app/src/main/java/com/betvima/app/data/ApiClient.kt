@@ -405,11 +405,25 @@ class ApiClient {
     suspend fun notifications(token: String, page: Int = 1): NotificationPage {
         require(page in 1..1000)
         val data = get("/api/v1/notifications?pageSize=20&page=" + page, token)
-        return NotificationPage(data.arr("items").objects().map {
-            UserNotification(it.str("id"), it.str("eventKey"),
-                it.str("title"), it.str("body"), it.str("createdAt"),
-                it.str("readAt").takeIf(String::isNotBlank))
-        }, data.optInt("page", page), data.optBoolean("hasMore", false))
+        return NotificationPage(
+            items = data.arr("items").objects().map { notification ->
+                val meta = notification.optJSONObject("data")
+                UserNotification(
+                    id = notification.str("id"),
+                    eventKey = notification.str("eventKey"),
+                    title = notification.str("title"),
+                    body = notification.str("body"),
+                    createdAt = notification.str("createdAt"),
+                    readAt = notification.str("readAt").takeIf(String::isNotBlank),
+                    audience = if (meta?.str("audience") == "general") "general" else "personal",
+                    ctaLabel = meta?.str("ctaLabel")?.trim()?.takeIf(String::isNotEmpty),
+                    ctaHref = meta?.str("ctaHref")?.trim()?.takeIf(String::isNotEmpty)
+                )
+            },
+            page = data.optInt("page", page),
+            hasMore = data.optBoolean("hasMore", false),
+            unreadCount = data.optInt("unreadCount", 0).coerceAtLeast(0)
+        )
     }
     suspend fun readNotifications(token: String, ids: List<String> = emptyList(), all: Boolean = false): Int {
         require(all || ids.isNotEmpty())
