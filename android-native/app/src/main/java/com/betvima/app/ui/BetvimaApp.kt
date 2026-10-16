@@ -40,6 +40,7 @@ fun BetvimaApp(model: AppViewModel) {
     var initialSplash by rememberSaveable { mutableStateOf(true) }
     var affiliateOpen by rememberSaveable { mutableStateOf(false) }
     var vipOpen by rememberSaveable { mutableStateOf(false) }
+    var bonusOpen by rememberSaveable { mutableStateOf(false) }
     LaunchedEffect(Unit) {
         // Motion is an entrance identity, not a proxy for backend progress.
         delay(1050)
@@ -66,6 +67,14 @@ fun BetvimaApp(model: AppViewModel) {
                 delay(45_000)
                 model.refreshNotifications(silent = true)
             }
+        }
+    }
+    // Open bonuses using the same overlay navigation convention as VIP.
+    // Keep the authenticated bonus ledger untouched and inside the popup.
+    LaunchedEffect(state.feature) {
+        if (state.feature == Feature.BONUSES) {
+            bonusOpen = true
+            model.feature(Feature.NONE)
         }
     }
     // VIP is always a modal, never a full-screen Feature page.
@@ -115,11 +124,12 @@ fun BetvimaApp(model: AppViewModel) {
             }
         }
     }
-    BackHandler(enabled = vipOpen || notificationPopupOpen || affiliateOpen || languageOpen || searchOpen || state.betDetailVisible || state.showLogin ||
+    BackHandler(enabled = bonusOpen || vipOpen || notificationPopupOpen || affiliateOpen || languageOpen || searchOpen || state.betDetailVisible || state.showLogin ||
         state.showSlip || state.detail != null ||
         state.feature != Feature.NONE || accountOpen || drawer.isOpen ||
         state.tab != Tab.HOME || state.homeMode == HomeMode.TOP_BETS) {
         when {
+            bonusOpen -> bonusOpen = false
             vipOpen -> vipOpen = false
             notificationPopupOpen -> notificationPopupOpen = false
             affiliateOpen -> affiliateOpen = false
@@ -303,6 +313,7 @@ fun BetvimaApp(model: AppViewModel) {
             onDismiss = { languageOpen = false }
         )
         if (affiliateOpen) PremiumAffiliateSheet(state, model) { affiliateOpen = false }
+        if (bonusOpen) BonusPopup83(state, model) { bonusOpen = false }
         if (vipOpen) VipClubPopup82(
             lang = state.lang,
             onDismiss = { vipOpen = false },
