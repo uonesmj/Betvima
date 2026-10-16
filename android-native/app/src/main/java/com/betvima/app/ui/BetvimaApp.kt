@@ -56,6 +56,7 @@ fun BetvimaApp(model: AppViewModel) {
         delay(1050)
         initialSplash = false
     }
+    var isForeground by remember { mutableStateOf(true) }
     val snackbars = remember { SnackbarHostState() }
     var notificationBaseline87 by remember(state.signedIn) { mutableStateOf(false) }
     var observedNotificationIds87 by remember(state.signedIn) {
@@ -91,7 +92,6 @@ fun BetvimaApp(model: AppViewModel) {
     val pageStates = rememberSaveableStateHolder()
     val drawer = rememberDrawerState(DrawerValue.Closed)
     val drawerScope = rememberCoroutineScope()
-    var isForeground by remember { mutableStateOf(true) }
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
         isForeground = true
         if (state.tab in setOf(Tab.HOME, Tab.LIVE) &&
