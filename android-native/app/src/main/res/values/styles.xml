@@ -1,7 +1,17 @@
 <resources>
+    <!-- Ensure Android never draws a white first window. -->
     <style name="Theme.Betvima" parent="android:style/Theme.Material.Light.NoActionBar">
-        <item name="android:statusBarColor">#09131C</item>
-        <item name="android:navigationBarColor">#09131C</item>
+        <item name="android:windowBackground">@color/betvima_splash_background</item>
+        <item name="android:statusBarColor">@color/betvima_splash_background</item>
+        <item name="android:navigationBarColor">@color/betvima_splash_background</item>
         <item name="android:windowLightStatusBar">false</item>
+        <item name="android:windowLightNavigationBar">false</item>
+    </style>
+    <style name="Theme.Betvima.Starting" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">@color/betvima_splash_background</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_betvima_mini</item>
+        <item name="postSplashScreenTheme">@style/Theme.Betvima</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:windowLightNavigationBar">false</item>
     </style>
 </resources>
