@@ -83,7 +83,7 @@ export function assessCasinoReadiness(snapshot: CasinoAuditSnapshot) {
       playerBindingRows: snapshot.playerBindings,
       receiptLedgerDiscrepancies: snapshot.receiptLedgerDiscrepancies,
       verifiedIdentityCount: snapshot.verifiedIdentityCount,
-    }
+    },
     checks,
   };
 }
