@@ -43,10 +43,10 @@ import kotlin.math.min
 
 // All values in the promotional chart are schematic. Financial amounts are never
 // taken from illustrative media; the signed-in server-backed dashboard is authoritative.
-private val a78Background = Color(0xFF07101E)
-private val a78Panel = Color(0xFF101C2E)
-private val a78Green = Color(0xFF00D47A)
-private val a78Blue = Color(0xFF168CFF)
+private val a78Background = Color(0xFF0B0C10)
+private val a78Panel = Color(0xFF1C1D23)
+private val a78Green = Color(0xFF80BAFF)
+private val a78Blue = Color(0xFF3D94FF)
 private val a78Lilac = Color(0xFFC288FF)
 private val a78Muted = Color(0xFFB5C6DA)
 
@@ -149,7 +149,7 @@ private fun A78Hero(lang: Lang, active: Boolean, onRegister: () -> Unit,
                     onLogin: () -> Unit) {
     Column(Modifier.fillMaxWidth().padding(11.dp)
         .clip(RoundedCornerShape(23.dp))
-        .background(Color(0xFF0D1C30))) {
+        .background(Color(0xFF191A20))) {
         AffiliateCinematicPhoto(
             scene=AffiliateScene.HERO,
             modifier=Modifier.fillMaxWidth().height(208.dp),
@@ -190,8 +190,8 @@ private fun A78PartnerTerms83(lang: Lang) {
     Column(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 7.dp)
         .clip(panelShape)
         .background(Brush.verticalGradient(listOf(
-            Color(0xFF143D37), Color(0xFF132837), Color(0xFF101C30))))
-        .border(1.dp, Color(0xFF3F655F).copy(alpha = .65f), panelShape)
+            Color(0xFF26242D), Color(0xFF1A1C25), Color(0xFF101115))))
+        .border(1.dp, Color(0xFF494954).copy(alpha = .65f), panelShape)
         .padding(17.dp), verticalArrangement = Arrangement.spacedBy(13.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Icon(Icons.Default.TrendingUp, null, tint = a78Green,
@@ -205,7 +205,7 @@ private fun A78PartnerTerms83(lang: Lang) {
             color = Color.White, fontSize = 23.sp, lineHeight = 28.sp,
             fontWeight = FontWeight.Black)
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text("70%", color = Color(0xFF43F0A9), fontSize = 37.sp,
+            Text("70%", color = Color(0xFFEAC584), fontSize = 37.sp,
                 fontWeight = FontWeight.Black)
             Spacer(Modifier.width(13.dp))
             Column(Modifier.weight(1f)) {
@@ -288,7 +288,7 @@ private fun A78Products(lang: Lang, active: Boolean) {
                         modifier=Modifier.width(cardWidth).height(299.dp)
                             .graphicsLayer { scaleX=zoom;scaleY=zoom },
                         shape=RoundedCornerShape(24.dp),
-                        color=Color(0xFF122337),
+                        color=Color(0xFF24242C),
                         border=BorderStroke(1.dp,item.first.accent.copy(alpha=.35f))
                     ) {
                         Column {
@@ -340,7 +340,7 @@ private fun A78Analytics(lang: Lang, active: Boolean) {
         Modifier.fillMaxWidth().padding(horizontal=12.dp,vertical=10.dp)
             .clip(RoundedCornerShape(27.dp))
             .background(Brush.verticalGradient(
-                listOf(Color(0xFF142443),Color(0xFF081626))))
+                listOf(Color(0xFF23232E),Color(0xFF111217))))
             .padding(18.dp)
     ) {
         A78Eyebrow(tr(lang,"PARTNER ANALYTICS","آمار همکاری"),a78Blue)
@@ -355,7 +355,7 @@ private fun A78Analytics(lang: Lang, active: Boolean) {
             modifier=Modifier.padding(top=9.dp,bottom=17.dp))
         Surface(
             shape=RoundedCornerShape(19.dp),
-            color=Color(0xFF071020),
+            color=Color(0xFF101116),
             border=BorderStroke(1.dp,Color(0xFF244467))
         ) {
             Column(Modifier.padding(12.dp)) {
@@ -399,7 +399,7 @@ private fun A78Metric(modifier:Modifier,icon:androidx.compose.ui.graphics.vector
                       caption:String,value:String,color:Color) {
     Column(
         modifier.clip(RoundedCornerShape(16.dp))
-            .background(Color(0xFF0D253B)).padding(12.dp)
+            .background(Color(0xFF202129)).padding(12.dp)
     ) {
         Icon(icon,null,tint=color,modifier=Modifier.size(24.dp))
         Spacer(Modifier.height(13.dp))
@@ -460,7 +460,7 @@ private fun A78AnimatedChart(active:Boolean) {
 private fun A78Tools(lang:Lang,active:Boolean) {
     Box(Modifier.fillMaxWidth().padding(horizontal=12.dp,vertical=11.dp)
         .clip(RoundedCornerShape(26.dp))
-        .background(Color(0xFF101B2B))) {
+        .background(Color(0xFF1B1C23))) {
         AffiliateCinematicPhoto(
             AffiliateScene.MOBILE,Modifier.fillMaxSize().height(364.dp),
             active,showMark=false
@@ -646,7 +646,7 @@ private fun A78Join(lang:Lang,active:Boolean,onRegister:()->Unit,
     // photograph, headline and two actions into the same fixed-height box.
     Column(Modifier.fillMaxWidth().padding(12.dp)
         .clip(RoundedCornerShape(24.dp))
-        .background(Color(0xFF10253A))) {
+        .background(Color(0xFF1C1D23))) {
         AffiliateCinematicPhoto(
             scene = AffiliateScene.JOIN,
             modifier = Modifier.fillMaxWidth().height(205.dp),

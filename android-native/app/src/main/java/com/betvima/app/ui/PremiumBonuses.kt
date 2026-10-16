@@ -29,13 +29,13 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.time.Instant
 
-private val deep = Color(0xFF0D202B)
-private val accent = Color(0xFF00D47A)
+private val deep = Color(0xFF131419)
+private val accent = Color(0xFF76B8FF)
 private val blue = Color(0xFF087FF5)
-private val ink = Color(0xFF1A2A34)
-private val muted = Color(0xFF70848D)
-private val outline = Color(0xFFDDE6E7)
-private val surface = Color(0xFFF2F5F5)
+private val ink = Color(0xFFF7F8FC)
+private val muted = Color(0xFFB1B4C0)
+private val outline = Color(0xFF3B3C45)
+private val surface = Color(0xFF0F1014)
 
 internal fun bonusStatusLabel(status: String, lang: Lang): String = when (status) {
     "active" -> tr(lang, "Available", "آماده استفاده")
@@ -47,7 +47,7 @@ internal fun bonusStatusLabel(status: String, lang: Lang): String = when (status
     else -> tr(lang, "Under review", "در حال بررسی")
 }
 private fun bonusStatusColor(status: String): Color = when (status) {
-    "active" -> Color(0xFF008855)
+    "active" -> Color(0xFF78B8FF)
     "locked" -> Color(0xFFB77719)
     "won" -> blue
     "lost" -> Color(0xFFC44D61)
@@ -80,7 +80,7 @@ private fun bonusDate(iso: String): String =
         else "—"
     Surface(shape=RoundedCornerShape(27.dp),color=deep,shadowElevation=6.dp) {
         Box(Modifier.fillMaxWidth().background(Brush.linearGradient(listOf(
-            Color(0xFF071922),Color(0xFF102B2B),Color(0xFF0D263F))))) {
+            Color(0xFF191A1F),Color(0xFF23232D),Color(0xFF111217))))) {
             Box(Modifier.align(Alignment.TopEnd).offset(x=67.dp,y=(-79).dp)
                 .size(220.dp).clip(CircleShape).background(accent.copy(alpha=.09f)))
             Box(Modifier.align(Alignment.BottomStart).offset(x=(-60).dp,y=85.dp)
@@ -138,7 +138,7 @@ private fun bonusDate(iso: String): String =
                     OutlinedButton(onClick=onRules,
                         modifier=Modifier.weight(1f).height(47.dp),
                         shape=RoundedCornerShape(13.dp),
-                        border=BorderStroke(1.dp,Color(0xFF43615A))) {
+                        border=BorderStroke(1.dp,Color(0xFF43454F))) {
                         Icon(Icons.Default.Rule,null,tint=Color.White,
                             modifier=Modifier.size(16.dp))
                         Spacer(Modifier.width(7.dp))
@@ -177,7 +177,7 @@ private fun bonusDate(iso: String): String =
 @Composable private fun StatCard(label: String, value: String,
     icon: androidx.compose.ui.graphics.vector.ImageVector, tint: Color,
     modifier: Modifier=Modifier) {
-    Surface(shape=RoundedCornerShape(17.dp),color=Color.White,
+    Surface(shape=RoundedCornerShape(17.dp),color=Color(0xFF1F2027),
         border=BorderStroke(1.dp,outline),modifier=modifier) {
         Column(Modifier.padding(11.dp),verticalArrangement=Arrangement.spacedBy(9.dp)) {
             Icon(icon,null,tint=tint,modifier=Modifier.size(20.dp))
@@ -198,12 +198,12 @@ private fun bonusDate(iso: String): String =
     val fraction=if(original != null && original.signum()>0 && available!=null)
         (available.toDouble()/original.toDouble()).coerceIn(0.0,1.0).toFloat()
     else 0f
-    Surface(color=Color(0xFF0D242B),shape=RoundedCornerShape(22.dp),
-        border=BorderStroke(1.dp,Color(0xFF31524B)),
+    Surface(color=Color(0xFF1B1C22),shape=RoundedCornerShape(22.dp),
+        border=BorderStroke(1.dp,Color(0xFF42434D)),
         shadowElevation=2.dp) {
         Column(Modifier.fillMaxWidth()
             .background(Brush.linearGradient(listOf(
-                Color(0xFF122D30),Color(0xFF0B1C2A))))
+                Color(0xFF24252E),Color(0xFF15161B))))
             .padding(16.dp),verticalArrangement=Arrangement.spacedBy(14.dp)) {
             Row(verticalAlignment=Alignment.CenterVertically) {
                 Surface(color=accent.copy(alpha=.12f),
@@ -217,7 +217,7 @@ private fun bonusDate(iso: String): String =
                         color=Color.White,fontSize=11.sp,
                         fontWeight=FontWeight.Black)
                     Text(bonusDate(item.grantedAt),
-                        color=Color(0xFFB3C9C8),fontSize=10.sp)
+                        color=Color(0xFFC5C6D1),fontSize=10.sp)
                 }
                 StatusLabel(item.status,lang)
             }
@@ -234,7 +234,7 @@ private fun bonusDate(iso: String): String =
                     Text(tr(lang,"Remaining","باقی‌مانده"),
                         color=Color(0xFFADC7C6),fontSize=10.sp)
                     Text(money(item.remainingMinor,item.currency),
-                        color=Color(0xFF75F1BE),fontSize=18.sp,
+                        color=Color(0xFFEAC584),fontSize=18.sp,
                         maxLines=1,overflow=TextOverflow.Ellipsis,
                         fontWeight=FontWeight.Black)
                 }
@@ -265,7 +265,7 @@ private fun bonusDate(iso: String): String =
             }
             Row(verticalAlignment=Alignment.CenterVertically) {
                 Text(tr(lang,"4 picks · 1.60+ each","۴ انتخاب · ضریب هرکدام ۱٫۶۰+"),
-                    color=Color(0xFFB2E4C8),fontSize=11.sp,
+                    color=Color(0xFFCED2E5),fontSize=11.sp,
                     modifier=Modifier.weight(1f))
                 TextButton(onClick=onDetail) {
                     Text(tr(lang,"Details","جزئیات"),
@@ -315,7 +315,7 @@ private val rules=listOf(
     val sheet = rememberModalBottomSheetState(skipPartiallyExpanded=true)
     val scope = rememberCoroutineScope()
     val smoothClose: () -> Unit = { scope.launch { sheet.hide(); onClose() } }
-    ModalBottomSheet(onDismissRequest=smoothClose,containerColor=Color(0xFFF8FAFA),
+    ModalBottomSheet(onDismissRequest=smoothClose,containerColor=Color(0xFF111216),
         sheetState=sheet) {
         Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState(), flingBehavior = rememberPremiumFlingBehavior())
             .padding(horizontal=16.dp,vertical=17.dp),
@@ -332,11 +332,11 @@ private val rules=listOf(
                 }
             }
             rules.forEachIndexed { index,rule ->
-                Surface(color=Color.White,shape=RoundedCornerShape(15.dp),
+                Surface(color=Color(0xFF1F2027),shape=RoundedCornerShape(15.dp),
                     border=BorderStroke(1.dp,outline)) {
                     Row(Modifier.fillMaxWidth().padding(13.dp),
                         verticalAlignment=Alignment.Top) {
-                        Icon(rule.icon,null,tint=Color(0xFF098958),
+                        Icon(rule.icon,null,tint=Color(0xFF7DB9FF),
                             modifier=Modifier.size(23.dp))
                         Spacer(Modifier.width(10.dp))
                         Column(Modifier.weight(1f),
@@ -361,7 +361,7 @@ private val rules=listOf(
     val sheet = rememberModalBottomSheetState(skipPartiallyExpanded=true)
     val scope = rememberCoroutineScope()
     val smoothClose: () -> Unit = { scope.launch { sheet.hide(); onClose() } }
-    ModalBottomSheet(onDismissRequest=smoothClose,containerColor=Color.White,
+    ModalBottomSheet(onDismissRequest=smoothClose,containerColor=Color(0xFF111216),
         sheetState=sheet) {
         Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState(), flingBehavior = rememberPremiumFlingBehavior())
             .padding(horizontal=17.dp,vertical=16.dp),
@@ -396,7 +396,7 @@ private val rules=listOf(
             if(item.isActive)
                 Text(tr(lang,"Remaining time: ","زمان باقی‌مانده: ")+
                     bonusClockLabel(bonusMillisecondsLeft(item.expiresAt,now)),
-                    color=Color(0xFF098958),fontWeight=FontWeight.Black,
+                    color=Color(0xFF7DB9FF),fontWeight=FontWeight.Black,
                     fontSize=12.sp)
             Row(verticalAlignment=Alignment.CenterVertically) {
                 Text(item.id.take(19)+"…",color=muted,
@@ -518,9 +518,9 @@ private val rules=listOf(
                 LinearProgressIndicator(Modifier.fillMaxWidth(),color=accent)
             }
             if(errorMessage!=null) item {
-                Surface(color=Color(0xFFFFF0E9),shape=RoundedCornerShape(14.dp)) {
+                Surface(color=Color(0xFF3C2529),shape=RoundedCornerShape(14.dp)) {
                     Row(Modifier.padding(12.dp),verticalAlignment=Alignment.CenterVertically) {
-                        Text(errorMessage.orEmpty(),color=Color(0xFFAD5340),
+                        Text(errorMessage.orEmpty(),color=Color(0xFFFFBEB3),
                             fontSize=11.sp,modifier=Modifier.weight(1f))
                         TextButton(onClick={scope.launch{reload()}}) {
                             Text(tr(lang,"Retry","دوباره"))
@@ -533,7 +533,7 @@ private val rules=listOf(
                     Row(horizontalArrangement=Arrangement.spacedBy(7.dp)) {
                         BonusStatCard80(tr(lang,"Active","فعال"),
                             (current.summary.active+current.summary.locked).toString(),
-                            Icons.Default.CardGiftcard,Color(0xFF06865B),
+                            Icons.Default.CardGiftcard,Color(0xFF80BFFF),
                             modifier=Modifier.weight(1f))
                         BonusStatCard80(tr(lang,"Available","مبلغ فعال"),
                             money(current.summary.activeAmountMinor,currency),
@@ -550,7 +550,7 @@ private val rules=listOf(
                             color=ink,fontSize=19.sp,fontWeight=FontWeight.Black,
                             modifier=Modifier.weight(1f))
                         Text((current.summary.active+current.summary.locked).toString(),
-                            color=Color(0xFF008855),fontWeight=FontWeight.Black)
+                            color=Color(0xFF80BFFF),fontWeight=FontWeight.Black)
                     }
                 }
                 if(active.isEmpty()) item {
@@ -584,7 +584,7 @@ private val rules=listOf(
                     }
                 }
                 if(history.isEmpty()) item {
-                    Surface(color=Color.White,shape=RoundedCornerShape(15.dp),
+                    Surface(color=Color(0xFF1F2027),shape=RoundedCornerShape(15.dp),
                         border=BorderStroke(1.dp,outline)) {
                         Text(tr(lang,"No recorded bonuses in this filter.",
                             "سابقه‌ای برای این فیلتر ثبت نشده است."),
@@ -592,7 +592,7 @@ private val rules=listOf(
                     }
                 }
                 items(history,key={it.id}) { reward ->
-                    Surface(color=Color.White,shape=RoundedCornerShape(16.dp),
+                    Surface(color=Color(0xFF1F2027),shape=RoundedCornerShape(16.dp),
                         border=BorderStroke(1.dp,outline),
                         modifier=Modifier.fillMaxWidth().clickable {popupGrant=reward}) {
                         Row(Modifier.fillMaxWidth().padding(12.dp),
@@ -634,7 +634,7 @@ private val rules=listOf(
             }
         }
         item {
-            Surface(color=Color(0xFF142D36),shape=RoundedCornerShape(18.dp),
+            Surface(color=Color(0xFF1E2027),shape=RoundedCornerShape(18.dp),
                 modifier=Modifier.fillMaxWidth().clickable {popupRules=true}) {
                 Row(Modifier.fillMaxWidth().padding(15.dp),
                     verticalAlignment=Alignment.CenterVertically) {
