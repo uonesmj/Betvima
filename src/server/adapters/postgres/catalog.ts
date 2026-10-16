@@ -6,6 +6,7 @@ import type {
   Country, League, Market, MarketSummary, Match, MatchParticipant, MatchResultSnapshot, Paginated, Selection, Sport, SportKey, UUID,
 } from '@/lib/types';
 import { pgArray, type Row, toBig, toBool, toIso, toIsoOrNull, toNum, toNumOrNull, toStr, toStrOrNull } from '@/server/db/rows';
+import { rankLiveFixturesWithOdds } from '@/lib/odds/live-match-priority';
 
 // Never expose discontinued external fixtures in live discovery.
 // Historical rows and financial settlement records remain unchanged.
@@ -395,7 +396,7 @@ export class PostgresCatalogRepository implements CatalogRepository {
         order by m.minute desc nulls last, m.scheduled_at asc limit $2`,
       [pgArray(LIVE_STATUSES), Math.min(limit, 100)],
     );
-    return this.attachTopMarkets(rows);
+    return rankLiveFixturesWithOdds(await this.attachTopMarkets(rows));
   }
   async listLiveSportCounts(_c: ActorContext): Promise<Record<string, number>> {
     const rows = await this.db.query<Row>(
