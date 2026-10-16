@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { casinoEnabled, casinoGames } from '@/server/providers/softaggregator/client';
+import { filterCasinoCatalogue } from '@/server/providers/softaggregator/catalogue-filters';
 
 export const dynamic = 'force-dynamic';
 
@@ -13,9 +14,7 @@ export async function GET(request: Request) {
     const page = Math.min(1000, Math.max(1, Number(q.get('page')) || 1));
     const limit = Math.min(100, Math.max(1, Number(q.get('limit')) || 40));
     const all = await casinoGames();
-    const games = all.filter((g) => (!category || g.game_type === category) &&
-      (!provider || g.provider.toLowerCase() === provider) &&
-      (!search || g.name.toLowerCase().includes(search)));
+    const { games, providers } = filterCasinoCatalogue(all, { category, provider, search });
     return NextResponse.json({ ok: true, data: {
       items: games.slice((page - 1) * limit, page * limit).map((g) => ({
         id: g.id_hash, name: g.name, category: g.game_type, provider: g.provider,
@@ -23,7 +22,7 @@ export async function GET(request: Request) {
         // Explicitly provider-confirmed playable demo; other titles may support demo too.
         demoSupported: g.id_hash === 'x887bde40b16350c' || g.play_for_fun_supported === true,
       })),
-      total: games.length, page, limit,
+      total: games.length, page, limit, providers,
     } }, { headers: { 'Cache-Control': 'no-store' } });
   } catch {
     return NextResponse.json({ error: 'CASINO_CATALOGUE_UNAVAILABLE' }, { status: 502 });
