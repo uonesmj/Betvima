@@ -72,6 +72,7 @@ fun CasinoLobby(state: AppState, model: AppViewModel) {
     var pilot by remember { mutableStateOf<CasinoEligibility?>(null) }
     var pilotRefreshSerial by remember { mutableIntStateOf(0) }
     var pendingRealGame by remember { mutableStateOf<CasinoGame?>(null) }
+    var realMoneyAcknowledged by remember { mutableStateOf(false) }
     var gameUsesRealMoney by remember { mutableStateOf(false) }
     var failedRealMoneyLaunch by remember { mutableStateOf(false) }
 
@@ -85,7 +86,7 @@ fun CasinoLobby(state: AppState, model: AppViewModel) {
     }
 
     fun launchWithRealWallet(game: CasinoGame) {
-        if (launching != null || pilot?.realMoneyEnabled != true) return
+        if (launching != null || pilot?.realMoneyEnabled != true || !realMoneyAcknowledged) return
         pendingRealGame = null
         launchError = null
         failedRealMoneyLaunch = false
@@ -370,7 +371,10 @@ fun CasinoLobby(state: AppState, model: AppViewModel) {
             CasinoGameCard(
                 game = game, lang = state.lang, launching = launching == game.id,
                 realMoneyEnabled = state.signedIn && pilot?.realMoneyEnabled == true,
-                onRealClick = { pendingRealGame = game },
+                onRealClick = {
+                    realMoneyAcknowledged = false
+                    pendingRealGame = game
+                },
                 onClick = { tryDemo(game.id, game.name, game.demoSupported) }
             )
         }
@@ -413,24 +417,62 @@ fun CasinoLobby(state: AppState, model: AppViewModel) {
     }
     pendingRealGame?.let { game ->
         AlertDialog(
-            onDismissRequest = { pendingRealGame = null },
+            onDismissRequest = {
+                pendingRealGame = null
+                realMoneyAcknowledged = false
+            },
             icon = { Icon(Icons.Default.Casino, null, tint = Palette.green) },
             title = { Text(tr(state.lang, "Play with USD", "اجرای بازی دلاری"),
                 fontWeight = FontWeight.Bold) },
             text = {
-                Text(tr(state.lang,
-                    game.name + "\nThe game uses USD. Bets and wins are settled in your " +
-                        (pilot?.walletCurrency ?: "USD") + " wallet.",
-                    game.name + "\nمبلغ بازی دلار است؛ برداشت و پرداخت برد در کیف پول " +
-                        (pilot?.walletCurrency ?: "USD") + " انجام می‌شود."))
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text(game.name, fontWeight = FontWeight.Bold,
+                        color = Palette.text, fontSize = 15.sp)
+                    Text(tr(state.lang,
+                        "This is real-money gambling. Game amounts are USD; bets and winnings " +
+                            "settle in your " + (pilot?.walletCurrency ?: "USD") +
+                            " wallet. Minimum normal bet: $" +
+                            (pilot?.displayedMinimumUsd ?: "0.20") + ".",
+                        "این بازی با پول واقعی انجام می‌شود. مبلغ بازی به دلار است و شرط‌ها و بردها " +
+                            "در کیف پول " + (pilot?.walletCurrency ?: "USD") +
+                            " تسویه می‌شوند. حداقل شرط معمول: " +
+                            (pilot?.displayedMinimumUsd ?: "0.20") + " دلار."),
+                        color = Palette.text, fontSize = 13.sp, lineHeight = 21.sp)
+                    Text(tr(state.lang,
+                        "You can lose money. Only eligible adults in authorized locations " +
+                            "can play. Server-side limits, KYC and wallet controls apply.",
+                        "احتمال از دست‌دادن پول وجود دارد. فقط کاربران بزرگسال و تأییدشده " +
+                            "در مناطق مجاز می‌توانند بازی کنند. محدودیت‌ها و کنترل کیف پول در سرور اعمال می‌شود."),
+                        color = Palette.muted, fontSize = 12.sp, lineHeight = 19.sp)
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Checkbox(
+                            checked = realMoneyAcknowledged,
+                            onCheckedChange = { realMoneyAcknowledged = it },
+                            colors = CheckboxDefaults.colors(checkedColor = Palette.green)
+                        )
+                        Text(tr(state.lang,
+                            "I understand this is a real-money game and the balance is in USD.",
+                            "متوجه هستم که این بازی با پول واقعی است و مبالغ بازی دلاری هستند."),
+                            modifier = Modifier.weight(1f).clickable {
+                                realMoneyAcknowledged = !realMoneyAcknowledged
+                            },
+                            color = Palette.text, fontSize = 12.sp, lineHeight = 19.sp)
+                    }
+                }
             },
             confirmButton = {
-                Button(onClick = { launchWithRealWallet(game) }) {
-                    Text(tr(state.lang, "Open game", "ورود به بازی"))
+                Button(
+                    onClick = { launchWithRealWallet(game) },
+                    enabled = realMoneyAcknowledged && launching == null
+                ) {
+                    Text(tr(state.lang, "Open real-money game", "ورود به بازی با پول واقعی"))
                 }
             },
             dismissButton = {
-                TextButton(onClick = { pendingRealGame = null }) {
+                TextButton(onClick = {
+                    pendingRealGame = null
+                    realMoneyAcknowledged = false
+                }) {
                     Text(tr(state.lang, "Cancel", "انصراف"))
                 }
             }
