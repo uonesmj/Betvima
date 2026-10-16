@@ -377,8 +377,8 @@ function ReferenceMobileDrawer({
         <div className="mt-3 flex items-center justify-between gap-2 rounded-xl bg-[#303136] px-3 py-2" dir="ltr">
           <span className="text-xs font-semibold text-[#D5D8DD]">{locale === 'fa' ? 'زبان' : 'Language'}</span>
           <div role="group" aria-label="Language" className="inline-flex gap-1">
-            <button type="button" lang="fa" dir="rtl" aria-pressed={locale === 'fa'} onClick={() => setLocale('fa')} className={'min-h-9 rounded-lg px-2 text-[11px] font-bold transition-colors ' + (locale === 'fa' ? 'bg-[#087FF5] text-white' : 'text-[#D5D8DD] hover:bg-white/10')}>🇮🇷 فارسی</button>
-            <button type="button" lang="en" dir="ltr" aria-pressed={locale === 'en'} onClick={() => setLocale('en')} className={'min-h-9 rounded-lg px-2 text-[11px] font-bold transition-colors ' + (locale === 'en' ? 'bg-[#087FF5] text-white' : 'text-[#D5D8DD] hover:bg-white/10')}>🇬🇧 English</button>
+            <button type="button" translate="no" lang="fa" dir="rtl" aria-pressed={locale === 'fa'} onClick={() => setLocale('fa')} className={'min-h-9 rounded-lg px-2 text-[11px] font-bold transition-colors ' + (locale === 'fa' ? 'bg-[#087FF5] text-white' : 'text-[#D5D8DD] hover:bg-white/10')}>🇮🇷 فارسی</button>
+            <button type="button" translate="no" lang="en" dir="ltr" aria-pressed={locale === 'en'} onClick={() => setLocale('en')} className={'min-h-9 rounded-lg px-2 text-[11px] font-bold transition-colors ' + (locale === 'en' ? 'bg-[#087FF5] text-white' : 'text-[#D5D8DD] hover:bg-white/10')}>🇬🇧 English</button>
           </div>
         </div>
         <button type="button" onClick={() => { close(); onSupportOpen?.(); }} className="mt-3 flex h-[58px] w-full items-center gap-4 rounded-xl bg-[#303136] px-4 text-left">
@@ -596,6 +596,8 @@ export function MobileTabBar({ onSupportOpen }: { onSupportOpen?: () => void } =
         aria-label={label('Bottom navigation', 'ناوبری پایین')}
         dir="ltr"
         data-native-footer-parity
+        data-locale-stable
+        data-i18n-ignore
       >
         <div className="grid min-h-[77px] grid-cols-5 items-center px-1 py-[5px]">
           {destinations.map((item) => {
