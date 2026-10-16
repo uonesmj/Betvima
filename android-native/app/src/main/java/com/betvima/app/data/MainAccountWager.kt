@@ -79,3 +79,12 @@ fun canConfirmMainBet(
     review.stakeMinor == stakeMinor &&
     review.currency == currency &&
     runCatching { Instant.parse(review.expiresAt).toEpochMilli() > nowMillis + 1000 }.getOrDefault(false)
+
+
+/** One stable request id per signed quote. Retrying the same intent cannot debit twice. */
+fun mainBetRequestId(quoteToken: String): String {
+    require(quoteToken.length >= 10)
+    return java.util.UUID.nameUUIDFromBytes(
+        ("betvima-main:" + quoteToken).toByteArray(Charsets.UTF_8)
+    ).toString()
+}
