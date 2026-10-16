@@ -29,11 +29,11 @@ fun BonusPopup83(state: AppState, model: AppViewModel, onDismiss: () -> Unit) {
                 .then(motion)
                 .padding(horizontal = 6.dp)
                 .clip(RoundedCornerShape(27.dp))
-                .background(Color(0xFFF7F9FC))
+                .background(Color(0xFF0E0F13))
         ) {
             Column(Modifier.fillMaxWidth()
                 .background(Brush.horizontalGradient(listOf(
-                    Color(0xFF092B2D), Color(0xFF0A1B28))))
+                    Color(0xFF1C1D23), Color(0xFF0D0E12))))
                 .padding(horizontal = 16.dp, vertical = 12.dp)) {
                 Box(Modifier.align(Alignment.CenterHorizontally)
                     .width(36.dp).height(4.dp)
@@ -42,10 +42,10 @@ fun BonusPopup83(state: AppState, model: AppViewModel, onDismiss: () -> Unit) {
                 Spacer(Modifier.height(10.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(Icons.Default.CardGiftcard, null,
-                        tint = Color(0xFF00D47A), modifier = Modifier.size(26.dp))
+                        tint = Color(0xFF8AB8FF), modifier = Modifier.size(26.dp))
                     Spacer(Modifier.width(10.dp))
                     Column(Modifier.weight(1f)) {
-                        Text("BETVIMA", color = Color(0xFF00D47A),
+                        Text("BETVIMA", color = Color(0xFF8AB8FF),
                             fontWeight = FontWeight.Black, fontSize = 10.sp,
                             letterSpacing = 1.sp)
                         Text(tr(state.lang, "My Bonuses", "بونوس‌های من"),
