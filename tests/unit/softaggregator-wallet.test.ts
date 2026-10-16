@@ -26,6 +26,9 @@ function makeFakeDb(initial = 1000n, held = 200n) {
   const rounds = new Map<string, { wallet_currency: string }>();
   const fake = {
     queryOne: vi.fn(async (sql: string, params: unknown[]) => {
+      if (sql.includes("as ready") && sql.includes("sa_unique_reversed_credit")) {
+        return { ready: true };
+      }
       if (sql.includes('from nova.softaggregator_round_fx')) {
         return rounds.get(String(params[1]) + ':' + String(params[2])) ?? null;
       }
