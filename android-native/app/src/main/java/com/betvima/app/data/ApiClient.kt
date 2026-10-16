@@ -481,6 +481,7 @@ class ApiClient {
         token: String, picks: List<Pick>, stakeMinor: String, currency: String,
         quoteToken: String, acceptedOdds: Map<String, String>, requestId: String
     ): JSONObject {
+        check(BuildConfig.ENABLE_WAGERING) { "Native real-money wagering is disabled" }
         require(picks.isNotEmpty() && picks.size <= 20)
         require(picks.map { it.matchId }.distinct().size == picks.size)
         require(stakeMinor.matches(Regex("[0-9]{1,19}")) && stakeMinor != "0")
