@@ -68,14 +68,17 @@ internal fun AffiliateCinematicPhoto(
         .background(Brush.linearGradient(listOf(Color(0xFF0A1426),
             scene.accent.copy(alpha=.58f),Color(0xFF111827))))) {
         if(bitmap!=null) {
-            // Two-layer, edge-to-edge photographic backdrop plus uncropped
-            // foreground. Never show the old blank gradients above/below Fit art.
-            Image(bitmap=bitmap,contentDescription=null,contentScale=ContentScale.Crop,
-                modifier=Modifier.fillMaxSize(),alpha=.40f)
-            Image(bitmap=bitmap,contentDescription=null,contentScale=ContentScale.Fit,
-                modifier=Modifier.fillMaxSize().graphicsLayer {
-                    alpha=.70f+.30f*entrance
-                })
+            // One image only. The old Crop + Fit double layer repeated
+            // the stadium and athletes as horizontal bands in gallery cards.
+            Image(
+                bitmap = bitmap,
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                alignment = Alignment.Center,
+                modifier = Modifier.fillMaxSize().graphicsLayer {
+                    alpha = .65f + .35f * entrance
+                }
+            )
         } else {
             Box(Modifier.fillMaxSize().background(Brush.radialGradient(
                 listOf(scene.accent.copy(alpha=.4f),Color.Transparent))))
