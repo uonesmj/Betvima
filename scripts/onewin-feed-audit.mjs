@@ -120,7 +120,7 @@ export async function runAudit({
   const client = requestClient(apiKey, fetchImpl);
   const errors = [];
   const collected = new Map();
-  const leaguesRaw = await client.get('/v3/leagues', { sport: 'football' });
+  const leaguesRaw = await client.get('/v3/leagues', { sport: 'football', all: 'true' });
   const leagues = asArray(leaguesRaw);
   const selected = leagueSlugs.length
     ? leagueSlugs.slice(0, maxLeagues)
@@ -168,7 +168,7 @@ export async function runAudit({
       scheduledAt: event.date ?? null, scoreAvailable: event.scores != null,
       markets: markets.length, marketNames: markets.map((market) => market.name),
       missingMarketTimestamps: ages.filter((age) => !Number.isFinite(age)).length,
-      staleLiveMarketsOver60s: event.status === 'live'
+      liveMarketsLastPriceChangeOver60s: event.status === 'live'
         ? ages.filter((age) => Number.isFinite(age) && age > 60_000).length : null,
       error,
     });
@@ -189,6 +189,7 @@ export async function runAudit({
     limitations: [
       'This is a bounded sample, not the full 1Win catalogue.',
       'No event-by-event parity claim without independently observed reference fixtures and markets.',
+      'A market updatedAt indicates the last price change, not the last time the feed was checked.',
       'No incident feed, settlement guarantees, streaming latency or legal licence is proved by this audit.',
       'Do not connect this code to BetVima betting, wallet or settlement.',
     ],
