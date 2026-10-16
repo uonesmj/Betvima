@@ -451,7 +451,7 @@ fun CasinoLobby(state: AppState, model: AppViewModel) {
                             colors = CheckboxDefaults.colors(checkedColor = Palette.green)
                         )
                         Text(tr(state.lang,
-                            "I understand this is a real-money game and the balance is in USD.",
+                            "I understand this is a real-money game and game amounts are in USD.",
                             "متوجه هستم که این بازی با پول واقعی است و مبالغ بازی دلاری هستند."),
                             modifier = Modifier.weight(1f).clickable {
                                 realMoneyAcknowledged = !realMoneyAcknowledged
