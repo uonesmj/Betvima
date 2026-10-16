@@ -5,6 +5,7 @@ on:
       - 'scripts/onewin-public-page-check.mjs'
       - 'scripts/onewin-browser-observation.mjs'
       - 'scripts/onewin-dom-discovery.mjs'
+      - 'scripts/onewin-quote-series.mjs'
       - 'tests/research/onewin-public-page.test.mjs'
       - 'docs/onewin-direct-feed-feasibility.md'
       - '.github/workflows/onewin-public-page-feasibility.yml'
@@ -33,3 +34,5 @@ jobs:
           node scripts/onewin-browser-observation.mjs
       - name: "Public browser DOM sample: 1win and Betvima"
         run: node scripts/onewin-dom-discovery.mjs
+      - name: Three football matches price series and Betvima comparison
+        run: node scripts/onewin-quote-series.mjs
