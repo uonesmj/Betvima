@@ -60,7 +60,20 @@ fun CasinoReferenceSearch(
     var input by remember { mutableStateOf("") }
     var results by remember { mutableStateOf<List<CasinoGame>>(emptyList()) }
     var resultProviders by remember { mutableStateOf<List<String>>(emptyList()) }
+    var globalProviders by remember { mutableStateOf<List<String>>(emptyList()) }
+    var globalGames by remember { mutableStateOf<List<CasinoGame>>(emptyList()) }
     var loading by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) {
+        try {
+            val page = model.casinoGames(1, "", "", "")
+            globalProviders = page.providers
+            globalGames = page.games
+        } catch (cancel: CancellationException) {
+            throw cancel
+        } catch (_: Exception) {
+            // The known cards/facets remain available during temporary outages.
+        }
+    }
     var failed by remember { mutableStateOf(false) }
     // All provider names are taken from the global catalogue facets.
     LaunchedEffect(input) {
@@ -89,7 +102,8 @@ fun CasinoReferenceSearch(
             loading = false
         }
     }
-    val knownProviders = (providers + resultProviders).filter(String::isNotBlank).distinct()
+    val knownProviders = (providers + globalProviders + resultProviders)
+        .filter(String::isNotBlank).distinct()
     val matched = knownProviders.filter { it.contains(input.trim(), ignoreCase = true) }
         .sortedWith(compareBy(String.CASE_INSENSITIVE_ORDER) { it })
     val recommended = highlightedProviders.mapNotNull { title ->
@@ -184,7 +198,7 @@ fun CasinoReferenceSearch(
                         }
                     }
                 } else {
-                    val filtered = if (input.isBlank()) games
+                    val filtered = if (input.isBlank()) (games + globalGames)
                         else results
                     val realGames = filtered.distinctBy { it.id }
                     val sections = listOf(
