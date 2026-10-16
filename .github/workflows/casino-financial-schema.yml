@@ -4,11 +4,15 @@ on:
     paths:
       - 'docs/pending-financial-migrations/02*_softaggregator_*.sql'
       - 'tests/integration/softaggregator-financial-migration-smoke.sql'
+      - 'tests/integration/softaggregator-readiness-fail-closed.mts'
+      - 'src/server/providers/softaggregator/financial-readiness.ts'
       - '.github/workflows/casino-financial-schema.yml'
   pull_request:
     paths:
       - 'docs/pending-financial-migrations/02*_softaggregator_*.sql'
       - 'tests/integration/softaggregator-financial-migration-smoke.sql'
+      - 'tests/integration/softaggregator-readiness-fail-closed.mts'
+      - 'src/server/providers/softaggregator/financial-readiness.ts'
       - '.github/workflows/casino-financial-schema.yml'
   workflow_dispatch:
 permissions:
@@ -49,6 +53,13 @@ jobs:
       - name: Validate migrations and atomic audit invariants against synthetic records
         run: |
           psql -X -v ON_ERROR_STOP=1 -f tests/integration/softaggregator-financial-migration-smoke.sql
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - name: Verify application schema gate on live synthetic PostgreSQL
+        run: node --import tsx tests/integration/softaggregator-readiness-fail-closed.mts
       - name: Assert test environment has no live supplier or wallet connection
         run: |
           test -z "${SUPABASE_DB_URL:-}"

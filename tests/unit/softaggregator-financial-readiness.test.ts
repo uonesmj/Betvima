@@ -20,6 +20,15 @@ describe('SoftAggregator live-wallet release schema gate', () => {
       'sa_receipt_immutable',
       'sa_receipt_integrity_on_insert',
       'sa_receipt_posting_coherent',
+      'sa_original_debit_receipt_fk',
+      'sa_original_credit_receipt_fk',
+      'sa_rollback_target_exclusive',
+      'casino_fx_rate_consistency',
+      'has_table_privilege',
+      'indisunique',
+      'indisvalid',
+      'indisready',
+      'relrowsecurity',
     ]) expect(sql).toContain(required);
   });
 
