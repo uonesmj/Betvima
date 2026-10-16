@@ -150,10 +150,14 @@ fun BrandHeader(
                             contentDescription = tr(lang, "Notifications", "اعلان‌ها"),
                             tint = Color.White, modifier = Modifier.size(22.dp))
                         if (unread > 0) {
-                            Box(Modifier.align(Alignment.TopEnd)
-                                .padding(7.dp)
-                                .size(7.dp)
-                                .background(headerGreen, CircleShape))
+                            // Unread indicator must match the orange reference,
+                            // not the brand's green balance/deposit controls.
+                            Box(
+                                Modifier.align(Alignment.TopEnd)
+                                    .padding(5.dp).size(11.dp)
+                                    .border(2.dp, Color(0xFF29292C), CircleShape)
+                                    .background(Color(0xFFFF632E), CircleShape)
+                            )
                         }
                     }
                 } else {
