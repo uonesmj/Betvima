@@ -26,8 +26,9 @@ import coil.compose.AsyncImage
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
+import androidx.compose.runtime.*
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -581,6 +582,7 @@ private fun ReferenceCompactOdd(
     val enabled = match.bettingAvailable && market.available &&
         selection.available && (!match.live || state.liveEnabled)
     val selected = state.picks.any { it.selectionId == selection.id }
+    var oddCenter by remember(selection.id) { mutableStateOf(Offset.Unspecified) }
     val background by animateColorAsState(
         targetValue = when {
             selected -> Color(0xFFDBE9FC)
@@ -589,9 +591,11 @@ private fun ReferenceCompactOdd(
             else -> Color(0xFFF6F8FA)
         }, animationSpec = tween(280), label = "oddsDirectionBackground")
     Surface(
-        modifier = modifier.heightIn(min = 51.dp).clickable(enabled = enabled) {
-            model.togglePick(match, market, selection)
-        },
+        modifier = modifier.heightIn(min = 51.dp)
+            .onGloballyPositioned { oddCenter = it.boundsInWindow().center }
+            .clickable(enabled = enabled) {
+                model.togglePick(match, market, selection, oddCenter.x, oddCenter.y)
+            },
         shape = RoundedCornerShape(10.dp),
         border = BorderStroke(if (selected) 1.5.dp else 1.dp,
             if (selected) Palette.blue else Palette.border),

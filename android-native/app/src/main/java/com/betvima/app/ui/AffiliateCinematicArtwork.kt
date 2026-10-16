@@ -50,12 +50,18 @@ internal fun AffiliateCinematicPhoto(
     content:@Composable BoxScope.()->Unit={}
 ) {
     val context=LocalContext.current
-    val bitmap=remember(scene,context) {
-        runCatching {
-            context.assets.open("affiliate/"+scene.photo+".webp").use {
-                BitmapFactory.decodeStream(it)?.asImageBitmap()
-            }
-        }.getOrNull()
+    // Bitmap decoding on the Compose main thread previously blocked popup
+    // entrance frames, especially on lower-end Android devices.
+    val bitmap by produceState<androidx.compose.ui.graphics.ImageBitmap?>(
+        initialValue = null, scene, context
+    ) {
+        value = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+            runCatching {
+                context.assets.open("affiliate/" + scene.photo + ".webp").use {
+                    BitmapFactory.decodeStream(it)?.asImageBitmap()
+                }
+            }.getOrNull()
+        }
     }
     val entrance by animateFloatAsState(if(active)1f else 0f,
         animationSpec=tween(850,easing=FastOutSlowInEasing),
@@ -67,11 +73,12 @@ internal fun AffiliateCinematicPhoto(
     Box(modifier.clip(RoundedCornerShape(corner.dp))
         .background(Brush.linearGradient(listOf(Color(0xFF0A1426),
             scene.accent.copy(alpha=.58f),Color(0xFF111827))))) {
-        if(bitmap!=null) {
+        val resolvedBitmap = bitmap
+        if(resolvedBitmap!=null) {
             // One image only. The old Crop + Fit double layer repeated
             // the stadium and athletes as horizontal bands in gallery cards.
             Image(
-                bitmap = bitmap,
+                bitmap = resolvedBitmap,
                 contentDescription = null,
                 contentScale = ContentScale.Crop,
                 alignment = Alignment.Center,

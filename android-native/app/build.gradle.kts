@@ -10,8 +10,8 @@ android {
         applicationId = "com.betvima.app"
         minSdk = 26
         targetSdk = 35
-        versionCode = 83
-        versionName = "0.83.0"
+        versionCode = 84
+        versionName = "0.84.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         buildConfigField("String", "API_BASE_URL", "\"https://betvima.com/\"")
         // Server-side allowlist and finance gate remain authoritative for any wagering.
