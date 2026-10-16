@@ -14,6 +14,7 @@ export async function casinoFinancialSchemaReady(db: Pick<Db, 'queryOne'>): Prom
       select (
         to_regclass('nova.softaggregator_callback_receipts') is not null
         and to_regclass('nova.softaggregator_round_fx') is not null
+        and to_regclass('nova.softaggregator_player_wallet_bindings') is not null
         and to_regclass('nova.sa_unique_reversed_debit') is not null
         and to_regclass('nova.sa_unique_reversed_credit') is not null
         and exists (
@@ -31,6 +32,11 @@ export async function casinoFinancialSchemaReady(db: Pick<Db, 'queryOne'>): Prom
           select 1 from pg_trigger
           where tgrelid = to_regclass('nova.softaggregator_callback_receipts')
             and tgname = 'sa_receipt_immutable' and tgenabled <> 'D'
+        )
+        and exists (
+          select 1 from pg_trigger
+          where tgrelid = to_regclass('nova.softaggregator_player_wallet_bindings')
+            and tgname = 'sa_player_wallet_binding_immutable' and tgenabled <> 'D'
         )
       ) as ready
     `);
