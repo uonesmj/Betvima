@@ -61,3 +61,6 @@ Test locally, with NO external calls:
   over 11 seconds. It logs no event or odds data.
 - No direct-scraping production architecture is recommended without rights
   to republish, reliable authoritative data, suspension and settlement tests.
+
+## 1–3 match public browser sample
+Research script scripts/onewin-dom-discovery.mjs compares the public Live-page DOM with BetVima homepage metadata, with no production odds ingestion and no funds movement. Counts of decimal-like values must not be misrepresented as verified odds, and visible page text changes alone do not establish live market price updates. Any candidate match must have a stable team-pair identity, a named market and repeated price observations before declaring proof of update.
