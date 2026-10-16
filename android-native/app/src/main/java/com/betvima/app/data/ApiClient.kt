@@ -153,6 +153,8 @@ class ApiClient {
             require(path.startsWith("/api/v1/"))
             val builder = Request.Builder().url(base + path)
                 .header("Accept", "application/json").header("Cache-Control", "no-store")
+            if (path == "/api/v1/account/login-history" && body != null)
+                builder.header("X-Betvima-Client", "android")
             if (!token.isNullOrBlank()) builder.header("Authorization", "Bearer " + token)
             if (idempotencyKey != null) builder.header("Idempotency-Key", idempotencyKey)
             if (body != null) builder.method(verb, body.toString().toRequestBody(jsonType))
