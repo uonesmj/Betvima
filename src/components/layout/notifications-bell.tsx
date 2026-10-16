@@ -86,7 +86,7 @@ export function NotificationsBell() {
           'button:not(:disabled),a[href],input:not(:disabled)'
         ));
         if (!elements.length) return;
-        const first = elements[0], last = elements[elements.length - 1];
+        const first = elements[0]!, last = elements[elements.length - 1]!;
         if (event.shiftKey && document.activeElement === first) {
           event.preventDefault(); last.focus();
         } else if (!event.shiftKey && document.activeElement === last) {
