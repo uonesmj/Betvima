@@ -1,5 +1,6 @@
 import { closeSync, constants, fstatSync, openSync, readFileSync } from 'node:fs';
 import { playerPassword, playerUsername } from './contract';
+import { casinoCountryPermitted } from './jurisdiction';
 
 const ENDPOINT = 'https://api.softaggregator.com/api/v1';
 // Provider-confirmed allowlisted client signature; Node's default UA can be blocked by Cloudflare.
@@ -140,7 +141,16 @@ export async function launchCasinoGame(input: {
   country?: string;
 }): Promise<string> {
   requireCasinoEnabled();
-  if (!input.demo && (!input.userId || !casinoRealMoneyUserAllowed(input.userId))) throw new Error('CASINO_REAL_MONEY_DISABLED');
+  if (!input.demo) {
+    if (!input.userId || !casinoRealMoneyUserAllowed(input.userId))
+      throw new Error('CASINO_REAL_MONEY_DISABLED');
+    // Vendor restrictions are evaluated from the supplied country, NOT IP.
+    // Never let a future caller omit the country or substitute a client value.
+    // Operator licensing and verified location must be checked independently
+    // by the invoking route before a money session can be opened.
+    if (!casinoCountryPermitted(input.country ?? null))
+      throw new Error('CASINO_COUNTRY_NOT_AUTHORIZED');
+  }
   const games = await casinoGames();
   const game = games.find((g) => g.id_hash === input.gameId);
   if (!game) throw new Error('CASINO_GAME_NOT_FOUND');
@@ -163,7 +173,7 @@ export async function launchCasinoGame(input: {
   const launch = await callSoftAggregator<string | { gameurl?: unknown }>(
     input.demo ? 'getGameDemo' : 'getGame', {
       ...identity, ...base,
-      ...(!input.demo && input.country ? { country: input.country } : {}),
+      ...(!input.demo ? { country: input.country! } : {}),
     });
   const url = typeof launch === 'string' ? launch : launch?.gameurl;
   if (typeof url !== 'string' || !/^https:\/\//i.test(url)) throw new Error('INVALID_CASINO_LAUNCH_URL');
