@@ -26,7 +26,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
 /** Separate cinematic artwork and motion layers. Does not modify affiliate business rules.
- * Ten offline images are expected in app/src/main/assets/affiliate/*.webp.
+ * Ten offline WEBP images are expected under the affiliate assets directory.
  * Missing art gracefully renders a branded gradient while awaiting asset review.
  */
 internal enum class AffiliateScene(val photo:String,val accent:Color,val mark:ImageVector) {
