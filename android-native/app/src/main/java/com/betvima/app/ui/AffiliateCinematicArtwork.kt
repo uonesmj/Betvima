@@ -68,11 +68,13 @@ internal fun AffiliateCinematicPhoto(
         .background(Brush.linearGradient(listOf(Color(0xFF0A1426),
             scene.accent.copy(alpha=.58f),Color(0xFF111827))))) {
         if(bitmap!=null) {
-            // Do not crop/zoom typography baked into affiliate artwork.
+            // Two-layer, edge-to-edge photographic backdrop plus uncropped
+            // foreground. Never show the old blank gradients above/below Fit art.
+            Image(bitmap=bitmap,contentDescription=null,contentScale=ContentScale.Crop,
+                modifier=Modifier.fillMaxSize(),alpha=.40f)
             Image(bitmap=bitmap,contentDescription=null,contentScale=ContentScale.Fit,
                 modifier=Modifier.fillMaxSize().graphicsLayer {
-                    alpha=.4f+.6f*entrance
-                    translationY=(1f-entrance)*16f
+                    alpha=.70f+.30f*entrance
                 })
         } else {
             Box(Modifier.fillMaxSize().background(Brush.radialGradient(

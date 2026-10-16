@@ -43,9 +43,8 @@ private val bottomDestinations = listOf(
 )
 
 /**
- * A true fixed app footer, rendered in Scaffold.bottomBar outside the page scroll.
- * Six destinations, all at least 48dp tall, are always visible. Language lives
- * here, never in the authenticated/guest header.
+ * Fixed native navigation: six independent actions on one continuous dark
+ * background. No extra outer card, rounded frame, border or shadow.
  */
 @Composable
 fun ReferenceAnimatedBottomNav(
@@ -62,62 +61,63 @@ fun ReferenceAnimatedBottomNav(
         else -> ""
     }
     CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
-        Box(Modifier.fillMaxWidth().background(Color(0xFF0D0E10))
-            .navigationBarsPadding().padding(horizontal = 8.dp, vertical = 6.dp)) {
-        Surface(color = Color(0xFF191A1F),
-            shape = RoundedCornerShape(23.dp),
-            border = BorderStroke(1.dp, Color(0xFF35373E)),
-            shadowElevation = 8.dp, modifier = Modifier.fillMaxWidth()) {
-            Row(Modifier.fillMaxWidth().heightIn(min = 73.dp)
-                .padding(horizontal = 3.dp, vertical = 3.dp),
-                verticalAlignment = Alignment.CenterVertically) {
-                bottomDestinations.forEach { item ->
-                    val active = selected == item.id
-                    val tint by animateColorAsState(
-                        if (active) Palette.blue else Color(0xFFB6BDCB),
-                        animationSpec = tween(180), label = "footerTint")
-                    val scale by animateFloatAsState(
-                        if (active) 1.10f else 1f,
-                        animationSpec = spring(
-                            dampingRatio = Spring.DampingRatioMediumBouncy,
-                            stiffness = Spring.StiffnessMedium), label = "footerScale")
-                    val underline by animateDpAsState(
-                        if (active) 22.dp else 0.dp,
-                        animationSpec = spring(stiffness = Spring.StiffnessMedium),
-                        label = "footerUnderline")
-                    Column(Modifier.weight(1f).heightIn(min = 65.dp)
+        Row(
+            Modifier.fillMaxWidth()
+                .background(Color(0xFF101114))
+                .navigationBarsPadding()
+                .padding(horizontal = 4.dp, vertical = 7.dp)
+                .heightIn(min = 72.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            bottomDestinations.forEach { item ->
+                val active = selected == item.id
+                val tint by animateColorAsState(
+                    if (active) Palette.blue else Color(0xFFB6BDCB),
+                    animationSpec = tween(200), label = "independentTabTint")
+                val scale by animateFloatAsState(
+                    if (active) 1.08f else 1f,
+                    animationSpec = spring(
+                        dampingRatio = Spring.DampingRatioNoBouncy,
+                        stiffness = Spring.StiffnessMedium),
+                    label = "independentTabScale")
+                val underline by animateDpAsState(
+                    if (active) 24.dp else 0.dp,
+                    animationSpec = tween(220), label = "independentTabUnderline")
+                Column(
+                    Modifier.weight(1f).heightIn(min = 69.dp)
                         .clickable(role = Role.Tab) { onNavigate(item.id) }
                         .semantics { this.selected = active }
-                        .padding(top = 8.dp, bottom = 3.dp),
+                        .padding(top = 9.dp, bottom = 4.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Column(
                         horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.SpaceBetween) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.spacedBy(5.dp)) {
-                            if (item.id == "language") {
-                                Text(if (state.lang == Lang.FA) "🇮🇷" else "🇬🇧",
-                                    fontSize = 21.sp, modifier = Modifier.size(25.dp),
-                                    textAlign = androidx.compose.ui.text.style.TextAlign.Center)
-                            } else {
-                                Icon(item.icon,
-                                    contentDescription = tr(state.lang, item.en, item.fa),
-                                    tint = tint,
-                                    modifier = Modifier.size(23.dp).graphicsLayer {
-                                        scaleX = scale; scaleY = scale
-                                    })
-                            }
-                            Text(tr(state.lang, item.en, item.fa),
-                                fontSize = 9.sp, lineHeight = 12.sp,
-                                fontWeight = if (active) FontWeight.Black
-                                    else FontWeight.SemiBold,
-                                color = if (item.id == "language") Color.White else tint,
-                                maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        verticalArrangement = Arrangement.spacedBy(5.dp)
+                    ) {
+                        if (item.id == "language") {
+                            Text(if (state.lang == Lang.FA) "🇮🇷" else "🇬🇧",
+                                fontSize = 21.sp, modifier = Modifier.size(25.dp),
+                                textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+                        } else {
+                            Icon(item.icon,
+                                contentDescription = tr(state.lang, item.en, item.fa),
+                                tint = tint,
+                                modifier = Modifier.size(23.dp).graphicsLayer {
+                                    scaleX = scale; scaleY = scale
+                                })
                         }
-                        Box(Modifier.width(underline).height(3.dp)
-                            .clip(CircleShape).background(tint))
+                        Text(tr(state.lang, item.en, item.fa),
+                            fontSize = 9.sp, lineHeight = 12.sp,
+                            fontWeight = if (active) FontWeight.Black
+                                else FontWeight.SemiBold,
+                            color = if (item.id == "language") Color.White else tint,
+                            maxLines = 1, overflow = TextOverflow.Ellipsis)
                     }
+                    Box(Modifier.width(underline).height(3.dp)
+                        .clip(CircleShape).background(tint))
                 }
             }
-        }
         }
     }
 }
