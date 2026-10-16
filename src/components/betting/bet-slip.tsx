@@ -1010,6 +1010,7 @@ function BetSlipBody({
                 const change = pendingQuote?.oddsChanges.find(
                   (c) => c.selectionId === item.selectionId,
                 );
+                const movement = change ? actualOddsMovement(change) : null;
 
                 return (
                   <li
@@ -1033,13 +1034,22 @@ function BetSlipBody({
                       </div>
 
                       <div className="flex shrink-0 items-start gap-2">
-                        <span className={`rounded-[9px] px-2.5 py-1 text-[13px] font-extrabold text-white ${
-                  change
-                    ? 'bg-[#08B94E] shadow-[0_2px_6px_rgba(8,185,78,.18)]'
-                    : 'bg-[#1684F5]'
-                }`}>
-                  {formatOddsScaled(change?.currentOddsScaled ?? item.oddsScaled)}
-                </span>
+                        <div className="flex flex-col items-end gap-0.5">
+                          {change ? (
+                            <span className="text-[11px] font-semibold text-[#59616D] line-through">
+                              {formatOddsScaled(change.previousOddsScaled)}
+                            </span>
+                          ) : null}
+                          <span data-testid={change ? 'betslip-moved-odds' : undefined}
+                            aria-label={change ? movement === 'UP' ? 'Odds increased' : 'Odds decreased' : undefined}
+                            className={`rounded-[9px] px-2.5 py-1 text-[13px] font-extrabold text-white ${
+                              movement === 'UP' ? 'bg-[#08A66B]' :
+                              movement === 'DOWN' ? 'bg-[#DB4557]' : 'bg-[#1684F5]'
+                            }`}>
+                            {change ? (movement === 'UP' ? '↑ ' : '↓ ') : ''}
+                            {formatOddsScaled(change?.currentOddsScaled ?? item.oddsScaled)}
+                          </span>
+                        </div>
 
                         <button
                           type="button"
@@ -1151,6 +1161,19 @@ function BetSlipBody({
                 </div>
               ) : null}
             </div>
+            {pendingQuote?.oddsChanges?.length ? (
+              <div role="status" data-testid="betslip-odds-review"
+                className="rounded-[14px] border border-[#E9C787] bg-[#FFFAEA] px-4 py-3 text-[12px] font-bold leading-5 text-[#76511F]">
+                {oddsConsentCurrent
+                  ? 'New odds accepted. Place your bet separately to confirm the stake.'
+                  : 'Odds changed. Review the previous and current prices. Accepting new odds does NOT place a bet.'}
+              </div>
+            ) : null}
+            {wagerOutcomeUncertain ? (
+              <div role="alert" className="rounded-[14px] border border-[#F3B7BE] bg-[#FFF1F3] p-3 text-[12px] font-bold text-[#C6283D]">
+                Bet status uncertain. Check My Bets or support before attempting another wager.
+              </div>
+            ) : null}
             {slip.lastError ? (
               <div
                 role="alert"
@@ -1257,9 +1280,10 @@ function BetSlipBody({
 
                 <button
                   type="button"
-                  onClick={onPlace}
+                  onClick={pendingQuote?.oddsChanges?.length && !oddsConsentCurrent
+                    ? onAcceptOdds : onPlace}
                   disabled={
-                    slip.isSubmitting ||
+                    slip.isSubmitting || wagerOutcomeUncertain ||
                     BigInt(slip.stakeMinor || '0') < minStakeMinor
                   }
                   data-testid="betslip-place"
@@ -1267,8 +1291,8 @@ function BetSlipBody({
                 >
                   {slip.isSubmitting
                     ? t('common.loading')
-                    : pendingQuote?.oddsChanges?.length
-                      ? 'Accept new odds'
+                    : pendingQuote?.oddsChanges?.length && !oddsConsentCurrent
+                      ? 'Accept new odds (no bet yet)'
                       : 'Place a bet'}
                 </button>
               </div>
