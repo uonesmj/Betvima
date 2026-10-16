@@ -853,6 +853,8 @@ export function PageShell({ children, title, subtitle, titleKey, subtitleKey, ac
       if (!isBetVimaAndroidWebView()) return;
       const target = event.target;
       if (!(target instanceof Element)) return;
+      // Links within the affiliate sheet must navigate to the real login/register routes.
+      if (target.closest(".bva-root")) return;
       const link = target.closest('a[href="/affiliate/login"], a[href="/affiliate"]');
       if (!link) return;
       event.preventDefault();
