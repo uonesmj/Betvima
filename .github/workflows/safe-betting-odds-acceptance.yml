@@ -1,0 +1,30 @@
+name: Safe Betting Odds Acceptance
+on:
+  pull_request:
+    paths:
+      - 'src/components/betting/bet-slip.tsx'
+      - 'src/lib/odds/explicit-consent.ts'
+      - 'tests/unit/explicit-odds-consent.test.ts'
+      - '.github/workflows/safe-betting-odds-acceptance.yml'
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - name: Changed odds and signed placement regression tests (no live money)
+        run: npx vitest run tests/unit/explicit-odds-consent.test.ts tests/unit/betting-service-placement.test.ts tests/unit/bet-placement-fingerprint.test.ts
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: npm run build
+        env:
+          APP_ENV: test
+          NEXT_PUBLIC_SITE_URL: https://preview.betvima.com
+          NEXT_TELEMETRY_DISABLED: '1'
