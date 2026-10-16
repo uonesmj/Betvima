@@ -37,7 +37,7 @@ function accountCanBet(p: ProfileRow): boolean {
   return p.status === 'active' && p.age_verified === true && p.kyc_status === 'verified' &&
     casinoCountryPermitted(p.country) && !p.self_excluded && !p.restricted;
 }
-export async function casinoPlayerMayLaunch(userId: string): Promise<{ country: string; walletCurrency: string }> {
+export async function casinoPlayerMayLaunch(userId: string, commitBinding = false): Promise<{ country: string; walletCurrency: string }> {
   if (!casinoRealMoneyUserAllowed(userId)) throw new Error('CASINO_REAL_MONEY_DISABLED');
   const db = getDb();
   if (!(await casinoFinancialSchemaReady(db))) throw new Error('CASINO_FINANCIAL_SCHEMA_MISSING');
@@ -50,7 +50,12 @@ export async function casinoPlayerMayLaunch(userId: string): Promise<{ country: 
     [userId, p.currency],
   );
   if (!wallet || wallet.is_frozen) throw new Error('CASINO_WALLET_UNAVAILABLE');
-  const nativeCurrency = await bindCasinoPlayerWallet(db, userId, p.currency);
+  const existing = await readCasinoPlayerWallet(db, userId);
+  if (existing && existing !== p.currency) throw new Error('CASINO_WALLET_CURRENCY_LOCKED');
+  // Eligibility reads must not persist a permanent currency binding merely
+  // because the user opened the casino lobby.
+  const nativeCurrency = commitBinding
+    ? await bindCasinoPlayerWallet(db, userId, p.currency) : (existing ?? p.currency);
   return { country: p.country, walletCurrency: nativeCurrency };
 }
 async function walletRow(db: Db, userId: string, locked: boolean): Promise<WalletRow | null> {
