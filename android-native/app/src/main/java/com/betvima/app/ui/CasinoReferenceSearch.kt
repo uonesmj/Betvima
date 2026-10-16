@@ -1,6 +1,11 @@
 package com.betvima.app.ui
 
+import androidx.compose.animation.Crossfade
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -17,6 +22,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -30,9 +36,9 @@ import com.betvima.app.data.CasinoGame
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 
-private val sheetPaper = Color.White
-private val sheetCard = Color(0xFFF3F3F4)
-private val sheetMuted = Color(0xFF777984)
+private val sheetPaper = Color(0xFF0C1424)
+private val sheetCard = Color(0xFF1A293F)
+private val sheetMuted = Color(0xFF9EADC7)
 private val sheetBlue = Color(0xFF0A7CFA)
 private val highlightedProviders = listOf(
     "Pragmatic Play", "Evolution", "PG SOFT", "Hacksaw", "BGaming", "3 Oaks Gaming"
@@ -115,31 +121,47 @@ fun CasinoReferenceSearch(
     )
     Dialog(onDismissRequest = onDismiss,
         properties = DialogProperties(usePlatformDefaultWidth = false)) {
-        Column(Modifier.fillMaxWidth().fillMaxHeight(.96f)
-            .clip(RoundedCornerShape(topStart = 30.dp, topEnd = 30.dp))
-            .background(sheetPaper)) {
+        Column(Modifier.fillMaxWidth().fillMaxHeight(.97f)
+            .clip(RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp))
+            .background(Brush.verticalGradient(listOf(
+                Color(0xFF102142), sheetPaper, Color(0xFF0A1020)
+            )))
+            .border(1.dp, Color(0xFF30496E),
+                RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp))) {
+            Box(Modifier.align(Alignment.CenterHorizontally)
+                .padding(top = 10.dp).width(44.dp).height(4.dp)
+                .clip(CircleShape).background(Color(0xFF6B83AE)))
             Row(Modifier.fillMaxWidth().height(76.dp).padding(horizontal = 22.dp),
                 verticalAlignment = Alignment.CenterVertically) {
+                CasinoBrandMark(size = 27.dp)
+                Spacer(Modifier.width(10.dp))
                 Text(tr(lang, "Search", "جست‌وجو"),
-                    fontSize = 25.sp, color = Color.Black,
+                    fontSize = 25.sp, color = Color.White,
                     fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
-                IconButton(onClick = onDismiss) {
-                    Icon(Icons.Default.Close,
-                        tr(lang,"Close search","بستن جست‌وجو"),
-                        modifier = Modifier.size(28.dp), tint = sheetMuted)
+                Surface(color = sheetCard,
+                    shape = CircleShape,
+                    border = BorderStroke(1.dp, Color(0xFF405B83)),
+                    modifier = Modifier.size(43.dp).clickable { onDismiss() }) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(Icons.Default.Close, tr(lang,"Close search","بستن جست‌وجو"),
+                            modifier = Modifier.size(24.dp), tint = Color.White)
+                    }
                 }
             }
             Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp)
                 .clip(RoundedCornerShape(18.dp)).background(sheetCard)
+                .border(1.dp, Color(0xFF314967), RoundedCornerShape(18.dp))
                 .padding(3.dp), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                 listOf(false to tr(lang, "Games", "بازی‌ها"),
                     true to tr(lang, "Providers", "سازندگان")).forEach { (key, label) ->
+                    val tabColor by animateColorAsState(
+                        if (providersTab == key) sheetBlue else sheetCard,
+                        animationSpec = tween(230), label = "casinoSearchSelection")
                     Box(Modifier.weight(1f).height(48.dp)
                         .clip(RoundedCornerShape(15.dp))
-                        .background(if (providersTab == key) Color(0xFFE6E7E9)
-                            else sheetCard)
+                        .background(tabColor)
                         .clickable { providersTab = key }, contentAlignment = Alignment.Center) {
-                        Text(label, color = Color.Black, fontWeight = FontWeight.SemiBold,
+                        Text(label, color = Color.White, fontWeight = FontWeight.SemiBold,
                             fontSize = 16.sp)
                     }
                 }
@@ -147,7 +169,9 @@ fun CasinoReferenceSearch(
             Spacer(Modifier.height(12.dp))
             Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp)
                 .height(56.dp).clip(RoundedCornerShape(16.dp))
-                .background(sheetCard).padding(horizontal = 18.dp),
+                .background(sheetCard)
+                .border(1.dp, Color(0xFF374E71), RoundedCornerShape(16.dp))
+                .padding(horizontal = 18.dp),
                 verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Default.Search, null, tint = sheetMuted,
                     modifier = Modifier.size(24.dp))
@@ -157,7 +181,7 @@ fun CasinoReferenceSearch(
                         color = sheetMuted, fontSize = 16.sp)
                     BasicTextField(input,
                         onValueChange = { if (it.length <= 80) input = it },
-                        textStyle = TextStyle(fontSize = 16.sp, color = Color.Black),
+                        textStyle = TextStyle(fontSize = 16.sp, color = Color.White),
                         singleLine = true, modifier = Modifier.fillMaxWidth())
                 }
                 if (input.isNotEmpty()) {
@@ -168,10 +192,12 @@ fun CasinoReferenceSearch(
             Spacer(Modifier.height(16.dp))
             if (loading) LinearProgressIndicator(
                 modifier = Modifier.fillMaxWidth(), color = sheetBlue)
+            Crossfade(providersTab, animationSpec = tween(220),
+                label = "casinoSearchContent") { providersSelected ->
             LazyColumn(Modifier.fillMaxSize(),
                 contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 28.dp),
                 verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                if (providersTab) {
+                if (providersSelected) {
                     if (input.isBlank() && recommended.isNotEmpty()) {
                         item(key = "recommended-providers-label") {
                             SearchGroupHeading(tr(lang,"Recommended","پیشنهادی"))
@@ -215,7 +241,7 @@ fun CasinoReferenceSearch(
                             item(key = "search-section-" + key) {
                                 Row(Modifier.fillMaxWidth().padding(top = 5.dp),
                                     verticalAlignment = Alignment.CenterVertically) {
-                                    Text(title, color = Color.Black, fontSize = 18.sp,
+                                    Text(title, color = Color.White, fontSize = 18.sp,
                                         fontWeight = FontWeight.Bold,
                                         modifier = Modifier.weight(1f))
                                     Icon(Icons.Default.ChevronRight, null, tint = sheetMuted)
@@ -238,6 +264,7 @@ fun CasinoReferenceSearch(
                     }
                 }
             }
+            }
         }
     }
 }
@@ -245,9 +272,10 @@ fun CasinoReferenceSearch(
 @Composable
 private fun SearchGroupHeading(title: String) {
     Row(Modifier.fillMaxWidth().padding(top = 9.dp, bottom = 3.dp)) {
-        Surface(color = Color(0xFFF4F4F5), shape = CircleShape) {
+        Surface(color = Color(0xFF1B2C4B), shape = CircleShape,
+            border = BorderStroke(1.dp, Color(0xFF365780))) {
             Text(title, fontSize = 13.sp, fontWeight = FontWeight.SemiBold,
-                color = Color.Black,
+                color = Color.White,
                 modifier = Modifier.padding(horizontal = 10.dp, vertical = 7.dp))
         }
     }
@@ -257,17 +285,36 @@ private fun SearchGroupHeading(title: String) {
 private fun ProviderSearchRow(names: List<String>, onProvider: (String) -> Unit) {
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
         names.forEach { name ->
-            Column(Modifier.weight(1f).height(112.dp)
-                .clip(RoundedCornerShape(23.dp)).background(sheetCard)
-                .clickable { onProvider(name) }.padding(8.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center) {
-                Text(name.take(2).uppercase(), color = sheetBlue,
-                    fontWeight = FontWeight.Black, fontSize = 23.sp)
-                Spacer(Modifier.height(7.dp))
-                Text(name, color = Color.Black, fontSize = 13.sp,
-                    fontWeight = FontWeight.SemiBold, maxLines = 2,
-                    overflow = TextOverflow.Ellipsis)
+            val brandColor = when ((name.firstOrNull()?.lowercaseChar() ?: 'a').code % 4) {
+                0 -> Color(0xFF19B6FF)
+                1 -> Color(0xFF00D898)
+                2 -> Color(0xFFFFBA47)
+                else -> Color(0xFF9A78FF)
+            }
+            Box(Modifier.weight(1f).height(115.dp)
+                .clip(RoundedCornerShape(20.dp))
+                .background(Brush.linearGradient(listOf(
+                    Color(0xFF213758), Color(0xFF111D33))))
+                .border(1.dp, brandColor.copy(alpha = .46f),
+                    RoundedCornerShape(20.dp))
+                .clickable { onProvider(name) }) {
+                Column(Modifier.fillMaxSize().padding(10.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center) {
+                    Surface(shape = RoundedCornerShape(11.dp),
+                        color = brandColor.copy(alpha = .16f),
+                        border = BorderStroke(1.dp, brandColor.copy(alpha = .48f))) {
+                        Text(name.trim().take(2).uppercase(), color = brandColor,
+                            fontWeight = FontWeight.Black, fontSize = 21.sp,
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp))
+                    }
+                    Spacer(Modifier.height(8.dp))
+                    Text(name, color = Color.White, fontSize = 12.sp,
+                        fontWeight = FontWeight.SemiBold, maxLines = 2,
+                        overflow = TextOverflow.Ellipsis)
+                }
+                CasinoBrandMark(Modifier.align(Alignment.TopEnd).padding(7.dp),
+                    size = 12.dp)
             }
         }
         if (names.size == 1) Spacer(Modifier.weight(1f))
@@ -279,17 +326,19 @@ private fun SearchGameCard(game: CasinoGame, onClick: () -> Unit) {
     Column(Modifier.width(123.dp).clickable(onClick = onClick)) {
         Box(Modifier.fillMaxWidth().height(159.dp)
             .clip(RoundedCornerShape(14.dp))
-            .background(Color(0xFFE3E5EF))) {
+            .background(Brush.linearGradient(listOf(
+                Color(0xFF24466B), Color(0xFF211B43))))
+            .border(1.dp, Color(0xFF38557C), RoundedCornerShape(14.dp))) {
             if (!game.imageUrl.isNullOrBlank()) {
                 AsyncImage(game.imageUrl, game.name, Modifier.fillMaxSize(),
                     contentScale = ContentScale.Crop)
             } else {
                 Text(game.name, Modifier.align(Alignment.Center).padding(8.dp),
-                    fontSize = 13.sp, color = Color.Black,
+                    fontSize = 13.sp, color = Color.White,
                     fontWeight = FontWeight.Bold)
             }
         }
-        Text(game.name, fontSize = 12.sp, color = Color.Black, maxLines = 1,
+        Text(game.name, fontSize = 12.sp, color = Color.White, maxLines = 1,
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier.padding(top = 4.dp))
     }
