@@ -145,13 +145,21 @@ private data class SportChip(val key: String, val en: String, val fa: String,
     val icon: androidx.compose.ui.graphics.vector.ImageVector)
 
 private val sportChips = listOf(
-    SportChip("top", "Top", "برتر", Icons.Default.Whatshot),
+    SportChip("top", "All Live", "همه زنده‌ها", Icons.Default.Whatshot),
     SportChip("football", "Football", "فوتبال", Icons.Default.SportsSoccer),
-    SportChip("tennis", "Tennis", "تنیس", Icons.Default.SportsTennis),
     SportChip("basketball", "Basketball", "بسکتبال", Icons.Default.SportsBasketball),
+    SportChip("tennis", "Tennis", "تنیس", Icons.Default.SportsTennis),
     SportChip("volleyball", "Volleyball", "والیبال", Icons.Default.SportsVolleyball),
-    SportChip("hockey", "Ice hockey", "هاکی", Icons.Default.SportsHockey),
-    SportChip("esports", "Esports", "ورزش الکترونیک", Icons.Default.SportsEsports)
+    SportChip("handball", "Handball", "هندبال", Icons.Default.SportsHandball),
+    SportChip("hockey", "Ice hockey", "هاکی روی یخ", Icons.Default.SportsHockey),
+    SportChip("baseball", "Baseball", "بیسبال", Icons.Default.SportsBaseball),
+    SportChip("american-football", "American football", "فوتبال آمریکایی", Icons.Default.SportsFootball),
+    SportChip("cricket", "Cricket", "کریکت", Icons.Default.SportsCricket),
+    SportChip("mma", "MMA", "هنرهای رزمی", Icons.Default.SportsMma),
+    SportChip("boxing", "Boxing", "بوکس", Icons.Default.SportsMma),
+    SportChip("table-tennis", "Table tennis", "پینگ‌پنگ", Icons.Default.SportsTennis),
+    SportChip("esports", "Esports", "ورزش الکترونیک", Icons.Default.SportsEsports),
+    SportChip("other", "Other sports", "سایر ورزش‌ها", Icons.Default.EmojiEvents)
 )
 
 @Composable
@@ -160,19 +168,27 @@ fun ReferenceSportRibbon(state: AppState, model: AppViewModel, live: Boolean = f
     onSelect: ((String) -> Unit)? = null) {
     val current = (selectedKey ?: if (all) "top" else state.sport)
         .let { if (it == "all") "top" else it }
+    val events = if (live) state.live else state.upcoming
+    val totals = remember(events) { liveSportTotals88(events) }
+    // When looking at Live, only show categories backed by received fixtures.
+    // Other sports remain available in the upcoming navigation for loading.
+    val availableChips = remember(live, current, totals) {
+        if (live) sportChips.filter { it.key == "top" ||
+            it.key == current || (totals[it.key] ?: 0) > 0 }
+        else sportChips
+    }
     val sportListState = rememberLazyListState()
-    LaunchedEffect(current) {
-        val index = sportChips.indexOfFirst { it.key == current }
+    LaunchedEffect(current, availableChips) {
+        val index = availableChips.indexOfFirst { it.key == current }
         if (index >= 0) sportListState.animateScrollToItem(index)
     }
     LazyRow(state = sportListState,
         contentPadding = PaddingValues(horizontal = 13.dp, vertical = 10.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp), flingBehavior = rememberPremiumFlingBehavior()) {
-        items(sportChips, key = { it.key }) { sport ->
+        items(availableChips, key = { it.key }) { sport ->
             val active = current == sport.key
-            val events = if (live) state.live else state.upcoming
             val loadedCount = if (sport.key == "top") events.size else
-                events.count { it.sport == sport.key }
+                (totals[sport.key] ?: 0)
             Surface(shape = RoundedCornerShape(14.dp),
                 color = if (active) Palette.blue else Color(0xFFE0E3E9),
                 modifier = Modifier.width(124.dp).height(71.dp).clickable {
