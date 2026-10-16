@@ -46,7 +46,7 @@ internal enum class AffiliateScene(val photo:String,val accent:Color,val mark:Im
 @Composable
 internal fun AffiliateCinematicPhoto(
     scene:AffiliateScene, modifier:Modifier=Modifier,active:Boolean=true,
-    corner:Int=24,showMark:Boolean=true,
+    corner:Int=24,showMark:Boolean=false,
     content:@Composable BoxScope.()->Unit={}
 ) {
     val context=LocalContext.current
@@ -68,11 +68,11 @@ internal fun AffiliateCinematicPhoto(
         .background(Brush.linearGradient(listOf(Color(0xFF0A1426),
             scene.accent.copy(alpha=.58f),Color(0xFF111827))))) {
         if(bitmap!=null) {
-            Image(bitmap=bitmap,contentDescription=null,contentScale=ContentScale.Crop,
+            // Do not crop/zoom typography baked into affiliate artwork.
+            Image(bitmap=bitmap,contentDescription=null,contentScale=ContentScale.Fit,
                 modifier=Modifier.fillMaxSize().graphicsLayer {
-                    scaleX=1.055f+drift*.025f;scaleY=1.055f+drift*.025f
-                    alpha=.4f+.6f*entrance;translationY=(1f-entrance)*65f
-                    translationX=(drift-.5f)*19f
+                    alpha=.4f+.6f*entrance
+                    translationY=(1f-entrance)*16f
                 })
         } else {
             Box(Modifier.fillMaxSize().background(Brush.radialGradient(
