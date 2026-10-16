@@ -14,6 +14,11 @@ settled supplier round or a gambling licence.
 - Financial migrations `0208`, `0209`, `0210`, `0211`, `0212` exist under
   `docs/pending-financial-migrations/` only; they are NOT registered in
   the Production migrations directory. Do not copy/migrate blindly.
+- The runtime financial-readiness gate verifies active RLS on all financial tables,
+  valid unique rollback indexes, enabled immutable audit triggers, validated
+  rollback foreign keys/check constraints and no anonymous/authenticated
+  direct-write privilege. CI exercises this SQL against a disposable PostgreSQL
+  database with deliberately weakened protections and requires fail-closed results.
 - Repository includes provider callback verification, idempotent receipt
   accounting, immutable historical FX per round and a single-user real-money
   gate. The isolated SQL-level tests described in
