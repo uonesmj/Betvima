@@ -22,10 +22,11 @@ import androidx.compose.ui.window.DialogProperties
 /** The existing verified bonus ledger, history, timers and rules inside a native popup. */
 @Composable
 fun BonusPopup83(state: AppState, model: AppViewModel, onDismiss: () -> Unit) {
-    Dialog(onDismissRequest = onDismiss,
-        properties = DialogProperties(usePlatformDefaultWidth = false)) {
+    PremiumMotionDialog(onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false)) { motion, closeWith ->
         Column(
             Modifier.fillMaxWidth().fillMaxHeight(.97f)
+                .then(motion)
                 .padding(horizontal = 6.dp)
                 .clip(RoundedCornerShape(27.dp))
                 .background(Color(0xFFF7F9FC))
@@ -51,7 +52,7 @@ fun BonusPopup83(state: AppState, model: AppViewModel, onDismiss: () -> Unit) {
                             color = Color.White, fontWeight = FontWeight.Black,
                             fontSize = 20.sp)
                     }
-                    IconButton(onClick = onDismiss) {
+                    IconButton(onClick = { closeWith({}) }) {
                         Icon(Icons.Default.Close,
                             tr(state.lang, "Close bonuses", "بستن بونوس‌ها"),
                             tint = Color.White)
