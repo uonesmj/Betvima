@@ -120,7 +120,7 @@ fun BetvimaApp(model: AppViewModel) {
         ) {
         Scaffold(
             containerColor = if (state.feature == Feature.CASINO)
-                Color(0xFF0A1020) else Palette.paper,
+                Color(0xFF141414) else Palette.paper,
             topBar = {
                 Column {
                     BrandHeader(state.lang,
