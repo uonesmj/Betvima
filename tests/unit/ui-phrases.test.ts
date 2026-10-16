@@ -142,15 +142,23 @@ describe('sport-specific outcomes and market-line translation', () => {
 
 
 describe('Persian footer, bonus, VIP and affiliate completion', () => {
-  it('preserves footer layout and avoids post-render text mutation', () => {
+  it('replaces the legacy footer with the fixed native five-tab footer without mutating localization', () => {
     const footer = readFileSync('src/components/layout/page-shell.tsx', 'utf8');
-    const css = readFileSync('src/app/globals.css', 'utf8');
+    expect(footer).toContain('data-native-footer-parity');
     expect(footer).toContain('data-locale-stable');
     expect(footer).toContain('data-i18n-ignore');
-    expect(footer).toContain('copy("Every match.", "هر مسابقه.")');
-    expect(footer).toContain('copy("Language", "زبان")');
-    expect(css).toContain('footer[data-locale-stable]');
-    expect(css).toContain('direction: ltr');
+    expect(footer).toContain('dir="ltr"');
+    expect(footer).toContain('grid-cols-5');
+    expect(footer).toContain("label('Menu', 'منو')");
+    expect(footer).toContain("label('Home', 'خانه')");
+    expect(footer).toContain("label('Casino', 'کازینو')");
+    expect(footer).toContain("label('My Bets', 'شرط‌های من')");
+    expect(footer).toContain("label('Sports', 'ورزش‌ها')");
+    expect(footer).toContain('bg-[#101114]');
+    expect(footer).toContain('text-[#087FF5]');
+    expect(footer).toContain('<MobileTabBar onSupportOpen={onSupportOpen} />');
+    expect(footer).not.toContain('Every match.');
+    expect(footer).not.toContain('Featured clubs');
   });
 
   it('localizes full bonus statuses and FAQ wording', () => {
