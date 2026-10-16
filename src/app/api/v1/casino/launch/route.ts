@@ -27,7 +27,7 @@ export const POST = withErrorHandling('casino.launch', async (ctx, request: Requ
   if (!demo && !casinoRealMoneyUserAllowed(user.id)) {
     return NextResponse.json({ error: 'CASINO_REAL_MONEY_DISABLED' }, { status: 503 });
   }
-  const eligibility = demo ? null : await casinoPlayerMayLaunch(user.id);
+  const eligibility = demo ? null : await casinoPlayerMayLaunch(user.id, true);
   const url = await launchCasinoGame({
     userId: user.id, gameId: input.gameId, demo,
     device, lang, country: eligibility?.country,
