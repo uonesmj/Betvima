@@ -121,7 +121,7 @@ function MatchCenter({ fixture }: { fixture: FootballFixture }) {
               {fixture.incidents.length === 0 ? <p className="text-sm text-slate-500">No incident data.</p> : null}
               {[...fixture.incidents].sort((a, b) => b.minute - a.minute).map(event => (
                 <div key={event.id} className="flex items-center gap-3 rounded-lg bg-slate-50 p-3 text-xs">
-                  <span className="font-black text-emerald-700">{event.minute}'</span>
+                  <span className="font-black text-emerald-700">{event.minute} min</span>
                   <span className="rounded bg-white px-2 py-1 font-semibold uppercase text-slate-500">
                     {event.type.replaceAll('_', ' ')}
                   </span>
