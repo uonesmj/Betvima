@@ -181,23 +181,37 @@ fun CasinoLobby(state: AppState, model: AppViewModel) {
     // simply because the global first page happens to contain mostly slots.
     var categoryShowcase by remember { mutableStateOf<Map<String, List<CasinoGame>>>(emptyMap()) }
     LaunchedEffect(category, provider, debouncedQuery, refreshSerial) {
-        if (category.isBlank() && provider.isBlank() && debouncedQuery.isBlank()) {
-            val types = listOf("slots", "live", "instant", "crash", "table")
-            val loaded = coroutineScope {
-                val requests = types.map { type ->
+        if (provider.isBlank() && debouncedQuery.isBlank()) {
+            val types = when (category) {
+                "live" -> listOf("live")
+                "crash", "instant" -> listOf("crash", "instant")
+                else -> listOf("slots", "live", "instant", "crash", "table")
+            }
+            val pages = when (category) {
+                "live" -> 4
+                "crash", "instant" -> 3
+                else -> 1
+            }
+            categoryShowcase = coroutineScope {
+                val jobs = types.map { type ->
                     async {
-                        try {
-                            type to model.casinoGames(1, type, "", "").games
-                        } catch (cancel: CancellationException) {
-                            throw cancel
-                        } catch (_: Exception) {
-                            type to emptyList<CasinoGame>()
+                        val collected = mutableListOf<CasinoGame>()
+                        for (index in 1..pages) {
+                            val response = try {
+                                model.casinoGames(index, type, "", "")
+                            } catch (cancel: CancellationException) {
+                                throw cancel
+                            } catch (_: Exception) {
+                                break
+                            }
+                            collected += response.games
+                            if (!response.hasMore || response.games.isEmpty()) break
                         }
+                        type to collected.distinctBy { it.id }
                     }
                 }
-                requests.awaitAll().toMap()
+                jobs.awaitAll().toMap()
             }
-            categoryShowcase = loaded
         } else {
             categoryShowcase = emptyMap()
         }
