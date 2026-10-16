@@ -42,3 +42,15 @@ test('no redirect traversal or access restriction bypass', async () => {
   assert.deepEqual(calls, ['https://1win.ng/robots.txt']);
   assert.equal(result.status, 'STOP_ROBOTS_NOT_ACCESSIBLE');
 });
+test('different public domains route correctly without fetching unapproved hosts', async () => {
+  const calls = [];
+  const result = await inspectPublicPage({ origin: 'https://1win.com', fetchImpl: async (url) => {
+    calls.push(url);
+    return url.endsWith('/robots.txt')
+      ? new Response('', { status: 404 })
+      : new Response('<html></html>', { status: 200, headers: { 'content-type': 'text/html' } });
+  }});
+  assert.deepEqual(calls, ['https://1win.com/robots.txt', 'https://1win.com/betting/live']);
+  assert.equal(result.source, '1win.com');
+  await assert.rejects(inspectPublicPage({ origin: 'https://untrusted.example' }), /allowlisted/);
+});
