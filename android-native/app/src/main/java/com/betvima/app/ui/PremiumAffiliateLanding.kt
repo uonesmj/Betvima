@@ -29,6 +29,11 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
+import com.betvima.app.data.ApiClient
+import com.betvima.app.data.SessionVault
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -47,7 +52,19 @@ private val partnerWhite = Color.White
 @Composable
 fun PremiumAffiliateSheet(state: AppState, model: AppViewModel, onClose: () -> Unit) {
     val lang = state.lang
-    var showPortal by rememberSaveable { mutableStateOf(false) }
+    val context = LocalContext.current
+    val affiliateApi = remember { ApiClient() }
+    val affiliateVault = remember(context) { SessionVault(context, "affiliate") }
+    var showPortal by rememberSaveable { mutableStateOf(affiliateVault.signedIn()) }
+    var authMode by rememberSaveable { mutableStateOf<String?>(null) }
+    val openRegister = {
+        if (affiliateVault.signedIn()) showPortal = true
+        else authMode = "register"
+    }
+    val openLogin = {
+        if (affiliateVault.signedIn()) showPortal = true
+        else authMode = "login"
+    }
     val sheet = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     ModalBottomSheet(
         onDismissRequest = onClose,
@@ -86,7 +103,7 @@ fun PremiumAffiliateSheet(state: AppState, model: AppViewModel, onClose: () -> U
                         Text(tr(lang, "Explore", "معرفی"), color = partnerWhite)
                     }
                 } else {
-                    TextButton(onClick = { showPortal = true }) {
+                    TextButton(onClick = openLogin) {
                         Text(tr(lang, "Log in", "ورود"), color = partnerWhite)
                     }
                 }
@@ -98,14 +115,73 @@ fun PremiumAffiliateSheet(state: AppState, model: AppViewModel, onClose: () -> U
             if (showPortal) {
                 AffiliateDashboard(state, model)
             } else {
-                AffiliateMotionLanding(lang, onGetStarted = { showPortal = true })
+                AffiliateMotionLanding(lang, onGetStarted = openRegister, onLogin = openLogin)
+            }
+        }
+        if (authMode != null) {
+            // An independently scrollable credential dialog over the current Affiliate sheet.
+            // Neither registration nor sign-in navigates to a new screen or website.
+            Dialog(
+                onDismissRequest = { authMode = null },
+                properties = DialogProperties(
+                    usePlatformDefaultWidth = false,
+                    dismissOnBackPress = true,
+                    dismissOnClickOutside = true
+                )
+            ) {
+                Surface(
+                    modifier = Modifier.fillMaxWidth(.95f)
+                        .fillMaxHeight(.88f)
+                        .imePadding(),
+                    shape = RoundedCornerShape(27.dp),
+                    color = affiliateCanvas,
+                    shadowElevation = 24.dp
+                ) {
+                    Column(Modifier.fillMaxSize()) {
+                        Row(Modifier.fillMaxWidth()
+                            .background(partnerNight)
+                            .padding(horizontal = 19.dp, vertical = 10.dp),
+                            verticalAlignment = Alignment.CenterVertically) {
+                            Column(Modifier.weight(1f)) {
+                                Text("BetVima Partners", color = Color.White,
+                                    fontWeight = FontWeight.Black, fontSize = 19.sp)
+                                Text(
+                                    if(authMode=="register")
+                                        tr(lang,"Create partner account","ثبت‌نام همکاری")
+                                    else tr(lang,"Partner sign in","ورود به حساب همکاری"),
+                                    color=Color(0xFFB0C3D8),fontSize=12.sp
+                                )
+                            }
+                            IconButton(onClick={authMode=null}) {
+                                Icon(Icons.Default.Close,
+                                    tr(lang,"Dismiss","بستن"),tint=Color.White)
+                            }
+                        }
+                        Column(Modifier.fillMaxSize()
+                            .verticalScroll(rememberScrollState())
+                            .padding(16.dp)) {
+                            AffiliateAccessPanel(
+                                lang=lang,api=affiliateApi,vault=affiliateVault,
+                                initialRegister=authMode=="register",
+                                onAuthenticated={
+                                    authMode=null
+                                    showPortal=true
+                                }
+                            )
+                        }
+                    }
+                }
             }
         }
     }
 }
 
 @Composable
-private fun AffiliateMotionLanding(lang: Lang, onGetStarted: () -> Unit) {
+private fun AffiliateMotionLanding(
+    lang: Lang,
+    onGetStarted: () -> Unit,
+    onLogin: () -> Unit
+) {
     val list = rememberLazyListState()
     val showing: (Int) -> Boolean = { index ->
         list.layoutInfo.visibleItemsInfo.any { it.index == index }
@@ -118,7 +194,7 @@ private fun AffiliateMotionLanding(lang: Lang, onGetStarted: () -> Unit) {
     ) {
         item(key = "hero") {
             val active by remember { derivedStateOf { showing(0) } }
-            PartnerHero(lang, active, onGetStarted)
+            PartnerHero(lang, active, onGetStarted, onLogin)
         }
         item(key = "stats") {
             val active by remember { derivedStateOf { showing(1) } }
@@ -161,7 +237,7 @@ private fun AffiliateMotionLanding(lang: Lang, onGetStarted: () -> Unit) {
 }
 
 @Composable
-private fun PartnerHero(lang: Lang, active: Boolean, onGetStarted: () -> Unit) {
+private fun PartnerHero(lang: Lang, active: Boolean, onGetStarted: () -> Unit, onLogin: () -> Unit) {
     val appear by animateFloatAsState(if (active) 1f else 0f,
         animationSpec = tween(850, easing = FastOutSlowInEasing), label = "hero")
     val floatAnim = rememberInfiniteTransition(label = "hero-float")
@@ -198,7 +274,7 @@ private fun PartnerHero(lang: Lang, active: Boolean, onGetStarted: () -> Unit) {
             Icon(Icons.Default.ArrowForward, null, tint = partnerWhite)
         }
         Spacer(Modifier.height(18.dp))
-        TextButton(onClick = onGetStarted) {
+        TextButton(onClick = onLogin) {
             Text(tr(lang, "Already a partner? Log in", "حساب دارید؟ ورود"),
                 color = Color(0xFFC2C9DD), fontSize = 12.sp)
         }
