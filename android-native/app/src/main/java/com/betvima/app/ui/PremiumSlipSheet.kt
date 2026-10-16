@@ -357,7 +357,7 @@ private fun SlipPickList(
     LaunchedEffect(state.picks.size) {
         if (state.picks.size > oldCount &&
             state.picks.size > SLIP_VISIBLE_PICK_LIMIT) {
-            listState.animateScrollToItem(state.picks.lastIndex)
+            listState.animateScrollToItem(state.picks.size)
         }
         oldCount = state.picks.size
     }
@@ -370,6 +370,11 @@ private fun SlipPickList(
         contentPadding = PaddingValues(horizontal = 13.dp, vertical = 5.dp),
         verticalArrangement = Arrangement.spacedBy(SLIP_CARD_SPACING_DP.dp)
     , flingBehavior = rememberPremiumFlingBehavior()) {
+        if (state.picks.isNotEmpty()) {
+            item(key = "probability") {
+                SlipProbabilityCard(state.picks, model, state.lang)
+            }
+        }
         itemsIndexed(state.picks, key = { _, pick -> pick.selectionId }) { index, pick ->
             SlipPickCard(pick, state.lang, index + 1) {
                 model.removePick(pick.selectionId)
@@ -393,7 +398,9 @@ fun PremiumSlipSheet(state: AppState,model: AppViewModel) {
         if (state.signedIn) model.refreshAccount()
     }
     // Expand to five full cards; beyond five maintain the same viewport.
-    val listHeight = slipPickAreaHeightDp(state.picks.size).dp
+    // Include the animated chart inside the pick list, not the fixed pay button area.
+    val listHeight = slipPickAreaHeightDp(state.picks.size).dp +
+        if (state.picks.isNotEmpty()) 207.dp else 0.dp
     LaunchedEffect(state.picks.size,funding) {
         val expected = if(funding=="bonus" || state.picks.size>1)
             "multiple" else "single"
