@@ -1,0 +1,33 @@
+name: Odds Button and Public Catalogue Diagnostics
+on:
+  pull_request:
+    paths:
+      - 'src/components/betting/match-card.tsx'
+      - 'src/lib/odds/selection-eligibility.ts'
+      - 'tests/unit/selection-eligibility.test.ts'
+      - 'scripts/public-odds-display-diagnostic.mjs'
+      - '.github/workflows/odds-display-recovery.yml'
+permissions:
+  contents: read
+jobs:
+  odds-display:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - run: npx vitest run tests/unit/selection-eligibility.test.ts
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: npm run build
+        env:
+          APP_ENV: test
+          NEXT_PUBLIC_SITE_URL: https://preview.betvima.com
+          NEXT_TELEMETRY_DISABLED: '1'
+      - name: Public read-only production catalogue diagnostic
+        if: always()
+        run: node scripts/public-odds-display-diagnostic.mjs
