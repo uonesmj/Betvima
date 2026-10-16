@@ -170,11 +170,24 @@ export async function launchCasinoGame(input: {
   // Live supplier response is { error: 0, response: { gameurl: "https://..." } }.
   // Some integrations return response as a direct string; handle both forms.
   // Keep the token-bearing URL server-side until it is returned to its owning user.
-  const launch = await callSoftAggregator<string | { gameurl?: unknown }>(
-    input.demo ? 'getGameDemo' : 'getGame', {
-      ...identity, ...base,
-      ...(!input.demo ? { country: input.country! } : {}),
-    });
+  let launch: string | { gameurl?: unknown };
+  try {
+    launch = await callSoftAggregator<string | { gameurl?: unknown }>(
+      input.demo ? 'getGameDemo' : 'getGame', {
+        ...identity, ...base,
+        ...(!input.demo ? { country: input.country! } : {}),
+      });
+  } catch (error) {
+    // The supplier marks almost every title as "no demo" in its catalogue,
+    // including known working demos. Attempt the actual demo endpoint, then
+    // return a specific, non-financial error for provider rejection. Never
+    // retry through getGame or implicitly enable a real-money session.
+    if (input.demo && error instanceof Error &&
+        error.message.startsWith('SOFTAGGREGATOR_API_ERROR:')) {
+      throw new Error('CASINO_DEMO_UNAVAILABLE');
+    }
+    throw error;
+  }
   const url = typeof launch === 'string' ? launch : launch?.gameurl;
   if (typeof url !== 'string' || !/^https:\/\//i.test(url)) throw new Error('INVALID_CASINO_LAUNCH_URL');
   const parsed = new URL(url);
