@@ -45,7 +45,10 @@ class CasinoModelsTest {
         assertTrue(noDemoFa.contains("ناموفق"))
         assertTrue(noDemoFa.contains("Aviator"))
         assertTrue(casinoDemoFailure(500, false, false).contains("Real-money"))
-        assertTrue(casinoDemoFailure(503, true, false).contains("verified demo"))
+        assertTrue(casinoDemoFailure(503, true, false).contains("temporarily unavailable"))
+        assertTrue(casinoDemoFailure(422, false, true).contains("هیچ مبلغی"))
+        assertTrue(casinoDemoFailure(422, true, false).contains("never switches"))
+        assertTrue(casinoDemoFailure(404, true, true).contains("فهرست"))
         assertTrue(casinoDemoFailure(401, true, true).contains("وارد"))
         assertTrue(casinoDemoFailure(429, false, false).contains("Too many"))
     }
