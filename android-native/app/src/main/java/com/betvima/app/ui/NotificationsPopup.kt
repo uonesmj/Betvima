@@ -87,7 +87,7 @@ fun NotificationsPopup(
                     Column(Modifier.weight(1f)) {
                         Text(tr(lang, "Notifications", "اعلان‌ها"),
                             fontSize = 27.sp, fontWeight = FontWeight.Black,
-                            letterSpacing = (-.6).sp,
+                            letterSpacing = (-0.6f).sp,
                             color = Color(0xFF151517),
                             maxLines = 1, overflow = TextOverflow.Ellipsis)
                         if (state.signedIn && state.notificationUnreadCount > 0) {
