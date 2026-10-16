@@ -41,7 +41,7 @@ function MatchCenter({ fixture }: { fixture: FootballFixture }) {
             <span key={option.id} className="flex min-w-14 flex-col rounded-lg bg-slate-100 p-2 text-center text-xs">
               <span className="text-slate-500">{option.label}</span>
               <span className="font-bold tabular-nums text-slate-800">
-                {renderableOdds(fixture.state, fixture.markets[0].status, option)}
+                {renderableOdds(fixture.state, fixture.markets[0]?.status ?? 'suspended', option)}
               </span>
             </span>
           ))}
