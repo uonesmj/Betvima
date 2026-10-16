@@ -6,7 +6,8 @@
  * weakened financial guards, each modification rolled back afterwards.
  */
 import assert from 'node:assert/strict';
-import { Client } from 'pg';
+import pg from 'pg';
+const { Client } = pg;
 import { casinoFinancialSchemaReady } from '../../src/server/providers/softaggregator/financial-readiness';
 
 async function main() {
