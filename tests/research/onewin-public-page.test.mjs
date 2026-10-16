@@ -54,3 +54,11 @@ test('different public domains route correctly without fetching unapproved hosts
   assert.equal(result.source, '1win.com');
   await assert.rejects(inspectPublicPage({ origin: 'https://untrusted.example' }), /allowlisted/);
 });
+test('robots uses the longest rule, including wildcard and end-anchor', () => {
+  assert.equal(robotsDecision('User-agent: *\nDisallow: /betting/*\nAllow: /betting/live', '/betting/live').allowed, true);
+  assert.equal(robotsDecision('User-agent: *\nDisallow: /betting/*', '/betting/live').allowed, false);
+  assert.equal(robotsDecision('User-agent: *\nDisallow: /betting$','/betting/live').allowed, true);
+  assert.equal(robotsDecision('User-agent: *\nDisallow: /betting/live$', '/betting/live').allowed, false);
+  assert.equal(robotsDecision('User-agent: *\nDisallow: /\nUser-agent: BetvimaPublicPageFeasibility\nAllow: /betting/live', '/betting/live').allowed, true);
+  assert.equal(robotsDecision('User-agent: *\nDisallow: /foo/*\nDisallow: /bar/*', '/betting/live').allowed, true);
+});
