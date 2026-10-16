@@ -131,9 +131,18 @@ fun casinoDemoFailure(code: Int?, confirmedDemo: Boolean, persian: Boolean): Str
         401, 403 -> if (persian)
             "برای اجرای بازی آزمایشی دوباره وارد حساب کاربری شوید."
         else "Please sign in again to start this demo."
+        422 -> if (persian)
+            "سرویس‌دهنده، اجرای دموی این بازی را نپذیرفت. هیچ مبلغی از کیف پول کسر نشده است. عنوان دیگری را امتحان کنید؛ این درخواست به بازی با پول واقعی تبدیل نمی‌شود."
+        else "The provider rejected this title's demo. No wallet funds were charged. Try another game; this request never switches to real-money play."
+        404 -> if (persian)
+            "این عنوان دیگر در فهرست بازی‌های سرویس‌دهنده موجود نیست. فهرست را به‌روزرسانی کنید."
+        else "This title is no longer in the provider catalogue. Refresh the game list."
         429 -> if (persian)
             "درخواست‌های زیادی ارسال شده است؛ کمی بعد دوباره تلاش کنید."
         else "Too many requests. Please retry in a moment."
+        502, 503, 504 -> if (persian)
+            "ارتباط با سرویس‌دهنده بازی موقتاً برقرار نیست. کمی بعد دوباره تلاش کنید؛ هیچ شرط پولی ارسال نشده است."
+        else "The game provider is temporarily unavailable. Retry later; no real-money wager was submitted."
         else -> if (confirmedDemo) {
             if (persian)
                 "اجرای دموی تأییدشده ناموفق بود؛ ممکن است مشکل موقت اتصال یا سرویس‌دهنده باشد. دوباره تلاش کنید. اگر ادامه داشت، کد خطا را گزارش دهید."
