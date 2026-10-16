@@ -66,9 +66,9 @@ fun ReferenceAnimatedBottomNav(
         Row(
             Modifier.fillMaxWidth()
                 .background(Color(0xFF101114))
-                .navigationBarsPadding()
-                .padding(horizontal = 4.dp, vertical = 7.dp)
-                .heightIn(min = 72.dp),
+                // Activity fits system windows; don't pad the nav a second time.
+                .padding(horizontal = 4.dp, vertical = 5.dp)
+                .heightIn(min = 67.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             bottomDestinations.forEach { item ->
@@ -86,7 +86,7 @@ fun ReferenceAnimatedBottomNav(
                     if (active) 24.dp else 0.dp,
                     animationSpec = tween(220), label = "independentTabUnderline")
                 Column(
-                    Modifier.weight(1f).heightIn(min = 69.dp)
+                    Modifier.weight(1f).heightIn(min = 64.dp)
                         .clickable(role = Role.Tab) { onNavigate(item.id) }
                         .semantics { this.selected = active }
                         .padding(top = 9.dp, bottom = 4.dp),
