@@ -8,7 +8,8 @@
  */
 import assert from 'node:assert/strict';
 import { createHash, createHmac } from 'node:crypto';
-import { Client } from 'pg';
+import pg from 'pg';
+const { Client } = pg;
 import { GET } from '../../src/app/api/webhooks/softaggregator/route';
 import { closeDb } from '../../src/server/db';
 
