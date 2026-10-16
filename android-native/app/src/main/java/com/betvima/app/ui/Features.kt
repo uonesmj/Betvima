@@ -33,7 +33,7 @@ fun FeaturePage(state: AppState, model: AppViewModel) {
     }
     // Never draw the legacy full notifications page, including for a single
     // frame while BetvimaApp's navigation compatibility effect runs.
-    if (state.feature == Feature.NOTIFICATIONS) return
+    if (state.feature == Feature.NOTIFICATIONS || state.feature == Feature.VIP) return
     val title = when (state.feature) {
         Feature.PROFILE -> tr(state.lang, "Your profile", "پروفایل کاربری")
         Feature.BONUSES -> tr(state.lang, "My Bonuses", "بونوس‌های من")
