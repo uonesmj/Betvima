@@ -140,6 +140,30 @@ async function main(){
       "where user_id=$1 and status='posted'",[uid]);
     assert.equal(Number(ledgerTotal.rows[0].total),await balance(),
       'available wallet matches append-only ledger total');
+    // Distinct signed call IDs against the SAME native wallet must also
+    // serialize: four overlapping stakes cannot each spend the same funds.
+    // Re-enable only the ephemeral synthetic account for this test; the
+    // protected Production environment remains outside this test runner.
+    await sql.query("update nova.profiles set kyc_status='verified' where id=$1", [uid]);
+    const beforeOverdraft = await balance();
+    const stake = Math.floor(beforeOverdraft * 0.6);
+    assert(stake >= 20 && stake < beforeOverdraft);
+    const competing = await Promise.all(Array.from({length:4}, (_, index) =>
+      signed('debit', 'isolated-competing-stake-' + index, stake)));
+    const approved = competing.filter((x) => x.error === 0);
+    const denied = competing.filter((x) => x.error === 1);
+    assert.equal(approved.length, 1, 'at most one of four competing wagers can spend the funds');
+    assert.equal(denied.length, 3, 'other competing wagers must fail insufficient-funds');
+    assert.equal(await balance(), beforeOverdraft - stake,
+      'wallet must never overdraw when distinct signed wagers race');
+    const duplicate = await signed('debit', 'isolated-competing-stake-0', stake);
+    assert.deepEqual(duplicate, competing[0], 'replayed result must stay identical after concurrency');
+    const afterOverdraft = await sql.query(
+      "select coalesce(sum(amount_minor),0)::bigint as total from nova.wallet_transactions " +
+      "where user_id=$1 and status='posted'", [uid]);
+    assert.equal(Number(afterOverdraft.rows[0].total), await balance(),
+      'all concurrent outcomes must reconcile with the append-only ledger');
+
     process.stdout.write('CASINO_INTEGRATED_SIGNED_CALLBACK_POSTGRES_PASS; synthetic USD, no production funds\n');
   } finally {
     await sql.end();
