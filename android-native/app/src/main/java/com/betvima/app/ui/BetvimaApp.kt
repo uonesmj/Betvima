@@ -36,6 +36,7 @@ fun BetvimaApp(model: AppViewModel) {
     var accountOpen by rememberSaveable { mutableStateOf(false) }
     var languageOpen by rememberSaveable { mutableStateOf(false) }
     var searchOpen by rememberSaveable { mutableStateOf(false) }
+    var notificationPopupOpen by rememberSaveable { mutableStateOf(false) }
     var initialSplash by rememberSaveable { mutableStateOf(true) }
     var affiliateOpen by rememberSaveable { mutableStateOf(false) }
     LaunchedEffect(Unit) {
@@ -56,6 +57,25 @@ fun BetvimaApp(model: AppViewModel) {
         }
     }
     LifecycleEventEffect(Lifecycle.Event.ON_PAUSE) { isForeground = false }
+    // Refresh unread notifications while the app is foregrounded. No mock counters.
+    LaunchedEffect(state.signedIn, isForeground) {
+        if (state.signedIn && isForeground) {
+            model.refreshNotifications(silent = true)
+            while (true) {
+                delay(45_000)
+                model.refreshNotifications(silent = true)
+            }
+        }
+    }
+    // Compatibility: catch any older in-app route that still selects the
+    // historical full Notifications feature, and redirect to the overlay.
+    LaunchedEffect(state.feature) {
+        if (state.feature == Feature.NOTIFICATIONS) {
+            notificationPopupOpen = true
+            model.feature(Feature.NONE)
+            if (state.signedIn) model.refreshNotifications(silent = true)
+        }
+    }
 
     LaunchedEffect(state.notice) {
         val message = state.notice
@@ -86,11 +106,12 @@ fun BetvimaApp(model: AppViewModel) {
             }
         }
     }
-    BackHandler(enabled = affiliateOpen || languageOpen || searchOpen || state.betDetailVisible || state.showLogin ||
+    BackHandler(enabled = notificationPopupOpen || affiliateOpen || languageOpen || searchOpen || state.betDetailVisible || state.showLogin ||
         state.showSlip || state.detail != null ||
         state.feature != Feature.NONE || accountOpen || drawer.isOpen ||
         state.tab != Tab.HOME || state.homeMode == HomeMode.TOP_BETS) {
         when {
+            notificationPopupOpen -> notificationPopupOpen = false
             affiliateOpen -> affiliateOpen = false
             languageOpen -> languageOpen = false
             state.betDetailVisible -> model.closeBet()
@@ -118,7 +139,11 @@ fun BetvimaApp(model: AppViewModel) {
                         if (state.signedIn) accountOpen = true else model.showLogin(true)
                     },
                     openLanguage = { languageOpen = true },
-                    openAffiliate = { affiliateOpen = true })
+                    openAffiliate = { affiliateOpen = true },
+                    openNotifications = {
+                        notificationPopupOpen = true
+                        if (state.signedIn) model.refreshNotifications(silent = true)
+                    })
             }
         ) {
         Scaffold(
@@ -136,8 +161,11 @@ fun BetvimaApp(model: AppViewModel) {
                             if (state.signedIn) accountOpen = true else model.showLogin(true)
                         },
                         onRegister = { model.showLogin(true, register = true) },
-                        onNotifications = { model.feature(Feature.NOTIFICATIONS) },
-                        unread = state.notifications.count { it.readAt == null },
+                        onNotifications = {
+                            notificationPopupOpen = true
+                            if (state.signedIn) model.refreshNotifications(silent = true)
+                        },
+                        unread = state.notificationUnreadCount,
                         walletBalance = if (state.signedIn && state.wallet != null)
                             com.betvima.app.data.money(state.wallet!!.availableMinor,
                                 state.wallet!!.currency) else null,
@@ -230,6 +258,31 @@ fun BetvimaApp(model: AppViewModel) {
         }
         }
 
+        if (notificationPopupOpen) {
+            NotificationsPopup(
+                state = state,
+                model = model,
+                onDismiss = { notificationPopupOpen = false },
+                onLogin = {
+                    notificationPopupOpen = false
+                    model.showLogin(true)
+                },
+                onNavigate = { destination ->
+                    notificationPopupOpen = false
+                    when (destination) {
+                        NotificationDestination.BONUSES -> model.feature(Feature.BONUSES)
+                        NotificationDestination.WALLET -> model.tab(Tab.WALLET)
+                        NotificationDestination.CASINO -> model.feature(Feature.CASINO)
+                        NotificationDestination.SPORTS -> model.tab(Tab.SPORTS)
+                        NotificationDestination.BETS -> model.tab(Tab.BETS)
+                        NotificationDestination.SUPPORT -> model.feature(Feature.SUPPORT)
+                        NotificationDestination.VIP -> model.feature(Feature.VIP)
+                        NotificationDestination.AFFILIATE -> affiliateOpen = true
+                        NotificationDestination.PROFILE -> model.feature(Feature.PROFILE)
+                    }
+                }
+            )
+        }
         if (state.showSlip) SlipSheet(state, model)
         if (state.showLogin) LoginSheet(state, model)
         if (state.betDetailVisible) BetReceiptSheet(state, model)
