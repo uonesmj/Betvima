@@ -126,8 +126,13 @@ fun casinoCategoryLabel(category: String, persian: Boolean): String =
  * Never claim that a failed demo is a real-money wallet issue or offer a
  * wagering fallback while wallet callbacks are disabled.
  */
-fun casinoDemoFailure(code: Int?, confirmedDemo: Boolean, persian: Boolean): String =
-    when (code) {
+fun casinoDemoFailure(code: Int?, confirmedDemo: Boolean, persian: Boolean,
+    serverCode: String? = null): String =
+    if (serverCode == "CASINO_DEMO_UNAVAILABLE") {
+        if (persian)
+            "این بازی در حال حاضر دموی قابل اجرا ندارد. بازی با پول واقعی شروع نشده است. می‌توانید دموی Aviator را امتحان کنید."
+        else "This game has no available demo session right now. No real-money game was started. Try the confirmed Aviator demo."
+    } else when (code) {
         401, 403 -> if (persian)
             "برای اجرای بازی آزمایشی دوباره وارد حساب کاربری شوید."
         else "Please sign in again to start this demo."
