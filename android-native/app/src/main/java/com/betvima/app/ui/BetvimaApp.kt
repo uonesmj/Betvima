@@ -14,6 +14,9 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.saveable.rememberSaveableStateHolder
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -41,6 +44,7 @@ fun BetvimaApp(model: AppViewModel) {
     var affiliateOpen by rememberSaveable { mutableStateOf(false) }
     var vipOpen by rememberSaveable { mutableStateOf(false) }
     var bonusOpen by rememberSaveable { mutableStateOf(false) }
+    var appWindowOrigin by remember { mutableStateOf(Offset.Zero) }
     LaunchedEffect(Unit) {
         // Motion is an entrance identity, not a proxy for backend progress.
         delay(1050)
@@ -166,6 +170,10 @@ fun BetvimaApp(model: AppViewModel) {
                     })
             }
         ) {
+        Box(Modifier.fillMaxSize().onGloballyPositioned {
+            val origin = it.positionInWindow()
+            if (appWindowOrigin != origin) appWindowOrigin = origin
+        }) {
         Scaffold(
             containerColor = if (state.feature == Feature.CASINO)
                 Color(0xFF141414) else Palette.paper,
@@ -208,7 +216,6 @@ fun BetvimaApp(model: AppViewModel) {
                             "casino" -> model.feature(Feature.CASINO)
                             "bets" -> model.tab(Tab.BETS)
                             "sports" -> model.tab(Tab.SPORTS)
-                            "language" -> languageOpen = true
                         }
                     }
                 )
@@ -275,6 +282,12 @@ fun BetvimaApp(model: AppViewModel) {
                         color = Palette.green)
                 }
             }
+        }
+        PickFlightOverlay84(
+            flight = state.pickFlight,
+            windowOrigin = appWindowOrigin,
+            onLanded = model::finishPickFlight
+        )
         }
         }
 
