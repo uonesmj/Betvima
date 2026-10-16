@@ -73,11 +73,12 @@ internal fun AffiliateCinematicPhoto(
     Box(modifier.clip(RoundedCornerShape(corner.dp))
         .background(Brush.linearGradient(listOf(Color(0xFF0A1426),
             scene.accent.copy(alpha=.58f),Color(0xFF111827))))) {
-        if(bitmap!=null) {
+        val resolvedBitmap = bitmap
+        if(resolvedBitmap!=null) {
             // One image only. The old Crop + Fit double layer repeated
             // the stadium and athletes as horizontal bands in gallery cards.
             Image(
-                bitmap = bitmap,
+                bitmap = resolvedBitmap,
                 contentDescription = null,
                 contentScale = ContentScale.Crop,
                 alignment = Alignment.Center,
