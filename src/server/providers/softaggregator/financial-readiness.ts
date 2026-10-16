@@ -2,9 +2,10 @@ import type { Db } from '@/lib/ports/db';
 
 /**
  * Validate the actual installed DB schema, not a feature flag alone.
- * Pending financial migrations 0208..0212 have deliberately NOT been
- * installed in production. Wager launches must fail closed until their
- * append-only audit and idempotent rollback protections exist.
+ * Canonical financial migrations 0208..0212 were registered and installed
+ * in production on 2026-10-16. Wager launches must still fail closed if their
+ * append-only audit and idempotent rollback protections are missing or altered.
+ * This schema check is NOT an approval for wagering or supplier certification.
  *
  * A config boolean is insufficient: a deploy may keep older DB schema.
  */
