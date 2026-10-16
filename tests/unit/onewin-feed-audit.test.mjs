@@ -58,7 +58,7 @@ describe('1Win feed audit - offline / read only', () => {
     expect(calls).toEqual(['/v3/leagues', '/v3/events/live', '/v3/events', '/v3/odds', '/v3/odds']);
     expect(report.discoveredFixtures).toBe(2);
     expect(report.sampledLiveFixtures).toBe(1);
-    expect(report.samples.find((sample) => sample.id === 5)?.staleLiveMarketsOver60s).toBe(1);
+    expect(report.samples.find((sample) => sample.id === 5)?.liveMarketsLastPriceChangeOver60s).toBe(1);
     expect(report.bookmakerParityVerified).toBe(false);
     expect(report.sportsbookLiveEnabled).toBe(false);
   });
