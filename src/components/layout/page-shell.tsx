@@ -530,7 +530,7 @@ export function MobileTabBar() {
   const selected = menuOpen ? 'menu'
     : pathname === '/casino' || pathname.startsWith('/casino/') ? 'casino'
     : pathname === '/bets' || pathname.startsWith('/bets/') ? 'bets'
-    : pathname === '/live' || pathname.startsWith('/live/') || pathname.startsWith('/sports/') ? 'sports'
+    : pathname === '/live' || pathname.startsWith('/live/') || pathname === '/sports' || pathname.startsWith('/sports/') ? 'sports'
     : pathname === '/' ? 'home' : '';
 
   useEffect(() => {
