@@ -23,7 +23,8 @@ fun ReferenceMenuDrawer(
     model: AppViewModel,
     dismiss: () -> Unit,
     openAccount: () -> Unit,
-    openLanguage: () -> Unit
+    openLanguage: () -> Unit,
+    openAffiliate: () -> Unit
 ) {
     ModalDrawerSheet(modifier = Modifier.width(306.dp),
         drawerContainerColor = Color(0xFF1B1C20)) {
@@ -99,7 +100,7 @@ fun ReferenceMenuDrawer(
             DrawerRow(tr(state.lang, "VIP Club", "باشگاه VIP"),
                 Icons.Default.Star) { dismiss(); model.feature(Feature.VIP) }
             DrawerRow(tr(state.lang, "Affiliate", "همکاری در فروش"),
-                Icons.Default.Groups) { dismiss(); model.feature(Feature.AFFILIATE) }
+                Icons.Default.Groups) { dismiss(); openAffiliate() }
             Spacer(Modifier.height(8.dp))
             HorizontalDivider(color = Color.White.copy(alpha = .12f))
             Spacer(Modifier.height(10.dp))
