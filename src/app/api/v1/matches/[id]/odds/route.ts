@@ -93,6 +93,7 @@ export const GET = withErrorHandling(
         status: market.status ?? 'open',
         specifier:
           market.specifier == null ? null : String(market.specifier),
+        isLive: Boolean(market.isLive),
         selections: Array.isArray(market.selections)
           ? market.selections.map((selection: any) => ({
               id: String(selection.id),
@@ -229,6 +230,7 @@ export const GET = withErrorHandling(
       status: market.status ?? 'open',
       specifier:
         market.specifier == null ? null : String(market.specifier),
+      isLive: Boolean(market.isLive),
       selections: Array.isArray(market.selections)
         ? market.selections.map((selection: any) => ({
             id: String(selection.id),
