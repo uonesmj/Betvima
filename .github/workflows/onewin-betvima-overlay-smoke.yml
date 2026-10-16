@@ -1,0 +1,22 @@
+name: Betvima read-only browser smoke
+on:
+  pull_request:
+    paths:
+      - 'scripts/onewin-betvima-overlay-smoke.mjs'
+      - '.github/workflows/onewin-betvima-overlay-smoke.yml'
+permissions:
+  contents: read
+jobs:
+  visual-smoke:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - run: node --check scripts/onewin-betvima-overlay-smoke.mjs
+      - name: Render three publicly observed fixture quotes on isolated Betvima browser
+        run: node scripts/onewin-betvima-overlay-smoke.mjs
