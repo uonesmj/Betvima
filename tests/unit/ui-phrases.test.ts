@@ -142,7 +142,7 @@ describe('sport-specific outcomes and market-line translation', () => {
 
 
 describe('Persian footer, bonus, VIP and affiliate completion', () => {
-  it('replaces the legacy footer with the fixed native five-tab footer without mutating localization', () => {
+  it('keeps the information footer and native five-tab navigation visible together', () => {
     const footer = readFileSync('src/components/layout/page-shell.tsx', 'utf8');
     expect(footer).toContain('data-native-footer-parity');
     expect(footer).toContain('data-locale-stable');
@@ -156,9 +156,16 @@ describe('Persian footer, bonus, VIP and affiliate completion', () => {
     expect(footer).toContain("label('Sports', 'ورزش‌ها')");
     expect(footer).toContain('bg-[#101114]');
     expect(footer).toContain('text-[#087FF5]');
-    expect(footer).toContain('<MobileTabBar onSupportOpen={onSupportOpen} />');
-    expect(footer).not.toContain('Every match.');
-    expect(footer).not.toContain('Featured clubs');
+    expect(footer).toContain('<MobileTabBar onSupportOpen={() => setSupportSheetOpen(true)} />');
+    expect(footer).toContain('aria-label="BetVima site footer"');
+    expect(footer).toContain('copy("Language", "زبان")');
+    expect(footer).toContain('translate="no" lang="fa" dir="rtl"');
+    expect(footer).toContain('translate="no" lang="en" dir="ltr"');
+    expect(footer).toContain('pb-[calc(6rem+env(safe-area-inset-bottom))]');
+    expect(footer).toContain('Every match.');
+    expect(footer).toContain('Featured clubs');
+    expect(footer).toContain('Payment methods');
+    expect(footer.match(/<MobileTabBar onSupportOpen=/g)).toHaveLength(1);
   });
 
   it('localizes full bonus statuses and FAQ wording', () => {
