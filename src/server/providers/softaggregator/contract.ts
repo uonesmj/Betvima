@@ -1,6 +1,8 @@
 import { createHash, createHmac, timingSafeEqual } from 'node:crypto';
 
 export const SOFTAGGREGATOR_CURRENCY = 'USD';
+/** Server-authoritative BetVima minimum wager: USD 0.10 (10 cents). */
+export const SOFTAGGREGATOR_MIN_BET_MINOR = 10n;
 export const CALLBACK_TOLERANCE_MS = 30_000;
 export const MAX_CALLBACK_AMOUNT_MINOR = 1_000_000_000_000n;
 

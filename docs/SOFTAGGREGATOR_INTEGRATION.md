@@ -151,7 +151,7 @@ locked funds and currency mismatches are not spendable.
 one database transaction. Callback `call_id` is idempotent, per-round
 advisory locks serialize competing movements, and source/wallet metadata
 retain the USD amount, local amount and rate snapshot. Rollbacks can refund
-only a prior successful unrefunded debit, once. Minimum bet is 20 USD cents.
+only a prior successful unrefunded debit, once. Minimum BetVima wallet bet is 10 USD cents (USD 0.10); individual provider games may enforce a higher minimum.
 User wallet limits and existing account restrictions are checked server-side.
 
 **Pilot release:** The app 0.63.0 checks authenticated

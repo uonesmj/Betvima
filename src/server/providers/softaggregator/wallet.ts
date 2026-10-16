@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 import { getDb } from '@/server/db';
 import type { Db } from '@/lib/ports/db';
-import { callbackResponse, type SignedCallback, userIdFromUsername } from './contract';
+import { callbackResponse, SOFTAGGREGATOR_MIN_BET_MINOR, type SignedCallback, userIdFromUsername } from './contract';
 import { casinoRealMoneyUserAllowed } from './client';
 import { fiatCasinoBalance, settleFiatCasinoCallback } from './fiat-wallet';
 import { casinoFinancialSchemaReady } from './financial-readiness';
@@ -210,7 +210,7 @@ export async function settleCasinoCallback(event: SignedCallback): Promise<Casin
       error = 2;
     } else if (isDebit &&
       (before < event.amountMinor! ||
-        (!event.rollback && (!accountCanBet(p) || p.currency !== currency || event.amountMinor! < 20n ||
+        (!event.rollback && (!accountCanBet(p) || p.currency !== currency || event.amountMinor! < SOFTAGGREGATOR_MIN_BET_MINOR ||
           !(await limitAllows(tx, userId, event.amountMinor!, p)))))) {
       error = 1;
     } else {

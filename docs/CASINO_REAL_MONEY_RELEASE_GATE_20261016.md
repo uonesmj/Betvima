@@ -74,7 +74,7 @@ settled supplier round or a gambling licence.
 
 ## USD/native-wallet invariants
 
-- Supplier bet and win use integer USD cents, minimum normal bet 20 cents.
+- Supplier bet and win use integer USD cents, minimum normal bet 10 cents.
 - A BetVima USD wallet keeps cents. IRT keeps toman ledger units and IRR
   keeps rial ledger units; conversion is server-only with a timestamped
   Arzhaam rate. A fiat debit rounds up; winnings round down; cancellation

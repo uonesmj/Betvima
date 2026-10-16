@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 import type { Db } from '@/lib/ports/db';
 import { getUsdIrtRate } from '@/server/providers/arzhaam/client';
-import type { SignedCallback } from './contract';
+import { SOFTAGGREGATOR_MIN_BET_MINOR, type SignedCallback } from './contract';
 import {
   casinoLocalMinorToUsd, casinoUsdToLocalMinor, exactCasinoRefund,
   validateCasinoFxSnapshot, type CasinoCurrency, type CasinoFxSnapshot,
@@ -212,7 +212,7 @@ export async function settleFiatCasinoCallback(
       error = 2;
     } else if (isDebit && (local > before ||
       (!event.rollback && (!allowed(roundCurrencyProfile) ||
-         roundCurrencyProfile.currency !== currency || event.amountMinor! < 20n ||
+         roundCurrencyProfile.currency !== currency || event.amountMinor! < SOFTAGGREGATOR_MIN_BET_MINOR ||
         !(await limitsAllow(tx, userId, currency, local, roundCurrencyProfile)))))) {
       error = 1;
     } else if (local < 1n) {

@@ -6,6 +6,7 @@ import { casinoRealMoneyUserAllowed } from '@/server/providers/softaggregator/cl
 import { casinoPlayerMayLaunch } from '@/server/providers/softaggregator/wallet';
 import { fiatCasinoBalance } from '@/server/providers/softaggregator/fiat-wallet';
 import { verifiedCasinoLocation } from '@/server/providers/softaggregator/edge-location';
+import { SOFTAGGREGATOR_MIN_BET_MINOR } from '@/server/providers/softaggregator/contract';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -19,7 +20,7 @@ export const GET = withErrorHandling('casino.eligibility', async (ctx, request: 
   const { user } = await withUser(request, ctx);
   const walletCurrency = user.currency;
   const base = {
-    currency: 'USD', walletCurrency, minStakeUsdMinor: '20',
+    currency: 'USD', walletCurrency, minStakeUsdMinor: SOFTAGGREGATOR_MIN_BET_MINOR.toString(),
     realMoneyEnabled: false, availableUsdMinor: '0',
   };
   if (!casinoRealMoneyUserAllowed(user.id)) {

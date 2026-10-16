@@ -204,11 +204,24 @@ describe('Casino fiat settle staging contract', () => {
     expect(t.posted).toHaveLength(2);
   });
 
-  it('denies wagers with insufficient available funds or under 20 USD cents', async () => {
+  it('denies wagers with insufficient available funds or under 10 USD cents', async () => {
     const t = fakeDb('IRR', 1000n);
-    expect((await settleFiatCasinoCallback(t.db, userId, event('too-small', 'debit', 19n))).error).toBe(1);
+    expect((await settleFiatCasinoCallback(t.db, userId, event('too-small', 'debit', 9n))).error).toBe(1);
     expect((await settleFiatCasinoCallback(t.db, userId, event('no-funds', 'debit', 200n))).error).toBe(1);
     expect(t.posted).toHaveLength(0);
+  });
+
+  it('debits exactly the native value of the USD 0.10 minimum for IRT and IRR', async () => {
+    for (const [currency, initial, debited] of [
+      ['IRT', 2_500_000n, '-25000'],
+      ['IRR', 25_000_000n, '-250000'],
+    ] as const) {
+      const t = fakeDb(currency, initial);
+      expect((await settleFiatCasinoCallback(t.db, userId,
+        event('ten-cent-' + currency, 'debit', 10n))).error).toBe(0);
+      expect(t.posted).toHaveLength(1);
+      expect(t.posted[0]?.p_amount_minor).toBe(debited);
+    }
   });
 
   it('rejects missing round IDs before making any ledger change', async () => {
