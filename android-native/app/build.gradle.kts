@@ -10,8 +10,8 @@ android {
         applicationId = "com.betvima.app"
         minSdk = 26
         targetSdk = 35
-        versionCode = 71
-        versionName = "0.71.0"
+        versionCode = 72
+        versionName = "0.72.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         buildConfigField("String", "API_BASE_URL", "\"https://betvima.com/\"")
         // Server-side allowlist and finance gate remain authoritative for any wagering.
@@ -37,6 +37,7 @@ dependencies {
     val composeBom = platform("androidx.compose:compose-bom:2024.12.01")
     implementation(composeBom)
     implementation("androidx.activity:activity-compose:1.9.3")
+    implementation("androidx.core:core-splashscreen:1.0.1")
     implementation("androidx.compose.ui:ui")
     implementation("androidx.compose.ui:ui-tooling-preview")
     implementation("androidx.compose.foundation:foundation")
