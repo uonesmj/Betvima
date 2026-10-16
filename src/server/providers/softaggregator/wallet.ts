@@ -85,7 +85,6 @@ async function limitAllows(db: Db, userId: string, amount: bigint, p: ProfileRow
 export async function settleCasinoCallback(event: SignedCallback): Promise<CasinoBalanceResponse> {
   const userId = userIdFromUsername(event.username);
   if (!userId || !casinoRealMoneyUserAllowed(userId)) return { error: 2, balance: 0 };
-  if (event.rollback && event.action !== 'credit') return { error: 2, balance: 0 };
   const db = getDb();
   const currencyProfile = await getProfile(db, userId);
   if (!currencyProfile) return { error: 2, balance: 0 };
