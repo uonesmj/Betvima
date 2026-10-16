@@ -28,6 +28,7 @@ import com.betvima.app.data.ApiClient
 import com.betvima.app.data.ApiFailure
 import com.betvima.app.data.str
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.delay
 import org.json.JSONObject
 
 /** UI validation only; all rules are enforced again by the first-party server. */
@@ -43,17 +44,29 @@ internal fun signupValidation(
     else -> null
 }
 internal val registrationCurrencies = listOf("USD", "IRR")
+/** Accept an affiliate code or a BetVima invite URL without trusting link text. */
+internal fun normalizeSignupReferral(raw: String): String {
+    val input=raw.trim()
+    val code=Regex("(?:[?&](?:ref|referral|referralCode|gift|code)=)([A-Za-z0-9_-]{3,64})",
+        RegexOption.IGNORE_CASE).find(input)?.groupValues?.get(1) ?: input
+    return code.trim().uppercase().filter { it in 'A'..'Z' || it in '0'..'9' || it=='-' || it=='_' }
+        .take(64)
+}
+internal fun referralCodeWellFormed(value:String):Boolean =
+    value.isEmpty() || Regex("^[A-Z0-9_-]{3,64}$").matches(value)
+
 
 internal fun signupPayload(
     email: String, password: String, currency: String, referral: String,
     locale: String, token: String
 ): JSONObject = JSONObject().apply {
     require(currency in registrationCurrencies) { "Unsupported signup currency" }
+    require(referralCodeWellFormed(normalizeSignupReferral(referral))) { "Invalid referral code" }
     put("email", email.trim())
     put("password", password)
     put("currency", currency)
     // API zod schema accepts an optional string, not an explicit JSON null.
-    referral.trim().uppercase().takeIf { it.isNotBlank() }
+    normalizeSignupReferral(referral).takeIf { it.isNotBlank() }
         ?.let { put("referralCode", it) }
     put("ageConfirmed", true)
     put("acceptTerms", true)
@@ -240,6 +253,8 @@ fun NativeRegistrationForm(
     var currency by rememberSaveable { mutableStateOf("IRR") }
     var currencyMenuOpen by rememberSaveable { mutableStateOf(false) }
     var referral by rememberSaveable { mutableStateOf("") }
+    var referralCheck by remember { mutableStateOf("empty") }
+    var referralApplied by rememberSaveable { mutableStateOf<Boolean?>(null) }
     var adult by rememberSaveable { mutableStateOf(false) }
     var terms by rememberSaveable { mutableStateOf(false) }
     var token by remember { mutableStateOf<String?>(null) }
@@ -276,6 +291,17 @@ fun NativeRegistrationForm(
                 "ارتباط با سرویس امنیتی برقرار نشد. اینترنت را بررسی کنید.")
             null
         }
+    }
+
+    LaunchedEffect(referral,registrationCompleted) {
+        referralCheck = if(referral.isBlank()) "empty" else "checking"
+        if(referral.isBlank() || registrationCompleted) return@LaunchedEffect
+        delay(550)
+        val code=normalizeSignupReferral(referral)
+        referralCheck = if (!referralCodeWellFormed(code)) "invalid"
+        else try {
+            if(api.validateReferralCode(code)) "verified" else "invalid"
+        } catch (_:Exception) { "unavailable" }
     }
 
     val issue = signupValidation(email, password, confirmation, adult, terms)
@@ -606,17 +632,44 @@ fun NativeRegistrationForm(
             }
             OutlinedTextField(
                 value = referral,
-                onValueChange = {
-                    referral = it.uppercase().filter { ch ->
-                        ch in 'A'..'Z' || ch in '0'..'9' || ch == '_' || ch == '-'
-                    }.take(64)
-                },
+                onValueChange = { referral=normalizeSignupReferral(it) },
                 label = { Text(tr(lang, "Referral / gift code (optional)",
                     "کد معرف یا هدیه (اختیاری)")) },
                 leadingIcon = { Icon(Icons.Default.CardGiftcard, null) },
                 colors = fieldColors, singleLine = true,
                 shape = RoundedCornerShape(15.dp), modifier = Modifier.fillMaxWidth()
             )
+
+            if(referral.isNotBlank()) {
+                Row(Modifier.fillMaxWidth().padding(horizontal=5.dp),
+                    verticalAlignment=Alignment.CenterVertically) {
+                    Icon(
+                        when(referralCheck) {
+                            "verified" -> Icons.Default.Verified
+                            "invalid" -> Icons.Default.ErrorOutline
+                            else -> Icons.Default.Info
+                        },null,
+                        tint=when(referralCheck) {
+                            "verified" -> Palette.green
+                            "invalid" -> Palette.red
+                            else -> Palette.muted
+                        },modifier=Modifier.size(16.dp))
+                    Spacer(Modifier.width(7.dp))
+                    Text(when(referralCheck) {
+                        "verified" -> tr(lang,"Referral code verified. Attribution is completed by the server.",
+                            "کد معرف معتبر است؛ ثبت نهایی معرفی توسط سرور انجام می‌شود.")
+                        "invalid" -> tr(lang,"Invalid or inactive referral code.",
+                            "کد معرف معتبر یا فعال نیست.")
+                        "unavailable" -> tr(lang,"Referral verification unavailable. Retry before registering.",
+                            "اعتبارسنجی کد در دسترس نیست؛ قبل از ثبت‌نام دوباره تلاش کنید.")
+                        else -> tr(lang,"Checking referral code…","در حال بررسی کد معرف…")
+                    },fontSize=11.sp,color=when(referralCheck){
+                        "verified" -> Palette.green
+                        "invalid" -> Palette.red
+                        else -> Palette.muted
+                    },modifier=Modifier.weight(1f))
+                }
+            }
 
             Surface(color = Color(0xFFF4F6F9), shape = RoundedCornerShape(15.dp),
                 border = BorderStroke(1.dp, edge)) {
@@ -790,12 +843,22 @@ fun NativeRegistrationForm(
                     busy = true
                     error = null
                     try {
+                        val code=normalizeSignupReferral(referral)
+                        if(code.isNotBlank() &&
+                           (!referralCodeWellFormed(code) || !api.validateReferralCode(code))) {
+                            referralCheck="invalid"
+                            error=tr(lang,"This referral code cannot be used. Correct it or leave it empty.",
+                                "این کد معرف قابل استفاده نیست؛ اصلاحش کنید یا خالی بگذارید.")
+                            return@launch
+                        }
                         val result = api.registerAccount(signupPayload(
                             email, password, currency, referral,
                             if (lang == Lang.FA) "fa" else "en", currentToken))
                         // Preserve the user-entered password only in volatile memory,
                         // so the explicit login button can use the same credentials.
                         emailConfirmationRequired = result.optBoolean("emailConfirmationRequired", false)
+                        referralApplied = if(referral.isBlank()) null
+                            else result.optBoolean("attributionFromCookie",false)
                         registrationCompleted = true
                         confirmation = ""
                         showPassword = false
