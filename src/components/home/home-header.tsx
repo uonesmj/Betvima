@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { Menu, UserRound, UserPlus } from 'lucide-react';
 import { useApp } from '@/components/layout/providers';
 import { TopWalletBalance } from '@/components/layout/top-wallet-balance';
+import { NotificationsBell } from '@/components/layout/notifications-bell';
 const NAV = [
   ['Top', '/'],
   ['Live', '/live'],
@@ -64,6 +65,7 @@ export function HomeHeader({ onMenu }: { onMenu?: () => void }) {
             )}
 
 
+            <div className="shrink-0"><NotificationsBell /></div>
             <button
               type="button"
               onClick={onMenu}
