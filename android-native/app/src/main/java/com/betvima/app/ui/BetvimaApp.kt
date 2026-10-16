@@ -57,6 +57,37 @@ fun BetvimaApp(model: AppViewModel) {
         initialSplash = false
     }
     val snackbars = remember { SnackbarHostState() }
+    var notificationBaseline87 by remember(state.signedIn) { mutableStateOf(false) }
+    var observedNotificationIds87 by remember(state.signedIn) {
+        mutableStateOf(emptySet<String>())
+    }
+    // Present new, server-authenticated settlement events while the app is open.
+    // This is not background push and does not create synthetic win/loss results.
+    LaunchedEffect(state.notifications, state.signedIn, isForeground) {
+        if (!state.signedIn) {
+            notificationBaseline87 = false
+            observedNotificationIds87 = emptySet()
+        } else {
+            val incoming = state.notifications
+            if (!notificationBaseline87) {
+                observedNotificationIds87 = incoming.map { it.id }.toSet()
+                notificationBaseline87 = true
+            } else if (isForeground) {
+                val newResults = incoming.filter { note ->
+                    note.id !in observedNotificationIds87 && note.eventKey in setOf(
+                        "bet.won", "bet.lost", "bet.void", "bet.partial"
+                    )
+                }
+                observedNotificationIds87 += incoming.map { it.id }
+                if (deviceSettings87.appAlerts() && deviceSettings87.betAlerts()) {
+                    newResults.take(3).forEach { note ->
+                        snackbars.showSnackbar(note.title + " · " + note.body)
+                    }
+                }
+            }
+        }
+    }
+
     val pageStates = rememberSaveableStateHolder()
     val drawer = rememberDrawerState(DrawerValue.Closed)
     val drawerScope = rememberCoroutineScope()
