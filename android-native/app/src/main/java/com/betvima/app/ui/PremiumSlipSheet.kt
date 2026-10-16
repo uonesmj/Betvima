@@ -389,13 +389,15 @@ private fun MainAccountSlipControls(
                 if(!state.signedIn) {
                     model.showSlip(false)
                     model.showLogin(true)
-                } else if(review != null) {
+                } else if(review != null &&
+                    com.betvima.app.BuildConfig.ENABLE_WAGERING) {
                     model.placeMainBet(stake)
                 } else {
                     model.quote(stake)
                 }
             },
-            enabled=canQuote && !state.busy && !state.mainBetUncertain,
+            enabled=canQuote && !state.busy && !state.mainBetUncertain &&
+                (review == null || com.betvima.app.BuildConfig.ENABLE_WAGERING),
             modifier=Modifier.fillMaxWidth().height(47.dp),
             shape=RoundedCornerShape(13.dp),
             colors=ButtonDefaults.buttonColors(
@@ -408,13 +410,19 @@ private fun MainAccountSlipControls(
             Spacer(Modifier.width(8.dp))
             Text(when {
                 !state.signedIn -> tr(lang,"Login to bet","ورود برای شرط")
+                review != null && !com.betvima.app.BuildConfig.ENABLE_WAGERING ->
+                    tr(lang,"Wagering not authorized","ثبت شرط غیرفعال است")
                 review != null -> tr(lang,"Confirm and place bet","تأیید و ثبت شرط")
                 else -> tr(lang,"Get official quote","دریافت استعلام رسمی")
             },fontWeight=FontWeight.Black,fontSize=12.sp)
         }
         if (!compact) Text(tr(lang,
-            "A server-signed quote is required. Your balance is charged only after your explicit confirmation.",
-            "ثبت شرط فقط پس از استعلام رسمی سرور و تأیید صریح شما انجام می‌شود."),
+            if(com.betvima.app.BuildConfig.ENABLE_WAGERING)
+                "A server-signed quote is required. Funds move only after explicit confirmation."
+            else "Main Account: quote preview only until licensed real-money operation is enabled."
+            ,if(com.betvima.app.BuildConfig.ENABLE_WAGERING)
+                "ثبت شرط فقط پس از استعلام رسمی سرور و تأیید شما انجام می‌شود."
+            else "حساب اصلی: صرفاً استعلام، تا زمان تأیید فعال‌سازی شرط با پول واقعی."),
             color=slipMuted,fontSize=9.sp,lineHeight=13.sp,maxLines=2)
     }
 }
