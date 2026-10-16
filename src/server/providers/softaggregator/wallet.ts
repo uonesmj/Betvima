@@ -5,6 +5,7 @@ import { callbackResponse, type SignedCallback, userIdFromUsername } from './con
 import { casinoRealMoneyUserAllowed } from './client';
 import { fiatCasinoBalance, settleFiatCasinoCallback } from './fiat-wallet';
 import { casinoFinancialSchemaReady } from './financial-readiness';
+import { casinoCountryPermitted } from './jurisdiction';
 
 export type CasinoBalanceResponse = { error: 0 | 1 | 2; balance: number };
 type ProfileRow = {
@@ -33,7 +34,7 @@ async function getProfile(db: Db, userId: string): Promise<ProfileRow | null> {
 }
 function accountCanBet(p: ProfileRow): boolean {
   return p.status === 'active' && p.age_verified === true && p.kyc_status === 'verified' &&
-    !p.self_excluded && !p.restricted;
+    casinoCountryPermitted(p.country) && !p.self_excluded && !p.restricted;
 }
 export async function casinoPlayerMayLaunch(userId: string): Promise<{ country: string }> {
   if (!casinoRealMoneyUserAllowed(userId)) throw new Error('CASINO_REAL_MONEY_DISABLED');
