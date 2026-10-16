@@ -38,12 +38,11 @@ private val bottomDestinations = listOf(
     BvDestination("home", "Home", "خانه", Icons.Default.Home),
     BvDestination("casino", "Casino", "کازینو", Icons.Default.Casino),
     BvDestination("bets", "My Bets", "شرط‌های من", Icons.Default.ReceiptLong),
-    BvDestination("sports", "Sports", "ورزش‌ها", Icons.Default.SportsSoccer),
-    BvDestination("language", "Language", "زبان", Icons.Default.Language)
+    BvDestination("sports", "Sports", "ورزش‌ها", Icons.Default.SportsSoccer)
 )
 
 /**
- * Fixed native navigation: six independent actions on one continuous dark
+ * Fixed native navigation: five independent actions on one continuous dark
  * background. No extra outer card, rounded frame, border or shadow.
  */
 @Composable
