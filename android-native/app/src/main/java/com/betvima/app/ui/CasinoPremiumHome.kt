@@ -5,6 +5,9 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.animateDpAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.Spring
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.snapping.rememberSnapFlingBehavior
@@ -28,6 +31,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -54,9 +58,10 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.math.abs
 
-private val ink = Color(0xFF0A1020)
-private val panel = Color(0xFF1A273B)
-private val secondary = Color(0xFF9BAFCB)
+private val ink = Color(0xFF141414)
+private val panel = Color(0xFF272729)
+private val secondary = Color(0xFFA2A3AD)
+private val edge = Color(0xFF38383B)
 private val accent = Color(0xFF087CFA)
 
 /** Real API catalogue only; no simulated games, promo percentages or fake player counters. */
@@ -448,23 +453,54 @@ fun CasinoPremiumHome(
 
 @Composable
 private fun CasinoMainTabs(category: String, lang: Lang, onSelect: (String) -> Unit) {
-    Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp),
-        horizontalArrangement = Arrangement.spacedBy(5.dp)) {
-        listOf(Triple("", "Lobby", "لابی"),
-            Triple("live", "Live Casino", "کازینو زنده"),
-            Triple("crash", "Quick games", "بازی‌های سریع")).forEach { (key, en, fa) ->
-            val selected = category == key
-            val fill by animateColorAsState(
-                if (selected) accent else panel,
-                animationSpec = tween(240), label = "casinoMainTabColor")
-            Box(Modifier.weight(1f).height(48.dp).clip(CircleShape)
-                .background(fill)
-                .border(1.dp, if (selected) Color(0xFF5BAFFF)
-                    else Color(0xFF2B3C56), CircleShape)
-                .casinoBounce { onSelect(key) }, contentAlignment = Alignment.Center) {
-                Text(tr(lang, en, fa), color = Color.White, fontSize = 12.sp,
-                    fontWeight = FontWeight.Bold, maxLines = 1,
-                    overflow = TextOverflow.Ellipsis)
+    val options = listOf(
+        Triple("", "Lobby", "لابی"),
+        Triple("live", "Live Casino", "کازینو زنده"),
+        Triple("crash", "Quick games", "بازی‌های سریع")
+    )
+    val selectedIndex = when (category) {
+        "live" -> 1
+        "crash", "instant" -> 2
+        else -> 0
+    }
+    val shape = RoundedCornerShape(28.dp)
+    BoxWithConstraints(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)
+            .shadow(3.dp, shape)
+            .clip(shape)
+            .background(Color(0xFF28282A))
+            .border(1.dp, edge, shape)
+            .padding(4.dp)
+    ) {
+        val tabWidth = maxWidth / 3
+        val animatedOffset by animateDpAsState(
+            targetValue = tabWidth * selectedIndex,
+            animationSpec = spring(
+                dampingRatio = .82f,
+                stiffness = Spring.StiffnessMediumLow
+            ), label = "casinoSegmentSlide"
+        )
+        Box(Modifier.offset(x = animatedOffset)
+            .width(tabWidth).height(48.dp)
+            .shadow(5.dp, RoundedCornerShape(24.dp))
+            .clip(RoundedCornerShape(24.dp))
+            .background(accent))
+        Row(Modifier.fillMaxWidth()) {
+            options.forEachIndexed { index, (key, en, fa) ->
+                Box(
+                    Modifier.weight(1f).height(48.dp)
+                        .clip(RoundedCornerShape(24.dp))
+                        .clickable { if (selectedIndex != index) onSelect(key) },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(tr(lang, en, fa),
+                        color = if (selectedIndex == index) Color.White
+                            else Color(0xFFE4E4E7),
+                        fontSize = 12.sp,
+                        fontWeight = if (selectedIndex == index) FontWeight.Bold
+                            else FontWeight.SemiBold,
+                        maxLines = 1, overflow = TextOverflow.Ellipsis)
+                }
             }
         }
     }
