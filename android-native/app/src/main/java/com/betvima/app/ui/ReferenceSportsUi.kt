@@ -254,10 +254,10 @@ private fun PremiumHomeSectionEmblem(
             cornerColor = Palette.blue
         }
     }
-    Box(Modifier.size(61.dp), contentAlignment = Alignment.Center) {
+    Box(Modifier.size(49.dp), contentAlignment = Alignment.Center) {
         Surface(
-            modifier = Modifier.size(57.dp),
-            shape = RoundedCornerShape(19.dp),
+            modifier = Modifier.size(46.dp),
+            shape = RoundedCornerShape(16.dp),
             color = Color.White,
             border = BorderStroke(1.dp, endColor.copy(alpha = .30f)),
             shadowElevation = 4.dp
@@ -266,7 +266,7 @@ private fun PremiumHomeSectionEmblem(
                 modifier = Modifier.fillMaxSize().padding(4.dp)
                     .background(
                         Brush.linearGradient(listOf(startColor, endColor)),
-                        RoundedCornerShape(15.dp)
+                        RoundedCornerShape(13.dp)
                     ),
                 contentAlignment = Alignment.Center
             ) {
@@ -291,12 +291,12 @@ private fun PremiumHomeSectionEmblem(
                     imageVector = emblem,
                     contentDescription = null,
                     tint = Color.White,
-                    modifier = Modifier.size(29.dp)
+                    modifier = Modifier.size(23.dp)
                 )
             }
         }
         Surface(
-            modifier = Modifier.align(Alignment.BottomEnd).size(22.dp),
+            modifier = Modifier.align(Alignment.BottomEnd).size(17.dp),
             shape = CircleShape,
             color = cornerColor,
             border = BorderStroke(2.dp, Color.White),
@@ -308,7 +308,7 @@ private fun PremiumHomeSectionEmblem(
                         identity == HomeSectionIdentity.TOP_BETS ||
                         identity == HomeSectionIdentity.UPCOMING
                     ) Palette.ink else Color.White,
-                    modifier = Modifier.size(12.dp)
+                    modifier = Modifier.size(9.dp)
                 )
             }
         }
@@ -319,7 +319,7 @@ private fun PremiumHomeSectionEmblem(
 fun ReferenceSectionHeader(lang: Lang, titleEn: String, titleFa: String,
     icon: ImageVector, tint: Color, onAll: () -> Unit
 ) {
-    Row(Modifier.fillMaxWidth().padding(top = 17.dp, bottom = 12.dp),
+    Row(Modifier.fillMaxWidth().padding(top = 12.dp, bottom = 9.dp),
         verticalAlignment = Alignment.CenterVertically) {
         PremiumHomeSectionEmblem(homeSectionIdentity(titleEn), icon, tint)
         Spacer(Modifier.width(11.dp))
@@ -457,7 +457,7 @@ fun ReferenceTournamentRibbon(state: AppState, model: AppViewModel) {
         LazyRow(
             Modifier.fillMaxWidth(),
             state = ribbonState,
-            contentPadding = PaddingValues(horizontal = 9.dp, vertical = 11.dp),
+            contentPadding = PaddingValues(horizontal = 9.dp, vertical = 6.dp),
             horizontalArrangement = Arrangement.spacedBy(4.dp),
             flingBehavior = rememberPremiumFlingBehavior()
         ) {
