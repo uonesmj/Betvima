@@ -130,7 +130,7 @@ describe('SoftAggregator financial callback behavior (isolated DB contract)', ()
     }
   });
 
-  it('still pays a valid previously earned credit after the player's KYC expires', async () => {
+  it('still pays a valid earned credit when KYC subsequently expires', async () => {
     const t = makeFakeDb();
     t.setKycStatus('expired');
     vi.mocked(getDb).mockReturnValue(t.fake as unknown as Db);
