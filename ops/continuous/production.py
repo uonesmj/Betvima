@@ -313,7 +313,9 @@ def main(sha):
         os.chown(folder,owner.pw_uid,owner.pw_gid)
         for name in files:os.chown(pathlib.Path(folder)/name,owner.pw_uid,owner.pw_gid)
     port=None
-    for number in range(3002,3020):
+    # Revisions remain online for safe rollback; search beyond the legacy 18 ports.
+    # Only bind localhost ports that the OS confirms are actually free.
+    for number in range(3002,3100):
         with socket.socket() as listener:
             try:listener.bind(('127.0.0.1',number));port=number;break
             except OSError:pass
