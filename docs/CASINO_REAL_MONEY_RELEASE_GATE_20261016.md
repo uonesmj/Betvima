@@ -7,13 +7,27 @@ settled supplier round or a gambling licence.
 
 ## Verified on 2026-10-16
 
-- Supabase Production project `mqygiufkubxxxjodsycu` has `nova.wallet_transactions`
-  and existing legacy wallet infrastructure but **does not have**
-  `nova.softaggregator_callback_receipts` or `nova.softaggregator_round_fx`.
-  Their presence was checked read-only through catalog metadata.
-- Financial migrations `0208`, `0209`, `0210`, `0211`, `0212` exist under
-  `docs/pending-financial-migrations/` only; they are NOT registered in
-  the Production migrations directory. Do not copy/migrate blindly.
+- **Update, 2026-10-16 20:07 UTC:** Supabase Production project
+  `mqygiufkubxxxjodsycu` now has the three casino financial tables:
+  `nova.softaggregator_callback_receipts`, `nova.softaggregator_round_fx`
+  and `nova.softaggregator_player_wallet_bindings`.
+- Financial migrations `0208`–`0212` were applied together after successful
+  isolated restore/rehearsal, registered as **five non-baseline entries** with
+  SHA-256 checksums in `nova.migrations`, and copied unmodified to
+  `supabase/migrations/` in merged PR #126 (commit `ae7775bd`).
+  Production read-only verification found **69 wallets, 630 ledger rows,
+  zero wallet/ledger balance discrepancies** and a passing
+  `casinoFinancialSchemaReady` check.
+- A verified **financial-only** snapshot (excluding the large odds history
+  *table data*, but retaining its schema) and an older verified, successfully
+  restore-tested complete backup are retained. This is not a newly verified
+  full Production backup after the schema change.
+- **Still unverified:** supplier-origin actually signed callbacks, authentic
+  debit/credit/reversal rounds and independent supplier-history reconciliation,
+  secret rotation, edge Worker deployment, lawful operator authorization
+  and a compliant geographic/KYC pilot. The new tables have no real callback
+  receipts or bound players. Never interpret a passing schema check as
+  approval to enable real-money gaming.
 - The runtime financial-readiness gate verifies active RLS on all financial tables,
   valid unique rollback indexes, enabled immutable audit triggers, validated
   rollback foreign keys/check constraints and no anonymous/authenticated
@@ -26,6 +40,10 @@ settled supplier round or a gambling licence.
   live provider settlement.
 - Before real-money launch, account state must be active; age and KYC must
   be verified; responsible gaming restrictions and stake/loss limits apply.
+  Code already checks age/KYC and short-lived signed Cloudflare country
+  claims. The Worker template at `ops/cloudflare/casino-geo-worker.js` is
+  **not deployed by GitHub or this document**, and its presence does not
+  establish trustworthy production geolocation.
   `SOFTAGGREGATOR_ALLOWED_COUNTRIES` requires explicit two-letter
   entries for independently licensed jurisdictions and refuses empty or
   invalid input. A profile's declared jurisdiction is not evidence of
