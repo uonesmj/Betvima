@@ -103,7 +103,7 @@ async function limitsAllow(db: Db, userId: string, currency: FiatCurrency, amoun
   return true;
 }
 
-/** Requires pending DB migrations 0208+0209. Do not enable on production before verification. */
+/** Requires installed, validated financial schema; never infer supplier, geo or legal sign-off from schema alone. */
 export async function settleFiatCasinoCallback(
   db: Db, userId: string, event: SignedCallback, boundCurrency: FiatCurrency,
 ): Promise<BalanceResult> {
