@@ -145,7 +145,7 @@ private data class SportChip(val key: String, val en: String, val fa: String,
     val icon: androidx.compose.ui.graphics.vector.ImageVector)
 
 private val sportChips = listOf(
-    SportChip("top", "All Live", "همه زنده‌ها", Icons.Default.Whatshot),
+    SportChip("top", "Top", "برتر", Icons.Default.Whatshot),
     SportChip("football", "Football", "فوتبال", Icons.Default.SportsSoccer),
     SportChip("basketball", "Basketball", "بسکتبال", Icons.Default.SportsBasketball),
     SportChip("tennis", "Tennis", "تنیس", Icons.Default.SportsTennis),
@@ -201,7 +201,9 @@ fun ReferenceSportRibbon(state: AppState, model: AppViewModel, live: Boolean = f
                     }
                 }) {
                 Box(Modifier.fillMaxSize().padding(11.dp)) {
-                    Text(tr(state.lang, sport.en, sport.fa),
+                    Text(if (live && sport.key == "top")
+                        tr(state.lang, "All Live", "همه زنده‌ها")
+                        else tr(state.lang, sport.en, sport.fa),
                         modifier = Modifier.align(Alignment.TopStart),
                         color = if (active) Color.White else Palette.text,
                         maxLines = 1, overflow = TextOverflow.Ellipsis,
