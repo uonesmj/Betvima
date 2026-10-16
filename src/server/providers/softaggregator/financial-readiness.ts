@@ -95,8 +95,8 @@ export async function casinoFinancialSchemaReady(db: Pick<Db, 'queryOne'>): Prom
             (to_regclass('nova.softaggregator_round_fx')),
             (to_regclass('nova.softaggregator_player_wallet_bindings'))
           ) rel(table_oid)
-          cross join (values ('anon'), ('authenticated')) role(role_name)
-          where has_table_privilege(role.role_name, rel.table_oid,
+          cross join (values ('anon'), ('authenticated')) principal(principal_name)
+          where has_table_privilege(principal.principal_name, rel.table_oid,
             'INSERT, UPDATE, DELETE')
         )
       ) as ready
