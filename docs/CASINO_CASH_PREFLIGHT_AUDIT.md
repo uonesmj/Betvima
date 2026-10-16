@@ -25,6 +25,10 @@ callback, set feature flags, or mutate the database. It reads:
   entries and immutable per-round currency.
 - Presence **only**, not values, of runtime credentials, callback/edge
   signing keys, explicit country list and the single pilot ID.
+- Aggregate number of active, age-verified and KYC-verified profiles; whether
+  the configured pilot profile itself has independently marked both checks
+  verified. This is a database status audit, **not** proof that KYC was
+  conducted to a legal standard. No user IDs are printed.
 
 The output is a single JSON object with aggregate counts and statuses. No
 wallet balance, player ID, provider credentials, salts, session links or
