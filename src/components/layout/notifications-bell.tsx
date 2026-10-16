@@ -57,7 +57,7 @@ export function NotificationsBell() {
       setInbox(result);
       setError('');
     } catch {
-      if (!silent) setError(copy('Notifications are temporarily unavailable.', 'اعلان‌ها موقتاً در دسترس نیستند.'));
+      if (!silent) setError(fa ? 'اعلان‌ها موقتاً در دسترس نیستند.' : 'Notifications are temporarily unavailable.');
     } finally {
       if (!silent) setLoading(false);
     }
