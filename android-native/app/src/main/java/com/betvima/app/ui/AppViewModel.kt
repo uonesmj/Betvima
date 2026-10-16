@@ -129,17 +129,19 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         return api.casinoEligibility(token)
     }
 
-    suspend fun casinoRealMoneyLaunch(gameId: String): String {
+    suspend fun casinoRealMoneyLaunch(gameId: String, language: Lang): String {
         val token = vault.accessToken(api)?.takeIf(String::isNotBlank)
             ?: throw ApiFailure(401, "Please sign in to open a game")
         // Backend rechecks test-account allowlist and wallet eligibility.
-        return api.casinoLaunch(token, gameId, demo = false)
+        return api.casinoLaunch(token, gameId, demo = false,
+            lang = if (language == Lang.FA) "fa" else "en")
     }
 
-    suspend fun casinoDemoLaunch(gameId: String): String {
+    suspend fun casinoDemoLaunch(gameId: String, language: Lang): String {
         val token = vault.accessToken(api)?.takeIf(String::isNotBlank)
             ?: throw ApiFailure(401, "Please sign in to open a demo game")
-        return api.casinoLaunch(token, gameId, demo = true)
+        return api.casinoLaunch(token, gameId, demo = true,
+            lang = if (language == Lang.FA) "fa" else "en")
     }
 
     fun tournament(leagueKey: String) {
