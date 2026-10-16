@@ -9,6 +9,8 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.supervisorScope
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
@@ -259,6 +261,16 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         detailRequestNumber++
         mutable.update { it.copy(detail = null, detailLoading = false) }
     }
+    /** Purely informational odds polling. Never touches quotes or financial state. */
+    suspend fun slipProbabilitySnapshots(matchIds: List<String>): Map<String, SlipOddsMatch> =
+        coroutineScope {
+            require(matchIds.size <= 20)
+            val semaphore = Semaphore(4)
+            matchIds.distinct().map { id ->
+                async { semaphore.withPermit { api.slipProbabilityOdds(id) } }
+            }.awaitAll().associateBy { it.matchId }
+        }
+
     fun togglePick(match: Match, market: Market, selection: Selection) {
         if (!match.bettingAvailable || !market.available || !selection.available ||
             (match.live && !state.value.liveEnabled)) return
