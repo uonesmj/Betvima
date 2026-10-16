@@ -24,6 +24,7 @@ const SECTIONS: { group: string; items: { href: string; label: string }[] }[] = 
       { href: '/admin/bets', label: 'Bets' },
       { href: '/admin/payments', label: 'Payments' },
       { href: '/admin/support', label: 'Live Support' },
+      { href: '/admin/notifications', label: 'Notifications' },
       { href: '/admin/wallet-adjustments', label: 'Wallet adjustments' },
     ],
   },
