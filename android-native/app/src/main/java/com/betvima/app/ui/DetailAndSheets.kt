@@ -17,6 +17,9 @@ import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -257,10 +260,17 @@ fun MatchDetailPage(state: AppState, model: AppViewModel) {
                             Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 5.dp),
                                 horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                 row.forEach { selection ->
-                                    Box(Modifier.weight(1f)) {
+                                    var oddCenter by remember(selection.id) {
+                                        mutableStateOf(Offset.Unspecified)
+                                    }
+                                    Box(Modifier.weight(1f)
+                                        .onGloballyPositioned {
+                                            oddCenter = it.boundsInWindow().center
+                                        }) {
                                         OddsChoice(match, market, selection, state.liveEnabled,
                                             state.picks.any { it.selectionId == selection.id }) {
-                                            model.togglePick(match, market, selection)
+                                            model.togglePick(match, market, selection,
+                                                oddCenter.x, oddCenter.y)
                                         }
                                     }
                                 }
