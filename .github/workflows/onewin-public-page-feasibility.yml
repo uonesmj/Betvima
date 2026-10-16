@@ -1,0 +1,21 @@
+name: 1Win public page feasibility - offline tests
+on:
+  pull_request:
+    paths:
+      - 'scripts/onewin-public-page-check.mjs'
+      - 'tests/research/onewin-public-page.test.mjs'
+      - 'docs/onewin-direct-feed-feasibility.md'
+      - '.github/workflows/onewin-public-page-feasibility.yml'
+permissions:
+  contents: read
+jobs:
+  offline-tests:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+      - run: node --check scripts/onewin-public-page-check.mjs
+      - run: node --test tests/research/onewin-public-page.test.mjs
