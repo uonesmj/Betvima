@@ -111,11 +111,6 @@ fun CasinoPremiumHome(
     val liveTab = category == "live" && provider.isBlank() && query.isBlank()
     val quickTab = category in setOf("crash","instant") && provider.isBlank() && query.isBlank()
     val isLobby = category.isBlank() && provider.isBlank() && query.isBlank()
-    val pageIndex = when {
-        liveTab -> 1
-        quickTab -> 2
-        else -> 0
-    }
     val allKnown = remember(games, showcase) {
         (games + showcase.values.flatten()).distinctBy { it.id }
     }
