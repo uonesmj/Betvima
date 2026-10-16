@@ -575,29 +575,32 @@ private fun A78Faq(lang:Lang) {
 @Composable
 private fun A78Join(lang:Lang,active:Boolean,onRegister:()->Unit,
                     onLogin:()->Unit) {
-    Box(Modifier.fillMaxWidth().height(336.dp).padding(12.dp)) {
+    // Dedicated image and action regions: old 336dp overlay crammed the
+    // photograph, headline and two actions into the same fixed-height box.
+    Column(Modifier.fillMaxWidth().padding(12.dp)
+        .clip(RoundedCornerShape(24.dp))
+        .background(Color(0xFF10253A))) {
         AffiliateCinematicPhoto(
-            AffiliateScene.JOIN,Modifier.fillMaxSize(),active,corner=24,
-            showMark=false
-        ) {
-            Column(Modifier.align(Alignment.BottomStart).padding(18.dp)) {
-                A78Eyebrow(tr(lang,"JOIN BETVIMA PARTNERS","به همکاران BetVima بپیوندید"))
-                Spacer(Modifier.height(9.dp))
-                Text(tr(lang,"Grow together","با هم رشد کنیم"),
-                    color=Color.White,fontSize=30.sp,fontWeight=FontWeight.Black)
-                Text(tr(lang,
-                    "Create your own partner account and start exploring.",
-                    "حساب اختصاصی بسازید و امکانات همکاری را کشف کنید."),
-                    color=a78Muted,fontSize=12.sp,lineHeight=19.sp)
-                Spacer(Modifier.height(16.dp))
-                A78Action(tr(lang,"Become an affiliate","شروع همکاری"),
-                    onRegister,Modifier.fillMaxWidth())
-                TextButton(onClick=onLogin,
-                    modifier=Modifier.align(Alignment.CenterHorizontally)) {
-                    Text(tr(lang,"Already a partner? Log in",
-                        "حساب دارید؟ ورود"),
-                        color=Color.White,fontSize=12.sp)
-                }
+            scene = AffiliateScene.JOIN,
+            modifier = Modifier.fillMaxWidth().height(205.dp),
+            active = active, corner = 0, showMark = false
+        )
+        Column(Modifier.fillMaxWidth().padding(19.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            A78Eyebrow(tr(lang,"JOIN BETVIMA PARTNERS","به همکاران BetVima بپیوندید"))
+            Text(tr(lang,"Grow together","با هم رشد کنیم"),
+                color=Color.White,fontSize=28.sp,fontWeight=FontWeight.Black)
+            Text(tr(lang,
+                "Create your partner account and discover the tools available to you.",
+                "حساب همکاری بسازید و ابزارهای قابل دسترس را بررسی کنید."),
+                color=a78Muted,fontSize=12.sp,lineHeight=19.sp)
+            Spacer(Modifier.height(2.dp))
+            A78Action(tr(lang,"Become an affiliate","شروع همکاری"),
+                onRegister,Modifier.fillMaxWidth())
+            TextButton(onClick=onLogin,
+                modifier=Modifier.align(Alignment.CenterHorizontally)) {
+                Text(tr(lang,"Already a partner? Log in","حساب دارید؟ ورود"),
+                    color=Color.White,fontSize=12.sp)
             }
         }
     }
