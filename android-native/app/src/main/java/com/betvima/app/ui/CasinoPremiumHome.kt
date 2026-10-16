@@ -3,7 +3,11 @@ package com.betvima.app.ui
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.border
+import androidx.compose.foundation.gestures.snapping.rememberSnapFlingBehavior
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -27,6 +31,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
@@ -49,9 +54,9 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.math.abs
 
-private val ink = Color(0xFF141414)
-private val panel = Color(0xFF292929)
-private val secondary = Color(0xFFA1A2AD)
+private val ink = Color(0xFF0A1020)
+private val panel = Color(0xFF1A273B)
+private val secondary = Color(0xFF9BAFCB)
 private val accent = Color(0xFF087CFA)
 
 /** Real API catalogue only; no simulated games, promo percentages or fake player counters. */
@@ -448,9 +453,15 @@ private fun CasinoMainTabs(category: String, lang: Lang, onSelect: (String) -> U
         listOf(Triple("", "Lobby", "لابی"),
             Triple("live", "Live Casino", "کازینو زنده"),
             Triple("crash", "Quick games", "بازی‌های سریع")).forEach { (key, en, fa) ->
-            Box(Modifier.weight(1f).height(46.dp).clip(CircleShape)
-                .background(if (category == key) accent else panel)
-                .clickable { onSelect(key) }, contentAlignment = Alignment.Center) {
+            val selected = category == key
+            val fill by animateColorAsState(
+                if (selected) accent else panel,
+                animationSpec = tween(240), label = "casinoMainTabColor")
+            Box(Modifier.weight(1f).height(48.dp).clip(CircleShape)
+                .background(fill)
+                .border(1.dp, if (selected) Color(0xFF5BAFFF)
+                    else Color(0xFF2B3C56), CircleShape)
+                .casinoBounce { onSelect(key) }, contentAlignment = Alignment.Center) {
                 Text(tr(lang, en, fa), color = Color.White, fontSize = 12.sp,
                     fontWeight = FontWeight.Bold, maxLines = 1,
                     overflow = TextOverflow.Ellipsis)
@@ -469,7 +480,7 @@ private fun CasinoShortcuts(category: String, lang: Lang, onSelect: (String) -> 
             .forEach { (key, name, icon) ->
                 Row(Modifier.weight(1f).height(42.dp).clip(RoundedCornerShape(12.dp))
                     .background(if (category == key) accent else panel)
-                    .clickable { onSelect(key) },
+                    .casinoBounce { onSelect(key) },
                     horizontalArrangement = Arrangement.Center,
                     verticalAlignment = Alignment.CenterVertically) {
                     Icon(icon, null, tint = Color.White, modifier = Modifier.size(16.dp))
@@ -489,18 +500,21 @@ private fun CasinoSearch(
     Row(Modifier.fillMaxWidth().padding(horizontal = 15.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         Row(Modifier.weight(1f).height(54.dp).clip(RoundedCornerShape(15.dp))
-            .background(panel).clickable(onClick = onGames).padding(horizontal = 13.dp),
+            .background(panel)
+            .border(1.dp, Color(0xFF334766), RoundedCornerShape(15.dp))
+            .casinoBounce(onGames).padding(horizontal = 13.dp),
             verticalAlignment = Alignment.CenterVertically) {
             Icon(Icons.Default.Search, null, tint = secondary, modifier = Modifier.size(20.dp))
             Spacer(Modifier.width(9.dp))
             Text(tr(lang,"Search","جست‌وجو"), color = secondary, fontSize = 14.sp)
         }
         Row(Modifier.weight(.85f).height(54.dp).clip(RoundedCornerShape(15.dp))
-            .background(panel).clickable(onClick = onProviders),
+            .background(panel)
+            .border(1.dp, Color(0xFF334766), RoundedCornerShape(15.dp))
+            .casinoBounce(onProviders),
             horizontalArrangement = Arrangement.Center,
             verticalAlignment = Alignment.CenterVertically) {
-            Icon(Icons.Default.GridView, null, tint = Color.White,
-                modifier = Modifier.size(19.dp))
+            CasinoBrandMark(size = 18.dp)
             Spacer(Modifier.width(7.dp))
             Text(tr(lang,"Providers","سازندگان"), color = Color.White,
                 fontSize = 13.sp, fontWeight = FontWeight.Bold)
@@ -540,9 +554,14 @@ private fun CasinoGenreTabs(
 private fun CasinoGenrePill(
     title: String, icon: ImageVector, selected: Boolean, onClick: () -> Unit
 ) {
+    val fill by animateColorAsState(
+        if (selected) accent else panel,
+        animationSpec = tween(230), label = "casinoGenreColor")
     Row(Modifier.height(44.dp).clip(RoundedCornerShape(13.dp))
-        .background(if (selected) accent else panel)
-        .clickable(onClick = onClick).padding(horizontal = 14.dp),
+        .background(fill)
+        .border(1.dp, if (selected) Color(0xFF63B9FF)
+            else Color(0xFF344864), RoundedCornerShape(13.dp))
+        .casinoBounce(onClick).padding(horizontal = 14.dp),
         verticalAlignment = Alignment.CenterVertically) {
         Icon(icon, null, tint = Color.White, modifier = Modifier.size(18.dp))
         Spacer(Modifier.width(7.dp))
@@ -624,8 +643,10 @@ private fun CasinoGameShelf(
     Column(verticalArrangement = Arrangement.spacedBy(9.dp)) {
         Row(Modifier.fillMaxWidth().padding(horizontal = 15.dp),
             verticalAlignment = Alignment.CenterVertically) {
-            Icon(icon, null, tint = Color.White, modifier = Modifier.size(23.dp))
-            Spacer(Modifier.width(9.dp))
+            CasinoBrandMark(size = 18.dp)
+            Spacer(Modifier.width(5.dp))
+            Icon(icon, null, tint = Color(0xFFB9CDF5), modifier = Modifier.size(19.dp))
+            Spacer(Modifier.width(8.dp))
             Row(Modifier.weight(1f)
                 .then(if (onSeeAll == null) Modifier else Modifier.clickable { onSeeAll() }),
                 verticalAlignment = Alignment.CenterVertically) {
@@ -645,10 +666,29 @@ private fun CasinoGameShelf(
             }
         }
         LazyRow(state = scroll, contentPadding = PaddingValues(horizontal = 15.dp),
+            flingBehavior = rememberSnapFlingBehavior(lazyListState = scroll),
             horizontalArrangement = Arrangement.spacedBy(7.dp)) {
             items(games, key = { it.id }) { game ->
                 CasinoCover(game, width, launching == game.id, realEnabled,
-                    { onDemo(game) }, { onReal(game) })
+                    { onDemo(game) }, { onReal(game) },
+                    modifier = Modifier.graphicsLayer {
+                        val tile = scroll.layoutInfo.visibleItemsInfo
+                            .firstOrNull { it.key == game.id }
+                        if (tile != null) {
+                            val viewport = (scroll.layoutInfo.viewportStartOffset +
+                                scroll.layoutInfo.viewportEndOffset) / 2f
+                            val itemCenter = tile.offset + tile.size / 2f
+                            val spread = (scroll.layoutInfo.viewportEndOffset -
+                                scroll.layoutInfo.viewportStartOffset).coerceAtLeast(1)
+                            val delta = ((itemCenter - viewport) / spread)
+                                .coerceIn(-1f, 1f)
+                            val centrality = 1f - kotlin.math.abs(delta)
+                            scaleX = .96f + .04f * centrality
+                            scaleY = .96f + .04f * centrality
+                            rotationY = -5f * delta
+                            alpha = .84f + .16f * centrality
+                        }
+                    })
             }
         }
     }
@@ -667,14 +707,17 @@ private fun CasinoArrow(icon: ImageVector, enabled: Boolean, onClick: () -> Unit
 @Composable
 private fun CasinoCover(
     game: CasinoGame, width: Dp, launching: Boolean, realEnabled: Boolean,
-    onDemo: () -> Unit, onReal: () -> Unit
+    onDemo: () -> Unit, onReal: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
-    Column(Modifier.width(width), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+    Column(modifier.width(width), verticalArrangement = Arrangement.spacedBy(4.dp)) {
         Box(Modifier.fillMaxWidth().height(width * 1.37f)
             .clip(RoundedCornerShape(13.dp))
             .background(Brush.verticalGradient(
                 listOf(Color(0xFF2046B0), Color(0xFF652983))))
-            .clickable(onClick = onDemo)) {
+            .border(1.dp, Color(0xFF48639C).copy(alpha = .55f),
+                RoundedCornerShape(13.dp))
+            .casinoBounce(onDemo)) {
             if (game.imageUrl != null) {
                 AsyncImage(game.imageUrl, game.name, modifier = Modifier.fillMaxSize(),
                     contentScale = ContentScale.Crop)
