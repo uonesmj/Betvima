@@ -129,6 +129,7 @@ fun PremiumTournamentSheet(
                     PremiumLeagueChoice(
                         name = first.league,
                         subtitle = first.country,
+                        match = first,
                         count = entry.value.size,
                         checked = selected == entry.key,
                         onClick = { onSelect(entry.key); animatedDismiss() })
@@ -146,7 +147,7 @@ fun PremiumTournamentSheet(
 
 @Composable
 private fun PremiumLeagueChoice(name: String, subtitle: String, count: Int,
-    checked: Boolean, onClick: () -> Unit) {
+    checked: Boolean, match: Match? = null, onClick: () -> Unit) {
     Surface(
         modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
         shape = RoundedCornerShape(17.dp),
@@ -156,11 +157,13 @@ private fun PremiumLeagueChoice(name: String, subtitle: String, count: Int,
         shadowElevation = if (checked) 3.dp else 1.dp
     ) {
         Row(Modifier.padding(13.dp), verticalAlignment = Alignment.CenterVertically) {
-            Surface(color = if (checked) Palette.green else Palette.subtle,
-                shape = CircleShape) {
-                Icon(if (checked) Icons.Default.Check else Icons.Default.EmojiEvents, null,
-                    tint = if (checked) Palette.ink else Palette.blue,
-                    modifier = Modifier.padding(11.dp).size(20.dp))
+            if (match != null) {
+                LeagueIdentityBadge(match, size = 42)
+            } else {
+                Surface(color = Palette.green, shape = CircleShape) {
+                    Icon(Icons.Default.Check, null, tint = Palette.ink,
+                        modifier = Modifier.padding(11.dp).size(20.dp))
+                }
             }
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {

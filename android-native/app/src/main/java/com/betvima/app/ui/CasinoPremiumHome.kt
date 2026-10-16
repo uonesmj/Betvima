@@ -111,21 +111,6 @@ fun CasinoPremiumHome(
     val liveTab = category == "live" && provider.isBlank() && query.isBlank()
     val quickTab = category in setOf("crash","instant") && provider.isBlank() && query.isBlank()
     val isLobby = category.isBlank() && provider.isBlank() && query.isBlank()
-    val pageIndex = when {
-        liveTab -> 1
-        quickTab -> 2
-        else -> 0
-    }
-    var previousPage by remember { mutableIntStateOf(pageIndex) }
-    val pageEntrance = remember { Animatable(0f) }
-    LaunchedEffect(pageIndex) {
-        if (pageIndex != previousPage) {
-            val direction = if (pageIndex > previousPage) 1 else -1
-            previousPage = pageIndex
-            pageEntrance.snapTo(45f * direction)
-            pageEntrance.animateTo(0f, tween(360, easing = FastOutSlowInEasing))
-        }
-    }
     val allKnown = remember(games, showcase) {
         (games + showcase.values.flatten()).distinctBy { it.id }
     }
@@ -186,18 +171,16 @@ fun CasinoPremiumHome(
     val realEnabled = eligibility?.realMoneyEnabled == true
     val providerNames = (providers + allKnown.map { it.provider } + provider)
         .filter { it.isNotBlank() }.distinct().sorted()
-    fun top() { scope.launch { listState.animateScrollToItem(0) } }
+    fun top() { scope.launch { listState.smoothBackToTop() } }
     Box(Modifier.fillMaxSize().background(ink).nestedScroll(nestedScroll)) {
         LazyColumn(
             state = listState,
-            modifier = Modifier.fillMaxSize().graphicsLayer {
-                translationX = pageEntrance.value
-            },
+            modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(top = 12.dp, bottom = 22.dp),
             verticalArrangement = Arrangement.spacedBy(18.dp)
         ) {
             item(key = "casino-tabs") {
-                CasinoMainTabs(category, state.lang) { onCategory(it); top() }
+                CasinoMainTabs(category, state.lang) { onCategory(it) }
             }
             item(key = "casino-hero") {
                 CasinoCarousel(highlighted.take(5), state.lang, onDemo)

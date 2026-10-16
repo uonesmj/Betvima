@@ -150,11 +150,7 @@ private fun A78Hero(lang: Lang, active: Boolean, onRegister: () -> Unit,
             scene=AffiliateScene.HERO,
             modifier=Modifier.fillMaxWidth().height(208.dp),
             active=active,corner=22,showMark=false
-        ) {
-            A78Logo(Modifier.align(Alignment.TopEnd)
-                .padding(13.dp).clip(RoundedCornerShape(12.dp))
-                .background(Color(0xC2081020)).padding(10.dp))
-        }
+        )
         Column(Modifier.padding(horizontal=18.dp,vertical=19.dp)) {
             A78Eyebrow(tr(lang,"TURN PASSION INTO OPPORTUNITY",
                 "همکاری و رشد با بت‌ویما"))
@@ -204,6 +200,8 @@ private fun A78Products(lang: Lang, active: Boolean) {
             Triple(AffiliateScene.MOBILE,"Mobile app","اپلیکیشن")
         )
         val rowState=rememberLazyListState()
+        val cardWidth = (androidx.compose.ui.platform.LocalConfiguration.current.screenWidthDp - 36)
+            .coerceAtLeast(240).dp
         LazyRow(
             state=rowState,
             horizontalArrangement=Arrangement.spacedBy(12.dp),
@@ -220,7 +218,7 @@ private fun A78Products(lang: Lang, active: Boolean) {
                 )
                 AffiliateReveal(visible=selected,delayMillis=i*60) {
                     Surface(
-                        modifier=Modifier.width(245.dp).height(299.dp)
+                        modifier=Modifier.width(cardWidth).height(299.dp)
                             .graphicsLayer { scaleX=zoom;scaleY=zoom },
                         shape=RoundedCornerShape(24.dp),
                         color=Color(0xFF122337),
