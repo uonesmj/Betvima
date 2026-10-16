@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -28,6 +29,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
@@ -65,6 +67,10 @@ fun PremiumAffiliateSheet(state: AppState, model: AppViewModel, onClose: () -> U
                     .padding(horizontal = 18.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
+                Icon(painter=painterResource(com.betvima.app.R.drawable.ic_betvima_mini),
+                    contentDescription=null,tint=partnerMint,
+                    modifier=Modifier.size(24.dp))
+                Spacer(Modifier.width(6.dp))
                 Text("BETVIMA", fontWeight = FontWeight.Black, color = partnerWhite,
                     fontSize = 21.sp, letterSpacing = -.8.sp)
                 Spacer(Modifier.width(5.dp))
@@ -499,14 +505,20 @@ private fun PartnerProducts(lang: Lang, active: Boolean) {
                 color=Color(0xFF9CA3B7),fontSize=13.sp)
         }
         Spacer(Modifier.height(21.dp))
-        LazyRow(contentPadding=PaddingValues(horizontal=20.dp),
+        val carousel=rememberLazyListState()
+        LazyRow(state=carousel,contentPadding=PaddingValues(horizontal=20.dp),
             horizontalArrangement=Arrangement.spacedBy(13.dp)) {
-            items(listOf(
+            itemsIndexed(listOf(
                 Triple(Icons.Default.Casino,"Casino","کازینو"),
                 Triple(Icons.Default.SportsSoccer,"Sports","ورزش"),
                 Triple(Icons.Default.Smartphone,"Mobile app","اپلیکیشن")
-            )) { (icon, en, fa) ->
-                Surface(modifier=Modifier.width(259.dp).height(325.dp),
+            )) { index, (icon, en, fa) ->
+                val selected = carousel.firstVisibleItemIndex == index && active
+                val zoom by animateFloatAsState(if(selected)1f else .94f,
+                    animationSpec=tween(400,easing=FastOutSlowInEasing),
+                    label="affiliate-product-focus")
+                Surface(modifier=Modifier.width(259.dp).height(325.dp)
+                    .graphicsLayer { scaleX=zoom;scaleY=zoom },
                     shape=RoundedCornerShape(25.dp),
                     color=Color(0xFF171D28)) {
                     Column(Modifier.padding(22.dp)) {
