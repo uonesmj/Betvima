@@ -460,7 +460,9 @@ class ApiClient {
         return parseImportedSlip(result)
     }
 
-    suspend fun quote(token: String, picks: List<Pick>, stakeMinor: String): JSONObject {
+    suspend fun quote(token: String, picks: List<Pick>, stakeMinor: String,
+        currency: String = "USD"): JSONObject {
+        require(currency in setOf("USD", "IRR", "IRT"))
         val legs = JSONArray()
         picks.forEach {
             legs.put(JSONObject().put("matchId", it.matchId).put("marketId", it.marketId)
@@ -469,8 +471,46 @@ class ApiClient {
         }
         return post("/api/v1/bets/quote", JSONObject()
             .put("type", if (picks.size > 1) "MULTIPLE" else "SINGLE")
-            .put("stakeMinor", stakeMinor).put("currency", "USD").put("legs", legs), token)
+            .put("stakeMinor", stakeMinor).put("currency", currency).put("legs", legs), token)
     }
+    /**
+     * Money-mutating main-account wager, accepted only with a live server-signed
+     * quote and an idempotency key. Never automatically replay this POST.
+     */
+    suspend fun placeMainBet(
+        token: String, picks: List<Pick>, stakeMinor: String, currency: String,
+        quoteToken: String, acceptedOdds: Map<String, String>, requestId: String
+    ): JSONObject {
+        check(BuildConfig.ENABLE_WAGERING) { "Native real-money wagering is disabled" }
+        require(picks.isNotEmpty() && picks.size <= 20)
+        require(picks.map { it.matchId }.distinct().size == picks.size)
+        require(stakeMinor.matches(Regex("[0-9]{1,19}")) && stakeMinor != "0")
+        require(currency in setOf("USD", "IRR", "IRT"))
+        require(quoteToken.length >= 10 && requestId.isNotBlank())
+        val legs = JSONArray().also { entries ->
+            picks.forEach { pick ->
+                entries.put(JSONObject()
+                    .put("matchId", pick.matchId).put("marketId", pick.marketId)
+                    .put("selectionId", pick.selectionId)
+                    .put("clientOddsScaled", pick.oddsScaled)
+                    .put("marketVersion", pick.version ?: JSONObject.NULL)
+                    .put("acceptOddsChange", false))
+            }
+        }
+        val accepted = JSONObject()
+        acceptedOdds.forEach { (selectionId, scaled) -> accepted.put(selectionId, scaled) }
+        return request("/api/v1/bets", token, JSONObject()
+            .put("type", if (picks.size > 1) "MULTIPLE" else "SINGLE")
+            .put("stakeMinor", stakeMinor)
+            .put("currency", currency)
+            .put("fundingSource", "main")
+            .put("legs", legs)
+            .put("quoteToken", quoteToken)
+            .put("acceptedOdds", accepted)
+            .put("acceptWarnings", true),
+            "POST", requestId)
+    }
+
     private fun bonusBetLegs(picks: List<Pick>, movements: List<BonusOddsMovement> =
         emptyList()): JSONArray {
         val changes = movements.associateBy { it.selectionId }
