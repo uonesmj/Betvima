@@ -3,7 +3,7 @@ import { casinoCountryPermitted } from '@/server/providers/softaggregator/jurisd
 
 describe('SoftAggregator lawful-jurisdiction configuration', () => {
   it('defaults to disabled for missing or unrecognized country policies', () => {
-    expect(casinoCountryPermitted('DE', undefined)).toBe(false);
+    expect(casinoCountryPermitted('DE', '')).toBe(false);
     expect(casinoCountryPermitted(null, 'DE')).toBe(false);
     expect(casinoCountryPermitted('de', 'DE')).toBe(false);
     expect(casinoCountryPermitted('FR', 'DE,BR')).toBe(false);
