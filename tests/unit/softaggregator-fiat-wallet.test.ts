@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Db } from '@/lib/ports/db';
 import { getUsdIrtRate } from '@/server/providers/arzhaam/client';
 import { fiatCasinoBalance, settleFiatCasinoCallback } from '@/server/providers/softaggregator/fiat-wallet';
@@ -11,6 +11,8 @@ const username = 'bv_' + userId.replace(/-/g, '');
 function fakeDb(walletCurrency: 'IRT' | 'IRR' = 'IRT', original = 2_500_000n) {
   let balance = original;
   let preferred: string = walletCurrency;
+  let kycStatus = 'verified';
+  let country = 'DE';
   const perCurrencyStakeLimit = new Map<string, bigint>();
   const posted: Array<Record<string, unknown>> = [];
   const entries = new Map<string, Record<string, unknown>>();
@@ -19,7 +21,8 @@ function fakeDb(walletCurrency: 'IRT' | 'IRR' = 'IRT', original = 2_500_000n) {
   const db = {
     queryOne: vi.fn(async (sql: string, args: unknown[] = []) => {
       if (sql.includes('from nova.profiles p')) return {
-        status: 'active', age_verified: true, currency: preferred,
+        status: 'active', age_verified: true, kyc_status: kycStatus,
+        currency: preferred, country,
         restricted: false, self_excluded: false,
         max_stake_per_bet_minor: perCurrencyStakeLimit.get(String(args[1] ?? preferred))?.toString() ?? null,
         max_stake_per_day_minor: null,
@@ -84,6 +87,8 @@ function fakeDb(walletCurrency: 'IRT' | 'IRR' = 'IRT', original = 2_500_000n) {
   };
   return { db: db as unknown as Db, posted, receipts, getBalance: () => balance,
     setPreferredCurrency: (currency: string) => { preferred = currency; },
+    setKycStatus: (status: string) => { kycStatus = status; },
+    setCountry: (value: string) => { country = value; },
     setStakeLimit: (currency: string, minor: bigint) => { perCurrencyStakeLimit.set(currency, minor); } };
 }
 
@@ -96,8 +101,10 @@ function event(id: string, action: 'debit' | 'credit', amountMinor: bigint, roll
 }
 
 describe('Casino fiat settle staging contract', () => {
+  afterEach(() => vi.unstubAllEnvs());
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.stubEnv('SOFTAGGREGATOR_ALLOWED_COUNTRIES', 'DE');
     vi.mocked(getUsdIrtRate).mockResolvedValue({
       value: '250000.00000000', timestamp: new Date().toISOString(),
     });
@@ -107,6 +114,27 @@ describe('Casino fiat settle staging contract', () => {
     const t = fakeDb('IRT');
     expect(await fiatCasinoBalance(t.db, userId)).toEqual({ error: 0, balance: 1000 });
     expect(t.getBalance()).toBe(2_500_000n);
+    expect(t.posted).toHaveLength(0);
+  });
+
+  it('blocks IRT and IRR wagers until KYC is verified', async () => {
+    for (const currency of ['IRT', 'IRR'] as const) {
+      const t = fakeDb(currency, currency === 'IRR' ? 25_000_000n : 2_500_000n);
+      t.setKycStatus('pending');
+      expect((await fiatCasinoBalance(t.db, userId)).error).toBe(2);
+      expect((await settleFiatCasinoCallback(t.db, userId, event('kyc-denied', 'debit', 20n))).error).toBe(1);
+      expect(t.posted).toHaveLength(0);
+      t.setKycStatus('verified');
+      expect((await settleFiatCasinoCallback(t.db, userId, event('kyc-approved', 'debit', 20n))).error).toBe(0);
+      expect(t.posted).toHaveLength(1);
+    }
+  });
+
+  it('refuses a fiat casino debit outside configured countries', async () => {
+    const t = fakeDb();
+    t.setCountry('FR');
+    const result = await settleFiatCasinoCallback(t.db, userId, event('wrong-market', 'debit', 20n));
+    expect(result.error).toBe(1);
     expect(t.posted).toHaveLength(0);
   });
 
