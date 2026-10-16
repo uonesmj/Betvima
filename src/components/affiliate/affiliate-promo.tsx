@@ -63,7 +63,7 @@ function Counter({ end, suffix = '' }: { end: number; suffix?: string }) {
     if (!element) return;
     let raf = 0;
     const observer = new IntersectionObserver(([entry]) => {
-      if (!entry.isIntersecting) return;
+      if (!entry?.isIntersecting) return;
       observer.disconnect();
       if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) { setValue(end); return; }
       const start = performance.now();
@@ -269,6 +269,7 @@ export function AffiliatePromoSheet({ onClose }: { onClose: () => void }) {
       const tabbables = Array.from(node.querySelectorAll<HTMLElement>('a[href], button:not([disabled]), input:not([disabled])')).filter((el) => el.offsetParent !== null);
       if (!tabbables.length) return;
       const first = tabbables[0], last = tabbables[tabbables.length - 1];
+      if (!first || !last) return;
       if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
       else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
     };
