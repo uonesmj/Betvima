@@ -319,11 +319,23 @@ fun CatalogPage(state: AppState, model: AppViewModel, live: Boolean,
         visibleGroups.entries.forEachIndexed { index, group ->
             item(key = "league-"+group.key, contentType = "league") {
                 Box(Modifier.padding(horizontal = 13.dp)) {
-                    LeagueSection(group.key, group.value, expanded = group.key !in collapsedLeagues,
-                        onToggle = {
-                            collapsedLeagues = if (group.key in collapsedLeagues)
-                                collapsedLeagues - group.key else collapsedLeagues + group.key
-                        }, state = state, model = model)
+                    if (live) {
+                        LeagueSection(group.key, group.value,
+                            expanded = group.key !in collapsedLeagues,
+                            onToggle = {
+                                collapsedLeagues = if (group.key in collapsedLeagues)
+                                    collapsedLeagues - group.key else collapsedLeagues + group.key
+                            }, state = state, model = model)
+                    } else {
+                        // Preserve the old upcoming behavior: first league open,
+                        // other leagues user-expandable. The Live fix is isolated.
+                        var upcomingExpanded by rememberSaveable(group.key) {
+                            mutableStateOf(index == 0)
+                        }
+                        LeagueSection(group.key, group.value, expanded = upcomingExpanded,
+                            onToggle = { upcomingExpanded = !upcomingExpanded },
+                            state = state, model = model)
+                    }
                 }
             }
         }
