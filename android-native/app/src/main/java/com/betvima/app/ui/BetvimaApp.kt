@@ -37,6 +37,7 @@ fun BetvimaApp(model: AppViewModel) {
     var languageOpen by rememberSaveable { mutableStateOf(false) }
     var searchOpen by rememberSaveable { mutableStateOf(false) }
     var initialSplash by rememberSaveable { mutableStateOf(true) }
+    var affiliateOpen by rememberSaveable { mutableStateOf(false) }
     LaunchedEffect(Unit) {
         // Motion is an entrance identity, not a proxy for backend progress.
         delay(1050)
@@ -85,11 +86,12 @@ fun BetvimaApp(model: AppViewModel) {
             }
         }
     }
-    BackHandler(enabled = languageOpen || searchOpen || state.betDetailVisible || state.showLogin ||
+    BackHandler(enabled = affiliateOpen || languageOpen || searchOpen || state.betDetailVisible || state.showLogin ||
         state.showSlip || state.detail != null ||
         state.feature != Feature.NONE || accountOpen || drawer.isOpen ||
         state.tab != Tab.HOME || state.homeMode == HomeMode.TOP_BETS) {
         when {
+            affiliateOpen -> affiliateOpen = false
             languageOpen -> languageOpen = false
             state.betDetailVisible -> model.closeBet()
             state.showLogin -> model.showLogin(false)
@@ -115,7 +117,8 @@ fun BetvimaApp(model: AppViewModel) {
                     openAccount = {
                         if (state.signedIn) accountOpen = true else model.showLogin(true)
                     },
-                    openLanguage = { languageOpen = true })
+                    openLanguage = { languageOpen = true },
+                    openAffiliate = { affiliateOpen = true })
             }
         ) {
         Scaffold(
@@ -236,6 +239,7 @@ fun BetvimaApp(model: AppViewModel) {
             onSelect = { selected -> model.setLanguage(selected); languageOpen = false },
             onDismiss = { languageOpen = false }
         )
+        if (affiliateOpen) PremiumAffiliateSheet(state, model) { affiliateOpen = false }
         PremiumLoadingOverlay(initialSplash, state.lang)
     }
 }
