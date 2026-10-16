@@ -20,7 +20,8 @@ function fakeDb(walletCurrency: 'IRT' | 'IRR' = 'IRT', original = 2_500_000n) {
   const db = {
     queryOne: vi.fn(async (sql: string, args: unknown[] = []) => {
       if (sql.includes('from nova.profiles p')) return {
-        status: 'active', age_verified: true, kyc_status: kycStatus, currency: preferred,
+        status: 'active', age_verified: true, kyc_status: kycStatus,
+        currency: preferred, country: 'DE',
         restricted: false, self_excluded: false,
         max_stake_per_bet_minor: perCurrencyStakeLimit.get(String(args[1] ?? preferred))?.toString() ?? null,
         max_stake_per_day_minor: null,
@@ -98,8 +99,10 @@ function event(id: string, action: 'debit' | 'credit', amountMinor: bigint, roll
 }
 
 describe('Casino fiat settle staging contract', () => {
+  afterEach(() => vi.unstubAllEnvs());
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.stubEnv('SOFTAGGREGATOR_ALLOWED_COUNTRIES', 'DE');
     vi.mocked(getUsdIrtRate).mockResolvedValue({
       value: '250000.00000000', timestamp: new Date().toISOString(),
     });
