@@ -18,6 +18,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalLayoutDirection
@@ -36,6 +37,10 @@ import kotlinx.coroutines.launch
 @Composable
 fun BetvimaApp(model: AppViewModel) {
     val state by model.state.collectAsStateWithLifecycle()
+    val context87 = LocalContext.current
+    val deviceSettings87 = remember(context87) { SettingsDevice87(context87) }
+    var pinUnlocked87 by remember { mutableStateOf(!deviceSettings87.hasPin()) }
+
     var accountOpen by rememberSaveable { mutableStateOf(false) }
     var languageOpen by rememberSaveable { mutableStateOf(false) }
     var searchOpen by rememberSaveable { mutableStateOf(false) }
@@ -51,11 +56,42 @@ fun BetvimaApp(model: AppViewModel) {
         delay(1050)
         initialSplash = false
     }
+    var isForeground by remember { mutableStateOf(true) }
     val snackbars = remember { SnackbarHostState() }
+    var notificationBaseline87 by remember(state.signedIn) { mutableStateOf(false) }
+    var observedNotificationIds87 by remember(state.signedIn) {
+        mutableStateOf(emptySet<String>())
+    }
+    // Present new, server-authenticated settlement events while the app is open.
+    // This is not background push and does not create synthetic win/loss results.
+    LaunchedEffect(state.notifications, state.signedIn, isForeground) {
+        if (!state.signedIn) {
+            notificationBaseline87 = false
+            observedNotificationIds87 = emptySet()
+        } else {
+            val incoming = state.notifications
+            if (!notificationBaseline87) {
+                observedNotificationIds87 = incoming.map { it.id }.toSet()
+                notificationBaseline87 = true
+            } else if (isForeground) {
+                val newResults = incoming.filter { note ->
+                    note.id !in observedNotificationIds87 && note.eventKey in setOf(
+                        "bet.won", "bet.lost", "bet.void", "bet.partial"
+                    )
+                }
+                observedNotificationIds87 += incoming.map { it.id }
+                if (deviceSettings87.appAlerts() && deviceSettings87.betAlerts()) {
+                    newResults.take(3).forEach { note ->
+                        snackbars.showSnackbar(note.title + " · " + note.body)
+                    }
+                }
+            }
+        }
+    }
+
     val pageStates = rememberSaveableStateHolder()
     val drawer = rememberDrawerState(DrawerValue.Closed)
     val drawerScope = rememberCoroutineScope()
-    var isForeground by remember { mutableStateOf(true) }
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
         isForeground = true
         if (state.tab in setOf(Tab.HOME, Tab.LIVE) &&
@@ -63,7 +99,10 @@ fun BetvimaApp(model: AppViewModel) {
             model.refreshLive(silent = true)
         }
     }
-    LifecycleEventEffect(Lifecycle.Event.ON_PAUSE) { isForeground = false }
+    LifecycleEventEffect(Lifecycle.Event.ON_PAUSE) {
+        isForeground = false
+        if (deviceSettings87.hasPin()) pinUnlocked87 = false
+    }
     // Refresh unread notifications while the app is foregrounded. No mock counters.
     LaunchedEffect(state.signedIn, isForeground) {
         if (state.signedIn && isForeground) {
@@ -342,6 +381,10 @@ fun BetvimaApp(model: AppViewModel) {
             onBonuses = { vipOpen = false; model.feature(Feature.BONUSES) }
         )
         PremiumLoadingOverlay(initialSplash, state.lang)
+        LocalPinGate87(
+            locked = deviceSettings87.hasPin() && !pinUnlocked87,
+            onUnlock = { pinUnlocked87 = true }
+        )
     }
 }
 

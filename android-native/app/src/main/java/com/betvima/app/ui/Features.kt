@@ -36,7 +36,7 @@ fun FeaturePage(state: AppState, model: AppViewModel) {
     if (state.feature == Feature.NOTIFICATIONS || state.feature == Feature.VIP ||
         state.feature == Feature.BONUSES) return
     val title = when (state.feature) {
-        Feature.PROFILE -> tr(state.lang, "Your profile", "پروفایل کاربری")
+        Feature.PROFILE -> tr(state.lang, "Settings", "تنظیمات")
         Feature.BONUSES -> tr(state.lang, "My Bonuses", "بونوس‌های من")
         Feature.VIP -> tr(state.lang, "VIP Club", "باشگاه VIP")
         Feature.SUPPORT -> tr(state.lang, "24/7 Support", "پشتیبانی ۲۴ ساعته")

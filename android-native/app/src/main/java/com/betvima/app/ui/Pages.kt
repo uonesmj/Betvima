@@ -30,8 +30,7 @@ import coil.compose.AsyncImage
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.ui.draw.clip
 
-private val sports = listOf("football", "basketball", "tennis", "volleyball",
-    "hockey", "table-tennis", "baseball", "esports")
+private val sports = liveSportKeys88
 private fun sportName(s: String) = s.replace("-", " ").replaceFirstChar { it.uppercase() }
 
 private fun sportIcon(sport: String): androidx.compose.ui.graphics.vector.ImageVector = when (sport) {
@@ -40,6 +39,10 @@ private fun sportIcon(sport: String): androidx.compose.ui.graphics.vector.ImageV
     "tennis", "table-tennis" -> Icons.Default.SportsTennis
     "volleyball" -> Icons.Default.SportsVolleyball
     "hockey" -> Icons.Default.SportsHockey
+    "handball" -> Icons.Default.SportsHandball
+    "american-football" -> Icons.Default.SportsFootball
+    "cricket" -> Icons.Default.SportsCricket
+    "mma", "boxing" -> Icons.Default.SportsMma
     "baseball" -> Icons.Default.SportsBaseball
     "esports" -> Icons.Default.VideogameAsset
     else -> Icons.Default.EmojiEvents
@@ -56,8 +59,11 @@ fun SportsRibbon(selected: String, lang: Lang, showEsports: Boolean = true,
             val label = if (lang == Lang.FA) when (sport) {
                 "football" -> "فوتبال"; "basketball" -> "بسکتبال"; "tennis" -> "تنیس"
                 "volleyball" -> "والیبال"; "hockey" -> "هاکی روی یخ"
+                "handball" -> "هندبال"; "american-football" -> "فوتبال آمریکایی"
+                "cricket" -> "کریکت"; "mma" -> "هنرهای رزمی"; "boxing" -> "بوکس"
                 "table-tennis" -> "پینگ‌پنگ"; "baseball" -> "بیسبال"
-                "esports" -> "ورزش الکترونیک"; else -> sportName(sport)
+                "esports" -> "ورزش الکترونیک"; "other" -> "سایر ورزش‌ها"
+                else -> sportName(sport)
             } else sportName(sport)
             Column(Modifier.width(71.dp).clickable { onChange(sport) }
                 .padding(vertical = 2.dp),
@@ -180,6 +186,10 @@ fun CatalogPage(state: AppState, model: AppViewModel, live: Boolean,
     val footerListState = rememberLazyListState()
     val footerScope = rememberCoroutineScope()
     var liveSport by rememberSaveable { mutableStateOf("top") }
+    // All 46 (or any current API count) fixtures are initially visible:
+    // no silently closed league can inflate the counter without a card.
+    var collapsedLeagues by rememberSaveable(live) { mutableStateOf(emptyList<String>()) }
+    LaunchedEffect(live, liveSport, state.sport) { collapsedLeagues = emptyList() }
     var selectedLeague by rememberSaveable(live, liveSport, state.sport, state.tournamentLeague) {
         mutableStateOf(if (live) "" else state.tournamentLeague)
     }
@@ -188,14 +198,17 @@ fun CatalogPage(state: AppState, model: AppViewModel, live: Boolean,
     // Remember catalogue transformations; state can update independently from
     // a user's scroll (balance, notifications, slip picks and live polling).
     val matches = remember(allMatches, live, liveSport) {
-        if (live && liveSport != "top")
-            allMatches.filter { it.sport == liveSport } else allMatches
+        if (live) liveSportMatches88(allMatches, liveSport) else allMatches
     }
-    val groups = remember(matches) { matches.groupBy { it.league + "|" + it.country } }
+    val groups = remember(matches, live) {
+        matches.groupBy { catalogueGroupKey88(it, live) }
+    }
     val visibleGroups = remember(groups, selectedLeague) {
         if (selectedLeague.isBlank()) groups else
             groups.filterKeys { it == selectedLeague }
     }
+    val displayedCount = visibleFixtureCount88(visibleGroups, collapsedLeagues)
+    val totalCount = visibleGroups.values.sumOf { it.size }
 
     LazyColumn(state = footerListState,
         contentPadding = PaddingValues(bottom = 0.dp),
@@ -208,6 +221,29 @@ fun CatalogPage(state: AppState, model: AppViewModel, live: Boolean,
                     if (live) liveSport = key
                     else model.sport(if (key == "top") "all" else key)
                 })
+        }
+        if (live && totalCount > 0) item(key = "live-counts", contentType = "live-counts") {
+            Row(Modifier.fillMaxWidth().padding(horizontal = 17.dp, vertical = 3.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Column(Modifier.weight(1f)) {
+                    Text(totalCount.toString() + " " +
+                        tr(state.lang, "live fixtures loaded", "مسابقه زنده دریافت شده"),
+                        color = Palette.text, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                    Text(displayedCount.toString() + " / " + totalCount.toString() + " " +
+                        tr(state.lang, "fixtures expanded", "مسابقه باز و قابل مشاهده"),
+                        color = Palette.muted, fontSize = 10.sp)
+                }
+                TextButton(onClick = {
+                    collapsedLeagues = if (displayedCount == totalCount)
+                        visibleGroups.keys.toList() else emptyList()
+                }) {
+                    Text(if (displayedCount == totalCount)
+                        tr(state.lang, "Collapse all", "بستن همه") else
+                        tr(state.lang, "Show all", "نمایش همه"),
+                        color = Palette.blue, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                }
+            }
         }
         if (!live) item {
             Row(Modifier.fillMaxWidth().padding(horizontal = 15.dp, vertical = 3.dp),
@@ -283,7 +319,23 @@ fun CatalogPage(state: AppState, model: AppViewModel, live: Boolean,
         visibleGroups.entries.forEachIndexed { index, group ->
             item(key = "league-"+group.key, contentType = "league") {
                 Box(Modifier.padding(horizontal = 13.dp)) {
-                    LeagueSection(group.key, group.value, index == 0, state, model)
+                    if (live) {
+                        LeagueSection(group.key, group.value,
+                            expanded = group.key !in collapsedLeagues,
+                            onToggle = {
+                                collapsedLeagues = if (group.key in collapsedLeagues)
+                                    collapsedLeagues - group.key else collapsedLeagues + group.key
+                            }, state = state, model = model)
+                    } else {
+                        // Preserve the old upcoming behavior: first league open,
+                        // other leagues user-expandable. The Live fix is isolated.
+                        var upcomingExpanded by rememberSaveable(group.key) {
+                            mutableStateOf(index == 0)
+                        }
+                        LeagueSection(group.key, group.value, expanded = upcomingExpanded,
+                            onToggle = { upcomingExpanded = !upcomingExpanded },
+                            state = state, model = model)
+                    }
                 }
             }
         }
@@ -301,15 +353,14 @@ fun CatalogPage(state: AppState, model: AppViewModel, live: Boolean,
 }
 
 @Composable
-private fun LeagueSection(key: String, matches: List<Match>, first: Boolean,
-    state: AppState, model: AppViewModel) {
-    var expanded by rememberSaveable(key) { mutableStateOf(first) }
+private fun LeagueSection(key: String, matches: List<Match>, expanded: Boolean,
+    onToggle: () -> Unit, state: AppState, model: AppViewModel) {
     Surface(shape = RoundedCornerShape(23.dp), color = Color.White,
         border = BorderStroke(1.dp, Palette.border),
         shadowElevation = 4.dp,
         modifier = Modifier.fillMaxWidth()) {
         Column {
-            Row(Modifier.fillMaxWidth().clickable { expanded = !expanded }
+            Row(Modifier.fillMaxWidth().clickable(onClick = onToggle)
                 .padding(horizontal = 13.dp, vertical = 12.dp),
                 verticalAlignment = Alignment.CenterVertically) {
                 LeagueIdentityBadge(matches.first(), size = 43)
