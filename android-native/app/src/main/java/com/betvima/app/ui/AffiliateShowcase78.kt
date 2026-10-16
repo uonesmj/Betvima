@@ -143,41 +143,43 @@ private fun A78Action(label: String, onClick: () -> Unit,
 @Composable
 private fun A78Hero(lang: Lang, active: Boolean, onRegister: () -> Unit,
                     onLogin: () -> Unit) {
-    Box(Modifier.fillMaxWidth().height(445.dp).padding(11.dp)) {
+    Column(Modifier.fillMaxWidth().padding(11.dp)
+        .clip(RoundedCornerShape(23.dp))
+        .background(Color(0xFF0D1C30))) {
         AffiliateCinematicPhoto(
             scene=AffiliateScene.HERO,
-            modifier=Modifier.fillMaxSize(),active=active,corner=22,
-            showMark=false
+            modifier=Modifier.fillMaxWidth().height(208.dp),
+            active=active,corner=22,showMark=false
         ) {
-            Column(Modifier.align(Alignment.BottomStart).padding(18.dp)) {
-                A78Eyebrow(tr(lang,"TURN PASSION INTO OPPORTUNITY",
-                    "همکاری و رشد با بت‌ویما"))
-                Spacer(Modifier.height(8.dp))
-                Text(tr(lang,"Grow with BetVima","با BetVima رشد کنید"),
-                    fontSize=32.sp,lineHeight=37.sp,color=Color.White,
-                    fontWeight=FontWeight.Black)
-                Spacer(Modifier.height(8.dp))
-                Text(tr(lang,
-                    "Discover sports, casino and the tools behind our partner program.",
-                    "با محصولات ورزشی، کازینو و ابزارهای همکاری آشنا شوید."),
-                    color=a78Muted,fontSize=13.sp,lineHeight=19.sp)
-                Spacer(Modifier.height(16.dp))
-                A78Action(
-                    tr(lang,"Become an affiliate","شروع همکاری"),
-                    onRegister,Modifier.fillMaxWidth()
-                )
-                TextButton(
-                    onClick=onLogin,
-                    modifier=Modifier.align(Alignment.CenterHorizontally)
-                ) {
-                    Text(tr(lang,"Already a partner? Log in",
-                        "قبلاً ثبت‌نام کرده‌اید؟ ورود"),
-                        color=Color.White,fontSize=12.sp)
-                }
-            }
             A78Logo(Modifier.align(Alignment.TopEnd)
-                .padding(14.dp).clip(RoundedCornerShape(13.dp))
+                .padding(13.dp).clip(RoundedCornerShape(12.dp))
                 .background(Color(0xC2081020)).padding(10.dp))
+        }
+        Column(Modifier.padding(horizontal=18.dp,vertical=19.dp)) {
+            A78Eyebrow(tr(lang,"TURN PASSION INTO OPPORTUNITY",
+                "همکاری و رشد با بت‌ویما"))
+            Spacer(Modifier.height(8.dp))
+            Text(tr(lang,"Grow with BetVima","با BetVima رشد کنید"),
+                fontSize=30.sp,lineHeight=35.sp,color=Color.White,
+                fontWeight=FontWeight.Black)
+            Spacer(Modifier.height(8.dp))
+            Text(tr(lang,
+                "Discover sports, casino and the tools behind our partner program.",
+                "با محصولات ورزشی، کازینو و ابزارهای همکاری آشنا شوید."),
+                color=a78Muted,fontSize=13.sp,lineHeight=19.sp)
+            Spacer(Modifier.height(16.dp))
+            A78Action(
+                tr(lang,"Become an affiliate","شروع همکاری"),
+                onRegister,Modifier.fillMaxWidth()
+            )
+            TextButton(
+                onClick=onLogin,
+                modifier=Modifier.align(Alignment.CenterHorizontally)
+            ) {
+                Text(tr(lang,"Already a partner? Log in",
+                    "قبلاً ثبت‌نام کرده‌اید؟ ورود"),
+                    color=Color.White,fontSize=12.sp)
+            }
         }
     }
 }
@@ -208,12 +210,8 @@ private fun A78Products(lang: Lang, active: Boolean) {
             contentPadding=PaddingValues(horizontal=18.dp)
         ) {
             itemsIndexed(kinds) { i, item ->
-                val selected by remember {
-                    derivedStateOf {
-                        active && rowState.layoutInfo.visibleItemsInfo.any {
-                            it.index == i
-                        }
-                    }
+                val selected = active && rowState.layoutInfo.visibleItemsInfo.any {
+                    it.index == i
                 }
                 val zoom by animateFloatAsState(
                     if(selected)1f else .955f,
@@ -221,39 +219,44 @@ private fun A78Products(lang: Lang, active: Boolean) {
                     label="product-card-zoom"
                 )
                 AffiliateReveal(visible=selected,delayMillis=i*60) {
-                    Box(
-                        Modifier.width(234.dp).height(319.dp)
-                            .graphicsLayer { scaleX=zoom; scaleY=zoom }
+                    Surface(
+                        modifier=Modifier.width(245.dp).height(299.dp)
+                            .graphicsLayer { scaleX=zoom;scaleY=zoom },
+                        shape=RoundedCornerShape(24.dp),
+                        color=Color(0xFF122337),
+                        border=BorderStroke(1.dp,item.first.accent.copy(alpha=.35f))
                     ) {
-                        AffiliateCinematicPhoto(
-                            scene=item.first,modifier=Modifier.fillMaxSize(),
-                            active=selected,corner=25,showMark=false
-                        ) {
-                            Column(
-                                Modifier.align(Alignment.BottomStart)
-                                    .padding(17.dp)
-                            ) {
-                                Icon(
-                                    item.first.mark,null,
-                                    modifier=Modifier.size(29.dp),
-                                    tint=item.first.accent
-                                )
+                        Column {
+                            AffiliateCinematicPhoto(
+                                scene=item.first,
+                                modifier=Modifier.fillMaxWidth().height(171.dp),
+                                active=selected,corner=19,showMark=true
+                            )
+                            Column(Modifier.padding(16.dp)) {
+                                Row(verticalAlignment=Alignment.CenterVertically) {
+                                    Icon(item.first.mark,contentDescription=null,
+                                        tint=item.first.accent,modifier=Modifier.size(25.dp))
+                                    Spacer(Modifier.width(10.dp))
+                                    Text(tr(lang,item.second,item.third),
+                                        color=Color.White,fontWeight=FontWeight.Black,
+                                        fontSize=22.sp)
+                                }
                                 Spacer(Modifier.height(8.dp))
-                                Text(tr(lang,item.second,item.third),
-                                    color=Color.White,fontWeight=FontWeight.Black,
-                                    fontSize=24.sp)
-                                Text(tr(lang,
-                                    when(i) {
-                                        0 -> "Live & upcoming sport markets"
-                                        1 -> "Casino games & live experiences"
-                                        else -> "An experience designed for Android"
-                                    },
-                                    when(i) {
-                                        0 -> "رویدادها و بازارهای ورزشی"
-                                        1 -> "بازی‌های کازینو و تجربه زنده"
-                                        else -> "تجربه اختصاصی اندروید"
-                                    }
-                                ),color=a78Muted,fontSize=12.sp,lineHeight=17.sp)
+                                Text(
+                                    tr(lang,
+                                        when(i) {
+                                            0 -> "Live and upcoming sporting events"
+                                            1 -> "Discover casino and quick games"
+                                            else -> "Designed for Android devices"
+                                        },
+                                        when(i) {
+                                            0 -> "رویدادهای ورزشی زنده و آینده"
+                                            1 -> "کازینو و بازی‌های سریع"
+                                            else -> "طراحی اختصاصی برای اندروید"
+                                        }
+                                    ),
+                                    color=a78Muted,fontSize=11.sp,lineHeight=16.sp
+                                )
                             }
                         }
                     }
