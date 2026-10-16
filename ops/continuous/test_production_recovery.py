@@ -57,6 +57,24 @@ class ProductionRecoveryTests(unittest.TestCase):
             self.assertTrue(scope['quarantine_failed'](failed,root,[app],
                 removable_stopped_process='nova-cd-target'))
 
+class CandidatePortPoolTests(unittest.TestCase):
+    def test_can_allocate_beyond_exhausted_legacy_port_pool(self):
+        # Existing rollback candidates can hold all ports 3002-3019.
+        main = next(n for n in AST.body if isinstance(n, ast.FunctionDef)
+                    and n.name == 'main')
+        ranges = [n.iter for n in ast.walk(main)
+                  if isinstance(n, ast.For) and isinstance(n.iter, ast.Call)
+                  and isinstance(n.iter.func, ast.Name)
+                  and n.iter.func.id == 'range']
+        endpoints = [(n.args[0].value, n.args[1].value) for n in ranges
+                     if len(n.args) == 2
+                     and all(isinstance(a, ast.Constant) for a in n.args)]
+        self.assertIn((3002, 3100), endpoints)
+        self.assertIn("listener.bind(('127.0.0.1',number))", SOURCE)
+        self.assertIn("if port is None:raise ValueError('no_candidate_port')", SOURCE)
+        self.assertNotIn("pm2(['delete'", SOURCE.split('    port=None',1)[1].split('    values.update(PORT=',1)[0])
+
+
 class AppliedMigrationTests(unittest.TestCase):
     def setUp(self):
         self._previous=scope.get('c')
