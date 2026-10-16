@@ -43,7 +43,8 @@ private val partnerWhite = Color.White
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun PremiumAffiliateSheet(lang: Lang, onClose: () -> Unit) {
+fun PremiumAffiliateSheet(state: AppState, model: AppViewModel, onClose: () -> Unit) {
+    val lang = state.lang
     var showPortal by rememberSaveable { mutableStateOf(false) }
     val sheet = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     ModalBottomSheet(
@@ -89,51 +90,10 @@ fun PremiumAffiliateSheet(lang: Lang, onClose: () -> Unit) {
                 }
             }
             if (showPortal) {
-                val api = remember { com.betvima.app.data.ApiClient() }
-                val context = androidx.compose.ui.platform.LocalContext.current
-                val vault = remember { com.betvima.app.data.SessionVault(context, "affiliate") }
-                // Retain the existing authorized native partner registration/login.
-                AffiliateDashboardInsideSheet(lang, api, vault)
+                AffiliateDashboard(state, model)
             } else {
                 AffiliateMotionLanding(lang, onGetStarted = { showPortal = true })
             }
-        }
-    }
-}
-
-@Composable
-private fun AffiliateDashboardInsideSheet(
-    lang: Lang,
-    api: com.betvima.app.data.ApiClient,
-    vault: com.betvima.app.data.SessionVault
-) {
-    var signedIn by remember { mutableStateOf(vault.signedIn()) }
-    if (!signedIn) {
-        Column(Modifier.fillMaxSize().background(partnerPaper)
-            .verticalScroll(rememberScrollState())
-            .padding(18.dp)) {
-            AffiliateHeroBanner(lang)
-            Spacer(Modifier.height(15.dp))
-            AffiliateAccessPanel(lang, api, vault) { signedIn = true }
-        }
-    } else {
-        // AffiliateDashboard owns the authorized ledger and account state. Access it
-        // through the established native Feature route, not a simulated balance.
-        Column(
-            Modifier.fillMaxSize().background(partnerPaper).padding(22.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
-        ) {
-            Icon(Icons.Default.VerifiedUser, null, tint = partnerBlue,
-                modifier = Modifier.size(52.dp))
-            Spacer(Modifier.height(18.dp))
-            Text(tr(lang, "Partner account ready", "حساب همکاری آماده است"),
-                fontWeight = FontWeight.Black, color = partnerNight, fontSize = 24.sp)
-            Spacer(Modifier.height(8.dp))
-            Text(tr(lang,
-                "Close this introduction and open the partner dashboard from Affiliate.",
-                "برای مشاهده اطلاعات واقعی همکاری، پنل افیلیت را باز کنید."),
-                textAlign = TextAlign.Center, fontSize = 13.sp, color = partnerMuted)
         }
     }
 }
