@@ -25,6 +25,12 @@ import kotlinx.coroutines.launch
 
 @Composable
 fun FeaturePage(state: AppState, model: AppViewModel) {
+    // Casino is a seamless dark screen. Keep the standard white feature toolbar
+    // unchanged for all other features, but never render it above the casino.
+    if (state.feature == Feature.CASINO) {
+        CasinoLobby(state, model)
+        return
+    }
     val title = when (state.feature) {
         Feature.PROFILE -> tr(state.lang, "Your profile", "پروفایل کاربری")
         Feature.BONUSES -> tr(state.lang, "My Bonuses", "بونوس‌های من")
