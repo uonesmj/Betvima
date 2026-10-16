@@ -9,7 +9,7 @@
     </style>
     <style name="Theme.Betvima.Starting" parent="Theme.SplashScreen">
         <item name="windowSplashScreenBackground">@color/betvima_splash_background</item>
-        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_betvima_mini</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_betvima_splash</item>
         <item name="postSplashScreenTheme">@style/Theme.Betvima</item>
         <item name="android:windowLightStatusBar">false</item>
         <item name="android:windowLightNavigationBar">false</item>
