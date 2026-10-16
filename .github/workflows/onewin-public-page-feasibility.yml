@@ -3,6 +3,7 @@ on:
   pull_request:
     paths:
       - 'scripts/onewin-public-page-check.mjs'
+      - 'scripts/onewin-browser-observation.mjs'
       - 'tests/research/onewin-public-page.test.mjs'
       - 'docs/onewin-direct-feed-feasibility.md'
       - '.github/workflows/onewin-public-page-feasibility.yml'
@@ -25,3 +26,7 @@ jobs:
         env:
           ONEWIN_PUBLIC_ORIGIN: https://1win.com
         run: node scripts/onewin-public-page-check.mjs
+      - name: One-shot headless browser observation - public live page
+        run: |
+          npm ci --ignore-scripts
+          node scripts/onewin-browser-observation.mjs
