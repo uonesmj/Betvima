@@ -11,6 +11,7 @@ const username = 'bv_' + userId.replace(/-/g, '');
 function fakeDb(walletCurrency: 'IRT' | 'IRR' = 'IRT', original = 2_500_000n) {
   let balance = original;
   let preferred: string = walletCurrency;
+  let kycStatus = 'verified';
   const perCurrencyStakeLimit = new Map<string, bigint>();
   const posted: Array<Record<string, unknown>> = [];
   const entries = new Map<string, Record<string, unknown>>();
@@ -19,7 +20,7 @@ function fakeDb(walletCurrency: 'IRT' | 'IRR' = 'IRT', original = 2_500_000n) {
   const db = {
     queryOne: vi.fn(async (sql: string, args: unknown[] = []) => {
       if (sql.includes('from nova.profiles p')) return {
-        status: 'active', age_verified: true, currency: preferred,
+        status: 'active', age_verified: true, kyc_status: kycStatus, currency: preferred,
         restricted: false, self_excluded: false,
         max_stake_per_bet_minor: perCurrencyStakeLimit.get(String(args[1] ?? preferred))?.toString() ?? null,
         max_stake_per_day_minor: null,
@@ -84,6 +85,7 @@ function fakeDb(walletCurrency: 'IRT' | 'IRR' = 'IRT', original = 2_500_000n) {
   };
   return { db: db as unknown as Db, posted, receipts, getBalance: () => balance,
     setPreferredCurrency: (currency: string) => { preferred = currency; },
+    setKycStatus: (status: string) => { kycStatus = status; },
     setStakeLimit: (currency: string, minor: bigint) => { perCurrencyStakeLimit.set(currency, minor); } };
 }
 
