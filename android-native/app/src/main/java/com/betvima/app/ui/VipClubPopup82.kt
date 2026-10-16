@@ -34,11 +34,11 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 
-private val clubBg = Color(0xFF09131D)
-private val clubPanel = Color(0xFF112433)
-private val clubLight = Color(0xFFC5D4E4)
-private val clubGreen = Color(0xFF00D47A)
-private val clubGold = Color(0xFFD9BB7B)
+private val clubBg = Color(0xFF0B0C10)
+private val clubPanel = Color(0xFF1B1C22)
+private val clubLight = Color(0xFFC3C5D0)
+private val clubGreen = Color(0xFF6FAEFF)
+private val clubGold = Color(0xFFE5BE78)
 
 private data class ClubBenefit(
     val icon: ImageVector, val name: String, val nameFa: String,
@@ -96,7 +96,7 @@ fun VipClubPopup82(
         ) {
             Column(Modifier.fillMaxWidth()
                 .background(Brush.verticalGradient(
-                    listOf(Color(0xFF102A32), clubBg)))
+                    listOf(Color(0xFF202127), clubBg)))
                 .padding(horizontal = 19.dp, vertical = 15.dp)
             ) {
                 Box(Modifier.align(Alignment.CenterHorizontally)
@@ -108,10 +108,10 @@ fun VipClubPopup82(
                     Box(Modifier.size(43.dp)
                         .clip(RoundedCornerShape(13.dp))
                         .background(Brush.linearGradient(
-                            listOf(Color(0xFF2F775D), clubGreen.copy(alpha = .32f)))),
+                            listOf(Color(0xFF393B50), clubGreen.copy(alpha = .32f)))),
                         contentAlignment = Alignment.Center) {
                         Icon(Icons.Default.WorkspacePremium, null,
-                            tint = Color.White, modifier = Modifier.size(27.dp))
+                            tint = clubGold, modifier = Modifier.size(27.dp))
                     }
                     Spacer(Modifier.width(11.dp))
                     Column(Modifier.weight(1f)) {
@@ -143,12 +143,12 @@ fun VipClubPopup82(
                     Box(Modifier.fillMaxWidth()
                         .clip(RoundedCornerShape(27.dp))
                         .background(Brush.linearGradient(listOf(
-                            Color(0xFF153E38), Color(0xFF152C39), Color(0xFF171F37))))
+                            Color(0xFF28222F), Color(0xFF151923), Color(0xFF101116))))
                         .heightIn(min = 225.dp)) {
                         Box(Modifier.size(175.dp).align(Alignment.TopEnd)
                             .offset(x = 42.dp, y = (-39).dp)
                             .background(Brush.radialGradient(listOf(
-                                clubGreen.copy(alpha = .30f), Color.Transparent)), CircleShape))
+                                Color(0xFF976EDE).copy(alpha = .24f), Color.Transparent)), CircleShape))
                         Icon(Icons.Default.WorkspacePremium, null,
                             tint = clubGold.copy(alpha = .40f),
                             modifier = Modifier.align(Alignment.TopEnd)
@@ -248,7 +248,7 @@ fun VipClubPopup82(
                 itemsIndexed(clubFaqs, key = { i, _ -> "club-faq-$i" }) { i, faq ->
                     val opened = expanded == i
                     val shade by animateColorAsState(
-                        targetValue = if (opened) Color(0xFF19373E) else clubPanel,
+                        targetValue = if (opened) Color(0xFF272932) else clubPanel,
                         animationSpec = tween(240), label = "vipFaqHighlight")
                     Column(Modifier.fillMaxWidth()
                         .clip(RoundedCornerShape(17.dp))
@@ -288,7 +288,7 @@ fun VipClubPopup82(
             }
 
             Row(Modifier.fillMaxWidth()
-                .background(Color(0xFF0D1D28))
+                .background(Color(0xFF121318))
                 .padding(horizontal = 16.dp, vertical = 12.dp),
                 horizontalArrangement = Arrangement.spacedBy(10.dp),
                 verticalAlignment = Alignment.CenterVertically) {
@@ -305,10 +305,10 @@ fun VipClubPopup82(
                     colors = ButtonDefaults.buttonColors(containerColor = clubGreen),
                     shape = RoundedCornerShape(15.dp)) {
                     Icon(Icons.Default.SupportAgent, null,
-                        tint = Color(0xFF071B16), modifier = Modifier.size(19.dp))
+                        tint = Color(0xFF0E1320), modifier = Modifier.size(19.dp))
                     Spacer(Modifier.width(6.dp))
                     Text(tr(lang, "Ask about VIP", "پرسش درباره VIP"),
-                        fontSize = 12.sp, color = Color(0xFF071B16),
+                        fontSize = 12.sp, color = Color(0xFF0E1320),
                         fontWeight = FontWeight.Black)
                 }
             }
@@ -321,7 +321,7 @@ private fun ClubBenefitTile(benefit: ClubBenefit, lang: Lang, modifier: Modifier
     Column(modifier.heightIn(min = 151.dp)
         .clip(RoundedCornerShape(19.dp))
         .background(Brush.verticalGradient(listOf(
-            Color(0xFF203B48), Color(0xFF132632))))
+            Color(0xFF262830), Color(0xFF18191F))))
         .padding(13.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Box(Modifier.size(39.dp).clip(RoundedCornerShape(12.dp))
@@ -340,7 +340,7 @@ private fun ClubBenefitTile(benefit: ClubBenefit, lang: Lang, modifier: Modifier
 private fun ClubStep(number: String, title: String, details: String) {
     Row(verticalAlignment = Alignment.CenterVertically) {
         Box(Modifier.size(40.dp).clip(RoundedCornerShape(12.dp))
-            .background(Color(0xFF24443C)), contentAlignment = Alignment.Center) {
+            .background(Color(0xFF333044)), contentAlignment = Alignment.Center) {
             Text(number, color = clubGreen, fontSize = 13.sp,
                 fontWeight = FontWeight.Black)
         }
