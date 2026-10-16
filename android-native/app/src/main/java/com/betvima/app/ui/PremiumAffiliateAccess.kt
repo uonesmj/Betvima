@@ -128,9 +128,10 @@ private fun AffiliateFormLabel(icon: ImageVector, title: String, lang: Lang, fa:
 
 @Composable
 fun AffiliateAccessPanel(lang: Lang, api: ApiClient, vault: SessionVault,
+    initialRegister: Boolean = false,
     onAuthenticated: () -> Unit) {
     val scope = rememberCoroutineScope()
-    var registering by rememberSaveable { mutableStateOf(false) }
+    var registering by rememberSaveable(initialRegister) { mutableStateOf(initialRegister) }
     var username by rememberSaveable { mutableStateOf("") }
     var email by rememberSaveable { mutableStateOf("") }
     var password by rememberSaveable { mutableStateOf("") }
@@ -228,13 +229,29 @@ fun AffiliateAccessPanel(lang: Lang, api: ApiClient, vault: SessionVault,
                                     .put("password",password)
                                     .put("payoutAccountId",payoutAccount.trim()))
                                 val pending=result.optBoolean("pendingApproval",false)
-                                password=""
-                                registering=false
-                                message=tr(lang,
-                                    if(pending)"Registration submitted. Sign in once approved."
-                                    else "Account created. Sign in with your partner email.",
-                                    if(pending)"ثبت‌نام انجام شد. پس از تأیید وارد شوید."
-                                    else "حساب ساخته شد. با ایمیل افیلیت وارد شوید.")
+                                val newPassword=password
+                                // Registration is already committed on the server here.
+                                // Never repeat the create-user POST to recover a login error.
+                                if (pending) {
+                                    password=""
+                                    registering=false
+                                    message=tr(lang,
+                                        "Registration submitted. You can sign in after approval.",
+                                        "ثبت‌نام انجام شد. پس از تأیید حساب وارد شوید.")
+                                } else {
+                                    try {
+                                        vault.signInAffiliate(email.trim(),newPassword,api)
+                                        password=""
+                                        onAuthenticated()
+                                    } catch(loginError:Exception) {
+                                        // Preserve the successful registration. Retry LOGIN only.
+                                        password=""
+                                        registering=false
+                                        message=tr(lang,
+                                            "Partner account created. Please sign in with your email and password.",
+                                            "حساب افیلیت ساخته شد. لطفاً با ایمیل و رمز عبور وارد شوید.")
+                                    }
+                                }
                             } else {
                                 vault.signInAffiliate(email.trim(),password,api)
                                 password=""

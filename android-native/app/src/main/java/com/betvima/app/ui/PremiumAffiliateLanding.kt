@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -28,6 +29,12 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
+import com.betvima.app.data.ApiClient
+import com.betvima.app.data.SessionVault
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
@@ -45,7 +52,19 @@ private val partnerWhite = Color.White
 @Composable
 fun PremiumAffiliateSheet(state: AppState, model: AppViewModel, onClose: () -> Unit) {
     val lang = state.lang
-    var showPortal by rememberSaveable { mutableStateOf(false) }
+    val context = LocalContext.current
+    val affiliateApi = remember { ApiClient() }
+    val affiliateVault = remember(context) { SessionVault(context, "affiliate") }
+    var showPortal by rememberSaveable { mutableStateOf(affiliateVault.signedIn()) }
+    var authMode by rememberSaveable { mutableStateOf<String?>(null) }
+    val openRegister = {
+        if (affiliateVault.signedIn()) showPortal = true
+        else authMode = "register"
+    }
+    val openLogin = {
+        if (affiliateVault.signedIn()) showPortal = true
+        else authMode = "login"
+    }
     val sheet = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     ModalBottomSheet(
         onDismissRequest = onClose,
@@ -65,6 +84,10 @@ fun PremiumAffiliateSheet(state: AppState, model: AppViewModel, onClose: () -> U
                     .padding(horizontal = 18.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
+                Icon(painter=painterResource(com.betvima.app.R.drawable.ic_betvima_mini),
+                    contentDescription=null,tint=partnerMint,
+                    modifier=Modifier.size(24.dp))
+                Spacer(Modifier.width(6.dp))
                 Text("BETVIMA", fontWeight = FontWeight.Black, color = partnerWhite,
                     fontSize = 21.sp, letterSpacing = -.8.sp)
                 Spacer(Modifier.width(5.dp))
@@ -80,7 +103,7 @@ fun PremiumAffiliateSheet(state: AppState, model: AppViewModel, onClose: () -> U
                         Text(tr(lang, "Explore", "معرفی"), color = partnerWhite)
                     }
                 } else {
-                    TextButton(onClick = { showPortal = true }) {
+                    TextButton(onClick = openLogin) {
                         Text(tr(lang, "Log in", "ورود"), color = partnerWhite)
                     }
                 }
@@ -92,14 +115,73 @@ fun PremiumAffiliateSheet(state: AppState, model: AppViewModel, onClose: () -> U
             if (showPortal) {
                 AffiliateDashboard(state, model)
             } else {
-                AffiliateMotionLanding(lang, onGetStarted = { showPortal = true })
+                AffiliateMotionLanding(lang, onGetStarted = openRegister, onLogin = openLogin)
+            }
+        }
+        if (authMode != null) {
+            // An independently scrollable credential dialog over the current Affiliate sheet.
+            // Neither registration nor sign-in navigates to a new screen or website.
+            Dialog(
+                onDismissRequest = { authMode = null },
+                properties = DialogProperties(
+                    usePlatformDefaultWidth = false,
+                    dismissOnBackPress = true,
+                    dismissOnClickOutside = true
+                )
+            ) {
+                Surface(
+                    modifier = Modifier.fillMaxWidth(.95f)
+                        .fillMaxHeight(.88f)
+                        .imePadding(),
+                    shape = RoundedCornerShape(27.dp),
+                    color = affiliateCanvas,
+                    shadowElevation = 24.dp
+                ) {
+                    Column(Modifier.fillMaxSize()) {
+                        Row(Modifier.fillMaxWidth()
+                            .background(partnerNight)
+                            .padding(horizontal = 19.dp, vertical = 10.dp),
+                            verticalAlignment = Alignment.CenterVertically) {
+                            Column(Modifier.weight(1f)) {
+                                Text("BetVima Partners", color = Color.White,
+                                    fontWeight = FontWeight.Black, fontSize = 19.sp)
+                                Text(
+                                    if(authMode=="register")
+                                        tr(lang,"Create partner account","ثبت‌نام همکاری")
+                                    else tr(lang,"Partner sign in","ورود به حساب همکاری"),
+                                    color=Color(0xFFB0C3D8),fontSize=12.sp
+                                )
+                            }
+                            IconButton(onClick={authMode=null}) {
+                                Icon(Icons.Default.Close,
+                                    tr(lang,"Dismiss","بستن"),tint=Color.White)
+                            }
+                        }
+                        Column(Modifier.fillMaxSize()
+                            .verticalScroll(rememberScrollState())
+                            .padding(16.dp)) {
+                            AffiliateAccessPanel(
+                                lang=lang,api=affiliateApi,vault=affiliateVault,
+                                initialRegister=authMode=="register",
+                                onAuthenticated={
+                                    authMode=null
+                                    showPortal=true
+                                }
+                            )
+                        }
+                    }
+                }
             }
         }
     }
 }
 
 @Composable
-private fun AffiliateMotionLanding(lang: Lang, onGetStarted: () -> Unit) {
+private fun AffiliateMotionLanding(
+    lang: Lang,
+    onGetStarted: () -> Unit,
+    onLogin: () -> Unit
+) {
     val list = rememberLazyListState()
     val showing: (Int) -> Boolean = { index ->
         list.layoutInfo.visibleItemsInfo.any { it.index == index }
@@ -112,7 +194,7 @@ private fun AffiliateMotionLanding(lang: Lang, onGetStarted: () -> Unit) {
     ) {
         item(key = "hero") {
             val active by remember { derivedStateOf { showing(0) } }
-            PartnerHero(lang, active, onGetStarted)
+            PartnerHero(lang, active, onGetStarted, onLogin)
         }
         item(key = "stats") {
             val active by remember { derivedStateOf { showing(1) } }
@@ -124,32 +206,38 @@ private fun AffiliateMotionLanding(lang: Lang, onGetStarted: () -> Unit) {
                 "یک اکوسیستم برای رشد همکاری")
         }
         item(key = "features") {
-            PartnerFeatures(lang)
+            val active by remember { derivedStateOf { showing(3) } }
+            PartnerFeatures(lang, active)
         }
         item(key = "chart") {
             val active by remember { derivedStateOf { showing(4) } }
             PartnerChart(lang, active)
         }
         item(key = "coverage") {
-            PartnerCoverage(lang, onGetStarted)
+            val active by remember { derivedStateOf { showing(5) } }
+            PartnerCoverage(lang, active, onGetStarted)
         }
         item(key = "products") {
-            PartnerProducts(lang)
+            val active by remember { derivedStateOf { showing(6) } }
+            PartnerProducts(lang, active)
         }
         item(key = "questions") {
-            PartnerFaq(lang)
+            val active by remember { derivedStateOf { showing(7) } }
+            PartnerFaq(lang, active)
         }
         item(key = "gallery") {
-            PartnerGallery(lang)
+            val active by remember { derivedStateOf { showing(8) } }
+            PartnerGallery(lang, active)
         }
         item(key = "signup") {
-            PartnerSignup(lang, onGetStarted)
+            val active by remember { derivedStateOf { showing(9) } }
+            PartnerSignup(lang, active, onGetStarted)
         }
     }
 }
 
 @Composable
-private fun PartnerHero(lang: Lang, active: Boolean, onGetStarted: () -> Unit) {
+private fun PartnerHero(lang: Lang, active: Boolean, onGetStarted: () -> Unit, onLogin: () -> Unit) {
     val appear by animateFloatAsState(if (active) 1f else 0f,
         animationSpec = tween(850, easing = FastOutSlowInEasing), label = "hero")
     val floatAnim = rememberInfiniteTransition(label = "hero-float")
@@ -186,11 +274,14 @@ private fun PartnerHero(lang: Lang, active: Boolean, onGetStarted: () -> Unit) {
             Icon(Icons.Default.ArrowForward, null, tint = partnerWhite)
         }
         Spacer(Modifier.height(18.dp))
-        TextButton(onClick = onGetStarted) {
+        TextButton(onClick = onLogin) {
             Text(tr(lang, "Already a partner? Log in", "حساب دارید؟ ورود"),
                 color = Color(0xFFC2C9DD), fontSize = 12.sp)
         }
         Box(Modifier.fillMaxWidth().height(365.dp), contentAlignment = Alignment.BottomCenter) {
+            AffiliateCinematicPhoto(AffiliateScene.HERO,
+                Modifier.fillMaxSize().padding(top = 8.dp), active,
+                corner=23, showMark=false)
             Box(Modifier.size(310.dp).align(Alignment.Center).background(
                 Brush.radialGradient(listOf(Color(0xFF6B58C6).copy(alpha = .23f),
                     Color.Transparent)), CircleShape))
@@ -297,6 +388,9 @@ private fun PartnerStats(lang: Lang, active: Boolean) {
         .clip(RoundedCornerShape(34.dp))
         .background(partnerBlue)
         .padding(horizontal = 27.dp, vertical = 33.dp)) {
+        AffiliateCinematicPhoto(AffiliateScene.NUMBERS,
+            Modifier.fillMaxWidth().height(145.dp),active)
+        Spacer(Modifier.height(21.dp))
         Text(tr(lang, "Your tools for partner growth",
                 "ابزارهای رشد همکاری شما"),
             color = Color.White, fontSize = 23.sp, lineHeight = 28.sp,
@@ -336,7 +430,7 @@ private fun LightHeading(lang: Lang, label: String, en: String, fa: String) {
 }
 
 @Composable
-private fun PartnerFeatures(lang: Lang) {
+private fun PartnerFeatures(lang: Lang, active: Boolean) {
     Column(Modifier.fillMaxWidth().background(partnerPaper)
         .padding(horizontal=17.dp), verticalArrangement=Arrangement.spacedBy(12.dp)) {
         val cards = listOf(
@@ -372,8 +466,19 @@ private fun PartnerFeatures(lang: Lang) {
                     Text(card.third,
                         color = if(i==0)Color(0xFFC0C9DE) else partnerMuted,
                         fontSize = 13.sp, lineHeight = 19.sp)
+                    Spacer(Modifier.height(19.dp))
+                    AffiliateReveal(visible=active,delayMillis=i*110,
+                        modifier=Modifier.fillMaxWidth()) {
+                        AffiliateCinematicPhoto(
+                            when(i) {
+                                0 -> AffiliateScene.ECOSYSTEM
+                                1 -> AffiliateScene.MOBILE
+                                else -> AffiliateScene.STATISTICS
+                            },Modifier.fillMaxWidth().height(180.dp),active,corner=18
+                        )
+                    }
                     if(i==0) {
-                        Spacer(Modifier.height(20.dp))
+                        Spacer(Modifier.height(11.dp))
                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
                             Surface(color=Color(0xFF20355B),
                                 shape=RoundedCornerShape(13.dp)) {
@@ -411,7 +516,10 @@ private fun PartnerChart(lang: Lang, active: Boolean) {
             Text(tr(lang,"Illustrative visualisation — your actual commissions are displayed only in the authenticated dashboard.",
                     "نمودار نمایشی است؛ ارقام واقعی فقط در داشبورد احراز هویت‌شده نمایش داده می‌شوند."),
                 fontSize=11.sp,lineHeight=17.sp,color=Color(0xFFA9B6C7))
-            Spacer(Modifier.height(26.dp))
+            Spacer(Modifier.height(18.dp))
+            AffiliateCinematicPhoto(AffiliateScene.STATISTICS,
+                Modifier.fillMaxWidth().height(125.dp),active,corner=18)
+            Spacer(Modifier.height(18.dp))
             Row(Modifier.fillMaxWidth().height(180.dp),
                 horizontalArrangement=Arrangement.spacedBy(8.dp),
                 verticalAlignment=Alignment.Bottom) {
@@ -426,12 +534,15 @@ private fun PartnerChart(lang: Lang, active: Boolean) {
 }
 
 @Composable
-private fun PartnerCoverage(lang: Lang, onGetStarted: () -> Unit) {
+private fun PartnerCoverage(lang: Lang, active: Boolean, onGetStarted: () -> Unit) {
     Column(Modifier.fillMaxWidth().background(partnerPaper)
         .padding(horizontal=24.dp, vertical=40.dp),
         horizontalAlignment=Alignment.CenterHorizontally) {
+        AffiliateCinematicPhoto(AffiliateScene.GEOGRAPHY,
+            Modifier.fillMaxWidth().height(175.dp),active,corner=24)
+        Spacer(Modifier.height(13.dp))
         Icon(Icons.Default.Public, null, tint=partnerBlue,
-            modifier=Modifier.size(102.dp))
+            modifier=Modifier.size(38.dp))
         Spacer(Modifier.height(19.dp))
         Text(tr(lang,"Partner thinking, worldwide","همکاری با نگاهی جهانی"),
             color=partnerNight, fontSize=27.sp, lineHeight=32.sp,
@@ -453,7 +564,7 @@ private fun PartnerCoverage(lang: Lang, onGetStarted: () -> Unit) {
 }
 
 @Composable
-private fun PartnerProducts(lang: Lang) {
+private fun PartnerProducts(lang: Lang, active: Boolean) {
     Column(Modifier.fillMaxWidth().background(partnerNight)
         .padding(vertical=45.dp)) {
         Column(Modifier.padding(horizontal=24.dp)) {
@@ -470,14 +581,20 @@ private fun PartnerProducts(lang: Lang) {
                 color=Color(0xFF9CA3B7),fontSize=13.sp)
         }
         Spacer(Modifier.height(21.dp))
-        LazyRow(contentPadding=PaddingValues(horizontal=20.dp),
+        val carousel=rememberLazyListState()
+        LazyRow(state=carousel,contentPadding=PaddingValues(horizontal=20.dp),
             horizontalArrangement=Arrangement.spacedBy(13.dp)) {
-            items(listOf(
+            itemsIndexed(listOf(
                 Triple(Icons.Default.Casino,"Casino","کازینو"),
                 Triple(Icons.Default.SportsSoccer,"Sports","ورزش"),
                 Triple(Icons.Default.Smartphone,"Mobile app","اپلیکیشن")
-            )) { (icon, en, fa) ->
-                Surface(modifier=Modifier.width(259.dp).height(325.dp),
+            )) { index, (icon, en, fa) ->
+                val selected = carousel.firstVisibleItemIndex == index && active
+                val zoom by animateFloatAsState(if(selected)1f else .94f,
+                    animationSpec=tween(400,easing=FastOutSlowInEasing),
+                    label="affiliate-product-focus")
+                Surface(modifier=Modifier.width(259.dp).height(325.dp)
+                    .graphicsLayer { scaleX=zoom;scaleY=zoom },
                     shape=RoundedCornerShape(25.dp),
                     color=Color(0xFF171D28)) {
                     Column(Modifier.padding(22.dp)) {
@@ -492,13 +609,13 @@ private fun PartnerProducts(lang: Lang) {
                             "محصولات بت‌ویما برای استفاده روان و راحت در موبایل."),
                             color=Color(0xFFBBC2D3),fontSize=12.sp,lineHeight=18.sp)
                         Spacer(Modifier.height(18.dp))
-                        Box(Modifier.fillMaxWidth().height(130.dp)
-                            .clip(RoundedCornerShape(18.dp))
-                            .background(Brush.linearGradient(listOf(partnerBlue,
-                                partnerViolet,Color(0xFF182D55)))),
-                            contentAlignment=Alignment.Center) {
-                            Icon(icon,null,tint=Color.White,modifier=Modifier.size(82.dp))
-                        }
+                        AffiliateCinematicPhoto(
+                            when(en) {
+                                "Casino" -> AffiliateScene.CASINO
+                                "Sports" -> AffiliateScene.SPORTS
+                                else -> AffiliateScene.MOBILE
+                            },Modifier.fillMaxWidth().height(148.dp),active,corner=18
+                        )
                     }
                 }
             }
@@ -530,7 +647,7 @@ private val partnerQuestions=listOf(
 )
 
 @Composable
-private fun PartnerFaq(lang: Lang) {
+private fun PartnerFaq(lang: Lang, active: Boolean) {
     Column(Modifier.fillMaxWidth().background(partnerPaper)
         .padding(horizontal=19.dp, vertical=45.dp)) {
         Text("FAQ",color=partnerBlue,letterSpacing=2.sp,fontSize=12.sp,
@@ -539,7 +656,10 @@ private fun PartnerFaq(lang: Lang) {
         Text(tr(lang,"Frequently asked questions","پرسش‌های متداول"),
             color=partnerNight,fontSize=29.sp,fontWeight=FontWeight.Black,
             lineHeight=34.sp)
-        Spacer(Modifier.height(18.dp))
+        Spacer(Modifier.height(17.dp))
+        AffiliateCinematicPhoto(AffiliateScene.FAQ,
+            Modifier.fillMaxWidth().height(135.dp),active,corner=20)
+        Spacer(Modifier.height(16.dp))
         Surface(color=Color.White,shape=RoundedCornerShape(20.dp)) {
             Column(Modifier.padding(17.dp)) {
                 Text(tr(lang,"Hello! Tell me about joining BetVima.",
@@ -579,7 +699,7 @@ private fun PartnerFaq(lang: Lang) {
 }
 
 @Composable
-private fun PartnerGallery(lang: Lang) {
+private fun PartnerGallery(lang: Lang, active: Boolean) {
     Column(Modifier.fillMaxWidth().background(Color(0xFFFAFAFD))
         .padding(20.dp)) {
         Text("ABOUT US",color=partnerBlue,letterSpacing=2.sp,
@@ -597,24 +717,27 @@ private fun PartnerGallery(lang: Lang) {
         tiles.chunked(2).forEachIndexed { row, group ->
             Row(horizontalArrangement=Arrangement.spacedBy(12.dp)) {
                 group.forEachIndexed { col, tile ->
-                    val tone=when(row*2+col) {
-                        0 -> listOf(Color(0xFF1B56E9),Color(0xFF222449))
-                        1 -> listOf(Color(0xFF118C88),Color(0xFF11253B))
-                        2 -> listOf(Color(0xFF8D49B7),Color(0xFF292052))
-                        else -> listOf(Color(0xFF00A57A),Color(0xFF19354F))
-                    }
-                    Column(Modifier.weight(1f).height(178.dp)
-                        .clip(RoundedCornerShape(22.dp))
-                        .background(Brush.linearGradient(tone))
-                        .padding(16.dp),
-                        verticalArrangement=Arrangement.Center,
-                        horizontalAlignment=Alignment.CenterHorizontally) {
-                        Icon(tile.first,null,tint=Color.White,
-                            modifier=Modifier.size(52.dp))
-                        Spacer(Modifier.height(15.dp))
-                        Text(tile.second+"\n"+tile.third,
-                            color=Color.White,fontSize=13.sp,
-                            fontWeight=FontWeight.Black,textAlign=TextAlign.Center)
+                    AffiliateReveal(visible=active,delayMillis=(row*2+col)*95,
+                        modifier=Modifier.weight(1f)) {
+                        AffiliateCinematicPhoto(
+                            when(row*2+col) {
+                                0 -> AffiliateScene.MOBILE
+                                1 -> AffiliateScene.SPORTS
+                                2 -> AffiliateScene.CASINO
+                                else -> AffiliateScene.JOIN
+                            },
+                            Modifier.fillMaxWidth().height(183.dp),active,corner=22
+                        ) {
+                            Column(
+                                Modifier.align(Alignment.BottomStart)
+                                    .padding(start=13.dp,end=11.dp,bottom=15.dp)
+                            ) {
+                                Text(tile.second+"\n"+tile.third,
+                                    color=Color.White,fontSize=14.sp,
+                                    fontWeight=FontWeight.Black,
+                                    lineHeight=17.sp)
+                            }
+                        }
                     }
                 }
             }
@@ -624,9 +747,14 @@ private fun PartnerGallery(lang: Lang) {
 }
 
 @Composable
-private fun PartnerSignup(lang: Lang, onGetStarted: () -> Unit) {
+private fun PartnerSignup(lang: Lang, active: Boolean, onGetStarted: () -> Unit) {
     Column(Modifier.fillMaxWidth().background(partnerNight)
         .padding(horizontal=23.dp,vertical=58.dp)) {
+        AffiliateReveal(visible=active,modifier=Modifier.fillMaxWidth()) {
+            AffiliateCinematicPhoto(AffiliateScene.JOIN,
+                Modifier.fillMaxWidth().height(205.dp),active,corner=24)
+        }
+        Spacer(Modifier.height(24.dp))
         Text("JOIN US",color=partnerMint,fontSize=11.sp,letterSpacing=2.sp,
             fontWeight=FontWeight.Black)
         Spacer(Modifier.height(13.dp))
