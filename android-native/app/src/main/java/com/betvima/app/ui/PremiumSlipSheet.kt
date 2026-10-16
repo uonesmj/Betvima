@@ -1,6 +1,7 @@
 package com.betvima.app.ui
 
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.delay
 
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
@@ -200,6 +201,16 @@ private fun MainAccountSlipControls(
     val review = state.mainBetReview
     val awaitingOddsAcceptance = review != null && review.changes.isNotEmpty() &&
         state.mainOddsAcceptedToken != review.quoteToken
+    LaunchedEffect(state.signedIn, state.picks, curr, stake, canQuote) {
+        if (state.signedIn && canQuote) {
+            // No hidden bet placement: the heartbeat is quote-only. The user
+            // separately accepts movements and confirms the stake.
+            while (true) {
+                delay(10_000)
+                model.pollMainOdds(stake)
+            }
+        }
+    }
     Column(Modifier.fillMaxWidth(),
         verticalArrangement=Arrangement.spacedBy(8.dp)) {
         if(state.picks.isNotEmpty()) {
