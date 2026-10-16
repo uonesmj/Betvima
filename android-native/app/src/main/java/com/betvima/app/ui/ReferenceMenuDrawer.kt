@@ -24,7 +24,8 @@ fun ReferenceMenuDrawer(
     dismiss: () -> Unit,
     openAccount: () -> Unit,
     openLanguage: () -> Unit,
-    openAffiliate: () -> Unit
+    openAffiliate: () -> Unit,
+    openNotifications: () -> Unit
 ) {
     ModalDrawerSheet(modifier = Modifier.width(306.dp),
         drawerContainerColor = Color(0xFF1B1C20)) {
@@ -109,7 +110,7 @@ fun ReferenceMenuDrawer(
                 Icons.Default.SupportAgent) { dismiss(); model.feature(Feature.SUPPORT) }
             DrawerRow(tr(state.lang, "Notifications", "اعلان‌ها"),
                 Icons.Default.NotificationsNone) {
-                dismiss(); model.feature(Feature.NOTIFICATIONS)
+                dismiss(); openNotifications()
             }
             DrawerRow(tr(state.lang, "Language", "زبان"),
                 Icons.Default.Language, if (state.lang == Lang.FA) "فارسی" else "English") {

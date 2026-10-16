@@ -150,10 +150,14 @@ fun BrandHeader(
                             contentDescription = tr(lang, "Notifications", "اعلان‌ها"),
                             tint = Color.White, modifier = Modifier.size(22.dp))
                         if (unread > 0) {
-                            Box(Modifier.align(Alignment.TopEnd)
-                                .padding(7.dp)
-                                .size(7.dp)
-                                .background(headerGreen, CircleShape))
+                            Box(
+                                Modifier.align(Alignment.TopEnd)
+                                    .padding(5.dp)
+                                    .size(12.dp)
+                                    .clip(CircleShape)
+                                    .background(Color(0xFFFF6330))
+                                    .border(2.dp, Color(0xFF29292C), CircleShape)
+                            )
                         }
                     }
                 } else {
