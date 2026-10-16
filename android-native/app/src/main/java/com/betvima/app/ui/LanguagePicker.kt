@@ -1,85 +1,106 @@
 package com.betvima.app.ui
 
 import androidx.compose.animation.animateColorAsState
-import androidx.compose.foundation.*
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Language
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 
-/** Locale picker: flags describe the language options, never a claimed user location. */
+/** Compact language dialog, without country flags or excess empty space. */
 @Composable
-fun LanguagePickerDialog(
-    current: Lang, onSelect: (Lang) -> Unit, onDismiss: () -> Unit
-) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        shape = RoundedCornerShape(26.dp),
-        containerColor = Color.White,
-        icon = {
-            Icon(Icons.Default.Language, null, tint = Palette.blue,
-                modifier = Modifier.size(28.dp))
-        },
-        title = {
-            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                Text(if (current == Lang.FA) "انتخاب زبان" else "Choose language",
-                    modifier = Modifier.weight(1f),
-                    color = Palette.text, fontWeight = FontWeight.Black,
-                    fontSize = 20.sp)
-                IconButton(onClick = onDismiss) {
+fun LanguagePickerDialog(current: Lang, onSelect: (Lang) -> Unit, onDismiss: () -> Unit) {
+    Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+        Column(Modifier.fillMaxWidth(.86f)
+            .clip(RoundedCornerShape(25.dp))
+            .background(Color.White)
+            .padding(horizontal = 16.dp, vertical = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(11.dp)
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(Modifier.size(38.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(Brush.linearGradient(listOf(Color(0xFFDBF9EB),
+                        Color(0xFFE9F2FF)))), contentAlignment = Alignment.Center) {
+                    Icon(Icons.Default.Language, null, tint = Color(0xFF007F52),
+                        modifier = Modifier.size(23.dp))
+                }
+                Spacer(Modifier.width(10.dp))
+                Column(Modifier.weight(1f)) {
+                    Text(tr(current, "Language", "زبان"),
+                        color = Color(0xFF1C2430), fontWeight = FontWeight.Black, fontSize = 18.sp)
+                    Text(tr(current, "Choose your preferred language", "زبان مورد نظر را انتخاب کنید"),
+                        color = Color(0xFF687481), fontSize = 10.sp)
+                }
+                IconButton(onClick = onDismiss, modifier = Modifier.size(35.dp)) {
                     Icon(Icons.Default.Close,
-                        if (current == Lang.FA) "بستن" else "Close",
-                        tint = Palette.muted)
+                        tr(current,"Close","بستن"), tint = Color(0xFF87919F),
+                        modifier = Modifier.size(19.dp))
                 }
             }
-        },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                LocaleOption("🇮🇷", "فارسی", "Persian · راست‌به‌چپ",
-                    current == Lang.FA) { onSelect(Lang.FA) }
-                LocaleOption("🇬🇧", "English", "English · Left to right",
-                    current == Lang.EN) { onSelect(Lang.EN) }
+            CompactLocaleOption("فا", "فارسی", "Persian", current == Lang.FA) {
+                onSelect(Lang.FA)
             }
-        },
-        confirmButton = {}
-    )
+            CompactLocaleOption("EN", "English", "English", current == Lang.EN) {
+                onSelect(Lang.EN)
+            }
+        }
+    }
 }
 
 @Composable
-private fun LocaleOption(
-    flag: String, title: String, description: String,
+private fun CompactLocaleOption(
+    symbol: String, title: String, subtitle: String,
     selected: Boolean, onClick: () -> Unit
 ) {
-    val background by animateColorAsState(
-        if (selected) Palette.greenLight else Palette.paper, label = "localeBackground")
-    Surface(color = background,
-        shape = RoundedCornerShape(16.dp),
-        border = BorderStroke(if (selected) 1.5.dp else 1.dp,
-            if (selected) Palette.green else Palette.border),
-        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick)) {
-        Row(Modifier.heightIn(min = 72.dp).padding(horizontal = 14.dp),
+    val fill by animateColorAsState(
+        if (selected) Color(0xFFE9FBF2) else Color(0xFFF5F7FA),
+        animationSpec = tween(180), label = "compactLocaleFill")
+    Surface(
+        modifier = Modifier.fillMaxWidth()
+            .clip(RoundedCornerShape(15.dp))
+            .clickable(onClick = onClick),
+        color = fill, shape = RoundedCornerShape(15.dp),
+        border = BorderStroke(if (selected) 1.3.dp else 1.dp,
+            if (selected) Color(0xFF04BF76) else Color(0xFFE5E9EE))
+    ) {
+        Row(Modifier.heightIn(min = 58.dp).padding(horizontal = 12.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically) {
-            Text(flag, fontSize = 28.sp)
-            Spacer(Modifier.width(13.dp))
-            Column(Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                Text(title, color = Palette.text,
-                    fontWeight = FontWeight.ExtraBold, fontSize = 16.sp)
-                Text(description, color = Palette.muted, fontSize = 11.sp)
+            Box(Modifier.size(35.dp).clip(RoundedCornerShape(10.dp))
+                .background(if(selected) Color(0xFFD0F3E3) else Color.White),
+                contentAlignment = Alignment.Center) {
+                Text(symbol, color = if (selected) Color(0xFF007F52) else Color(0xFF516071),
+                    fontSize = 12.sp, fontWeight = FontWeight.Black)
             }
-            if (selected) Icon(Icons.Default.Check, null,
-                tint = Palette.green, modifier = Modifier.size(22.dp))
+            Spacer(Modifier.width(11.dp))
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(title, color = Color(0xFF192632),
+                    fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                Text(subtitle, color = Color(0xFF6C7985), fontSize = 10.sp)
+            }
+            if (selected) Box(Modifier.size(24.dp).clip(CircleShape)
+                .background(Color(0xFF00BC76)), contentAlignment = Alignment.Center) {
+                Icon(Icons.Default.Check, null, tint = Color.White,
+                    modifier = Modifier.size(16.dp))
+            }
         }
     }
 }

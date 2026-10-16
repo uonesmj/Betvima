@@ -95,23 +95,17 @@ fun ReferenceAnimatedBottomNav(
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.spacedBy(5.dp)
                     ) {
-                        if (item.id == "language") {
-                            Text(if (state.lang == Lang.FA) "🇮🇷" else "🇬🇧",
-                                fontSize = 21.sp, modifier = Modifier.size(25.dp),
-                                textAlign = androidx.compose.ui.text.style.TextAlign.Center)
-                        } else {
-                            Icon(item.icon,
-                                contentDescription = tr(state.lang, item.en, item.fa),
-                                tint = tint,
-                                modifier = Modifier.size(23.dp).graphicsLayer {
-                                    scaleX = scale; scaleY = scale
-                                })
-                        }
+                        Icon(item.icon,
+                            contentDescription = tr(state.lang, item.en, item.fa),
+                            tint = tint,
+                            modifier = Modifier.size(23.dp).graphicsLayer {
+                                scaleX = scale; scaleY = scale
+                            })
                         Text(tr(state.lang, item.en, item.fa),
                             fontSize = 9.sp, lineHeight = 12.sp,
                             fontWeight = if (active) FontWeight.Black
                                 else FontWeight.SemiBold,
-                            color = if (item.id == "language") Color.White else tint,
+                            color = tint,
                             maxLines = 1, overflow = TextOverflow.Ellipsis)
                     }
                     Box(Modifier.width(underline).height(3.dp)

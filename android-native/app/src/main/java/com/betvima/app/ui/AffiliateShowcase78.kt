@@ -7,6 +7,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -66,7 +67,10 @@ internal fun AffiliateShowcase78(
         item(key = "hero78") {
             val active by remember { derivedStateOf { isVisible(0) } }
             AffiliateReveal(visible = active) {
-                A78Hero(lang, active, onRegister, onLogin)
+                Column {
+                    A78Hero(lang, active, onRegister, onLogin)
+                    A78PartnerTerms83(lang)
+                }
             }
         }
         item(key = "products78") {
@@ -177,6 +181,69 @@ private fun A78Hero(lang: Lang, active: Boolean, onRegister: () -> Unit,
                     color=Color.White,fontSize=12.sp)
             }
         }
+    }
+}
+
+@Composable
+private fun A78PartnerTerms83(lang: Lang) {
+    val panelShape = RoundedCornerShape(21.dp)
+    Column(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 7.dp)
+        .clip(panelShape)
+        .background(Brush.verticalGradient(listOf(
+            Color(0xFF143D37), Color(0xFF132837), Color(0xFF101C30))))
+        .border(1.dp, Color(0xFF3F655F).copy(alpha = .65f), panelShape)
+        .padding(17.dp), verticalArrangement = Arrangement.spacedBy(13.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(Icons.Default.TrendingUp, null, tint = a78Green,
+                modifier = Modifier.size(20.dp))
+            Spacer(Modifier.width(8.dp))
+            Text(tr(lang, "PARTNER PROGRAM", "برنامه همکاری"),
+                color = a78Green, fontSize = 10.sp,
+                fontWeight = FontWeight.Black, letterSpacing = 1.1.sp)
+        }
+        Text(tr(lang, "Built for partners", "همکاری حرفه‌ای با بت‌ویما"),
+            color = Color.White, fontSize = 23.sp, lineHeight = 28.sp,
+            fontWeight = FontWeight.Black)
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text("70%", color = Color(0xFF43F0A9), fontSize = 37.sp,
+                fontWeight = FontWeight.Black)
+            Spacer(Modifier.width(13.dp))
+            Column(Modifier.weight(1f)) {
+                Text(tr(lang, "Default revenue share", "سهم درآمد پیش‌فرض"),
+                    color = Color.White, fontSize = 14.sp,
+                    fontWeight = FontWeight.ExtraBold)
+                Text(tr(lang, "For approved affiliate accounts",
+                        "برای حساب‌های افیلیت تأییدشده"),
+                    color = a78Muted, fontSize = 11.sp)
+            }
+        }
+        HorizontalDivider(color = Color.White.copy(alpha = .12f))
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                Icon(Icons.Default.CalendarMonth, null,
+                    tint = Color(0xFF7CC6FF), modifier = Modifier.size(21.dp))
+                Text(tr(lang, "Weekly settlement", "تسویه هفتگی"),
+                    color = Color.White, fontSize = 12.sp,
+                    fontWeight = FontWeight.Black)
+                Text(tr(lang, "Subject to approved statements and terms",
+                    "مطابق صورت‌حساب و شرایط تأییدشده"),
+                    color = a78Muted, fontSize = 10.sp, lineHeight = 14.sp)
+            }
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                Icon(Icons.Default.Smartphone, null,
+                    tint = Color(0xFF7CC6FF), modifier = Modifier.size(21.dp))
+                Text(tr(lang, "Android partner access", "دسترسی اختصاصی اندروید"),
+                    color = Color.White, fontSize = 12.sp,
+                    fontWeight = FontWeight.Black)
+                Text(tr(lang, "Affiliate tools in the BetVima Android app",
+                    "ابزارهای افیلیت در اپ اندروید بت‌ویما"),
+                    color = a78Muted, fontSize = 10.sp, lineHeight = 14.sp)
+            }
+        }
+        Text(tr(lang,
+            "Revenue share and settlement depend on approval, the affiliate agreement and verified reporting; no automatic payment is implied.",
+            "سهم درآمد و تسویه تابع تأیید حساب، قرارداد همکاری و گزارش‌های مالی معتبر است؛ این توضیح به معنی پرداخت خودکار نیست."),
+            color = Color(0xFFB3C5D1), fontSize = 9.sp, lineHeight = 14.sp)
     }
 }
 
