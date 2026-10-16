@@ -62,10 +62,13 @@ fun ReferenceAnimatedBottomNav(
         else -> ""
     }
     CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
-        Surface(color = Color(0xFF101114), tonalElevation = 0.dp,
-            shadowElevation = 10.dp) {
-            Row(Modifier.fillMaxWidth().heightIn(min = 75.dp)
-                .navigationBarsPadding()
+        Box(Modifier.fillMaxWidth().background(Color(0xFF0D0E10))
+            .navigationBarsPadding().padding(horizontal = 8.dp, vertical = 6.dp)) {
+        Surface(color = Color(0xFF191A1F),
+            shape = RoundedCornerShape(23.dp),
+            border = BorderStroke(1.dp, Color(0xFF35373E)),
+            shadowElevation = 8.dp, modifier = Modifier.fillMaxWidth()) {
+            Row(Modifier.fillMaxWidth().heightIn(min = 73.dp)
                 .padding(horizontal = 3.dp, vertical = 3.dp),
                 verticalAlignment = Alignment.CenterVertically) {
                 bottomDestinations.forEach { item ->
@@ -114,6 +117,7 @@ fun ReferenceAnimatedBottomNav(
                     }
                 }
             }
+        }
         }
     }
 }
