@@ -45,6 +45,7 @@ fun BetvimaApp(model: AppViewModel) {
     var vipOpen by rememberSaveable { mutableStateOf(false) }
     var bonusOpen by rememberSaveable { mutableStateOf(false) }
     var appWindowOrigin by remember { mutableStateOf(Offset.Zero) }
+    var slipFabWindowCenter by remember { mutableStateOf(Offset.Unspecified) }
     LaunchedEffect(Unit) {
         // Motion is an entrance identity, not a proxy for backend progress.
         delay(1050)
@@ -223,9 +224,15 @@ fun BetvimaApp(model: AppViewModel) {
             floatingActionButton = {
                 if (state.tab in setOf(Tab.HOME, Tab.LIVE, Tab.SPORTS) &&
                     state.feature == Feature.NONE && !drawer.isOpen) {
-                    AnimatedFloatingBetslip(state.picks.size, state.lang) {
-                        model.showSlip(true)
-                    }
+                    AnimatedFloatingBetslip(
+                        count = state.picks.size,
+                        lang = state.lang,
+                        onOpen = { model.showSlip(true) },
+                        onCenterChanged = { center ->
+                            if (slipFabWindowCenter != center) slipFabWindowCenter = center
+                        },
+                        receivingPick = state.pickFlight != null
+                    )
                 }
             },
             floatingActionButtonPosition = FabPosition.Center,
@@ -286,6 +293,7 @@ fun BetvimaApp(model: AppViewModel) {
         PickFlightOverlay84(
             flight = state.pickFlight,
             windowOrigin = appWindowOrigin,
+            targetWindowCenter = slipFabWindowCenter,
             onLanded = model::finishPickFlight
         )
         }
