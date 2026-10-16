@@ -584,10 +584,18 @@ private fun CasinoCarousel(games: List<CasinoGame>, lang: Lang, onDemo: (CasinoG
     }
     Column(Modifier.fillMaxWidth().padding(horizontal = 15.dp),
         verticalArrangement = Arrangement.spacedBy(7.dp)) {
-        HorizontalPager(state = pager,
+        HorizontalPager(state = pager, pageSpacing = 8.dp,
             modifier = Modifier.fillMaxWidth().height(173.dp)) { i ->
             val game = slides.getOrNull(i)
-            Box(Modifier.fillMaxSize().clip(RoundedCornerShape(23.dp))
+            Box(Modifier.fillMaxSize().graphicsLayer {
+                val distance = kotlin.math.abs(
+                    (pager.currentPage - i) + pager.currentPageOffsetFraction
+                ).coerceIn(0f, 1f)
+                scaleX = 1f - .055f * distance
+                scaleY = 1f - .065f * distance
+                alpha = 1f - .20f * distance
+            }.clip(RoundedCornerShape(23.dp))
+                .border(1.dp, Color(0xFF3865A4), RoundedCornerShape(23.dp))
                 .background(Brush.horizontalGradient(
                     listOf(Color(0xFF092766), Color(0xFF1661C5), Color(0xFF212A69))))
                 .clickable(enabled = game != null) { if (game != null) onDemo(game) }) {
@@ -602,15 +610,22 @@ private fun CasinoCarousel(games: List<CasinoGame>, lang: Lang, onDemo: (CasinoG
                         Color(0xDF0C2561), Color.Transparent))))
                 Column(Modifier.fillMaxWidth(.67f).align(Alignment.CenterStart)
                     .padding(17.dp), verticalArrangement = Arrangement.spacedBy(9.dp)) {
-                    Text("BETVIMA • CASINO", color = Color(0xFFB0D9FF),
-                        fontSize = 10.sp, fontWeight = FontWeight.Black)
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        CasinoBrandMark(size = 16.dp)
+                        Spacer(Modifier.width(6.dp))
+                        Text("BETVIMA • CASINO", color = Color(0xFFB0D9FF),
+                            fontSize = 10.sp, fontWeight = FontWeight.Black)
+                    }
                     Text(game?.name ?: tr(lang,"Casino games","بازی‌های کازینو"),
                         color = Color.White, fontSize = 22.sp,
                         fontWeight = FontWeight.Black, lineHeight = 26.sp,
                         maxLines = 3, overflow = TextOverflow.Ellipsis)
                     Text(game?.providerName ?: "BetVima", color = Color.White,
                         fontSize = 11.sp, maxLines = 1)
-                    Surface(color = Color.White, shape = RoundedCornerShape(11.dp)) {
+                    Surface(color = Color.White, shape = RoundedCornerShape(11.dp),
+                        modifier = Modifier.casinoBounce {
+                            game?.let(onDemo)
+                        }) {
                         Text(tr(lang,"Try demo","امتحان دمو"), color = Color.Black,
                             fontSize = 12.sp, fontWeight = FontWeight.Bold,
                             modifier = Modifier.padding(horizontal = 13.dp, vertical = 8.dp))
@@ -631,6 +646,7 @@ private fun CasinoCarousel(games: List<CasinoGame>, lang: Lang, onDemo: (CasinoG
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun CasinoGameShelf(
     title: String, icon: ImageVector, games: List<CasinoGame>, width: Dp,
@@ -697,7 +713,9 @@ private fun CasinoGameShelf(
 @Composable
 private fun CasinoArrow(icon: ImageVector, enabled: Boolean, onClick: () -> Unit) {
     Box(Modifier.size(35.dp).clip(RoundedCornerShape(11.dp))
-        .background(panel).clickable(enabled = enabled, onClick = onClick),
+        .background(panel)
+        .border(1.dp, Color(0xFF354966), RoundedCornerShape(11.dp))
+        .then(if (enabled) Modifier.casinoBounce(onClick) else Modifier),
         contentAlignment = Alignment.Center) {
         Icon(icon, null, tint = if (enabled) Color.White else secondary.copy(alpha = .45f),
             modifier = Modifier.size(20.dp))
@@ -752,8 +770,7 @@ private fun CasinoCover(
             fontWeight = FontWeight.SemiBold, maxLines = 1,
             overflow = TextOverflow.Ellipsis)
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Box(Modifier.size(6.dp).clip(CircleShape)
-                .background(Color(0xFF00C470)))
+            CasinoBrandMark(size = 10.dp)
             Spacer(Modifier.width(4.dp))
             Text(game.providerName, fontSize = 9.sp, color = secondary,
                 maxLines = 1, overflow = TextOverflow.Ellipsis)
