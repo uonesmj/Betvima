@@ -74,7 +74,7 @@ fun PremiumLoadingOverlay(visible: Boolean, lang: Lang) {
         Box(
             Modifier.fillMaxSize().background(
                 Brush.verticalGradient(listOf(Color(0xFF060D16),
-                    Color(0xFF101E29), Color(0xFF060D16)))),
+                    Color(0xFF060D16), Color(0xFF060D16)))),
             contentAlignment = Alignment.Center
         ) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -112,9 +112,7 @@ fun PremiumLoadingOverlay(visible: Boolean, lang: Lang) {
                                 style = Stroke(width = 3.dp.toPx(), cap = StrokeCap.Round))
                         }
                     }
-                    Text("BV", color = Color.White,
-                        fontSize = 35.sp, fontWeight = FontWeight.Black,
-                        letterSpacing = (-2).sp)
+                    CasinoBrandMark(size = 72.dp)
                 }
                 Spacer(Modifier.height(21.dp))
                 Text("BETVIMA", fontSize = 31.sp, fontWeight = FontWeight.Black,
