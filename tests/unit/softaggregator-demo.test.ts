@@ -57,6 +57,57 @@ describe('SoftAggregator demo-only launch API', () => {
   });
 
 
+  it('returns a typed non-monetary error when the supplier rejects a demo', async () => {
+    const calls: string[] = [];
+    vi.stubGlobal('fetch', vi.fn(async (_: string, options: RequestInit) => {
+      const body = JSON.parse(String(options.body)) as Record<string, unknown>;
+      calls.push(String(body.method));
+      if (body.method === 'getGameList') return {
+        ok: true, json: async () => ({ error: 0, response: [{
+          id_hash: 'x887bde40b16350c', name: 'Aviator', game_type: 'crash',
+          provider: 'studio', play_for_fun_supported: false,
+        }] }),
+      };
+      if (body.method === 'createPlayer') return {
+        ok: true, json: async () => ({ error: 0, response: { created: true } }),
+      };
+      if (body.method === 'getGameDemo') return {
+        ok: true, json: async () => ({
+          error: 1, message: 'Not authorized to provide demo', response: null,
+        }),
+      };
+      throw new Error('Unexpected provider method');
+    }));
+    await expect(launchCasinoGame({
+      userId: '00000000-0000-4000-8000-000000000001',
+      gameId: 'x887bde40b16350c',
+      demo: true, lang: 'en', device: 'mobile',
+    })).rejects.toThrow('CASINO_DEMO_UNAVAILABLE');
+    expect(calls).toContain('getGameDemo');
+    expect(calls).not.toContain('getGame');
+  });
+
+  it('does not label a network outage as a non-playable title', async () => {
+    vi.stubGlobal('fetch', vi.fn(async (_: string, options: RequestInit) => {
+      const body = JSON.parse(String(options.body)) as Record<string, unknown>;
+      if (body.method === 'getGameList') return {
+        ok: true, json: async () => ({ error: 0, response: [{
+          id_hash: 'x887bde40b16350c', name: 'Aviator', game_type: 'crash',
+          provider: 'studio',
+        }] }),
+      };
+      if (body.method === 'createPlayer') return {
+        ok: false, status: 503,
+      };
+      throw new Error('Unexpected method');
+    }));
+    await expect(launchCasinoGame({
+      userId: '00000000-0000-4000-8000-000000000001',
+      gameId: 'x887bde40b16350c',
+      demo: true, lang: 'en', device: 'mobile',
+    })).rejects.toThrow('SOFTAGGREGATOR_HTTP_ERROR');
+  });
+
   it('retains compatibility with a direct-string launch response', async () => {
     vi.stubGlobal('fetch', vi.fn(async (_: string, options: RequestInit) => {
       const body = JSON.parse(String(options.body)) as Record<string, unknown>;
