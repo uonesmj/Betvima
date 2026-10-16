@@ -128,9 +128,10 @@ private fun AffiliateFormLabel(icon: ImageVector, title: String, lang: Lang, fa:
 
 @Composable
 fun AffiliateAccessPanel(lang: Lang, api: ApiClient, vault: SessionVault,
+    initialRegister: Boolean = false,
     onAuthenticated: () -> Unit) {
     val scope = rememberCoroutineScope()
-    var registering by rememberSaveable { mutableStateOf(false) }
+    var registering by rememberSaveable(initialRegister) { mutableStateOf(initialRegister) }
     var username by rememberSaveable { mutableStateOf("") }
     var email by rememberSaveable { mutableStateOf("") }
     var password by rememberSaveable { mutableStateOf("") }
