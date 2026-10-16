@@ -9,7 +9,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
@@ -218,12 +221,16 @@ private fun PremiumFixtureOdd(
     val enabled = match.bettingAvailable && market.available &&
         selection.available && (!match.live || state.liveEnabled)
     val selected = state.picks.any { it.selectionId == selection.id }
+    var oddCenter by remember(selection.id) { mutableStateOf(Offset.Unspecified) }
     val name = if (market.key == "h2h" && market.selections.size >= 3 && index < 3)
         listOf("1", "X", "2")[index]
     else selection.label(state.lang == Lang.FA)
     Surface(
         modifier = Modifier.fillMaxWidth().height(53.dp)
-            .clickable(enabled = enabled) { model.togglePick(match, market, selection) },
+            .onGloballyPositioned { oddCenter = it.boundsInWindow().center }
+            .clickable(enabled = enabled) {
+                model.togglePick(match, market, selection, oddCenter.x, oddCenter.y)
+            },
         shape = RoundedCornerShape(10.dp),
         color = when {
             selected -> Color(0xFFE0EDFF)
