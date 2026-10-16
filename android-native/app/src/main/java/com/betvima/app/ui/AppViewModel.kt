@@ -818,15 +818,18 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 "استعلام منقضی شده یا انتخاب‌ها تغییر کرده‌اند؛ دوباره استعلام بگیرید."))
             return@launch
         }
-        val session = sessionGeneration
-        val jwt = vault.accessToken(api) ?: run { showLogin(true); return@launch }
+        if (mainBetSubmitting) return@launch
+        // Acquire the one-shot lock *before* any suspending auth/network call.
         mainBetSubmitting = true
+        val session = sessionGeneration
         mutable.update { it.copy(busy = true) }
         try {
+            val jwt = vault.accessToken(api)
+                ?: throw ApiFailure(401, "Session expired")
             api.placeMainBet(jwt, review.picks, review.stakeMinor, review.currency,
                 review.quoteToken,
                 review.changes.associate { it.selectionId to it.afterScaled },
-                java.util.UUID.randomUUID().toString())
+                mainBetRequestId(review.quoteToken))
             if (session == sessionGeneration) {
                 quoteGeneration++
                 mutable.update {
