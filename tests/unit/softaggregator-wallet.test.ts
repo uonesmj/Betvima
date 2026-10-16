@@ -21,11 +21,15 @@ const identity = (callId: string, action: 'credit' | 'debit', amount: bigint): S
 function makeFakeDb(initial = 1000n, held = 200n) {
   let balance = initial;
   let preferredCurrency = 'USD';
+  let financialSchemaReady = true;
   const receipts = new Map<string, { identity_hash: string; response_error: 0 | 1 | 2; response_balance_minor: string; action: string; wallet_amount_minor: string; round_id: string; game_id: string; amount_minor: string; reversed: boolean }>();
   const postings: Array<Record<string, unknown>> = [];
   const rounds = new Map<string, { wallet_currency: string }>();
   const fake = {
     queryOne: vi.fn(async (sql: string, params: unknown[]) => {
+      if (sql.includes("as ready") && sql.includes("sa_unique_reversed_credit")) {
+        return { ready: financialSchemaReady };
+      }
       if (sql.includes('from nova.softaggregator_round_fx')) {
         return rounds.get(String(params[1]) + ':' + String(params[2])) ?? null;
       }
@@ -89,11 +93,22 @@ function makeFakeDb(initial = 1000n, held = 200n) {
     transaction: async (fn: (db: Db) => Promise<unknown>) => fn(fake as unknown as Db),
   };
   return { fake, receipts, postings, getBalance: () => balance,
-    setPreferredCurrency: (currency: string) => { preferredCurrency = currency; } };
+    setPreferredCurrency: (currency: string) => { preferredCurrency = currency; },
+    setSchemaReady: (ready: boolean) => { financialSchemaReady = ready; } };
 }
 
 describe('SoftAggregator financial callback behavior (isolated DB contract)', () => {
   beforeEach(() => vi.clearAllMocks());
+
+  it('refuses a signed money callback if the audited schema is incomplete', async () => {
+    const t = makeFakeDb();
+    t.setSchemaReady(false);
+    vi.mocked(getDb).mockReturnValue(t.fake as unknown as Db);
+    expect(await settleCasinoCallback(identity('missing-schema', 'credit', 100n)))
+      .toEqual({ error: 2, balance: 0 });
+    expect(t.postings).toHaveLength(0);
+    expect(t.receipts.size).toBe(0);
+  });
 
   it('debits available funds and replays the same transaction exactly once', async () => {
     const t = makeFakeDb();

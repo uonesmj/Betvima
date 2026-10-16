@@ -4,6 +4,7 @@ import type { Db } from '@/lib/ports/db';
 import { callbackResponse, type SignedCallback, userIdFromUsername } from './contract';
 import { casinoRealMoneyUserAllowed } from './client';
 import { fiatCasinoBalance, settleFiatCasinoCallback } from './fiat-wallet';
+import { casinoFinancialSchemaReady } from './financial-readiness';
 
 export type CasinoBalanceResponse = { error: 0 | 1 | 2; balance: number };
 type ProfileRow = {
@@ -33,11 +34,12 @@ function accountCanBet(p: ProfileRow): boolean {
   return p.status === 'active' && p.age_verified === true && !p.self_excluded && !p.restricted;
 }
 export async function casinoPlayerMayLaunch(userId: string): Promise<{ country: string }> {
+  if (!casinoRealMoneyUserAllowed(userId)) throw new Error('CASINO_REAL_MONEY_DISABLED');
   const db = getDb();
+  if (!(await casinoFinancialSchemaReady(db))) throw new Error('CASINO_FINANCIAL_SCHEMA_MISSING');
   const p = await getProfile(db, userId);
   if (!p || !accountCanBet(p)) throw new Error('CASINO_PLAYER_NOT_ELIGIBLE');
   if (!p.country || !/^[A-Z]{2}$/.test(p.country)) throw new Error('CASINO_COUNTRY_REQUIRED');
-  if (!casinoRealMoneyUserAllowed(userId)) throw new Error('CASINO_REAL_MONEY_DISABLED');
   if (!["USD", "IRT", "IRR"].includes(p.currency)) throw new Error('CASINO_WALLET_CURRENCY_UNSUPPORTED');
   const wallet = await db.queryOne<WalletRow>(
     "select balance_minor::text, locked_minor::text, is_frozen from nova.wallets where user_id = $1 and currency = $2",
@@ -86,6 +88,9 @@ export async function settleCasinoCallback(event: SignedCallback): Promise<Casin
   const userId = userIdFromUsername(event.username);
   if (!userId || !casinoRealMoneyUserAllowed(userId)) return { error: 2, balance: 0 };
   const db = getDb();
+  // Every signed callback must independently fail closed on incomplete DB
+  // migrations, even if a client/game session was opened before deployment.
+  if (!(await casinoFinancialSchemaReady(db))) return { error: 2, balance: 0 };
   const currencyProfile = await getProfile(db, userId);
   if (!currencyProfile) return { error: 2, balance: 0 };
   // Always settle a pre-existing round to its ORIGINAL native currency,
