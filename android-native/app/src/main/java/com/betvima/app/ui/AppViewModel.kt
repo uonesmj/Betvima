@@ -22,6 +22,15 @@ enum class HomeMode { TOP, TOP_BETS }
 enum class Feature { NONE, PROFILE, BONUSES, VIP, SUPPORT, CASINO, AFFILIATE, NOTIFICATIONS }
 enum class Lang { EN, FA }
 
+/** Ephemeral visual-only signal, never used in pricing or settlement. */
+data class PickFlight84(
+    val revision: Long,
+    val selectionId: String,
+    val originX: Float,
+    val originY: Float,
+    val oddsText: String
+)
+
 data class AppState(
     val tab: Tab = Tab.HOME, val homeMode: HomeMode = HomeMode.TOP,
     val feature: Feature = Feature.NONE,
@@ -36,6 +45,7 @@ data class AppState(
     val betDetailVisible: Boolean = false,
     val ticketMatches: Map<String, Match> = emptyMap(),
     val picks: List<Pick> = emptyList(), val showSlip: Boolean = false,
+    val pickFlight: PickFlight84? = null,
     val showLogin: Boolean = false, val registerScreen: Boolean = false,
     val authError: String? = null,
     val signedIn: Boolean = false,
@@ -71,6 +81,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     private var detailRequestNumber = 0
     private var accountRequestNumber = 0
     private var quoteGeneration = 0
+    private var flightRevision = 0L
     private var historyRequest = 0
     private var searchGeneration = 0
     private var liveRequestInFlight = false
@@ -283,7 +294,10 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             }.awaitAll().filterNotNull().associateBy { it.matchId }
         }
 
-    fun togglePick(match: Match, market: Market, selection: Selection) {
+    fun togglePick(
+        match: Match, market: Market, selection: Selection,
+        originX: Float = Float.NaN, originY: Float = Float.NaN
+    ) {
         if (!match.bettingAvailable || !market.available || !selection.available ||
             (match.live && !state.value.liveEnabled)) return
         quoteGeneration++
@@ -292,20 +306,45 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             market.label(persian), selection.label(persian),
             selection.oddsScaled, market.version, match.live)
         mutable.update { s ->
-            val picks = if (s.picks.any { it.selectionId == entry.selectionId }) {
+            val existed = s.picks.any { it.selectionId == entry.selectionId }
+            val picks = if (existed) {
                 s.picks.filterNot { it.selectionId == entry.selectionId }
             } else {
-                // A multi-bet cannot contain competing selections from the same match.
                 s.picks.filterNot { it.matchId == entry.matchId } + entry
             }
-            s.copy(picks = picks.take(20), showSlip = picks.isNotEmpty(), quote = null)
+            val kept = picks.takeLast(20)
+            val added = !existed && kept.any { it.selectionId == entry.selectionId }
+            val motion = if (added) PickFlight84(
+                ++flightRevision, entry.selectionId, originX, originY,
+                com.betvima.app.data.odds(selection.oddsScaled)
+            ) else null
+            // Adding an odd starts the flight; the sheet opens only after it lands.
+            // Removing a pick never launches a ghost flight.
+            s.copy(
+                picks = kept,
+                showSlip = if (added) false else s.showSlip && kept.isNotEmpty(),
+                pickFlight = motion,
+                quote = null
+            )
+        }
+    }
+
+    fun finishPickFlight(revision: Long) {
+        mutable.update { s ->
+            val flight = s.pickFlight
+            if (flight == null || flight.revision != revision) s
+            else s.copy(
+                pickFlight = null,
+                showSlip = s.picks.any { it.selectionId == flight.selectionId }
+            )
         }
     }
     fun removePick(id: String) {
         quoteGeneration++
         mutable.update {
             val picks = it.picks.filterNot { p -> p.selectionId == id }
-            it.copy(picks = picks, quote = null, showSlip = picks.isNotEmpty())
+            it.copy(picks = picks, quote = null, showSlip = picks.isNotEmpty(),
+                pickFlight = null)
         }
     }
     /** Replace the sheet only after explicit import confirmation.
@@ -316,12 +355,14 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         require(picks.map { it.matchId }.distinct().size == picks.size)
         quoteGeneration++
         mutable.update { it.copy(
-            picks = picks, quote = null, busy = false, showSlip = true)
+            picks = picks, quote = null, busy = false, showSlip = true,
+            pickFlight = null)
         }
     }
     fun clearPicks() {
         quoteGeneration++
-        mutable.update { it.copy(picks = emptyList(), quote = null, busy = false) }
+        mutable.update { it.copy(picks = emptyList(), quote = null, busy = false,
+            pickFlight = null) }
     }
     fun openBet(id: String) = viewModelScope.launch {
         if (!state.value.signedIn) {
@@ -381,7 +422,9 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         quoteGeneration++
         mutable.update { it.copy(quote = null, busy = false) }
     }
-    fun showSlip(show: Boolean) = mutable.update { it.copy(showSlip = show) }
+    fun showSlip(show: Boolean) = mutable.update {
+        it.copy(showSlip = show, pickFlight = null)
+    }
     fun showLogin(show: Boolean, register: Boolean = false) =
         mutable.update { it.copy(showLogin = show, registerScreen = register, authError = null) }
     fun setRegisterScreen(register: Boolean) =
