@@ -11,6 +11,7 @@ import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material3.Icon
 import androidx.compose.ui.draw.rotate
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.EnterTransition
 import androidx.compose.runtime.remember
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -51,7 +52,7 @@ import androidx.compose.ui.unit.sp
 @Composable
 fun PremiumLoadingOverlay(visible: Boolean, lang: Lang) {
     AnimatedVisibility(visible = visible,
-        enter = fadeIn(tween(280)), exit = fadeOut(tween(330))) {
+        enter = EnterTransition.None, exit = fadeOut(tween(330))) {
         val context = LocalContext.current
         val motionEnabled = remember(context) {
             runCatching {
@@ -77,8 +78,10 @@ fun PremiumLoadingOverlay(visible: Boolean, lang: Lang) {
                     Color(0xFF060D16), Color(0xFF060D16)))),
             contentAlignment = Alignment.Center
         ) {
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Box(Modifier.size(180.dp), contentAlignment = Alignment.Center) {
+            // Native splash and this loader share the exact same centre.
+            // No entrance fade: the first Compose frame fully covers app content.
+            Box(Modifier.size(180.dp).align(Alignment.Center),
+                contentAlignment = Alignment.Center) {
                     Canvas(Modifier.fillMaxSize()) {
                         val centerRadius = size.minDimension * .35f
                         drawCircle(
@@ -113,8 +116,11 @@ fun PremiumLoadingOverlay(visible: Boolean, lang: Lang) {
                         }
                     }
                     CasinoBrandMark(size = 72.dp)
-                }
-                Spacer(Modifier.height(21.dp))
+            }
+            Column(
+                modifier = Modifier.align(Alignment.Center).offset(y = 155.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
                 Text("BETVIMA", fontSize = 31.sp, fontWeight = FontWeight.Black,
                     color = Color.White, letterSpacing = 5.sp)
                 Spacer(Modifier.height(9.dp))
