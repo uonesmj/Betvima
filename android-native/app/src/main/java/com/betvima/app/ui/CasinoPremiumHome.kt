@@ -103,8 +103,8 @@ fun CasinoPremiumHome(
     val displayWidth = ((LocalConfiguration.current.screenWidthDp - 50) / 3f)
         .coerceAtLeast(90f).dp
     val sections = listOf(
-        "instant" to tr(state.lang, "Quick games", "بازی‌های سریع"),
-        "crash" to tr(state.lang, "Crash", "کراش"),
+        "instant" to tr(state.lang, "Instant games", "بازی‌های فوری"),
+        "crash" to tr(state.lang, "Quick games", "بازی‌های سریع"),
         "slots" to tr(state.lang, "Slots", "اسلات"),
         "live" to tr(state.lang, "Live casino", "کازینو زنده"),
         "table" to tr(state.lang, "Table games", "بازی‌های رومیزی"),
@@ -354,7 +354,7 @@ private fun CasinoMainTabs(category: String, lang: Lang, onSelect: (String) -> U
         horizontalArrangement = Arrangement.spacedBy(5.dp)) {
         listOf(Triple("", "Lobby", "لابی"),
             Triple("live", "Live Casino", "کازینو زنده"),
-            Triple("instant", "Quick games", "بازی‌های فوری")).forEach { (key, en, fa) ->
+            Triple("crash", "Quick games", "بازی‌های سریع")).forEach { (key, en, fa) ->
             Box(Modifier.weight(1f).height(46.dp).clip(CircleShape)
                 .background(if (category == key) accent else panel)
                 .clickable { onSelect(key) }, contentAlignment = Alignment.Center) {
