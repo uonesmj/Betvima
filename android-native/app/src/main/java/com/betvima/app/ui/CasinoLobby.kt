@@ -41,6 +41,9 @@ import com.betvima.app.data.CasinoEligibility
 import com.betvima.app.data.ApiFailure
 import com.betvima.app.data.casinoCategoryLabel
 import com.betvima.app.data.casinoDemoFailure
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
@@ -180,9 +183,9 @@ fun CasinoLobby(state: AppState, model: AppViewModel) {
     LaunchedEffect(category, provider, debouncedQuery, refreshSerial) {
         if (category.isBlank() && provider.isBlank() && debouncedQuery.isBlank()) {
             val types = listOf("slots", "live", "instant", "crash", "table")
-            val loaded = kotlinx.coroutines.coroutineScope {
-                types.map { type ->
-                    kotlinx.coroutines.async {
+            val loaded = coroutineScope {
+                val requests = types.map { type ->
+                    async {
                         try {
                             type to model.casinoGames(1, type, "", "").games
                         } catch (cancel: CancellationException) {
@@ -191,7 +194,8 @@ fun CasinoLobby(state: AppState, model: AppViewModel) {
                             type to emptyList<CasinoGame>()
                         }
                     }
-                }.let { kotlinx.coroutines.awaitAll(*it.toTypedArray()) }.toMap()
+                }
+                requests.awaitAll().toMap()
             }
             categoryShowcase = loaded
         } else {
