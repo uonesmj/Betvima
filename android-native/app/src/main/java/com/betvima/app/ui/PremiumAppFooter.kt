@@ -273,12 +273,12 @@ fun PremiumAppFooter(
                 verticalArrangement = Arrangement.spacedBy(16.dp)) {
                 FooterContactRow(
                     title = tr(lang, "Partner program", "برنامه همکاری"),
-                    value = "VimaPartner@gmail.com", icon = Icons.Default.OpenInNew
+                    value = "BetVima • Partners\nVimaPartner@gmail.com", icon = Icons.Default.OpenInNew
                 ) { email("VimaPartner@gmail.com") }
                 HorizontalDivider(color = Color.White.copy(alpha = .12f))
                 FooterContactRow(
                     title = tr(lang, "Support email", "ایمیل پشتیبانی"),
-                    value = "BetVimaSupport@gmail.com", icon = Icons.Default.Email
+                    value = "BetVima • Support\nBetVimaSupport@gmail.com", icon = Icons.Default.Email
                 ) { email("BetVimaSupport@gmail.com") }
             }
         }
@@ -407,7 +407,7 @@ private fun FooterMenuAction(
         .clickable(role = Role.Button, onClick = onClick)
         .padding(horizontal = 9.dp),
         verticalAlignment = Alignment.CenterVertically) {
-        Icon(icon, null, tint = Palette.green,
+        Icon(icon, null, tint = Color(0xFF9BA3B0),
             modifier = Modifier.size(18.dp))
         Spacer(Modifier.width(11.dp))
         Text(title, fontWeight = FontWeight.Medium,
