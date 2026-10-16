@@ -2,6 +2,10 @@ package com.betvima.app.ui
 
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.gestures.animateScrollBy
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -164,7 +168,7 @@ fun HomePage(state: AppState, model: AppViewModel, onSearch: () -> Unit) {
         }
         item(key = "premium-home-footer", contentType = "footer") {
             PremiumAppFooter(state, model) {
-                footerScope.launch { footerListState.animateScrollToItem(0) }
+                footerScope.launch { footerListState.smoothBackToTop() }
             }
         }
     }
@@ -285,7 +289,7 @@ fun CatalogPage(state: AppState, model: AppViewModel, live: Boolean,
         }
         item(key = "premium-catalog-footer", contentType = "footer") {
             PremiumAppFooter(state, model) {
-                footerScope.launch { footerListState.animateScrollToItem(0) }
+                footerScope.launch { footerListState.smoothBackToTop() }
             }
         }
     }
@@ -459,4 +463,21 @@ fun ResponsibleNote(lang: Lang) {
         "۱۸+ · مسئولانه بازی کنید. فقط در مناطق مجاز قانونی فعالیت کنید. همه موجودی‌ها و قیمت‌ها توسط سرور تأیید می‌شوند."),
         color = Palette.muted, fontSize = 10.sp, textAlign = TextAlign.Center,
         modifier = Modifier.fillMaxWidth().padding(vertical = 18.dp, horizontal = 9.dp))
+}
+
+
+// Eased bounded ascent: avoid the built-in long-distance teleport on a footer tap.
+internal suspend fun LazyListState.smoothBackToTop() {
+    if (firstVisibleItemIndex == 0 && firstVisibleItemScrollOffset == 0) return
+    val visible = layoutInfo.visibleItemsInfo
+    val representativeSize = visible.map { it.size }.average()
+        .takeIf { !it.isNaN() && it > 0.0 } ?: 300.0
+    val estimatedDistance = (
+        representativeSize * (firstVisibleItemIndex + 1) +
+        firstVisibleItemScrollOffset
+    ).toFloat().coerceAtLeast(600f)
+    animateScrollBy(-estimatedDistance,
+        animationSpec = tween(durationMillis = 850, easing = FastOutSlowInEasing))
+    if (firstVisibleItemIndex > 0 || firstVisibleItemScrollOffset > 0)
+        animateScrollToItem(0)
 }
