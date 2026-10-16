@@ -8,7 +8,7 @@ import { casinoFinancialSchemaReady } from './financial-readiness';
 
 export type CasinoBalanceResponse = { error: 0 | 1 | 2; balance: number };
 type ProfileRow = {
-  status: string; age_verified: boolean; country: string | null; currency: string;
+  status: string; age_verified: boolean; kyc_status: string; country: string | null; currency: string;
   self_excluded: boolean; restricted: boolean;
   max_stake_per_bet_minor: string | null; max_stake_per_day_minor: string | null;
   loss_limit_daily_minor: string | null; loss_limit_weekly_minor: string | null;
@@ -18,7 +18,8 @@ type ReceiptRow = { identity_hash: string; response_error: 0 | 1 | 2; response_b
 
 async function getProfile(db: Db, userId: string): Promise<ProfileRow | null> {
   const sql = [
-    "select p.status::text as status, p.age_verified, p.jurisdiction as country, p.preferred_currency as currency,",
+    "select p.status::text as status, p.age_verified, p.kyc_status::text as kyc_status,", 
+    "p.jurisdiction as country, p.preferred_currency as currency,", 
     "coalesce(l.self_excluded_until > now(), false) as self_excluded,",
     "exists (select 1 from nova.user_restrictions r where r.user_id = p.id and r.is_active",
     "and r.kind in ('self_exclusion', 'cooling_off', 'account_restriction')",
@@ -31,7 +32,8 @@ async function getProfile(db: Db, userId: string): Promise<ProfileRow | null> {
   return db.queryOne<ProfileRow>(sql, [userId]);
 }
 function accountCanBet(p: ProfileRow): boolean {
-  return p.status === 'active' && p.age_verified === true && !p.self_excluded && !p.restricted;
+  return p.status === 'active' && p.age_verified === true && p.kyc_status === 'verified' &&
+    !p.self_excluded && !p.restricted;
 }
 export async function casinoPlayerMayLaunch(userId: string): Promise<{ country: string }> {
   if (!casinoRealMoneyUserAllowed(userId)) throw new Error('CASINO_REAL_MONEY_DISABLED');
