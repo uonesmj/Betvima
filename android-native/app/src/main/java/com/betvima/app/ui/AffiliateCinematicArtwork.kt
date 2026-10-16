@@ -31,16 +31,16 @@ import androidx.compose.ui.unit.sp
  * Missing art gracefully renders a branded gradient while awaiting asset review.
  */
 internal enum class AffiliateScene(val photo:String,val accent:Color,val mark:ImageVector) {
-    HERO("hero_stadium",Color(0xFF00D47A),Icons.Default.SportsSoccer),
+    HERO("hero_stadium",Color(0xFF415DA2),Icons.Default.SportsSoccer),
     NUMBERS("partners",Color(0xFF087FF5),Icons.Default.Groups),
-    ECOSYSTEM("football_team",Color(0xFF00D47A),Icons.Default.SportsSoccer),
+    ECOSYSTEM("football_team",Color(0xFF9B7AA6),Icons.Default.SportsSoccer),
     MOBILE("app_showcase",Color(0xFF087FF5),Icons.Default.Smartphone),
-    STATISTICS("analytics",Color(0xFF00D47A),Icons.Default.Leaderboard),
+    STATISTICS("analytics",Color(0xFF6B82C3),Icons.Default.Leaderboard),
     GEOGRAPHY("global_stadium",Color(0xFF087FF5),Icons.Default.Public),
     CASINO("casino",Color(0xFF925FEF),Icons.Default.Casino),
-    SPORTS("football_action",Color(0xFF00D47A),Icons.Default.SportsSoccer),
+    SPORTS("football_action",Color(0xFFB08D62),Icons.Default.SportsSoccer),
     FAQ("players",Color(0xFF087FF5),Icons.Default.QuestionAnswer),
-    JOIN("winning_moment",Color(0xFF00D47A),Icons.Default.Stars)
+    JOIN("winning_moment",Color(0xFF655AA8),Icons.Default.Stars)
 }
 
 @Composable
@@ -71,8 +71,8 @@ internal fun AffiliateCinematicPhoto(
         animationSpec=infiniteRepeatable(tween(5800,easing=EaseInOutSine),
             repeatMode=RepeatMode.Reverse),label="affiliate-photo-drift")
     Box(modifier.clip(RoundedCornerShape(corner.dp))
-        .background(Brush.linearGradient(listOf(Color(0xFF0A1426),
-            scene.accent.copy(alpha=.58f),Color(0xFF111827))))) {
+        .background(Brush.linearGradient(listOf(Color(0xFF0E0E13),
+            scene.accent.copy(alpha=.24f),Color(0xFF101116))))) {
         val resolvedBitmap = bitmap
         if(resolvedBitmap!=null) {
             // One image only. The old Crop + Fit double layer repeated
@@ -88,7 +88,7 @@ internal fun AffiliateCinematicPhoto(
             )
         } else {
             Box(Modifier.fillMaxSize().background(Brush.radialGradient(
-                listOf(scene.accent.copy(alpha=.4f),Color.Transparent))))
+                listOf(scene.accent.copy(alpha=.14f),Color.Transparent))))
             Icon(scene.mark,null,modifier=Modifier.align(Alignment.Center)
                 .size(86.dp).graphicsLayer {
                     alpha=.16f;rotationZ=(drift-.5f)*9f
