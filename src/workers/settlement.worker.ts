@@ -218,5 +218,28 @@ async function settle(ctx: WorkerContext, betId: string) {
     betId, actorId: null, source: 'provider', idempotencyKey: `settle:${betId}:${bet.revision + 1}`,
   });
   if (!result) return { betId, status: 'skipped', reason: 'already_final' };
+
+  // Inform the owner ONLY after the atomic settlement has succeeded.
+  // Never alter, repeat or roll back a financial settlement for a notification.
+  const notificationType =
+    result.status === 'void' ? 'bet.void' :
+    result.status === 'partially_settled' ? 'bet.partial' :
+    result.payoutMinor > bet.stakeMinor ? 'bet.won' :
+    result.payoutMinor === bet.stakeMinor ? 'bet.void' : 'bet.lost';
+  try {
+    const { NotificationService } = await import('@/server/services/notification-service');
+    await new NotificationService(ctx.services).emit({
+      userId: bet.userId,
+      eventKey: notificationType,
+      data: { betId, status: result.status,
+        currency: bet.currency,
+        settledPayoutMinor: result.payoutMinor.toString() },
+      dedupeKey: 'bet:final:' + betId + ':' + String(bet.revision + 1),
+    });
+  } catch (error) {
+    ctx.log.warn('post-settlement notification failed (money already committed)', {
+      betId, error: error instanceof Error ? error.message : 'unknown',
+    });
+  }
   return { betId, status: result.status, payoutMinor: result.payoutMinor.toString() };
 }
