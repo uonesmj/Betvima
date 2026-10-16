@@ -1,0 +1,31 @@
+name: Football live preview - isolated verification
+on:
+  pull_request:
+    paths:
+      - 'src/lib/football-live-feed.ts'
+      - 'src/lib/football-live-demo.ts'
+      - 'src/components/betting/football-live-preview.tsx'
+      - 'src/app/research/football-live/page.tsx'
+      - 'tests/unit/football-live-feed.test.ts'
+      - 'docs/football-live-preview.md'
+      - '.github/workflows/football-live-preview-validation.yml'
+permissions:
+  contents: read
+jobs:
+  football:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - run: npx vitest run tests/unit/football-live-feed.test.ts
+      - run: npm run typecheck
+      - run: npm run build
+        env:
+          APP_ENV: test
+          NEXT_PUBLIC_SITE_URL: https://preview.betvima.com
+          NEXT_TELEMETRY_DISABLED: '1'
