@@ -18,6 +18,8 @@ describe('SoftAggregator live-wallet release schema gate', () => {
       'original_credit_call_id',
       'sa_fx_round_immutable',
       'sa_receipt_immutable',
+      'sa_receipt_integrity_on_insert',
+      'sa_receipt_posting_coherent',
     ]) expect(sql).toContain(required);
   });
 
