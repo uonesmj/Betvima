@@ -74,11 +74,11 @@ async function quote(): Promise<CasinoFxSnapshot> {
 }
 
 /** Non-mutating balance conversion: provider sees USD cents, native wallet stays fiat. */
-export async function fiatCasinoBalance(db: Db, userId: string): Promise<BalanceResult> {
+export async function fiatCasinoBalance(db: Db, userId: string, boundCurrency: FiatCurrency): Promise<BalanceResult> {
   const p = await readProfile(db, userId);
-  if (!p || !validCurrency(p.currency) || !allowed(p)) return fail;
-  const [w, fx] = await Promise.all([readWallet(db, userId, p.currency, false), quote()]);
-  return respond(0, casinoLocalMinorToUsd(usable(w), p.currency, fx.rateIrtPerUsd));
+  if (!p || !allowed(p)) return fail;
+  const [w, fx] = await Promise.all([readWallet(db, userId, boundCurrency, false), quote()]);
+  return respond(0, casinoLocalMinorToUsd(usable(w), boundCurrency, fx.rateIrtPerUsd));
 }
 
 async function limitsAllow(db: Db, userId: string, currency: FiatCurrency, amount: bigint, p: Profile): Promise<boolean> {
@@ -105,9 +105,9 @@ async function limitsAllow(db: Db, userId: string, currency: FiatCurrency, amoun
 
 /** Requires pending DB migrations 0208+0209. Do not enable on production before verification. */
 export async function settleFiatCasinoCallback(
-  db: Db, userId: string, event: SignedCallback,
+  db: Db, userId: string, event: SignedCallback, boundCurrency: FiatCurrency,
 ): Promise<BalanceResult> {
-  if (event.action === 'balance') return fiatCasinoBalance(db, userId);
+  if (event.action === 'balance') return fiatCasinoBalance(db, userId, boundCurrency);
   if (!event.callId || !event.identityHash || !event.amountMinor ||
       !event.roundId || !event.gameId) return fail;
 
@@ -142,11 +142,11 @@ export async function settleFiatCasinoCallback(
     );
     let currency: FiatCurrency;
     if (round) {
-      if (!validCurrency(round.wallet_currency)) return fail;
-      currency = round.wallet_currency;
+      if (round.wallet_currency !== boundCurrency) return fail;
+      currency = boundCurrency;
     } else {
-      if (!validCurrency(profile.currency) || !freshFx) return fail;
-      currency = profile.currency;
+      if (!freshFx) return fail;
+      currency = boundCurrency;
       validateCasinoFxSnapshot(freshFx);
       await tx.query(
         'insert into nova.softaggregator_round_fx ' +
@@ -211,7 +211,8 @@ export async function settleFiatCasinoCallback(
     if (w.is_frozen) {
       error = 2;
     } else if (isDebit && (local > before ||
-      (!event.rollback && (!allowed(roundCurrencyProfile) || event.amountMinor! < 20n ||
+      (!event.rollback && (!allowed(roundCurrencyProfile) ||
+         roundCurrencyProfile.currency !== currency || event.amountMinor! < 20n ||
         !(await limitsAllow(tx, userId, currency, local, roundCurrencyProfile)))))) {
       error = 1;
     } else if (local < 1n) {
