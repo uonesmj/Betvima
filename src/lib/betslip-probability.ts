@@ -18,6 +18,7 @@ export interface ProbabilityMarket {
   key?: string | null;
   status?: string | null;
   specifier?: string | null;
+  isLive?: boolean;
   selections: ProbabilitySelection[];
 }
 export interface ProbabilityMatch {
@@ -77,13 +78,14 @@ function singlePick(pick: ProbabilityPick, match: ProbabilityMatch): OutcomeProb
   const selection = market?.selections?.find((s) => s.id === pick.selectionId);
   if (!market || !selection) return null;
   const key = cleanKey(market.key);
-  const isLive = String(match.status ?? '').toLowerCase() === 'live';
+  const isLive = String(match.status ?? '').toLowerCase() === 'live' && market.isLive !== false;
   const marketPrices = normalized(market);
   if (!marketPrices?.has(selection.id)) return null;
 
   if (key === 'DRAW_NO_BET' || key === 'DNB') {
     const reference = match.markets.find((m) =>
-      m.id !== market.id && ['1X2', 'H2H'].includes(cleanKey(m.key)) &&
+      m.id !== market.id && m.isLive === market.isLive &&
+      ['1X2', 'H2H'].includes(cleanKey(m.key)) &&
       m.selections.length === 3 && m.selections.some(hasDraw));
     if (!reference) return null;
     const fair = normalized(reference);
