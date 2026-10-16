@@ -56,12 +56,16 @@ export class PostgresNotificationRepository implements NotificationRepository {
     const pageSize = Math.min(100, Math.max(1, filter.pageSize ?? 20));
     const rows = await this.db.query<Row>(
       `select id, event_key, title, body, data, created_at, read_at from nova.notifications
-        where user_id = $1 and channel = 'in_app' and ($2::boolean is not true or read_at is null)
+        where user_id = $1 and channel = 'in_app'
+          and scheduled_at <= now()
+          and ($2::boolean is not true or read_at is null)
         order by created_at desc limit $3 offset $4`,
       [userId, filter.unreadOnly ?? false, pageSize, (page - 1) * pageSize],
     );
     const count = await this.db.queryOne<Row>(
-      `select count(*) as total from nova.notifications where user_id = $1 and channel = 'in_app'`, [userId],
+      `select count(*) as total from nova.notifications where user_id = $1 and channel = 'in_app'
+         and scheduled_at <= now() and ($2::boolean is not true or read_at is null)`,
+      [userId, filter.unreadOnly ?? false],
     );
     const total = toNum(count?.total);
     return {
