@@ -18,6 +18,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalLayoutDirection
@@ -36,6 +37,10 @@ import kotlinx.coroutines.launch
 @Composable
 fun BetvimaApp(model: AppViewModel) {
     val state by model.state.collectAsStateWithLifecycle()
+    val context87 = LocalContext.current
+    val deviceSettings87 = remember(context87) { SettingsDevice87(context87) }
+    var pinUnlocked87 by remember { mutableStateOf(!deviceSettings87.hasPin()) }
+
     var accountOpen by rememberSaveable { mutableStateOf(false) }
     var languageOpen by rememberSaveable { mutableStateOf(false) }
     var searchOpen by rememberSaveable { mutableStateOf(false) }
@@ -63,7 +68,10 @@ fun BetvimaApp(model: AppViewModel) {
             model.refreshLive(silent = true)
         }
     }
-    LifecycleEventEffect(Lifecycle.Event.ON_PAUSE) { isForeground = false }
+    LifecycleEventEffect(Lifecycle.Event.ON_PAUSE) {
+        isForeground = false
+        if (deviceSettings87.hasPin()) pinUnlocked87 = false
+    }
     // Refresh unread notifications while the app is foregrounded. No mock counters.
     LaunchedEffect(state.signedIn, isForeground) {
         if (state.signedIn && isForeground) {
@@ -342,6 +350,10 @@ fun BetvimaApp(model: AppViewModel) {
             onBonuses = { vipOpen = false; model.feature(Feature.BONUSES) }
         )
         PremiumLoadingOverlay(initialSplash, state.lang)
+        LocalPinGate87(
+            locked = deviceSettings87.hasPin() && !pinUnlocked87,
+            onUnlock = { pinUnlocked87 = true }
+        )
     }
 }
 
