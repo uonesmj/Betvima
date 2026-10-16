@@ -113,6 +113,25 @@ describe('SoftAggregator financial callback behavior (isolated DB contract)', ()
     expect(t.receipts.size).toBe(0);
   });
 
+  it('does not allow pending, rejected or expired KYC to wager with USD', async () => {
+    for (const status of ['not_started', 'pending', 'rejected', 'expired']) {
+      const t = makeFakeDb();
+      t.setKycStatus(status);
+      vi.mocked(getDb).mockReturnValue(t.fake as unknown as Db);
+      const result = await settleCasinoCallback(identity('kyc-' + status, 'debit', 200n));
+      expect(result.error).toBe(1);
+      expect(t.postings).toHaveLength(0);
+    }
+  });
+
+  it('still pays a valid previously earned credit after the player's KYC expires', async () => {
+    const t = makeFakeDb();
+    t.setKycStatus('expired');
+    vi.mocked(getDb).mockReturnValue(t.fake as unknown as Db);
+    expect((await settleCasinoCallback(identity('owed-previous-win', 'credit', 200n))).error).toBe(0);
+    expect(t.postings[0]?.p_type).toBe('win_credit');
+  });
+
   it('debits available funds and replays the same transaction exactly once', async () => {
     const t = makeFakeDb();
     vi.mocked(getDb).mockReturnValue(t.fake as unknown as Db);
