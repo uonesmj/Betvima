@@ -211,7 +211,7 @@ fun CasinoReferenceSearch(
                         }
                         recommended.chunked(2).forEachIndexed { index, line ->
                             item(key = "recommended-providers-" + index) {
-                                ProviderSearchRow(line, providerArtwork, onProvider)
+                                ProviderSearchRow(line, providerArtwork, lang, onProvider)
                             }
                         }
                     }
@@ -221,7 +221,7 @@ fun CasinoReferenceSearch(
                         }
                         names.chunked(2).forEachIndexed { i, line ->
                             item(key = "provider-group-" + letter + i) {
-                                ProviderSearchRow(line, providerArtwork, onProvider)
+                                ProviderSearchRow(line, providerArtwork, lang, onProvider)
                             }
                         }
                     }
@@ -292,6 +292,7 @@ private fun SearchGroupHeading(title: String) {
 private fun ProviderSearchRow(
     names: List<String>,
     artwork: Map<String, String>,
+    lang: Lang,
     onProvider: (String) -> Unit
 ) {
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -323,7 +324,7 @@ private fun ProviderSearchRow(
                         Color(0xF40A111B)))))
                 Column(Modifier.align(Alignment.BottomStart).padding(13.dp),
                     verticalArrangement = Arrangement.spacedBy(7.dp)) {
-                    Text("GAME PROVIDER",
+                    Text(tr(lang, "GAME PROVIDER", "ارائه‌دهنده بازی"),
                         color = Color(0xFF79D5B5), fontSize = 9.sp,
                         fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
                     Text(name, color = Color.White, fontSize = 16.sp,
