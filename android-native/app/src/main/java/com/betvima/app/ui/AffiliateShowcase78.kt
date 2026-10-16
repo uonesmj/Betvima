@@ -150,11 +150,7 @@ private fun A78Hero(lang: Lang, active: Boolean, onRegister: () -> Unit,
             scene=AffiliateScene.HERO,
             modifier=Modifier.fillMaxWidth().height(208.dp),
             active=active,corner=22,showMark=false
-        ) {
-            A78Logo(Modifier.align(Alignment.TopEnd)
-                .padding(13.dp).clip(RoundedCornerShape(12.dp))
-                .background(Color(0xC2081020)).padding(10.dp))
-        }
+        )
         Column(Modifier.padding(horizontal=18.dp,vertical=19.dp)) {
             A78Eyebrow(tr(lang,"TURN PASSION INTO OPPORTUNITY",
                 "همکاری و رشد با بت‌ویما"))
