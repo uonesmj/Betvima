@@ -210,12 +210,8 @@ private fun A78Products(lang: Lang, active: Boolean) {
             contentPadding=PaddingValues(horizontal=18.dp)
         ) {
             itemsIndexed(kinds) { i, item ->
-                val selected by remember {
-                    derivedStateOf {
-                        active && rowState.layoutInfo.visibleItemsInfo.any {
-                            it.index == i
-                        }
-                    }
+                val selected = active && rowState.layoutInfo.visibleItemsInfo.any {
+                    it.index == i
                 }
                 val zoom by animateFloatAsState(
                     if(selected)1f else .955f,
