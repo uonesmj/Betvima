@@ -2,7 +2,7 @@
 
 No migrations or workers. Candidate build is isolated; unhealthy switches roll back.
 """
-import base64, hashlib, importlib.util, json, os, pathlib, pwd, re, shutil, socket, subprocess, sys, time, types, urllib.parse, urllib.request, urllib.error
+import base64, hashlib, importlib.util, json, os, pathlib, pwd, re, shutil, socket, stat, subprocess, sys, time, types, urllib.parse, urllib.request, urllib.error
 LIB=pathlib.Path('/usr/local/lib/betvima-continuous')
 spec=importlib.util.spec_from_file_location('trusted_controller',LIB/'controller.py');c=importlib.util.module_from_spec(spec);spec.loader.exec_module(c)
 ROUTE=pathlib.Path('/etc/nginx/sites-enabled/betvima.com')
@@ -197,6 +197,38 @@ def wait_health(base,build):
         except Exception:time.sleep(2)
     raise ValueError('health_failed')
 
+def load_geo_hmac_secret(path=pathlib.Path('/var/www/nova/.env.production')):
+    """Load only the private geo key for a new isolated production candidate.
+
+    Active web releases live under /opt/nova-releases, so Next.js does not
+    automatically load /var/www/nova/.env.production.
+    """
+    try:
+        fd=os.open(path,os.O_RDONLY|os.O_NOFOLLOW|os.O_CLOEXEC)
+    except FileNotFoundError:
+        return None  # Without a key, the geo verifier must fail closed.
+    try:
+        info=os.fstat(fd)
+        if (not stat.S_ISREG(info.st_mode)
+                or info.st_uid not in (0,pwd.getpwnam('novaadmin').pw_uid)
+                or info.st_mode & 0o077):
+            raise ValueError('runtime_configuration_incomplete')
+        with os.fdopen(fd,'r',encoding='utf-8') as stream:
+            fd=-1
+            content=stream.read(256*1024+1)
+    finally:
+        if fd != -1:
+            os.close(fd)
+    if len(content)>256*1024:
+        raise ValueError('runtime_configuration_incomplete')
+    matches=re.findall(r'(?m)^CASINO_GEO_HMAC_SECRET=([^\r\n]*)\r?$',content)
+    if not matches:
+        return None
+    if len(matches)!=1 or not re.fullmatch(r'[a-fA-F0-9]{64}',matches[0]):
+        raise ValueError('runtime_configuration_incomplete')
+    return matches[0]
+
+
 def main(sha):
     global CURRENT_REVISION
     CURRENT_REVISION = sha
@@ -223,6 +255,9 @@ def main(sha):
         if k in ('NODE_OPTIONS','LD_PRELOAD','LD_LIBRARY_PATH','BASH_ENV','ENV','NODE_TLS_REJECT_UNAUTHORIZED') or k.startswith(('DYLD_','LD_')):values.pop(k)
     values.update(NODE_ENV='production',APP_ENV='production',NODE_EXTRA_CA_CERTS='/etc/betvima/certs/supabase-root-2021.crt',NEXT_TELEMETRY_DISABLED='1')
     if not all(values.get(k) for k in ('SUPABASE_DB_URL','NEXT_PUBLIC_SUPABASE_URL','NEXT_PUBLIC_SUPABASE_ANON_KEY','SUPABASE_SERVICE_ROLE_KEY')):raise ValueError('runtime_configuration_incomplete')
+    geo_secret=load_geo_hmac_secret()
+    if geo_secret is not None:
+        values['CASINO_GEO_HMAC_SECRET']=geo_secret
     progress('recover_previous')
     directory=c.ROOT/'releases'/('production-'+sha)
     # Every new GitHub run still needs the owner's OIDC approval. Only failed
