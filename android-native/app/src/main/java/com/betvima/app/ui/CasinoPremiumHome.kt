@@ -43,6 +43,8 @@ import coil.compose.AsyncImage
 import com.betvima.app.data.CasinoEligibility
 import com.betvima.app.data.CasinoGame
 import com.betvima.app.data.casinoCategoryLabel
+import com.betvima.app.data.CasinoReferenceGroup
+import com.betvima.app.data.belongsToCasinoReferenceGroup
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.math.abs
@@ -80,7 +82,9 @@ fun CasinoPremiumHome(
     val fa = state.lang == Lang.FA
     val scope = rememberCoroutineScope()
     val listState = rememberLazyListState()
-    var providerDialog by remember { mutableStateOf(false) }
+    var searchDialog by remember { mutableStateOf(false) }
+    var openProviders by remember { mutableStateOf(false) }
+    var subCategory by rememberSaveable(category) { mutableStateOf("") }
     var showOnUp by remember { mutableStateOf(false) }
     var visibleCount by rememberSaveable(category, provider, query) { mutableIntStateOf(9) }
     val nestedScroll = remember {
@@ -92,14 +96,51 @@ fun CasinoPremiumHome(
             }
         }
     }
+    val liveTab = category == "live" && provider.isBlank() && query.isBlank()
+    val quickTab = category in setOf("crash","instant") && provider.isBlank() && query.isBlank()
     val isLobby = category.isBlank() && provider.isBlank() && query.isBlank()
     val allKnown = remember(games, showcase) {
         (games + showcase.values.flatten()).distinctBy { it.id }
     }
-    val highlighted = remember(games, showcase) {
-        (showcase["slots"].orEmpty() + games + showcase.values.flatten())
-            .distinctBy { it.id }.filter { !it.imageUrl.isNullOrBlank() }
+    val activeGames = when {
+        liveTab -> (showcase["live"].orEmpty() + games.filter { it.category == "live" }).distinctBy { it.id }
+        quickTab -> (showcase["crash"].orEmpty() + showcase["instant"].orEmpty() +
+            games.filter { it.category in setOf("crash","instant") }).distinctBy { it.id }
+        else -> games
     }
+    val highlighted = remember(games, showcase, category) {
+        val contents = when {
+            liveTab -> activeGames
+            quickTab -> activeGames
+            else -> showcase["slots"].orEmpty() + games + showcase.values.flatten()
+        }
+        contents.distinctBy { it.id }.filter { !it.imageUrl.isNullOrBlank() }
+    }
+    val groupedSections = when {
+        liveTab -> listOf(
+            Triple("baccarat", tr(state.lang,"Baccarat","باکارات"), CasinoReferenceGroup.BACCARAT),
+            Triple("game-shows", tr(state.lang,"Game shows","شوهای بازی"), CasinoReferenceGroup.GAME_SHOWS),
+            Triple("poker", tr(state.lang,"Poker","پوکر"), CasinoReferenceGroup.POKER),
+            Triple("roulette", tr(state.lang,"Roulette","رولت"), CasinoReferenceGroup.ROULETTE),
+            Triple("blackjack", tr(state.lang,"Blackjack","بلک‌جک"), CasinoReferenceGroup.BLACKJACK)
+        )
+        quickTab -> listOf(
+            Triple("crash", tr(state.lang,"Crash games","کراش"), CasinoReferenceGroup.CRASH),
+            Triple("mines", tr(state.lang,"Mines","مینز"), CasinoReferenceGroup.MINES),
+            Triple("plinko", tr(state.lang,"Plinko","پلینکو"), CasinoReferenceGroup.PLINKO),
+            Triple("instant", tr(state.lang,"Instant games","بازی‌های فوری"), CasinoReferenceGroup.OTHER_INSTANT)
+        )
+        else -> emptyList()
+    }
+    val activeRows = groupedSections.map { (key, title, group) ->
+        Triple(key, title, activeGames.filter { belongsToCasinoReferenceGroup(it, group) })
+    }.filter { it.third.isNotEmpty() }
+    val gridGames = if (liveTab || quickTab) {
+        if (subCategory.isNotBlank())
+            activeRows.firstOrNull { it.first == subCategory }?.third.orEmpty()
+        else activeGames
+    } else games
+
     val displayWidth = ((LocalConfiguration.current.screenWidthDp - 50) / 3f)
         .coerceAtLeast(90f).dp
     val sections = listOf(
@@ -132,10 +173,18 @@ fun CasinoPremiumHome(
                 CasinoCarousel(highlighted.take(5), state.lang, onDemo)
             }
             item(key = "casino-search") {
-                CasinoSearch(query, state.lang, onQuery) { providerDialog = true }
+                CasinoSearch("", state.lang, {
+                    openProviders = false; searchDialog = true
+                }, {
+                    openProviders = true; searchDialog = true
+                })
             }
             item(key = "casino-navigation") {
-                CasinoShortcuts(category, state.lang) { onCategory(it); top() }
+                if (liveTab || quickTab) {
+                    CasinoGenreTabs(state.lang,
+                        activeRows.map { it.first to it.second },
+                        subCategory) { subCategory = it }
+                } else CasinoShortcuts(category, state.lang) { onCategory(it); top() }
             }
             item(key = "casino-disclaimer") {
                 Text(
@@ -153,17 +202,20 @@ fun CasinoPremiumHome(
             }
             if (isLobby) {
                 val chosen = highlighted.ifEmpty { allKnown }.take(18)
-                if (chosen.isNotEmpty()) {
-                    item(key = "casino-betvima-games") {
+                val original = allKnown.filter(::isBetvimaOriginal)
+                if (original.isNotEmpty()) {
+                    item(key = "casino-originals") {
                         CasinoGameShelf(
                             tr(state.lang, "BetVima games", "بازی‌های بت‌ویما"),
-                            Icons.Default.Casino, chosen, displayWidth,
+                            Icons.Default.Casino, original, displayWidth,
                             launching, realEnabled, onDemo, onReal
                         )
                     }
+                }
+                if (chosen.isNotEmpty()) {
                     item(key = "casino-recommendations") {
                         CasinoGameShelf(
-                            tr(state.lang, "Recommended", "پیشنهادهای بت‌ویما"),
+                            tr(state.lang, "Explore games", "کاوش بازی‌ها"),
                             Icons.Default.AutoAwesome, chosen.asReversed(), displayWidth,
                             launching, realEnabled, onDemo, onReal
                         )
@@ -192,6 +244,45 @@ fun CasinoPremiumHome(
                 }
                 if (highlighted.isNotEmpty()) {
                     item(key = "casino-featured-banner") {
+                        CasinoFeatured(highlighted.first(), state.lang) {
+                            onDemo(highlighted.first())
+                        }
+                    }
+                }
+            } else if (liveTab || quickTab) {
+                if (subCategory.isBlank()) {
+                    if (quickTab) {
+                        val original = activeGames.filter(::isBetvimaOriginal)
+                        if (original.isNotEmpty()) {
+                            item(key = "quick-original") {
+                                CasinoGameShelf(
+                                    tr(state.lang, "BetVima games", "بازی‌های بت‌ویما"),
+                                    Icons.Default.Casino, original, displayWidth,
+                                    launching, realEnabled, onDemo, onReal
+                                )
+                            }
+                        }
+                    }
+                    activeRows.forEach { (key, title, tiles) ->
+                        item(key = "special-shelf-" + key) {
+                            CasinoGameShelf(title,
+                                when(key) {
+                                    "baccarat" -> Icons.Default.Casino
+                                    "game-shows" -> Icons.Default.LocalActivity
+                                    "poker" -> Icons.Default.Style
+                                    "roulette" -> Icons.Default.Sync
+                                    "blackjack" -> Icons.Default.Casino
+                                    "crash" -> Icons.Default.RocketLaunch
+                                    "mines" -> Icons.Default.Brightness5
+                                    "plinko" -> Icons.Default.Grain
+                                    else -> Icons.Default.Bolt
+                                }, tiles, displayWidth, launching, realEnabled, onDemo, onReal,
+                                onSeeAll = { subCategory = key })
+                        }
+                    }
+                }
+                if (highlighted.isNotEmpty() && subCategory.isBlank()) {
+                    item(key = "special-feature") {
                         CasinoFeatured(highlighted.first(), state.lang) {
                             onDemo(highlighted.first())
                         }
@@ -244,7 +335,7 @@ fun CasinoPremiumHome(
                     }
                 }
             } else {
-                val shown = games.take(visibleCount)
+                val shown = gridGames.take(visibleCount)
                 shown.chunked(3).forEachIndexed { i, row ->
                     item(key = "casino-grid-" + i) {
                         Row(Modifier.fillMaxWidth().padding(horizontal = 15.dp),
@@ -264,19 +355,23 @@ fun CasinoPremiumHome(
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.spacedBy(10.dp)) {
                         Text(tr(state.lang, "Games shown: ", "بازی‌های نمایش‌داده‌شده: ") +
-                            shown.size + " / " + total,
+                            shown.size + " / " +
+                            (if (liveTab || quickTab) gridGames.size else total),
                             color = secondary, fontSize = 13.sp)
                         LinearProgressIndicator(
-                            progress = { if (total == 0) 0f else
-                                (shown.size.toFloat() / total).coerceIn(0f, 1f) },
+                            progress = {
+                                val amount = if (liveTab || quickTab) gridGames.size else total
+                                if (amount == 0) 0f else (shown.size.toFloat() / amount).coerceIn(0f,1f)
+                            },
                             modifier = Modifier.width(155.dp).height(4.dp)
                                 .clip(CircleShape),
                             color = accent, trackColor = panel
                         )
-                        if (shown.size < games.size || hasMore) {
+                        if (shown.size < gridGames.size ||
+                            (hasMore && !liveTab && !quickTab)) {
                             Button(
                                 onClick = {
-                                    if (visibleCount < games.size) visibleCount += 9
+                                    if (visibleCount < gridGames.size) visibleCount += 9
                                     else onMore()
                                 },
                                 enabled = !loading,
@@ -314,35 +409,33 @@ fun CasinoPremiumHome(
         ) {
             Column(Modifier.fillMaxWidth().background(ink)
                 .padding(top = 6.dp, bottom = 8.dp)) {
-                CasinoSearch(query, state.lang, onQuery) { providerDialog = true }
+                CasinoSearch("", state.lang, {
+                    openProviders = false; searchDialog = true
+                }, {
+                    openProviders = true; searchDialog = true
+                })
                 Spacer(Modifier.height(7.dp))
-                CasinoShortcuts(category, state.lang) { onCategory(it); top() }
+                if (liveTab || quickTab) {
+                    CasinoGenreTabs(state.lang, activeRows.map { it.first to it.second },
+                        subCategory) { subCategory = it }
+                } else CasinoShortcuts(category, state.lang) { onCategory(it); top() }
             }
         }
     }
-    if (providerDialog) {
-        AlertDialog(
-            onDismissRequest = { providerDialog = false },
-            title = { Text(tr(state.lang, "Providers", "سازندگان بازی")) },
-            text = {
-                LazyColumn(Modifier.heightIn(max = 400.dp)) {
-                    item {
-                        CasinoProviderItem(
-                            tr(state.lang, "All providers", "همه سازندگان"),
-                            provider.isBlank()
-                        ) { providerDialog = false; onProvider(""); top() }
-                    }
-                    items(providerNames) { name ->
-                        CasinoProviderItem(name, provider == name) {
-                            providerDialog = false; onProvider(name); top()
-                        }
-                    }
-                }
-            },
-            confirmButton = {
-                TextButton(onClick = { providerDialog = false }) {
-                    Text(tr(state.lang, "Close", "بستن"))
-                }
+    if (searchDialog) {
+        CasinoReferenceSearch(
+            lang = state.lang,
+            model = model,
+            games = allKnown,
+            providers = providerNames,
+            initialProviders = openProviders,
+            onDismiss = { searchDialog = false },
+            onGame = { game -> searchDialog = false; onDemo(game) },
+            onProvider = { selected ->
+                searchDialog = false
+                onCategory("")
+                onProvider(selected)
+                top()
             }
         )
     }
@@ -391,28 +484,16 @@ private fun CasinoShortcuts(category: String, lang: Lang, onSelect: (String) -> 
 
 @Composable
 private fun CasinoSearch(
-    query: String, lang: Lang, onQuery: (String) -> Unit, onProviders: () -> Unit
+    query: String, lang: Lang, onGames: () -> Unit, onProviders: () -> Unit
 ) {
     Row(Modifier.fillMaxWidth().padding(horizontal = 15.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         Row(Modifier.weight(1f).height(54.dp).clip(RoundedCornerShape(15.dp))
-            .background(panel).padding(horizontal = 13.dp),
+            .background(panel).clickable(onClick = onGames).padding(horizontal = 13.dp),
             verticalAlignment = Alignment.CenterVertically) {
             Icon(Icons.Default.Search, null, tint = secondary, modifier = Modifier.size(20.dp))
             Spacer(Modifier.width(9.dp))
-            Box(Modifier.weight(1f)) {
-                if (query.isEmpty()) Text(tr(lang,"Search","جست‌وجو"),
-                    color = secondary, fontSize = 14.sp)
-                BasicTextField(
-                    value = query, onValueChange = { if (it.length <= 80) onQuery(it) },
-                    singleLine = true, modifier = Modifier.fillMaxWidth(),
-                    textStyle = TextStyle(fontSize = 14.sp, color = Color.White)
-                )
-            }
-            if (query.isNotEmpty()) {
-                Icon(Icons.Default.Close, "Clear", tint = secondary,
-                    modifier = Modifier.size(19.dp).clickable { onQuery("") })
-            }
+            Text(tr(lang,"Search","جست‌وجو"), color = secondary, fontSize = 14.sp)
         }
         Row(Modifier.weight(.85f).height(54.dp).clip(RoundedCornerShape(15.dp))
             .background(panel).clickable(onClick = onProviders),
@@ -424,6 +505,49 @@ private fun CasinoSearch(
             Text(tr(lang,"Providers","سازندگان"), color = Color.White,
                 fontSize = 13.sp, fontWeight = FontWeight.Bold)
         }
+    }
+}
+
+@Composable
+private fun CasinoGenreTabs(
+    lang: Lang,
+    genres: List<Pair<String, String>>,
+    selected: String,
+    onSelect: (String) -> Unit
+) {
+    LazyRow(contentPadding = PaddingValues(horizontal = 15.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        item {
+            CasinoGenrePill(tr(lang,"Lobby","لابی"), Icons.Default.ViewCarousel,
+                selected.isBlank()) { onSelect("") }
+        }
+        items(genres) { (key, label) ->
+            CasinoGenrePill(label,
+                when(key) {
+                    "baccarat" -> Icons.Default.Casino
+                    "game-shows" -> Icons.Default.LocalActivity
+                    "roulette" -> Icons.Default.Sync
+                    "crash" -> Icons.Default.RocketLaunch
+                    "mines" -> Icons.Default.Brightness5
+                    "plinko" -> Icons.Default.Grain
+                    else -> Icons.Default.Bolt
+                }, selected == key) { onSelect(key) }
+        }
+    }
+}
+
+@Composable
+private fun CasinoGenrePill(
+    title: String, icon: ImageVector, selected: Boolean, onClick: () -> Unit
+) {
+    Row(Modifier.height(44.dp).clip(RoundedCornerShape(13.dp))
+        .background(if (selected) accent else panel)
+        .clickable(onClick = onClick).padding(horizontal = 14.dp),
+        verticalAlignment = Alignment.CenterVertically) {
+        Icon(icon, null, tint = Color.White, modifier = Modifier.size(18.dp))
+        Spacer(Modifier.width(7.dp))
+        Text(title, color = Color.White, fontSize = 13.sp,
+            fontWeight = FontWeight.Bold)
     }
 }
 
