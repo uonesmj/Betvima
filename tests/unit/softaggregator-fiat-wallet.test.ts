@@ -1,12 +1,17 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Db } from '@/lib/ports/db';
 import { getUsdIrtRate } from '@/server/providers/arzhaam/client';
-import { fiatCasinoBalance, settleFiatCasinoCallback } from '@/server/providers/softaggregator/fiat-wallet';
+import { fiatCasinoBalance as providerBalance, settleFiatCasinoCallback as providerSettle } from '@/server/providers/softaggregator/fiat-wallet';
 import type { SignedCallback } from '@/server/providers/softaggregator/contract';
 
 vi.mock('@/server/providers/arzhaam/client', () => ({ getUsdIrtRate: vi.fn() }));
 const userId = '16d08a54-4223-484d-aaf8-0055bc1e57e1';
 const username = 'bv_' + userId.replace(/-/g, '');
+const nativeCurrencies = new WeakMap<Db, 'IRT' | 'IRR'>();
+const fiatCasinoBalance = (db: Db, uid: string) =>
+  providerBalance(db, uid, nativeCurrencies.get(db)!);
+const settleFiatCasinoCallback = (db: Db, uid: string, event: SignedCallback) =>
+  providerSettle(db, uid, event, nativeCurrencies.get(db)!);
 
 function fakeDb(walletCurrency: 'IRT' | 'IRR' = 'IRT', original = 2_500_000n) {
   let balance = original;
@@ -85,6 +90,7 @@ function fakeDb(walletCurrency: 'IRT' | 'IRR' = 'IRT', original = 2_500_000n) {
     }),
     transaction: async (cb: (db: Db) => Promise<unknown>) => cb(db as unknown as Db),
   };
+  nativeCurrencies.set(db as unknown as Db, walletCurrency);
   return { db: db as unknown as Db, posted, receipts, getBalance: () => balance,
     setPreferredCurrency: (currency: string) => { preferred = currency; },
     setKycStatus: (status: string) => { kycStatus = status; },

@@ -27,14 +27,15 @@ export const GET = withErrorHandling('casino.eligibility', async (ctx, request: 
     });
   }
   try {
-    await casinoPlayerMayLaunch(user.id);
+    const eligibility = await casinoPlayerMayLaunch(user.id);
     const db = getDb();
+    const nativeCurrency = eligibility.walletCurrency;
     let balance: bigint;
-    if (walletCurrency === 'IRT' || walletCurrency === 'IRR') {
-      const result = await fiatCasinoBalance(db, user.id);
+    if (nativeCurrency === 'IRT' || nativeCurrency === 'IRR') {
+      const result = await fiatCasinoBalance(db, user.id, nativeCurrency);
       if (result.error !== 0) throw new Error('CASINO_BALANCE_NOT_AVAILABLE');
       balance = BigInt(result.balance);
-    } else if (walletCurrency === 'USD') {
+    } else if (nativeCurrency === 'USD') {
       const wallet = await db.queryOne<{
         balance_minor: string; locked_minor: string; is_frozen: boolean
       }>('select balance_minor::text, locked_minor::text, is_frozen from nova.wallets ' +
@@ -48,7 +49,8 @@ export const GET = withErrorHandling('casino.eligibility', async (ctx, request: 
       throw new Error('CASINO_BALANCE_INVALID');
     }
     return NextResponse.json({ ok: true, data: {
-      ...base, realMoneyEnabled: true, availableUsdMinor: balance.toString(),
+      ...base, walletCurrency: nativeCurrency,
+      realMoneyEnabled: true, availableUsdMinor: balance.toString(),
     } }, { headers: { 'Cache-Control': 'private, no-store' } });
   } catch {
     return NextResponse.json({ ok: true, data: base }, {

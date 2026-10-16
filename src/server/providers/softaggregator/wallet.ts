@@ -6,6 +6,7 @@ import { casinoRealMoneyUserAllowed } from './client';
 import { fiatCasinoBalance, settleFiatCasinoCallback } from './fiat-wallet';
 import { casinoFinancialSchemaReady } from './financial-readiness';
 import { casinoCountryPermitted } from './jurisdiction';
+import { bindCasinoPlayerWallet, readCasinoPlayerWallet } from './player-wallet-binding';
 
 export type CasinoBalanceResponse = { error: 0 | 1 | 2; balance: number };
 type ProfileRow = {
@@ -36,7 +37,7 @@ function accountCanBet(p: ProfileRow): boolean {
   return p.status === 'active' && p.age_verified === true && p.kyc_status === 'verified' &&
     casinoCountryPermitted(p.country) && !p.self_excluded && !p.restricted;
 }
-export async function casinoPlayerMayLaunch(userId: string): Promise<{ country: string }> {
+export async function casinoPlayerMayLaunch(userId: string, commitBinding = false): Promise<{ country: string; walletCurrency: string }> {
   if (!casinoRealMoneyUserAllowed(userId)) throw new Error('CASINO_REAL_MONEY_DISABLED');
   const db = getDb();
   if (!(await casinoFinancialSchemaReady(db))) throw new Error('CASINO_FINANCIAL_SCHEMA_MISSING');
@@ -48,8 +49,14 @@ export async function casinoPlayerMayLaunch(userId: string): Promise<{ country: 
     "select balance_minor::text, locked_minor::text, is_frozen from nova.wallets where user_id = $1 and currency = $2",
     [userId, p.currency],
   );
-  if (wallet?.is_frozen) throw new Error('CASINO_WALLET_FROZEN');
-  return { country: p.country };
+  if (!wallet || wallet.is_frozen) throw new Error('CASINO_WALLET_UNAVAILABLE');
+  const existing = await readCasinoPlayerWallet(db, userId);
+  if (existing && existing !== p.currency) throw new Error('CASINO_WALLET_CURRENCY_LOCKED');
+  // Eligibility reads must not persist a permanent currency binding merely
+  // because the user opened the casino lobby.
+  const nativeCurrency = commitBinding
+    ? await bindCasinoPlayerWallet(db, userId, p.currency) : (existing ?? p.currency);
+  return { country: p.country, walletCurrency: nativeCurrency };
 }
 async function walletRow(db: Db, userId: string, locked: boolean): Promise<WalletRow | null> {
   return db.queryOne<WalletRow>(
@@ -94,10 +101,12 @@ export async function settleCasinoCallback(event: SignedCallback): Promise<Casin
   // Every signed callback must independently fail closed on incomplete DB
   // migrations, even if a client/game session was opened before deployment.
   if (!(await casinoFinancialSchemaReady(db))) return { error: 2, balance: 0 };
-  const currencyProfile = await getProfile(db, userId);
-  if (!currencyProfile) return { error: 2, balance: 0 };
-  // Always settle a pre-existing round to its ORIGINAL native currency,
-  // even if the user switches preferred_currency during an active game.
+  const currency = await readCasinoPlayerWallet(db, userId);
+  // Never determine the first callback's wallet from a changeable user
+  // preference. All real-money sessions bind the original wallet BEFORE
+  // getGame; no binding means no cash is allowed to move.
+  if (!currency) return { error: 2, balance: 0 };
+  // Pre-existing rounds are independently immutable. A conflict is an error.
   const originalRound = event.roundId && event.gameId
     ? await db.queryOne<{ wallet_currency: string }>(
       'select wallet_currency from nova.softaggregator_round_fx ' +
@@ -105,11 +114,12 @@ export async function settleCasinoCallback(event: SignedCallback): Promise<Casin
       [userId, event.roundId, event.gameId],
     )
     : null;
-  const currency = originalRound?.wallet_currency ?? currencyProfile.currency;
+  if (originalRound && originalRound.wallet_currency !== currency)
+    return { error: 2, balance: 0 };
   if (currency === 'IRT' || currency === 'IRR') {
     return event.action === 'balance'
-      ? fiatCasinoBalance(db, userId)
-      : settleFiatCasinoCallback(db, userId, event);
+      ? fiatCasinoBalance(db, userId, currency)
+      : settleFiatCasinoCallback(db, userId, event, currency);
   }
   if (currency !== 'USD') return { error: 2, balance: 0 };
   if (event.action === 'balance') {
@@ -200,7 +210,7 @@ export async function settleCasinoCallback(event: SignedCallback): Promise<Casin
       error = 2;
     } else if (isDebit &&
       (before < event.amountMinor! ||
-        (!event.rollback && (!accountCanBet(p) || event.amountMinor! < 20n ||
+        (!event.rollback && (!accountCanBet(p) || p.currency !== currency || event.amountMinor! < 20n ||
           !(await limitAllows(tx, userId, event.amountMinor!, p)))))) {
       error = 1;
     } else {

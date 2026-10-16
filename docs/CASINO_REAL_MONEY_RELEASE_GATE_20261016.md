@@ -11,7 +11,7 @@ settled supplier round or a gambling licence.
   and existing legacy wallet infrastructure but **does not have**
   `nova.softaggregator_callback_receipts` or `nova.softaggregator_round_fx`.
   Their presence was checked read-only through catalog metadata.
-- Financial migrations `0208`, `0209`, `0210` exist under
+- Financial migrations `0208`, `0209`, `0210`, `0211` exist under
   `docs/pending-financial-migrations/` only; they are NOT registered in
   the Production migrations directory. Do not copy/migrate blindly.
 - Repository includes provider callback verification, idempotent receipt

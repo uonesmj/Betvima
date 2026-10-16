@@ -21,6 +21,7 @@ const identity = (callId: string, action: 'credit' | 'debit', amount: bigint): S
 function makeFakeDb(initial = 1000n, held = 200n) {
   let balance = initial;
   let preferredCurrency = 'USD';
+  let boundCurrency: string | null = 'USD';
   let kycStatus = 'verified';
   let country = 'DE';
   let financialSchemaReady = true;
@@ -31,6 +32,9 @@ function makeFakeDb(initial = 1000n, held = 200n) {
     queryOne: vi.fn(async (sql: string, params: unknown[]) => {
       if (sql.includes("as ready") && sql.includes("sa_unique_reversed_credit")) {
         return { ready: financialSchemaReady };
+      }
+      if (sql.includes('from nova.softaggregator_player_wallet_bindings')) {
+        return boundCurrency === null ? null : { wallet_currency: boundCurrency };
       }
       if (sql.includes('from nova.softaggregator_round_fx')) {
         return rounds.get(String(params[1]) + ':' + String(params[2])) ?? null;
@@ -97,6 +101,7 @@ function makeFakeDb(initial = 1000n, held = 200n) {
   };
   return { fake, receipts, postings, getBalance: () => balance,
     setPreferredCurrency: (currency: string) => { preferredCurrency = currency; },
+    setBinding: (currency: string | null) => { boundCurrency = currency; },
     setKycStatus: (status: string) => { kycStatus = status; },
     setCountry: (value: string) => { country = value; },
     setSchemaReady: (ready: boolean) => { financialSchemaReady = ready; } };
@@ -144,6 +149,24 @@ describe('SoftAggregator financial callback behavior (isolated DB contract)', ()
     vi.mocked(getDb).mockReturnValue(t.fake as unknown as Db);
     expect((await settleCasinoCallback(identity('unlicensed-country', 'debit', 200n))).error).toBe(1);
     expect(t.postings).toHaveLength(0);
+  });
+
+  it('rejects any cash callback before its immutable native wallet is bound', async () => {
+    const t = makeFakeDb();
+    t.setBinding(null);
+    vi.mocked(getDb).mockReturnValue(t.fake as unknown as Db);
+    expect(await settleCasinoCallback(identity('no-session-binding', 'debit', 200n)))
+      .toEqual({ error: 2, balance: 0 });
+    expect(t.postings).toHaveLength(0);
+  });
+
+  it('refuses callbacks whose bound wallet conflicts with an existing round', async () => {
+    const t = makeFakeDb(1000n, 0n);
+    vi.mocked(getDb).mockReturnValue(t.fake as unknown as Db);
+    expect((await settleCasinoCallback(identity('first-usd-debit', 'debit', 200n))).error).toBe(0);
+    t.setBinding('IRT');
+    expect((await settleCasinoCallback(identity('contradicting-credit', 'credit', 250n))).error).toBe(2);
+    expect(t.postings).toHaveLength(1);
   });
 
   it('debits available funds and replays the same transaction exactly once', async () => {
