@@ -3,6 +3,7 @@ package com.betvima.app.ui
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -139,10 +140,10 @@ fun CasinoPremiumHome(
             item(key = "casino-disclaimer") {
                 Text(
                     if (realEnabled)
-                        tr(state.lang, "USD games • Available $" + eligibility.displayedUsd +
-                            " • Minimum $" + eligibility.displayedMinimumUsd,
-                            "بازی دلاری • موجودی $" + eligibility.displayedUsd +
-                            " • حداقل $" + eligibility.displayedMinimumUsd)
+                        tr(state.lang, "USD games • Available $" + (eligibility?.displayedUsd ?: "0.00") +
+                            " • Minimum $" + (eligibility?.displayedMinimumUsd ?: "0.20"),
+                            "بازی دلاری • موجودی $" + (eligibility?.displayedUsd ?: "0.00") +
+                            " • حداقل $" + (eligibility?.displayedMinimumUsd ?: "0.20"))
                     else tr(state.lang,
                         "Demo mode • $0.20 minimum stake • Real-money play requires server approval",
                         "حالت دمو • حداقل شرط ۰٫۲۰ دلار • بازی پول واقعی نیازمند تأیید سرور است"),
@@ -426,6 +427,7 @@ private fun CasinoSearch(
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun CasinoCarousel(games: List<CasinoGame>, lang: Lang, onDemo: (CasinoGame) -> Unit) {
     val slides = games.take(5)
