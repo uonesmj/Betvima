@@ -80,7 +80,7 @@ fun SlipProbabilityInline(
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
-                if (estimate?.approximatedLegs ?: 0 > 0)
+                if ((estimate?.approximatedLegs ?: 0) > 0)
                     tr(lang, "ODDS ESTIMATE", "برآورد ضریب")
                 else if (estimate?.live == true)
                     tr(lang, "LIVE ESTIMATE", "برآورد زنده")
@@ -90,7 +90,7 @@ fun SlipProbabilityInline(
             )
         }
 
-        if (percent == null) {
+        if (percent == null || estimate == null) {
             Text(tr(lang, "Odds unavailable", "ضرایب نامعتبر"), color = mutedText, fontSize = 9.sp)
             return@Column
         }
