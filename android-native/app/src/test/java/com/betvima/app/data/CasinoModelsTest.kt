@@ -72,6 +72,43 @@ class CasinoModelsTest {
         assertEquals("0.00", malformed.displayedUsd)
     }
 
+    @Test fun studioOptionsIncludeFullCatalogueAndExcludeUnsafeEntries() {
+        val page = parseCasinoPage(JSONObject()
+            .put("items", JSONArray().put(JSONObject()
+                .put("id", "known").put("name", "Demo")
+                .put("category", "slots").put("provider", "Visible")))
+            .put("providers", JSONArray()
+                .put("Visible").put("Off-page Studio")
+                .put("Off-page Studio").put(9).put(""))
+            .put("total", 4940).put("page", 1).put("limit", 40))
+        assertEquals(listOf("Visible", "Off-page Studio"), page.providers)
+        assertEquals(1, page.games.size)
+        assertTrue(page.hasMore)
+        assertTrue(parseCasinoPage(JSONObject()).providers.isEmpty())
+    }
+
+    @Test fun malformedServerEligibilityNeverGrantsRealMoneyButtons() {
+        val permitted = JSONObject()
+            .put("realMoneyEnabled", true)
+            .put("walletCurrency", "IRT")
+            .put("availableUsdMinor", "2043")
+            .put("minStakeUsdMinor", "20")
+        assertTrue(parseCasinoEligibility(permitted).realMoneyEnabled)
+        assertEquals("0.20", parseCasinoEligibility(permitted).displayedMinimumUsd)
+
+        for ((key, value) in listOf(
+            "walletCurrency" to "GBP",
+            "availableUsdMinor" to "-40",
+            "availableUsdMinor" to "9999999999999999999",
+            "minStakeUsdMinor" to "0",
+            "minStakeUsdMinor" to "abc"
+        )) {
+            val corrupted = JSONObject(permitted.toString()).put(key, value)
+            assertFalse("$key accepted invalid value $value",
+                parseCasinoEligibility(corrupted).realMoneyEnabled)
+        }
+    }
+
     @Test fun categoriesHavePersianAndEnglishLabels() {
         assertEquals("اسلات", casinoCategoryLabel("slots", true))
         assertEquals("Live Casino", casinoCategoryLabel("live", false))
