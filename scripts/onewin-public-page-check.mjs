@@ -3,8 +3,10 @@
  * No credentials, odds capture, persistence, bypass or production writes.
  */
 import { pathToFileURL } from 'node:url';
-const ROBOTS = 'https://1win.ng/robots.txt';
-const BETTING = 'https://1win.ng/betting';
+const PUBLIC_ROUTES = new Map([
+  ['https://1win.ng', '/betting'],
+  ['https://1win.com', '/betting/live'],
+]);
 const MAX_BYTES = 512 * 1024;
 export function robotsDecision(raw, path = '/betting') {
   let wildcard = false;
@@ -25,14 +27,17 @@ export function robotsDecision(raw, path = '/betting') {
   return { allowed: !denied && !unknown, reason:
     denied ? 'robots_disallow' : unknown ? 'complex_robots_rules_require_review' : 'no_matching_robots_denial' };
 }
-export async function inspectPublicPage({ fetchImpl = fetch } = {}) {
+export async function inspectPublicPage({ fetchImpl = fetch, origin = 'https://1win.ng' } = {}) {
+  if (!PUBLIC_ROUTES.has(origin)) throw new Error('Domain is not allowlisted');
+  const ROBOTS = origin + '/robots.txt';
+  const BETTING = origin + PUBLIC_ROUTES.get(origin);
   const request = (url) => fetchImpl(url, {
     redirect: 'manual',
     signal: AbortSignal.timeout(10000),
     headers: { 'user-agent': 'BetvimaPublicPageFeasibility/1.0', accept: 'text/html,text/plain;q=0.5' },
   });
   const report = {
-    source: '1win.ng', mode: 'ONE_SHOT_METADATA_ONLY',
+    source: new URL(origin).hostname, mode: 'ONE_SHOT_METADATA_ONLY',
     productionEligible: false, extractionApproved: false,
     status: 'UNTESTED', robotsStatus: null, httpStatus: null,
     contentType: null, bytesRead: 0, truncated: false,
@@ -42,7 +47,7 @@ export async function inspectPublicPage({ fetchImpl = fetch } = {}) {
   const robots = await request(ROBOTS);
   report.robotsStatus = robots.status;
   if (robots.status === 200) {
-    const verdict = robotsDecision((await robots.text()).slice(0, 100000));
+    const verdict = robotsDecision((await robots.text()).slice(0, 100000), PUBLIC_ROUTES.get(origin));
     if (!verdict.allowed) {
       report.status = 'STOP_' + verdict.reason.toUpperCase();
       return report;
@@ -79,7 +84,7 @@ export async function inspectPublicPage({ fetchImpl = fetch } = {}) {
   return report;
 }
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  inspectPublicPage().then((result) => {
+  inspectPublicPage({ origin: process.env.ONEWIN_PUBLIC_ORIGIN ?? 'https://1win.ng' }).then((result) => {
     process.stdout.write(JSON.stringify(result, null, 2) + '\n');
   }).catch((error) => {
     console.error('Page diagnostic unavailable:', error instanceof Error ? error.name : 'Error');
