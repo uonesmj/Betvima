@@ -65,57 +65,66 @@ fun PremiumAffiliateSheet(state: AppState, model: AppViewModel, onClose: () -> U
         if (affiliateVault.signedIn()) showPortal = true
         else authMode = "login"
     }
-    val sheet = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-    ModalBottomSheet(
-        onDismissRequest = onClose,
-        sheetState = sheet,
-        containerColor = partnerNight,
-        contentColor = partnerWhite,
-        shape = RoundedCornerShape(topStart = 25.dp, topEnd = 25.dp),
-        dragHandle = {
-            Box(Modifier.fillMaxWidth().height(23.dp), contentAlignment = Alignment.Center) {
-                Box(Modifier.size(52.dp, 5.dp).clip(CircleShape).background(Color(0xFFB6B8C2)))
-            }
-        }
+    // Full-height native Dialog: no bottom-sheet handle, no partial expansion.
+    // Close button stays visible while the inner landing independently scrolls.
+    Dialog(
+        onDismissRequest=onClose,
+        properties=DialogProperties(
+            usePlatformDefaultWidth=false,
+            dismissOnBackPress=true,
+            dismissOnClickOutside=false,
+            decorFitsSystemWindows=false
+        )
     ) {
-        Column(Modifier.fillMaxWidth().fillMaxHeight(.97f)) {
+        Column(
+            Modifier.fillMaxSize()
+                .background(partnerNight)
+                .windowInsetsPadding(WindowInsets.safeDrawing)
+        ) {
             Row(
-                Modifier.fillMaxWidth().height(65.dp).background(partnerNight)
-                    .padding(horizontal = 18.dp),
-                verticalAlignment = Alignment.CenterVertically
+                Modifier.fillMaxWidth().height(64.dp)
+                    .background(Color(0xFF081320))
+                    .padding(horizontal=14.dp),
+                verticalAlignment=Alignment.CenterVertically
             ) {
-                Icon(painter=painterResource(com.betvima.app.R.drawable.ic_betvima_mini),
+                Icon(
+                    painter=painterResource(com.betvima.app.R.drawable.ic_betvima_mini),
                     contentDescription=null,tint=partnerMint,
-                    modifier=Modifier.size(24.dp))
-                Spacer(Modifier.width(6.dp))
-                Text("BETVIMA", fontWeight = FontWeight.Black, color = partnerWhite,
-                    fontSize = 21.sp, letterSpacing = -.8.sp)
-                Spacer(Modifier.width(5.dp))
+                    modifier=Modifier.size(25.dp)
+                )
+                Spacer(Modifier.width(7.dp))
+                Text("BETVIMA",fontWeight=FontWeight.Black,
+                    color=Color.White,fontSize=19.sp,letterSpacing=(-.8).sp)
+                Spacer(Modifier.width(11.dp))
                 Column {
-                    Text("PARTNERS", color = partnerMint, fontSize = 9.sp,
-                        fontWeight = FontWeight.Bold, letterSpacing = 1.7.sp)
-                    Text(tr(lang, "Affiliate center", "مرکز همکاری"),
-                        color = Color(0xFFB2B4C6), fontSize = 9.sp)
+                    Text("PARTNERS",color=partnerMint,fontSize=10.sp,
+                        fontWeight=FontWeight.Black,letterSpacing=1.2.sp)
+                    Text(tr(lang,"Affiliate center","مرکز همکاری"),
+                        color=Color(0xFFB4C0D5),fontSize=9.sp)
                 }
                 Spacer(Modifier.weight(1f))
-                if (showPortal) {
-                    TextButton(onClick = { showPortal = false }) {
-                        Text(tr(lang, "Explore", "معرفی"), color = partnerWhite)
+                if(showPortal) {
+                    TextButton(onClick={showPortal=false}) {
+                        Text(tr(lang,"Explore","معرفی"),color=Color.White)
                     }
                 } else {
-                    TextButton(onClick = openLogin) {
-                        Text(tr(lang, "Log in", "ورود"), color = partnerWhite)
+                    TextButton(onClick=openLogin) {
+                        Text(tr(lang,"Log in","ورود"),color=Color.White)
                     }
                 }
-                IconButton(onClick = onClose) {
-                    Icon(Icons.Default.Close, tr(lang, "Close", "بستن"),
-                        tint = partnerWhite)
+                IconButton(onClick=onClose) {
+                    Icon(Icons.Default.Close,
+                        tr(lang,"Close affiliate","بستن افیلیت"),
+                        tint=Color.White,modifier=Modifier.size(27.dp))
                 }
             }
-            if (showPortal) {
-                AffiliateDashboard(state, model)
-            } else {
-                AffiliateMotionLanding(lang, onGetStarted = openRegister, onLogin = openLogin)
+            HorizontalDivider(color=Color.White.copy(alpha=.10f))
+            Box(Modifier.weight(1f)) {
+                if(showPortal) {
+                    AffiliateDashboard(state,model)
+                } else {
+                    AffiliateShowcase78(lang,onRegister=openRegister,onLogin=openLogin)
+                }
             }
         }
         if (authMode != null) {
@@ -397,9 +406,9 @@ private fun PartnerStats(lang: Lang, active: Boolean) {
             fontWeight = FontWeight.Black)
         Spacer(Modifier.height(24.dp))
         listOf(
-            "0$count" to tr(lang, "Product experiences", "بخش‌های محصول"),
-            "02" to tr(lang, "Partnership models to explore", "روش همکاری قابل بررسی"),
-            "01" to tr(lang, "Dedicated partner dashboard", "داشبورد اختصاصی")
+            "$count" to tr(lang, "Product experiences", "بخش‌های محصول"),
+            "2" to tr(lang, "Partnership models to explore", "روش همکاری قابل بررسی"),
+            "1" to tr(lang, "Dedicated partner dashboard", "داشبورد اختصاصی")
         ).forEachIndexed { index, pair ->
             HorizontalDivider(color = Color.White.copy(alpha = .23f))
             Spacer(Modifier.height(15.dp))
