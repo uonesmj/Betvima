@@ -113,11 +113,10 @@ internal fun AccountSettings87(state:AppState,model:AppViewModel) {
                     Field87(first,{first=it.take(30)},label87(lang,"First name","نام"))
                     Field87(last,{last=it.take(30)},label87(lang,"Last name","نام خانوادگی"))
                 }
-                "password"->{
-                    Field87(currentPass,{currentPass=it.take(128)},label87(lang,"Current password","رمز فعلی"),true)
-                    Field87(newPass,{newPass=it.take(128)},label87(lang,"New password (8+ chars)","رمز جدید (۸+ کاراکتر)"),true)
-                    Field87(confirm,{confirm=it.take(128)},label87(lang,"Confirm password","تکرار رمز"),true)
-                }
+                "password"->Text(label87(lang,
+                    "Password changes require a server-backed authenticated update flow. This server's current reset endpoint does not perform the change. No credentials are collected until a verified flow is available.",
+                    "تغییر رمز به مسیر احراز هویت معتبر در سرور نیاز دارد. سرویس فعلی بازیابی رمز، تغییر واقعی انجام نمی‌دهد؛ تا آماده شدن آن، رمز جدیدی دریافت نمی‌شود."),
+                    color=muted87,fontSize=12.sp)
                 "pin"->{
                     Text(label87(lang,if(enabledPin)"Enter PIN to remove it" else "Set a device-only 6-digit PIN",
                         if(enabledPin)"برای حذف، پین فعلی را وارد کنید" else "پین شش‌رقمی مخصوص این دستگاه بسازید"),
@@ -190,7 +189,7 @@ internal fun AccountSettings87(state:AppState,model:AppViewModel) {
             val valid=when(modal){
                 "name"->first.trim().length>=2&&last.trim().length>=2&&!loading
                 "pin"->pin.length==6&&(enabledPin||pin==repeatPin)&&!loading
-                "password"->currentPass.isNotBlank()&&newPass.length>=8&&newPass==confirm&&!loading
+                "password"->true
                 else->true
             }
             TextButton(enabled=valid,onClick={
@@ -205,14 +204,6 @@ internal fun AccountSettings87(state:AppState,model:AppViewModel) {
                         }catch(e:Exception){feedback=e.message?:"Save failed"}
                         finally{loading=false}
                     }
-                    "password"->scope.launch{
-                        loading=true
-                        try{
-                            api.changeAccountPassword87(email,currentPass,newPass)
-                            modal="";model.notice(label87(lang,"Password changed successfully","رمز عبور تغییر کرد"))
-                        }catch(e:Exception){feedback=e.message?:"Password update failed"}
-                        finally{loading=false}
-                    }
                     "pin"->{
                         if(enabledPin){
                             if(local.removePin(pin)){enabledPin=false;modal=""}
@@ -225,7 +216,7 @@ internal fun AccountSettings87(state:AppState,model:AppViewModel) {
                 }
             }){Text(when(modal){
                 "name"->label87(lang,"Save once","ثبت یک‌باره")
-                "password"->label87(lang,"Change","تغییر")
+                "password"->label87(lang,"Close","بستن")
                 "pin"->if(enabledPin)label87(lang,"Remove","حذف") else label87(lang,"Enable","فعال‌سازی")
                 "proxy"->label87(lang,"Open settings","بازکردن تنظیمات")
                 "qr"->label87(lang,"Share","اشتراک")
