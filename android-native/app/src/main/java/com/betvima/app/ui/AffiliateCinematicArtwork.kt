@@ -21,6 +21,7 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -107,8 +108,9 @@ internal fun AffiliateCinematicPhoto(
                 .background(Color(0xD609111E))
                 .padding(horizontal=10.dp,vertical=7.dp),
                 verticalAlignment=Alignment.CenterVertically) {
-                Icon(Icons.Default.Verified,null,tint=scene.accent,
-                    modifier=Modifier.size(13.dp))
+                Icon(painter=painterResource(com.betvima.app.R.drawable.ic_betvima_mini),
+                    contentDescription=null,tint=scene.accent,
+                    modifier=Modifier.size(14.dp))
                 Spacer(Modifier.width(5.dp))
                 Text("BetVima",color=Color.White,fontWeight=FontWeight.Black,
                     fontSize=13.sp,letterSpacing=(-.2).sp)
