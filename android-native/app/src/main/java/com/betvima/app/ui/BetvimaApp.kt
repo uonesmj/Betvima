@@ -39,6 +39,7 @@ fun BetvimaApp(model: AppViewModel) {
     var notificationPopupOpen by rememberSaveable { mutableStateOf(false) }
     var initialSplash by rememberSaveable { mutableStateOf(true) }
     var affiliateOpen by rememberSaveable { mutableStateOf(false) }
+    var vipOpen by rememberSaveable { mutableStateOf(false) }
     LaunchedEffect(Unit) {
         // Motion is an entrance identity, not a proxy for backend progress.
         delay(1050)
@@ -65,6 +66,14 @@ fun BetvimaApp(model: AppViewModel) {
                 delay(45_000)
                 model.refreshNotifications(silent = true)
             }
+        }
+    }
+    // VIP is always a modal, never a full-screen Feature page.
+    // Preserve all existing drawer/footer/notification entry points.
+    LaunchedEffect(state.feature) {
+        if (state.feature == Feature.VIP) {
+            vipOpen = true
+            model.feature(Feature.NONE)
         }
     }
     // Compatibility: catch any older in-app route that still selects the
@@ -106,11 +115,12 @@ fun BetvimaApp(model: AppViewModel) {
             }
         }
     }
-    BackHandler(enabled = notificationPopupOpen || affiliateOpen || languageOpen || searchOpen || state.betDetailVisible || state.showLogin ||
+    BackHandler(enabled = vipOpen || notificationPopupOpen || affiliateOpen || languageOpen || searchOpen || state.betDetailVisible || state.showLogin ||
         state.showSlip || state.detail != null ||
         state.feature != Feature.NONE || accountOpen || drawer.isOpen ||
         state.tab != Tab.HOME || state.homeMode == HomeMode.TOP_BETS) {
         when {
+            vipOpen -> vipOpen = false
             notificationPopupOpen -> notificationPopupOpen = false
             affiliateOpen -> affiliateOpen = false
             languageOpen -> languageOpen = false
@@ -293,6 +303,12 @@ fun BetvimaApp(model: AppViewModel) {
             onDismiss = { languageOpen = false }
         )
         if (affiliateOpen) PremiumAffiliateSheet(state, model) { affiliateOpen = false }
+        if (vipOpen) VipClubPopup82(
+            lang = state.lang,
+            onDismiss = { vipOpen = false },
+            onSupport = { vipOpen = false; model.feature(Feature.SUPPORT) },
+            onBonuses = { vipOpen = false; model.feature(Feature.BONUSES) }
+        )
         PremiumLoadingOverlay(initialSplash, state.lang)
     }
 }
