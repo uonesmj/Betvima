@@ -26,7 +26,13 @@ export default {
     const country = request.cf?.country;
     const ip = request.headers.get('cf-connecting-ip');
     const secret = env.CASINO_GEO_HMAC_SECRET;
-    if (typeof secret === 'string' && new TextEncoder().encode(secret).length >= 32 &&
+    // Only issue a country attestation for routes that actually consume it.
+    // The catalogue/demo and unrelated API endpoints must never receive one.
+    const needsGeoAttestation =
+      (url.pathname === '/api/v1/casino/launch' && request.method === 'POST') ||
+      (url.pathname === '/api/v1/casino/eligibility' && request.method === 'GET');
+    if (needsGeoAttestation &&
+        typeof secret === 'string' && new TextEncoder().encode(secret).length >= 32 &&
         typeof country === 'string' && /^[A-Z]{2}$/.test(country) &&
         typeof ip === 'string' && /^[a-fA-F0-9.:]{3,45}$/.test(ip)) {
       const timestamp = String(Math.floor(Date.now() / 1000));
