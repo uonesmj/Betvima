@@ -92,7 +92,7 @@ fun CasinoLobby(state: AppState, model: AppViewModel) {
         launching = game.id
         scope.launch {
             try {
-                val url = model.casinoRealMoneyLaunch(game.id)
+                val url = model.casinoRealMoneyLaunch(game.id, state.lang)
                 gameUsesRealMoney = true
                 sessionUrl = url
             } catch (cancel: CancellationException) {
@@ -122,7 +122,7 @@ fun CasinoLobby(state: AppState, model: AppViewModel) {
         launching = gameId
         scope.launch {
             try {
-                val url = model.casinoDemoLaunch(gameId)
+                val url = model.casinoDemoLaunch(gameId, state.lang)
                 gameUsesRealMoney = false
                 failedRealMoneyLaunch = false
                 sessionUrl = url
