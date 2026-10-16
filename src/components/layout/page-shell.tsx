@@ -522,26 +522,130 @@ function MobileProfileSheet({
 }
 
 export function MobileTabBar() {
-  const { t, session } = useApp();
+  const { locale, t } = useApp();
   const pathname = usePathname();
-  const openFromControl = useBetSlip((s) => s.openFromControl);
-  const count = useBetSlip((s) => s.items.length);
-  useEffect(() => { void useBetSlip.persist.rehydrate(); }, []);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [casinoNoticeOpen, setCasinoNoticeOpen] = useState(false);
+
+  // Mirror ReferenceAnimatedBottomNav.kt. Only the web implementation changes.
+  const selected = menuOpen ? 'menu'
+    : pathname === '/casino' || pathname.startsWith('/casino/') ? 'casino'
+    : pathname === '/bets' || pathname.startsWith('/bets/') ? 'bets'
+    : pathname === '/live' || pathname.startsWith('/live/') || pathname.startsWith('/sports/') ? 'sports'
+    : pathname === '/' ? 'home' : '';
+
+  useEffect(() => {
+    setMenuOpen(false);
+    setCasinoNoticeOpen(false);
+  }, [pathname]);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    const previousOverflow = document.body.style.overflow;
+    const previousTouchAction = document.body.style.touchAction;
+    document.body.style.overflow = 'hidden';
+    document.body.style.touchAction = 'none';
+    const onEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setMenuOpen(false);
+    };
+    window.addEventListener('keydown', onEscape);
+    return () => {
+      window.removeEventListener('keydown', onEscape);
+      document.body.style.overflow = previousOverflow;
+      document.body.style.touchAction = previousTouchAction;
+    };
+  }, [menuOpen]);
+
+  const label = (en: string, fa: string) => locale === 'fa' ? fa : en;
+  const destinations = [
+    { id: 'menu', href: '', title: label('Menu', 'منو'), icon: <Menu size={23} strokeWidth={2} /> },
+    { id: 'home', href: '/', title: label('Home', 'خانه'), icon: <Home size={23} strokeWidth={2} /> },
+    {
+      id: 'casino', href: '', title: label('Casino', 'کازینو'),
+      icon: <svg width="23" height="23" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
+        <rect x="3" y="3" width="18" height="18" rx="3" />
+        <circle cx="7.5" cy="7.5" r="1.1" fill="currentColor" stroke="none" />
+        <circle cx="16.5" cy="7.5" r="1.1" fill="currentColor" stroke="none" />
+        <circle cx="12" cy="12" r="1.1" fill="currentColor" stroke="none" />
+        <circle cx="7.5" cy="16.5" r="1.1" fill="currentColor" stroke="none" />
+        <circle cx="16.5" cy="16.5" r="1.1" fill="currentColor" stroke="none" />
+      </svg>
+    },
+    { id: 'bets', href: '/bets', title: label('My Bets', 'شرط‌های من'), icon: <Receipt size={23} strokeWidth={2} /> },
+    {
+      id: 'sports', href: '/sports/football', title: label('Sports', 'ورزش‌ها'),
+      icon: <svg width="23" height="23" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" aria-hidden="true">
+        <circle cx="12" cy="12" r="9.5" />
+        <path d="m12 8 3.8 2.7-1.45 4.35h-4.7L8.2 10.7 12 8ZM12 8V2.5M8.2 10.7l-5-1.8m6.45 6.15-2.3 5m7-5 2.3 5m-.85-9.35 5-1.8" />
+      </svg>
+    },
+  ];
+
   return (
-    <nav className="fixed bottom-0 z-40 w-full border-t border-white/[0.08] bg-[#111111] text-white shadow-[0_-8px_28px_rgba(0,0,0,.38)] backdrop-blur lg:hidden safe-bottom" aria-label="bottom">
-      <div className="grid grid-cols-4">
-        {[
-          { href: '/', icon: Home, label: t('nav.home') },
-          { href: '/live', icon: Radio, label: t('nav.live') },
-          { href: '/bets', icon: Ticket, label: t('nav.myBets') },
-          { href: '/wallet', icon: WalletCards, label: t('nav.wallet') },
-        ].map((item) => (
-          <Link key={item.href} href={item.href} className={`flex flex-col items-center justify-center gap-1 py-2.5 text-[10px] font-semibold transition-colors ${pathname === item.href ? 'text-nova-primary' : 'text-[#9CA3AF] hover:text-white'}`}>
-            <span className="grid h-[22px] w-[22px] place-items-center" aria-hidden>{item.href === "/" ? <svg viewBox="0 0 24 24" className="h-[22px] w-[22px]" fill="currentColor"><path d="M3 10.7 12 3l9 7.7v8.1c0 .9-.7 1.7-1.7 1.7H4.7c-.9 0-1.7-.8-1.7-1.7v-8.1Z"/><path d="M9 20.5v-6h6v6" fill="none" stroke="#111" strokeWidth="1.8" strokeLinejoin="round"/></svg> : item.href === "/live" ? <svg viewBox="0 0 24 24" className="h-[22px] w-[22px]" fill="none"><circle cx="12" cy="12" r="2.3" fill="currentColor"/><path d="M7.5 7.5a6.4 6.4 0 0 0 0 9M16.5 7.5a6.4 6.4 0 0 1 0 9M4.6 4.6a10.5 10.5 0 0 0 0 14.8M19.4 4.6a10.5 10.5 0 0 1 0 14.8" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></svg> : item.href === "/bets" ? <svg viewBox="0 0 24 24" className="h-[22px] w-[22px]" fill="currentColor"><path d="M4 6.5h16v11H4z"/><path d="M7 9.5h10M7 13h6M4 9.2c1.3 0 2-.9 2-2.7M20 9.2c-1.3 0-2-.9-2-2.7M4 14.8c1.3 0 2 .9 2 2.7M20 14.8c-1.3 0-2 .9-2 2.7" fill="none" stroke="#111" strokeWidth="1.5" strokeLinecap="round"/></svg> : <svg viewBox="0 0 24 24" className="h-[22px] w-[22px]" fill="currentColor"><rect x="3.2" y="5.2" width="17.6" height="14" rx="2.2"/><path d="M3.5 9h17M15.2 13h3.1v2.6h-3.1a1.3 1.3 0 0 1 0-2.6Z" fill="none" stroke="#111" strokeWidth="1.6"/></svg>}</span>{item.label}
-          </Link>
-        ))}
-      </div>
-    </nav>
+    <>
+      <nav
+        className="fixed inset-x-0 bottom-0 z-40 bg-[#101114] text-white lg:hidden"
+        style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
+        aria-label={label('Bottom navigation', 'ناوبری پایین')}
+        dir="ltr"
+        data-native-footer-parity
+      >
+        <div className="grid min-h-[77px] grid-cols-5 items-center px-1 py-[5px]">
+          {destinations.map((item) => {
+            const active = selected === item.id;
+            const tint = active ? 'text-[#087FF5]' : 'text-[#B6BDCB]';
+            const common = 'relative flex min-h-[64px] min-w-0 flex-col items-center justify-between px-0.5 pb-1 pt-[9px] text-center outline-none transition-colors duration-200 focus-visible:ring-2 focus-visible:ring-[#087FF5] ' + tint;
+            const content = (
+              <>
+                <span className="flex min-w-0 flex-col items-center gap-[5px]">
+                  <span className={'grid h-[23px] w-[23px] place-items-center transition-transform duration-200 motion-reduce:transition-none ' + (active ? 'scale-[1.08]' : 'scale-100')} aria-hidden="true">
+                    {item.icon}
+                  </span>
+                  <span className={'block max-w-full truncate text-[9px] leading-3 ' + (active ? 'font-black' : 'font-semibold')}>
+                    {item.title}
+                  </span>
+                </span>
+                <span aria-hidden="true" className={'h-[3px] rounded-full bg-current transition-all duration-[220ms] motion-reduce:transition-none ' + (active ? 'w-6' : 'w-0')} />
+              </>
+            );
+            return item.id === 'menu' || item.id === 'casino' ? (
+              <button
+                key={item.id}
+                type="button"
+                className={common}
+                aria-label={item.title}
+                aria-expanded={item.id === 'menu' ? menuOpen : undefined}
+                onClick={() => {
+                  if (item.id === 'menu') {
+                    setCasinoNoticeOpen(false);
+                    setMenuOpen((open) => !open);
+                  } else {
+                    // The web repository has no /casino page yet: never send users to a 404.
+                    setCasinoNoticeOpen((open) => !open);
+                  }
+                }}
+              >{content}</button>
+            ) : (
+              <Link key={item.id} href={item.href} className={common} aria-current={active ? 'page' : undefined} aria-label={item.title}>
+                {content}
+              </Link>
+            );
+          })}
+        </div>
+        {casinoNoticeOpen ? (
+          <div role="status" className="absolute inset-x-3 bottom-[calc(100%+8px)] mx-auto flex max-w-sm items-center justify-between gap-3 rounded-xl bg-[#20242A] px-4 py-3 text-start text-xs font-semibold text-white shadow-lg">
+            <span>{label('Casino is currently available in the Android app.', 'کازینو در حال حاضر در اپلیکیشن اندروید در دسترس است.')}</span>
+            <button type="button" aria-label={t('common.close')} onClick={() => setCasinoNoticeOpen(false)}><X size={17} /></button>
+          </div>
+        ) : null}
+      </nav>
+      {menuOpen ? (
+        <div className="fixed inset-0 z-[70] lg:hidden" role="dialog" aria-modal="true" aria-label={label('Menu', 'منو')}>
+          <button type="button" className="absolute inset-0 h-full w-full bg-black/80 backdrop-blur-sm" onClick={() => setMenuOpen(false)} aria-label={t('common.close')} />
+          <ReferenceMobileDrawer close={() => setMenuOpen(false)} />
+        </div>
+      ) : null}
+    </>
   );
 }
 
