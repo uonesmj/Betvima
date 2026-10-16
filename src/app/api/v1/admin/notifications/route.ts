@@ -6,7 +6,7 @@ import type { Row } from '@/server/db/rows';
 
 export const dynamic = 'force-dynamic';
 
-export const notificationInput = z.object({
+const notificationInput = z.object({
   title: z.string().trim().min(1).max(100),
   body: z.string().trim().min(1).max(500),
   audience: z.enum(['general','personal']),
@@ -27,7 +27,6 @@ export const notificationInput = z.object({
   if (value.mode === 'schedule' && (!value.scheduledAt || Date.parse(value.scheduledAt) <= Date.now()))
     ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['scheduledAt'], message: 'A future date is required' });
 });
-export type AdminNotificationInput = z.infer<typeof notificationInput>;
 
 // Only an administrator with promo.manage can list or send campaigns.
 export const GET = withErrorHandling('admin.notifications.list', async (ctx, request: Request) => {
