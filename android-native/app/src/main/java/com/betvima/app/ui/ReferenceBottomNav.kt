@@ -15,6 +15,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.zIndex
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
@@ -129,7 +132,9 @@ fun ReferenceBottomBar(
 fun AnimatedFloatingBetslip(
     count: Int,
     lang: Lang,
-    onOpen: () -> Unit
+    onOpen: () -> Unit,
+    onCenterChanged: (Offset) -> Unit = {},
+    receivingPick: Boolean = false
 ) {
     val interactions = remember { MutableInteractionSource() }
     val pressed by interactions.collectIsPressedAsState()
@@ -137,10 +142,19 @@ fun AnimatedFloatingBetslip(
         if (pressed) .94f else 1f,
         animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy),
         label = "compactSlipScale")
-    // Transparent 48dp tap target: the blue pill is the only painted element.
+    val receiveScale by animateFloatAsState(
+        if (receivingPick) 1.085f else 1f,
+        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy),
+        label = "slipReceivingSelection")
+    // Report the center of the *actual rendered button* in window pixels.
+    // Flight destination must never be guessed from screen height.
     Box(
         modifier = Modifier.width(112.dp).height(48.dp)
-            .graphicsLayer { scaleX = scale; scaleY = scale }
+            .onGloballyPositioned { onCenterChanged(it.boundsInWindow().center) }
+            .graphicsLayer {
+                scaleX = scale * receiveScale
+                scaleY = scale * receiveScale
+            }
             .clickable(
                 interactionSource = interactions,
                 indication = ripple(),
@@ -151,7 +165,8 @@ fun AnimatedFloatingBetslip(
         Surface(
             color = Palette.blue,
             shape = RoundedCornerShape(13.dp),
-            shadowElevation = 3.dp,
+            shadowElevation = if (receivingPick) 8.dp else 3.dp,
+            border = if (receivingPick) BorderStroke(1.4.dp, Color(0xFFB6E5FF)) else null,
             modifier = Modifier.width(100.dp).height(36.dp)
         ) {
             Row(Modifier.fillMaxSize().padding(horizontal = 7.dp),
