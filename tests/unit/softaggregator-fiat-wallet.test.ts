@@ -217,4 +217,20 @@ describe('Casino fiat settle staging contract', () => {
       .toEqual({ error: 2, balance: 0 });
     expect(t.posted).toHaveLength(0);
   });
+  it('counts casino win reversals in IRT and IRR daily and weekly net-loss limits', async () => {
+    for (const currency of ['IRT', 'IRR'] as const) {
+      const scenario = fakeDb(currency);
+      const result = await settleFiatCasinoCallback(scenario.db, userId,
+        event('loss-limit-reversal-' + currency, 'debit', 20n));
+      expect(result.error).toBe(0);
+      const usageQuery = vi.mocked(scenario.db.queryOne).mock.calls
+        .map((call) => String(call[0]))
+        .find((sql) => sql.includes('from nova.wallet_transactions'));
+      expect(usageQuery).toBeDefined();
+      expect(usageQuery).toContain("type='reversal' and reference like 'softaggregator:%'");
+      expect(usageQuery).toContain('as day_loss');
+      expect(usageQuery).toContain('as week_loss');
+    }
+  });
+
 });
