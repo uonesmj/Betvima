@@ -20,7 +20,13 @@ data class SlipOddsMatch(
     val matchId: String, val status: String, val minute: Int?,
     val markets: List<SlipOddsMarket>
 )
-data class SlipOutcome(val win: Double, val lose: Double, val refund: Double, val live: Boolean)
+data class SlipOutcome(
+    val win: Double, val lose: Double, val refund: Double, val live: Boolean,
+    /** False when some markets lack a complete three-outcome model. */
+    val refundKnown: Boolean = true,
+    /** Quoted-price approximations used when full market data is unavailable. */
+    val approximatedLegs: Int = 0
+)
 data class SlipOutcomePercent(val win: Int, val lose: Int, val refund: Int)
 
 fun parseSlipOddsMatch(payload: JSONObject): SlipOddsMatch = SlipOddsMatch(
@@ -125,19 +131,38 @@ fun estimateSlipOutcome(
     var noLoss = 1.0
     var allRefund = 1.0
     var live = false
+    var refundKnown = true
+    var approximatedLegs = 0
     for (pick in picks) {
-        val match = snapshots[pick.matchId] ?: return null
-        if (match.status.lowercase() in setOf(
-                "finished", "cancelled", "abandoned", "postponed", "interrupted"
-            )) return null
-        val single = slipSingle(pick, match) ?: return null
-        noLoss *= single.win + single.refund
-        allRefund *= single.refund
-        live = live || single.live
+        val snapshot = snapshots[pick.matchId]
+        val status = snapshot?.status.orEmpty().lowercase()
+        // Finished events must not be displayed as live probabilities.
+        if (status in setOf("finished", "cancelled", "abandoned", "postponed", "interrupted")) {
+            return null
+        }
+        val modeled = snapshot?.let { slipSingle(pick, it) }
+        // A multi-leg sheet must not disappear because ONE market is absent
+        // or unsupported. Use the already-visible selected price, explicitly
+        // label this as an approximate estimate, and never invent a refund %.
+        val leg = modeled ?: run {
+            val scaled = pick.oddsScaled.toDoubleOrNull() ?: return null
+            val decimalOdds = scaled / 10000.0
+            if (!decimalOdds.isFinite() || decimalOdds <= 1.0 || decimalOdds > 100000.0) return null
+            val implied = 1.0 / decimalOdds
+            approximatedLegs++
+            refundKnown = false
+            SlipOutcome(implied, 1.0 - implied, 0.0, pick.live || status == "live")
+        }
+        noLoss *= leg.win + leg.refund
+        allRefund *= leg.refund
+        live = live || leg.live
     }
     val refund = allRefund.coerceIn(0.0, 1.0)
     val win = (noLoss - refund).coerceIn(0.0, 1.0)
-    return SlipOutcome(win, (1.0 - win - refund).coerceAtLeast(0.0), refund, live)
+    return SlipOutcome(
+        win, (1.0 - win - refund).coerceAtLeast(0.0), refund, live,
+        refundKnown, approximatedLegs
+    )
 }
 
 fun slipOutcomePercents(model: SlipOutcome): SlipOutcomePercent {
