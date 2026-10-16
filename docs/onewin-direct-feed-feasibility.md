@@ -49,3 +49,15 @@ Run only with the applicable site's permission:
     node scripts/onewin-public-page-check.mjs
 Test locally, with NO external calls:
     node --test tests/research/onewin-public-page.test.mjs
+
+## Real-world observations (2026-10-16)
+- A GitHub Actions runner received HTTP 403 for 1win.ng/betting.
+- The same independent runner received HTTP 200 for 1win.com/betting/live
+  after a 200 robots.txt response, with 96,818 bytes of HTML and 19 script tags.
+- This is evidence that the main public page may be loadable, NOT that it
+  exposes all football fixtures, all price updates, incidents or settlement.
+- The bounded browser observation in scripts/onewin-browser-observation.mjs
+  checks only aggregate displayed text, link counts and whether the page changed
+  over 11 seconds. It logs no event or odds data.
+- No direct-scraping production architecture is recommended without rights
+  to republish, reliable authoritative data, suspension and settlement tests.
