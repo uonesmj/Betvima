@@ -7,6 +7,7 @@ import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -42,6 +43,14 @@ fun MatchDetailPage(state: AppState, model: AppViewModel) {
     var selectedMarketGroup by rememberSaveable(match.id) { mutableStateOf("all") }
     var scoreMode by rememberSaveable(match.id) { mutableStateOf("score") }
     var marketSearch by rememberSaveable(match.id) { mutableStateOf("") }
+    val marketListState = rememberLazyListState()
+    val focusMarketId = state.focusedMarketId
+    LaunchedEffect(match.id, focusMarketId) {
+        if (focusMarketId != null) {
+            selectedMarketGroup = "all"
+            marketSearch = ""
+        }
+    }
     val marketGroups = listOf(
         "all" to tr(state.lang, "All", "همه"),
         "main" to tr(state.lang, "Main", "اصلی"),
@@ -82,7 +91,16 @@ fun MatchDetailPage(state: AppState, model: AppViewModel) {
                 term.contains(marketSearch.trim().lowercase()))
         }
     }
-    LazyColumn(contentPadding = PaddingValues(16.dp),
+    LaunchedEffect(match.id, focusMarketId, filteredMarkets) {
+        if (focusMarketId != null) {
+            val target = filteredMarkets.indexOfFirst { it.id == focusMarketId }
+            if (target >= 0) {
+                // Three fixed header items precede the market cards.
+                marketListState.animateScrollToItem(target + 3)
+            }
+        }
+    }
+    LazyColumn(state = marketListState, contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp), flingBehavior = rememberPremiumFlingBehavior()) {
         item {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -212,9 +230,16 @@ fun MatchDetailPage(state: AppState, model: AppViewModel) {
         }
         items(filteredMarkets, key = { it.id }, contentType = { "market" }) { market ->
             val index = marketIndexById[market.id] ?: 0
-            var expanded by rememberSaveable(market.id) { mutableStateOf(index < 3) }
+            var expanded by rememberSaveable(market.id) {
+                mutableStateOf(index < 3 || market.id == focusMarketId)
+            }
+            LaunchedEffect(market.id, focusMarketId) {
+                if (market.id == focusMarketId) expanded = true
+            }
             Surface(color = Color.White, shape = RoundedCornerShape(21.dp),
-                border = BorderStroke(1.dp, Palette.border), shadowElevation = 4.dp) {
+                border = BorderStroke(if (market.id == focusMarketId) 2.dp else 1.dp,
+                    if (market.id == focusMarketId) Palette.green else Palette.border),
+                shadowElevation = 4.dp) {
                 Column {
                     Row(Modifier.fillMaxWidth().clickable { expanded = !expanded }
                         .padding(horizontal = 14.dp, vertical = 15.dp),
