@@ -15,7 +15,6 @@ import { Bell, Menu, Receipt, Home, Radio, Ticket, WalletCards, X, ChevronLeft, 
 import { useApp } from './providers';
 import { apiRequest } from "@/lib/hooks/useApi";
 import { getSupabaseBrowserClient } from "@/lib/supabase/browser";
-import { useBetSlip } from '@/lib/store/betslip';
 import { HomeHeader } from "@/components/home/home-header";
 import { BetSlipRail } from '@/components/betting/bet-slip';
 import { TopWalletBalance } from '@/components/layout/top-wallet-balance';
