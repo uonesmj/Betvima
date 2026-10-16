@@ -29,13 +29,13 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.betvima.app.data.BonusPromotion
 
-private val premiumNight=Color(0xFF061922)
-private val premiumDark=Color(0xFF0F2D39)
-private val premiumEmerald=Color(0xFF00D47A)
+private val premiumNight=Color(0xFF111216)
+private val premiumDark=Color(0xFF1E1F26)
+private val premiumEmerald=Color(0xFF7DBBFF)
 private val premiumBlue=Color(0xFF087FF5)
-private val premiumMuted=Color(0xFF69808B)
-private val premiumOutline=Color(0xFFD9E4E7)
-private val premiumInk=Color(0xFF162A35)
+private val premiumMuted=Color(0xFFAEB3C0)
+private val premiumOutline=Color(0xFF3A3C46)
+private val premiumInk=Color(0xFFF6F7FB)
 
 /** Marketing display only: bonus creation, attribution and settlement remain
  * strictly controlled by the authenticated backend.
@@ -62,7 +62,7 @@ internal fun BonusHero80(
         shadowElevation=10.dp
     ) {
         Box(Modifier.background(Brush.linearGradient(listOf(
-            Color(0xFF07151E),Color(0xFF07372E),Color(0xFF0B2C48))))) {
+            Color(0xFF15161B),Color(0xFF22222A),Color(0xFF111217))))) {
             Box(Modifier.align(Alignment.TopEnd)
                 .offset(x=89.dp,y=(-78).dp)
                 .size(248.dp).clip(CircleShape)
@@ -84,7 +84,7 @@ internal fun BonusHero80(
                             Icon(Icons.Default.AutoAwesome,null,tint=premiumEmerald,
                                 modifier=Modifier.size(16.dp))
                             Spacer(Modifier.width(6.dp))
-                            Text("BETVIMA REWARDS",color=Color(0xFFBBFFE1),
+                            Text("BETVIMA REWARDS",color=Color(0xFFDEE8FF),
                                 fontWeight=FontWeight.Black,letterSpacing=.7.sp,
                                 fontSize=10.sp)
                         }
@@ -134,7 +134,7 @@ internal fun BonusHero80(
                         Spacer(Modifier.width(8.dp))
                         Text(tr(lang,"Your registered currency: ",
                             "ارز ثابت حساب هنگام ثبت‌نام: ")+registeredCurrency,
-                            color=Color(0xFFB7F4DD),fontSize=11.sp,
+                            color=Color(0xFFD0D7EA),fontSize=11.sp,
                             fontWeight=FontWeight.SemiBold)
                     }
                 }
@@ -157,7 +157,7 @@ internal fun BonusHero80(
                     OutlinedButton(
                         onClick=onRules,
                         modifier=Modifier.weight(1f).height(49.dp),
-                        border=BorderStroke(1.dp,Color(0xFF608383)),
+                        border=BorderStroke(1.dp,Color(0xFF555765)),
                         shape=RoundedCornerShape(14.dp)
                     ) {
                         Icon(Icons.Default.Rule,null,tint=Color.White,
@@ -230,14 +230,14 @@ private fun BonusRing80(progress:Float) {
 internal fun BonusCurrencyIdentity80(lang:Lang,registeredCurrency:String?) {
     Surface(
         modifier=Modifier.fillMaxWidth(),
-        color=Color.White,
+        color=Color(0xFF1F2027),
         shape=RoundedCornerShape(20.dp),
         border=BorderStroke(1.dp,premiumOutline)
     ) {
         Row(Modifier.padding(16.dp),verticalAlignment=Alignment.CenterVertically) {
-            Surface(color=Color(0xFFE6FAF0),
+            Surface(color=Color(0xFF2B2B36),
                 shape=RoundedCornerShape(15.dp)) {
-                Icon(Icons.Default.Lock,null,tint=Color(0xFF08895A),
+                Icon(Icons.Default.Lock,null,tint=Color(0xFF9CCBFF),
                     modifier=Modifier.padding(12.dp).size(22.dp))
             }
             Spacer(Modifier.width(13.dp))
@@ -254,7 +254,7 @@ internal fun BonusCurrencyIdentity80(lang:Lang,registeredCurrency:String?) {
                     "تعیین‌شده هنگام ثبت‌نام · غیرقابل‌تغییر"),
                     color=premiumMuted,fontSize=10.sp)
             }
-            Icon(Icons.Default.VerifiedUser,null,tint=Color(0xFF049668))
+            Icon(Icons.Default.VerifiedUser,null,tint=Color(0xFF8FBFFF))
         }
     }
 }
@@ -267,7 +267,7 @@ internal fun BonusStatCard80(
 ) {
     Surface(
         modifier=modifier.height(137.dp),
-        color=Color.White,
+        color=Color(0xFF1F2027),
         border=BorderStroke(1.dp,premiumOutline),
         shape=RoundedCornerShape(19.dp)
     ) {
@@ -288,7 +288,7 @@ internal fun BonusStatCard80(
 @Composable
 internal fun BonusEmpty80(lang:Lang) {
     Surface(
-        color=Color.White,
+        color=Color(0xFF1F2027),
         border=BorderStroke(1.dp,premiumOutline),
         shape=RoundedCornerShape(25.dp)
     ) {
@@ -297,11 +297,11 @@ internal fun BonusEmpty80(lang:Lang) {
             Box(Modifier.size(105.dp)
                 .clip(CircleShape)
                 .background(Brush.radialGradient(listOf(
-                    premiumEmerald.copy(alpha=.20f),Color(0xFFF3FAF8)))),
+                    premiumEmerald.copy(alpha=.20f),Color(0xFF252630)))),
                 contentAlignment=Alignment.Center) {
-                Surface(color=Color.White,shape=RoundedCornerShape(20.dp),
+                Surface(color=Color(0xFF1F2027),shape=RoundedCornerShape(20.dp),
                     shadowElevation=7.dp) {
-                    Icon(Icons.Default.CardGiftcard,null,tint=Color(0xFF068F62),
+                    Icon(Icons.Default.CardGiftcard,null,tint=Color(0xFF93C2FF),
                         modifier=Modifier.padding(15.dp).size(39.dp))
                 }
             }
@@ -318,17 +318,17 @@ internal fun BonusEmpty80(lang:Lang) {
                 textAlign=TextAlign.Center)
             Spacer(Modifier.height(14.dp))
             Surface(
-                color=Color(0xFFEAF8F3),shape=RoundedCornerShape(30.dp)
+                color=Color(0xFF292A34),shape=RoundedCornerShape(30.dp)
             ) {
                 Row(Modifier.padding(horizontal=13.dp,vertical=9.dp),
                     verticalAlignment=Alignment.CenterVertically) {
-                    Icon(Icons.Default.Shield,null,tint=Color(0xFF058259),
+                    Icon(Icons.Default.Shield,null,tint=Color(0xFF9CCBFF),
                         modifier=Modifier.size(17.dp))
                     Spacer(Modifier.width(7.dp))
                     Text(tr(lang,"Verified by BetVima",
                         "با تأیید سرور BetVima"),
                         fontSize=11.sp,fontWeight=FontWeight.Bold,
-                        color=Color(0xFF07825A))
+                        color=Color(0xFF9CCBFF))
                 }
             }
         }
