@@ -36,9 +36,9 @@ import com.betvima.app.data.CasinoGame
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 
-private val sheetPaper = Color(0xFF0C1424)
-private val sheetCard = Color(0xFF1A293F)
-private val sheetMuted = Color(0xFF9EADC7)
+private val sheetPaper = Color(0xFF141414)
+private val sheetCard = Color(0xFF29292B)
+private val sheetMuted = Color(0xFFA4A4AE)
 private val sheetBlue = Color(0xFF0A7CFA)
 private val highlightedProviders = listOf(
     "Pragmatic Play", "Evolution", "PG SOFT", "Hacksaw", "BGaming", "3 Oaks Gaming"
@@ -124,9 +124,9 @@ fun CasinoReferenceSearch(
         Column(Modifier.fillMaxWidth().fillMaxHeight(.97f)
             .clip(RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp))
             .background(Brush.verticalGradient(listOf(
-                Color(0xFF102142), sheetPaper, Color(0xFF0A1020)
+                Color(0xFF1A1A1C), sheetPaper, Color(0xFF141414)
             )))
-            .border(1.dp, Color(0xFF30496E),
+            .border(1.dp, Color(0xFF3B3B3D),
                 RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp))) {
             Box(Modifier.align(Alignment.CenterHorizontally)
                 .padding(top = 10.dp).width(44.dp).height(4.dp)
@@ -140,7 +140,7 @@ fun CasinoReferenceSearch(
                     fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
                 Surface(color = sheetCard,
                     shape = CircleShape,
-                    border = BorderStroke(1.dp, Color(0xFF405B83)),
+                    border = BorderStroke(1.dp, Color(0xFF424244)),
                     modifier = Modifier.size(43.dp).casinoBounce(onDismiss)) {
                     Box(contentAlignment = Alignment.Center) {
                         Icon(Icons.Default.Close, tr(lang,"Close search","بستن جست‌وجو"),
@@ -150,7 +150,7 @@ fun CasinoReferenceSearch(
             }
             Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp)
                 .clip(RoundedCornerShape(18.dp)).background(sheetCard)
-                .border(1.dp, Color(0xFF314967), RoundedCornerShape(18.dp))
+                .border(1.dp, Color(0xFF3B3B3D), RoundedCornerShape(18.dp))
                 .padding(3.dp), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                 listOf(false to tr(lang, "Games", "بازی‌ها"),
                     true to tr(lang, "Providers", "سازندگان")).forEach { (key, label) ->
@@ -170,7 +170,7 @@ fun CasinoReferenceSearch(
             Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp)
                 .height(56.dp).clip(RoundedCornerShape(16.dp))
                 .background(sheetCard)
-                .border(1.dp, Color(0xFF374E71), RoundedCornerShape(16.dp))
+                .border(1.dp, Color(0xFF3B3B3D), RoundedCornerShape(16.dp))
                 .padding(horizontal = 18.dp),
                 verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Default.Search, null, tint = sheetMuted,
@@ -272,8 +272,8 @@ fun CasinoReferenceSearch(
 @Composable
 private fun SearchGroupHeading(title: String) {
     Row(Modifier.fillMaxWidth().padding(top = 9.dp, bottom = 3.dp)) {
-        Surface(color = Color(0xFF1B2C4B), shape = CircleShape,
-            border = BorderStroke(1.dp, Color(0xFF365780))) {
+        Surface(color = Color(0xFF29292B), shape = CircleShape,
+            border = BorderStroke(1.dp, Color(0xFF3C3C40))) {
             Text(title, fontSize = 13.sp, fontWeight = FontWeight.SemiBold,
                 color = Color.White,
                 modifier = Modifier.padding(horizontal = 10.dp, vertical = 7.dp))
@@ -294,7 +294,7 @@ private fun ProviderSearchRow(names: List<String>, onProvider: (String) -> Unit)
             Box(Modifier.weight(1f).height(115.dp)
                 .clip(RoundedCornerShape(20.dp))
                 .background(Brush.linearGradient(listOf(
-                    Color(0xFF213758), Color(0xFF111D33))))
+                    Color(0xFF313133), Color(0xFF222224))))
                 .border(1.dp, brandColor.copy(alpha = .46f),
                     RoundedCornerShape(20.dp))
                 .casinoBounce { onProvider(name) }) {
@@ -327,8 +327,8 @@ private fun SearchGameCard(game: CasinoGame, onClick: () -> Unit) {
         Box(Modifier.fillMaxWidth().height(159.dp)
             .clip(RoundedCornerShape(14.dp))
             .background(Brush.linearGradient(listOf(
-                Color(0xFF24466B), Color(0xFF211B43))))
-            .border(1.dp, Color(0xFF38557C), RoundedCornerShape(14.dp))) {
+                Color(0xFF303032), Color(0xFF222224))))
+            .border(1.dp, Color(0xFF3B3B3D), RoundedCornerShape(14.dp))) {
             if (!game.imageUrl.isNullOrBlank()) {
                 AsyncImage(game.imageUrl, game.name, Modifier.fillMaxSize(),
                     contentScale = ContentScale.Crop)
