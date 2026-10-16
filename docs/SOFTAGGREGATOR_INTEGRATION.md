@@ -172,6 +172,28 @@ a separate verified DB backup, migration on an isolated test database, real
 signed provider callback conformance, and atomic balance/debit/credit/rollback
 reconciliation. No provider keys belong in Android or GitHub.
 
+## Country coverage and real-money licensing
+
+SoftAggregator's public API does **not** offer a `getAllowedCountries` or
+`getLicensedCountries` method. `getGameList` lists the titles available
+under the operator's contracted catalogue, **not** a list of countries where
+BetVima holds a gambling licence. SoftAggregator's `getGame` accepts an
+ISO-3166 alpha-2 `country` and enforces each studio's blocked markets **only
+against the country supplied by the operator**. It does not independently
+geolocate a player from the request IP. The same title may be offered in
+some countries and refused in others.
+
+Accordingly all real-money launches explicitly pass the country only after
+BetVima's own server-side `SOFTAGGREGATOR_ALLOWED_COUNTRIES` authorizes it.
+There must never be a wildcard/all-country fallback or automatic mapping
+from `getGameList` to operator legal permission. Profile
+`jurisdiction` alone is not trusted current location; independently
+verify physical location and applicable gambling permissions before
+authorizing cash games. The API's country rejection is a second provider
+control, not a substitute for operator KYC/licence/legal checks.
+
+Reference: https://softaggregator.com/docs.html#get-game
+
 ## Callback safety
 
 Documented provider protocol: signed GET parameters. Check timestamp (±30s), legacy MD5 key, **and** full payload X-Signature HMAC SHA-256. Duplicate keys and missing HMAC fail closed. Amounts and balances are integer USD cents. A callback is processed only when the real-money feature flag is explicitly enabled.

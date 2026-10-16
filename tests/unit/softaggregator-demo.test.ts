@@ -155,6 +155,68 @@ describe('SoftAggregator demo-only launch API', () => {
     expect(casinoRealMoneyUserAllowed(pilot)).toBe(false);
   });
 
+  it('always sends an authorized ISO country to supplier getGame for real-money play', async () => {
+    const pilot = '00000000-0000-4000-8000-000000000001';
+    Object.assign(process.env, {
+      SOFTAGGREGATOR_ENABLED: 'true',
+      SOFTAGGREGATOR_REAL_MONEY_ENABLED: 'true',
+      SOFTAGGREGATOR_FINANCIAL_SCHEMA_READY: 'true',
+      SOFTAGGREGATOR_SALT_KEY: 'fake-provider-test-salt-key',
+      SOFTAGGREGATOR_TEST_USER_ID: pilot,
+      SOFTAGGREGATOR_ALLOWED_COUNTRIES: 'DE',
+    });
+    const calls: Array<Record<string, unknown>> = [];
+    vi.stubGlobal('fetch', vi.fn(async (_: string, options: RequestInit) => {
+      const body = JSON.parse(String(options.body)) as Record<string, unknown>;
+      calls.push(body);
+      if (body.method === 'getGameList') return {
+        ok: true, json: async () => ({ error: 0, response: [{
+          id_hash: 'x887bde40b16350c', name: 'Aviator', game_type: 'crash',
+          provider: 'studio',
+        }] }),
+      };
+      if (body.method === 'createPlayer') return {
+        ok: true, json: async () => ({ error: 0, response: { created: true } }),
+      };
+      if (body.method === 'getGame') return {
+        ok: true, json: async () => ({ error: 0, response: {
+          gameurl: 'https://cdn.provider.test/real-game',
+        } }),
+      };
+      throw new Error('Unexpected method');
+    }));
+    const url = await launchCasinoGame({
+      userId: pilot, gameId: 'x887bde40b16350c',
+      demo: false, lang: 'fa', device: 'mobile', country: 'DE',
+    });
+    expect(url).toBe('https://cdn.provider.test/real-game');
+    const cashLaunch = calls.find((call) => call.method === 'getGame');
+    expect(cashLaunch).toMatchObject({ country: 'DE', currency: 'USD',
+      gameid: 'x887bde40b16350c' });
+    expect(calls.some((call) => call.method === 'getGameDemo')).toBe(false);
+  });
+
+  it('refuses any missing, malformed, or non-authorized country before supplier player creation', async () => {
+    const pilot = '00000000-0000-4000-8000-000000000001';
+    Object.assign(process.env, {
+      SOFTAGGREGATOR_ENABLED: 'true',
+      SOFTAGGREGATOR_REAL_MONEY_ENABLED: 'true',
+      SOFTAGGREGATOR_FINANCIAL_SCHEMA_READY: 'true',
+      SOFTAGGREGATOR_SALT_KEY: 'fake-provider-test-salt-key',
+      SOFTAGGREGATOR_TEST_USER_ID: pilot,
+      SOFTAGGREGATOR_ALLOWED_COUNTRIES: 'DE',
+    });
+    const spy = vi.fn();
+    vi.stubGlobal('fetch', spy);
+    for (const country of [undefined, '', 'de', 'FR', 'XX', '*']) {
+      await expect(launchCasinoGame({
+        userId: pilot, gameId: 'x887bde40b16350c',
+        demo: false, lang: 'en', device: 'mobile', country,
+      })).rejects.toThrow('CASINO_COUNTRY_NOT_AUTHORIZED');
+    }
+    expect(spy).not.toHaveBeenCalled();
+  });
+
   it('refuses real-money game access independently of provider credentials', async () => {
     await expect(launchCasinoGame({
       userId: '00000000-0000-4000-8000-000000000001',
