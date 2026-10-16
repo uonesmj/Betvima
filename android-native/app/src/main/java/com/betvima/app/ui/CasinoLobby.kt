@@ -134,7 +134,8 @@ fun CasinoLobby(state: AppState, model: AppViewModel) {
                 throw cancel
             } catch (failure: Exception) {
                 val status = (failure as? ApiFailure)?.code
-                val details = casinoDemoFailure(status, confirmedDemo, fa)
+                val details = casinoDemoFailure(status, confirmedDemo, fa,
+                    (failure as? ApiFailure)?.serverCode)
                 val safeStatus = status?.takeIf { it in 400..599 }
                 launchError = gameName to (details + if (safeStatus != null) " (HTTP $safeStatus)" else "")
             } finally {
