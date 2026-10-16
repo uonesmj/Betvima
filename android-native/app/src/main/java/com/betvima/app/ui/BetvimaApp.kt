@@ -124,10 +124,10 @@ fun BetvimaApp(model: AppViewModel) {
             }
         }
     }
-    BackHandler(enabled = bonusOpen || vipOpen || notificationPopupOpen || affiliateOpen || languageOpen || searchOpen || state.betDetailVisible || state.showLogin ||
+    BackHandler(enabled = !bonusOpen && !vipOpen && !affiliateOpen && (notificationPopupOpen || languageOpen || searchOpen || state.betDetailVisible || state.showLogin ||
         state.showSlip || state.detail != null ||
         state.feature != Feature.NONE || accountOpen || drawer.isOpen ||
-        state.tab != Tab.HOME || state.homeMode == HomeMode.TOP_BETS) {
+        state.tab != Tab.HOME || state.homeMode == HomeMode.TOP_BETS)) {
         when {
             bonusOpen -> bonusOpen = false
             vipOpen -> vipOpen = false
