@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Db } from '@/lib/ports/db';
 import { getDb } from '@/server/db';
 import { settleCasinoCallback } from '@/server/providers/softaggregator/wallet';
