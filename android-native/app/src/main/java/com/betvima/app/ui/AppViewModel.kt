@@ -84,6 +84,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     private var accountRequestNumber = 0
     private var quoteGeneration = 0
     private var mainBetSubmitting = false
+    private var mainOddsPolling = false
     private var flightRevision = 0L
     private var historyRequest = 0
     private var searchGeneration = 0
@@ -812,6 +813,51 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         }
         mutable.update {
             it.copy(mainOddsAcceptedToken = review.quoteToken, notice = null)
+        }
+    }
+
+    /**
+     * Read-only price heartbeat while the native slip is open. Poll at most
+     * every 10 seconds, never mutate wallet/bets, never auto-accept or submit.
+     * Do not replace an identical signed quote (which would erase consent).
+     */
+    fun pollMainOdds(stake: String) = viewModelScope.launch {
+        val snapshot = state.value
+        if (mainOddsPolling || mainBetSubmitting || snapshot.busy ||
+            !snapshot.signedIn || snapshot.mainBetUncertain ||
+            snapshot.mainOddsAcceptedToken != null || snapshot.picks.isEmpty()) return@launch
+        val currency = snapshot.wallet?.currency?.uppercase()?.takeIf {
+            it in setOf("USD", "IRR", "IRT")
+        } ?: return@launch
+        val minor = runCatching { mainBetStakeMinor(stake, currency) }.getOrNull()
+            ?: return@launch
+        val selected = snapshot.picks.toList()
+        val startingGeneration = quoteGeneration
+        val session = sessionGeneration
+        mainOddsPolling = true
+        try {
+            val token = vault.accessToken(api) ?: return@launch
+            val data = api.quote(token, selected, minor, currency)
+            val body = data.optJSONObject("quote") ?: return@launch
+            val next = parseMainBetReview(body, minor, currency, selected,
+                startingGeneration)
+            if (session != sessionGeneration || startingGeneration != quoteGeneration ||
+                selected != state.value.picks ||
+                state.value.mainOddsAcceptedToken != null ||
+                state.value.wallet?.currency?.uppercase() != currency) return@launch
+            val previous = state.value.mainBetReview
+            if (previous == null || previous.changes != next.changes ||
+                previous.potentialPayoutMinor != next.potentialPayoutMinor) {
+                mutable.update {
+                    it.copy(quote = money(next.potentialPayoutMinor, currency),
+                        mainBetReview = next, mainOddsAcceptedToken = null)
+                }
+            }
+        } catch (_: Exception) {
+            // The last displayed odds are not thereby deemed tradable.
+            // Explicit placement rechecks the official quote and market status.
+        } finally {
+            mainOddsPolling = false
         }
     }
 
