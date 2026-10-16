@@ -71,9 +71,9 @@ describe('SoftAggregator geo Worker and origin HMAC interoperability', () => {
     expect(verifiedCasinoLocation(forwarded, { secret })).toBeNull();
 
     // Unknown Cloudflare geolocation must not authorize cash gaming.
-    const unknown = requestFromEdge({ country: 'DE' });
-    Object.defineProperty(unknown, 'cf', { value: { country: 'XX' } });
+    const unknown = requestFromEdge({ country: null });
     await worker.fetch(unknown, { CASINO_GEO_HMAC_SECRET: secret });
+    expect(forwarded.headers.has('x-betvima-geo-signature')).toBe(false);
     expect(verifiedCasinoLocation(forwarded, { secret })).toBeNull();
   });
 
