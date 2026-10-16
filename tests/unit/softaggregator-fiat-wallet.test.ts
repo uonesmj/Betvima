@@ -112,6 +112,19 @@ describe('Casino fiat settle staging contract', () => {
     expect(t.posted).toHaveLength(0);
   });
 
+  it('blocks IRT and IRR wagers until KYC is verified', async () => {
+    for (const currency of ['IRT', 'IRR'] as const) {
+      const t = fakeDb(currency, currency === 'IRR' ? 25_000_000n : 2_500_000n);
+      t.setKycStatus('pending');
+      expect((await fiatCasinoBalance(t.db, userId)).error).toBe(2);
+      expect((await settleFiatCasinoCallback(t.db, userId, event('kyc-denied', 'debit', 20n))).error).toBe(1);
+      expect(t.posted).toHaveLength(0);
+      t.setKycStatus('verified');
+      expect((await settleFiatCasinoCallback(t.db, userId, event('kyc-approved', 'debit', 20n))).error).toBe(0);
+      expect(t.posted).toHaveLength(1);
+    }
+  });
+
   it('makes a USD bet, credits a USD win, preserves IRT ledger and duplicate safety', async () => {
     const t = fakeDb('IRT');
     const debit = event('bet-one', 'debit', 20n);
