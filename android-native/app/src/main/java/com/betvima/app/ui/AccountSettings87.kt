@@ -49,6 +49,11 @@ internal fun AccountSettings87(state:AppState,model:AppViewModel) {
     var loading by remember { mutableStateOf(false) }
     var fault by remember { mutableStateOf<String?>(null) }
     var modal by remember { mutableStateOf("") }
+    var showPassword88 by remember { mutableStateOf(false) }
+    var showLock88 by remember { mutableStateOf(false) }
+    var showHistory88 by remember { mutableStateOf(false) }
+    var lockMode88 by remember { mutableStateOf(local.lockMode88()) }
+
     var langOpen by remember { mutableStateOf(false) }
     var first by remember { mutableStateOf("") }
     var last by remember { mutableStateOf("") }
@@ -85,7 +90,29 @@ internal fun AccountSettings87(state:AppState,model:AppViewModel) {
     val phoneVerified=profile?.optBoolean("isPhoneVerified",false)?:false
     val lastLogin=profile?.str("lastLoginAt").orEmpty()
     val bg=when(appearance){"dark"->Color(0xFF07080A);"light"->Color(0xFF25262E);else->Color(0xFF111216)}
-    fun open(v:String){modal=v;feedback="";first="";last="";pin="";repeatPin="";currentPass="";newPass="";confirm=""}
+    fun open(v:String){
+        when(v) {
+            "password" -> showPassword88=true
+            "pin" -> showLock88=true
+            "history" -> showHistory88=true
+            else -> modal=v
+        }
+        feedback="";first="";last="";pin="";repeatPin=""
+        currentPass="";newPass="";confirm=""
+    }
+    if (showPassword88) PasswordDialog88(lang,api,vault,
+        onSuccess={
+            showPassword88=false
+            model.notice(label87(lang,"Password updated successfully","رمز عبور با موفقیت تغییر کرد"))
+        },onDismiss={showPassword88=false})
+    if (showLock88) AppLockDialog88(lang,local,
+        onChanged={
+            enabledPin=local.hasPin()
+            lockMode88=local.lockMode88()
+            model.notice(label87(lang,"Application lock updated","قفل برنامه تغییر کرد"))
+        },onDismiss={showLock88=false})
+    if (showHistory88) LoginHistoryDialog88(lang,api,vault,
+        onDismiss={showHistory88=false})
     if(langOpen)LanguagePickerDialog(lang,{model.setLanguage(it);langOpen=false},{langOpen=false})
 
     if(modal.isNotBlank()) AlertDialog(
@@ -276,8 +303,12 @@ internal fun AccountSettings87(state:AppState,model:AppViewModel) {
                     label87(lang,"Server activation required","نیازمند فعال‌سازی سرور"),"next"){open("mfa")}
                 Tile87(Icons.Default.Key,label87(lang,"Change password","تغییر رمز عبور"),
                     label87(lang,"Verify current password","تأیید رمز فعلی"),"next"){open("password")}
-                Tile87(Icons.Default.Pin,label87(lang,"App PIN code","پین برنامه"),
-                    if(enabledPin)label87(lang,"Enabled","فعال") else label87(lang,"Disabled","غیرفعال"),"next"){open("pin")}
+                Tile87(Icons.Default.Pin,label87(lang,"App lock","قفل برنامه"),
+                    when(lockMode88) {
+                        "pin" -> label87(lang,"6-digit numeric PIN active","پین عددی ۶ رقمی فعال")
+                        "pattern" -> label87(lang,"Pattern lock active","قفل الگوی نقطه‌ای فعال")
+                        else -> label87(lang,"Choose PIN or pattern","انتخاب پین یا الگو")
+                    },"next"){open("pin")}
                 Tile87(Icons.Default.History,label87(lang,"Login history","سوابق ورود"),
                     lastLogin.take(19).ifBlank{label87(lang,"Not available","ناموجود")},"next"){open("history")}
                 Tile87(Icons.Default.SupportAgent,label87(lang,"Support tickets","تیکت پشتیبانی"),

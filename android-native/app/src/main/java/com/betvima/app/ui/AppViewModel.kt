@@ -439,6 +439,11 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         mutable.update { it.copy(busy = true, notice = null, authError = null) }
         try {
             vault.signIn(email.trim(), password, api)
+            // Audit the newly authenticated device. A history service outage
+            // must never convert a valid login into an authentication failure.
+            runCatching {
+                vault.accessToken(api)?.let { api.recordLogin88(it) }
+            }
             sessionGeneration++
             mutable.update { it.copy(
                 busy = false, showLogin = false, signedIn = true, authError = null,

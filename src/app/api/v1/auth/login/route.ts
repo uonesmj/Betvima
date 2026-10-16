@@ -4,7 +4,8 @@ import { z } from 'zod';
 import { ApiError, withErrorHandling } from '@/lib/errors';
 import { readJson, enforceRateLimit } from '@/server/http/request';
 import { serverEnv } from '@/server/env';
-import { clientIpFromHeaders } from '@/server/utils/hash';
+import { clientIpFromHeaders, hashSignal } from '@/server/utils/hash';
+import { getDb } from '@/server/db';
 import { verifyTurnstileToken } from '@/server/security/turnstile';
 
 export const dynamic = 'force-dynamic';
@@ -148,6 +149,26 @@ export const POST = withErrorHandling('auth.login', async (ctx, request: Request
       'SERVICE_UNAVAILABLE',
       'Unable to establish the login session',
     );
+  }
+
+  // Successful browser login, never attempted credentials. The audit cannot
+  // prevent authentication if the event store is temporarily unavailable.
+  try {
+    const userAgent = request.headers.get('user-agent') ?? '';
+    const device = /Android/i.test(userAgent) ? 'Android browser'
+      : /iPhone|iPad/i.test(userAgent) ? 'iPhone / iPad browser'
+      : /Windows/i.test(userAgent) ? 'Windows browser'
+      : /Mac OS/i.test(userAgent) ? 'Mac browser' : 'Web browser';
+    const ip = clientIpFromHeaders(request.headers);
+    await getDb().query(
+      `insert into nova.account_events
+         (user_id, actor_id, event_key, ip_hash, user_agent, metadata)
+       values ($1, $1, 'security.login', $2, $3, $4::jsonb)`,
+      [sessionData.user.id, ip ? hashSignal(ip) : null, device,
+        JSON.stringify({ client: 'web', platform: device })],
+    );
+  } catch {
+    console.warn('[auth.login] login-history audit not recorded');
   }
 
   return response;

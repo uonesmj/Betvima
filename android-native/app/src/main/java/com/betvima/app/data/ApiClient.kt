@@ -153,6 +153,8 @@ class ApiClient {
             require(path.startsWith("/api/v1/"))
             val builder = Request.Builder().url(base + path)
                 .header("Accept", "application/json").header("Cache-Control", "no-store")
+            if (path == "/api/v1/account/login-history" && body != null)
+                builder.header("X-Betvima-Client", "android")
             if (!token.isNullOrBlank()) builder.header("Authorization", "Bearer " + token)
             if (idempotencyKey != null) builder.header("Idempotency-Key", idempotencyKey)
             if (body != null) builder.method(verb, body.toString().toRequestBody(jsonType))
@@ -162,6 +164,21 @@ class ApiClient {
              else financialClient)
                 .newCall(builder.build()).execute().use(::apiJson)
         }
+
+    /** Current password is checked by our authenticated backend before any update. */
+    suspend fun changePassword88(token: String, current: String, next: String): JSONObject {
+        require(next.length in 10..128 && current.isNotBlank())
+        return post("/api/v1/account/change-password",
+            JSONObject().put("currentPassword", current).put("newPassword", next), token)
+    }
+
+    suspend fun loginHistory88(token: String, page: Int = 1): JSONObject {
+        require(page in 1..100)
+        return get("/api/v1/account/login-history?page=" + page, token)
+    }
+
+    suspend fun recordLogin88(token: String): JSONObject =
+        request("/api/v1/account/login-history", token, JSONObject(), "POST")
 
     suspend fun login(email: String, password: String): JSONObject {
         val config = get("/api/v1/mobile/config")
