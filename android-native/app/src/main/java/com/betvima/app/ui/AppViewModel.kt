@@ -755,6 +755,13 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
      * an ambiguous network response requires checking My Bets.
      */
     fun placeMainBet(stake: String) = viewModelScope.launch {
+        // The native build cannot place wagers until operator, age and
+        // jurisdiction controls are reviewed and the build flag is enabled.
+        if (!com.betvima.app.BuildConfig.ENABLE_WAGERING) {
+            notice(tr(state.value.lang, "Main Account wagering is not yet authorized.",
+                "ثبت شرط از حساب اصلی هنوز مجاز نشده است."))
+            return@launch
+        }
         val snapshot = state.value
         if (snapshot.busy || snapshot.mainBetUncertain || !snapshot.signedIn) return@launch
         val review = snapshot.mainBetReview ?: return@launch
