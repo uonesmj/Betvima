@@ -67,17 +67,18 @@ fun PremiumAffiliateSheet(state: AppState, model: AppViewModel, onClose: () -> U
     }
     // Full-height native Dialog: no bottom-sheet handle, no partial expansion.
     // Close button stays visible while the inner landing independently scrolls.
-    Dialog(
-        onDismissRequest=onClose,
-        properties=DialogProperties(
-            usePlatformDefaultWidth=false,
-            dismissOnBackPress=true,
-            dismissOnClickOutside=false,
-            decorFitsSystemWindows=false
+    PremiumMotionDialog(
+        onDismissRequest = onClose,
+        properties = DialogProperties(
+            usePlatformDefaultWidth = false,
+            dismissOnBackPress = true,
+            dismissOnClickOutside = false,
+            decorFitsSystemWindows = false
         )
-    ) {
+    ) { motion, closeWith ->
         Column(
             Modifier.fillMaxSize()
+                .then(motion)
                 .background(partnerNight)
                 .windowInsetsPadding(WindowInsets.safeDrawing)
         ) {
@@ -112,7 +113,7 @@ fun PremiumAffiliateSheet(state: AppState, model: AppViewModel, onClose: () -> U
                         Text(tr(lang,"Log in","ورود"),color=Color.White)
                     }
                 }
-                IconButton(onClick=onClose) {
+                IconButton(onClick={ closeWith({}) }) {
                     Icon(Icons.Default.Close,
                         tr(lang,"Close affiliate","بستن افیلیت"),
                         tint=Color.White,modifier=Modifier.size(27.dp))
