@@ -21,6 +21,7 @@ const identity = (callId: string, action: 'credit' | 'debit', amount: bigint): S
 function makeFakeDb(initial = 1000n, held = 200n) {
   let balance = initial;
   let preferredCurrency = 'USD';
+  let kycStatus = 'verified';
   let financialSchemaReady = true;
   const receipts = new Map<string, { identity_hash: string; response_error: 0 | 1 | 2; response_balance_minor: string; action: string; wallet_amount_minor: string; round_id: string; game_id: string; amount_minor: string; reversed: boolean }>();
   const postings: Array<Record<string, unknown>> = [];
@@ -49,7 +50,8 @@ function makeFakeDb(initial = 1000n, held = 200n) {
       }
       if (sql.includes('from nova.profiles p')) {
         return {
-          status: 'active', age_verified: true, country: 'DE', currency: preferredCurrency,
+          status: 'active', age_verified: true, kyc_status: kycStatus,
+          country: 'DE', currency: preferredCurrency,
           self_excluded: false, restricted: false,
           max_stake_per_bet_minor: null, max_stake_per_day_minor: null,
           loss_limit_daily_minor: null, loss_limit_weekly_minor: null,
@@ -94,6 +96,7 @@ function makeFakeDb(initial = 1000n, held = 200n) {
   };
   return { fake, receipts, postings, getBalance: () => balance,
     setPreferredCurrency: (currency: string) => { preferredCurrency = currency; },
+    setKycStatus: (status: string) => { kycStatus = status; },
     setSchemaReady: (ready: boolean) => { financialSchemaReady = ready; } };
 }
 
