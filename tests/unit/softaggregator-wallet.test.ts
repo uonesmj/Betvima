@@ -101,7 +101,11 @@ function makeFakeDb(initial = 1000n, held = 200n) {
 }
 
 describe('SoftAggregator financial callback behavior (isolated DB contract)', () => {
-  beforeEach(() => vi.clearAllMocks());
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.stubEnv('SOFTAGGREGATOR_ALLOWED_COUNTRIES', 'DE');
+  });
+  afterEach(() => vi.unstubAllEnvs());
 
   it('refuses a signed money callback if the audited schema is incomplete', async () => {
     const t = makeFakeDb();
