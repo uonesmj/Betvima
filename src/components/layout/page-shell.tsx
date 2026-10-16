@@ -1,5 +1,6 @@
 'use client';
 import { PullToRefresh } from '@/components/layout/pull-to-refresh';
+import dynamic from 'next/dynamic';
 
 import { AuthSheet } from '@/components/account/auth-sheet';
 import { useApiQuery } from "@/lib/hooks/useApi";
@@ -21,6 +22,14 @@ import { TopWalletBalance } from '@/components/layout/top-wallet-balance';
 import { AccountSummary } from '@/components/layout/account-summary';
 import { LanguageSelector } from '@/components/layout/language-selector';
 import { ReferenceSportsNav } from '@/components/home/reference-sports-nav';
+
+const AffiliatePromoSheet = dynamic(() => import('@/components/affiliate/affiliate-promo').then((module) => module.AffiliatePromoSheet), { ssr: false });
+
+function isBetVimaAndroidWebView() {
+  if (typeof window === 'undefined') return false;
+  const agent = window.navigator.userAgent;
+  return /Android/i.test(agent) && (/\bwv\b/i.test(agent) || /BetVima(?:Android|App|WebView)/i.test(agent));
+}
 
 const NAV = [
   { href: '/', key: 'nav.home', icon: Home },
@@ -332,7 +341,7 @@ function ReferenceMobileDrawer({
         <div className="my-2 border-t border-white/[0.09]" />
         <button
           type="button"
-          onClick={() => go("/affiliate/login")}
+          onClick={() => { if (isBetVimaAndroidWebView()) { close(); window.dispatchEvent(new Event("nova:open-affiliate-sheet")); } else { go("/affiliate/login"); } }}
           className="flex min-h-[44px] w-full items-center gap-3 rounded-xl px-3 text-left text-[15px] font-medium text-[#F1F2F3]"
         >
           <span className="grid h-7 w-7 shrink-0 place-items-center text-[#AEB5C0]">
@@ -836,6 +845,24 @@ export function PageShell({ children, title, subtitle, titleKey, subtitleKey, ac
   const [homeProfileSheetOpen, setHomeProfileSheetOpen] = useState(false);
   const [supportSheetOpen, setSupportSheetOpen] = useState(false);
   const [authSheetMode, setAuthSheetMode] = useState<'login' | 'register' | null>(null);
+  const [affiliateSheetOpen, setAffiliateSheetOpen] = useState(false);
+  const closeAffiliateSheet = useCallback(() => setAffiliateSheetOpen(false), []);
+  useEffect(() => {
+    const open = () => { setHomeMenuOpen(false); setAffiliateSheetOpen(true); };
+    const click = (event: MouseEvent) => {
+      if (!isBetVimaAndroidWebView()) return;
+      const target = event.target;
+      if (!(target instanceof Element)) return;
+      const link = target.closest('a[href="/affiliate/login"], a[href="/affiliate"]');
+      if (!link) return;
+      event.preventDefault();
+      event.stopPropagation();
+      open();
+    };
+    window.addEventListener('nova:open-affiliate-sheet', open);
+    document.addEventListener('click', click, true);
+    return () => { window.removeEventListener('nova:open-affiliate-sheet', open); document.removeEventListener('click', click, true); };
+  }, []);
   useEffect(() => { if (!isHome) return; const openProfile = () => setHomeProfileSheetOpen(true); window.addEventListener("nova:open-profile-sheet", openProfile); return () => window.removeEventListener("nova:open-profile-sheet", openProfile); }, [isHome]);
   useEffect(() => {
     const onSupportClick = (event: MouseEvent) => {
@@ -949,6 +976,7 @@ export function PageShell({ children, title, subtitle, titleKey, subtitleKey, ac
     {supportSheetOpen ? (
       <SupportSheet close={() => setSupportSheetOpen(false)} />
     ) : null}
+    {affiliateSheetOpen ? <AffiliatePromoSheet onClose={closeAffiliateSheet} /> : null}
     </>
   );
 }
