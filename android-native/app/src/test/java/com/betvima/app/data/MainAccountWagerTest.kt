@@ -71,4 +71,13 @@ class MainAccountWagerTest {
             parseMainBetReview(forged,"500","USD",listOf(pick),5,now)
         }
     }
+    @Test fun stableRequestIdPreventsDuplicateChargeIntent() {
+        val one=mainBetRequestId("server-signed-quote-for-first-bet")
+        val again=mainBetRequestId("server-signed-quote-for-first-bet")
+        val another=mainBetRequestId("server-signed-quote-for-second-bet")
+        assertEquals(one,again)
+        assertNotEquals(one,another)
+        assertTrue(one.matches(Regex("[a-f0-9-]{36}")))
+    }
+
 }
