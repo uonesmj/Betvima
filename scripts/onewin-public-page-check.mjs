@@ -9,23 +9,54 @@ const PUBLIC_ROUTES = new Map([
 ]);
 const MAX_BYTES = 512 * 1024;
 export function robotsDecision(raw, path = '/betting') {
-  let wildcard = false;
-  const directives = [];
+  // Match robots.txt groups according to RFC 9309's longest applicable rule.
+  // This routine only governs a metadata probe; robots permission is NOT
+  // copyright permission to copy or syndicate odds.
+  const groups = [];
+  let current = null;
+  let sawRule = false;
   for (const line of String(raw).split(/\r?\n/)) {
     const clean = line.split('#')[0].trim();
-    if (!clean) continue;
     const found = /^([a-z-]+)\s*:\s*(.*)$/i.exec(clean);
     if (!found) continue;
     const key = found[1].toLowerCase(), value = found[2].trim();
-    if (key === 'user-agent') wildcard = value === '*';
-    else if (wildcard && (key === 'allow' || key === 'disallow') && value)
-      directives.push({ key, path: value });
+    if (key === 'user-agent') {
+      if (!current || sawRule) {
+        current = { agents: [], rules: [] };
+        groups.push(current);
+        sawRule = false;
+      }
+      current.agents.push(value.toLowerCase());
+    } else if (current && (key === 'allow' || key === 'disallow')) {
+      sawRule = true;
+      if (value) current.rules.push({ key, path: value });
+    }
   }
-  const denied = directives.some((rule) => rule.key === 'disallow' &&
-    !rule.path.includes('*') && !rule.path.includes('$') && path.startsWith(rule.path));
-  const unknown = directives.some((rule) => rule.path.includes('*') || rule.path.includes('$'));
-  return { allowed: !denied && !unknown, reason:
-    denied ? 'robots_disallow' : unknown ? 'complex_robots_rules_require_review' : 'no_matching_robots_denial' };
+  const agent = 'BetvimaPublicPageFeasibility'.toLowerCase();
+  const matches = groups.flatMap((group) => group.agents
+    .filter((a) => a === '*' || agent.startsWith(a))
+    .map((a) => ({ specificity: a === '*' ? 0 : a.length, rules: group.rules })));
+  const maxSpecificity = matches.reduce((max, m) => Math.max(max, m.specificity), -1);
+  const applicable = matches.filter((m) => m.specificity === maxSpecificity)
+    .flatMap((m) => m.rules);
+  const matching = applicable.filter((rule) => {
+    // Support * wildcards and terminal $ anchors without requesting anything.
+    const terminal = rule.path.endsWith('$');
+    const rawPattern = terminal ? rule.path.slice(0, -1) : rule.path;
+    const escaped = rawPattern.split('*').map((part) =>
+      part.replace(/[.*+?^$()|[\]{}\\]/g, '\\$&')).join('.*');
+    return new RegExp('^' + escaped + (terminal ? '$' : '')).test(path);
+  }).sort((a, b) =>
+    b.path.replace(/[*$]/g, '').length - a.path.replace(/[*$]/g, '').length ||
+    (a.key === 'allow' ? -1 : 1));
+  const winning = matching[0] ?? null;
+  return {
+    allowed: !winning || winning.key === 'allow',
+    reason: !winning ? 'no_matching_robots_denial' :
+      winning.key === 'allow' ? 'robots_explicit_allow' : 'robots_disallow',
+    matchedRuleType: winning?.key ?? null,
+    matchedRuleLength: winning?.path.length ?? 0,
+  };
 }
 export async function inspectPublicPage({ fetchImpl = fetch, origin = 'https://1win.ng' } = {}) {
   if (!PUBLIC_ROUTES.has(origin)) throw new Error('Domain is not allowlisted');
