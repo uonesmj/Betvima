@@ -19,3 +19,9 @@ jobs:
           node-version: '22'
       - run: node --check scripts/onewin-public-page-check.mjs
       - run: node --test tests/research/onewin-public-page.test.mjs
+      - name: Live public-page metadata - 1win.ng
+        run: node scripts/onewin-public-page-check.mjs
+      - name: Live public-page metadata - 1win.com
+        env:
+          ONEWIN_PUBLIC_ORIGIN: https://1win.com
+        run: node scripts/onewin-public-page-check.mjs
