@@ -108,6 +108,33 @@ describe('SoftAggregator demo-only launch API', () => {
     })).rejects.toThrow('SOFTAGGREGATOR_HTTP_ERROR');
   });
 
+  it('returns a specific demo-only error when the vendor refuses an unsupported game', async () => {
+    const calls: string[] = [];
+    vi.stubGlobal('fetch', vi.fn(async (_: string, options: RequestInit) => {
+      const request = JSON.parse(String(options.body)) as Record<string, unknown>;
+      calls.push(String(request.method));
+      if (request.method === 'getGameList') return {
+        ok: true, json: async () => ({ error: 0, response: [{
+          id_hash: 'x887bde40b16350c', name: 'Aviator', game_type: 'crash',
+          provider: 'studio', play_for_fun_supported: false,
+        }] }),
+      };
+      if (request.method === 'createPlayer') return {
+        ok: true, json: async () => ({ error: 0, response: { created: true } }),
+      };
+      if (request.method === 'getGameDemo') return {
+        ok: true, json: async () => ({ error: 1, message: 'supplier-specific details' }),
+      };
+      throw new Error('Unexpected supplier method');
+    }));
+    await expect(launchCasinoGame({
+      userId: '00000000-0000-4000-8000-000000000001',
+      gameId: 'x887bde40b16350c', demo: true, lang: 'en', device: 'mobile',
+    })).rejects.toThrow('CASINO_DEMO_UNAVAILABLE');
+    expect(calls).toContain('getGameDemo');
+    expect(calls).not.toContain('getGame');
+  });
+
   it('retains compatibility with a direct-string launch response', async () => {
     vi.stubGlobal('fetch', vi.fn(async (_: string, options: RequestInit) => {
       const body = JSON.parse(String(options.body)) as Record<string, unknown>;
