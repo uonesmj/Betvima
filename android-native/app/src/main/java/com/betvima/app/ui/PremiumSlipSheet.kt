@@ -38,6 +38,10 @@ private val slipPaper = Color(0xFFF6F8FB)
 private val slipBorder = Color(0xFFE2E7EF)
 private val slipText = Color(0xFF202C3C)
 private val slipMuted = Color(0xFF7F8B9C)
+// A single horizontal gradient across BOTH the grab handle and title header.
+private val slipHeaderBrush = Brush.horizontalGradient(
+    listOf(Color(0xFF0B2346), Color(0xFF0756AD))
+)
 
 /**
  * Compact text wordmark specifically for the bet slip. The former SVG put
@@ -69,7 +73,7 @@ private fun SlipBrandWordmark(
 
 @Composable
 private fun SlipPickCard(
-    pick: Pick, lang: Lang, number: Int, onRemove: () -> Unit
+    pick: Pick, lang: Lang, number: Int, onOpen: () -> Unit, onRemove: () -> Unit
 ) {
     Surface(
         shape = RoundedCornerShape(14.dp),
@@ -79,7 +83,8 @@ private fun SlipPickCard(
         modifier = Modifier.fillMaxWidth().heightIn(min = SLIP_CARD_HEIGHT_DP.dp)
     ) {
         Row(
-            Modifier.fillMaxWidth().padding(start = 10.dp,end = 7.dp,top = 9.dp,bottom = 9.dp),
+            Modifier.fillMaxWidth().clickable(onClick = onOpen)
+                .padding(start = 10.dp,end = 7.dp,top = 9.dp,bottom = 9.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Surface(
@@ -91,7 +96,7 @@ private fun SlipPickCard(
             ) {
                 Box(contentAlignment = Alignment.Center) {
                     Text(
-                        number.toString().padStart(2, '0'),
+                        number.toString(),
                         fontWeight = FontWeight.Black,
                         fontSize = 12.sp,
                         color = Color.White
@@ -115,11 +120,15 @@ private fun SlipPickCard(
                     lineHeight = 18.sp, fontWeight = FontWeight.Black,
                     maxLines = 1, overflow = TextOverflow.Ellipsis
                 )
-                Text(
-                    pick.market, color = slipMuted, fontSize = 11.sp,
-                    lineHeight = 15.sp, maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        pick.market, color = slipMuted, fontSize = 11.sp,
+                        lineHeight = 15.sp, maxLines = 1,
+                        overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f)
+                    )
+                    Icon(Icons.Default.ChevronRight, null, tint = slipBlue,
+                        modifier = Modifier.size(14.dp))
+                }
             }
             Spacer(Modifier.width(5.dp))
             Surface(color = Color(0xFFE8F8F0),shape = RoundedCornerShape(10.dp)) {
@@ -251,67 +260,99 @@ private fun MainAccountSlipControls(
                 }
                 Surface(
                     color = Color(0xFFF0F8F4),
-                    shape = RoundedCornerShape(12.dp),
+                    shape = RoundedCornerShape(13.dp),
                     border = BorderStroke(1.dp, Color(0xFFCEEBDD)),
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Column(
                         modifier = Modifier.fillMaxWidth().padding(
-                            horizontal = 12.dp, vertical = 8.dp
+                            horizontal = 9.dp, vertical = 7.dp
                         ),
-                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                        verticalArrangement = Arrangement.spacedBy(5.dp)
                     ) {
                         Row(
                             modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            Text(
-                                tr(lang, "Combined odds", "ضریب کل") +
-                                    "  " + estimate.combinedOdds,
-                                color = slipMuted, fontSize = 10.sp,
-                                fontWeight = FontWeight.SemiBold
+                            Column(
+                                modifier = Modifier.weight(1f),
+                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Column {
+                                    Text(
+                                        tr(lang, "Combined odds", "ضریب کل"),
+                                        color = slipMuted, fontSize = 9.sp,
+                                        maxLines = 1
+                                    )
+                                    Row(verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+                                        Text(
+                                            estimate.combinedOdds,
+                                            color = slipText,
+                                            fontWeight = FontWeight.Black,
+                                            fontSize = 17.sp
+                                        )
+                                        Text(
+                                            if (officialPayout != null)
+                                                tr(lang, "Quote", "قطعی")
+                                            else tr(lang, "Est.", "تخمین"),
+                                            color = Color(0xFF218D64),
+                                            fontSize = 8.sp,
+                                            maxLines = 1
+                                        )
+                                    }
+                                }
+                                Row(horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+                                    Column(Modifier.weight(1f)) {
+                                        Text(
+                                            tr(lang, "Return", "بازگشت"),
+                                            color = slipMuted, fontSize = 8.sp,
+                                            maxLines = 1
+                                        )
+                                        Text(
+                                            "$" + possibleReturn,
+                                            color = slipText, fontSize = 14.sp,
+                                            fontWeight = FontWeight.Black,
+                                            maxLines = 1
+                                        )
+                                    }
+                                    Column(Modifier.weight(1f)) {
+                                        Text(
+                                            tr(lang, "Profit", "سود خالص"),
+                                            color = slipMuted, fontSize = 8.sp,
+                                            maxLines = 1
+                                        )
+                                        Text(
+                                            "$" + netProfit,
+                                            color = Color(0xFF008752), fontSize = 14.sp,
+                                            fontWeight = FontWeight.Black,
+                                            maxLines = 1
+                                        )
+                                    }
+                                }
+                            }
+                            Box(
+                                Modifier.width(1.dp).height(82.dp)
+                                    .background(Color(0xFFCEE4DB))
                             )
-                            Text(
-                                if (officialPayout != null)
-                                    tr(lang, "Official quote", "استعلام رسمی")
-                                else tr(lang, "Estimate", "برآورد"),
-                                color = Color(0xFF32745B), fontSize = 10.sp
+                            SlipProbabilityInline(
+                                state.picks, model, lang,
+                                modifier = Modifier.weight(1.05f)
                             )
                         }
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(10.dp)
-                        ) {
-                            Column(Modifier.weight(1f)) {
-                                Text(
-                                    tr(lang, "Possible return", "بازگشت احتمالی"),
-                                    color = slipMuted, fontSize = 10.sp
-                                )
-                                Text(
-                                    "$" + possibleReturn,
-                                    color = slipText, fontSize = 17.sp,
-                                    fontWeight = FontWeight.Black
-                                )
-                            }
-                            Column(Modifier.weight(1f)) {
-                                Text(
-                                    tr(lang, "Net profit", "سود خالص"),
-                                    color = slipMuted, fontSize = 10.sp
-                                )
-                                Text(
-                                    "$" + netProfit,
-                                    color = Color(0xFF008752), fontSize = 17.sp,
-                                    fontWeight = FontWeight.Black
-                                )
-                            }
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Default.InfoOutline, null,
+                                tint = slipMuted, modifier = Modifier.size(11.dp))
+                            Spacer(Modifier.width(4.dp))
+                            Text(
+                                tr(lang,
+                                    "Includes stake · Market estimate, not a guarantee",
+                                    "شامل اصل شرط · تخمین بازار، بدون تضمین"),
+                                color = slipMuted, fontSize = 8.sp,
+                                maxLines = 1, overflow = TextOverflow.Ellipsis
+                            )
                         }
-                        Text(
-                            tr(lang,
-                                "Return includes the stake; profit excludes it. Final price is confirmed by the server.",
-                                "بازگشت شامل اصل شرط است؛ سود بدون اصل شرط است. مبلغ نهایی را سرور تأیید می‌کند."),
-                            color = slipMuted, fontSize = 9.sp,
-                            lineHeight = 12.sp, maxLines = 2
-                        )
                     }
                 }
             }
@@ -332,8 +373,8 @@ private fun MainAccountSlipControls(
             Icon(Icons.Default.CheckCircle,null,modifier=Modifier.size(17.dp))
             Spacer(Modifier.width(8.dp))
             Text(if(!state.signedIn)
-                tr(lang,"Log in for quote","ورود برای استعلام")
-            else tr(lang,"Request official quote","استعلام رسمی ضریب"),
+                tr(lang,"Bet","ثبت")
+            else tr(lang,"Bet","ثبت"),
                 fontWeight=FontWeight.Black,fontSize=12.sp)
         }
         if (!compact) Text(tr(lang,
@@ -357,7 +398,7 @@ private fun SlipPickList(
     LaunchedEffect(state.picks.size) {
         if (state.picks.size > oldCount &&
             state.picks.size > SLIP_VISIBLE_PICK_LIMIT) {
-            listState.animateScrollToItem(state.picks.size)
+            listState.animateScrollToItem(state.picks.lastIndex)
         }
         oldCount = state.picks.size
     }
@@ -370,15 +411,11 @@ private fun SlipPickList(
         contentPadding = PaddingValues(horizontal = 13.dp, vertical = 5.dp),
         verticalArrangement = Arrangement.spacedBy(SLIP_CARD_SPACING_DP.dp)
     , flingBehavior = rememberPremiumFlingBehavior()) {
-        if (state.picks.isNotEmpty()) {
-            item(key = "probability") {
-                SlipProbabilityCard(state.picks, model, state.lang)
-            }
-        }
         itemsIndexed(state.picks, key = { _, pick -> pick.selectionId }) { index, pick ->
-            SlipPickCard(pick, state.lang, index + 1) {
-                model.removePick(pick.selectionId)
-            }
+            SlipPickCard(pick, state.lang, index + 1,
+                onOpen = { model.openPickMarket(pick) },
+                onRemove = { model.removePick(pick.selectionId) }
+            )
         }
     }
 }
@@ -397,10 +434,8 @@ fun PremiumSlipSheet(state: AppState,model: AppViewModel) {
     LaunchedEffect(state.signedIn) {
         if (state.signedIn) model.refreshAccount()
     }
-    // Expand to five full cards; beyond five maintain the same viewport.
-    // Include the animated chart inside the pick list, not the fixed pay button area.
-    val listHeight = slipPickAreaHeightDp(state.picks.size).dp +
-        if (state.picks.isNotEmpty()) 207.dp else 0.dp
+    // The chart is embedded in Combined Odds, never above the selected markets.
+    val listHeight = slipPickAreaHeightDp(state.picks.size).dp
     LaunchedEffect(state.picks.size,funding) {
         val expected = if(funding=="bonus" || state.picks.size>1)
             "multiple" else "single"
@@ -421,7 +456,7 @@ fun PremiumSlipSheet(state: AppState,model: AppViewModel) {
         onDismissRequest=animatedDismiss,
         sheetState=sheet,
         dragHandle={
-            Surface(color=slipNavy,modifier=Modifier.fillMaxWidth()) {
+            Box(Modifier.fillMaxWidth().background(slipHeaderBrush)) {
                 Box(Modifier.fillMaxWidth().height(18.dp),
                     contentAlignment=Alignment.Center) {
                     Box(Modifier.size(width=34.dp,height=4.dp)
@@ -438,7 +473,7 @@ fun PremiumSlipSheet(state: AppState,model: AppViewModel) {
         ) {
             Column(
                 modifier = Modifier.fillMaxWidth()
-                    .background(Brush.linearGradient(listOf(slipNavy, Color(0xFF143755))))
+                    .background(slipHeaderBrush)
                     .padding(bottom = 3.dp)
             ) {
                 Row(
