@@ -108,7 +108,7 @@ export const POST = withErrorHandling('admin.notifications.create', async (ctx, 
       input.ctaLabel || null, input.ctaHref || null, input.locale,
       status, scheduledAt, user.id],
   );
-  if (!created) throw new ApiError('GENERIC', 'Unable to create notification');
+  if (!created) throw new ApiError('INTERNAL_ERROR', 'Unable to create notification');
   await services.admin.writeAudit({
     actorId: user.id, action: 'notification.create', entityType: 'notification_campaign',
     entityId: String(created.id), after: { status, audience: input.audience, recipients: created.recipients },
