@@ -88,6 +88,9 @@ export async function settleCasinoCallback(event: SignedCallback): Promise<Casin
   const userId = userIdFromUsername(event.username);
   if (!userId || !casinoRealMoneyUserAllowed(userId)) return { error: 2, balance: 0 };
   const db = getDb();
+  // Every signed callback must independently fail closed on incomplete DB
+  // migrations, even if a client/game session was opened before deployment.
+  if (!(await casinoFinancialSchemaReady(db))) return { error: 2, balance: 0 };
   const currencyProfile = await getProfile(db, userId);
   if (!currencyProfile) return { error: 2, balance: 0 };
   // Always settle a pre-existing round to its ORIGINAL native currency,
