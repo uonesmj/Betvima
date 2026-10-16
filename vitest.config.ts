@@ -5,7 +5,7 @@ export default defineConfig({
   resolve: { alias: { '@': path.resolve(__dirname, './src') } },
   test: {
     environment: 'node',
-    include: ['tests/unit/**/*.test.ts', 'tests/integration/**/*.test.ts'],
+    include: ['tests/unit/**/*.test.ts', 'tests/unit/**/*.test.mjs', 'tests/integration/**/*.test.ts'],
     exclude: ['tests/e2e/**', 'node_modules/**'],
     reporters: ['default'],
     testTimeout: 30000,
