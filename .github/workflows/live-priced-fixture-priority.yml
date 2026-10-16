@@ -1,0 +1,32 @@
+name: BetVima live odds availability / price-first UX
+on:
+  pull_request:
+    paths:
+      - 'src/server/adapters/postgres/catalog.ts'
+      - 'src/lib/odds/live-match-priority.ts'
+      - 'tests/unit/live-match-priority.test.ts'
+      - 'scripts/public-odds-coverage-by-sport.mjs'
+      - '.github/workflows/live-priced-fixture-priority.yml'
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - run: npx vitest run tests/unit/live-match-priority.test.ts
+      - run: npm run typecheck
+      - run: npm run build
+        env:
+          NEXT_TELEMETRY_DISABLED: '1'
+          APP_ENV: test
+          NEXT_PUBLIC_SITE_URL: https://preview.betvima.com
+      - name: Inspect currently available football vs other sport prices (read-only)
+        if: always()
+        run: node scripts/public-odds-coverage-by-sport.mjs
