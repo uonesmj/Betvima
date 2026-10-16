@@ -223,6 +223,12 @@ class ApiClient {
         return url
     }
 
+    /** Read-only live and prematch odds for the probability diagram. */
+    suspend fun slipProbabilityOdds(matchId: String): SlipOddsMatch {
+        require(matchId.matches(Regex("[a-fA-F0-9-]{36}")))
+        return parseSlipOddsMatch(get("/api/v1/matches/" + matchId + "/odds"))
+    }
+
     suspend fun live(): Pair<List<Match>, Boolean> {
         val data = get("/api/v1/live?limit=100")
         return data.arr("matches").objects().map(::parseMatch) to
