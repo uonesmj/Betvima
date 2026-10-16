@@ -86,7 +86,9 @@ export class PostgresNotificationRepository implements NotificationRepository {
   async markRead(userId: UUID, ids: UUID[]): Promise<number> {
     if (ids.length === 0) return 0;
     const rows = await this.db.query<Row>(
-      `update nova.notifications set read_at = now() where user_id = $1 and id = any($2::uuid[]) and read_at is null returning id`,
+      `update nova.notifications set read_at = now()
+         where user_id = $1 and id = any($2::uuid[]) and read_at is null
+           and channel = 'in_app' and scheduled_at <= now() returning id`,
       [userId, pgArray(ids)],
     );
     return rows.length;
@@ -94,7 +96,9 @@ export class PostgresNotificationRepository implements NotificationRepository {
 
   async markAllRead(userId: UUID): Promise<number> {
     const rows = await this.db.query<Row>(
-      `update nova.notifications set read_at = now() where user_id = $1 and read_at is null returning id`, [userId],
+      `update nova.notifications set read_at = now()
+         where user_id = $1 and read_at is null
+           and channel = 'in_app' and scheduled_at <= now() returning id`, [userId],
     );
     return rows.length;
   }
