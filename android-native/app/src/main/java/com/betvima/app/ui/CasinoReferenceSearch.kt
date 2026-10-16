@@ -119,6 +119,13 @@ fun CasinoReferenceSearch(
     val alphabetical = otherProviders.groupBy(::providerLetter).toSortedMap(
         compareBy<String> { if (it == "0-9") "0" else it }
     )
+    // Use actual games supplied by the catalogue as provider card artwork.
+    val providerArtwork = remember(games, globalGames) {
+        (games + globalGames)
+            .filter { !it.imageUrl.isNullOrBlank() && it.imageUrl!!.startsWith("https://") }
+            .groupBy { it.provider.trim().lowercase() }
+            .mapValues { (_, cards) -> cards.first().imageUrl.orEmpty() }
+    }
     Dialog(onDismissRequest = onDismiss,
         properties = DialogProperties(usePlatformDefaultWidth = false)) {
         Column(Modifier.fillMaxWidth().fillMaxHeight(.97f)
@@ -204,7 +211,7 @@ fun CasinoReferenceSearch(
                         }
                         recommended.chunked(2).forEachIndexed { index, line ->
                             item(key = "recommended-providers-" + index) {
-                                ProviderSearchRow(line, onProvider)
+                                ProviderSearchRow(line, providerArtwork, onProvider)
                             }
                         }
                     }
@@ -214,7 +221,7 @@ fun CasinoReferenceSearch(
                         }
                         names.chunked(2).forEachIndexed { i, line ->
                             item(key = "provider-group-" + letter + i) {
-                                ProviderSearchRow(line, onProvider)
+                                ProviderSearchRow(line, providerArtwork, onProvider)
                             }
                         }
                     }
@@ -282,39 +289,47 @@ private fun SearchGroupHeading(title: String) {
 }
 
 @Composable
-private fun ProviderSearchRow(names: List<String>, onProvider: (String) -> Unit) {
+private fun ProviderSearchRow(
+    names: List<String>,
+    artwork: Map<String, String>,
+    onProvider: (String) -> Unit
+) {
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
         names.forEach { name ->
-            val brandColor = when ((name.firstOrNull()?.lowercaseChar() ?: 'a').code % 4) {
-                0 -> Color(0xFF19B6FF)
-                1 -> Color(0xFF00D898)
-                2 -> Color(0xFFFFBA47)
-                else -> Color(0xFF9A78FF)
-            }
-            Box(Modifier.weight(1f).height(115.dp)
-                .clip(RoundedCornerShape(20.dp))
+            val poster = artwork[name.trim().lowercase()].orEmpty()
+            val shape = RoundedCornerShape(19.dp)
+            Box(Modifier.weight(1f).height(152.dp)
+                .clip(shape)
                 .background(Brush.linearGradient(listOf(
-                    Color(0xFF313133), Color(0xFF222224))))
-                .border(1.dp, brandColor.copy(alpha = .46f),
-                    RoundedCornerShape(20.dp))
+                    Color(0xFF263D49), Color(0xFF19232B), Color(0xFF13161D))))
+                .border(1.dp, Color.White.copy(alpha = .18f), shape)
                 .casinoBounce { onProvider(name) }) {
-                Column(Modifier.fillMaxSize().padding(10.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center) {
-                    Surface(shape = RoundedCornerShape(11.dp),
-                        color = brandColor.copy(alpha = .16f),
-                        border = BorderStroke(1.dp, brandColor.copy(alpha = .48f))) {
-                        Text(name.trim().take(2).uppercase(), color = brandColor,
-                            fontWeight = FontWeight.Black, fontSize = 21.sp,
-                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp))
-                    }
-                    Spacer(Modifier.height(8.dp))
-                    Text(name, color = Color.White, fontSize = 12.sp,
-                        fontWeight = FontWeight.SemiBold, maxLines = 2,
-                        overflow = TextOverflow.Ellipsis)
+                if (poster.isNotBlank()) {
+                    AsyncImage(
+                        model = poster,
+                        contentDescription = null,
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop
+                    )
+                } else {
+                    Icon(Icons.Default.AutoAwesome, null,
+                        tint = Color(0xFF7B91A8).copy(alpha = .30f),
+                        modifier = Modifier.align(Alignment.TopEnd)
+                            .padding(15.dp).size(54.dp))
                 }
-                CasinoBrandMark(Modifier.align(Alignment.TopEnd).padding(7.dp),
-                    size = 12.dp)
+                Box(Modifier.fillMaxSize().background(
+                    Brush.verticalGradient(listOf(
+                        Color(0xCC0B1018), Color(0x66101521),
+                        Color(0xF40A111B)))))
+                Column(Modifier.align(Alignment.BottomStart).padding(13.dp),
+                    verticalArrangement = Arrangement.spacedBy(7.dp)) {
+                    Text("GAME PROVIDER",
+                        color = Color(0xFF79D5B5), fontSize = 9.sp,
+                        fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
+                    Text(name, color = Color.White, fontSize = 16.sp,
+                        lineHeight = 19.sp, fontWeight = FontWeight.ExtraBold,
+                        maxLines = 2, overflow = TextOverflow.Ellipsis)
+                }
             }
         }
         if (names.size == 1) Spacer(Modifier.weight(1f))
