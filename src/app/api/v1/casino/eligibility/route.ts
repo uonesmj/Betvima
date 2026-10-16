@@ -27,7 +27,7 @@ export const GET = withErrorHandling('casino.eligibility', async (ctx, request: 
     });
   }
   try {
-    await casinoPlayerMayLaunch(user.id);
+    const eligibility = await casinoPlayerMayLaunch(user.id);
     const db = getDb();
     let balance: bigint;
     if (walletCurrency === 'IRT' || walletCurrency === 'IRR') {
@@ -48,7 +48,8 @@ export const GET = withErrorHandling('casino.eligibility', async (ctx, request: 
       throw new Error('CASINO_BALANCE_INVALID');
     }
     return NextResponse.json({ ok: true, data: {
-      ...base, realMoneyEnabled: true, availableUsdMinor: balance.toString(),
+      ...base, walletCurrency: eligibility.walletCurrency,
+      realMoneyEnabled: true, availableUsdMinor: balance.toString(),
     } }, { headers: { 'Cache-Control': 'private, no-store' } });
   } catch {
     return NextResponse.json({ ok: true, data: base }, {
