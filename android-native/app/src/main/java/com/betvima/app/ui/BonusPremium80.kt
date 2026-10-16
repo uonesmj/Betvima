@@ -129,7 +129,7 @@ internal fun BonusHero80(
                     color=Color(0xFFD3E3E5),fontSize=12.sp,lineHeight=19.sp)
                 if(registeredCurrency!=null) {
                     Row(verticalAlignment=Alignment.CenterVertically) {
-                        Icon(Icons.Default.LockOutline,null,tint=premiumEmerald,
+                        Icon(Icons.Default.Lock,null,tint=premiumEmerald,
                             modifier=Modifier.size(16.dp))
                         Spacer(Modifier.width(8.dp))
                         Text(tr(lang,"Your registered currency: ",
