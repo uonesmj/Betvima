@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 230 350" fill="none" role="img" aria-label="Anubis temple guardian">
+<defs>
+<linearGradient id="obsidian" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#68768e"/><stop offset=".16" stop-color="#14253f"/><stop offset=".6" stop-color="#080f21"/><stop offset="1" stop-color="#3c4352"/></linearGradient>
+<linearGradient id="gold" x1="0" y1="0" x2=".95" y2="1"><stop stop-color="#fff4b7"/><stop offset=".18" stop-color="#edc979"/><stop offset=".54" stop-color="#9b5f28"/><stop offset=".78" stop-color="#f7cf79"/><stop offset="1" stop-color="#492711"/></linearGradient>
+<linearGradient id="azure" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#89ffff"/><stop offset=".4" stop-color="#0d99ae"/><stop offset="1" stop-color="#041c49"/></linearGradient>
+<filter id="glow"><feGaussianBlur stdDeviation="3"/></filter>
+</defs>
+<path d="M22 335Q5 290 22 257q17-32 47-40l22-25h49l19 25q39 7 54 44t1 74Z" fill="url(#obsidian)" stroke="url(#gold)" stroke-width="6"/>
+<path d="M30 328q1-71 44-92l-15 90Zm154-91q39 17 36 91h-33Z" fill="#0a142b" stroke="#c29b54" stroke-width="3"/>
+<path d="M66 236q49 61 99 0l-5 63q-37 26-83 0Z" fill="url(#gold)" stroke="#312016" stroke-width="3"/>
+<path d="M70 246q42 34 90 0M76 259q38 31 78 0M79 274q40 26 74 0M85 290q32 20 61 0" stroke="#032341" stroke-width="7"/>
+<path d="M87 244q25 8 50 0l-5 13-14 10-25-10Z" fill="url(#azure)" stroke="#f4d590" stroke-width="3"/>
+<path d="M38 77 49 7q29 16 49 77L125 59l37-52q13 30 2 92l15 58-5 48-34 38-42 5-32-47-5-48Z" fill="url(#obsidian)" stroke="url(#gold)" stroke-width="5"/>
+<path d="m50 25 7 62 30 13Zm105-1-14 65 21 11Z" fill="#0d6a86" stroke="#dbb26d" stroke-width="2"/>
+<path d="M91 105q57-5 92 22l25 6-16 15-47 6-26 20-26-18-20-3q-11-18 18-48Z" fill="url(#obsidian)" stroke="url(#gold)" stroke-width="4"/>
+<path d="m96 111 23 7 7 7-8 8-33-11Z" fill="url(#azure)" filter="url(#glow)" opacity=".8"/>
+<path d="m96 111 23 7 7 7-8 8-33-11Z" fill="#79f4f5" stroke="#efffde" stroke-width="1.5"/>
+<path d="M187 132q14 3 20 1l-15 15-19 1Z" fill="#eebf6c"/>
+<path d="M140 170q22-5 38-11l-10 28-19 20-25 2Z" fill="#061024" stroke="url(#gold)" stroke-width="4"/>
+<path d="M151 184 141 216q-22 9-45-5l-12-24" stroke="url(#gold)" stroke-width="7"/>
+<path d="M100 217q8 13 23 16l15-17" stroke="#1dd5da" stroke-width="4"/>
+<g stroke="url(#gold)" stroke-width="2"><path d="M39 276q42-27 77-11M21 302q57-34 91-20M160 261q34 10 51 39"/></g>
+<g fill="url(#gold)"><circle cx="108" cy="225" r="7"/><circle cx="89" cy="261" r="4"/><circle cx="155" cy="266" r="4"/><path d="m44 92 19 14-15 20-18-10Z"/></g>
+<path d="M10 335h208" stroke="#eed09a" stroke-width="6"/><path d="M21 343h192" stroke="#74512a" stroke-width="7"/>
+</svg>

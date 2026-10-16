@@ -229,7 +229,7 @@ function ReferenceMobileDrawer({
     });
   }, [router]);
   const pathname = usePathname();
-  const { session, sessionLoading, t, dir } = useApp();
+  const { session, sessionLoading, t, dir, locale } = useApp();
   const isSportsbookUser = Boolean(session?.authenticated);
   const { data: profileData } = useApiQuery<{ profile?: { displayName?: string; username?: string; numericId?: number } | null }>(isSportsbookUser ? "/api/v1/account/profile" : "", { pollMs: 60000 });
   const profile = profileData?.profile ?? null;
@@ -320,6 +320,7 @@ function ReferenceMobileDrawer({
           </div>
 
         {[
+          [locale === "fa" ? "کازینو" : "Casino", "casino", "/casino"],
           [t("menu.markets"), "markets", "/sports/football"],
           [t("menu.betwave"), "betwave", "/bets"],
           [t("menu.bonuses"), "bonus", "/bonuses"],

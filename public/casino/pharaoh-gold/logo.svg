@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 200" role="img" aria-labelledby="t"><title id="t">Pharaoh Gold, BetVima original casino demo</title>
+<defs><linearGradient id="gold" x2="0" y2="1"><stop stop-color="#fff6c3"/><stop offset=".35" stop-color="#f8d47b"/><stop offset=".74" stop-color="#b7772d"/><stop offset="1" stop-color="#ffe5a0"/></linearGradient><filter id="shadow"><feDropShadow dx="0" dy="4" stdDeviation="5" flood-color="#120a06" flood-opacity=".9"/></filter></defs>
+<g filter="url(#shadow)" fill="url(#gold)" stroke="#613918" stroke-width="2"><path d="m320 7 23 36 45-15-22 46h-92l-22-46 45 15Z"/><path d="M284 70h72l-8 16h-56Z"/></g>
+<text x="320" y="130" text-anchor="middle" fill="url(#gold)" stroke="#593418" stroke-width="2" paint-order="stroke" font-family="Georgia,serif" font-size="70" font-weight="bold" letter-spacing="5">PHARAOH</text>
+<text x="320" y="189" text-anchor="middle" fill="url(#gold)" stroke="#593418" stroke-width="1.5" paint-order="stroke" font-family="Georgia,serif" font-size="61" letter-spacing="17">GOLD</text>
+<path d="M28 144h150M462 144h150" stroke="#c18d49" stroke-width="3"/>
+</svg>

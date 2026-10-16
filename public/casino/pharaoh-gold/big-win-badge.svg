@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 440" role="img" aria-label="BIG WIN">
+<defs>
+<linearGradient id="goldw" x1=".1" y1="0" x2=".86" y2="1"><stop stop-color="#fff9c3"/><stop offset=".16" stop-color="#efbb58"/><stop offset=".34" stop-color="#805021"/><stop offset=".55" stop-color="#ffe9a2"/><stop offset=".76" stop-color="#be7932"/><stop offset="1" stop-color="#4a291a"/></linearGradient>
+<linearGradient id="sapphirew" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#27c3ff"/><stop offset=".38" stop-color="#093775"/><stop offset=".79" stop-color="#070c25"/><stop offset="1" stop-color="#2869a2"/></linearGradient>
+<radialGradient id="gemw"><stop stop-color="#fff7e5"/><stop offset=".15" stop-color="#ff3a54"/><stop offset=".68" stop-color="#204ea6"/><stop offset="1" stop-color="#060a24"/></radialGradient>
+<filter id="shadoww" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="10"/></filter>
+<g id="wingw">
+<path d="M329 188Q220 55 25 118l94 37-96-3q85 95 261 81L79 263q127 67 281 4Z" fill="url(#goldw)" stroke="#47230e" stroke-width="8"/>
+<path d="M307 185Q211 100 69 129l95 31-102 17q109 43 230 26" fill="url(#sapphirew)" stroke="#ffd17b" stroke-width="7"/>
+<path d="M292 216Q163 207 73 235l194 3-127 23q99 21 172-23" fill="url(#sapphirew)" stroke="#d9ae5d" stroke-width="5"/>
+<path d="m52 128 101 27-61 13 146 39M73 240l182-9-96 28" stroke="#fff5bf" stroke-opacity=".44" stroke-width="6" fill="none"/>
+</g>
+</defs>
+<ellipse cx="450" cy="235" rx="350" ry="168" fill="#f6b549" opacity=".32" filter="url(#shadoww)"/>
+<use href="#wingw"/>
+<use href="#wingw" transform="translate(900 0) scale(-1 1)"/>
+<path d="M269 126Q450 71 631 126l57 107-67 110Q450 389 279 343l-65-108Z" fill="#160f26" stroke="url(#goldw)" stroke-width="24"/>
+<path d="M276 138Q449 95 627 137l44 97-52 95Q450 363 281 328l-52-94Z" fill="url(#sapphirew)" stroke="#fff1ae" stroke-width="6"/>
+<path d="M450 30 513 98 490 156 450 187 410 156 387 98Z" fill="url(#goldw)" stroke="#562f1b" stroke-width="8"/>
+<path d="m450 51 39 47-39 70-39-70Z" fill="url(#gemw)" stroke="#fff5d8" stroke-width="5"/>
+<path d="M450 334 475 389 450 428 425 389Z" fill="url(#goldw)" stroke="#683b17" stroke-width="6"/>
+<path d="m450 348 15 40-15 26-15-26Z" fill="url(#gemw)" stroke="#ffe6ab" stroke-width="3"/>
+<g fill="#fff1b8"><circle cx="272" cy="228" r="5"/><circle cx="628" cy="228" r="5"/><circle cx="287" cy="267" r="3"/><circle cx="613" cy="267" r="3"/></g>
+<text x="450" y="264" font-family="Georgia,'Times New Roman',serif" font-weight="900" font-size="105" letter-spacing="3" text-anchor="middle" fill="#ffedaa" stroke="#51260e" stroke-width="6" paint-order="stroke">BIG WIN</text>
+<path d="M321 281h258" stroke="#ffc55c" stroke-width="5" stroke-linecap="round"/>
+</svg>

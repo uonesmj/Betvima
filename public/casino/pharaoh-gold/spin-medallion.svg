@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 350 350" aria-hidden="true">
+<defs>
+<radialGradient id="emerald" cx=".34" cy=".25" r=".8"><stop stop-color="#d7ffef"/><stop offset=".14" stop-color="#5fffbe"/><stop offset=".34" stop-color="#00d889"/><stop offset=".71" stop-color="#00754c"/><stop offset="1" stop-color="#013621"/></radialGradient>
+<linearGradient id="gold" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#fffbd7"/><stop offset=".21" stop-color="#edbc66"/><stop offset=".44" stop-color="#87501e"/><stop offset=".67" stop-color="#fff2bd"/><stop offset=".9" stop-color="#a86b20"/><stop offset="1" stop-color="#4b2614"/></linearGradient>
+<filter id="shadow"><feGaussianBlur stdDeviation="5"/></filter>
+</defs>
+<circle cx="175" cy="178" r="159" fill="#100f21" opacity=".75" filter="url(#shadow)"/>
+<circle cx="175" cy="175" r="163" fill="url(#gold)" stroke="#613216" stroke-width="6"/>
+<circle cx="175" cy="175" r="152" fill="#092519" stroke="#e3b45c" stroke-width="6"/>
+<circle cx="175" cy="175" r="142" fill="url(#emerald)" stroke="#ffe3a1" stroke-width="6"/>
+<circle cx="175" cy="175" r="118" fill="none" stroke="#d1ffcc" stroke-width="2.6" opacity=".55"/>
+<circle cx="175" cy="175" r="106" fill="none" stroke="#ffe8a1" stroke-width="5"/>
+<circle cx="175" cy="175" r="98" fill="#063f2d" fill-opacity=".25" stroke="#9efed4" stroke-width="3.5"/>
+<path d="M175 15 190 40 175 57 160 40ZM175 292l15 18-15 25-15-25ZM15 175l25-15 18 15-18 15ZM292 175l18-15 25 15-25 15Z" fill="url(#gold)" stroke="#fff0b1" stroke-width="2"/>
+<path d="M175 70q38 0 71 22-28-12-71-11t-71 11q33-22 71-22" fill="#effff9" opacity=".6"/>
+<path d="M143 116v116l107-58Z" fill="url(#gold)" stroke="#543015" stroke-width="8" stroke-linejoin="round"/>
+<path d="M153 132v82l73-41Z" fill="#fff4b9" opacity=".84"/>
+<circle cx="175" cy="175" r="156" fill="none" stroke="#fff7d4" stroke-width="1.7" stroke-dasharray="3 12" opacity=".7"/>
+</svg>
