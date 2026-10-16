@@ -57,4 +57,16 @@ class NativeRegistrationTest {
             signupPayload("a@b.com", "strongPassword1", "GBP", "", "fa", "token")
         }
     }
+    @Test fun referralCodeOrTrackingLinkIsNormalized() {
+        assertEquals("AB12XY", normalizeSignupReferral(" ab12xy "))
+        assertEquals("BONUS123", normalizeSignupReferral("https://betvima.com/?ref=bonus123&utm_source=affiliate"))
+        assertTrue(referralCodeWellFormed("AB12"))
+        assertFalse(referralCodeWellFormed("A"))
+        assertEquals("", normalizeSignupReferral(""))
+    }
+    @Test fun invalidShortReferralDoesNotCreatePlayerSignupPayload() {
+        assertThrows(IllegalArgumentException::class.java) {
+            signupPayload("test@example.com", "strongPassword1", "USD", "A", "fa", "token")
+        }
+    }
 }

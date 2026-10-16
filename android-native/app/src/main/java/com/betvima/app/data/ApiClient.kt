@@ -105,6 +105,19 @@ class ApiClient {
     /** Registration requires a Cloudflare-verified public API call, never a bearer session. */
     suspend fun registerAccount(payload: JSONObject): JSONObject =
         request("/api/v1/auth/register", body = payload)
+    /** Read-only eligibility check; actual referral attribution remains server-controlled. */
+    suspend fun validateReferralCode(code: String): Boolean {
+        require(code.matches(Regex("[A-Z0-9_-]{3,64}")))
+        return get("/api/v1/auth/referral?code=" + code).optBoolean("valid", false)
+    }
+    /** Account currency comes from the authenticated server profile, never a UI toggle. */
+    suspend fun registeredCurrency(token: String): String {
+        val response = get("/api/v1/auth/session", token)
+        require(response.optBoolean("authenticated", false)) { "Authentication required" }
+        val canonical = response.optJSONObject("user")?.optString("currency").orEmpty().uppercase()
+        require(canonical in setOf("USD","IRR","IRT")) { "Unsupported registered currency" }
+        return canonical
+    }
     /** Partner signup is a separate public flow; monetary setup stays server-owned. */
     suspend fun registerAffiliate(payload: JSONObject): JSONObject =
         request("/api/v1/affiliate/register", body = payload)

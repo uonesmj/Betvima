@@ -426,44 +426,41 @@ private val rules=listOf(
     val api=remember { ApiClient() }
     val vault=remember { SessionVault(context) }
     val scope=rememberCoroutineScope()
-    val accountCurrency=state.wallet?.currency
-    val supported=remember(accountCurrency) {
-        listOf(accountCurrency ?: "USD","USD","IRR").distinct()
-            .filter { it in setOf("USD","IRR","IRT") }
-    }
-    var currency by rememberSaveable { mutableStateOf("USD") }
-    var picked by rememberSaveable { mutableStateOf(false) }
+    // The account's registration currency is authoritatively resolved from
+    // /api/v1/auth/session, never from the changeable wallet display.
+    var registeredCurrency by remember { mutableStateOf<String?>(null) }
+    val currency=registeredCurrency ?: "USD"
     var pages by remember { mutableStateOf<Map<String,BonusCurrencyPage>>(emptyMap()) }
     var busy by remember { mutableStateOf(false) }
     var moreBusy by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
-    var popupCurrency by remember { mutableStateOf(false) }
     var popupRules by remember { mutableStateOf(false) }
     var popupGrant by remember { mutableStateOf<BonusReward?>(null) }
     var historyStatus by rememberSaveable { mutableStateOf("all") }
     var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
 
-    LaunchedEffect(accountCurrency,picked) {
-        if(!picked) currency=supported.firstOrNull() ?: "USD"
-    }
     suspend fun reload() {
         if(!state.signedIn) return
         busy=true
         errorMessage=null
         try {
             val jwt=vault.accessToken(api) ?: throw IllegalStateException("Sign in required")
-            val result=mutableMapOf<String,BonusCurrencyPage>()
-            supported.forEach { c -> result[c]=api.bonusCurrencyPage(jwt,c) }
-            pages=result
+            val verified=api.registeredCurrency(jwt)
+            // Exactly one currency request, in the same currency as registration.
+            val loaded=api.bonusCurrencyPage(jwt,verified)
+            registeredCurrency=verified
+            pages=mapOf(verified to loaded)
         } catch (_:Exception) {
+            pages=emptyMap()
+            registeredCurrency=null
             errorMessage=tr(lang,
-                "Could not fetch verified bonus balances. Please refresh.",
-                "دریافت بونوس‌های تأییدشده ممکن نشد. دوباره تلاش کنید.")
+                "Could not verify your registered account currency or bonuses. Try again.",
+                "تأیید ارز حساب زمان ثبت‌نام یا دریافت بونوس ممکن نشد. دوباره تلاش کنید.")
         } finally { busy=false }
     }
-    LaunchedEffect(state.signedIn,accountCurrency) {
+    LaunchedEffect(state.signedIn) {
         if(state.signedIn) reload()
-        else { pages=emptyMap();errorMessage=null }
+        else { pages=emptyMap();registeredCurrency=null;errorMessage=null }
     }
     LaunchedEffect(Unit) {
         while(true) {
@@ -479,15 +476,16 @@ private val rules=listOf(
         val left=bonusMillisecondsLeft(it.expiresAt,now)
         left in 1..(6L*3600*1000)
     }
-    val promotion=current?.promotion ?: pages.values.firstOrNull()?.promotion
+    val promotion=current?.promotion
     LazyColumn(Modifier.fillMaxSize().background(surface),
         contentPadding=PaddingValues(horizontal=14.dp,vertical=14.dp),
         verticalArrangement=Arrangement.spacedBy(15.dp), flingBehavior = rememberPremiumFlingBehavior()) {
         item {
-            BonusHero(lang,promotion,onWallet={
-                if(state.signedIn) model.tab(Tab.WALLET)
-                else model.showLogin(true)
-            },onRules={popupRules=true})
+            BonusHero80(lang,promotion,currency.takeIf { registeredCurrency!=null },
+                onWallet={
+                    if(state.signedIn) model.tab(Tab.WALLET)
+                    else model.showLogin(true)
+                },onRules={popupRules=true})
         }
         item {
             Row(verticalAlignment=Alignment.CenterVertically) {
@@ -514,23 +512,7 @@ private val rules=listOf(
             }
         } else {
             item {
-                Surface(color=Color.White,shape=RoundedCornerShape(16.dp),
-                    border=BorderStroke(1.dp,outline),
-                    modifier=Modifier.fillMaxWidth().clickable { popupCurrency=true }) {
-                    Row(Modifier.fillMaxWidth().padding(13.dp),
-                        verticalAlignment=Alignment.CenterVertically) {
-                        Text(bonusFlag(currency),fontSize=24.sp)
-                        Spacer(Modifier.width(11.dp))
-                        Column(Modifier.weight(1f)) {
-                            Text(tr(lang,"Bonus currency","ارز حساب بونوس"),
-                                fontSize=10.sp,color=muted)
-                            Text(if(currency=="USD") tr(lang,"US Dollar","دلار آمریکا")
-                                else tr(lang,"Iranian Rial","ریال ایران"),
-                                fontWeight=FontWeight.Black,color=ink,fontSize=13.sp)
-                        }
-                        Icon(Icons.Default.KeyboardArrowDown,null,tint=blue)
-                    }
-                }
+                BonusCurrencyIdentity80(lang,registeredCurrency)
             }
             if(busy) item {
                 LinearProgressIndicator(Modifier.fillMaxWidth(),color=accent)
@@ -549,15 +531,15 @@ private val rules=listOf(
             if(current!=null) {
                 item {
                     Row(horizontalArrangement=Arrangement.spacedBy(7.dp)) {
-                        StatCard(tr(lang,"Active","فعال"),
+                        BonusStatCard80(tr(lang,"Active","فعال"),
                             (current.summary.active+current.summary.locked).toString(),
                             Icons.Default.CardGiftcard,Color(0xFF06865B),
                             modifier=Modifier.weight(1f))
-                        StatCard(tr(lang,"Available","مبلغ فعال"),
+                        BonusStatCard80(tr(lang,"Available","مبلغ فعال"),
                             money(current.summary.activeAmountMinor,currency),
                             Icons.Default.AccountBalanceWallet,blue,
                             modifier=Modifier.weight(1f))
-                        StatCard(tr(lang,"Expiring soon","نزدیک انقضا"),
+                        BonusStatCard80(tr(lang,"Expiring soon","نزدیک انقضا"),
                             soon.toString(),Icons.Default.HourglassBottom,
                             Color(0xFFD28F33),modifier=Modifier.weight(1f))
                     }
@@ -572,20 +554,7 @@ private val rules=listOf(
                     }
                 }
                 if(active.isEmpty()) item {
-                    Surface(color=Color.White,shape=RoundedCornerShape(19.dp),
-                        border=BorderStroke(1.dp,outline)) {
-                        Column(Modifier.fillMaxWidth().padding(22.dp),
-                            horizontalAlignment=Alignment.CenterHorizontally,
-                            verticalArrangement=Arrangement.spacedBy(8.dp)) {
-                            Icon(Icons.Default.CardGiftcard,null,tint=Color(0xFF0F9864),
-                                modifier=Modifier.size(32.dp))
-                            Text(tr(lang,"No active bonuses","فعلاً بونوس فعالی ندارید"),
-                                color=ink,fontWeight=FontWeight.Black)
-                            Text(tr(lang,"A new eligible deposit can unlock a separate reward.",
-                                "واریز واجد شرایط بعدی می‌تواند بونوس مستقل فعال کند."),
-                                color=muted,fontSize=11.sp,textAlign=TextAlign.Center)
-                        }
-                    }
+                    BonusEmpty80(lang)
                 }
                 items(active,key={it.id}) { reward ->
                     RewardCard(reward,lang,now,
@@ -679,37 +648,6 @@ private val rules=listOf(
                             color=Color(0xFFC3D3D4),fontSize=10.sp)
                     }
                     Icon(Icons.Default.ChevronRight,null,tint=accent)
-                }
-            }
-        }
-    }
-    if(popupCurrency) {
-        ModalBottomSheet(onDismissRequest={popupCurrency=false},
-            containerColor=Color.White,
-            sheetState=rememberModalBottomSheetState(skipPartiallyExpanded=true)) {
-            Column(Modifier.fillMaxWidth().padding(horizontal=16.dp)
-                .padding(bottom=24.dp),
-                verticalArrangement=Arrangement.spacedBy(10.dp)) {
-                Text(tr(lang,"Choose bonus currency","انتخاب ارز بونوس"),
-                    color=ink,fontSize=19.sp,fontWeight=FontWeight.Black)
-                supported.forEach { c ->
-                    Surface(color=if(currency==c)Color(0xFFE9F8F0) else surface,
-                        border=BorderStroke(1.dp,if(currency==c)accent else outline),
-                        shape=RoundedCornerShape(14.dp),
-                        modifier=Modifier.fillMaxWidth().clickable {
-                            currency=c;picked=true;popupCurrency=false
-                        }) {
-                        Row(Modifier.fillMaxWidth().padding(14.dp),
-                            verticalAlignment=Alignment.CenterVertically) {
-                            Text(bonusFlag(c),fontSize=24.sp)
-                            Spacer(Modifier.width(10.dp))
-                            Text(if(c=="USD")tr(lang,"US Dollar","دلار آمریکا")
-                                else tr(lang,"Iranian Rial","ریال ایران"),
-                                color=ink,fontWeight=FontWeight.Bold,
-                                modifier=Modifier.weight(1f))
-                            if(currency==c) Icon(Icons.Default.CheckCircle,null,tint=accent)
-                        }
-                    }
                 }
             }
         }
