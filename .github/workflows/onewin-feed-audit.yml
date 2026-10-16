@@ -1,0 +1,24 @@
+name: 1Win Feed Audit - Offline Checks
+on:
+  pull_request:
+    paths:
+      - 'scripts/onewin-feed-audit.mjs'
+      - 'tests/unit/onewin-feed-audit.test.mjs'
+      - 'docs/onewin-feed-pilot.md'
+      - '.github/workflows/onewin-feed-audit.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  audit-tests:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - run: node --check scripts/onewin-feed-audit.mjs
+      - run: npx vitest run tests/unit/onewin-feed-audit.test.mjs
