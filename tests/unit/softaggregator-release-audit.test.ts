@@ -15,6 +15,8 @@ function baseline(): CasinoAuditSnapshot {
     supplierRounds: 0,
     playerBindings: 0,
     receiptLedgerDiscrepancies: 0,
+    verifiedIdentityCount: 1,
+    pilotIdentityVerified: true,
     providerApiConfigured: true,
     callbackHmacConfigured: true,
     geoHmacConfigured: true,
@@ -54,12 +56,25 @@ describe('SoftAggregator read-only production readiness classifier', () => {
       { walletCount: -1 },
       { journalCount: Number.NaN },
       { callbackReceipts: -1 },
+      { verifiedIdentityCount: -1 },
+      { pilotIdentityVerified: false },
     ]) {
       const report = assessCasinoReadiness({ ...baseline(), ...changes });
       expect(report.status).toBe('blocked_technical');
       expect(report.publicMoneyApproved).toBe(false);
       expect(report.checks.some(c => c.status === 'failed')).toBe(true);
     }
+  });
+
+  it('requires real age and KYC verification even for a configured pilot UUID', () => {
+    const report = assessCasinoReadiness({
+      ...baseline(), verifiedIdentityCount: 0, pilotIdentityVerified: false,
+    });
+    expect(report.publicMoneyApproved).toBe(false);
+    expect(report.status).toBe('blocked_technical');
+    expect(report.checks.find(c => c.name === 'pilot_age_and_kyc_verified')?.status)
+      .toBe('failed');
+    expect(report.financial.verifiedIdentityCount).toBe(0);
   });
 
   it('treats a preapproval cash feature flag as an unsafe configuration', () => {

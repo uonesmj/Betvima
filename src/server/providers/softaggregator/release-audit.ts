@@ -15,6 +15,8 @@ export type CasinoAuditSnapshot = Readonly<{
   supplierRounds: number;
   playerBindings: number;
   receiptLedgerDiscrepancies: number;
+  verifiedIdentityCount: number;
+  pilotIdentityVerified: boolean;
   providerApiConfigured: boolean;
   callbackHmacConfigured: boolean;
   geoHmacConfigured: boolean;
@@ -42,6 +44,7 @@ export function assessCasinoReadiness(snapshot: CasinoAuditSnapshot) {
   check('wallet_journal_integrity',
     countOk(snapshot.walletCount) && countOk(snapshot.journalCount) &&
     snapshot.walletDiscrepancies === 0);
+  check('verified_kyc_count_valid', countOk(snapshot.verifiedIdentityCount));
   check('receipt_ledger_integrity',
     countOk(snapshot.callbackReceipts) && countOk(snapshot.supplierRounds) &&
     countOk(snapshot.playerBindings) &&
@@ -51,6 +54,7 @@ export function assessCasinoReadiness(snapshot: CasinoAuditSnapshot) {
   check('geo_attestation_key_configured', snapshot.geoHmacConfigured);
   check('explicit_country_list_configured', snapshot.explicitCountryList);
   check('single_player_pilot_configured', snapshot.singlePlayerPilotConfigured);
+  check('pilot_age_and_kyc_verified', snapshot.pilotIdentityVerified);
   check('cash_flag_remains_off_before_approval', !snapshot.realMoneyFlagEnabled);
 
   for (const name of [
@@ -78,7 +82,8 @@ export function assessCasinoReadiness(snapshot: CasinoAuditSnapshot) {
       providerRoundRows: snapshot.supplierRounds,
       playerBindingRows: snapshot.playerBindings,
       receiptLedgerDiscrepancies: snapshot.receiptLedgerDiscrepancies,
-    },
+      verifiedIdentityCount: snapshot.verifiedIdentityCount,
+    }
     checks,
   };
 }
