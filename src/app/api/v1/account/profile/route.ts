@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { withErrorHandling, jsonOk } from '@/lib/errors';
+import { ApiError, withErrorHandling, jsonOk } from '@/lib/errors';
 import { readJson } from '@/server/http/request';
 import { withUser } from '@/server/http/guard';
 
@@ -21,11 +21,25 @@ const patchSchema = z.object({
 export const PATCH = withErrorHandling('account.profile.update', async (ctx, request: Request) => {
   const { services, user, actor } = await withUser(request, ctx);
   const patch = await readJson(request, patchSchema, ctx);
+  if (patch.phone !== undefined) {
+    // Do not pretend a phone is verified merely because a client saved its text.
+    throw new ApiError('BAD_REQUEST', 'Phone changes require a verified SMS challenge.');
+  }
+  if (patch.displayName !== undefined) {
+    const existing = await services.users.getProfile(user.id);
+    if (!existing) throw new ApiError('NOT_FOUND', 'Account not found');
+    if (existing.fullName?.trim()) {
+      throw new ApiError('BAD_REQUEST', 'Legal name has already been set and cannot be changed here.');
+    }
+    const words = patch.displayName.trim().split(/\s+/).filter(Boolean);
+    if (words.length < 2) {
+      throw new ApiError('BAD_REQUEST', 'First and last name are both required.');
+    }
+  }
   const profile = await services.users.updateProfile(user.id, {
     ...(patch.displayName ? { username: patch.displayName } : {}),
     ...(patch.preferredLocale ? { preferredLocale: patch.preferredLocale } : {}),
     ...(patch.timezone ? { timezone: patch.timezone } : {}),
-    ...(patch.phone ? { phone: patch.phone } : {}),
   });
   await services.admin.writeAudit({
     actorId: user.id, action: 'profile.updated', entityType: 'profile', entityId: user.id,
