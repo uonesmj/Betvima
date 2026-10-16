@@ -141,7 +141,7 @@ fun CasinoReferenceSearch(
                 Surface(color = sheetCard,
                     shape = CircleShape,
                     border = BorderStroke(1.dp, Color(0xFF405B83)),
-                    modifier = Modifier.size(43.dp).clickable { onDismiss() }) {
+                    modifier = Modifier.size(43.dp).casinoBounce(onDismiss)) {
                     Box(contentAlignment = Alignment.Center) {
                         Icon(Icons.Default.Close, tr(lang,"Close search","بستن جست‌وجو"),
                             modifier = Modifier.size(24.dp), tint = Color.White)
@@ -160,7 +160,7 @@ fun CasinoReferenceSearch(
                     Box(Modifier.weight(1f).height(48.dp)
                         .clip(RoundedCornerShape(15.dp))
                         .background(tabColor)
-                        .clickable { providersTab = key }, contentAlignment = Alignment.Center) {
+                        .casinoBounce { providersTab = key }, contentAlignment = Alignment.Center) {
                         Text(label, color = Color.White, fontWeight = FontWeight.SemiBold,
                             fontSize = 16.sp)
                     }
@@ -297,7 +297,7 @@ private fun ProviderSearchRow(names: List<String>, onProvider: (String) -> Unit)
                     Color(0xFF213758), Color(0xFF111D33))))
                 .border(1.dp, brandColor.copy(alpha = .46f),
                     RoundedCornerShape(20.dp))
-                .clickable { onProvider(name) }) {
+                .casinoBounce { onProvider(name) }) {
                 Column(Modifier.fillMaxSize().padding(10.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.Center) {
@@ -323,7 +323,7 @@ private fun ProviderSearchRow(names: List<String>, onProvider: (String) -> Unit)
 
 @Composable
 private fun SearchGameCard(game: CasinoGame, onClick: () -> Unit) {
-    Column(Modifier.width(123.dp).clickable(onClick = onClick)) {
+    Column(Modifier.width(123.dp).casinoBounce(onClick)) {
         Box(Modifier.fillMaxWidth().height(159.dp)
             .clip(RoundedCornerShape(14.dp))
             .background(Brush.linearGradient(listOf(
