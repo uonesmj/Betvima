@@ -2,7 +2,7 @@ import type { Db } from '@/lib/ports/db';
 
 /**
  * Validate the actual installed DB schema, not a feature flag alone.
- * Pending financial migrations 0208/0209/0210 have deliberately NOT been
+ * Pending financial migrations 0208..0212 have deliberately NOT been
  * installed in production. Wager launches must fail closed until their
  * append-only audit and idempotent rollback protections exist.
  *
@@ -37,6 +37,16 @@ export async function casinoFinancialSchemaReady(db: Pick<Db, 'queryOne'>): Prom
           select 1 from pg_trigger
           where tgrelid = to_regclass('nova.softaggregator_player_wallet_bindings')
             and tgname = 'sa_player_wallet_binding_immutable' and tgenabled <> 'D'
+        )
+        and exists (
+          select 1 from pg_trigger
+          where tgrelid = to_regclass('nova.softaggregator_callback_receipts')
+            and tgname = 'sa_receipt_integrity_on_insert' and tgenabled <> 'D'
+        )
+        and exists (
+          select 1 from pg_constraint
+          where conrelid = to_regclass('nova.softaggregator_callback_receipts')
+            and conname = 'sa_receipt_posting_coherent' and convalidated
         )
       ) as ready
     `);
