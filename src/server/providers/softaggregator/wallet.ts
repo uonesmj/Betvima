@@ -85,7 +85,6 @@ async function limitAllows(db: Db, userId: string, amount: bigint, p: ProfileRow
 export async function settleCasinoCallback(event: SignedCallback): Promise<CasinoBalanceResponse> {
   const userId = userIdFromUsername(event.username);
   if (!userId || !casinoRealMoneyUserAllowed(userId)) return { error: 2, balance: 0 };
-  if (event.rollback && event.action !== 'credit') return { error: 2, balance: 0 };
   const db = getDb();
   const currencyProfile = await getProfile(db, userId);
   if (!currencyProfile) return { error: 2, balance: 0 };
@@ -159,9 +158,10 @@ export async function settleCasinoCallback(event: SignedCallback): Promise<Casin
     let resultBalance = before;
     let entryId: string | null = null;
     let originalDebitCallId: string | null = null;
-    // A rollback is a refund of the EXACT earlier debit, not an arbitrary
-    // vendor credit. Do not permit two successful refunds for the same debit.
-    if (event.rollback) {
+    let originalCreditCallId: string | null = null;
+    // A rollback is the exact reverse of a previously posted movement.
+    // Provider supports rb=1 on BOTH credit (refund bet) and debit (reverse win).
+    if (event.rollback && event.action === 'credit') {
       const original = await tx.queryOne<{ call_id: string; wallet_amount_minor: string }>(
         "select r.call_id,r.wallet_amount_minor::text from nova.softaggregator_callback_receipts r " +
         "where r.user_id=$1 and r.action='debit' and r.round_id=$2 and r.game_id=$3 " +
@@ -174,18 +174,34 @@ export async function settleCasinoCallback(event: SignedCallback): Promise<Casin
       if (!original || BigInt(original.wallet_amount_minor) !== event.amountMinor)
         return { error: 2, balance: 0 };
       originalDebitCallId = original.call_id;
+    } else if (event.rollback && event.action === 'debit') {
+      const original = await tx.queryOne<{ call_id: string; wallet_amount_minor: string }>(
+        "select r.call_id,r.wallet_amount_minor::text from nova.softaggregator_callback_receipts r " +
+        "where r.user_id=$1 and r.action='credit' and r.round_id=$2 and r.game_id=$3 " +
+        "and r.amount_minor=$4 and r.response_error=0 and r.rollback=false " +
+        "and not exists(select 1 from nova.softaggregator_callback_receipts x " +
+        "where x.original_credit_call_id=r.call_id and x.response_error=0) " +
+        "order by r.created_at,r.call_id limit 1 for update",
+        [userId, event.roundId, event.gameId, event.amountMinor!.toString()],
+      );
+      if (!original || BigInt(original.wallet_amount_minor) !== event.amountMinor)
+        return { error: 2, balance: 0 };
+      originalCreditCallId = original.call_id;
     }
     if (w.is_frozen) {
       error = 2;
     } else if (isDebit &&
-      (!accountCanBet(p) || event.amountMinor! < 20n || before < event.amountMinor! ||
-        !(await limitAllows(tx, userId, event.amountMinor!, p)))) {
+      (before < event.amountMinor! ||
+        (!event.rollback && (!accountCanBet(p) || event.amountMinor! < 20n ||
+          !(await limitAllows(tx, userId, event.amountMinor!, p)))))) {
       error = 1;
     } else {
       const signedAmount = isDebit ? -event.amountMinor! : event.amountMinor!;
       const posted = await tx.rpc<{ transaction_id: string; balance_after_minor: string }>('post_wallet_entry', {
         p_user_id: userId,
-        p_type: isDebit ? 'bet_debit' : (event.rollback ? 'bet_refund' : 'win_credit'),
+        p_type: event.rollback
+          ? (isDebit ? 'reversal' : 'bet_refund')
+          : (isDebit ? 'bet_debit' : 'win_credit'),
         p_amount_minor: signedAmount.toString(),
         p_currency: 'USD',
         p_idempotency_key: 'sa:' + createHash('sha256').update(event.callId!).digest('hex'),
@@ -200,13 +216,15 @@ export async function settleCasinoCallback(event: SignedCallback): Promise<Casin
     await tx.query(
       'insert into nova.softaggregator_callback_receipts ' +
       '(call_id,identity_hash,user_id,action,amount_minor,response_error,response_balance_minor,' +
-      'ledger_transaction_id,wallet_currency,wallet_amount_minor,round_id,game_id,rollback,original_debit_call_id) ' +
-      'values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)',
+      'ledger_transaction_id,wallet_currency,wallet_amount_minor,round_id,game_id,rollback,' +
+      'original_debit_call_id,original_credit_call_id) ' +
+      'values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)',
       [event.callId!, event.identityHash!, userId, event.action,
         event.amountMinor!.toString(), error, resultBalance.toString(), entryId,
         'USD', entryId ? event.amountMinor!.toString() : '0',
         event.roundId!, event.gameId!, event.rollback,
-        error === 0 ? originalDebitCallId : null],
+        error === 0 ? originalDebitCallId : null,
+        error === 0 ? originalCreditCallId : null],
     );
     return safeResponse(error, resultBalance);
   });

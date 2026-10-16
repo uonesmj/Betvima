@@ -31,7 +31,8 @@ function makeFakeDb(initial = 1000n, held = 200n) {
       }
       if (sql.includes('from nova.softaggregator_callback_receipts r')) {
         for (const [callId, receipt] of receipts) {
-          if (receipt.action === 'debit' && receipt.response_error === 0 &&
+          if (receipt.action === (sql.includes("r.action='credit'") ? 'credit' : 'debit') &&
+              receipt.response_error === 0 &&
               receipt.round_id === params[1] && receipt.game_id === params[2] &&
               receipt.amount_minor === params[3] && !receipt.reversed) {
             return { call_id: callId, wallet_amount_minor: receipt.wallet_amount_minor };
@@ -71,9 +72,11 @@ function makeFakeDb(initial = 1000n, held = 200n) {
           wallet_amount_minor: String(params[9]),
           round_id: String(params[10]), game_id: String(params[11]), reversed: false,
         });
-        if (params[13]) {
-          const original = receipts.get(String(params[13]));
-          if (original) original.reversed = true;
+        for (const key of [params[13], params[14]]) {
+          if (key) {
+            const original = receipts.get(String(key));
+            if (original) original.reversed = true;
+          }
         }
       }
       return [];
@@ -143,6 +146,20 @@ describe('SoftAggregator financial callback behavior (isolated DB contract)', ()
     expect((await settleCasinoCallback(identity('usd-win', 'credit', 400n))).error).toBe(0);
     expect(t.postings).toHaveLength(2);
     expect(t.postings.every((p) => p.p_currency === 'USD')).toBe(true);
+  });
+
+  it('reverses a USD win exactly and refuses repeated reversal', async () => {
+    const t = makeFakeDb(1000n, 0n);
+    vi.mocked(getDb).mockReturnValue(t.fake as unknown as Db);
+    expect((await settleCasinoCallback(identity('win-original', 'credit', 75n))).error).toBe(0);
+    const back = { ...identity('win-rollback', 'debit', 75n), rollback: true };
+    expect((await settleCasinoCallback(back)).error).toBe(0);
+    expect(t.postings[1]?.p_type).toBe('reversal');
+    expect(t.postings[1]?.p_amount_minor).toBe('-75');
+    expect(t.getBalance()).toBe(1000n);
+    expect((await settleCasinoCallback({ ...back, callId: 'win-rollback-2',
+      identityHash: 'rollback:win-rollback-2' })).error).toBe(2);
+    expect(t.postings).toHaveLength(2);
   });
 
   it('blocks wagers smaller than 20 USD cents', async () => {
