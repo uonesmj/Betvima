@@ -49,6 +49,7 @@ data class AppState(
     val moreBetsLoading: Boolean = false, val moreWalletLoading: Boolean = false,
     val notifications: List<UserNotification> = emptyList(),
     val notificationPage: Int = 1, val notificationHasMore: Boolean = false,
+    val notificationUnreadCount: Int = 0, val notificationError: String? = null,
     val notificationLoading: Boolean = false,
     val bonuses: List<Bonus> = emptyList(), val busy: Boolean = false,
     val accountLoading: Boolean = false,
@@ -442,6 +443,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             historyMoreLoading = false, historyError = null,
             moreWalletLoading = false,
             notifications = emptyList(), notificationPage = 1, notificationHasMore = false,
+            notificationUnreadCount = 0, notificationError = null,
             notificationLoading = false) }
     }
     // Financial mutations stay behind the encrypted SessionVault. Compose never
@@ -576,12 +578,12 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    fun refreshNotifications(more: Boolean = false) = viewModelScope.launch {
+    fun refreshNotifications(more: Boolean = false, silent: Boolean = false) = viewModelScope.launch {
         val snapshot = state.value
         if (!snapshot.signedIn || snapshot.notificationLoading ||
             (more && (!snapshot.notificationHasMore || snapshot.notificationPage >= 1000))) return@launch
         val generation = sessionGeneration
-        mutable.update { it.copy(notificationLoading = true) }
+        mutable.update { it.copy(notificationLoading = true, notificationError = null) }
         try {
             val jwt = vault.accessToken(api) ?: throw ApiFailure(401, "Authentication required")
             val page = api.notifications(jwt, if (more) snapshot.notificationPage + 1 else 1)
@@ -591,14 +593,17 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                         (it.notifications + page.items).distinctBy { n -> n.id } else page.items,
                     notificationPage = page.page,
                     notificationHasMore = page.hasMore,
-                    notificationLoading = false
+                    notificationUnreadCount = page.unreadCount,
+                    notificationLoading = false,
+                    notificationError = null
                 )
             }
         } catch (ex: Exception) {
             if (generation == sessionGeneration) mutable.update {
-                it.copy(notificationLoading = false,
-                    notice = tr(it.lang, "Could not load notifications.",
-                        "دریافت اعلان‌ها ناموفق بود."))
+                val text = tr(it.lang, "Could not load notifications.",
+                    "دریافت اعلان‌ها ناموفق بود.")
+                it.copy(notificationLoading = false, notificationError = text,
+                    notice = if (silent) it.notice else text)
             }
         }
     }
@@ -608,9 +613,15 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         try {
             api.readNotifications(jwt, ids = listOf(id))
             if (generation == sessionGeneration && state.value.signedIn) mutable.update {
-                it.copy(notifications = it.notifications.map { note ->
-                    if (note.id == id) note.copy(readAt = java.time.Instant.now().toString()) else note
-                })
+                val wasUnread = it.notifications.any { n -> n.id == id && n.readAt == null }
+                it.copy(
+                    notifications = it.notifications.map { note ->
+                        if (note.id == id) note.copy(readAt = java.time.Instant.now().toString())
+                        else note
+                    },
+                    notificationUnreadCount =
+                        (it.notificationUnreadCount - if (wasUnread) 1 else 0).coerceAtLeast(0)
+                )
             }
         } catch (ex: Exception) {
             if (generation == sessionGeneration) notice(
@@ -623,9 +634,12 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         try {
             api.readNotifications(jwt, all = true)
             if (generation == sessionGeneration && state.value.signedIn) mutable.update {
-                it.copy(notifications = it.notifications.map { note ->
-                    note.copy(readAt = note.readAt ?: java.time.Instant.now().toString())
-                })
+                it.copy(
+                    notifications = it.notifications.map { note ->
+                        note.copy(readAt = note.readAt ?: java.time.Instant.now().toString())
+                    },
+                    notificationUnreadCount = 0
+                )
             }
         } catch (ex: Exception) {
             if (generation == sessionGeneration) notice(
