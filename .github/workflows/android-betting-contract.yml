@@ -1,0 +1,23 @@
+name: Android Betting API Contract (no live money)
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/android-betting-contract.yml'
+      - 'android-native/**'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  backend-wager-guards:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - name: Mock-only quote/placement and client retry safety tests
+        run: npx vitest run tests/unit/betting-service-placement.test.ts tests/unit/bet-placement-fingerprint.test.ts
+      - run: npm run typecheck
