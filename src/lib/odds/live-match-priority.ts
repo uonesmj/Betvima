@@ -9,9 +9,9 @@ export function hasDisplayedLiveOdds(match: Pick<Match,
   'isBettingAvailable' | 'topMarkets'>): boolean {
   if (!match.isBettingAvailable) return false;
   return Boolean(match.topMarkets?.some(market =>
-    (market.status === 'open' || market.status === 'active') &&
+    market.status === 'open' &&
     market.selections.some(selection =>
-      (selection.status === 'active' || selection.status === 'open') &&
+      (selection.status === 'active' || String(selection.status) === 'open') &&
       selection.oddsScaled > 10_000n,
     ),
   ));
