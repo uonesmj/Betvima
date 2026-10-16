@@ -1,6 +1,7 @@
 package com.betvima.app.ui
 
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.delay
 
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
@@ -198,6 +199,18 @@ private fun MainAccountSlipControls(
         ((mode=="single" && state.picks.size==1) ||
             (mode=="multiple" && state.picks.size>=2))
     val review = state.mainBetReview
+    val awaitingOddsAcceptance = review != null && review.changes.isNotEmpty() &&
+        state.mainOddsAcceptedToken != review.quoteToken
+    LaunchedEffect(state.signedIn, state.picks, curr, stake, canQuote) {
+        if (state.signedIn && canQuote) {
+            // No hidden bet placement: the heartbeat is quote-only. The user
+            // separately accepts movements and confirms the stake.
+            while (true) {
+                delay(10_000)
+                model.pollMainOdds(stake)
+            }
+        }
+    }
     Column(Modifier.fillMaxWidth(),
         verticalArrangement=Arrangement.spacedBy(8.dp)) {
         if(state.picks.isNotEmpty()) {
@@ -372,11 +385,24 @@ private fun MainAccountSlipControls(
                     review.changes.forEach { change ->
                         val name=state.picks.find { it.selectionId==change.selectionId }
                             ?.selection ?: change.selectionId
-                        Text(name+" · "+odds(change.beforeScaled)+" → "+odds(change.afterScaled),
-                            fontSize=11.sp,color=Color(0xFF8C5D23))
+                        val direction = mainOddsDirection(change)
+                        Text(name + " · " + odds(change.beforeScaled) +
+                            (if (direction == "UP") " ↑ " else if (direction == "DOWN") " ↓ " else " → ") +
+                            odds(change.afterScaled),
+                            fontSize=11.sp,fontWeight=FontWeight.Bold,
+                            color=if (direction == "UP") Color(0xFF078955)
+                                  else if (direction == "DOWN") Color(0xFFD14C64)
+                                  else Color(0xFF8C5D23))
                     }
                 }
             }
+        }
+        if (review != null && review.changes.isNotEmpty() &&
+            state.mainOddsAcceptedToken == review.quoteToken) {
+            Text(tr(lang,
+                "New odds accepted. Placing a bet is a separate action.",
+                "ضرایب جدید پذیرفته شدند. ثبت شرط یک اقدام جداگانه است."),
+                color=Color(0xFF078955),fontSize=11.sp,fontWeight=FontWeight.Bold)
         }
         if (state.mainBetUncertain) {
             Text(tr(lang,
@@ -389,15 +415,18 @@ private fun MainAccountSlipControls(
                 if(!state.signedIn) {
                     model.showSlip(false)
                     model.showLogin(true)
+                } else if(awaitingOddsAcceptance) {
+                    model.acceptMainOddsChanges(stake)
                 } else if(review != null &&
                     com.betvima.app.BuildConfig.ENABLE_WAGERING) {
                     model.placeMainBet(stake)
-                } else {
+                } else if(review == null) {
                     model.quote(stake)
                 }
             },
             enabled=canQuote && !state.busy && !state.mainBetUncertain &&
-                (review == null || com.betvima.app.BuildConfig.ENABLE_WAGERING),
+                (review == null || awaitingOddsAcceptance ||
+                    com.betvima.app.BuildConfig.ENABLE_WAGERING),
             modifier=Modifier.fillMaxWidth().height(47.dp),
             shape=RoundedCornerShape(13.dp),
             colors=ButtonDefaults.buttonColors(
@@ -410,9 +439,11 @@ private fun MainAccountSlipControls(
             Spacer(Modifier.width(8.dp))
             Text(when {
                 !state.signedIn -> tr(lang,"Login to bet","ورود برای شرط")
+                awaitingOddsAcceptance ->
+                    tr(lang,"Accept new odds (no bet yet)","پذیرش ضریب جدید (بدون ثبت شرط)")
                 review != null && !com.betvima.app.BuildConfig.ENABLE_WAGERING ->
                     tr(lang,"Wagering not authorized","ثبت شرط غیرفعال است")
-                review != null -> tr(lang,"Confirm and place bet","تأیید و ثبت شرط")
+                review != null -> tr(lang,"Place bet with approved odds","ثبت شرط با ضریب تأییدشده")
                 else -> tr(lang,"Get official quote","دریافت استعلام رسمی")
             },fontWeight=FontWeight.Black,fontSize=12.sp)
         }

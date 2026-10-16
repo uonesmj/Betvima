@@ -64,6 +64,7 @@ data class AppState(
     val bonuses: List<Bonus> = emptyList(), val busy: Boolean = false,
     val accountLoading: Boolean = false,
     val quote: String? = null, val mainBetReview: MainBetReview? = null,
+    val mainOddsAcceptedToken: String? = null,
     val mainBetUncertain: Boolean = false, val notice: String? = null,
     val searchTerm: String = "", val searchLoading: Boolean = false,
     val searchLive: List<Match> = emptyList(),
@@ -83,6 +84,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     private var accountRequestNumber = 0
     private var quoteGeneration = 0
     private var mainBetSubmitting = false
+    private var mainOddsPolling = false
     private var flightRevision = 0L
     private var historyRequest = 0
     private var searchGeneration = 0
@@ -326,7 +328,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 picks = kept,
                 showSlip = if (added) false else s.showSlip && kept.isNotEmpty(),
                 pickFlight = motion,
-                quote = null, mainBetReview = null
+                quote = null, mainBetReview = null, mainOddsAcceptedToken = null
             )
         }
     }
@@ -345,7 +347,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         quoteGeneration++
         mutable.update {
             val picks = it.picks.filterNot { p -> p.selectionId == id }
-            it.copy(picks = picks, quote = null, mainBetReview = null,
+            it.copy(picks = picks, quote = null, mainBetReview = null, mainOddsAcceptedToken = null,
                 showSlip = picks.isNotEmpty(),
                 pickFlight = null)
         }
@@ -358,13 +360,13 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         require(picks.map { it.matchId }.distinct().size == picks.size)
         quoteGeneration++
         mutable.update { it.copy(
-            picks = picks, quote = null, mainBetReview = null, busy = false, showSlip = true,
+            picks = picks, quote = null, mainBetReview = null, mainOddsAcceptedToken = null, busy = false, showSlip = true,
             pickFlight = null)
         }
     }
     fun clearPicks() {
         quoteGeneration++
-        mutable.update { it.copy(picks = emptyList(), quote = null, mainBetReview = null, busy = false,
+        mutable.update { it.copy(picks = emptyList(), quote = null, mainBetReview = null, mainOddsAcceptedToken = null, busy = false,
             pickFlight = null) }
     }
     fun openBet(id: String) = viewModelScope.launch {
@@ -423,7 +425,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     }
     fun clearQuote() {
         quoteGeneration++
-        mutable.update { it.copy(quote = null, mainBetReview = null,
+        mutable.update { it.copy(quote = null, mainBetReview = null, mainOddsAcceptedToken = null,
             busy = if (mainBetSubmitting) it.busy else false) }
     }
     fun showSlip(show: Boolean) = mutable.update {
@@ -446,7 +448,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             sessionGeneration++
             quoteGeneration++
             mutable.update { it.copy(
-                mainBetReview = null, mainBetUncertain = false, quote = null,
+                mainBetReview = null, mainOddsAcceptedToken = null, mainBetUncertain = false, quote = null,
                 busy = false, showLogin = false, signedIn = true, authError = null,
                 tab = if (navigateHome) Tab.HOME else it.tab,
                 homeMode = if (navigateHome) HomeMode.TOP else it.homeMode,
@@ -484,7 +486,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         ticketLookupFailures.clear()
         ticketLookupInFlight.clear()
         mutable.update { it.copy(signedIn = false, accountName = null, wallet = null, bets = emptyList(), ticketMatches = emptyMap(),
-            bonuses = emptyList(), quote = null, mainBetReview = null,
+            bonuses = emptyList(), quote = null, mainBetReview = null, mainOddsAcceptedToken = null,
             mainBetUncertain = false, showLogin = false,
             authError = null, accountLoading = false,
             betsPage = 1, betsHasMore = false, moreBetsLoading = false,
@@ -765,7 +767,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         val requestNumber = ++quoteGeneration
         val session = sessionGeneration
         val jwt = vault.accessToken(api) ?: run { showLogin(true); return@launch }
-        mutable.update { it.copy(busy = true, quote = null, mainBetReview = null) }
+        mutable.update { it.copy(busy = true, quote = null, mainBetReview = null, mainOddsAcceptedToken = null) }
         try {
             val data = api.quote(jwt, selected, minor, currency)
             val payload = data.optJSONObject("quote")
@@ -775,7 +777,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 selected == state.value.picks &&
                 state.value.wallet?.currency?.uppercase() == currency) {
                 mutable.update {
-                    it.copy(busy = false, mainBetReview = review,
+                    it.copy(busy = false, mainBetReview = review, mainOddsAcceptedToken = null,
                         quote = money(review.potentialPayoutMinor, currency))
                 }
             }
@@ -783,13 +785,79 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             if (requestNumber == quoteGeneration && session == sessionGeneration) {
                 val code = (ex as? ApiFailure)?.serverCode
                 mutable.update {
-                    it.copy(busy = false, quote = null, mainBetReview = null,
+                    it.copy(busy = false, quote = null, mainBetReview = null, mainOddsAcceptedToken = null,
                         notice = tr(it.lang,
                             "Official quote unavailable" + (code?.let { c -> " (" + c + ")" } ?: "") +
                                 ". Select a market with fresh odds and try again.",
                             "استعلام رسمی قابل دریافت نیست؛ مارکت با ضریب تازه انتخاب کنید و دوباره تلاش کنید."))
                 }
             }
+        }
+    }
+
+    /**
+     * Explicitly acknowledge the exact moved odds in one signed quote.
+     * It must never submit the wager or debit funds.
+     */
+    fun acceptMainOddsChanges(stake: String) {
+        val snapshot = state.value
+        val review = snapshot.mainBetReview ?: return
+        val currency = snapshot.wallet?.currency?.uppercase().orEmpty()
+        val minor = runCatching { mainBetStakeMinor(stake, currency) }.getOrNull()
+        if (!canAcceptChangedMainOdds(review, snapshot.picks, minor, currency,
+                quoteGeneration)) {
+            clearQuote()
+            notice(tr(snapshot.lang, "Odds expired. Request a fresh quote.",
+                "استعلام ضریب منقضی شده است؛ قیمت تازه دریافت کنید."))
+            return
+        }
+        mutable.update {
+            it.copy(mainOddsAcceptedToken = review.quoteToken, notice = null)
+        }
+    }
+
+    /**
+     * Read-only price heartbeat while the native slip is open. Poll at most
+     * every 10 seconds, never mutate wallet/bets, never auto-accept or submit.
+     * Do not replace an identical signed quote (which would erase consent).
+     */
+    fun pollMainOdds(stake: String) = viewModelScope.launch {
+        val snapshot = state.value
+        if (mainOddsPolling || mainBetSubmitting || snapshot.busy ||
+            !snapshot.signedIn || snapshot.mainBetUncertain ||
+            snapshot.mainOddsAcceptedToken != null || snapshot.picks.isEmpty()) return@launch
+        val currency = snapshot.wallet?.currency?.uppercase()?.takeIf {
+            it in setOf("USD", "IRR", "IRT")
+        } ?: return@launch
+        val minor = runCatching { mainBetStakeMinor(stake, currency) }.getOrNull()
+            ?: return@launch
+        val selected = snapshot.picks.toList()
+        val startingGeneration = quoteGeneration
+        val session = sessionGeneration
+        mainOddsPolling = true
+        try {
+            val token = vault.accessToken(api) ?: return@launch
+            val data = api.quote(token, selected, minor, currency)
+            val body = data.optJSONObject("quote") ?: return@launch
+            val next = parseMainBetReview(body, minor, currency, selected,
+                startingGeneration)
+            if (session != sessionGeneration || startingGeneration != quoteGeneration ||
+                selected != state.value.picks ||
+                state.value.mainOddsAcceptedToken != null ||
+                state.value.wallet?.currency?.uppercase() != currency) return@launch
+            val previous = state.value.mainBetReview
+            if (previous == null || previous.changes != next.changes ||
+                previous.potentialPayoutMinor != next.potentialPayoutMinor) {
+                mutable.update {
+                    it.copy(quote = money(next.potentialPayoutMinor, currency),
+                        mainBetReview = next, mainOddsAcceptedToken = null)
+                }
+            }
+        } catch (_: Exception) {
+            // The last displayed odds are not thereby deemed tradable.
+            // Explicit placement rechecks the official quote and market status.
+        } finally {
+            mainOddsPolling = false
         }
     }
 
@@ -811,7 +879,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         val review = snapshot.mainBetReview ?: return@launch
         val currency = snapshot.wallet?.currency?.uppercase().orEmpty()
         val minor = runCatching { mainBetStakeMinor(stake, currency) }.getOrNull()
-        if (!canConfirmMainBet(review, snapshot.picks, minor, currency, quoteGeneration)) {
+        if (!canConfirmMainBet(review, snapshot.picks, minor, currency, quoteGeneration,
+                acceptedQuoteToken = snapshot.mainOddsAcceptedToken)) {
             clearQuote()
             notice(tr(snapshot.lang,
                 "The official quote expired or your selections changed. Request a new quote.",
@@ -833,7 +902,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             if (session == sessionGeneration) {
                 quoteGeneration++
                 mutable.update {
-                    it.copy(busy = false, quote = null, mainBetReview = null,
+                    it.copy(busy = false, quote = null, mainBetReview = null, mainOddsAcceptedToken = null,
                         picks = emptyList(), showSlip = false,
                         notice = tr(it.lang,
                             "Your bet was accepted. Check My Bets for its receipt.",
@@ -850,7 +919,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                     response.code !in setOf(408, 429)
                 quoteGeneration++
                 mutable.update {
-                    it.copy(busy = false, quote = null, mainBetReview = null,
+                    it.copy(busy = false, quote = null, mainBetReview = null, mainOddsAcceptedToken = null,
                         mainBetUncertain = !definiteRejection,
                         notice = if (definiteRejection)
                             tr(it.lang,

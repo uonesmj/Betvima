@@ -73,7 +73,9 @@ fun canConfirmMainBet(
     currency: String,
     generation: Int,
     nowMillis: Long = System.currentTimeMillis(),
+    acceptedQuoteToken: String? = null,
 ): Boolean = review != null &&
+    (review.changes.isEmpty() || review.quoteToken == acceptedQuoteToken) &&
     review.generation == generation &&
     review.picks == picks &&
     review.stakeMinor == stakeMinor &&
@@ -87,4 +89,23 @@ fun mainBetRequestId(quoteToken: String): String {
     return java.util.UUID.nameUUIDFromBytes(
         ("betvima-main:" + quoteToken).toByteArray(Charsets.UTF_8)
     ).toString()
+}
+
+
+/** Only the exact unexpired, unchanged signed quote can be accepted. */
+fun canAcceptChangedMainOdds(
+    review: MainBetReview?,
+    picks: List<Pick>,
+    stakeMinor: String?,
+    currency: String,
+    generation: Int,
+    nowMillis: Long = System.currentTimeMillis(),
+): Boolean = review != null && review.changes.isNotEmpty() &&
+    canConfirmMainBet(review, picks, stakeMinor, currency, generation,
+        nowMillis, acceptedQuoteToken = review.quoteToken)
+
+fun mainOddsDirection(change: MainOddsChange): String {
+    val before = change.beforeScaled.toBigInteger()
+    val after = change.afterScaled.toBigInteger()
+    return when { after > before -> "UP"; after < before -> "DOWN"; else -> "SAME" }
 }
