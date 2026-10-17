@@ -74,10 +74,14 @@ export const POST = withErrorHandling('admin.kyc.review', async (ctx, request: R
       'legal_age_confirmed=$5,reviewed_at=now() where id=$1',
       [id, body.decision, user.id, body.reason, body.decision === 'verified' && body.ageConfirmed],
     );
-    await tx.query(
-      'update nova.profiles set kyc_status=$2,age_verified=$3 where id=$1',
-      [submission.user_id, body.decision, body.decision === 'verified' && body.ageConfirmed],
-    );
+    if (body.decision === 'verified') {
+      await tx.query(
+        "update nova.profiles set kyc_status='verified',age_verified=true where id=$1",
+        [submission.user_id],
+      );
+    }
+    // A casino-document rejection must not revoke an unrelated sportsbook
+    // age/KYC clearance. The rejected submission remains explicitly denied.
     await tx.rpc('audit_event', {
       p_actor_id: user.id, p_action: 'account.kyc.review',
       p_target_type: 'user', p_target_id: submission.user_id,
