@@ -206,10 +206,10 @@ export function CasinoCatalogueClient() {
     if (sessionLoading || launchingId) return;
     setLaunchingId(game.id); setMessage('');
     try {
-      const response = await fetch('/api/v1/casino/launch', {
+      const response = await fetch('/api/v1/casino/demo', {
         method: 'POST', credentials: 'same-origin',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ gameId: game.id, demo: true, device: /Mobi|Android/i.test(navigator.userAgent) ? 'mobile' : 'desktop', lang: locale }),
+        body: JSON.stringify({ gameId: game.id, device: /Mobi|Android/i.test(navigator.userAgent) ? 'mobile' : 'desktop', lang: locale }),
       });
       const payload: { data?: { url?: string }; error?: string } = await response.json();
       const url = payload.data?.url;
