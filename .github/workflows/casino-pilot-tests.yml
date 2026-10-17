@@ -6,6 +6,7 @@ on:
       - 'tests/unit/softaggregator-*.test.ts'
       - 'tests/unit/softaggregator-*.test.js'
       - 'ops/cloudflare/softaggregator-callback-worker.js'
+      - 'vitest.config.ts'
       - '.github/workflows/casino-pilot-tests.yml'
   push:
     branches:
