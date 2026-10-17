@@ -51,29 +51,50 @@ export function CasinoGameCard({
   return (
     <article className={'home-reference-card min-w-0 shrink-0 snap-start overflow-hidden rounded-[14px] border border-[#DDE1E6] bg-white shadow-[0_3px_12px_rgba(0,0,0,.055)] ' +
       (compact ? 'w-[60vw] min-w-[60vw] max-w-[60vw] sm:w-[60vw] sm:min-w-[60vw] sm:max-w-[60vw] xl:w-auto xl:min-w-0 xl:max-w-none' : 'w-full')}>
-      <div className="flex items-center justify-between gap-2 border-b border-[#E5E7EB] px-3 py-2.5">
-        <div className="flex min-w-0 items-center gap-2.5">
-          <span className="grid h-9 w-9 shrink-0 place-items-center rounded-[11px] border border-[#E1E5EA] bg-[#F7F9FA] text-[#087FF5]">
-            <Dices size={20} aria-hidden="true" />
+      {compact ? (
+        <div className="relative flex h-[238px] items-center justify-center overflow-hidden bg-[#F0F3F7] sm:h-[260px]">
+          {image ? (
+            <img src={image} alt={game.name} loading="lazy" onError={() => setImageFailed(true)}
+              className="h-full w-full object-cover transition-transform duration-300 hover:scale-[1.04]" />
+          ) : (
+            <Gamepad2 size={44} className="text-[#B2BEC9]" aria-hidden="true" />
+          )}
+          <span className={'absolute left-3 top-3 rounded-lg px-2.5 py-1.5 text-[10px] font-extrabold ' +
+            (group === 'live' ? 'bg-[#FFF0F2] text-[#D83A59]' : 'bg-[#EAF9F1] text-[#078653]')}>
+            {group === 'live' ? 'LIVE' : group === 'slots' ? 'SLOTS' : 'GAME'}
           </span>
-          <span className="min-w-0">
-            <span className="block truncate text-[12px] font-extrabold text-[#20242A]">{game.providerName || game.provider}</span>
-            <span className="mt-0.5 block truncate text-[10px] font-semibold text-[#8A9199]">{groupLabel}</span>
+          <span className="absolute right-3 top-3 inline-flex max-w-[60%] items-center gap-1.5 rounded-lg bg-[#202832]/90 px-2.5 py-1.5 text-[10px] font-bold text-white">
+            <Dices size={13} className="shrink-0" aria-hidden="true" />
+            <span className="truncate">{groupLabel}</span>
           </span>
         </div>
-        <span className={'shrink-0 rounded-full px-2 py-1 text-[9px] font-extrabold ' +
-          (group === 'live' ? 'bg-[#FFF0F2] text-[#D83A59]' : 'bg-[#EAF9F1] text-[#078653]')}>
-          {group === 'live' ? 'LIVE' : group === 'slots' ? 'SLOTS' : 'GAME'}
-        </span>
-      </div>
-      <div className="relative flex h-[125px] items-center justify-center overflow-hidden bg-[#F0F3F7] sm:h-[155px]">
-        {image ? (
-          <img src={image} alt={game.name} loading="lazy" onError={() => setImageFailed(true)}
-            className="h-full w-full object-cover transition-transform duration-300 hover:scale-[1.04]" />
-        ) : (
-          <Gamepad2 size={38} className="text-[#B2BEC9]" aria-hidden="true" />
-        )}
-      </div>
+      ) : (
+        <>
+        <div className="flex items-center justify-between gap-2 border-b border-[#E5E7EB] px-3 py-2.5">
+          <div className="flex min-w-0 items-center gap-2.5">
+            <span className="grid h-9 w-9 shrink-0 place-items-center rounded-[11px] border border-[#E1E5EA] bg-[#F7F9FA] text-[#087FF5]">
+              <Dices size={20} aria-hidden="true" />
+            </span>
+            <span className="min-w-0">
+              <span className="block truncate text-[12px] font-extrabold text-[#20242A]">{game.providerName || game.provider}</span>
+              <span className="mt-0.5 block truncate text-[10px] font-semibold text-[#8A9199]">{groupLabel}</span>
+            </span>
+          </div>
+          <span className={'shrink-0 rounded-full px-2 py-1 text-[9px] font-extrabold ' +
+            (group === 'live' ? 'bg-[#FFF0F2] text-[#D83A59]' : 'bg-[#EAF9F1] text-[#078653]')}>
+            {group === 'live' ? 'LIVE' : group === 'slots' ? 'SLOTS' : 'GAME'}
+          </span>
+        </div>
+        <div className="relative flex h-[125px] items-center justify-center overflow-hidden bg-[#F0F3F7] sm:h-[155px]">
+          {image ? (
+            <img src={image} alt={game.name} loading="lazy" onError={() => setImageFailed(true)}
+              className="h-full w-full object-cover transition-transform duration-300 hover:scale-[1.04]" />
+          ) : (
+            <Gamepad2 size={38} className="text-[#B2BEC9]" aria-hidden="true" />
+          )}
+        </div>
+        </>
+      )}
       <div className="border-t border-[#E5E7EB] bg-white px-3 py-2.5">
         <p className="truncate text-[12px] font-extrabold text-[#20242A]" title={game.name}>{game.name}</p>
         <p className="mt-0.5 truncate text-[10px] font-semibold text-[#8A9199]">{groupLabel} · {game.providerName || game.provider}</p>
