@@ -49,6 +49,7 @@ export function BetsApiExplorer() {
   const [sport, setSport] = useState(1);
   const [page, setPage] = useState(1);
   const [trialToken, setTrialToken] = useState('');
+  const [activeToken, setActiveToken] = useState('');
   const [search, setSearch] = useState('');
   const [country, setCountry] = useState('');
   const [chosen, setChosen] = useState<Fixture | null>(null);
@@ -60,8 +61,7 @@ export function BetsApiExplorer() {
   const [listBusy, setListBusy] = useState(false);
   const [marketBusy, setMarketBusy] = useState(false);
   const [failure, setFailure] = useState('');
-  const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
-  const access = trialToken.trim();
+  const access = activeToken;
   const request = useCallback(async (params: {
     mode: Mode; sportId: number; page?: number; fi?: string;
   }): Promise<ResponseData> => {
@@ -152,7 +152,7 @@ export function BetsApiExplorer() {
             <strong>Preview source: BetsAPI / Bet365.</strong> Main-account wagering continues under the
             separately validated production feed. No prices from this page are executable bets.
           </p>
-          <details className="mt-3" onToggle={() => setIsAdmin(true)}>
+          <details className="mt-3">
             <summary className="cursor-pointer text-sm font-semibold text-sky-300">
               Admin: inspect with a new one-time BetsAPI token
             </summary>
@@ -163,11 +163,11 @@ export function BetsApiExplorer() {
                 className="min-w-64 flex-1 rounded-xl border border-white/15 bg-[#101727] px-3 py-2 text-sm"
                 aria-label="BetsAPI token" />
               <button className={button} type="button"
-                onClick={() => { void loadFixtures(); if (chosen) void loadMarkets(chosen); }}>
+                onClick={() => { setActiveToken(trialToken.trim()); setChosen(null); setMarkets(null); }}>
                 Load with admin token
               </button>
               {trialToken && <button type="button" className={button} onClick={() => {
-                setTrialToken(''); setMarkets(null);
+                setTrialToken(''); setActiveToken(''); setMarkets(null);
               }}>Clear token</button>}
             </div>
             <p className="mt-2 text-xs text-slate-400">
