@@ -80,7 +80,7 @@ export function TwoFactorSettings({
   const disable = () => perform(async () => {
     if (adminRequired) throw new Error('Administrator accounts must keep two-factor authentication enabled');
     if (!factorId) throw new Error('No enrolled authenticator');
-    if (!/^\\d{6}$/.test(code)) throw new Error('Enter a fresh six-digit authenticator code');
+    if (!/^\d{6}$/.test(code)) throw new Error('Enter a fresh six-digit authenticator code');
     if (!window.confirm(fa ? 'تأیید می‌کنید که حفاظت دومرحله‌ای غیرفعال شود؟' : 'Disable two-factor authentication on this account?')) return;
     const client = getSupabaseBrowserClient();
     const verified = await client.auth.mfa.challengeAndVerify({ factorId, code });
