@@ -891,8 +891,8 @@ class ApiClient {
                 var fitted = false
                 for (quality in listOf(91, 86, 80, 74, 66, 58)) {
                     out.reset()
-                    bitmap.compress(Bitmap.CompressFormat.JPEG, quality, out)
-                    if (out.size() <= SUPPORT_INGRESS_SAFE_BYTES) {
+                    val encoded = bitmap.compress(Bitmap.CompressFormat.JPEG, quality, out)
+                    if (encoded && out.size() in 1..SUPPORT_INGRESS_SAFE_BYTES) {
                         fitted = true
                         break
                     }
