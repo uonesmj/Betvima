@@ -1,0 +1,25 @@
+name: Casino Homepage Focused Verification
+on:
+  push:
+    branches:
+      - codex/verify-home-casino-live-first-20261017
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - run: npx vitest run tests/unit/casino-featured.test.ts
+      - run: npm run typecheck
+      - run: npm run build
+        env:
+          APP_ENV: test
+          NEXT_PUBLIC_SITE_URL: https://preview.betvima.com
+          NEXT_TELEMETRY_DISABLED: '1'
