@@ -146,6 +146,25 @@ describe('Bet365 missing outcome labels', () => {
   });
 });
 
+describe('Bet365 MA market context', () => {
+  it('retains explicit MA context for anonymous PA outcomes and resets on a new MG', () => {
+    const parsed = parseBet365LivePreview('803', [[
+      { type: 'MG', ID: '1', NA: 'Match Goals' },
+      { type: 'MA', ID: '100', NA: 'Over 2.5' },
+      { type: 'PA', ID: '21', OD: '6/5' },
+      { type: 'MA', ID: '101', NA: 'Under 2.5' },
+      { type: 'PA', ID: '22', OD: '5/6' },
+      { type: 'MG', ID: '2', NA: 'Result' },
+      { type: 'PA', ID: '23', NA: 'Draw', OD: '2/1' },
+    ]]);
+    expect(parsed.markets[0]?.selections.map(s => s.label)).toEqual([
+      'Over 2.5 · Unlabelled outcome #21',
+      'Under 2.5 · Unlabelled outcome #22',
+    ]);
+    expect(parsed.markets[1]?.selections[0]?.label).toBe('Draw');
+  });
+});
+
 describe('all Bet365 market groups', () => {
   it('parses more than 150 independent priced live groups and respects suspended participants', () => {
     const groups = Array.from({ length: 185 }, (_, i) => [
