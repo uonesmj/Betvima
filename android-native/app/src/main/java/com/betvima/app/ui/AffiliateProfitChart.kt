@@ -44,10 +44,12 @@ fun AffiliateProfitChart(
     rows: List<PartnerDailyStat>, today: LocalDate, lang: Lang, available: Boolean
 ) {
     val points = remember(rows, today) { partnerWeeklyTrend(rows, today) }
-    var selected by remember(today) { mutableIntStateOf(6) }
+    val visible = remember(points) { points.map { it?.grossMarginPct?.toFloat() } }
+    var selected by remember(today, visible) {
+        mutableIntStateOf(visible.indexOfLast { it != null }.takeIf { it >= 0 } ?: 6)
+    }
     val selectedPoint = points.getOrNull(selected)
     val percentage = selectedPoint?.grossMarginPct
-    val visible = remember(points) { points.map { it?.grossMarginPct?.toFloat() } }
     val hasTrend = available && visible.any { it != null }
     val progress by animateFloatAsState(
         targetValue = if (hasTrend) 1f else 0f,
