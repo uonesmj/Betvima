@@ -123,6 +123,29 @@ describe('Bet365 site catalogue security and pagination', () => {
   });
 });
 
+describe('Bet365 missing outcome labels', () => {
+  it('never invents player names or Over/Under sides for live prices', () => {
+    const parsed = parseBet365LivePreview('801', [[
+      { type: 'MG', ID: '1', NA: 'Goalscorers' },
+      { type: 'PA', ID: '12', OD: '5/1' },
+      { type: 'PA', ID: '13', OD: '6/1', NA: 'Player A' },
+    ]]);
+    expect(parsed.markets[0]?.selections[0]?.label).toBe('Unlabelled outcome #12');
+    expect(parsed.markets[0]?.selections[1]?.label).toBe('Player A');
+  });
+
+  it('retains unmatched prematch lines without mislabelling them as over or under', () => {
+    const parsed = parseBet365PrematchPreview('802', [{
+      goals: { sp: { total: { id: '4', name: 'Match Goals', odds: [
+        { id: '20', name: '', handicap: '4.5', odds: '1.9' },
+        { id: '21', name: 'Over', handicap: '4.5', odds: '2.2' },
+      ] } } },
+    }]);
+    expect(parsed.markets[0]?.selections[0]?.label).toBe('Unlabelled outcome #20 · line 4.5');
+    expect(parsed.markets[0]?.selections[1]?.label).toBe('Over (4.5)');
+  });
+});
+
 describe('all Bet365 market groups', () => {
   it('parses more than 150 independent priced live groups and respects suspended participants', () => {
     const groups = Array.from({ length: 185 }, (_, i) => [
