@@ -32,7 +32,7 @@ export const BETSAPI_EXPLORER_SPORTS = [
 ] as const;
 
 export interface ExplorerFixture {
-  fi: string;
+  fi: string | null;
   eventId: string | null;
   sportId: number;
   league: string;
@@ -46,9 +46,10 @@ export interface ExplorerFixture {
 }
 
 export interface ExplorerList {
-  source: 'betsapi_bet365';
+  source: 'betsapi_bet365' | 'betsapi_events';
   readOnly: true;
   configured: boolean;
+  feed: 'bet365' | 'events';
   mode: 'live' | 'upcoming';
   sportId: number;
   page: number;
@@ -90,16 +91,20 @@ const safeIso = (seconds: unknown): string | null => {
   return value !== null && value >= 1500000000 && value <= 4102444800
     ? new Date(value * 1000).toISOString() : null;
 };
-export function parseExplorerFixture(raw: unknown, sportId: number): ExplorerFixture | null {
+export function parseExplorerFixture(
+  raw: unknown, sportId: number, feed: 'bet365' | 'events' = 'bet365',
+): ExplorerFixture | null {
   const row = rec(raw);
-  const fi = val(row.id);
-  if (!/^\d{1,16}$/.test(fi)) return null;
+  const id = val(row.id);
+  if (!/^\d{1,16}$/.test(id)) return null;
+  const mappedFi = feed === 'bet365' ? id : val(row.bet365_id);
+  const fi = /^\d{1,16}$/.test(mappedFi) ? mappedFi : null;
   const home = sourceEvent(row, 'home'), away = sourceEvent(row, 'away');
   if (!home || !away) return null;
   const minute = number(rec(row.timer).tm);
   const ss = val(row.ss);
   const country = val(rec(row.league).cc).toLowerCase();
-  const eventId = val(row.our_event_id);
+  const eventId = feed === 'events' ? id : val(row.our_event_id);
   return {
     fi, eventId: /^\d{1,16}$/.test(eventId) ? eventId : null, sportId,
     home, away, league: val(rec(row.league).name).slice(0, 140) || 'Other competitions',
@@ -140,6 +145,8 @@ async function request(
     '/v1/bet365/upcoming',
     '/v1/bet365/event',
     '/v4/bet365/prematch',
+    '/v3/events/inplay',
+    '/v3/events/upcoming',
   ];
   if (!allowed.includes(endpoint)) throw new ExplorerUpstreamError('UPSTREAM_INVALID');
   const url = new URL(endpoint, ORIGIN);
@@ -194,6 +201,7 @@ async function request(
 export interface ExplorerInput {
   mode: 'live' | 'upcoming';
   sportId: number;
+  feed?: 'bet365' | 'events';
   page?: number;
   day?: string;
   fi?: string;
@@ -229,17 +237,22 @@ export async function exploreBetsApi(
     } catch (error) { return { ...out, error: safeError(error) }; }
   }
   const page = input.mode === 'live' ? 1 : Math.max(1, Math.min(100, input.page ?? 1));
-  const empty: ExplorerList = { ...base, mode: input.mode, sportId: input.sportId, page,
+  const feed = input.feed ?? 'bet365';
+  const empty: ExplorerList = { ...base, source: feed === 'events' ? 'betsapi_events' : 'betsapi_bet365',
+    feed, mode: input.mode, sportId: input.sportId, page,
     pageCount: null, total: null, fixtures: [], error: null };
   if (!configured) return { ...empty, error: 'NOT_CONFIGURED' };
   try {
-    const payload = await request(token!, input.mode === 'live' ? '/v1/bet365/inplay_filter' : '/v1/bet365/upcoming',
+    const endpoint = feed === 'events'
+      ? (input.mode === 'live' ? '/v3/events/inplay' : '/v3/events/upcoming')
+      : (input.mode === 'live' ? '/v1/bet365/inplay_filter' : '/v1/bet365/upcoming');
+    const payload = await request(token!, endpoint,
       input.mode === 'live' ? { sport_id: String(input.sportId) } :
         { sport_id: String(input.sportId), page: String(page),
           ...(input.day ? { day: input.day } : {}) },
       fetcher, input.mode === 'live' ? 12_000 : 90_000);
     const data = Array.isArray(payload.results) ? payload.results : [];
-    const fixtures = data.slice(0, 2200).map(row => parseExplorerFixture(row, input.sportId))
+    const fixtures = data.slice(0, 2200).map(row => parseExplorerFixture(row, input.sportId, feed))
       .filter((row): row is ExplorerFixture => row !== null);
     const pager = rec(payload.pager);
     const total = number(pager.total);
