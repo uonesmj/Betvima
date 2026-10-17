@@ -481,6 +481,27 @@ fun LoginSheet(state: AppState, model: AppViewModel) {
                             "Open Google Authenticator and enter the six-digit code to finish signing in.",
                             "Google Authenticator را باز کنید و کد شش‌رقمی را برای تکمیل ورود وارد کنید."),
                             color = Palette.muted, fontSize = 12.sp)
+                        if (state.mfaChoices.size > 1) {
+                            Text(tr(state.lang, "Choose an authenticator",
+                                "برنامه امنیتی را انتخاب کنید"),
+                                color = Palette.text, fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold)
+                            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                                state.mfaChoices.forEach { factor ->
+                                    FilterChip(
+                                        selected = state.selectedMfaFactor == factor.id,
+                                        onClick = {
+                                            model.chooseMfaFactor(factor.id)
+                                            authenticatorCode = ""
+                                        },
+                                        label = { Text(if (factor.name.contains("Backup", ignoreCase = true))
+                                            tr(state.lang, "Backup authenticator", "برنامه پشتیبان")
+                                            else tr(state.lang, "Primary authenticator", "برنامه اصلی")) },
+                                        modifier = Modifier.fillMaxWidth()
+                                    )
+                                }
+                            }
+                        }
                         OutlinedTextField(
                             value = authenticatorCode,
                             onValueChange = { authenticatorCode = it.filter(Char::isDigit).take(6) },
