@@ -444,24 +444,30 @@ class ApiClient {
 
     suspend fun live(): Pair<List<Match>, Boolean> {
         val data = get("/api/v1/live?limit=100")
-        return data.arr("matches").objects().map(::parseMatch) to
+        if (data.str("sportsSourceRevision") != "the-odds-api-only-v1")
+            throw ApiFailure(502, "Sports source verification failed", "UNAUTHORIZED_SPORTS_SOURCE")
+        return data.arr("matches").objects().filter(::isOfficialSportsbookMatch).map(::parseMatch) to
             (data.optBoolean("liveBettingEnabled") && !data.optBoolean("catalogueUnavailable"))
     }
     suspend fun upcoming(sport: String = "all"): List<Match> =
-        get(upcomingQueryPath(sport)).arr("items").objects().map(::parseMatch)
+        get(upcomingQueryPath(sport)).arr("items").objects()
+            .filter(::isOfficialSportsbookMatch).map(::parseMatch)
 
     /**
      * Backend catalogue search (not just the first page already present in the UI).
      * q is URI-encoded, bound to the existing read-only /matches endpoint.
      */
     suspend fun searchMatches(query: String, live: Boolean): List<Match> {
-        return get(searchQueryPath(query, live)).arr("items").objects().map(::parseMatch)
+        return get(searchQueryPath(query, live)).arr("items").objects()
+            .filter(::isOfficialSportsbookMatch).map(::parseMatch)
     }
 
     suspend fun detail(id: String): Match {
         require(id.matches(Regex("[A-Za-z0-9-]{1,100}")))
         val data = get("/api/v1/matches/" + id)
         val match = data.optJSONObject("match") ?: throw ApiFailure(404, "Match unavailable")
+        if (!isOfficialSportsbookMatch(match))
+            throw ApiFailure(404, "Match unavailable from authorized provider", "UNAUTHORIZED_SPORTS_SOURCE")
         return parseMatch(match, data.optJSONArray("markets"))
     }
     internal fun parseBetLeg(leg: JSONObject): BetLegDetail {
