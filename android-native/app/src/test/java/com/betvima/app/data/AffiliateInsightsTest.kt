@@ -56,6 +56,16 @@ class AffiliateInsightsTest {
             JSONObject().put("playerNetResultMinor", "0"), "playerNetResultMinor"))
     }
 
+    @Test fun databaseJsDateRenderingStillContributesToRealChart() {
+        val response = JSONObject().put("dailyStats", JSONArray()
+            .put(row("Sat Oct 17 2026 00:00:00 GMT+0000 (UTC)",
+                4, "25000", "5000", "10000")))
+        val parsed = parsePartnerDailyStats(response, "USD")
+        assertEquals(1, parsed.size)
+        assertEquals(LocalDate.parse("2026-10-17"), parsed.single().day)
+        assertEquals(4, parsed.single().registrations)
+    }
+
     @Test fun duplicateDailyRowsAreAggregatedWithoutDataLoss() {
         val response = JSONObject().put("dailyStats", JSONArray()
             .put(row("2026-10-17T00:00:00.000Z", 1, "10000", "6000", "2000"))
