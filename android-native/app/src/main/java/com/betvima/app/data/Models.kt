@@ -140,9 +140,17 @@ data class SupportTicket(
 data class SupportTicketPage(
     val items: List<SupportTicket>, val page: Int, val total: Int, val hasMore: Boolean
 )
+data class SupportAttachment(
+    val id: String,
+    val originalName: String,
+    val mimeType: String,
+    val sizeBytes: Long
+)
+
 data class SupportThreadMessage(
     val id: String, val body: String, val senderRole: String, val createdAt: String,
-    val attachments: List<String> = emptyList()
+    val attachments: List<String> = emptyList(),
+    val attachmentDetails: List<SupportAttachment> = emptyList()
 )
 data class SupportConversation(
     val ticket: SupportTicket, val messages: List<SupportThreadMessage>
