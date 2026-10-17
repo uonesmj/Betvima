@@ -6,7 +6,7 @@ import { getSupabaseBrowserClient } from '@/lib/supabase/browser';
 
 interface SessionInfo {
   authenticated: boolean; authUnavailable: boolean;
-  user: { id: string; email: string | null; role: string; currency: string; locale: Locale; isAdmin: boolean; permissions: string[]; affiliateId: string | null } | null;
+  user: { id: string; email: string | null; role: string; currency: string; locale: Locale; isAdmin: boolean; permissions: string[]; affiliateId: string | null; mfaEnrolled?: boolean; mfaLevel?: 'aal1' | 'aal2' } | null;
 }
 
 interface AppContextValue {
