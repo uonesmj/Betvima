@@ -18,6 +18,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import android.text.format.Formatter
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -53,6 +54,10 @@ internal fun AccountSettings87(state:AppState,model:AppViewModel) {
     var showLock88 by remember { mutableStateOf(false) }
     var showHistory88 by remember { mutableStateOf(false) }
     var showMfa by remember { mutableStateOf(false) }
+    var showCacheConfirmation by remember { mutableStateOf(false) }
+    var cacheCleaning by remember { mutableStateOf(false) }
+    var cacheResult by remember { mutableStateOf<AppCacheCleanupResult?>(null) }
+    var cacheError by remember { mutableStateOf<String?>(null) }
     var lockMode88 by remember { mutableStateOf(local.lockMode88()) }
 
     var langOpen by remember { mutableStateOf(false) }
@@ -118,6 +123,101 @@ internal fun AccountSettings87(state:AppState,model:AppViewModel) {
     if (showMfa) GoogleAuthenticatorDialog(lang, api, vault,
         adminRequired = session?.optBoolean("isAdmin", false) == true,
         onDismiss = { showMfa = false })
+
+    if (showCacheConfirmation) AlertDialog(
+        onDismissRequest = { if (!cacheCleaning) showCacheConfirmation = false },
+        shape = RoundedCornerShape(24.dp),
+        containerColor = panel87,
+        title = {
+            Text(label87(lang, "Clear temporary cache?", "کش موقت پاک شود؟"),
+                color = ink87, fontWeight = FontWeight.Bold)
+        },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text(label87(lang,
+                    "Cached images, WebView HTTP files and temporary app files will be removed. They may download again when needed. Your sign-in, wallet, PIN, authenticator, messages and settings will not be erased.",
+                    "تصاویر کش‌شده، فایل‌های HTTP وب‌ویو و فایل‌های موقت برنامه حذف می‌شوند و در صورت نیاز دوباره دانلود خواهند شد. ورود حساب، کیف پول، پین، Authenticator، پیام‌ها و تنظیمات حذف نمی‌شوند."),
+                    color = muted87, fontSize = 13.sp, lineHeight = 20.sp)
+                if (cacheCleaning) {
+                    LinearProgressIndicator(Modifier.fillMaxWidth(), color = accent87)
+                    Text(label87(lang, "Cleaning temporary files…",
+                        "در حال پاک‌سازی فایل‌های موقت…"),
+                        color = muted87, fontSize = 12.sp)
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(enabled = !cacheCleaning, onClick = {
+                cacheCleaning = true
+                scope.launch {
+                    try {
+                        cacheResult = AppCacheCleaner87.clear(context)
+                        cacheError = null
+                    } catch (ex: Exception) {
+                        cacheError = ex.message ?: "Cache cleanup could not finish"
+                        cacheResult = null
+                    } finally {
+                        cacheCleaning = false
+                        showCacheConfirmation = false
+                    }
+                }
+            }) {
+                Text(label87(lang, "Clear cache", "پاک‌سازی کش"), color = accent87)
+            }
+        },
+        dismissButton = {
+            TextButton(enabled = !cacheCleaning, onClick = {
+                showCacheConfirmation = false
+            }) { Text(label87(lang, "Cancel", "انصراف"), color = muted87) }
+        }
+    )
+
+    if (cacheResult != null || cacheError != null) AlertDialog(
+        onDismissRequest = { cacheResult = null; cacheError = null },
+        shape = RoundedCornerShape(24.dp),
+        containerColor = panel87,
+        title = {
+            Text(
+                if (cacheError != null || cacheResult?.complete == false)
+                    label87(lang, "Cache partially cleared", "پاک‌سازی ناقص بود")
+                else label87(lang, "Cache cleared", "کش پاک‌سازی شد"),
+                color = ink87, fontWeight = FontWeight.Bold
+            )
+        },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                cacheResult?.let { cleaned ->
+                    Text(label87(lang,
+                        "Space freed: ${Formatter.formatShortFileSize(context, cleaned.bytesFreed)}",
+                        "فضای آزادشده: ${Formatter.formatShortFileSize(context, cleaned.bytesFreed)}"),
+                        color = ink87, fontSize = 14.sp)
+                    Text(label87(lang,
+                        "Temporary files removed: ${cleaned.deletedFiles}",
+                        "فایل‌های موقت حذف‌شده: ${cleaned.deletedFiles}"),
+                        color = muted87, fontSize = 12.sp)
+                    if (!cleaned.complete) Text(label87(lang,
+                        "Some cached resources are currently in use or could not be removed. Account data was preserved.",
+                        "بعضی از فایل‌های کش در حال استفاده بودند یا پاک نشدند. اطلاعات حساب حفظ شده است."),
+                        color = Color(0xFFFFB6AB), fontSize = 12.sp)
+                }
+                cacheError?.let {
+                    Text(label87(lang,
+                        "Cache cleanup could not finish. Please retry.",
+                        "پاک‌سازی کامل نشد؛ دوباره تلاش کنید."),
+                        color = Color(0xFFFFB6AB), fontSize = 12.sp)
+                }
+                Text(label87(lang, "Your account and settings remain unchanged.",
+                    "حساب کاربری و تنظیمات شما تغییر نکرده‌اند."),
+                    color = muted87, fontSize = 11.sp)
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = { cacheResult = null; cacheError = null }) {
+                Text(label87(lang, "Done", "متوجه شدم"), color = accent87)
+            }
+        }
+    )
+
     if(langOpen)LanguagePickerDialog(lang,{model.setLanguage(it);langOpen=false},{langOpen=false})
 
     if(modal.isNotBlank()) AlertDialog(
@@ -333,9 +433,12 @@ internal fun AccountSettings87(state:AppState,model:AppViewModel) {
                 Tile87(Icons.Default.Info,label87(lang,"App version","نسخه برنامه"),
                     BuildConfig.VERSION_NAME,"next"){}
                 Tile87(Icons.Default.CleaningServices,label87(lang,"Clear cache","پاک‌سازی کش"),
-                    label87(lang,"Temporary files only","فقط فایل‌های موقت"),"next"){
-                    val kb=local.clearDisposableCache()/1024
-                    model.notice(label87(lang,"Cleared "+kb.toString()+" KB","حذف "+kb.toString()+" کیلوبایت"))
+                    label87(lang,"Images, HTTP cache & temporary files","تصاویر، کش HTTP و فایل‌های موقت"),"next"){
+                    if (!cacheCleaning) {
+                        cacheResult = null
+                        cacheError = null
+                        showCacheConfirmation = true
+                    }
                 }
             }}
             item{
