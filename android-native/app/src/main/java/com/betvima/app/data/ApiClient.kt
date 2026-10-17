@@ -21,6 +21,26 @@ import java.util.concurrent.TimeUnit
 
 class ApiFailure(val code: Int, override val message: String, val serverCode: String? = null) : IOException(message)
 
+/** Factor IDs and friendly names are server-authoritative, not an authentication proof. */
+data class AuthenticatorFactor(val id: String, val name: String, val verified: Boolean)
+
+/** Pure parsing: an unverified enrollment must never count as an enabled factor. */
+fun parseTotpFactors(user: JSONObject): List<AuthenticatorFactor> {
+    val arr = user.optJSONArray("factors") ?: JSONArray()
+    return (0 until arr.length()).mapNotNull { index ->
+        val factor = arr.optJSONObject(index) ?: return@mapNotNull null
+        if (factor.optString("factor_type") != "totp") return@mapNotNull null
+        val id = factor.optString("id")
+        if (!Regex("[a-fA-F0-9-]{36}").matches(id)) return@mapNotNull null
+        AuthenticatorFactor(
+            id, factor.optString("friendly_name").ifBlank { "Authenticator" }.take(80),
+            factor.optString("status") == "verified"
+        )
+    }
+}
+
+
+
 /** Omit the sport filter for Top. The web catalogue treats absent sport as all sports. */
 fun upcomingQueryPath(sport: String): String {
     val base = "/api/v1/matches?live=false&page=1&pageSize=50"
@@ -326,19 +346,26 @@ class ApiClient {
 
     suspend fun mfaUser(token: String): JSONObject = mfaAuthCall(token, "GET", "/user")
 
-    suspend fun mfaFactors(token: String): List<String> {
-        val user = mfaUser(token)
-        val arr = user.optJSONArray("factors") ?: JSONArray()
-        return (0 until arr.length()).mapNotNull { i ->
-            arr.optJSONObject(i)?.takeIf {
-                it.str("factor_type") == "totp" && it.str("status") == "verified"
-            }?.str("id")?.takeIf(String::isNotBlank)
-        }
-    }
+    suspend fun mfaAllTotpFactors(token: String): List<AuthenticatorFactor> =
+        parseTotpFactors(mfaUser(token))
 
-    suspend fun mfaEnroll(token: String): JSONObject =
-        mfaAuthCall(token, "POST", "/factors",
-            JSONObject().put("factor_type", "totp").put("friendly_name", "BetVima Authenticator"))
+    suspend fun mfaFactors(token: String): List<String> =
+        mfaAllTotpFactors(token).filter { it.verified }.map { it.id }
+
+    /** Never use a friendly name to identify a factor being deleted. Delete only
+     * a specific unverified factor ID returned by Supabase for this user.
+     */
+    suspend fun mfaEnroll(token: String, backup: Boolean = false): JSONObject {
+        val name = if (backup) "BetVima Backup Authenticator" else "BetVima Authenticator"
+        val factors = mfaAllTotpFactors(token)
+        require(factors.none { it.verified && it.name == name }) {
+            "This authenticator is already active"
+        }
+        factors.filter { !it.verified && it.name == name }
+            .forEach { mfaUnenroll(token, it.id) }
+        return mfaAuthCall(token, "POST", "/factors",
+            JSONObject().put("factor_type", "totp").put("friendly_name", name))
+    }
 
     suspend fun mfaChallengeVerify(token: String, factorId: String, code: String): JSONObject {
         require(Regex("[a-fA-F0-9-]{36}").matches(factorId))

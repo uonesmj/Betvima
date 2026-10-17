@@ -1,6 +1,14 @@
 package com.betvima.app.ui
 
 import android.graphics.Bitmap
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
+import android.content.ClipDescription
+import android.os.Build
+import android.os.PersistableBundle
+import androidx.compose.ui.platform.LocalContext
+import com.betvima.app.data.AuthenticatorFactor
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -37,9 +45,12 @@ internal fun GoogleAuthenticatorDialog(
     onDismiss: () -> Unit
 ) {
     val scope = rememberCoroutineScope()
+    val context = LocalContext.current
     var loading by remember { mutableStateOf(true) }
     var busy by remember { mutableStateOf(false) }
     var factorId by remember { mutableStateOf<String?>(null) }
+    var verifiedFactors by remember { mutableStateOf<List<AuthenticatorFactor>>(emptyList()) }
+    var enrollingBackup by remember { mutableStateOf(false) }
     var pending by remember { mutableStateOf<JSONObject?>(null) }
     var code by remember { mutableStateOf("") }
     var disableRequested by remember { mutableStateOf(false) }
@@ -49,7 +60,8 @@ internal fun GoogleAuthenticatorDialog(
     LaunchedEffect(Unit) {
         try {
             val jwt = vault.accessToken(api) ?: throw IllegalStateException("Sign in required")
-            factorId = api.mfaFactors(jwt).firstOrNull()
+            verifiedFactors = api.mfaAllTotpFactors(jwt).filter { it.verified }
+            factorId = verifiedFactors.firstOrNull()?.id
         } catch (ex: Exception) { error = ex.message ?: "Authenticator unavailable" }
         finally { loading = false }
     }
@@ -94,8 +106,36 @@ internal fun GoogleAuthenticatorDialog(
                                 .background(Color.White).padding(7.dp))
                     }
                     val secret = pending?.optJSONObject("totp")?.optString("secret").orEmpty()
-                    if (secret.isNotBlank()) Text(secret, fontSize = 13.sp,
-                        color = Color(0xFFB8D7FF), fontWeight = FontWeight.Bold)
+                    if (secret.isNotBlank()) {
+                        Surface(
+                            color = Color(0xFF151B28),
+                            shape = RoundedCornerShape(10.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Column(Modifier.padding(10.dp),
+                                verticalArrangement = Arrangement.spacedBy(7.dp)) {
+                                Text(secret, fontSize = 13.sp,
+                                    color = Color(0xFFB8D7FF),
+                                    fontWeight = FontWeight.Bold)
+                                TextButton(onClick = {
+                                    val clipboard = context.getSystemService(
+                                        Context.CLIPBOARD_SERVICE) as ClipboardManager
+                                    val clip = ClipData.newPlainText(
+                                        "BetVima Authenticator setup key", secret)
+                                    if (Build.VERSION.SDK_INT >= 33) {
+                                        clip.description.extras = PersistableBundle().apply {
+                                            putBoolean(ClipDescription.EXTRA_IS_SENSITIVE, true)
+                                        }
+                                    }
+                                    clipboard.setPrimaryClip(clip)
+                                    message = l("Setup key copied. Keep it private.",
+                                        "کلید کپی شد؛ آن را محرمانه نگه دارید.")
+                                }, modifier = Modifier.align(Alignment.End)) {
+                                    Text(l("Copy setup key", "کپی کلید راه‌اندازی"))
+                                }
+                            }
+                        }
+                    }
                 } else if (factorId == null) {
                     Text(l("Optional for members, mandatory for administrators.",
                         "برای کاربران اختیاری و برای مدیران اجباری است."),
@@ -109,13 +149,56 @@ internal fun GoogleAuthenticatorDialog(
                         Text(l("Set up authenticator", "فعال‌سازی Authenticator"))
                     }
                 } else {
-                    Text(l("Your account has an authenticator. Confirm a new code when signing in.",
-                        "Authenticator روی حساب شما ثبت شده است. هنگام ورود باید کد جدید وارد کنید."),
-                        color = Color(0xFFC5CBDA), fontSize = 12.sp)
+                    Text(l(
+                        "Recovery codes are not issued by Supabase. Set up a backup authenticator on another device so you can still sign in if this phone is lost.",
+                        "Supabase کد بازیابی صادر نمی‌کند. برای زمانی که گوشی را از دست می‌دهید، Authenticator پشتیبان را روی دستگاه دیگری فعال کنید."
+                    ), color = Color(0xFFC5CBDA), fontSize = 12.sp)
+                    if (verifiedFactors.size > 1) {
+                        Text(l("Backup authenticator is active (" + verifiedFactors.size + " devices).",
+                            "برنامه امنیتی پشتیبان فعال است (" + verifiedFactors.size + " دستگاه)."),
+                            color = Color(0xFF86E9BF), fontSize = 12.sp)
+                    } else {
+                        Button(
+                            onClick = {
+                                action {
+                                    val jwt = vault.accessToken(api)
+                                        ?: throw IllegalStateException("Sign in required")
+                                    // Preserve verified factors; only abandon an incomplete
+                                    // factor with this exact friendly name.
+                                    pending = api.mfaEnroll(jwt, backup = true)
+                                    enrollingBackup = true
+                                    code = ""
+                                }
+                            },
+                            enabled = !busy,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text(l("Add backup authenticator",
+                                "افزودن Authenticator پشتیبان"))
+                        }
+                    }
                     if (!adminRequired && !disableRequested) {
+                        if (verifiedFactors.size > 1) {
+                            Text(l("Select which authenticator to remove:",
+                                "برنامه موردنظر برای حذف را انتخاب کنید:"),
+                                color = Color.White, fontSize = 12.sp)
+                            verifiedFactors.forEach { factor ->
+                                FilterChip(
+                                    selected = factorId == factor.id,
+                                    onClick = { factorId = factor.id },
+                                    label = { Text(if (factor.name.contains("Backup", true))
+                                        l("Backup authenticator", "برنامه پشتیبان")
+                                        else l("Primary authenticator", "برنامه اصلی")) }
+                                )
+                            }
+                        }
                         OutlinedButton(onClick = { disableRequested = true },
                             modifier = Modifier.fillMaxWidth()) {
-                            Text(l("Disable (requires current code)", "غیرفعال‌سازی (نیازمند کد فعلی)"))
+                            Text(if (verifiedFactors.size > 1)
+                                l("Remove selected authenticator (code required)",
+                                    "حذف برنامه انتخاب‌شده (نیازمند کد)")
+                                else l("Disable 2FA (code required)",
+                                    "غیرفعال‌سازی دومرحله‌ای (نیازمند کد)"))
                         }
                     }
                 }
@@ -137,13 +220,26 @@ internal fun GoogleAuthenticatorDialog(
                                 if (disableRequested) {
                                     if (adminRequired) throw IllegalStateException("Administrators must keep MFA enabled")
                                     api.mfaUnenroll(upgraded.optString("access_token"), id)
-                                    factorId = null
+                                    verifiedFactors = api.mfaAllTotpFactors(
+                                        upgraded.optString("access_token")).filter { it.verified }
+                                    factorId = verifiedFactors.firstOrNull()?.id
                                     disableRequested = false
-                                    message = l("Two-factor authentication disabled", "تأیید دومرحله‌ای غیرفعال شد")
+                                    message = if (verifiedFactors.isEmpty())
+                                        l("Two-factor authentication disabled",
+                                            "تأیید دومرحله‌ای غیرفعال شد")
+                                    else l("Authenticator removed. Other factors remain active.",
+                                        "برنامه حذف شد؛ سایر عوامل امنیتی همچنان فعال‌اند.")
                                 } else {
+                                    verifiedFactors = api.mfaAllTotpFactors(
+                                        upgraded.optString("access_token")).filter { it.verified }
                                     factorId = id
                                     pending = null
-                                    message = l("Authenticator enabled successfully", "تأیید دومرحله‌ای با موفقیت فعال شد")
+                                    message = if (enrollingBackup)
+                                        l("Backup authenticator enabled successfully",
+                                            "Authenticator پشتیبان با موفقیت فعال شد")
+                                    else l("Authenticator enabled successfully",
+                                        "تأیید دومرحله‌ای با موفقیت فعال شد")
+                                    enrollingBackup = false
                                 }
                                 code = ""
                             }
