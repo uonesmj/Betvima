@@ -46,7 +46,12 @@ export interface BetsApiTrialResult {
   oddsSample: Array<{ sport: string; eventId: string; marketKeys: number; latestOffers: number; freshMarkets: number; freshSelections: number; error: string | null }>;
   bet365: { permitted: boolean; eventCount: number; sampleFixtureId: string | null;
     marketCount: number; priceCount: number; error: string | null;
-    upcomingAccess: string; upcomingCount: number };
+    upcomingAccess: string; upcomingCount: number;
+    pricedEventCount: number; sampledEventCount: number;
+    samples: Array<{
+      fixtureId: string; linkedEventId: string | null; match: string;
+      markets: number; selections: number; error: string | null;
+    }> };
   remainingHourlyRequests: number | null;
   callsInProbe: number;
   durationMs: number;
@@ -64,7 +69,7 @@ const safeError = (value: unknown): string => {
     'INTERNAL_SERVER_ERROR', 'METHOD_NOT_ALLOWED', 'UPSTREAM_TIMEOUT',
     'UPSTREAM_NETWORK_ERROR', 'UPSTREAM_NON_JSON', 'UPSTREAM_HTTP_404',
     'UPSTREAM_HTTP_5XX', 'UPSTREAM_HTTP_4XX', 'UPSTREAM_ERROR',
-    'UPSTREAM_RESPONSE_TOO_LARGE'].includes(text)
+    'UPSTREAM_RESPONSE_TOO_LARGE', 'NO_PRICED_MARKETS_IN_SAMPLES'].includes(text)
     ? text : 'UPSTREAM_ERROR';
 };
 const record = (value: unknown): Record<string, unknown> =>
@@ -100,7 +105,7 @@ export async function runBetsApiTrial(
     try {
       response = await fetcher(url.toString(), {
         method: 'GET', cache: 'no-store', redirect: 'error',
-        signal: AbortSignal.timeout(7000),
+        signal: AbortSignal.timeout(path.startsWith('/v1/bet365/') ? 11_000 : 7000),
         headers: { Accept: 'application/json' },
       });
     } catch (error) {
@@ -145,7 +150,7 @@ export async function runBetsApiTrial(
     sports: [], focusCountries: ['ir', 'tr', 'af', 'ge', 'az'].map(code => ({ code, live: 0, upcoming: 0 })), oddsSample: [],
     bet365: { permitted: false, eventCount: 0, sampleFixtureId: null,
       marketCount: 0, priceCount: 0, error: null,
-      upcomingAccess: 'NOT_TESTED', upcomingCount: 0 },
+      upcomingAccess: 'NOT_TESTED', upcomingCount: 0, pricedEventCount: 0, sampledEventCount: 0, samples: [] },
     remainingHourlyRequests: null, callsInProbe: 0, durationMs: 0,
     notes: [
       'Nothing is written to the sportsbook database; all live betting and settlement remain on the existing source.',
@@ -245,40 +250,85 @@ export async function runBetsApiTrial(
     return item;
   }));
 
-  // Probe a second documented Bet365 family endpoint independently: a
-  // transient inplay_filter error is NOT evidence the trial lacks Bet365.
-  try {
-    const upcoming = await call('/v1/bet365/upcoming', { sport_id: '1', page: '1' });
+  // Check Bet365 in-play and prematch entitlements concurrently. A single
+  // timeout on /upcoming must not be conflated with live market availability.
+  const [upcomingCheck, liveCheck] = await Promise.allSettled([
+    call('/v1/bet365/upcoming', { sport_id: '1', page: '1' }),
+    call('/v1/bet365/inplay_filter', { sport_id: '1' }),
+  ]);
+  if (upcomingCheck.status === 'fulfilled') {
     output.bet365.upcomingAccess = 'AVAILABLE';
-    output.bet365.upcomingCount = eventList(upcoming.results).length;
-  } catch (error) {
-    output.bet365.upcomingAccess = safeError(error instanceof Error ? error.message : error);
+    output.bet365.upcomingCount = eventList(upcomingCheck.value.results).length;
+  } else {
+    output.bet365.upcomingAccess = safeError(
+      upcomingCheck.reason instanceof Error ? upcomingCheck.reason.message : upcomingCheck.reason,
+    );
   }
 
-  try {
-    const data = await call('/v1/bet365/inplay_filter', { sport_id: '1' });
+  if (liveCheck.status === 'fulfilled') {
     output.bet365.permitted = true;
-    const matches = eventList(data.results);
+    const matches = eventList(liveCheck.value.results)
+      .filter(match => /^\\d{1,16}$/.test(stringField(match.id)));
     output.bet365.eventCount = matches.length;
-    // Events API includes a documented bet365_id. Prefer measuring the
-    // exact same match in both feeds over an unrelated filtered event.
-    const linkedId = output.sports.flatMap(sport => sport.sample)
-      .map(event => event.bet365Id).find(id => id !== null);
-    const first = linkedId ?? matches.map(match => stringField(match.id))
-      .find(id => /^\d{1,16}$/.test(id));
-    if (first) {
-      output.bet365.sampleFixtureId = first;
-      try {
-        const rich = await call('/v1/bet365/event', { FI: first });
-        const summary = parseBet365LivePreview(first, rich.results);
-        output.bet365.marketCount = summary.marketCount;
-        output.bet365.priceCount = summary.priceCount;
-      } catch (error) {
-        output.bet365.error = safeError(error instanceof Error ? error.message : error);
-      }
+    // FI=id in /bet365/inplay_filter. our_event_id links to the Events API.
+    // Never substitute an unrelated Events API event ID for the Bet365 FI.
+    const eventsIds = new Set(output.sports.filter(s => s.sportId === 1)
+      .flatMap(sport => sport.sample.map(event => event.id)));
+    const sorted = [
+      ...matches.filter(match => eventsIds.has(stringField(match.our_event_id))),
+      ...matches.filter(match => !eventsIds.has(stringField(match.our_event_id))),
+    ];
+    const distinctLeagues = new Set<string>();
+    const selected: Record<string, unknown>[] = [];
+    const used = new Set<string>();
+    for (const match of sorted) {
+      const fixtureId = stringField(match.id);
+      const league = stringField(record(match.league).id);
+      if (used.has(fixtureId) || (league && distinctLeagues.has(league))) continue;
+      used.add(fixtureId);
+      if (league) distinctLeagues.add(league);
+      selected.push(match);
+      if (selected.length === 4) break;
     }
-  } catch (error) {
-    output.bet365.error = safeError(error instanceof Error ? error.message : error);
+    // If there were fewer than four leagues, use other distinct fixtures.
+    for (const match of sorted) {
+      if (selected.length >= 4) break;
+      const fixtureId = stringField(match.id);
+      if (used.has(fixtureId)) continue;
+      used.add(fixtureId);
+      selected.push(match);
+    }
+    output.bet365.sampledEventCount = selected.length;
+    output.bet365.sampleFixtureId = selected[0] ? stringField(selected[0].id) : null;
+    output.bet365.samples = await Promise.all(selected.map(async match => {
+      const fixtureId = stringField(match.id);
+      const sample = {
+        fixtureId,
+        linkedEventId: /^\\d{1,16}$/.test(stringField(match.our_event_id))
+          ? stringField(match.our_event_id) : null,
+        match: `${eventName(match, 'home')} — ${eventName(match, 'away')}`.slice(0, 185),
+        markets: 0, selections: 0, error: null as string | null,
+      };
+      try {
+        const rich = await call('/v1/bet365/event', { FI: fixtureId });
+        const summary = parseBet365LivePreview(fixtureId, rich.results);
+        sample.markets = summary.marketCount;
+        sample.selections = summary.priceCount;
+      } catch (error) {
+        sample.error = safeError(error instanceof Error ? error.message : error);
+      }
+      return sample;
+    }));
+    output.bet365.marketCount = output.bet365.samples.reduce((sum, s) => sum + s.markets, 0);
+    output.bet365.priceCount = output.bet365.samples.reduce((sum, s) => sum + s.selections, 0);
+    output.bet365.pricedEventCount = output.bet365.samples.filter(s => s.markets > 0).length;
+    if (output.bet365.samples.length && output.bet365.pricedEventCount === 0) {
+      output.bet365.error = output.bet365.samples.find(s => s.error)?.error ?? 'NO_PRICED_MARKETS_IN_SAMPLES';
+    }
+  } else {
+    output.bet365.error = safeError(
+      liveCheck.reason instanceof Error ? liveCheck.reason.message : liveCheck.reason,
+    );
   }
   output.remainingHourlyRequests = remainingHourlyRequests;
   output.callsInProbe = callsInProbe;
@@ -299,7 +349,7 @@ export function inspectBetsApiTrial(): Promise<BetsApiTrialResult> {
       focusCountries: [], oddsSample: [],
       bet365: { permitted: false, eventCount: 0, sampleFixtureId: null,
         marketCount: 0, priceCount: 0, error: 'NOT_CONFIGURED',
-        upcomingAccess: 'NOT_TESTED', upcomingCount: 0 },
+        upcomingAccess: 'NOT_TESTED', upcomingCount: 0, pricedEventCount: 0, sampledEventCount: 0, samples: [] },
       remainingHourlyRequests: null, callsInProbe: 0, durationMs: 0,
       notes: ['Set BETSAPI_TRIAL_ENABLED=true and a freshly rotated BETSAPI_TRIAL_TOKEN on the server. Never commit a token.'],
     });
