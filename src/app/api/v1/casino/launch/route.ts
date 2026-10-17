@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server';
 import { withUser } from '@/server/http/guard';
 import { withErrorHandling } from '@/lib/errors';
 import { readJson, enforceRateLimit } from '@/server/http/request';
+import { casinoIdentityApproved } from '@/server/kyc/eligibility';
 import { casinoEnabled, casinoRealMoneyUserAllowed, launchCasinoGame } from '@/server/providers/softaggregator/client';
 import { casinoPlayerMayLaunch } from '@/server/providers/softaggregator/wallet';
 import { verifiedCasinoLocation } from '@/server/providers/softaggregator/edge-location';
@@ -22,6 +23,7 @@ export const POST = withErrorHandling('casino.launch', async (ctx, request: Requ
   if (!casinoEnabled()) return NextResponse.json({ error: 'CASINO_DISABLED' }, { status: 503 });
   await enforceRateLimit('casino:launch:' + user.id, 20, 60);
   const input = await readJson(request, schema, ctx);
+  if (!(await casinoIdentityApproved(user.id))) return NextResponse.json({ error: 'CASINO_KYC_REQUIRED' }, { status: 403, headers: { 'Cache-Control': 'no-store' } });
   const demo = input.demo ?? true;
   const device = input.device ?? 'mobile';
   const lang = input.lang ?? 'en';
