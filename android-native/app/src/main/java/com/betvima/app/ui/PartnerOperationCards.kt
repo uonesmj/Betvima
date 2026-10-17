@@ -110,6 +110,21 @@ internal fun PartnerEmptyPanel(lang:Lang, title:String, detail:String,
 internal fun PartnerReferralCard(row: JSONObject, lang:Lang, currency:String,
     onCopy: (String)->Unit) {
     val userId = row.str("userId")
+    // The upgraded API supplies authentic currency-separated ledger buckets.
+    // Older aggregated totals must never be labeled as USD or IRR.
+    val byCurrency = row.arr("financialByCurrency").objects()
+    val single = byCurrency.singleOrNull()
+    val singleCurrency = single?.str("currency") ?: ""
+    val summaryDeposit = when {
+        single != null -> money(single.str("depositMinor","0"),singleCurrency)
+        byCurrency.size > 1 -> tr(lang,"Multiple currencies","چندارزی")
+        else -> "—"
+    }
+    val summaryWithdrawal = when {
+        single != null -> money(single.str("withdrawalMinor","0"),singleCurrency)
+        byCurrency.size > 1 -> tr(lang,"Multiple currencies","چندارزی")
+        else -> "—"
+    }
     var expanded by rememberSaveable(userId) { mutableStateOf(false) }
     Surface(Modifier.fillMaxWidth(),color=Color.White,
         shape=RoundedCornerShape(20.dp),border=BorderStroke(1.dp,infoBorder)) {
@@ -134,11 +149,9 @@ internal fun PartnerReferralCard(row: JSONObject, lang:Lang, currency:String,
             }
             Row(horizontalArrangement=Arrangement.spacedBy(8.dp)) {
                 PartnerField(tr(lang,"Total deposits","کل واریز"),
-                    row.str("depositMinor").takeIf {it.isNotBlank()}
-                        ?.let{money(it,currency)}?:"—",Modifier.weight(1f),infoGreen)
+                    summaryDeposit,Modifier.weight(1f),infoGreen)
                 PartnerField(tr(lang,"Total withdrawals","کل برداشت"),
-                    row.str("withdrawalMinor").takeIf {it.isNotBlank()}
-                        ?.let{money(it,currency)}?:"—",Modifier.weight(1f),infoPink)
+                    summaryWithdrawal,Modifier.weight(1f),infoPink)
             }
             AnimatedVisibility(visible=expanded,
                 enter=expandVertically()+fadeIn(),
@@ -162,21 +175,41 @@ internal fun PartnerReferralCard(row: JSONObject, lang:Lang, currency:String,
                     PartnerField(tr(lang,"Referral confirmation","تأیید معرفی"),
                         row.str("confirmedAt").take(16).replace("T"," · ")
                             .ifBlank { "—" })
-                    Row(horizontalArrangement=Arrangement.spacedBy(8.dp)) {
-                        PartnerField(tr(lang,"Total wagered","کل شرط‌ها"),
-                            row.str("wageredMinor").takeIf {it.isNotBlank()}
-                                ?.let{money(it,currency)}?:"—",Modifier.weight(1f))
-                        PartnerField(tr(lang,"Player P/L","سود و زیان کاربر"),
-                            row.str("netRevenueMinor").takeIf {it.isNotBlank()}
-                                ?.let{money(it,currency)}?:"—",Modifier.weight(1f))
+                    if(byCurrency.isEmpty()) {
+                        Text(tr(lang,
+                            "Currency-specific financial history is not yet available; refresh after the API update.",
+                            "اطلاعات مالی تفکیک‌شده هنوز از سرور دریافت نشده؛ پس از به‌روزرسانی API تازه‌سازی کنید."),
+                            fontSize=11.sp,color=infoMuted,lineHeight=17.sp)
                     }
-                    Row(horizontalArrangement=Arrangement.spacedBy(8.dp)) {
-                        PartnerField(tr(lang,"Commission credited","کمیسیون ثبت‌شده"),
-                            row.str("commissionMinor").takeIf {it.isNotBlank()}
-                                ?.let{money(it,currency)}?:"—",Modifier.weight(1f),infoGreen)
-                        PartnerField(tr(lang,"Calculated partner share","سهم محاسبه‌شده"),
-                            row.str("panelShareMinor").takeIf {it.isNotBlank()}
-                                ?.let{money(it,currency)}?:"—",Modifier.weight(1f),infoBlue)
+                    byCurrency.forEach { bucket ->
+                        val code=bucket.str("currency")
+                        Divider(color=infoBorder)
+                        Row(verticalAlignment=Alignment.CenterVertically) {
+                            Icon(Icons.Default.AccountBalanceWallet,null,
+                                tint=infoBlue,modifier=Modifier.size(16.dp))
+                            Spacer(Modifier.width(6.dp))
+                            Text(code, fontWeight=FontWeight.Black,
+                                color=infoBlue,fontSize=13.sp)
+                        }
+                        Row(horizontalArrangement=Arrangement.spacedBy(8.dp)) {
+                            PartnerField(tr(lang,"Deposits","واریزها"),
+                                money(bucket.str("depositMinor","0"),code),
+                                Modifier.weight(1f),infoGreen)
+                            PartnerField(tr(lang,"Withdrawals","برداشت‌ها"),
+                                money(bucket.str("withdrawalMinor","0"),code),
+                                Modifier.weight(1f),infoPink)
+                        }
+                        Row(horizontalArrangement=Arrangement.spacedBy(8.dp)) {
+                            PartnerField(tr(lang,"Total wagered","گردش شرط"),
+                                money(bucket.str("wageredMinor","0"),code),
+                                Modifier.weight(1f))
+                            PartnerField(tr(lang,"Player P/L","سود و زیان کاربر"),
+                                money(bucket.str("playerNetMinor","0"),code),
+                                Modifier.weight(1f))
+                        }
+                        PartnerField(tr(lang,"Posted affiliate ledger","گردش کمیسیون ثبت‌شده"),
+                            money(bucket.str("ledgerMinor","0"),code),
+                            emphasis=infoBlue)
                     }
                 }
             }
