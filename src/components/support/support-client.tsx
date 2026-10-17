@@ -76,6 +76,8 @@ export default function SupportClient({ onClose }: { onClose?: () => void }) {
   const fileInput = useRef<HTMLInputElement>(null);
   const initialized = useRef(false);
   const selectedId = selected?.id;
+  const ticketOnScreen = useRef<string | null>(null);
+  ticketOnScreen.current = selectedId || null;
 
   useEffect(() => {
     setMuted(window.localStorage.getItem('betvima:support-muted') === 'true');
@@ -115,6 +117,7 @@ export default function SupportClient({ onClose }: { onClose?: () => void }) {
   const getMessages = useCallback(async (ticketId: string, first = false) => {
     try {
       const data = await supportRequest('/api/v1/support/' + encodeURIComponent(ticketId));
+      if (ticketOnScreen.current !== ticketId) return;
       if (data.ticket) setSelected(current => current?.id === ticketId ? data.ticket! : current);
       if (first) lastSupportMessage.current = null;
       const last = (data.messages || []).filter(item => item.senderRole === 'support').at(-1)?.id || null;
@@ -140,6 +143,10 @@ export default function SupportClient({ onClose }: { onClose?: () => void }) {
     return () => { window.clearInterval(poll); window.clearInterval(markPoll); window.removeEventListener('focus', focus); };
   }, [selectedId, startNew, getMessages, markVisibleReplyRead]);
 
+  useEffect(() => {
+    if (selectedId && !startNew) document.documentElement.dataset.betvimaSupportActive = selectedId;
+    return () => { if (document.documentElement.dataset.betvimaSupportActive === selectedId) delete document.documentElement.dataset.betvimaSupportActive; };
+  }, [selectedId, startNew]);
   useEffect(() => { bottom.current?.scrollIntoView({ block: 'end', behavior: 'smooth' }); }, [messages.length, selectedId]);
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
@@ -165,7 +172,7 @@ export default function SupportClient({ onClose }: { onClose?: () => void }) {
   }
   function choose(ticket: Ticket) {
     setSelected(ticket); setStartNew(false); setText(''); setFile(null); setHistory(false); setMenu(false); setError(''); setMessages([]);
-    window.history.replaceState(null, '', '/support?ticket=' + ticket.id);
+    if (window.location.pathname === '/support') window.history.replaceState(null, '', '/support?ticket=' + ticket.id);
   }
   function validateFile(next: File | null) {
     if (next && (next.size > 10 * 1024 * 1024 || !allowed.split(',').includes(next.type))) {
@@ -181,7 +188,7 @@ export default function SupportClient({ onClose }: { onClose?: () => void }) {
     await supportRequest('/api/v1/support/' + ticketId + '/messages', { method: 'POST', body: form });
   }
   async function send() {
-    if (busy || !active(selected!) || (!text.trim() && !file)) return;
+    if (busy || !selected || !active(selected) || (!text.trim() && !file)) return;
     setBusy(true); setError('');
     const ticketId = selected!.id;
     try {
@@ -203,7 +210,7 @@ export default function SupportClient({ onClose }: { onClose?: () => void }) {
       const ticket = data.ticket;
       // Switch into the existing conversation even if uploading the first attachment fails.
       setSelected(ticket); setStartNew(false); setText(''); setName(''); setMessages([]); setFile(null);
-      window.history.replaceState(null, '', '/support?ticket=' + ticket.id);
+      if (window.location.pathname === '/support') window.history.replaceState(null, '', '/support?ticket=' + ticket.id);
       await getTickets();
       if (file) {
         try { await attachTo(ticket.id, '', file); }
@@ -285,6 +292,7 @@ export default function SupportClient({ onClose }: { onClose?: () => void }) {
           </div>}
           <div className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain px-4 py-5 sm:px-8" onClick={() => menu && setMenu(false)}>
             <div className="mx-auto w-fit rounded-full bg-[#EEEFF2] px-4 py-2 text-xs text-[#696E7D]">{clock(selected.createdAt, fa)}</div>
+            {messages.some(message => message.senderRole === 'support') && <p className="py-2 text-center text-xs text-[#AFB0B4]">{copy('A support manager joined the chat','پشتیبان به گفت‌وگو پیوست')}</p>}
             {messages.map(message => {
               const mine = message.senderRole === 'user';
               return <div key={message.id} className={'flex ' + (mine ? 'justify-end' : 'justify-start')}>
