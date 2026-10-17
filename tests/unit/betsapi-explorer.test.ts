@@ -37,6 +37,29 @@ describe('Bet365 site catalogue security and pagination', () => {
     expect(JSON.stringify(result)).not.toContain(token);
   });
 
+  it('lists every BetsAPI Events fixture, even when no Bet365 market mapping exists', async () => {
+    const fetcher = fetcherWith(() => ({ results: [{
+      id: '8241329', time: '1792400000', time_status: '1', ss: '0-1',
+      league: { name: 'Independent League', cc: 'ir' },
+      home: { name: 'Sample A' }, away: { name: 'Sample B' },
+      timer: { tm: '72' },
+    }, {
+      id: '8241330', bet365_id: '9918271', time: '1792400100', time_status: '1',
+      league: { name: 'Bet365 linked' },
+      home: { name: 'Sample C' }, away: { name: 'Sample D' },
+    }] }));
+    const data = await exploreBetsApi(token, {
+      mode: 'live', sportId: 1, feed: 'events',
+    }, fetcher as typeof fetch) as ExplorerList;
+    expect(data.source).toBe('betsapi_events');
+    expect(data.total).toBe(2);
+    expect(data.fixtures[0]).toMatchObject({
+      fi: null, eventId: '8241329', home: 'Sample A', minute: 72,
+    });
+    expect(data.fixtures[1]).toMatchObject({ fi: '9918271', eventId: '8241330' });
+    expect(String(fetcher.mock.calls[0]?.[0])).toContain('/v3/events/inplay?');
+  });
+
   it('preserves page numbers and total fixtures, not just first 50 upcoming games', async () => {
     const fetcher = fetcherWith(() => ({
       pager: { page: 5, per_page: 50, total: 1010 },
