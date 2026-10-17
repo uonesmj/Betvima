@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { casinoEnabled, casinoGames } from '@/server/providers/softaggregator/client';
 import { filterCasinoCatalogue } from '@/server/providers/softaggregator/catalogue-filters';
+import { casinoGameGroup, featuredCasinoGames } from '@/lib/casino-featured';
 
 export const dynamic = 'force-dynamic';
 
@@ -14,7 +15,13 @@ export async function GET(request: Request) {
     const page = Math.min(1000, Math.max(1, Number(q.get('page')) || 1));
     const limit = Math.min(100, Math.max(1, Number(q.get('limit')) || 40));
     const all = await casinoGames();
-    const { games, providers } = filterCasinoCatalogue(all, { category, provider, search });
+    const featured = q.get('featured') === '1';
+    const group = q.get('group') ?? '';
+    const scoped = featured ? featuredCasinoGames(all) : all;
+    const grouped = group === 'slots' || group === 'live'
+      ? scoped.filter((game) => casinoGameGroup(game) === group)
+      : scoped;
+    const { games, providers } = filterCasinoCatalogue(grouped, { category, provider, search });
     return NextResponse.json({ ok: true, data: {
       items: games.slice((page - 1) * limit, page * limit).map((g) => ({
         id: g.id_hash, name: g.name, category: g.game_type, provider: g.provider,

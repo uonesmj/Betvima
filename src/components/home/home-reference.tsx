@@ -1,5 +1,6 @@
 'use client';
 import { useApp } from "../layout/providers";
+import { CasinoHomeCarousel } from '@/components/casino/casino-showcase';
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -8,6 +9,7 @@ import {
   Sparkles,
   ChevronRight,
   Clock3,
+  Dices,
   Flame,
   Radio,
   Search,
@@ -685,6 +687,16 @@ export function HomeReference({  sports,
         ) : (
           <EmptyState text="No data available." />
         )}
+      </section>
+
+      {/* Casino: follows Upcoming and uses the exact shared sports section header. */}
+      <section className="mb-6">
+        <SectionHeader
+          title="Casino"
+          href="/casino"
+          icon={<Dices size={17} />}
+        />
+        <CasinoHomeCarousel />
       </section>
 
       </div>
