@@ -331,6 +331,11 @@ fun WalletTransferSheet(
     var usdRate by remember { mutableStateOf<String?>(null) }
     var refreshKey by remember { mutableIntStateOf(0) }
     var loading by remember { mutableStateOf(true) }
+    // Keep the sheet viewport stable across Crypto / U-Voucher / HotVoucher content changes.
+    val transferScrollState = rememberScrollState()
+    LaunchedEffect(direction, method) {
+        transferScrollState.scrollTo(0)
+    }
     val selectedCoin = walletCoins.firstOrNull { it.code == coin } ?: walletCoins.first()
     val isDeposit = direction == "deposit"
     val voucher = method != "crypto"
@@ -433,7 +438,8 @@ fun WalletTransferSheet(
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     ) {
         Column(
-            Modifier.fillMaxWidth().verticalScroll(rememberScrollState())
+            Modifier.fillMaxWidth().fillMaxHeight(0.92f)
+                .verticalScroll(transferScrollState)
                 .padding(horizontal = 17.dp).padding(bottom = 24.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
