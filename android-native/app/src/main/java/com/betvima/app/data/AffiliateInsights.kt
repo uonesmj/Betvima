@@ -5,6 +5,8 @@ import java.math.BigDecimal
 import java.math.BigInteger
 import java.math.RoundingMode
 import java.time.LocalDate
+import java.time.format.DateTimeFormatter
+import java.util.Locale
 
 /**
  * Reporting-only projection of the affiliate's authoritative daily ledger.
@@ -40,7 +42,17 @@ fun parsePartnerDailyStats(response: JSONObject, currency: String): List<Partner
         val obj = rows.optJSONObject(index) ?: return@mapNotNull null
         if (obj.optString("currency", currency) != currency) return@mapNotNull null
         runCatching {
-            val date = LocalDate.parse(obj.optString("day").take(10))
+            val rawDay = obj.optString("day")
+            val date = runCatching { LocalDate.parse(rawDay.take(10)) }
+                .getOrElse {
+                    // PostgreSQL date values can be serialized with JS Date.toString().
+                    // Treat them as calendar dates rather than dropping real rows.
+                    val pieces = Regex("^[A-Za-z]{3} ([A-Za-z]{3} +[0-9]{1,2} +[0-9]{4})")
+                        .find(rawDay)?.groupValues?.get(1)
+                        ?: throw IllegalArgumentException("Unrecognized affiliate date")
+                    LocalDate.parse(pieces.replace(Regex(" +"), " "),
+                        DateTimeFormatter.ofPattern("MMM d yyyy", Locale.US))
+                }
             fun minor(name: String) = BigInteger(obj.optString(name, "0"))
             PartnerDailyStat(
                 date, obj.optInt("registrations", 0),
