@@ -47,7 +47,6 @@ export function NotificationsBell() {
   const [inbox, setInbox] = useState<Inbox | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [supportReply, setSupportReply] = useState<InboxNotification | null>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
 
   const load = useCallback(async (silent = false) => {
@@ -57,29 +56,6 @@ export function NotificationsBell() {
       const result = await apiRequest<Inbox>('/api/v1/notifications?page=1&pageSize=50');
       setInbox(result);
       setError('');
-      const latestSupport = result.items.find(item => item.eventKey === 'support.reply' && !item.readAt);
-      if (latestSupport && typeof window !== 'undefined') {
-        const id = latestSupport.id;
-        const activeChat = document.documentElement.dataset.betvimaSupportActive;
-        const ticketId = latestSupport.data?.ticketId;
-        if (window.sessionStorage.getItem('betvima:last-support-alert') !== id &&
-            (!activeChat || activeChat !== ticketId)) {
-          window.sessionStorage.setItem('betvima:last-support-alert', id);
-          setSupportReply(latestSupport);
-          // Browser-level alerts are displayed only if permission was granted
-          // previously; opening the website never forces a permission prompt.
-          if (document.visibilityState === 'hidden' && 'Notification' in window &&
-              window.Notification.permission === 'granted') {
-            const notification = new window.Notification(latestSupport.title, { body: latestSupport.body, tag: 'betvima-support-' + id });
-            notification.onclick = () => {
-              window.focus();
-              notification.close();
-              const action = actionFor(latestSupport);
-              if (action) window.location.assign(action.href);
-            };
-          }
-        }
-      }
     } catch {
       if (!silent) setError(fa ? 'اعلان‌ها موقتاً در دسترس نیستند.' : 'Notifications are temporarily unavailable.');
     } finally {
@@ -153,25 +129,6 @@ export function NotificationsBell() {
         {unread > 0 && <span aria-label={copy('Unread notifications', 'اعلان خوانده‌نشده')}
           className="absolute right-1.5 top-1.5 h-3 w-3 rounded-full border-2 border-[#272727] bg-[#FF6B2C] shadow-[0_0_0_2px_rgba(255,107,44,.14)]" />}
       </button>
-
-      {supportReply && !open && documentSafeSupportReply(supportReply) && (
-        <div role="status" className="fixed bottom-20 right-4 z-[132] w-[min(380px,calc(100vw-32px))] rounded-[19px] border border-[#DCE8F4] bg-white p-4 text-[#172033] shadow-[0_14px_55px_rgba(0,0,0,.25)]">
-          <div className="flex items-start justify-between gap-2">
-            <p className="font-black">{supportReply.title}</p>
-            <button type="button" aria-label={copy('Dismiss','بستن')} onClick={() => setSupportReply(null)}><X size={18}/></button>
-          </div>
-          <p className="mt-2 line-clamp-3 text-sm text-[#637184]">{supportReply.body}</p>
-          <button type="button" onClick={async () => {
-            const action = actionFor(supportReply);
-            if (!action) return;
-            await mark([supportReply.id]);
-            setSupportReply(null);
-            router.push(action.href);
-          }} className="mt-3 w-full rounded-xl bg-[#087CF5] px-4 py-3 text-sm font-black text-white">
-            {copy('Open chat','باز کردن گفت‌وگو')}
-          </button>
-        </div>
-      )}
 
       {open && (
         <div className="fixed inset-0 z-[125] flex items-end justify-center sm:items-start sm:justify-end sm:px-5 sm:pt-20"
@@ -258,10 +215,6 @@ export function NotificationsBell() {
       )}
     </>
   );
-}
-
-function documentSafeSupportReply(item: InboxNotification): boolean {
-  return item.eventKey === 'support.reply' && actionFor(item) !== null;
 }
 
 function EmptyAlerts({ title, hint }: { title: string; hint: string }) {

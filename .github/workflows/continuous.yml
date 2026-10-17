@@ -16,6 +16,10 @@ on:
       - 'src/components/account/affiliate-login-client.tsx'
       - 'src/components/layout/providers.tsx'
       - 'tests/unit/password-recovery-link.test.ts'
+      - 'src/server/adapters/postgres/notifications.ts'
+      - 'src/components/layout/notifications-bell.tsx'
+      - 'supabase/migrations/0216_in_app_notification_retention_24h.sql'
+      - 'tests/unit/notification-24h-retention.test.ts'
   workflow_dispatch:
     inputs:
       approve_production:
