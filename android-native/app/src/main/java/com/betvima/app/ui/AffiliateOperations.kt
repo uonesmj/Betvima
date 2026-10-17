@@ -268,93 +268,173 @@ fun AffiliateOperations(state: AppState, model: AppViewModel, currency: String,
                     values.forEach { row -> PartnerLedgerCard(row,state.lang,currency) }
                 }
                 "payouts" -> {
-                    val payable = data?.optJSONObject("payable")
-                    val usable = payable?.str("payableMinor")
-                    if (usable != null) BvStatCard(
-                        tr(state.lang, "Payable commission", "کمیسیون قابل برداشت"),
-                        money(usable,currency), Icons.Default.AccountBalanceWallet, Palette.green)
-                    if (values.isEmpty()) PartnerEmpty(state.lang)
-                    values.forEach { row ->
-                        PartnerRow(
-                            title = row.str("publicId", row.str("id").take(8)),
-                            subtitle = row.str("status") + " · " + row.str("requestedAt").take(10),
-                            value = money(row.str("amountMinor", "0"),currency),
-                            icon = Icons.Default.Payments
-                        )
-                    }
-                    Surface(color = Color.White, shape = RoundedCornerShape(19.dp),
-                        border = BorderStroke(1.dp, Palette.border)) {
-                        Column(Modifier.fillMaxWidth().padding(15.dp),
-                            verticalArrangement = Arrangement.spacedBy(9.dp)) {
-                            Text(tr(state.lang,"Request a payout","درخواست برداشت افیلیت"),
-                                fontWeight = FontWeight.Black, fontSize = 15.sp)
-                            Text(tr(state.lang,
-                                "A saved payout wallet is required. Server validates funds, minimums and approval.",
-                                "برای برداشت کیف پول ثبت‌شده لازم است. حداقل مبلغ، موجودی و تأیید پرداخت در سرور کنترل می‌شود."),
-                                fontSize = 11.sp, color = Palette.muted)
-                            PartnerAssetChooser(payoutAsset, state.lang) { payoutAsset = it }
-                            OutlinedTextField(value=payoutAmount,
-                                onValueChange={ payoutAmount=it.filter { ch ->
-                                    ch.isDigit() || ch=='.' }.take(16) },
-                                modifier=Modifier.fillMaxWidth(),singleLine=true,
-                                label={Text(tr(state.lang,"Amount","مبلغ")+" ("+currency+")")},
-                                keyboardOptions=KeyboardOptions(keyboardType=KeyboardType.Decimal))
-                            val minor = runCatching {
-                                val decimals = if (currency in setOf("IRT","IRR")) 0 else 2
-                                BigDecimal(payoutAmount).setScale(decimals,RoundingMode.UNNECESSARY)
-                                    .movePointRight(decimals).toBigIntegerExact().toString()
-                            }.getOrNull()
-                            val payable = data?.optJSONObject("payable")?.str("payableMinor")
-                                ?.toBigDecimalOrNull()
-                            val meetsMinimum = minor?.toBigDecimalOrNull()?.let {
-                                it >= (minimumPayoutMinor.toBigDecimalOrNull() ?: BigDecimal.ZERO)
-                            } ?: false
-                            val validBalance = minor?.toBigDecimalOrNull()?.let {
-                                payable != null && it <= payable
-                            } ?: false
-                            val walletReady = availableWalletAssets.contains(payoutAsset)
-                            if (!walletReady) Text(tr(state.lang,
-                                "Save a wallet for the chosen network before requesting a payout.",
-                                "قبل از برداشت، کیف پول شبکه انتخاب‌شده را ثبت کنید."),
-                                color=Palette.red,fontSize=11.sp)
-                            if (minimumPayoutMinor != "0") Text(tr(state.lang,
-                                "Minimum payout: ","حداقل برداشت: ") +
+                    val payable=data?.optJSONObject("payable")?.str("payableMinor")
+                    val usable=payable?.toBigDecimalOrNull()
+                    val balance=payable?.takeIf{it.isNotBlank()}
+                        ?.let{money(it,currency)}?:"—"
+                    val last=values.firstOrNull()
+                    PartnerInfoCard(
+                        tr(state.lang,"Payout center","مرکز برداشت افیلیت"),
+                        tr(state.lang,
+                            "Authorized commission balance and payout requests",
+                            "موجودی کمیسیون مجاز و درخواست‌های برداشت"),
+                        Icons.Default.AccountBalanceWallet) {
+                        Row(horizontalArrangement=Arrangement.spacedBy(9.dp)) {
+                            PartnerField(tr(state.lang,"Available to request","قابل درخواست"),
+                                balance,Modifier.weight(1f),Palette.green)
+                            PartnerField(tr(state.lang,"Minimum payout","حداقل برداشت"),
                                 money(minimumPayoutMinor,currency),
-                                color=Palette.muted,fontSize=11.sp)
-                            Button(onClick={payoutConfirm=true},
-                                enabled=!actionBusy && minor!=null && minor.toBigDecimal()>BigDecimal.ZERO &&
-                                    meetsMinimum && validBalance && walletReady,
-                                modifier=Modifier.fillMaxWidth(),
-                                colors=ButtonDefaults.buttonColors(containerColor=Palette.green)) {
-                                Text(tr(state.lang,"Review payout request","بررسی درخواست برداشت"),
-                                    color=Palette.ink,fontWeight=FontWeight.Bold)
+                                Modifier.weight(1f),affiliatePink)
+                        }
+                        Divider(color=affiliateOutline)
+                        Row(verticalAlignment=Alignment.CenterVertically) {
+                            Text(tr(state.lang,"Latest payout status","وضعیت آخرین برداشت"),
+                                modifier=Modifier.weight(1f),fontSize=11.sp,
+                                color=Palette.muted)
+                            if(last!=null) PartnerStatusPill(last.str("status"))
+                            else Text("—",color=Palette.muted)
+                        }
+                    }
+                    PartnerInfoCard(tr(state.lang,"Request a payout","درخواست برداشت"),
+                        tr(state.lang,
+                            "Pick the asset, check your saved address, then review the request.",
+                            "ارز را انتخاب کنید، آدرس ذخیره‌شده را بررسی و درخواست را تأیید کنید."),
+                        Icons.Default.Payments) {
+                        PartnerAssetChooser(payoutAsset,state.lang) {
+                            payoutAsset=it
+                            payoutConfirm=false
+                        }
+                        val ready=availableWalletAssets.contains(payoutAsset)
+                        Surface(color=if(ready)Color(0xFFEAF9F1) else Color(0xFFFFF1F4),
+                            shape=RoundedCornerShape(13.dp)) {
+                            Column(Modifier.fillMaxWidth().padding(12.dp)) {
+                                Text(if(ready)
+                                    tr(state.lang,"Saved wallet · "+payoutAsset,
+                                        "کیف پول ذخیره‌شده · "+payoutAsset)
+                                    else tr(state.lang,"Wallet not configured",
+                                        "کیف پول شبکه انتخابی ثبت نشده"),
+                                    fontWeight=FontWeight.Black,fontSize=11.sp,
+                                    color=if(ready)Color(0xFF08794E) else affiliatePink)
+                                Text(maskedWallets[payoutAsset]?:tr(state.lang,
+                                    "Save a destination wallet first.",
+                                    "ابتدا کیف پول مقصد را ذخیره کنید."),
+                                    color=Palette.muted,fontSize=11.sp,maxLines=2)
+                                if(!ready) TextButton(onClick={
+                                    if(showNavigation) switch("wallets")
+                                    else onNavigate("wallets")
+                                }) {
+                                    Text(tr(state.lang,"Manage payout wallets",
+                                        "مدیریت کیف پول‌های برداشت"),
+                                        color=affiliateBlue,fontWeight=FontWeight.Black)
+                                    Icon(Icons.Default.ChevronRight,null,
+                                        tint=affiliateBlue,modifier=Modifier.size(17.dp))
+                                }
                             }
-                            if (payoutConfirm && minor!=null) {
-                                AlertDialog(onDismissRequest={payoutConfirm=false},
-                                    title={Text(tr(state.lang,"Confirm payout","تأیید درخواست برداشت"))},
-                                    text={Text(tr(state.lang,
-                                        "Submit payout request for approval? This is not an instant transfer.",
-                                        "درخواست برداشت برای بررسی ثبت شود؟ انتقال وجه آنی نیست.") +
-                                        "\n" + money(minor,currency) + " · " + payoutAsset)},
-                                    confirmButton={
-                                        TextButton(onClick={
-                                            payoutConfirm=false
+                        }
+                        OutlinedTextField(value=payoutAmount,
+                            onValueChange={
+                                payoutAmount=it.filter { ch->ch.isDigit()||ch=='.' }.take(16)
+                                payoutConfirm=false
+                            },
+                            modifier=Modifier.fillMaxWidth(),singleLine=true,
+                            label={Text(tr(state.lang,"Amount","مبلغ")+" ("+currency+")")},
+                            keyboardOptions=KeyboardOptions(keyboardType=KeyboardType.Decimal),
+                            shape=RoundedCornerShape(14.dp))
+                        Row(verticalAlignment=Alignment.CenterVertically) {
+                            Text(tr(state.lang,"Payable: ","قابل برداشت: ")+balance,
+                                fontSize=11.sp,color=Palette.muted,
+                                modifier=Modifier.weight(1f))
+                            OutlinedButton(onClick={
+                                val amountMinor=payable?.toBigDecimalOrNull()
+                                val decimals=if(currency in setOf("IRT","IRR"))0 else 2
+                                if(amountMinor!=null&&amountMinor>BigDecimal.ZERO) {
+                                    payoutAmount=amountMinor.movePointLeft(decimals)
+                                        .stripTrailingZeros().toPlainString()
+                                    payoutConfirm=false
+                                }
+                            },enabled=usable!=null&&usable>BigDecimal.ZERO) {
+                                Text("MAX",fontWeight=FontWeight.Black,fontSize=11.sp)
+                            }
+                        }
+                        val decimals=if(currency in setOf("IRT","IRR"))0 else 2
+                        val minor=runCatching {
+                            BigDecimal(payoutAmount)
+                                .setScale(decimals,RoundingMode.UNNECESSARY)
+                                .movePointRight(decimals).toBigIntegerExact().toString()
+                        }.getOrNull()
+                        val validStake=minor?.toBigDecimalOrNull()
+                        val min=minimumPayoutMinor.toBigDecimalOrNull()?:BigDecimal.ZERO
+                        val enough=validStake!=null&&validStake>BigDecimal.ZERO&&
+                            validStake>=min&&usable!=null&&validStake<=usable
+                        Row(verticalAlignment=Alignment.CenterVertically) {
+                            Text(tr(state.lang,"Minimum","حداقل")+": "+
+                                money(minimumPayoutMinor,currency),
+                                color=Palette.muted,fontSize=11.sp,
+                                modifier=Modifier.weight(1f))
+                            Icon(Icons.Default.VerifiedUser,null,tint=affiliateBlue,
+                                modifier=Modifier.size(19.dp))
+                            Text(tr(state.lang,"Server verified","کنترل سرور"),
+                                fontSize=10.sp,color=Palette.muted)
+                        }
+                        Button(onClick={payoutConfirm=true},
+                            enabled=!actionBusy&&enough&&ready,
+                            modifier=Modifier.fillMaxWidth().heightIn(min=52.dp),
+                            shape=RoundedCornerShape(15.dp),
+                            colors=ButtonDefaults.buttonColors(containerColor=Palette.green)) {
+                            Text(tr(state.lang,"Review payout request",
+                                "بررسی درخواست برداشت"),
+                                color=Palette.ink,fontWeight=FontWeight.Black)
+                        }
+                        Text(tr(state.lang,
+                            "A request is not a payment. Processing and approval occur after server-side checks.",
+                            "ثبت درخواست به معنی پرداخت نیست؛ بررسی و تأیید نهایی در سرور انجام می‌شود."),
+                            color=Palette.muted,fontSize=10.sp,lineHeight=15.sp)
+                        if(payoutConfirm&&minor!=null) {
+                            AlertDialog(onDismissRequest={payoutConfirm=false},
+                                title={Text(tr(state.lang,"Confirm payout","تأیید برداشت"))},
+                                text={Text(tr(state.lang,
+                                    "Submit this amount for review?",
+                                    "این مبلغ برای بررسی ثبت شود؟")+"\n"+
+                                    money(minor,currency)+" · "+payoutAsset+"\n"+
+                                    (maskedWallets[payoutAsset]?:"—"))},
+                                confirmButton={
+                                    TextButton(onClick={
+                                        payoutConfirm=false
+                                        if(!actionBusy&&enough&&ready) {
                                             runAction { token ->
                                                 api.payoutRequest(JSONObject()
                                                     .put("amountMinor",minor)
                                                     .put("method","crypto")
-                                                    .put("payoutAsset",payoutAsset), token, payoutKey)
+                                                    .put("payoutAsset",payoutAsset),token,payoutKey)
                                                 payoutKey=UUID.randomUUID().toString()
-                                                actionMessage=tr(state.lang,"Request submitted","درخواست ثبت شد")
+                                                payoutAmount=""
+                                                actionMessage=tr(state.lang,"Request submitted",
+                                                    "درخواست ثبت شد")
                                             }
-                                        },enabled=!actionBusy) {
-                                            Text(tr(state.lang,"Submit request","ثبت درخواست"))
                                         }
-                                    },dismissButton={TextButton(onClick={payoutConfirm=false}) {
+                                    },enabled=!actionBusy&&enough&&ready) {
+                                        Text(tr(state.lang,"Submit request","ثبت درخواست"))
+                                    }
+                                },
+                                dismissButton={
+                                    TextButton(onClick={payoutConfirm=false}) {
                                         Text(tr(state.lang,"Cancel","انصراف"))
-                                    }})
-                            }
+                                    }
+                                })
                         }
+                    }
+                    SectionHeading(tr(state.lang,"Payout history","سابقه برداشت‌ها"),
+                        tr(state.lang,
+                            "Requests, status updates and masked destinations",
+                            "درخواست‌ها، وضعیت رسیدگی و مقصدهای مخفی‌شده"))
+                    if(values.isEmpty()&&!busy) PartnerEmptyPanel(state.lang,
+                        tr(state.lang,"No payouts yet","هنوز برداشتی ثبت نشده"),
+                        tr(state.lang,
+                            "Your submitted requests and processing decisions appear here.",
+                            "درخواست‌های ثبت‌شده و نتیجه رسیدگی در این بخش نمایش داده می‌شوند."),
+                        Icons.Default.ReceiptLong)
+                    values.forEach { row->
+                        PartnerPayoutHistoryCard(row,state.lang,currency)
                     }
                 }
                 "links" -> {
