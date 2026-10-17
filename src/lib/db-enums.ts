@@ -44,7 +44,7 @@ export const NOTIFICATION_TYPE_BY_EVENT: Record<string, (typeof NOTIFICATION_TYP
   'affiliate.commission_earned': 'affiliate_commission', 'affiliate.settlement_completed': 'affiliate_settlement',
   'affiliate.payout_paid': 'affiliate_payout', 'affiliate.payout_rejected': 'affiliate_payout',
   'affiliate.fraud_review': 'security_alert', 'account.status_changed': 'security_alert',
-  'account.kyc_required': 'system', 'system.maintenance': 'system', 'promo.generic': 'promotion',
+  'account.kyc_required': 'system', 'support.reply': 'system', 'system.maintenance': 'system', 'promo.generic': 'promotion',
 };
 
 export const ADMIN_ROLES: readonly string[] = ADMIN_ROLES_DB;
