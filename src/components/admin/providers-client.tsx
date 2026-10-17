@@ -29,7 +29,8 @@ interface TrialReport {
   oddsSample: Array<{ sport: string; eventId: string; marketKeys: number; latestOffers: number;
     freshMarkets: number; freshSelections: number; error: string | null }>;
   bet365: { permitted: boolean; eventCount: number; sampleFixtureId: string | null;
-    marketCount: number; priceCount: number; error: string | null };
+    marketCount: number; priceCount: number; error: string | null;
+    upcomingAccess: string; upcomingCount: number };
   callsInProbe: number; durationMs: number;
   notes: string[];
 }
@@ -190,9 +191,11 @@ export function ProvidersClient() {
               </table>
             </div>
             <div className="flex flex-wrap gap-3 text-xs">
-              <span>Bet365: <strong>{trial.bet365.permitted ? 'Available' : trial.bet365.error ?? 'Unavailable'}</strong>
+              <span>Bet365 live: <strong>{trial.bet365.permitted ? 'Available' : trial.bet365.error ?? 'Unavailable'}</strong>
                 {' '}· {trial.bet365.eventCount} live events · {trial.bet365.marketCount} priced market groups
                 {' '}· {trial.bet365.priceCount} selections
+                {' '}· Prematch endpoint: <strong>{trial.bet365.upcomingAccess}</strong>
+                {' '}({trial.bet365.upcomingCount} events on sampled page)
                 {trial.bet365.error ? ` (${trial.bet365.error})` : ''}</span>
               {trial.oddsSample.map(row => (
                 <span key={row.eventId}>{row.sport}: {row.marketKeys} historical groups · <strong>{row.freshMarkets} fresh markets / {row.freshSelections} outcomes</strong>
