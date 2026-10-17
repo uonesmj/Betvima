@@ -16,7 +16,14 @@ function reply(error: 0 | 1 | 2, balance = 0) {
 export async function GET(request: Request) {
   if (!casinoRealMoneyEnabled()) return reply(2);
   const salt = process.env.SOFTAGGREGATOR_SALT_KEY ?? '';
-  const event = validateCallback(new URL(request.url), request.headers.get('x-signature'), salt);
+  // Different secrets: provider's MD5 salt proves its timestamp; the trusted
+  // edge HMAC authenticates all amount, player, round and rollback fields.
+  const edgeSecret = process.env.SOFTAGGREGATOR_EDGE_HMAC_SECRET ?? '';
+  if (Buffer.byteLength(edgeSecret, 'utf8') < 32) return reply(2);
+  const event = validateCallback(
+    new URL(request.url), request.headers.get('x-signature'), salt,
+    Date.now(), edgeSecret,
+  );
   if (!event) return reply(2);
   try {
     const result = await settleCasinoCallback(event);
