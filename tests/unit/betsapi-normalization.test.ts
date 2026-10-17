@@ -33,6 +33,8 @@ describe('BetsAPI Events API identity and fixture normalization', () => {
     expect(normalizeBetsapiEvent({ ...event, sport_id: '7777' })).toBeNull();
     expect(normalizeBetsapiResult('1:4140581', event)?.authoritative).toBe(false);
     expect(normalizeBetsapiResult('1:4140581', { ...event, time_status: '3' }))
+      .toMatchObject({ status: 'finished', authoritative: false, homeCorners: 2 });
+    expect(normalizeBetsapiResult('1:4140581', { ...event, time_status: '3' }, at, true))
       .toMatchObject({ status: 'finished', authoritative: true, homeCorners: 2 });
     expect(normalizeBetsapiResult('1:9999', event)).toBeNull();
   });
