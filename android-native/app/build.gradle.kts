@@ -14,8 +14,11 @@ android {
         versionName = "0.90.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         buildConfigField("String", "API_BASE_URL", "\"https://betvima.com/\"")
-        // Server-side allowlist and finance gate remain authoritative for any wagering.
-        buildConfigField("boolean", "ENABLE_WAGERING", "false")
+        // Native real-money placement follows the existing authenticated, server-signed
+        // quote -> explicit-odds-approval -> idempotent POST path used by the website.
+        // This is NOT an authorization decision: the server and DB remain the
+        // authorities for age verification, market state, risk, balance and switches.
+        buildConfigField("boolean", "ENABLE_WAGERING", "true")
     }
     buildTypes {
         release {
