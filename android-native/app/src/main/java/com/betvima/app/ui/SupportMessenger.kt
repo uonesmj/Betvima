@@ -79,7 +79,30 @@ internal fun supportAttachmentPhaseLabel(phase: SupportAttachmentPhase, lang: La
     }
 
 private fun definiteAttachmentFailure(error: Exception): Boolean =
-    error is ApiFailure && error.code in 400..499 && error.code !in setOf(408, 409, 429)
+    error is InvalidSupportFileException ||
+        error is ApiFailure && error.code in 400..499 && error.code !in setOf(408, 409, 429)
+
+/** Show actionable, non-sensitive failure details; never mistake an HTTP 413 for a bad photo. */
+internal fun supportUploadRejectionMessage(error: Exception, lang: Lang): String = when {
+    error is InvalidSupportFileException ->
+        tr(lang, "This file's format is unsupported. Export it as JPG, PNG, WEBP or PDF.",
+            "فرمت واقعی این فایل پشتیبانی نمی‌شود؛ آن را به JPG، PNG، WEBP یا PDF تبدیل کنید.")
+    error is ApiFailure && error.code == 413 ->
+        tr(lang, "This photo exceeds the upload gateway's size limit. Choose a smaller file or contact support (HTTP 413).",
+            "حجم عکس از سقف درگاه آپلود بیشتر است؛ فایل کوچک‌تری انتخاب کنید یا با پشتیبانی تماس بگیرید (HTTP 413).")
+    error is ApiFailure && error.code in setOf(401, 403) ->
+        tr(lang, "Upload access was denied. Sign in again or contact support (HTTP ${error.code}).",
+            "دسترسی آپلود رد شد؛ دوباره وارد حساب شوید یا به پشتیبانی اطلاع دهید (HTTP ${error.code}).")
+    error is ApiFailure && error.serverCode == "VALIDATION_FAILED" ->
+        tr(lang, "The server rejected this file's format, content or size. Check the original (HTTP ${error.code}).",
+            "سرور نوع، محتوای فایل یا اندازه آن را نپذیرفت؛ فایل اصلی را بررسی کنید (HTTP ${error.code}).")
+    error is ApiFailure ->
+        tr(lang, "Upload rejected by server (HTTP ${error.code}). Retry only after checking the file.",
+            "سرور آپلود را رد کرد (HTTP ${error.code})؛ پس از بررسی فایل دوباره تلاش کنید.")
+    else ->
+        tr(lang, "Unable to read or validate the selected file. Please choose it again.",
+            "خواندن یا بررسی فایل ممکن نشد؛ آن را دوباره انتخاب کنید.")
+}
 
 private fun messengerActive(ticket: SupportTicket): Boolean = supportActive(ticket.status)
 
@@ -294,9 +317,7 @@ fun SupportMessenger(
             uncertain = !definite
             if (attached != null) attachmentPhase =
                 if (definite) SupportAttachmentPhase.FAILED else SupportAttachmentPhase.VERIFY
-            error = if (definite) tr(lang,
-                "Upload rejected. Check the file and retry.",
-                "ارسال فایل رد شد؛ فایل را بررسی و دوباره تلاش کنید.")
+            error = if (definite) supportUploadRejectionMessage(ex, lang)
             else tr(lang,
                 "Delivery is not confirmed. Refresh the chat before trying again.",
                 "تأیید ارسال دریافت نشد؛ پیش از تلاش دوباره، گفتگو را تازه‌سازی کنید.")
@@ -327,9 +348,10 @@ fun SupportMessenger(
                     attachmentPhase = if (definite) SupportAttachmentPhase.FAILED
                         else SupportAttachmentPhase.VERIFY
                     uncertain = !definite
-                    error = tr(lang,
-                        "Chat started, but the attachment was not confirmed. Check the chat before resending.",
-                        "گفتگو ایجاد شد ولی ارسال پیوست تأیید نشده؛ قبل از ارسال مجدد چت را بررسی کنید.")
+                    error = if (definite) supportUploadRejectionMessage(ex, lang)
+                    else tr(lang,
+                        "Chat started, but attachment delivery is uncertain. Check the chat before resending.",
+                        "گفتگو ایجاد شد ولی وضعیت ارسال پیوست نامشخص است؛ قبل از ارسال مجدد چت را بررسی کنید.")
                 }
             } else file = null
             try { reloadTickets() } catch (_: Exception) { /* Keep the newly created ticket open. */ }
