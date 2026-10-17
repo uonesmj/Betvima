@@ -68,11 +68,11 @@ describe('SoftAggregator single-account financial pilot limits', () => {
 
   it('fails closed if receipt accounting becomes unavailable or malformed', async () => {
     vi.stubEnv('SOFTAGGREGATOR_TEST_USER_ID', pilotId);
-    const db = { queryOne: vi.fn(async () => { throw new Error('DB unavailable'); }) }
-      as unknown as Pick<Db, 'queryOne'>;
+    const db = ({ queryOne: vi.fn(async () => { throw new Error('DB unavailable'); }) }
+      as unknown as Pick<Db, 'queryOne'>);
     expect(await pilotCasinoDebitPermitted(db, pilotId, 10n)).toBe(false);
-    const invalid = { queryOne: vi.fn(async () => ({ daily_stake: 'bad', daily_net_loss: '0', weekly_net_loss: '0' })) }
-      as unknown as Pick<Db, 'queryOne'>;
+    const invalid = ({ queryOne: vi.fn(async () => ({ daily_stake: 'bad', daily_net_loss: '0', weekly_net_loss: '0' })) }
+      as unknown as Pick<Db, 'queryOne'>);
     expect(await pilotCasinoDebitPermitted(invalid, pilotId, 10n)).toBe(false);
   });
 });
