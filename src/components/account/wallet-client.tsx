@@ -17,7 +17,7 @@ function voucherQuoteFresh(quote: UwalletReferenceQuote | null): boolean {
 function parsedVoucherRials(value: string, currency: string): bigint | null {
   const raw = normalizeNumericInput(value);
   if (!/^\d{1,19}$/.test(raw) || (currency !== 'IRT' && currency !== 'IRR')) return null;
-  try { return voucherIrrToWalletMinor(BigInt(raw), currency); } catch { return null; }
+  try { return voucherIrrToWalletMinor(BigInt(raw), currency as 'IRT'|'IRR'); } catch { return null; }
 }
 type UwalletReferenceQuote = { source:'uwallet'; rateIrrPerUsd:string; quotedAt:string; signature:string; distinctBuySellRatesAvailable:boolean };
 function normalizeNumericInput(value: string): string {
@@ -252,12 +252,12 @@ function DepositPanel({
           const configuredMin=BigInt(method?.minAmountMinor??'0');
           const minimumUsdMinor=configuredMin>150n?configuredMin:150n;
           const maximumUsdMinor=BigInt(method?.maxAmountMinor??'0');
-          const minRials=isRialWallet&&rate?voucherWalletMinorToIrr(voucherMinimumWalletMinor(minimumUsdMinor,currency,rate),currency):null;
-          const maxRials=isRialWallet&&rate&&maximumUsdMinor>0n?voucherWalletMinorToIrr(voucherUsdToWalletMinor(maximumUsdMinor,currency,rate),currency):null;
+          const minRials=isRialWallet&&rate?voucherWalletMinorToIrr(voucherMinimumWalletMinor(minimumUsdMinor,currency as 'IRT'|'IRR',rate),currency as 'IRT'|'IRR'):null;
+          const maxRials=isRialWallet&&rate&&maximumUsdMinor>0n?voucherWalletMinorToIrr(voucherUsdToWalletMinor(maximumUsdMinor,currency as 'IRT'|'IRR',rate),currency as 'IRT'|'IRR'):null;
           const raw=normalizeNumericInput(form.amount);
           const requestedMinor=isRialWallet?parsedVoucherRials(raw,currency):null;
           const usdMinor=isRialWallet
-            ? requestedMinor!==null&&rate?voucherWalletToUsdMinor(requestedMinor,currency,rate):null
+            ? requestedMinor!==null&&rate?voucherWalletToUsdMinor(requestedMinor,currency as 'IRT'|'IRR',rate):null
             : /^\d+(?:\.\d{1,2})?$/.test(raw)?(()=>{const [whole,fraction='']=raw.split('.');return BigInt(whole!)*100n+BigInt(fraction.padEnd(2,'0'));})():null;
           const validAmount=usdMinor!==null&&usdMinor>=minimumUsdMinor&&(maximumUsdMinor===0n||usdMinor<=maximumUsdMinor)&&(!isRialWallet||Boolean(rate));
           const unit=locale==='fa'?'ریال':'IRR';
@@ -415,18 +415,18 @@ function WithdrawPanel({
     const maxWalletMinor=currency==='USD'
       ? maximumUsdMinor>0n && maximumUsdMinor<available?maximumUsdMinor:available
       : rate && isRialWallet && maximumUsdMinor>0n
-        ? (()=>{const cap=voucherUsdToWalletMinor(maximumUsdMinor,currency,rate);return cap<available?cap:available;})()
+        ? (()=>{const cap=voucherUsdToWalletMinor(maximumUsdMinor,currency as 'IRT'|'IRR',rate);return cap<available?cap:available;})()
         : available;
-    const minimumWalletMinor=isRialWallet&&rate?voucherMinimumWalletMinor(minimumUsdMinor,currency,rate):null;
-    const minimumRials=isRialWallet&&minimumWalletMinor!==null?voucherWalletMinorToIrr(minimumWalletMinor,currency):null;
-    const maximumRials=isRialWallet?voucherWalletMinorToIrr(maxWalletMinor,currency):null;
+    const minimumWalletMinor=isRialWallet&&rate?voucherMinimumWalletMinor(minimumUsdMinor,currency as 'IRT'|'IRR',rate):null;
+    const minimumRials=isRialWallet&&minimumWalletMinor!==null?voucherWalletMinorToIrr(minimumWalletMinor,currency as 'IRT'|'IRR'):null;
+    const maximumRials=isRialWallet&&rate?voucherWalletMinorToIrr(maxWalletMinor,currency as 'IRT'|'IRR'):null;
     const voucherWalletUnit=isRialWallet?(locale==='fa'?'ریال':'IRR'):'USD';
     const formattedMinimum=minimumRials!==null?formatVoucherRials(minimumRials,locale)+' '+voucherWalletUnit:null;
     const formattedMaximum=maximumRials!==null?formatVoucherRials(maximumRials,locale)+' '+voucherWalletUnit:null;
     const requestedRials=normalizeNumericInput(form.amount);
     const requestedWalletMinor=isRialWallet?parsedVoucherRials(requestedRials,currency):null;
     const parsedUsdMinor=isRialWallet
-      ? requestedWalletMinor!==null&&rate?voucherWithdrawalDebit(requestedWalletMinor,currency,rate).usdMinor:null
+      ? requestedWalletMinor!==null&&rate?voucherWithdrawalDebit(requestedWalletMinor,currency as 'IRT'|'IRR',rate).usdMinor:null
       : /^\d+(?:\.\d{1,2})?$/.test(requestedRials)
         ? (()=>{const [whole,fraction='']=requestedRials.split('.');return BigInt(whole!)*100n+BigInt(fraction.padEnd(2,'0'));})():null;
     const voucherInputValid=parsedUsdMinor!==null&&parsedUsdMinor>=minimumUsdMinor&&
@@ -474,12 +474,12 @@ function WithdrawPanel({
               <div>
                 <div className="mb-2 flex items-center justify-between">
                   <label className="text-xs font-black uppercase tracking-[.08em] text-[#697586]">{t("wallet.amountWithdrawal")}</label>
-                  <span className="text-[11px] font-bold text-[#8994A5]">{t('wallet.available')}: {isRialWallet?formatVoucherRials(voucherWalletMinorToIrr(available,currency),locale)+' '+voucherWalletUnit:formatMinor(availableMinor||'0',currency,locale)}</span>
+                  <span className="text-[11px] font-bold text-[#8994A5]">{t('wallet.available')}: {isRialWallet?formatVoucherRials(voucherWalletMinorToIrr(available,currency as 'IRT'|'IRR'),locale)+' '+voucherWalletUnit:formatMinor(availableMinor||'0',currency,locale)}</span>
                 </div>
                 <div className="flex min-h-[64px] items-center rounded-2xl border border-[#DDE3EA] px-4 shadow-sm focus-within:border-[#087FF5] focus-within:ring-4 focus-within:ring-[#087FF5]/10">
                   <input className="min-w-0 flex-1 bg-transparent text-[20px] font-black outline-none" type="text" inputMode={isRialWallet?'numeric':'decimal'} dir="ltr" value={isRialWallet&&/^\d+$/.test(requestedRials)?formatVoucherRials(BigInt(requestedRials),locale):form.amount} onChange={e=>setForm({...form,amount:normalizeNumericInput(e.target.value)})} placeholder={isRialWallet?(minimumRials!==null?formatVoucherRials(minimumRials,'en'):'—'):'1.50'}/>
                   <b className="mr-2 shrink-0 text-xs text-[#7B8798]">{voucherWalletUnit}</b>
-                  <button type="button" disabled={maxWalletMinor<=0n||(!rate&&isRialWallet)} onClick={()=>setForm({...form,amount:isRialWallet?String(voucherWalletMinorToIrr(maxWalletMinor,currency)):(Number(maxWalletMinor)/100).toFixed(2)})} className="rounded-xl bg-[#EEF4FF] px-3 py-2 text-xs font-black text-[#087FF5] disabled:opacity-40">{t('wallet.max')}</button>
+                  <button type="button" disabled={maxWalletMinor<=0n||(!rate&&isRialWallet)} onClick={()=>setForm({...form,amount:isRialWallet?String(voucherWalletMinorToIrr(maxWalletMinor,currency as 'IRT'|'IRR')):(Number(maxWalletMinor)/100).toFixed(2)})} className="rounded-xl bg-[#EEF4FF] px-3 py-2 text-xs font-black text-[#087FF5] disabled:opacity-40">{t('wallet.max')}</button>
                 </div>
 
                 <div className="mt-3 grid grid-cols-2 gap-2 text-[11px]">
@@ -492,7 +492,7 @@ function WithdrawPanel({
               <div className="rounded-xl border border-[#D8E5F7] bg-[#F8FBFF] px-4 py-3 text-xs font-semibold leading-5 text-[#506582]">
                 <b className="block text-[#173DAA]">{locale==='fa'?'نرخ زنده uWallet':'Live uWallet rate'}</b>
                 <span>{rate?formatVoucherRials(BigInt(Math.round(Number(rate))),locale)+' '+(locale==='fa'?'ریال به‌ازای هر دلار':'IRR per USD'):voucherQuoteLoading?(locale==='fa'?'در حال دریافت...':'Loading...'):(locale==='fa'?'نرخ لحظه‌ای در دسترس نیست':'Live rate unavailable')}</span>
-                {rate&&isRialWallet&&requestedWalletMinor!==null&&parsedUsdMinor!==null?<p className="mt-2 border-t border-[#D8E5F7] pt-2 text-[#173DAA]">{locale==='fa'?'مبلغ کسر از کیف پول: ':'Wallet debit: '}{formatVoucherRials(voucherWalletMinorToIrr(voucherWithdrawalDebit(requestedWalletMinor,currency,rate).walletMinor,currency),locale)} {voucherWalletUnit}</p>:null}
+                {rate&&isRialWallet&&requestedWalletMinor!==null&&parsedUsdMinor!==null?<p className="mt-2 border-t border-[#D8E5F7] pt-2 text-[#173DAA]">{locale==='fa'?'مبلغ کسر از کیف پول: ':'Wallet debit: '}{formatVoucherRials(voucherWalletMinorToIrr(voucherWithdrawalDebit(requestedWalletMinor,currency as 'IRT'|'IRR',rate).walletMinor,currency as 'IRT'|'IRR'),locale)} {voucherWalletUnit}</p>:null}
                 <p className="mt-1 text-[#7A8494]">{locale==='fa'?'مبنای محاسبه، نرخ مرجع فعلی uWallet است و پیش از برداشت در سرور دوباره بررسی می‌شود.':'The current uWallet reference quote is revalidated before withdrawal.'}</p>
               </div>
               <div className="rounded-2xl border border-[#D8E5F7] bg-[#F2F7FF] p-4">
