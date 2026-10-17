@@ -39,6 +39,35 @@ class FixtureIdentityTest {
         assertNull(firstPartyLeagueLogo("World. Men. Setka Cup"))
     }
 
+    @Test fun supportsThreeLetterCountryCodesAndSportsFeedAliases() {
+        assertEquals("KR", recognizedCountryCode("KOR"))
+        assertEquals("JP", recognizedCountryCode("JPN"))
+        assertEquals("AU", recognizedCountryCode("AUS"))
+        assertEquals("TR", recognizedCountryCode("TUR"))
+        assertEquals("KR", recognizedCountryCode("Korea, Republic of"))
+        assertEquals("GE", recognizedCountryCode("Georgia"))
+    }
+
+    @Test fun neverOverridesConfirmedCountryOrGuessesForCrossBorderLeagues() {
+        assertEquals("South Korea", resolvedCompetitionCountry("International", "KBO"))
+        assertEquals("Japan", resolvedCompetitionCountry("World", "NPB"))
+        assertEquals("Australia", resolvedCompetitionCountry("International", "A-League"))
+        assertEquals("South Korea", resolvedCompetitionCountry("International", "K League 1"))
+        assertEquals("Turkey", resolvedCompetitionCountry("", "Turkey Super League"))
+        assertEquals("International", resolvedCompetitionCountry("International", "NBL"))
+        assertEquals("Japan", resolvedCompetitionCountry("Japan", "A-League"))
+    }
+
+    @Test fun exactLogoMappingsAndNonemptyMonograms() {
+        assertTrue(knownPublicLeagueLogo("NPB")!!.contains("NPB_logo.svg"))
+        assertTrue(knownPublicLeagueLogo("KBO")!!.contains("Korea_Baseball_Organization"))
+        assertNull(knownPublicLeagueLogo("KBO Futures League"))
+        assertNull(knownPublicLeagueLogo("NBA"))
+        assertEquals("NPB", leagueBadgeInitials("NPB"))
+        assertEquals("KL", leagueBadgeInitials("K League 1"))
+        assertEquals("?", leagueBadgeInitials("  "))
+    }
+
     @Test fun continentsAndUnknownCountriesNeverGetFakeFlags() {
         assertNull(countryFlag("Europe"))
         assertNull(countryFlag("World"))
