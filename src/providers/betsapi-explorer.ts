@@ -7,16 +7,29 @@
  * Admin POST may submit a freshly rotated one-time token over HTTPS.
  */
 import { createHash } from 'node:crypto';
-import { BETSAPI_SPORTS, object, string } from './betsapi-normalization';
+import { object, string } from './betsapi-normalization';
 import {
   parseBet365LivePreview, parseBet365PrematchPreview,
   type Bet365PreviewMarket,
 } from './betsapi-bet365-preview';
 
-export const BETSAPI_EXPLORER_SPORTS = BETSAPI_SPORTS.map(s => ({
-  id: s.id,
-  name: s.slug.replaceAll('-', ' ').replace(/\b\w/g, letter => letter.toUpperCase()),
-}));
+/** Official BetsAPI sport IDs (some sports may have no Bet365 offers). */
+export const BETSAPI_EXPLORER_SPORTS = [
+  { id: 1, name: 'Football' }, { id: 18, name: 'Basketball' },
+  { id: 13, name: 'Tennis' }, { id: 91, name: 'Volleyball' },
+  { id: 17, name: 'Ice Hockey' }, { id: 3, name: 'Cricket' },
+  { id: 78, name: 'Handball' }, { id: 16, name: 'Baseball' },
+  { id: 12, name: 'American Football' }, { id: 92, name: 'Table Tennis' },
+  { id: 15, name: 'Darts' }, { id: 14, name: 'Snooker' },
+  { id: 83, name: 'Futsal' }, { id: 94, name: 'Badminton' },
+  { id: 8, name: 'Rugby Union' }, { id: 19, name: 'Rugby League' },
+  { id: 36, name: 'Australian Rules' }, { id: 90, name: 'Floorball' },
+  { id: 95, name: 'Beach Volleyball' }, { id: 110, name: 'Water Polo' },
+  { id: 107, name: 'Squash' }, { id: 151, name: 'E-sports' },
+  { id: 162, name: 'MMA / UFC' }, { id: 9, name: 'Boxing' },
+  { id: 2, name: 'Horse Racing' }, { id: 4, name: 'Greyhounds' },
+  { id: 66, name: 'Bowls' }, { id: 75, name: 'Gaelic Sports' },
+] as const;
 
 export interface ExplorerFixture {
   fi: string;
@@ -169,9 +182,10 @@ export interface ExplorerInput {
   mode: 'live' | 'upcoming';
   sportId: number;
   page?: number;
+  day?: string;
   fi?: string;
 }
-const validSport = (sportId: number) => BETSAPI_SPORTS.some(s => s.id === sportId);
+const validSport = (sportId: number) => BETSAPI_EXPLORER_SPORTS.some(s => s.id === sportId);
 const safeError = (error: unknown): ExplorerError =>
   error instanceof ExplorerUpstreamError ? error.code : 'UPSTREAM_UNAVAILABLE';
 export async function exploreBetsApi(
@@ -183,7 +197,8 @@ export async function exploreBetsApi(
   const configured = Boolean(token?.trim());
   const base = { source: 'betsapi_bet365' as const, readOnly: true as const, configured, refreshedAt };
   const fi = input.fi;
-  if (!validSport(input.sportId) || (fi !== undefined && !/^\d{1,16}$/.test(fi))) {
+  if (!validSport(input.sportId) || (fi !== undefined && !/^\d{1,16}$/.test(fi)) ||
+    (input.day && !/^\d{8}$/.test(input.day))) {
     throw new ExplorerUpstreamError('UPSTREAM_INVALID');
   }
   if (fi) {
@@ -207,7 +222,8 @@ export async function exploreBetsApi(
   try {
     const payload = await request(token!, input.mode === 'live' ? '/v1/bet365/inplay_filter' : '/v1/bet365/upcoming',
       input.mode === 'live' ? { sport_id: String(input.sportId) } :
-        { sport_id: String(input.sportId), page: String(page) },
+        { sport_id: String(input.sportId), page: String(page),
+          ...(input.day ? { day: input.day } : {}) },
       fetcher, input.mode === 'live' ? 12_000 : 90_000);
     const data = Array.isArray(payload.results) ? payload.results : [];
     const fixtures = data.slice(0, 2200).map(row => parseExplorerFixture(row, input.sportId))
