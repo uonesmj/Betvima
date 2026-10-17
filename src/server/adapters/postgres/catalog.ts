@@ -7,6 +7,7 @@ import type {
 } from '@/lib/types';
 import { pgArray, type Row, toBig, toBool, toIso, toIsoOrNull, toNum, toNumOrNull, toStr, toStrOrNull } from '@/server/db/rows';
 import { rankLiveFixturesWithOdds } from '@/lib/odds/live-match-priority';
+import { CURRENT_LIVE_FIXTURE_SQL } from '@/lib/odds/live-fixture-recency';
 
 // Never expose discontinued external fixtures in live discovery.
 // Historical rows and financial settlement records remain unchanged.
@@ -392,7 +393,7 @@ export class PostgresCatalogRepository implements CatalogRepository {
 
   async listLiveMatches(_c: ActorContext, limit: number): Promise<Match[]> {
     const rows = await this.db.query<Row>(
-      `select ${MATCH_SELECT} ${MATCH_FROM} where m.status::text = any($1::text[]) and ${ODDS_ONLY_MATCH_SQL}
+      `select ${MATCH_SELECT} ${MATCH_FROM} where m.status::text = any($1::text[]) and ${ODDS_ONLY_MATCH_SQL} and ${CURRENT_LIVE_FIXTURE_SQL}
         order by m.minute desc nulls last, m.scheduled_at asc limit $2`,
       [pgArray(LIVE_STATUSES), Math.min(limit, 100)],
     );
@@ -403,7 +404,7 @@ export class PostgresCatalogRepository implements CatalogRepository {
       `select s.slug as sport_slug, count(*)::int as live_count
          from nova.matches m
          join nova.sports s on s.id = m.sport_id
-        where m.status::text = any($1::text[]) and ${ODDS_ONLY_MATCH_SQL}
+        where m.status::text = any($1::text[]) and ${ODDS_ONLY_MATCH_SQL} and ${CURRENT_LIVE_FIXTURE_SQL}
         group by s.slug`,
       [pgArray(LIVE_STATUSES)],
     );
