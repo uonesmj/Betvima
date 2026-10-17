@@ -3,6 +3,7 @@ package com.betvima.app.data
 import com.betvima.app.BuildConfig
 import android.content.ContentResolver
 import android.net.Uri
+import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import okhttp3.MultipartBody
 import okhttp3.Response
 import java.io.ByteArrayOutputStream
@@ -126,7 +127,7 @@ class ApiClient {
             throw ApiFailure(503, "Password recovery unavailable")
         val origin = config.str("supabaseUrl").trimEnd('/')
         val publicKey = config.str("supabaseAnonKey")
-        val parsed = okhttp3.HttpUrl.Companion.toHttpUrlOrNull(origin)
+        val parsed = origin.toHttpUrlOrNull()
         require(parsed != null && parsed.isHttps && parsed.username.isEmpty() &&
             parsed.password.isEmpty() && parsed.encodedPath == "/" &&
             parsed.query == null && parsed.fragment == null && publicKey.isNotBlank()) {
