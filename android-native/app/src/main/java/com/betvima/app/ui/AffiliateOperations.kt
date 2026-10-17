@@ -1,5 +1,6 @@
 package com.betvima.app.ui
 
+import android.content.Intent
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
@@ -34,7 +35,7 @@ import java.util.UUID
 @Composable
 fun AffiliateOperations(state: AppState, model: AppViewModel, currency: String,
     minimumPayoutMinor: String = "0", initialTab: String = "referrals",
-    showNavigation: Boolean = true) {
+    showNavigation: Boolean = true, onNavigate: (String) -> Unit = {}) {
     val context = LocalContext.current
     val api = remember { ApiClient() }
     val vault = remember { SessionVault(context, "affiliate") }
@@ -65,6 +66,8 @@ fun AffiliateOperations(state: AppState, model: AppViewModel, currency: String,
     var payoutAmount by rememberSaveable { mutableStateOf("") }
     var payoutConfirm by remember { mutableStateOf(false) }
     var availableWalletAssets by remember { mutableStateOf<Set<String>>(emptySet()) }
+    var maskedWallets by remember { mutableStateOf<Map<String,String>>(emptyMap()) }
+    var overview by remember { mutableStateOf<JSONObject?>(null) }
     var payoutKey by remember { mutableStateOf(UUID.randomUUID().toString()) }
 
     LaunchedEffect(selected, page, refresh) {
@@ -74,7 +77,7 @@ fun AffiliateOperations(state: AppState, model: AppViewModel, currency: String,
             val path = when (selected) {
                 "referrals" -> "/api/v1/affiliate/referrals?pageSize=20&page=" + page
                 "ledger" -> "/api/v1/affiliate/ledger?pageSize=20&page=" + page
-                "payouts" -> "/api/v1/affiliate/payouts"
+                "payouts" -> "/api/v1/affiliate/payouts?pageSize=20&page=" + page
                 "links" -> "/api/v1/affiliate/links"
                 else -> "/api/v1/affiliate/wallets"
             }
@@ -82,14 +85,27 @@ fun AffiliateOperations(state: AppState, model: AppViewModel, currency: String,
             if (selected == "payouts") {
                 // Fail closed if wallet availability cannot be verified server-side.
                 availableWalletAssets = emptySet()
+                maskedWallets = emptyMap()
                 val wallets = api.get("/api/v1/affiliate/wallets", token)
-                availableWalletAssets = wallets.arr("items").objects()
-                    .map { it.str("asset") }.filter(String::isNotBlank).toSet()
+                maskedWallets = wallets.arr("items").objects()
+                    .filter { it.str("asset").isNotBlank() }
+                    .associate { it.str("asset") to
+                        (if (it.optBoolean("addressHidden",false))
+                            tr(state.lang,"Saved · hidden","ثبت‌شده · مخفی")
+                         else it.str("addressMasked").ifBlank{"—"}) }
+                availableWalletAssets = maskedWallets.keys
+            }
+            if (selected == "ledger" || selected == "payouts") {
+                // Explanatory commission and settlement terms come from the account,
+                // not hard-coded marketing claims.
+                overview = runCatching {
+                    api.get("/api/v1/affiliate/overview",token)
+                }.getOrNull()
             }
             val source = if (selected == "links") "links" else "items"
             val next = response.arr(source).objects()
             values = if (page == 1) next else (values + next).distinctBy { it.str("id", it.str("code")) }
-            more = selected in setOf("referrals", "ledger") &&
+            more = selected in setOf("referrals", "ledger", "payouts") &&
                 (response.optBoolean("hasMore", false) ||
                     (next.size == 20 && response.optInt("total", 0) > page * 20))
             data = response
@@ -163,166 +179,370 @@ fun AffiliateOperations(state: AppState, model: AppViewModel, currency: String,
         if (!busy || values.isNotEmpty()) {
             when(selected) {
                 "referrals" -> {
-                    if (values.isEmpty()) PartnerEmpty(state.lang)
+                    PartnerInfoCard(
+                        tr(state.lang,"Your referred players","کاربران معرفی‌شده"),
+                        tr(state.lang,
+                            "Tap a player to see their registration, deposits, withdrawals and commission.",
+                            "روی هر کاربر بزنید تا زمان ثبت‌نام، واریز، برداشت و کمیسیون او را ببینید."),
+                        Icons.Default.Groups) {
+                        Row(verticalAlignment=Alignment.CenterVertically) {
+                            Text(tr(state.lang,"Total referrals","کل زیرمجموعه‌ها"),
+                                color=Palette.muted,fontSize=11.sp,
+                                modifier=Modifier.weight(1f))
+                            Text(data?.optInt("total")?.toString()?:"—",fontSize=20.sp,
+                                fontWeight=FontWeight.Black,color=affiliateBlue)
+                        }
+                    }
+                    if (values.isEmpty() && !busy)
+                        PartnerEmptyPanel(state.lang,
+                            tr(state.lang,"No referrals yet","هنوز زیرمجموعه‌ای ثبت نشده"),
+                            tr(state.lang,
+                                "Share your referral link to connect registrations to this partner account.",
+                                "لینک معرفی خود را منتشر کنید تا ثبت‌نام‌ها به حساب افیلیت شما متصل شوند."),
+                            Icons.Default.PersonAdd)
                     values.forEach { row ->
-                        PartnerRow(
-                            title = row.str("code", row.str("userId").take(10)),
-                            subtitle = tr(state.lang, "Status", "وضعیت") + ": " +
-                                row.str("status", "—"),
-                            value = row.str("wageredMinor").takeIf { it.isNotBlank() }
-                                ?.let { money(it, currency) } ?: "—",
-                            icon = Icons.Default.Groups
-                        )
+                        PartnerReferralCard(row,state.lang,currency) { id ->
+                            clipboard.setText(AnnotatedString(id))
+                            actionMessage=tr(state.lang,"User ID copied","شناسه کاربر کپی شد")
+                        }
                     }
                 }
                 "ledger" -> {
-                    if (values.isEmpty()) PartnerEmpty(state.lang)
-                    values.forEach { row ->
-                        PartnerRow(
-                            title = row.str("type").replace("_", " "),
-                            subtitle = row.str("createdAt").take(16).replace("T", " · "),
-                            value = row.str("amountMinor").takeIf { it.isNotBlank() }
-                                ?.let { money(it, currency) } ?: "—",
-                            icon = Icons.Default.ReceiptLong
-                        )
+                    val profile=overview?.optJSONObject("affiliate")
+                    val totals=overview?.optJSONObject("payable")
+                    val rateBps=profile?.optInt("commissionRateBps",-1)?:-1
+                    PartnerInfoCard(
+                        tr(state.lang,"Commission & settlement","کمیسیون و تسویه"),
+                        tr(state.lang,
+                            "Account-specific terms and posted ledger entries",
+                            "شرایط مختص حساب شما و گردش‌های ثبت‌شده"),
+                        Icons.Default.AccountBalance) {
+                        Row(horizontalArrangement=Arrangement.spacedBy(10.dp)) {
+                            PartnerField(tr(state.lang,"Rate","درصد کمیسیون"),
+                                if(rateBps>=0) BigDecimal(rateBps).movePointLeft(2)
+                                    .stripTrailingZeros().toPlainString()+"%" else "—",
+                                Modifier.weight(1f),affiliateBlue)
+                            PartnerField(tr(state.lang,"Payable","قابل برداشت"),
+                                totals?.str("payableMinor")?.takeIf{it.isNotBlank()}
+                                    ?.let{money(it,currency)}?:"—",
+                                Modifier.weight(1f),Palette.green)
+                        }
+                        Divider(color=affiliateOutline)
+                        Row(horizontalArrangement=Arrangement.spacedBy(10.dp)) {
+                            PartnerField(tr(state.lang,"Account status","وضعیت حساب"),
+                                profile?.str("status")?:"—",Modifier.weight(1f))
+                            PartnerField(tr(state.lang,"Settlement model","مدل تسویه"),
+                                profile?.str("commissionModel")?.replace("_"," ") ?:"—",
+                                Modifier.weight(1f))
+                        }
+                        val day=profile?.optInt("settlementDay",-1)?:-1
+                        val names=listOf("","Monday","Tuesday","Wednesday","Thursday",
+                            "Friday","Saturday","Sunday")
+                        val weekdaysFa=listOf("","دوشنبه","سه‌شنبه","چهارشنبه",
+                            "پنج‌شنبه","جمعه","شنبه","یکشنبه")
+                        val schedule=if(day in 1..7) {
+                            (if(state.lang==Lang.FA) weekdaysFa[day] else names[day])+
+                                " · "+(profile?.str("settlementTimezone")?:"")
+                        } else "—"
+                        PartnerField(tr(state.lang,"Settlement schedule","برنامه تسویه"),
+                            schedule)
+                        Text(tr(state.lang,
+                            "Commissions are posted after eligible player activity is settled. Withdrawable funds depend on your approved balance and the account's settlement model.",
+                            "کمیسیون پس از تسویه فعالیت واجدشرایط کاربران ثبت می‌شود. مبلغ قابل برداشت تابع موجودی تأییدشده و مدل تسویه حساب شماست."),
+                            color=Palette.muted,fontSize=11.sp,lineHeight=17.sp)
+                        Text(tr(state.lang,
+                            "Account access continues while the affiliate remains approved and complies with the applicable partner agreement; lifetime status is not guaranteed.",
+                            "دسترسی افیلیت تا زمانی ادامه دارد که حساب تأییدشده و مطابق توافق همکاری باشد؛ دائمی بودن بدون قید و شرط تضمین نمی‌شود."),
+                            color=affiliateBlue,fontSize=11.sp,lineHeight=17.sp)
                     }
+                    SectionHeading(tr(state.lang,"Commission history","سوابق گردش کمیسیون"),
+                        tr(state.lang,"Posted credits, debits and settlements",
+                            "بستانکاری‌ها، بدهکاری‌ها و تسویه‌های ثبت‌شده"))
+                    if(values.isEmpty() && !busy)
+                        PartnerEmptyPanel(state.lang,
+                            tr(state.lang,"No posted transactions","هنوز گردش کمیسیون ثبت نشده"),
+                            tr(state.lang,
+                                "Ledger entries appear after qualifying settlements or payouts.",
+                                "پس از تسویه‌های واجدشرایط یا برداشت‌ها، سوابق اینجا نشان داده می‌شوند."),
+                            Icons.Default.ReceiptLong)
+                    values.forEach { row -> PartnerLedgerCard(row,state.lang,currency) }
                 }
                 "payouts" -> {
-                    val payable = data?.optJSONObject("payable")
-                    val usable = payable?.str("payableMinor")
-                    if (usable != null) BvStatCard(
-                        tr(state.lang, "Payable commission", "کمیسیون قابل برداشت"),
-                        money(usable,currency), Icons.Default.AccountBalanceWallet, Palette.green)
-                    if (values.isEmpty()) PartnerEmpty(state.lang)
-                    values.forEach { row ->
-                        PartnerRow(
-                            title = row.str("publicId", row.str("id").take(8)),
-                            subtitle = row.str("status") + " · " + row.str("requestedAt").take(10),
-                            value = money(row.str("amountMinor", "0"),currency),
-                            icon = Icons.Default.Payments
-                        )
-                    }
-                    Surface(color = Color.White, shape = RoundedCornerShape(19.dp),
-                        border = BorderStroke(1.dp, Palette.border)) {
-                        Column(Modifier.fillMaxWidth().padding(15.dp),
-                            verticalArrangement = Arrangement.spacedBy(9.dp)) {
-                            Text(tr(state.lang,"Request a payout","درخواست برداشت افیلیت"),
-                                fontWeight = FontWeight.Black, fontSize = 15.sp)
-                            Text(tr(state.lang,
-                                "A saved payout wallet is required. Server validates funds, minimums and approval.",
-                                "برای برداشت کیف پول ثبت‌شده لازم است. حداقل مبلغ، موجودی و تأیید پرداخت در سرور کنترل می‌شود."),
-                                fontSize = 11.sp, color = Palette.muted)
-                            PartnerAssetChooser(payoutAsset, state.lang) { payoutAsset = it }
-                            OutlinedTextField(value=payoutAmount,
-                                onValueChange={ payoutAmount=it.filter { ch ->
-                                    ch.isDigit() || ch=='.' }.take(16) },
-                                modifier=Modifier.fillMaxWidth(),singleLine=true,
-                                label={Text(tr(state.lang,"Amount","مبلغ")+" ("+currency+")")},
-                                keyboardOptions=KeyboardOptions(keyboardType=KeyboardType.Decimal))
-                            val minor = runCatching {
-                                val decimals = if (currency in setOf("IRT","IRR")) 0 else 2
-                                BigDecimal(payoutAmount).setScale(decimals,RoundingMode.UNNECESSARY)
-                                    .movePointRight(decimals).toBigIntegerExact().toString()
-                            }.getOrNull()
-                            val payable = data?.optJSONObject("payable")?.str("payableMinor")
-                                ?.toBigDecimalOrNull()
-                            val meetsMinimum = minor?.toBigDecimalOrNull()?.let {
-                                it >= (minimumPayoutMinor.toBigDecimalOrNull() ?: BigDecimal.ZERO)
-                            } ?: false
-                            val validBalance = minor?.toBigDecimalOrNull()?.let {
-                                payable != null && it <= payable
-                            } ?: false
-                            val walletReady = availableWalletAssets.contains(payoutAsset)
-                            if (!walletReady) Text(tr(state.lang,
-                                "Save a wallet for the chosen network before requesting a payout.",
-                                "قبل از برداشت، کیف پول شبکه انتخاب‌شده را ثبت کنید."),
-                                color=Palette.red,fontSize=11.sp)
-                            if (minimumPayoutMinor != "0") Text(tr(state.lang,
-                                "Minimum payout: ","حداقل برداشت: ") +
+                    val payable=data?.optJSONObject("payable")?.str("payableMinor")
+                    val usable=payable?.toBigDecimalOrNull()
+                    val balance=payable?.takeIf{it.isNotBlank()}
+                        ?.let{money(it,currency)}?:"—"
+                    val last=values.firstOrNull()
+                    PartnerInfoCard(
+                        tr(state.lang,"Payout center","مرکز برداشت افیلیت"),
+                        tr(state.lang,
+                            "Authorized commission balance and payout requests",
+                            "موجودی کمیسیون مجاز و درخواست‌های برداشت"),
+                        Icons.Default.AccountBalanceWallet) {
+                        Row(horizontalArrangement=Arrangement.spacedBy(9.dp)) {
+                            PartnerField(tr(state.lang,"Available to request","قابل درخواست"),
+                                balance,Modifier.weight(1f),Palette.green)
+                            PartnerField(tr(state.lang,"Minimum payout","حداقل برداشت"),
                                 money(minimumPayoutMinor,currency),
-                                color=Palette.muted,fontSize=11.sp)
-                            Button(onClick={payoutConfirm=true},
-                                enabled=!actionBusy && minor!=null && minor.toBigDecimal()>BigDecimal.ZERO &&
-                                    meetsMinimum && validBalance && walletReady,
-                                modifier=Modifier.fillMaxWidth(),
-                                colors=ButtonDefaults.buttonColors(containerColor=Palette.green)) {
-                                Text(tr(state.lang,"Review payout request","بررسی درخواست برداشت"),
-                                    color=Palette.ink,fontWeight=FontWeight.Bold)
+                                Modifier.weight(1f),affiliatePink)
+                        }
+                        Divider(color=affiliateOutline)
+                        Row(verticalAlignment=Alignment.CenterVertically) {
+                            Text(tr(state.lang,"Latest payout status","وضعیت آخرین برداشت"),
+                                modifier=Modifier.weight(1f),fontSize=11.sp,
+                                color=Palette.muted)
+                            if(last!=null) PartnerStatusPill(last.str("status"))
+                            else Text("—",color=Palette.muted)
+                        }
+                    }
+                    PartnerInfoCard(tr(state.lang,"Request a payout","درخواست برداشت"),
+                        tr(state.lang,
+                            "Pick the asset, check your saved address, then review the request.",
+                            "ارز را انتخاب کنید، آدرس ذخیره‌شده را بررسی و درخواست را تأیید کنید."),
+                        Icons.Default.Payments) {
+                        PartnerAssetChooser(payoutAsset,state.lang) {
+                            payoutAsset=it
+                            payoutConfirm=false
+                        }
+                        val ready=availableWalletAssets.contains(payoutAsset)
+                        Surface(color=if(ready)Color(0xFFEAF9F1) else Color(0xFFFFF1F4),
+                            shape=RoundedCornerShape(13.dp)) {
+                            Column(Modifier.fillMaxWidth().padding(12.dp)) {
+                                Text(if(ready)
+                                    tr(state.lang,"Saved wallet · "+payoutAsset,
+                                        "کیف پول ذخیره‌شده · "+payoutAsset)
+                                    else tr(state.lang,"Wallet not configured",
+                                        "کیف پول شبکه انتخابی ثبت نشده"),
+                                    fontWeight=FontWeight.Black,fontSize=11.sp,
+                                    color=if(ready)Color(0xFF08794E) else affiliatePink)
+                                Text(maskedWallets[payoutAsset]?:tr(state.lang,
+                                    "Save a destination wallet first.",
+                                    "ابتدا کیف پول مقصد را ذخیره کنید."),
+                                    color=Palette.muted,fontSize=11.sp,maxLines=2)
+                                if(!ready) TextButton(onClick={
+                                    if(showNavigation) switch("wallets")
+                                    else onNavigate("wallets")
+                                }) {
+                                    Text(tr(state.lang,"Manage payout wallets",
+                                        "مدیریت کیف پول‌های برداشت"),
+                                        color=affiliateBlue,fontWeight=FontWeight.Black)
+                                    Icon(Icons.Default.ChevronRight,null,
+                                        tint=affiliateBlue,modifier=Modifier.size(17.dp))
+                                }
                             }
-                            if (payoutConfirm && minor!=null) {
-                                AlertDialog(onDismissRequest={payoutConfirm=false},
-                                    title={Text(tr(state.lang,"Confirm payout","تأیید درخواست برداشت"))},
-                                    text={Text(tr(state.lang,
-                                        "Submit payout request for approval? This is not an instant transfer.",
-                                        "درخواست برداشت برای بررسی ثبت شود؟ انتقال وجه آنی نیست.") +
-                                        "\n" + money(minor,currency) + " · " + payoutAsset)},
-                                    confirmButton={
-                                        TextButton(onClick={
-                                            payoutConfirm=false
+                        }
+                        OutlinedTextField(value=payoutAmount,
+                            onValueChange={
+                                payoutAmount=it.filter { ch->ch.isDigit()||ch=='.' }.take(16)
+                                payoutConfirm=false
+                            },
+                            modifier=Modifier.fillMaxWidth(),singleLine=true,
+                            label={Text(tr(state.lang,"Amount","مبلغ")+" ("+currency+")")},
+                            keyboardOptions=KeyboardOptions(keyboardType=KeyboardType.Decimal),
+                            shape=RoundedCornerShape(14.dp))
+                        Row(verticalAlignment=Alignment.CenterVertically) {
+                            Text(tr(state.lang,"Payable: ","قابل برداشت: ")+balance,
+                                fontSize=11.sp,color=Palette.muted,
+                                modifier=Modifier.weight(1f))
+                            OutlinedButton(onClick={
+                                val amountMinor=payable?.toBigDecimalOrNull()
+                                val decimals=if(currency in setOf("IRT","IRR"))0 else 2
+                                if(amountMinor!=null&&amountMinor>BigDecimal.ZERO) {
+                                    payoutAmount=amountMinor.movePointLeft(decimals)
+                                        .stripTrailingZeros().toPlainString()
+                                    payoutConfirm=false
+                                }
+                            },enabled=usable!=null&&usable>BigDecimal.ZERO) {
+                                Text("MAX",fontWeight=FontWeight.Black,fontSize=11.sp)
+                            }
+                        }
+                        val decimals=if(currency in setOf("IRT","IRR"))0 else 2
+                        val minor=runCatching {
+                            BigDecimal(payoutAmount)
+                                .setScale(decimals,RoundingMode.UNNECESSARY)
+                                .movePointRight(decimals).toBigIntegerExact().toString()
+                        }.getOrNull()
+                        val validStake=minor?.toBigDecimalOrNull()
+                        val min=minimumPayoutMinor.toBigDecimalOrNull()?:BigDecimal.ZERO
+                        val enough=validStake!=null&&validStake>BigDecimal.ZERO&&
+                            validStake>=min&&usable!=null&&validStake<=usable
+                        Row(verticalAlignment=Alignment.CenterVertically) {
+                            Text(tr(state.lang,"Minimum","حداقل")+": "+
+                                money(minimumPayoutMinor,currency),
+                                color=Palette.muted,fontSize=11.sp,
+                                modifier=Modifier.weight(1f))
+                            Icon(Icons.Default.VerifiedUser,null,tint=affiliateBlue,
+                                modifier=Modifier.size(19.dp))
+                            Text(tr(state.lang,"Server verified","کنترل سرور"),
+                                fontSize=10.sp,color=Palette.muted)
+                        }
+                        Button(onClick={payoutConfirm=true},
+                            enabled=!actionBusy&&enough&&ready,
+                            modifier=Modifier.fillMaxWidth().heightIn(min=52.dp),
+                            shape=RoundedCornerShape(15.dp),
+                            colors=ButtonDefaults.buttonColors(containerColor=Palette.green)) {
+                            Text(tr(state.lang,"Review payout request",
+                                "بررسی درخواست برداشت"),
+                                color=Palette.ink,fontWeight=FontWeight.Black)
+                        }
+                        Text(tr(state.lang,
+                            "A request is not a payment. Processing and approval occur after server-side checks.",
+                            "ثبت درخواست به معنی پرداخت نیست؛ بررسی و تأیید نهایی در سرور انجام می‌شود."),
+                            color=Palette.muted,fontSize=10.sp,lineHeight=15.sp)
+                        if(payoutConfirm&&minor!=null) {
+                            AlertDialog(onDismissRequest={payoutConfirm=false},
+                                title={Text(tr(state.lang,"Confirm payout","تأیید برداشت"))},
+                                text={Text(tr(state.lang,
+                                    "Submit this amount for review?",
+                                    "این مبلغ برای بررسی ثبت شود؟")+"\n"+
+                                    money(minor,currency)+" · "+payoutAsset+"\n"+
+                                    (maskedWallets[payoutAsset]?:"—"))},
+                                confirmButton={
+                                    TextButton(onClick={
+                                        payoutConfirm=false
+                                        if(!actionBusy&&enough&&ready) {
                                             runAction { token ->
                                                 api.payoutRequest(JSONObject()
                                                     .put("amountMinor",minor)
                                                     .put("method","crypto")
-                                                    .put("payoutAsset",payoutAsset), token, payoutKey)
+                                                    .put("payoutAsset",payoutAsset),token,payoutKey)
                                                 payoutKey=UUID.randomUUID().toString()
-                                                actionMessage=tr(state.lang,"Request submitted","درخواست ثبت شد")
+                                                payoutAmount=""
+                                                actionMessage=tr(state.lang,"Request submitted",
+                                                    "درخواست ثبت شد")
                                             }
-                                        },enabled=!actionBusy) {
-                                            Text(tr(state.lang,"Submit request","ثبت درخواست"))
                                         }
-                                    },dismissButton={TextButton(onClick={payoutConfirm=false}) {
+                                    },enabled=!actionBusy&&enough&&ready) {
+                                        Text(tr(state.lang,"Submit request","ثبت درخواست"))
+                                    }
+                                },
+                                dismissButton={
+                                    TextButton(onClick={payoutConfirm=false}) {
                                         Text(tr(state.lang,"Cancel","انصراف"))
-                                    }})
-                            }
+                                    }
+                                })
                         }
+                    }
+                    SectionHeading(tr(state.lang,"Payout history","سابقه برداشت‌ها"),
+                        tr(state.lang,
+                            "Requests, status updates and masked destinations",
+                            "درخواست‌ها، وضعیت رسیدگی و مقصدهای مخفی‌شده"))
+                    if(values.isEmpty()&&!busy) PartnerEmptyPanel(state.lang,
+                        tr(state.lang,"No payouts yet","هنوز برداشتی ثبت نشده"),
+                        tr(state.lang,
+                            "Your submitted requests and processing decisions appear here.",
+                            "درخواست‌های ثبت‌شده و نتیجه رسیدگی در این بخش نمایش داده می‌شوند."),
+                        Icons.Default.ReceiptLong)
+                    values.forEach { row->
+                        PartnerPayoutHistoryCard(row,state.lang,currency)
                     }
                 }
                 "links" -> {
-                    values.forEach { row ->
-                        val destination = row.str("url")
-                        Column(verticalArrangement=Arrangement.spacedBy(5.dp)) {
-                            PartnerRow(
-                                title=row.str("campaign",row.str("code")),
-                                subtitle=destination,
-                                value=row.optInt("clicks").toString()+" "+tr(state.lang,"clicks","کلیک"),
-                                icon=Icons.Default.Link
-                            )
-                            if(destination.startsWith("https://")) {
-                                OutlinedButton(onClick={
-                                    clipboard.setText(AnnotatedString(destination))
-                                    actionMessage=tr(state.lang,"Campaign URL copied","لینک کمپین کپی شد")
-                                },modifier=Modifier.fillMaxWidth(),
-                                    border=BorderStroke(1.dp,affiliateOutline),
-                                    shape=RoundedCornerShape(11.dp)) {
-                                    Icon(Icons.Default.ContentCopy,null,
-                                        modifier=Modifier.size(16.dp),tint=affiliateBlue)
-                                    Spacer(Modifier.width(6.dp))
-                                    Text(tr(state.lang,"Copy campaign link","کپی لینک کمپین"),
-                                        color=affiliateBlue,fontWeight=FontWeight.Bold)
-                                }
+                    PartnerInfoCard(tr(state.lang,"Your campaign links","لینک‌های کمپین"),
+                        tr(state.lang,"Create a separate link for each campaign to track clicks.",
+                            "برای هر کمپین یک لینک جدا بسازید تا کلیک‌های آن مشخص باشد."),
+                        Icons.Default.AutoAwesome) {
+                        listOf(
+                            tr(state.lang,"1 · Enter a recognizable campaign name",
+                                "۱ · نام مشخصی برای کمپین وارد کنید"),
+                            tr(state.lang,"2 · Generate your unique referral URL",
+                                "۲ · لینک اختصاصی معرفی را بسازید"),
+                            tr(state.lang,"3 · Copy or share it with your audience",
+                                "۳ · لینک را کپی یا برای مخاطبان ارسال کنید"),
+                            tr(state.lang,"4 · Review traffic in the campaign list below",
+                                "۴ · تعداد کلیک‌ها را در لیست زیر بررسی کنید")
+                        ).forEach { hint ->
+                            Row(verticalAlignment=Alignment.CenterVertically) {
+                                Icon(Icons.Default.CheckCircle,null,tint=Palette.green,
+                                    modifier=Modifier.size(16.dp))
+                                Spacer(Modifier.width(8.dp))
+                                Text(hint,color=affiliateInk,fontSize=11.sp,lineHeight=17.sp)
                             }
+                        }
+                        Divider(color=affiliateOutline)
+                        val original=data?.str("primaryUrl")?:""
+                        Text(tr(state.lang,"Default referral link",
+                            "لینک معرفی اصلی"),color=Palette.muted,fontSize=11.sp)
+                        Text(original.ifBlank{"—"},color=affiliateBlue,
+                            fontWeight=FontWeight.Bold,fontSize=12.sp,
+                            maxLines=2,overflow=TextOverflow.Ellipsis)
+                        OutlinedButton(onClick={
+                            if(original.startsWith("https://")){
+                                clipboard.setText(AnnotatedString(original))
+                                actionMessage=tr(state.lang,"Referral URL copied",
+                                    "لینک معرفی کپی شد")
+                            }
+                        },enabled=original.startsWith("https://"),
+                            modifier=Modifier.fillMaxWidth()) {
+                            Icon(Icons.Default.ContentCopy,null,
+                                modifier=Modifier.size(17.dp))
+                            Spacer(Modifier.width(5.dp))
+                            Text(tr(state.lang,"Copy main referral link",
+                                "کپی لینک اصلی"),fontSize=12.sp)
                         }
                     }
-                    Surface(color=Color.White,shape=RoundedCornerShape(18.dp),
-                        border=BorderStroke(1.dp,Palette.border)) {
-                        Column(Modifier.padding(14.dp),verticalArrangement=Arrangement.spacedBy(8.dp)) {
-                            Text(tr(state.lang,"Create a campaign link","ساخت لینک کمپین"),
+                    PartnerInfoCard(tr(state.lang,"Create a campaign link",
+                        "ساخت لینک اختصاصی کمپین"),
+                        tr(state.lang,"Example: Telegram October, Instagram Story",
+                            "مثال: تلگرام مهر، استوری اینستاگرام"),
+                        Icons.Default.AddLink) {
+                        OutlinedTextField(campaign,{campaign=it.take(60)},
+                            label={Text(tr(state.lang,"Campaign name","نام کمپین"))},
+                            placeholder={Text("Telegram Campaign")},
+                            supportingText={Text(tr(state.lang,
+                                "2–60 characters; the code and final URL are generated securely by the server.",
+                                "نام بین ۲ تا ۶۰ کاراکتر؛ شناسه و آدرس نهایی را سرور می‌سازد."),
+                                fontSize=10.sp)},
+                            singleLine=true,modifier=Modifier.fillMaxWidth(),
+                            shape=RoundedCornerShape(14.dp))
+                        Button(enabled=!actionBusy&&AffiliateInputRules.validCampaign(campaign),
+                            onClick={
+                                runAction { token ->
+                                    api.post("/api/v1/affiliate/links",
+                                        JSONObject().put("campaign",campaign.trim()),token)
+                                    campaign=""
+                                    actionMessage=tr(state.lang,"Campaign link created",
+                                        "لینک کمپین ساخته شد")
+                                }
+                            },
+                            modifier=Modifier.fillMaxWidth().heightIn(min=52.dp),
+                            shape=RoundedCornerShape(15.dp),
+                            colors=ButtonDefaults.buttonColors(containerColor=affiliateBlue)) {
+                            Icon(Icons.Default.Link,null,tint=Color.White,
+                                modifier=Modifier.size(17.dp))
+                            Spacer(Modifier.width(6.dp))
+                            Text(tr(state.lang,"Generate referral link",
+                                "ساخت لینک معرفی"),color=Color.White,
                                 fontWeight=FontWeight.Black)
-                            OutlinedTextField(campaign,{campaign=it.take(60)},
-                                label={Text(tr(state.lang,"Campaign name","نام کمپین"))},
-                                singleLine=true,modifier=Modifier.fillMaxWidth())
-                            Button(enabled=!actionBusy && AffiliateInputRules.validCampaign(campaign),
-                                onClick={
-                                    runAction { token ->
-                                        api.post("/api/v1/affiliate/links",
-                                            JSONObject().put("campaign",campaign.trim()),token)
-                                        campaign=""
-                                        actionMessage=tr(state.lang,"Link created","لینک ساخته شد")
-                                    }
-                                }, colors=ButtonDefaults.buttonColors(containerColor=Palette.green)) {
-                                Text(tr(state.lang,"Create link","ساخت لینک"),color=Palette.ink)
-                            }
                         }
+                    }
+                    SectionHeading(tr(state.lang,"Your created links",
+                        "لینک‌های ایجادشده"),
+                        tr(state.lang,
+                            "Each card contains the real link, click count and share actions",
+                            "هر کارت شامل لینک واقعی، آمار کلیک و ابزار اشتراک‌گذاری است"))
+                    if(values.isEmpty()&&!busy) PartnerEmptyPanel(state.lang,
+                        tr(state.lang,"No campaign links yet",
+                            "هنوز لینک کمپینی نساخته‌اید"),
+                        tr(state.lang,
+                            "Your main referral link above is ready to use. Create a campaign to track traffic separately.",
+                            "لینک اصلی بالا آماده است؛ برای مشاهده جداگانه ترافیک هر کمپین، لینک جدید بسازید."),
+                        Icons.Default.Link)
+                    values.forEach { row->
+                        PartnerCampaignCard(row,state.lang,
+                            onCopy={ destination ->
+                                clipboard.setText(AnnotatedString(destination))
+                                actionMessage=tr(state.lang,"Link copied","لینک کپی شد")
+                            },
+                            onShare={ destination ->
+                                val intent=Intent(Intent.ACTION_SEND).apply {
+                                    type="text/plain"
+                                    putExtra(Intent.EXTRA_TEXT,destination)
+                                }
+                                context.startActivity(Intent.createChooser(intent,
+                                    tr(state.lang,"Share campaign link",
+                                        "اشتراک لینک کمپین")))
+                            })
                     }
                 }
                 "wallets" -> {

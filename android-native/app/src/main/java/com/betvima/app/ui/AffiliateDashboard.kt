@@ -184,7 +184,7 @@ fun AffiliateDashboard(state: AppState, model: AppViewModel) {
 
     LazyColumn(
         modifier = Modifier.fillMaxSize().background(affiliateCanvas),
-        contentPadding = PaddingValues(start = 14.dp, end = 14.dp, top = 12.dp, bottom = 36.dp),
+        contentPadding = PaddingValues(start = 14.dp, end = 14.dp, top = 12.dp, bottom = 106.dp),
         verticalArrangement = Arrangement.spacedBy(13.dp),
         flingBehavior = rememberPremiumFlingBehavior()
     ) {
@@ -526,7 +526,8 @@ fun AffiliateDashboard(state: AppState, model: AppViewModel) {
                     AffiliateOperations(
                         state,model,currency,
                         partner?.str("minPayoutMinor","0") ?: "0",
-                        initialTab=page,showNavigation=false
+                        initialTab=page,showNavigation=false,
+                        onNavigate={ destination -> page=destination; menuOpen=false }
                     )
                 }
             }
