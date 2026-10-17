@@ -2,12 +2,12 @@ import { describe, expect, it } from 'vitest';
 import { rotateCoreSportGroups } from '@/providers/odds-core-fairness';
 
 describe('bounded core odds refresh fairness', () => {
-  const groups = [
+  const groups: Array<[string, string[]]> = [
     ['soccer_epl', ['1']],
     ['soccer_germany_bundesliga', ['2']],
     ['basketball_nba', ['3']],
     ['cricket_t20_blast', ['4']],
-  ] as const;
+  ];
 
   it('gives every sport the first scarce request slot once per rotation', () => {
     const first = Array.from({ length: groups.length }, (_, n) =>
