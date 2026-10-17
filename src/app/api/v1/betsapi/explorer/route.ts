@@ -13,11 +13,12 @@ const inputSchema = z.object({
   mode: z.enum(['live', 'upcoming']),
   sportId: z.number().int().positive(),
   page: z.number().int().min(1).max(100).optional(),
+  day: z.string().regex(/^[0-9]{8}$/).optional(),
   fi: z.string().regex(/^\d{1,16}$/).optional(),
 });
 type Input = z.infer<typeof inputSchema>;
 const options = (x: Input): ExplorerInput => ({
-  mode: x.mode, sportId: x.sportId, page: x.page, fi: x.fi,
+  mode: x.mode, sportId: x.sportId, page: x.page, day: x.day, fi: x.fi,
 });
 
 /**
@@ -31,6 +32,7 @@ export const GET = withErrorHandling('betsapi.explore.public', async (_ctx, requ
     mode: u.searchParams.get('mode') ?? 'live',
     sportId: Number(u.searchParams.get('sportId') ?? '1'),
     page: Number(u.searchParams.get('page') ?? '1'),
+    day: u.searchParams.get('day') || undefined,
     fi: u.searchParams.get('fi') || undefined,
   });
   if (!input.success) return jsonOk({ error: 'INVALID_FILTER', readOnly: true });
