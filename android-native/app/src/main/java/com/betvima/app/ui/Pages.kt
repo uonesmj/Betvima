@@ -204,6 +204,10 @@ fun CatalogPage(state: AppState, model: AppViewModel, live: Boolean,
     var selectedLeague by rememberSaveable(live, liveSport, state.sport, state.tournamentLeague) {
         mutableStateOf(if (live) "" else state.tournamentLeague)
     }
+    // Keep expanded/collapsed preferences stable while league cards are lazily composed.
+    var toggledUpcomingLeagues by rememberSaveable(live, liveSport, state.sport, state.tournamentLeague) {
+        mutableStateOf(emptyList<String>())
+    }
     var tournamentOpen by remember { mutableStateOf(false) }
     val allMatches = if (live) state.live else state.upcoming
     // Remember catalogue transformations; state can update independently from
@@ -327,25 +331,37 @@ fun CatalogPage(state: AppState, model: AppViewModel, live: Boolean,
                 }
             }
         }
+        // Each fixture must be its own LazyColumn item. The previous single huge
+        // league item eagerly measured EVERY expanded fixture (often dozens) on
+        // each layout, producing frame stalls during native vertical flings.
         visibleGroups.entries.forEachIndexed { index, group ->
-            item(key = "league-"+group.key, contentType = "league") {
+            val expanded = if (live) group.key !in collapsedLeagues
+                else (index == 0) != (group.key in toggledUpcomingLeagues)
+            val toggleGroup = {
+                if (live) {
+                    collapsedLeagues = if (group.key in collapsedLeagues)
+                        collapsedLeagues - group.key else collapsedLeagues + group.key
+                } else {
+                    toggledUpcomingLeagues = if (group.key in toggledUpcomingLeagues)
+                        toggledUpcomingLeagues - group.key else toggledUpcomingLeagues + group.key
+                }
+            }
+            item(key = "league-header-" + group.key, contentType = "league-header") {
                 Box(Modifier.padding(horizontal = 13.dp)) {
-                    if (live) {
-                        LeagueSection(group.key, group.value,
-                            expanded = group.key !in collapsedLeagues,
-                            onToggle = {
-                                collapsedLeagues = if (group.key in collapsedLeagues)
-                                    collapsedLeagues - group.key else collapsedLeagues + group.key
-                            }, state = state, model = model)
-                    } else {
-                        // Preserve the old upcoming behavior: first league open,
-                        // other leagues user-expandable. The Live fix is isolated.
-                        var upcomingExpanded by rememberSaveable(group.key) {
-                            mutableStateOf(index == 0)
+                    LeagueSectionHeader(group.value, expanded, toggleGroup, state)
+                }
+            }
+            if (expanded) {
+                group.value.forEach { match ->
+                    item(key = "league-fixture-" + group.key + "-" + match.id,
+                        contentType = "league-fixture") {
+                        Box(Modifier.padding(horizontal = 13.dp)) {
+                            Box(Modifier.fillMaxWidth()
+                                .background(Color(0xFFF4F6F9), RoundedCornerShape(14.dp))
+                                .padding(horizontal = 10.dp, vertical = 4.dp)) {
+                                ReferenceLeagueFixture(match, state, model)
+                            }
                         }
-                        LeagueSection(group.key, group.value, expanded = upcomingExpanded,
-                            onToggle = { upcomingExpanded = !upcomingExpanded },
-                            state = state, model = model)
                     }
                 }
             }
@@ -364,55 +380,42 @@ fun CatalogPage(state: AppState, model: AppViewModel, live: Boolean,
 }
 
 @Composable
-private fun LeagueSection(key: String, matches: List<Match>, expanded: Boolean,
-    onToggle: () -> Unit, state: AppState, model: AppViewModel) {
+private fun LeagueSectionHeader(matches: List<Match>, expanded: Boolean,
+    onToggle: () -> Unit, state: AppState) {
     Surface(shape = RoundedCornerShape(23.dp), color = Color.White,
         border = BorderStroke(1.dp, Palette.border),
         shadowElevation = 4.dp,
         modifier = Modifier.fillMaxWidth()) {
-        Column {
-            Row(Modifier.fillMaxWidth().clickable(onClick = onToggle)
-                .padding(horizontal = 13.dp, vertical = 12.dp),
-                verticalAlignment = Alignment.CenterVertically) {
-                LeagueIdentityBadge(matches.first(), size = 43)
-                Spacer(Modifier.width(9.dp))
-                Column(Modifier.weight(1f)) {
-                    Text(matches.first().league, color = Palette.text,
-                        fontWeight = FontWeight.ExtraBold, fontSize = 13.sp,
-                        maxLines = 2)
-                    Row(verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(5.dp)) {
-                        val country = resolvedCompetitionCountry(
-                            matches.first().country, matches.first().league)
-                        CountryIdentity(country)
-                        Text(
-                            country.takeIf { it.isNotBlank() }
-                                ?.let(::countryDisplayName)
-                                ?: tr(state.lang, "International", "بین‌المللی"),
-                            color = Palette.muted, fontSize = 10.sp, maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                        Text("•", color = Palette.border)
-                        Text(sportName(matches.first().sport),
-                            color = Palette.muted, fontSize = 10.sp)
-                    }
-                }
-                SmallPill(matches.size.toString(), Palette.paper, Palette.text)
-                SmoothExpandChevron(expanded,
-                    tr(state.lang, "Toggle league", "نمایش یا بستن لیگ"),
-                    tint = Palette.muted)
-            }
-            SmoothExpandedContent(expanded) {
-                Column(
-                    Modifier.fillMaxWidth().background(Color(0xFFF4F6F9))
-                        .padding(10.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    matches.forEach { match ->
-                        ReferenceLeagueFixture(match, state, model)
-                    }
+        Row(Modifier.fillMaxWidth().clickable(onClick = onToggle)
+            .padding(horizontal = 13.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically) {
+            LeagueIdentityBadge(matches.first(), size = 43)
+            Spacer(Modifier.width(9.dp))
+            Column(Modifier.weight(1f)) {
+                Text(matches.first().league, color = Palette.text,
+                    fontWeight = FontWeight.ExtraBold, fontSize = 13.sp,
+                    maxLines = 2)
+                Row(verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+                    val country = resolvedCompetitionCountry(
+                        matches.first().country, matches.first().league)
+                    CountryIdentity(country)
+                    Text(
+                        country.takeIf { it.isNotBlank() }
+                            ?.let(::countryDisplayName)
+                            ?: tr(state.lang, "International", "بین‌المللی"),
+                        color = Palette.muted, fontSize = 10.sp, maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Text("•", color = Palette.border)
+                    Text(sportName(matches.first().sport),
+                        color = Palette.muted, fontSize = 10.sp)
                 }
             }
+            SmallPill(matches.size.toString(), Palette.paper, Palette.text)
+            SmoothExpandChevron(expanded,
+                tr(state.lang, "Toggle league", "نمایش یا بستن لیگ"),
+                tint = Palette.muted)
         }
     }
 }
