@@ -7,6 +7,7 @@ on:
       - 'src/providers/betsapi-bet365-preview.ts'
       - 'src/providers/betsapi-sports.ts'
       - 'src/app/api/v1/admin/betsapi/**'
+      - 'src/app/api/v1/admin/betsapi/normalized/**'
       - 'src/components/admin/providers-client.tsx'
       - 'tests/unit/betsapi-trial.test.ts'
       - 'tests/unit/betsapi-normalization.test.ts'
