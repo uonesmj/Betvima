@@ -68,9 +68,11 @@ export function parseBet365LivePreview(fixtureId: string, results: unknown): Bet
   if (!/^\d{1,16}$/.test(fixtureId)) throw new Error('INVALID_BET365_FI');
   const markets: Bet365PreviewMarket[] = [];
   let current: Bet365PreviewMarket | null = null;
+  let currentSubmarket = '';
   const seenKeys = new Set<string>();
   for (const data of liveRecords(results)) {
     if (data.type === 'MG') {
+      currentSubmarket = '';
       const id = string(data.ID);
       const title = string(data.NA).slice(0, 150);
       const key = `bet365:${fixtureId}:${id}`;
@@ -83,6 +85,12 @@ export function parseBet365LivePreview(fixtureId: string, results: unknown): Bet
       }
       continue;
     }
+    if (data.type === 'MA') {
+      // Bet365 MA rows hold the group/line context for following PA rows.
+      // Never guess missing Over/Under, player, or team names.
+      currentSubmarket = data.SU === '1' ? '' : string(data.NA).trim().slice(0, 110);
+      continue;
+    }
     if (data.type !== 'PA' || !current || data.SU === '1') continue;
     const price = bet365OddsDecimal(data.OD);
     const id = string(data.ID);
@@ -90,7 +98,11 @@ export function parseBet365LivePreview(fixtureId: string, results: unknown): Bet
     if (!price || !id || current.selections.length >= 250) continue;
     if (current.selections.some(s => s.id === id)) continue;
     current.selections.push({
-      id, label: outcomeLabel(data, id, handicap), decimal: price,
+      id, label: (() => {
+        const label = outcomeLabel(data, id, handicap);
+        if (!currentSubmarket || label.toLowerCase().includes(currentSubmarket.toLowerCase())) return label;
+        return `${currentSubmarket} · ${label}`.slice(0, 200);
+      })(), decimal: price,
     });
   }
   const offered = markets.filter(m => m.selections.length >= 1).slice(0, 1000);
