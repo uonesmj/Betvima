@@ -117,6 +117,7 @@ export function ProvidersClient() {
         <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
           <div>
             <h2 className="text-sm font-semibold">BetsAPI — 3-day evaluation</h2>
+            <a href="/betsapi" className="mt-2 inline-block rounded-lg border border-nova-border px-3 py-2 text-xs font-semibold hover:opacity-80">Open full BetsAPI games &amp; markets on site ↗</a>
             <p className="text-xs nova-muted">Read-only coverage probe. Does not change public odds, wagers, or settlement.</p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
