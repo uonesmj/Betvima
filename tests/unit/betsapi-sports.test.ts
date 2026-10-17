@@ -67,6 +67,28 @@ describe('BetsAPI staged sports contract', () => {
     expect(fetcher).not.toHaveBeenCalled();
     expect(JSON.stringify(result)).not.toContain('MOCK_TEST_ONLY');
   });
+  it('only treats a score as settlement-authoritative when confirmed by official ended feed', async () => {
+    const calls: string[] = [];
+    const fetcher = vi.fn(async (url: RequestInfo | URL) => {
+      const u = new URL(String(url));
+      calls.push(u.pathname);
+      const ended = { ...event, time_status: '3', ss: '2-1' };
+      return new Response(JSON.stringify({
+        success: 1, results: u.pathname.endsWith('/events/ended') ? [ended] : ended,
+      }));
+    });
+    const provider = new BetsApiSportsProvider({ token: 'MOCK_TEST_ONLY', fetcher: fetcher as typeof fetch });
+    const preview = await provider.fetchResult('1:4140581');
+    expect(preview.value?.authoritative).toBe(false);
+    const ended = await provider.fetchResults('2026-10-17T00:00:00Z', '2026-10-17T23:00:00Z', ['1:4140581']);
+    expect(ended.value?.[0]).toMatchObject({
+      matchProviderId: '1:4140581', homeScore: 2, awayScore: 1,
+      status: 'finished', authoritative: true,
+    });
+    expect(calls).toEqual(['/v1/event/view', '/v3/events/ended']);
+    expect(JSON.stringify(ended)).not.toContain('MOCK_TEST_ONLY');
+  });
+
   it('never initializes without explicit enabled flag even if a key exists', async () => {
     vi.stubEnv('BETSAPI_TRIAL_ENABLED', 'false');
     const f = vi.fn();
