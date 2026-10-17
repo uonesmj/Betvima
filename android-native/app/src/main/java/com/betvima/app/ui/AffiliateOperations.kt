@@ -1,5 +1,6 @@
 package com.betvima.app.ui
 
+import android.content.Intent
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
@@ -34,7 +35,7 @@ import java.util.UUID
 @Composable
 fun AffiliateOperations(state: AppState, model: AppViewModel, currency: String,
     minimumPayoutMinor: String = "0", initialTab: String = "referrals",
-    showNavigation: Boolean = true) {
+    showNavigation: Boolean = true, onNavigate: (String) -> Unit = {}) {
     val context = LocalContext.current
     val api = remember { ApiClient() }
     val vault = remember { SessionVault(context, "affiliate") }
@@ -65,6 +66,8 @@ fun AffiliateOperations(state: AppState, model: AppViewModel, currency: String,
     var payoutAmount by rememberSaveable { mutableStateOf("") }
     var payoutConfirm by remember { mutableStateOf(false) }
     var availableWalletAssets by remember { mutableStateOf<Set<String>>(emptySet()) }
+    var maskedWallets by remember { mutableStateOf<Map<String,String>>(emptyMap()) }
+    var overview by remember { mutableStateOf<JSONObject?>(null) }
     var payoutKey by remember { mutableStateOf(UUID.randomUUID().toString()) }
 
     LaunchedEffect(selected, page, refresh) {
@@ -74,7 +77,7 @@ fun AffiliateOperations(state: AppState, model: AppViewModel, currency: String,
             val path = when (selected) {
                 "referrals" -> "/api/v1/affiliate/referrals?pageSize=20&page=" + page
                 "ledger" -> "/api/v1/affiliate/ledger?pageSize=20&page=" + page
-                "payouts" -> "/api/v1/affiliate/payouts"
+                "payouts" -> "/api/v1/affiliate/payouts?pageSize=20&page=" + page
                 "links" -> "/api/v1/affiliate/links"
                 else -> "/api/v1/affiliate/wallets"
             }
@@ -82,14 +85,27 @@ fun AffiliateOperations(state: AppState, model: AppViewModel, currency: String,
             if (selected == "payouts") {
                 // Fail closed if wallet availability cannot be verified server-side.
                 availableWalletAssets = emptySet()
+                maskedWallets = emptyMap()
                 val wallets = api.get("/api/v1/affiliate/wallets", token)
-                availableWalletAssets = wallets.arr("items").objects()
-                    .map { it.str("asset") }.filter(String::isNotBlank).toSet()
+                maskedWallets = wallets.arr("items").objects()
+                    .filter { it.str("asset").isNotBlank() }
+                    .associate { it.str("asset") to
+                        (if (it.optBoolean("addressHidden",false))
+                            tr(state.lang,"Saved · hidden","ثبت‌شده · مخفی")
+                         else it.str("addressMasked").ifBlank{"—"}) }
+                availableWalletAssets = maskedWallets.keys
+            }
+            if (selected == "ledger" || selected == "payouts") {
+                // Explanatory commission and settlement terms come from the account,
+                // not hard-coded marketing claims.
+                overview = runCatching {
+                    api.get("/api/v1/affiliate/overview",token)
+                }.getOrNull()
             }
             val source = if (selected == "links") "links" else "items"
             val next = response.arr(source).objects()
             values = if (page == 1) next else (values + next).distinctBy { it.str("id", it.str("code")) }
-            more = selected in setOf("referrals", "ledger") &&
+            more = selected in setOf("referrals", "ledger", "payouts") &&
                 (response.optBoolean("hasMore", false) ||
                     (next.size == 20 && response.optInt("total", 0) > page * 20))
             data = response
@@ -163,29 +179,93 @@ fun AffiliateOperations(state: AppState, model: AppViewModel, currency: String,
         if (!busy || values.isNotEmpty()) {
             when(selected) {
                 "referrals" -> {
-                    if (values.isEmpty()) PartnerEmpty(state.lang)
+                    PartnerInfoCard(
+                        tr(state.lang,"Your referred players","کاربران معرفی‌شده"),
+                        tr(state.lang,
+                            "Tap a player to see their registration, deposits, withdrawals and commission.",
+                            "روی هر کاربر بزنید تا زمان ثبت‌نام، واریز، برداشت و کمیسیون او را ببینید."),
+                        Icons.Default.Groups) {
+                        Row(verticalAlignment=Alignment.CenterVertically) {
+                            Text(tr(state.lang,"Total referrals","کل زیرمجموعه‌ها"),
+                                color=Palette.muted,fontSize=11.sp,
+                                modifier=Modifier.weight(1f))
+                            Text(data?.optInt("total")?.toString()?:"—",fontSize=20.sp,
+                                fontWeight=FontWeight.Black,color=affiliateBlue)
+                        }
+                    }
+                    if (values.isEmpty() && !busy)
+                        PartnerEmptyPanel(state.lang,
+                            tr(state.lang,"No referrals yet","هنوز زیرمجموعه‌ای ثبت نشده"),
+                            tr(state.lang,
+                                "Share your referral link to connect registrations to this partner account.",
+                                "لینک معرفی خود را منتشر کنید تا ثبت‌نام‌ها به حساب افیلیت شما متصل شوند."),
+                            Icons.Default.PersonAdd)
                     values.forEach { row ->
-                        PartnerRow(
-                            title = row.str("code", row.str("userId").take(10)),
-                            subtitle = tr(state.lang, "Status", "وضعیت") + ": " +
-                                row.str("status", "—"),
-                            value = row.str("wageredMinor").takeIf { it.isNotBlank() }
-                                ?.let { money(it, currency) } ?: "—",
-                            icon = Icons.Default.Groups
-                        )
+                        PartnerReferralCard(row,state.lang,currency) { id ->
+                            clipboard.setText(AnnotatedString(id))
+                            actionMessage=tr(state.lang,"User ID copied","شناسه کاربر کپی شد")
+                        }
                     }
                 }
                 "ledger" -> {
-                    if (values.isEmpty()) PartnerEmpty(state.lang)
-                    values.forEach { row ->
-                        PartnerRow(
-                            title = row.str("type").replace("_", " "),
-                            subtitle = row.str("createdAt").take(16).replace("T", " · "),
-                            value = row.str("amountMinor").takeIf { it.isNotBlank() }
-                                ?.let { money(it, currency) } ?: "—",
-                            icon = Icons.Default.ReceiptLong
-                        )
+                    val profile=overview?.optJSONObject("affiliate")
+                    val totals=overview?.optJSONObject("payable")
+                    val rateBps=profile?.optInt("commissionRateBps",-1)?:-1
+                    PartnerInfoCard(
+                        tr(state.lang,"Commission & settlement","کمیسیون و تسویه"),
+                        tr(state.lang,
+                            "Account-specific terms and posted ledger entries",
+                            "شرایط مختص حساب شما و گردش‌های ثبت‌شده"),
+                        Icons.Default.AccountBalance) {
+                        Row(horizontalArrangement=Arrangement.spacedBy(10.dp)) {
+                            PartnerField(tr(state.lang,"Rate","درصد کمیسیون"),
+                                if(rateBps>=0) BigDecimal(rateBps).movePointLeft(2)
+                                    .stripTrailingZeros().toPlainString()+"%" else "—",
+                                Modifier.weight(1f),affiliateBlue)
+                            PartnerField(tr(state.lang,"Payable","قابل برداشت"),
+                                totals?.str("payableMinor")?.takeIf{it.isNotBlank()}
+                                    ?.let{money(it,currency)}?:"—",
+                                Modifier.weight(1f),Palette.green)
+                        }
+                        Divider(color=affiliateOutline)
+                        Row(horizontalArrangement=Arrangement.spacedBy(10.dp)) {
+                            PartnerField(tr(state.lang,"Account status","وضعیت حساب"),
+                                profile?.str("status")?:"—",Modifier.weight(1f))
+                            PartnerField(tr(state.lang,"Settlement model","مدل تسویه"),
+                                profile?.str("commissionModel")?.replace("_"," ") ?:"—",
+                                Modifier.weight(1f))
+                        }
+                        val day=profile?.optInt("settlementDay",-1)?:-1
+                        val names=listOf("","Monday","Tuesday","Wednesday","Thursday",
+                            "Friday","Saturday","Sunday")
+                        val weekdaysFa=listOf("","دوشنبه","سه‌شنبه","چهارشنبه",
+                            "پنج‌شنبه","جمعه","شنبه","یکشنبه")
+                        val schedule=if(day in 1..7) {
+                            (if(state.lang==Lang.FA) weekdaysFa[day] else names[day])+
+                                " · "+(profile?.str("settlementTimezone")?:"")
+                        } else "—"
+                        PartnerField(tr(state.lang,"Settlement schedule","برنامه تسویه"),
+                            schedule)
+                        Text(tr(state.lang,
+                            "Commissions are posted after eligible player activity is settled. Withdrawable funds depend on your approved balance and the account's settlement model.",
+                            "کمیسیون پس از تسویه فعالیت واجدشرایط کاربران ثبت می‌شود. مبلغ قابل برداشت تابع موجودی تأییدشده و مدل تسویه حساب شماست."),
+                            color=Palette.muted,fontSize=11.sp,lineHeight=17.sp)
+                        Text(tr(state.lang,
+                            "Account access continues while the affiliate remains approved and complies with the applicable partner agreement; lifetime status is not guaranteed.",
+                            "دسترسی افیلیت تا زمانی ادامه دارد که حساب تأییدشده و مطابق توافق همکاری باشد؛ دائمی بودن بدون قید و شرط تضمین نمی‌شود."),
+                            color=affiliateBlue,fontSize=11.sp,lineHeight=17.sp)
                     }
+                    SectionHeading(tr(state.lang,"Commission history","سوابق گردش کمیسیون"),
+                        tr(state.lang,"Posted credits, debits and settlements",
+                            "بستانکاری‌ها، بدهکاری‌ها و تسویه‌های ثبت‌شده"))
+                    if(values.isEmpty() && !busy)
+                        PartnerEmptyPanel(state.lang,
+                            tr(state.lang,"No posted transactions","هنوز گردش کمیسیون ثبت نشده"),
+                            tr(state.lang,
+                                "Ledger entries appear after qualifying settlements or payouts.",
+                                "پس از تسویه‌های واجدشرایط یا برداشت‌ها، سوابق اینجا نشان داده می‌شوند."),
+                            Icons.Default.ReceiptLong)
+                    values.forEach { row -> PartnerLedgerCard(row,state.lang,currency) }
                 }
                 "payouts" -> {
                     val payable = data?.optJSONObject("payable")
