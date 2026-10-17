@@ -2,6 +2,7 @@ import { withErrorHandling, jsonOk } from '@/lib/errors';
 import { withUser } from '@/server/http/guard';
 import { getUwalletVoucherIrrPerUsd } from '@/server/providers/uwallet/voucher-fx';
 import { signUwalletVoucherQuote } from '@/server/providers/uwallet/voucher-quote';
+import { voucherMinimumWalletMinor } from '@/lib/voucher-fx';
 
 export const dynamic = 'force-dynamic';
 
@@ -19,6 +20,8 @@ export const GET = withErrorHandling('fx.uwalletVoucher', async (ctx, request: R
     quotedAt,
     signature,
     distinctBuySellRatesAvailable: false,
-    minimumWithdrawalUsd: '1.50',
+    minimumWithdrawalUsd: '1.50', // Existing clients retain the provider's USD denomination.
+    minimumWithdrawalIrr: voucherMinimumWalletMinor(150n, 'IRR', rateIrrPerUsd).toString(),
+    fiatDisplayCurrency: 'IRR',
   });
 });
