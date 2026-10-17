@@ -12,6 +12,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
@@ -33,6 +34,10 @@ internal fun recoveryRedirect(account: RecoveryAccount): String =
     "https://betvima.com/auth/reset-password" +
         if (account == RecoveryAccount.AFFILIATE) "?from=affiliate" else ""
 
+internal fun recoveryLoginUrl(account: RecoveryAccount): String =
+    if (account == RecoveryAccount.AFFILIATE) "https://betvima.com/affiliate/login"
+    else "https://betvima.com/auth/login"
+
 @Composable
 internal fun PasswordRecoveryPanel(
     lang: Lang,
@@ -42,6 +47,7 @@ internal fun PasswordRecoveryPanel(
     onBack: () -> Unit
 ) {
     val scope = rememberCoroutineScope()
+    val uri = LocalUriHandler.current
     var email by rememberSaveable(account) { mutableStateOf(initialEmail.trim()) }
     var configRevision by remember { mutableIntStateOf(0) }
     var widgetRevision by remember { mutableIntStateOf(0) }
@@ -173,6 +179,13 @@ internal fun PasswordRecoveryPanel(
                                 OutlinedButton(onClick = { configRevision++ }) {
                                     Text(tr(lang, "Retry connection", "تلاش دوباره"))
                                 }
+                                TextButton(onClick = { uri.openUri(recoveryLoginUrl(account)) }) {
+                                    Icon(Icons.Default.OpenInNew, null,
+                                        modifier = Modifier.size(16.dp))
+                                    Spacer(Modifier.width(5.dp))
+                                    Text(tr(lang, "Recover on official website", "بازیابی در سایت رسمی"),
+                                        fontSize = 12.sp)
+                                }
                             }
                         }
                         else -> Column(Modifier.padding(horizontal = 5.dp, vertical = 5.dp),
@@ -203,12 +216,14 @@ internal fun PasswordRecoveryPanel(
                 Button(
                     onClick = {
                         if (!validRecoveryEmail(email) || token.isNullOrBlank() || busy) return@Button
+                        val recoveryEmail = email.trim()
+                        val verifiedToken = token ?: return@Button
                         busy = true
                         error = null
                         scope.launch {
                             try {
                                 api.sendPasswordResetLink(
-                                    email = email.trim(), turnstileToken = token!!,
+                                    email = recoveryEmail, turnstileToken = verifiedToken,
                                     redirectUrl = recoveryRedirect(account)
                                 )
                                 sent = true
