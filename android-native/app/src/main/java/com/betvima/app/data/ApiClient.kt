@@ -860,12 +860,17 @@ class ApiClient {
                 }
                 require(total > 0) { "The selected file is empty" }
             }
+        // DocumentsProvider MIME is advisory; server checks file magic bytes.
+        // Honor the true supported encoding instead of posting a JPG-labelled WEBP.
+        val actualMime = supportActualMime(bytes.toByteArray())
+            ?: throw InvalidSupportFileException(
+                "Unsupported file encoding. Export the original as JPG, PNG, WEBP or PDF.")
         val body = MultipartBody.Builder()
             .setType(MultipartBody.FORM)
             .addFormDataPart("body", text.trim())
             .addFormDataPart(
                 "file", supportSafeFilename(fileName),
-                bytes.toByteArray().toRequestBody(mimeType.toMediaType())
+                bytes.toByteArray().toRequestBody(actualMime.toMediaType())
             )
             .build()
         val req = Request.Builder()
