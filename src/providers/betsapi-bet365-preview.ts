@@ -52,7 +52,7 @@ function liveRecords(value: unknown): Record<string, unknown>[] {
 }
 
 export function parseBet365LivePreview(fixtureId: string, results: unknown): Bet365PreviewResult {
-  if (!/^\\d{1,16}$/.test(fixtureId)) throw new Error('INVALID_BET365_FI');
+  if (!/^\d{1,16}$/.test(fixtureId)) throw new Error('INVALID_BET365_FI');
   const markets: Bet365PreviewMarket[] = [];
   let current: Bet365PreviewMarket | null = null;
   const seenKeys = new Set<string>();
@@ -95,7 +95,7 @@ export function parseBet365LivePreview(fixtureId: string, results: unknown): Bet
  * Traverse actual `sp` objects in every section instead of hardcoding only
  * first two response items or omitting `others`. */
 export function parseBet365PrematchPreview(fixtureId: string, results: unknown): Bet365PreviewResult {
-  if (!/^\\d{1,16}$/.test(fixtureId)) throw new Error('INVALID_BET365_FI');
+  if (!/^\d{1,16}$/.test(fixtureId)) throw new Error('INVALID_BET365_FI');
   const markets: Bet365PreviewMarket[] = [];
   const seen = new Set<string>();
   function parseSection(data: unknown, category: string, depth: number): void {
