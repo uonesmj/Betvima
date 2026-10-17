@@ -35,8 +35,8 @@ internal fun recoveryRedirect(account: RecoveryAccount): String =
         if (account == RecoveryAccount.AFFILIATE) "?from=affiliate" else ""
 
 internal fun recoveryLoginUrl(account: RecoveryAccount): String =
-    if (account == RecoveryAccount.AFFILIATE) "https://betvima.com/affiliate/login"
-    else "https://betvima.com/auth/login"
+    if (account == RecoveryAccount.AFFILIATE) "https://betvima.com/affiliate/login?forgot=1"
+    else "https://betvima.com/auth/login?forgot=1"
 
 @Composable
 internal fun PasswordRecoveryPanel(
@@ -113,8 +113,8 @@ internal fun PasswordRecoveryPanel(
                         Text(tr(lang, "Check your email", "ایمیل خود را بررسی کنید"),
                             fontSize = 17.sp, fontWeight = FontWeight.Black, color = Palette.text)
                         Text(tr(lang,
-                            "If an account exists for this email, a secure password reset link has been sent. Open the link to choose a new password on BetVima's secure page. Check Spam too.",
-                            "اگر حسابی با این ایمیل وجود داشته باشد، لینک امن بازیابی ارسال شده است. لینک را باز کنید و در صفحه امن بت‌ویما رمز جدید بسازید. پوشه اسپم را نیز بررسی کنید."),
+                            "If this email belongs to a BetVima account, a secure reset link has been sent. Open that email link (not the plain reset-password address) to create your new password. Check Spam as well.",
+                            "اگر این ایمیل به حساب بت‌ویما تعلق داشته باشد، لینک بازیابی ارسال می‌شود. برای ساخت رمز جدید فقط لینک دریافتی در ایمیل را باز کنید؛ آدرس ساده صفحه تغییر رمز کافی نیست. پوشه اسپم را هم بررسی کنید."),
                             color = Palette.text, fontSize = 12.sp, lineHeight = 20.sp)
                     }
                 }
@@ -183,7 +183,7 @@ internal fun PasswordRecoveryPanel(
                                     Icon(Icons.Default.OpenInNew, null,
                                         modifier = Modifier.size(16.dp))
                                     Spacer(Modifier.width(5.dp))
-                                    Text(tr(lang, "Recover on official website", "بازیابی در سایت رسمی"),
+                                    Text(tr(lang, "Use email recovery in browser", "دریافت لینک بازیابی در مرورگر"),
                                         fontSize = 12.sp)
                                 }
                             }
