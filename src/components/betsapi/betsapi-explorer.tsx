@@ -21,6 +21,7 @@ interface Market {
   selections: Array<{ id: string; label: string; decimal: string }>;
 }
 interface MarketList {
+  source: 'betsapi_bet365';
   readOnly: true; configured: boolean; mode: Mode; fi: string;
   refreshedAt: string; marketCount: number; selectionCount: number;
   markets: Market[]; error: string | null;
