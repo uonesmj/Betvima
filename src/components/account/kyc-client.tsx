@@ -8,6 +8,7 @@ import { apiRequest, useApiQuery } from '@/lib/hooks/useApi';
 
 type Status = {
   kycStatus: string;
+  gameAccessApproved: boolean;
   canSubmit: boolean;
   submission: null | {
     id: string; status: string; documentType: string; createdAt: string; reviewNote: string | null;
@@ -27,7 +28,7 @@ export function KycClient() {
   const [consent, setConsent] = useState(false);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState('');
-  const verified = data?.kycStatus === 'verified';
+  const verified = data?.gameAccessApproved === true;
   const pending = data?.kycStatus === 'pending' && data?.submission?.status === 'pending';
 
   const submit = async () => {
