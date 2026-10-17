@@ -405,6 +405,21 @@ export function ProfileClient() {
               ) : null}
             </div>
 
+              <a href="/account/kyc" className="flex min-h-[64px] w-full items-center justify-between gap-3 px-4 text-left">
+                <div className="flex items-center gap-3">
+                  <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-[#E8F2FF]">
+                    <ShieldCheck className="h-5 w-5 text-[#087FF5]" />
+                  </div>
+                  <div>
+                    <div className="text-sm font-black">{locale === 'fa' ? 'احراز هویت' : 'Identity verification'}</div>
+                    <div className="text-[11px] text-[#7A8492]">{locale === 'fa' ? 'ارسال مدارک و تأیید دسترسی کازینو' : 'Upload ID and request casino access'}</div>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-[11px] font-bold text-[#687384]">{kycLabel(kycData?.kycStatus)}</span>
+                  <ChevronRight className="h-5 w-5 text-[#89929E]" />
+                </div>
+              </a>
               <button type="button" onClick={() => setOpenSection(openSection === 'transactions' ? null : 'transactions')} className="flex min-h-[64px] w-full items-center justify-between gap-3 px-4 text-left">
                 <div className="flex items-center gap-3">
                   <div className="grid h-10 w-10 place-items-center rounded-xl bg-[#EAFBF2]">
