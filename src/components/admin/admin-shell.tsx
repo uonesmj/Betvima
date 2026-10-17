@@ -22,6 +22,7 @@ const SECTIONS: { group: string; items: { href: string; label: string }[] }[] = 
     group: 'Customers',
     items: [
       { href: '/admin/users', label: 'Users' },
+      { href: '/admin/kyc', label: 'Identity reviews' },
       { href: '/admin/bets', label: 'Bets' },
       { href: '/admin/payments', label: 'Payments' },
       { href: '/admin/support', label: 'Live Support' },

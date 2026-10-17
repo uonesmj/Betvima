@@ -17,6 +17,7 @@ function fakeDb(walletCurrency: 'IRT' | 'IRR' = 'IRT', original = 2_500_000n) {
   let balance = original;
   let preferred: string = walletCurrency;
   let kycStatus = 'verified';
+  let documentApproved = true;
   let country = 'DE';
   const perCurrencyStakeLimit = new Map<string, bigint>();
   const posted: Array<Record<string, unknown>> = [];
@@ -27,6 +28,7 @@ function fakeDb(walletCurrency: 'IRT' | 'IRR' = 'IRT', original = 2_500_000n) {
     queryOne: vi.fn(async (sql: string, args: unknown[] = []) => {
       if (sql.includes('from nova.profiles p')) return {
         status: 'active', age_verified: true, kyc_status: kycStatus,
+        kyc_document_approved: documentApproved,
         currency: preferred, country,
         restricted: false, self_excluded: false,
         max_stake_per_bet_minor: perCurrencyStakeLimit.get(String(args[1] ?? preferred))?.toString() ?? null,
@@ -94,6 +96,7 @@ function fakeDb(walletCurrency: 'IRT' | 'IRR' = 'IRT', original = 2_500_000n) {
   return { db: db as unknown as Db, posted, receipts, getBalance: () => balance,
     setPreferredCurrency: (currency: string) => { preferred = currency; },
     setKycStatus: (status: string) => { kycStatus = status; },
+    setDocumentApproved: (value: boolean) => { documentApproved = value; },
     setCountry: (value: string) => { country = value; },
     setStakeLimit: (currency: string, minor: bigint) => { perCurrencyStakeLimit.set(currency, minor); } };
 }
@@ -134,6 +137,13 @@ describe('Casino fiat settle staging contract', () => {
       expect((await settleFiatCasinoCallback(t.db, userId, event('kyc-approved', 'debit', 20n))).error).toBe(0);
       expect(t.posted).toHaveLength(1);
     }
+  });
+
+  it('rejects flag-only KYC without operator-reviewed identity documents for fiat wager', async () => {
+    const t = fakeDb();
+    t.setDocumentApproved(false);
+    expect((await settleFiatCasinoCallback(t.db, userId, event('no-document', 'debit', 20n))).error).toBe(1);
+    expect(t.posted).toHaveLength(0);
   });
 
   it('refuses a fiat casino debit outside configured countries', async () => {

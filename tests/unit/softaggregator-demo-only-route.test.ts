@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { POST } from '@/app/api/v1/casino/demo/route';
 import { launchCasinoGame } from '@/server/providers/softaggregator/client';
 import { enforceRateLimit } from '@/server/http/request';
+import { casinoIdentityApproved } from '@/server/kyc/eligibility';
 
 vi.mock('@/lib/errors', () => ({
   withErrorHandling: (
@@ -22,6 +23,10 @@ vi.mock('@/server/http/request', () => ({
   enforceRateLimit: vi.fn(async () => {}),
 }));
 
+vi.mock('@/server/kyc/eligibility', () => ({
+  casinoIdentityApproved: vi.fn(async () => true),
+}));
+
 vi.mock('@/server/providers/softaggregator/client', () => ({
   casinoEnabled: () => true,
   launchCasinoGame: vi.fn(async () => 'https://games.example.test/sandbox-only'),
@@ -37,10 +42,13 @@ function request(body: Record<string, unknown>): Request {
   });
 }
 
-describe('Casino website demo-only route without customer KYC/age/country', () => {
-  beforeEach(() => vi.clearAllMocks());
+describe('Casino website demo-only route requiring operator-approved identity', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(casinoIdentityApproved).mockResolvedValue(true);
+  });
 
-  it('does not require a profile country or KYC and can only launch a provider demo', async () => {
+  it('does not require jurisdiction for sandbox demo but requires operator-approved identity', async () => {
     const response = await launch(request({ gameId: 'test/Aviator', device: 'mobile', lang: 'fa' }));
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual({
@@ -56,6 +64,14 @@ describe('Casino website demo-only route without customer KYC/age/country', () =
     expect(vi.mocked(enforceRateLimit)).toHaveBeenCalledWith(
       'casino:launch:11111111-1111-4111-8111-111111111111', 20, 60,
     );
+  });
+
+  it('blocks all demo play if identity evidence is not reviewed', async () => {
+    vi.mocked(casinoIdentityApproved).mockResolvedValue(false);
+    const response = await launch(request({ gameId: 'test/Aviator' }));
+    expect(response.status).toBe(403);
+    expect(await response.json()).toEqual({ error: 'CASINO_KYC_REQUIRED' });
+    expect(launchCasinoGame).not.toHaveBeenCalled();
   });
 
   it('rejects client-supplied cash mode and identity fields rather than changing modes', async () => {
