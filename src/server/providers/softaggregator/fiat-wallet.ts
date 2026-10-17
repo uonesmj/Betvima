@@ -7,6 +7,7 @@ import {
   validateCasinoFxSnapshot, type CasinoCurrency, type CasinoFxSnapshot,
 } from './fx';
 import { casinoCountryPermitted } from './jurisdiction';
+import { casinoKycPermitted, casinoPreKycAllowsDebit, lockCasinoPreKycDebit } from './pre-kyc';
 
 type FiatCurrency = Extract<CasinoCurrency, 'IRR' | 'IRT'>;
 type BalanceResult = { error: 0 | 1 | 2; balance: number };
@@ -35,7 +36,7 @@ function usable(row: Wallet | null): bigint {
     ? BigInt(row.balance_minor) - BigInt(row.locked_minor) : 0n;
 }
 function allowed(profile: Profile): boolean {
-  return profile.status === 'active' && profile.age_verified && profile.kyc_status === 'verified' &&
+  return profile.status === 'active' && profile.age_verified && casinoKycPermitted(profile) &&
     casinoCountryPermitted(profile.country) && !profile.self_excluded && !profile.restricted;
 }
 
@@ -133,6 +134,7 @@ export async function settleFiatCasinoCallback(
     // Serialize all callbacks for the round before acquiring the wallet lock.
     await tx.query('select pg_advisory_xact_lock(hashtext($1),hashtext($2))',
       ['softaggregator-round:' + userId, event.roundId! + ':' + event.gameId!]);
+    if (event.action === 'debit' && !event.rollback) await lockCasinoPreKycDebit(tx, userId);
     const profile = await readProfile(tx, userId);
     if (!profile) return fail;
     let round = await tx.queryOne<Round>(
@@ -213,7 +215,8 @@ export async function settleFiatCasinoCallback(
     } else if (isDebit && (local > before ||
       (!event.rollback && (!allowed(roundCurrencyProfile) ||
          roundCurrencyProfile.currency !== currency || event.amountMinor! < SOFTAGGREGATOR_MIN_BET_MINOR ||
-        !(await limitsAllow(tx, userId, currency, local, roundCurrencyProfile)))))) {
+        !(await limitsAllow(tx, userId, currency, local, roundCurrencyProfile)) ||
+        !(await casinoPreKycAllowsDebit(tx, userId, roundCurrencyProfile, event.amountMinor!)))))) {
       error = 1;
     } else if (local < 1n) {
       error = 2;
