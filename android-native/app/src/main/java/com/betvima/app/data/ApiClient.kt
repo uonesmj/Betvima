@@ -295,6 +295,69 @@ class ApiClient {
             }
         }
 
+    /** Use Supabase Auth's own MFA API; no shared TOTP secrets on BetVima servers.
+     * All endpoints require a valid user access token, never a service-role key.
+     */
+    private suspend fun mfaAuthCall(
+        token: String, method: String, suffix: String, payload: JSONObject? = null
+    ): JSONObject = withContext(Dispatchers.IO) {
+        require(token.isNotBlank())
+        require(suffix.startsWith("/") && !suffix.contains(".."))
+        val config = get("/api/v1/mobile/config")
+        val url = config.str("supabaseUrl").trimEnd('/')
+        val key = config.str("supabaseAnonKey")
+        require(url.startsWith("https://") && key.isNotBlank())
+        val builder = Request.Builder().url(url + "/auth/v1" + suffix)
+            .header("apikey", key).header("Authorization", "Bearer " + token)
+            .header("Accept", "application/json").header("Cache-Control", "no-store")
+        when (method) {
+            "POST" -> builder.post((payload ?: JSONObject()).toString().toRequestBody(jsonType))
+            "DELETE" -> builder.delete()
+            "GET" -> builder.get()
+            else -> error("Unsupported MFA method")
+        }
+        client.newCall(builder.build()).execute().use { response ->
+            val value = runCatching { JSONObject(response.body?.string().orEmpty()) }.getOrDefault(JSONObject())
+            if (!response.isSuccessful) throw ApiFailure(response.code,
+                value.str("msg", value.str("error_description", value.str("message", "Authenticator request failed"))))
+            value
+        }
+    }
+
+    suspend fun mfaUser(token: String): JSONObject = mfaAuthCall(token, "GET", "/user")
+
+    suspend fun mfaFactors(token: String): List<String> {
+        val user = mfaUser(token)
+        val arr = user.optJSONArray("factors") ?: JSONArray()
+        return (0 until arr.length()).mapNotNull { i ->
+            arr.optJSONObject(i)?.takeIf {
+                it.str("factor_type") == "totp" && it.str("status") == "verified"
+            }?.str("id")?.takeIf(String::isNotBlank)
+        }
+    }
+
+    suspend fun mfaEnroll(token: String): JSONObject =
+        mfaAuthCall(token, "POST", "/factors",
+            JSONObject().put("factor_type", "totp").put("friendly_name", "BetVima Authenticator"))
+
+    suspend fun mfaChallengeVerify(token: String, factorId: String, code: String): JSONObject {
+        require(Regex("[a-fA-F0-9-]{36}").matches(factorId))
+        require(Regex("[0-9]{6}").matches(code))
+        val challenge = mfaAuthCall(token, "POST", "/factors/$factorId/challenge")
+        val challengeId = challenge.str("id").takeIf { it.isNotBlank() }
+            ?: throw ApiFailure(503, "MFA challenge was not created")
+        val verified = mfaAuthCall(token, "POST", "/factors/$factorId/verify",
+            JSONObject().put("challenge_id", challengeId).put("code", code))
+        if (verified.str("access_token").isBlank() || verified.str("refresh_token").isBlank())
+            throw ApiFailure(401, "MFA did not issue an authenticated session")
+        return verified
+    }
+
+    suspend fun mfaUnenroll(token: String, factorId: String) {
+        require(Regex("[a-fA-F0-9-]{36}").matches(factorId))
+        mfaAuthCall(token, "DELETE", "/factors/$factorId")
+    }
+
     /** Casino games are fetched from BetVima, never directly from the provider. */
     suspend fun casinoGames(
         page: Int = 1, category: String = "", query: String = "", provider: String = ""
