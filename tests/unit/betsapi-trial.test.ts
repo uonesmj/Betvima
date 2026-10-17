@@ -34,10 +34,33 @@ describe('BetsAPI evaluation adapter', () => {
       sport: 'Football', eventId: '12345', marketKeys: 2, latestOffers: 1,
       freshMarkets: 0, freshSelections: 0, error: null,
     });
-    expect(result.callsInProbe).toBe(4);
+    expect(result.callsInProbe).toBe(5);
     expect(result.bet365.permitted).toBe(true);
+    expect(result.bet365.upcomingAccess).toBe('AVAILABLE');
     expect(result.remainingHourlyRequests).toBe(3550);
-    expect(requests).toHaveLength(4);
+    expect(requests).toHaveLength(5);
+    expect(JSON.stringify(result)).not.toContain('TEST_TOKEN_ONLY');
+  });
+
+  it('differentiates Bet365 authorization denial from transient upstream failures', async () => {
+    const fake = vi.fn(async (url: RequestInfo | URL) => {
+      const endpoint = new URL(String(url)).pathname;
+      if (endpoint === '/v1/bet365/inplay_filter') {
+        return new Response(JSON.stringify({
+          success: 0, error_code: 'PERMISSION_DENIED',
+          error: 'token=DO_NOT_ECHO',
+        }), { status: 200 });
+      }
+      if (endpoint === '/v1/bet365/upcoming') {
+        return new Response(JSON.stringify({ success: 1, results: [] }));
+      }
+      return new Response(JSON.stringify({ success: 0, error: 'upstream token=DO_NOT_ECHO' }), { status: 502 });
+    });
+    const result = await runBetsApiTrial('TEST_TOKEN_ONLY', fake as typeof fetch, [{ id: 1, name: 'Football' }]);
+    expect(result.bet365.error).toBe('PERMISSION_DENIED');
+    expect(result.bet365.upcomingAccess).toBe('AVAILABLE');
+    expect(result.sports[0]?.error).toBe('UPSTREAM_HTTP_5XX');
+    expect(JSON.stringify(result)).not.toContain('DO_NOT_ECHO');
     expect(JSON.stringify(result)).not.toContain('TEST_TOKEN_ONLY');
   });
 
