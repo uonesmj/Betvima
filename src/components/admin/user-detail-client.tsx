@@ -299,12 +299,9 @@ export function UserDetailClient({ userId }: { userId: string }) {
                 </select>
               </Field>
               <AdminAction label="Apply role" onRun={() => run('users', { action: 'set_role', role: actionForm.role, reason: actionForm.reason })} />
-              <Field label="KYC decision">
-                <select className="nova-input" value={actionForm.kycStatus} onChange={(event) => setActionForm({ ...actionForm, kycStatus: event.target.value })}>
-                  {['pending', 'verified', 'rejected', 'expired'].map((status) => <option key={status} value={status}>{status}</option>)}
-                </select>
-              </Field>
-              <AdminAction label="Apply KYC" onRun={() => run('users', { action: 'set_kyc', kycStatus: actionForm.kycStatus, reason: actionForm.reason })} />
+              <a href="/admin/kyc" className="nova-btn-primary inline-block text-xs">
+                Review submitted KYC documents
+              </a>
             </div>
           </Card>
 
