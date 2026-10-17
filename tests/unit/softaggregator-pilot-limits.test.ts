@@ -4,7 +4,7 @@ import {
   CASINO_PILOT_CAPS, pilotCasinoDebitPermitted,
 } from '@/server/providers/softaggregator/pilot-limits';
 
-const pilotId = '00520488-984c-4aaf-a194-d6cc09568064';
+const pilotId = '11111111-1111-4111-8111-111111111111';
 
 function fixture(dailyStake = '0', dailyLoss = '0', weeklyLoss = '0') {
   const queryOne = vi.fn(async (_query: string, _args: unknown[]) => ({
