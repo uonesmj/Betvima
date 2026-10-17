@@ -168,36 +168,38 @@ export async function runBetsApiTrial(
   }));
   output.sports.push(...rows);
 
-  // Bounded sample, not 1 odds request per game across the entire league.
-  for (const sport of output.sports) {
-    if (output.oddsSample.length >= 5) break;
-    for (const event of sport.sample.slice(0, 1)) {
-      if (!/^\d{1,16}$/.test(event.id)) continue;
-      const item = { sport: sport.sport, eventId: event.id, marketKeys: 0, latestOffers: 0,
-        freshMarkets: 0, freshSelections: 0, error: null as string | null };
-      try {
-        const data = await call('/v2/event/odds', { event_id: event.id });
-        const odds = record(record(data.results).odds);
-        item.marketKeys = Object.keys(odds).length;
-        // Historical groups are NOT fresh executable markets.
-        const latest = normalizeBetsapiOdds(
-          `${sport.sportId}:${event.id}`, data.results, new Date(), true,
-        );
-        item.freshMarkets = latest.markets.length;
-        item.freshSelections = latest.markets.reduce((sum, market) => sum + market.selections.length, 0);
-        for (const entries of Object.values(odds)) {
-          const latest = Array.isArray(entries) ? record(entries[0]) : {};
-          if (['home_od', 'draw_od', 'away_od', 'over_od', 'under_od'].some(field => {
-            const price = numericField(latest[field]);
-            return price !== null && price > 1;
-          })) item.latestOffers++;
-        }
-      } catch (error) {
-        item.error = safeError(error instanceof Error ? error.message : error);
+  // Bound to five real live events, price probes run concurrently to meet
+  // the short 3-day trial window without 5 * 7s request waterfalls.
+  const samples = output.sports.flatMap(sport =>
+    sport.sample.slice(0, 1)
+      .filter(event => /^\\d{1,16}$/.test(event.id))
+      .map(event => ({ sport, event })),
+  ).slice(0, 5);
+  output.oddsSample = await Promise.all(samples.map(async ({ sport, event }) => {
+    const item = {
+      sport: sport.sport, eventId: event.id, marketKeys: 0, latestOffers: 0,
+      freshMarkets: 0, freshSelections: 0, error: null as string | null,
+    };
+    try {
+      const data = await call('/v2/event/odds', { event_id: event.id });
+      const odds = record(record(data.results).odds);
+      item.marketKeys = Object.keys(odds).length;
+      const fresh = normalizeBetsapiOdds(`${sport.sportId}:${event.id}`,
+        data.results, new Date(), true);
+      item.freshMarkets = fresh.markets.length;
+      item.freshSelections = fresh.markets.reduce((sum, market) => sum + market.selections.length, 0);
+      for (const entries of Object.values(odds)) {
+        const latest = Array.isArray(entries) ? record(entries[0]) : {};
+        if (['home_od', 'draw_od', 'away_od', 'over_od', 'under_od'].some(field => {
+          const price = numericField(latest[field]);
+          return price !== null && price > 1;
+        })) item.latestOffers++;
       }
-      output.oddsSample.push(item);
+    } catch (error) {
+      item.error = safeError(error instanceof Error ? error.message : error);
     }
-  }
+    return item;
+  }));
 
   try {
     const data = await call('/v1/bet365/inplay_filter', { sport_id: '1' });
