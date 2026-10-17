@@ -55,7 +55,7 @@ fun NotificationsPopup(
     model: AppViewModel,
     onDismiss: () -> Unit,
     onLogin: () -> Unit,
-    onNavigate: (NotificationDestination) -> Unit
+    onNavigate: (NotificationDestination, String?) -> Unit
 ) {
     var category by remember { mutableStateOf(NotificationCategory.ALL) }
     val lang = state.lang
@@ -158,7 +158,7 @@ fun NotificationsPopup(
                                     onAction = { destination ->
                                         if (note.readAt == null) model.markNotificationRead(note.id)
                                         onDismiss()
-                                        onNavigate(destination)
+                                        onNavigate(destination, supportTicketFromNotificationHref(note.ctaHref))
                                     }
                                 )
                             }
