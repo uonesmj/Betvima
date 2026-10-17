@@ -6,7 +6,18 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -27,6 +38,12 @@ fun ReferenceMenuDrawer(
     openAffiliate: () -> Unit,
     openNotifications: () -> Unit
 ) {
+    var sportsShortcutsExpanded by rememberSaveable { mutableStateOf(false) }
+    val arrowRotation by animateFloatAsState(
+        targetValue = if (sportsShortcutsExpanded) 180f else 0f,
+        animationSpec = tween(durationMillis = 220),
+        label = "sportsShortcutsArrow"
+    )
     ModalDrawerSheet(modifier = Modifier.width(306.dp),
         drawerContainerColor = Color(0xFF1B1C20)) {
         Column(Modifier.fillMaxHeight().verticalScroll(rememberScrollState(), flingBehavior = rememberPremiumFlingBehavior())) {
@@ -71,20 +88,51 @@ fun ReferenceMenuDrawer(
                 }
             }
             Spacer(Modifier.height(16.dp))
-            DrawerGroup(tr(state.lang, "SPORTS & CASINO", "ورزش و کازینو"))
-            DrawerRow(tr(state.lang, "Home", "خانه"), Icons.Default.Home) {
-                dismiss(); model.tab(Tab.HOME)
+            // Four sportsbook shortcuts collapse independently of the Casino link.
+            Row(
+                Modifier.fillMaxWidth().heightIn(min = 48.dp)
+                    .semantics {
+                        stateDescription = if (sportsShortcutsExpanded)
+                            tr(state.lang, "Expanded", "باز")
+                        else tr(state.lang, "Collapsed", "بسته")
+                    }
+                    .clickable { sportsShortcutsExpanded = !sportsShortcutsExpanded }
+                    .padding(horizontal = 20.dp, vertical = 10.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    tr(state.lang, "SPORTS & CASINO", "ورزش و کازینو"),
+                    color = Color(0xFF9CA7B9), fontSize = 10.sp,
+                    fontWeight = FontWeight.Black, modifier = Modifier.weight(1f)
+                )
+                Icon(
+                    Icons.Default.ExpandMore,
+                    contentDescription = tr(state.lang, "Toggle sports shortcuts", "باز و بسته کردن گزینه‌های ورزشی"),
+                    tint = Color(0xFFADB5C4),
+                    modifier = Modifier.size(20.dp).rotate(arrowRotation)
+                )
             }
-            DrawerRow(tr(state.lang, "Live", "زنده"), Icons.Default.Sensors) {
-                dismiss(); model.tab(Tab.LIVE)
+            AnimatedVisibility(
+                visible = sportsShortcutsExpanded,
+                enter = expandVertically(animationSpec = tween(220)) + fadeIn(animationSpec = tween(150)),
+                exit = shrinkVertically(animationSpec = tween(180)) + fadeOut(animationSpec = tween(120))
+            ) {
+                Column {
+                    DrawerRow(tr(state.lang, "Home", "خانه"), Icons.Default.Home) {
+                        dismiss(); model.tab(Tab.HOME)
+                    }
+                    DrawerRow(tr(state.lang, "Live", "زنده"), Icons.Default.Sensors) {
+                        dismiss(); model.tab(Tab.LIVE)
+                    }
+                    DrawerRow(tr(state.lang, "Upcoming", "آینده"), Icons.Default.Event) {
+                        dismiss(); model.tab(Tab.SPORTS)
+                    }
+                    DrawerRow(tr(state.lang, "TOP Bets", "شرط‌های برتر"), Icons.Default.Whatshot) {
+                        dismiss(); model.homeMode(HomeMode.TOP_BETS)
+                    }
+                }
             }
-            DrawerRow(tr(state.lang, "Upcoming", "آینده"), Icons.Default.Event) {
-                dismiss(); model.tab(Tab.SPORTS)
-            }
-            DrawerRow(tr(state.lang, "TOP Bets", "شرط‌های برتر"),
-                Icons.Default.Whatshot) {
-                dismiss(); model.homeMode(HomeMode.TOP_BETS)
-            }
+            // Casino remains a standalone, always-visible destination.
             DrawerRow(tr(state.lang, "Casino", "کازینو"), Icons.Default.Casino) {
                 dismiss(); model.feature(Feature.CASINO)
             }
