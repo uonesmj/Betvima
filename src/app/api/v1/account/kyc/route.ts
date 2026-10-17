@@ -21,11 +21,12 @@ export const GET = withErrorHandling('account.kyc.get', async (ctx, request: Req
     'select id,status,document_type,created_at::text,review_note from nova.kyc_submissions ' +
     'where user_id=$1 order by created_at desc limit 1', [user.id],
   );
+  const approved = await casinoIdentityApproved(user.id);
   return NextResponse.json({ ok: true, data: {
     kycStatus: profile.kycStatus,
-    gameAccessApproved: await casinoIdentityApproved(user.id),
+    gameAccessApproved: approved,
     status: profile.status,
-    canSubmit: profile.kycStatus !== 'verified' && submission?.status !== 'pending',
+    canSubmit: !approved && submission?.status !== 'pending',
     submission: submission ? {
       id: submission.id, status: submission.status, documentType: submission.document_type,
       createdAt: submission.created_at, reviewNote: submission.status === 'rejected' ? submission.review_note : null,
@@ -73,7 +74,7 @@ export const POST = withErrorHandling('account.kyc.submit', async (ctx, request:
   await enforceRateLimit('kyc:submit:' + user.id, 3, 3600);
   const profile = await services.users.getProfile(user.id);
   if (!profile) throw new ApiError('NOT_FOUND', 'Profile not found');
-  if (profile.kycStatus === 'verified') throw new ApiError('CONFLICT', 'Identity already verified');
+  if (await casinoIdentityApproved(user.id)) throw new ApiError('CONFLICT', 'Identity already verified');
 
   const form = await limitedFormData(request);
   const docType = form.get('documentType');
@@ -121,10 +122,12 @@ export const POST = withErrorHandling('account.kyc.submit', async (ctx, request:
       written.push(selfiePath);
     }
     const submissionId = await services.db.transaction(async (tx) => {
-      const locked = await tx.queryOne<{ kyc_status: string }>(
-        'select kyc_status::text from nova.profiles where id=$1 for update', [user.id],
+      const locked = await tx.queryOne<{ kyc_status: string; reviewed: boolean }>(
+        "select p.kyc_status::text,exists(select 1 from nova.kyc_submissions k " +
+        "where k.user_id=p.id and k.status='verified' and k.legal_age_confirmed) as reviewed " +
+        "from nova.profiles p where p.id=$1 for update", [user.id],
       );
-      if (!locked || locked.kyc_status === 'verified') throw new Error('KYC_ALREADY_VERIFIED');
+      if (!locked || locked.reviewed) throw new Error('KYC_ALREADY_VERIFIED');
       const exists = await tx.queryOne<{ id: string }>(
         "select id from nova.kyc_submissions where user_id=$1 and status='pending'", [user.id],
       );
