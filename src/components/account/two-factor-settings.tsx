@@ -9,7 +9,9 @@ type TotpEnrollment = { id: string; totp?: { qr_code?: string; secret?: string; 
 /** Supabase owns TOTP secrets, challenge rate limiting, and factor verification.
  * The application never saves or logs an authenticator secret.
  */
-export function TwoFactorSettings({ adminRequired = false }: { adminRequired?: boolean }) {
+export function TwoFactorSettings({
+  adminRequired = false, onVerified,
+}: { adminRequired?: boolean; onVerified?: () => void }) {
   const { refreshSession, locale } = useApp();
   const fa = locale === 'fa';
   const [loading, setLoading] = useState(true);
@@ -71,6 +73,7 @@ export function TwoFactorSettings({ adminRequired = false }: { adminRequired?: b
     await reload();
     await refreshSession();
     setMessage(fa ? 'تأیید دومرحله‌ای با موفقیت انجام شد' : 'Authenticator verified successfully');
+    onVerified?.();
   });
 
   const disable = () => perform(async () => {
