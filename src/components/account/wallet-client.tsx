@@ -272,7 +272,7 @@ function DepositPanel({
                 <input value={isRialWallet&&/^\d+$/.test(raw)?formatVoucherRials(BigInt(raw),locale):form.amount} onChange={e=>setForm(v=>({...v,amount:normalizeNumericInput(e.target.value),methodId}))} inputMode={isRialWallet?'numeric':'decimal'} dir="ltr" placeholder={isRialWallet?(minRials!==null?formatVoucherRials(minRials,'en'):'—'):'1.50'} className="min-w-0 flex-1 bg-transparent py-3 text-lg font-black text-[#172033] outline-none"/>
                 <b className="shrink-0 text-xs font-black text-[#7B8798]">{isRialWallet?unit:'USD'}</b>
               </div>
-              {isRialWallet?<p className="mt-3 rounded-xl border border-[#D8E5F7] bg-[#F1F7FF] p-3 text-xs font-semibold leading-5 text-[#506582]"><b className="mb-1 block text-[#173DAA]">{locale==='fa'?'نرخ زنده uWallet':'Live uWallet rate'}</b>{rate?formatVoucherRials(BigInt(Math.round(Number(rate))),locale)+' '+unit+(locale==='fa'?' به‌ازای هر دلار':' per USD'):voucherQuoteLoading?(locale==='fa'?'در حال دریافت نرخ...':'Loading rate...'):(locale==='fa'?'نرخ در دسترس نیست؛ واریز غیرفعال است.':'Rate unavailable; deposit disabled.')}<span className="mt-1 block text-[#78849A]">{locale==='fa'?'مبلغ نهایی پس از تأیید اعتبار کد در uWallet محاسبه می‌شود.':'Final amount is determined from the voucher value verified by uWallet.'}</span></p>:null}
+              {isRialWallet?<p className="mt-3 rounded-xl border border-[#D8E5F7] bg-[#F1F7FF] p-3 text-xs font-semibold leading-5 text-[#506582]"><b className="mb-1 block text-[#173DAA]">{locale==='fa'?'نرخ زنده uWallet':'Live uWallet rate'}</b>{rate?new Intl.NumberFormat(locale==='fa'?'fa-IR':'en-US',{maximumFractionDigits:2}).format(Number(rate))+' '+unit+(locale==='fa'?' به‌ازای هر دلار':' per USD'):voucherQuoteLoading?(locale==='fa'?'در حال دریافت نرخ...':'Loading rate...'):(locale==='fa'?'نرخ در دسترس نیست؛ واریز غیرفعال است.':'Rate unavailable; deposit disabled.')}<span className="mt-1 block text-[#78849A]">{locale==='fa'?'مبلغ نهایی پس از تأیید اعتبار کد در uWallet محاسبه می‌شود.':'Final amount is determined from the voucher value verified by uWallet.'}</span></p>:null}
             </div>
             <div>
               <label className="mb-2 block text-sm font-medium text-[#172033]">{t("wallet.voucherCode")}</label>
@@ -387,7 +387,8 @@ function WithdrawPanel({
             onClick={() =>
               setWithdrawMethod(
                 item.id as "crypto" | "voucher_uvoucher" | "voucher_hotvoucher",
-              )
+              );
+              setForm(v=>({...v,amount:'',destination:''}))
             }
             className={`min-h-[48px] rounded-xl px-2 text-xs font-black transition ${
               withdrawMethod === item.id
@@ -491,7 +492,7 @@ function WithdrawPanel({
               
               <div className="rounded-xl border border-[#D8E5F7] bg-[#F8FBFF] px-4 py-3 text-xs font-semibold leading-5 text-[#506582]">
                 <b className="block text-[#173DAA]">{locale==='fa'?'نرخ زنده uWallet':'Live uWallet rate'}</b>
-                <span>{rate?formatVoucherRials(BigInt(Math.round(Number(rate))),locale)+' '+(locale==='fa'?'ریال به‌ازای هر دلار':'IRR per USD'):voucherQuoteLoading?(locale==='fa'?'در حال دریافت...':'Loading...'):(locale==='fa'?'نرخ لحظه‌ای در دسترس نیست':'Live rate unavailable')}</span>
+                <span>{rate?new Intl.NumberFormat(locale==='fa'?'fa-IR':'en-US',{maximumFractionDigits:2}).format(Number(rate))+' '+(locale==='fa'?'ریال به‌ازای هر دلار':'IRR per USD'):voucherQuoteLoading?(locale==='fa'?'در حال دریافت...':'Loading...'):(locale==='fa'?'نرخ لحظه‌ای در دسترس نیست':'Live rate unavailable')}</span>
                 {rate&&isRialWallet&&requestedWalletMinor!==null&&parsedUsdMinor!==null?<p className="mt-2 border-t border-[#D8E5F7] pt-2 text-[#173DAA]">{locale==='fa'?'مبلغ کسر از کیف پول: ':'Wallet debit: '}{formatVoucherRials(voucherWalletMinorToIrr(voucherWithdrawalDebit(requestedWalletMinor,currency as 'IRT'|'IRR',rate).walletMinor,currency as 'IRT'|'IRR'),locale)} {voucherWalletUnit}</p>:null}
                 <p className="mt-1 text-[#7A8494]">{locale==='fa'?'مبنای محاسبه، نرخ مرجع فعلی uWallet است و پیش از برداشت در سرور دوباره بررسی می‌شود.':'The current uWallet reference quote is revalidated before withdrawal.'}</p>
               </div>
@@ -868,7 +869,7 @@ export function WalletClient() {
           {id:'deposit' as const,icon:ArrowDownToLine,title:t('wallet.deposit'),text:'Add funds'},
           {id:'withdraw' as const,icon:ArrowUpFromLine,title:t('wallet.withdraw'),text:'Send funds'},
           {id:'statement' as const,icon:History,title:t('wallet.statement'),text:'View activity'}
-        ].map(item=>{const Icon=item.icon;return <button key={item.id} type="button" onClick={()=>{setTab(item.id);setMessage(null);setMessageTone('neutral');if(item.id==='deposit')void loadMethods(currency,'deposit');if(item.id==='withdraw')void loadMethods('USD','withdrawal')}} className={`min-h-[88px] rounded-[20px] border p-3 text-left transition active:scale-[.98] ${tab===item.id?'border-[#087FF5] bg-[#F2F7FF] shadow-[0_8px_24px_rgba(8,127,245,.10)]':'border-[#E2E7EE] bg-white'}`}><Icon className={`h-5 w-5 ${tab===item.id?'text-[#087FF5]':'text-[#66758A]'}`}/><div className="mt-2 text-xs font-black text-[#172033]">{item.title}</div><div className="mt-0.5 text-[10px] font-semibold text-[#8A95A5]">{item.text}</div></button>})}
+        ].map(item=>{const Icon=item.icon;return <button key={item.id} type="button" onClick={()=>{setTab(item.id);setForm(v=>({...v,amount:'',destination:''}));setMessage(null);setMessageTone('neutral');if(item.id==='deposit')void loadMethods(currency,'deposit');if(item.id==='withdraw')void loadMethods('USD','withdrawal')}} className={`min-h-[88px] rounded-[20px] border p-3 text-left transition active:scale-[.98] ${tab===item.id?'border-[#087FF5] bg-[#F2F7FF] shadow-[0_8px_24px_rgba(8,127,245,.10)]':'border-[#E2E7EE] bg-white'}`}><Icon className={`h-5 w-5 ${tab===item.id?'text-[#087FF5]':'text-[#66758A]'}`}/><div className="mt-2 text-xs font-black text-[#172033]">{item.title}</div><div className="mt-0.5 text-[10px] font-semibold text-[#8A95A5]">{item.text}</div></button>})}
       </div>
       <ErrorNote
         message={error && !/UNAUTHENTICATED/i.test(error) ? error : null}
