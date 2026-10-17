@@ -165,6 +165,12 @@ internal fun walletTransferValidation(
     return null
 }
 
+private fun voucherIssueText(issue: String, lang: Lang, voucherFiat: Boolean): String =
+    if (voucherFiat && issue == "minimum")
+        wTr(lang, "Below the rial minimum shown above.",
+            "مبلغ کمتر از حداقل برداشت/واریز ریالی نمایش‌داده‌شده است.")
+    else walletErrorText(issue, lang)
+
 private fun walletErrorText(issue: String, lang: Lang): String = when (issue) {
     "ledger" -> wTr(lang,"The account ledger requires review.", "دفترکل حساب نیازمند بررسی است.")
     "method" -> wTr(lang,"This payment method is currently unavailable.",
@@ -442,7 +448,7 @@ fun WalletTransferSheet(
         )
         if (freshIssue != null) {
             confirm = false
-            error = walletErrorText(freshIssue, lang)
+            error = voucherIssueText(freshIssue, lang, voucherFiat)
             return
         }
         scope.launch {
@@ -688,7 +694,7 @@ fun WalletTransferSheet(
                                 color = wMuted, fontSize = 10.sp)
                     }
                 }
-                if (selectedPaymentMethod != null && methodEnabled) {
+                if (selectedPaymentMethod != null && methodEnabled && !voucherFiat) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(Icons.Default.Info, null, tint = wBlue,
                             modifier = Modifier.size(15.dp))
@@ -712,10 +718,10 @@ fun WalletTransferSheet(
                     Surface(color = Color(0xFFEEF4FF), shape = RoundedCornerShape(13.dp)) {
                         Column(Modifier.padding(11.dp)) {
                             Text(rateVoucherText(quote, lang), color = wText, fontSize = 10.sp)
-                            if (transactionMinor != null)
-                                Text(wTr(lang, "Estimated voucher: ", "معادل تقریبی ووچر: ") +
-                                    money(transactionMinor, "USD"),
-                                    color = wBlue, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                            Text(wTr(lang,
+                                "The final value is verified by uWallet; the rate is checked again at submission.",
+                                "مبلغ نهایی پس از بررسی کد توسط یوولت مشخص می‌شود؛ نرخ هنگام ثبت دوباره تأیید خواهد شد."),
+                                color = wBlue, fontSize = 11.sp)
                         }
                     }
                 }
@@ -812,7 +818,8 @@ fun WalletTransferSheet(
                     }
                 }
                 if (!loading && issue != null && amount.isNotBlank() && methodEnabled && !uncertainResult) {
-                    Text(walletErrorText(issue,lang), color = Color(0xFFB5472F), fontSize = 11.sp)
+                    Text(voucherIssueText(issue,lang,voucherFiat),
+                        color = Color(0xFFB5472F), fontSize = 11.sp)
                 }
                 OutlinedButton(onClick = { refreshKey++ },
                     modifier = Modifier.fillMaxWidth(),
