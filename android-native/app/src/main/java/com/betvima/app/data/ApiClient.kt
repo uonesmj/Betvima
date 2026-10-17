@@ -788,6 +788,17 @@ class ApiClient {
         val t = data.optJSONObject("ticket") ?: throw ApiFailure(502, "Ticket not returned")
         return parseSupportTicket(t)
     }
+    private fun supportAttachmentDetails(m: JSONObject): List<SupportAttachment> =
+        m.arr("attachments").objects().mapNotNull { item ->
+            val id = item.str("id")
+            val name = item.str("originalName")
+            if (id.isBlank() || name.isBlank()) null
+            else SupportAttachment(
+                id = id, originalName = name, mimeType = item.str("mimeType"),
+                sizeBytes = item.optLong("sizeBytes", 0L)
+            )
+        }
+
     suspend fun supportConversation(token: String, ticketId: String): SupportConversation {
         require(Regex("[a-fA-F0-9-]{36}").matches(ticketId))
         val data = get("/api/v1/support/" + ticketId, token)
@@ -797,7 +808,8 @@ class ApiClient {
                 id = it.str("id"), body = it.str("body"),
                 senderRole = it.str("senderRole"), createdAt = it.str("createdAt"),
                 attachments = it.arr("attachments").objects()
-                    .map { a -> a.str("originalName") }.filter(String::isNotBlank)
+                    .map { a -> a.str("originalName") }.filter(String::isNotBlank),
+                attachmentDetails = supportAttachmentDetails(it)
             )
         }
         return SupportConversation(parseSupportTicket(ticket), messages)
@@ -807,7 +819,8 @@ class ApiClient {
             id = m.str("id"), body = m.str("body"),
             senderRole = m.str("senderRole"), createdAt = m.str("createdAt"),
             attachments = m.arr("attachments").objects()
-                .map { it.str("originalName") }.filter(String::isNotBlank)
+                .map { it.str("originalName") }.filter(String::isNotBlank),
+            attachmentDetails = supportAttachmentDetails(m)
         )
 
     suspend fun sendSupportMessage(token: String, ticketId: String, text: String): SupportThreadMessage {

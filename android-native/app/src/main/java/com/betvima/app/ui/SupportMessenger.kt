@@ -28,6 +28,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import com.betvima.app.BuildConfig
+import coil.compose.AsyncImage
+import coil.request.CachePolicy
+import coil.request.ImageRequest
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
@@ -62,6 +67,19 @@ private fun chatTime(date: String): String = try {
 private data class MessengerDocument(
     val uri: Uri, val name: String, val type: String, val size: Long
 )
+
+internal enum class SupportAttachmentPhase { READY, UPLOADING, FAILED, VERIFY }
+
+internal fun supportAttachmentPhaseLabel(phase: SupportAttachmentPhase, lang: Lang): String =
+    when (phase) {
+        SupportAttachmentPhase.READY -> tr(lang, "Ready to send", "آماده ارسال")
+        SupportAttachmentPhase.UPLOADING -> tr(lang, "Uploading...", "در حال ارسال...")
+        SupportAttachmentPhase.FAILED -> tr(lang, "Upload failed · retry", "ارسال ناموفق · تلاش دوباره")
+        SupportAttachmentPhase.VERIFY -> tr(lang, "Check chat before retrying", "قبل از ارسال مجدد، چت را بررسی کنید")
+    }
+
+private fun definiteAttachmentFailure(error: Exception): Boolean =
+    error is ApiFailure && error.code in 400..499 && error.code !in setOf(408, 409, 429)
 
 private fun messengerActive(ticket: SupportTicket): Boolean = supportActive(ticket.status)
 
@@ -116,6 +134,8 @@ fun SupportMessenger(
     var draft by rememberSaveable { mutableStateOf("") }
     var name by rememberSaveable { mutableStateOf("") }
     var file by remember { mutableStateOf<MessengerDocument?>(null) }
+    var attachmentPhase by remember { mutableStateOf(SupportAttachmentPhase.READY) }
+    var attachmentViewToken by remember { mutableStateOf<String?>(null) }
     var menuOpen by remember { mutableStateOf(false) }
     var historyOpen by remember { mutableStateOf(false) }
     var emojiOpen by remember { mutableStateOf(false) }
@@ -148,6 +168,8 @@ fun SupportMessenger(
                     MessengerDocument(uri, supportSafeFilename(display), mime, bytes)
                 }
                 file = candidate
+                attachmentPhase = SupportAttachmentPhase.READY
+                uncertain = false
                 error = null
             } catch (_: Exception) {
                 error = tr(lang, "Choose a JPG, PNG, WEBP or PDF up to 10MB.",
@@ -196,6 +218,12 @@ fun SupportMessenger(
         } finally { loading = false }
     }
 
+    LaunchedEffect(currentId) {
+        attachmentViewToken = if (currentId != null) {
+            try { token() } catch (_: Exception) { null }
+        } else null
+    }
+
     LaunchedEffect(currentId, newConversation) {
         if (currentId == null || newConversation) { messages = emptyList(); return@LaunchedEffect }
         val id = currentId
@@ -242,20 +270,36 @@ fun SupportMessenger(
         val previous = draft
         val attached = file
         sending = true; error = null
+        if (attached != null) attachmentPhase = SupportAttachmentPhase.UPLOADING
         try {
             val jwt = token()
-            if (attached == null) api.sendSupportMessage(jwt, target, previous)
-            else api.sendSupportFile(jwt, target, previous,
-                context.contentResolver, attached.uri, attached.name, attached.type)
+            val acknowledged = if (attached == null) api.sendSupportMessage(jwt, target, previous)
+                else api.sendSupportFile(jwt, target, previous,
+                    context.contentResolver, attached.uri, attached.name, attached.type)
+            // A successful POST response is the upload acknowledgement. Show the
+            // message immediately even if the subsequent conversation GET fails.
+            if (messages.none { it.id == acknowledged.id }) messages = messages + acknowledged
             draft = ""; file = null; emojiOpen = false
-            val latest = api.supportConversation(jwt, target)
-            messages = latest.messages.distinctBy { it.id }
-            chosen = latest.ticket
-        } catch (_: Exception) {
-            uncertain = true
-            error = tr(lang,
-                "Message status is uncertain. Refresh this chat before sending again.",
-                "وضعیت ارسال مشخص نیست؛ قبل از ارسال دوباره، چت را تازه‌سازی کنید.")
+            attachmentPhase = SupportAttachmentPhase.READY
+            try {
+                val latest = api.supportConversation(jwt, target)
+                messages = latest.messages.distinctBy { it.id }
+                chosen = latest.ticket
+            } catch (_: Exception) {
+                error = tr(lang, "Sent. Chat refresh is temporarily unavailable.",
+                    "ارسال شد؛ تازه‌سازی گفتگو موقتاً در دسترس نیست.")
+            }
+        } catch (ex: Exception) {
+            val definite = definiteAttachmentFailure(ex)
+            uncertain = !definite
+            if (attached != null) attachmentPhase =
+                if (definite) SupportAttachmentPhase.FAILED else SupportAttachmentPhase.VERIFY
+            error = if (definite) tr(lang,
+                "Upload rejected. Check the file and retry.",
+                "ارسال فایل رد شد؛ فایل را بررسی و دوباره تلاش کنید.")
+            else tr(lang,
+                "Delivery is not confirmed. Refresh the chat before trying again.",
+                "تأیید ارسال دریافت نشد؛ پیش از تلاش دوباره، گفتگو را تازه‌سازی کنید.")
         } finally { sending = false }
     }
 
@@ -269,17 +313,26 @@ fun SupportMessenger(
             val jwt = token()
             val created = api.createTicket(jwt, "general", "Online Support", body)
             // Once created, NEVER create a second ticket because its upload failed.
-            chosen = created; newConversation = false; draft = ""; file = null
+            chosen = created; newConversation = false; draft = ""
             if (attached != null) {
+                attachmentPhase = SupportAttachmentPhase.UPLOADING
                 try {
-                    api.sendSupportFile(jwt, created.id, "",
+                    val acknowledged = api.sendSupportFile(jwt, created.id, "",
                         context.contentResolver, attached.uri, attached.name, attached.type)
-                } catch (_: Exception) {
-                    error = tr(lang, "Chat started, but attaching the file failed. Send it again.",
-                        "چت شروع شد اما پیوست ارسال نشد؛ دوباره فایل را بفرستید.")
+                    messages = listOf(acknowledged)
+                    file = null
+                    attachmentPhase = SupportAttachmentPhase.READY
+                } catch (ex: Exception) {
+                    val definite = definiteAttachmentFailure(ex)
+                    attachmentPhase = if (definite) SupportAttachmentPhase.FAILED
+                        else SupportAttachmentPhase.VERIFY
+                    uncertain = !definite
+                    error = tr(lang,
+                        "Chat started, but the attachment was not confirmed. Check the chat before resending.",
+                        "گفتگو ایجاد شد ولی ارسال پیوست تأیید نشده؛ قبل از ارسال مجدد چت را بررسی کنید.")
                 }
-            }
-            reloadTickets()
+            } else file = null
+            try { reloadTickets() } catch (_: Exception) { /* Keep the newly created ticket open. */ }
         } catch (_: Exception) {
             uncertain = true
             error = tr(lang,
@@ -293,7 +346,10 @@ fun SupportMessenger(
         try {
             val latest = api.supportConversation(token(), id)
             messages = latest.messages.distinctBy { it.id }; chosen = latest.ticket
-            uncertain = false; error = null
+            uncertain = false
+            if (attachmentPhase == SupportAttachmentPhase.VERIFY)
+                attachmentPhase = SupportAttachmentPhase.READY
+            error = null
         } catch (ex: Exception) { error = ex.message ?: "Refresh failed" }
     }
 
@@ -357,8 +413,9 @@ fun SupportMessenger(
                     MessengerInput(name, { name=it.take(80) },
                         tr(lang,"Your name (optional)","نام شما (اختیاری)"))
                     Spacer(Modifier.height(16.dp))
-                    MessengerComposer(draft, {draft=it.take(5000)}, file?.name,
-                        {file=null}, {picker.launch(arrayOf("image/jpeg","image/png","image/webp","application/pdf"))},
+                    MessengerComposer(draft, {draft=it.take(5000)}, file, attachmentPhase,
+                        {file=null;attachmentPhase=SupportAttachmentPhase.READY},
+                        {picker.launch(arrayOf("image/jpeg","image/png","image/webp","application/pdf"))},
                         {emojiOpen=!emojiOpen}, {scope.launch{start()}}, !sending && !uncertain && draft.isNotBlank(),
                         lang, expanded=true)
                     if (emojiOpen) MessengerEmojiPicker { draft=(draft+it).take(5000);emojiOpen=false }
@@ -454,13 +511,21 @@ fun SupportMessenger(
                                 if (message.body.isNotBlank()) Text(message.body,
                                     color=if(mine) Color.White else messengerInk,
                                     fontSize=16.sp,lineHeight=23.sp)
-                                message.attachments.forEach { attachment ->
-                                    Row(verticalAlignment=Alignment.CenterVertically) {
-                                        Icon(Icons.Default.AttachFile,null,
-                                            tint=if(mine) Color.White else messengerBlue,
-                                            modifier=Modifier.size(18.dp))
-                                        Text(attachment,color=if(mine) Color.White else messengerBlue,
-                                            fontSize=13.sp, maxLines=2,overflow=TextOverflow.Ellipsis)
+                                if (message.attachmentDetails.isNotEmpty()) {
+                                    message.attachmentDetails.forEach { attachment ->
+                                        MessengerUploadedAttachment(
+                                            attachment, ticket.id, attachmentViewToken, mine, lang
+                                        )
+                                    }
+                                } else {
+                                    message.attachments.forEach { attachment ->
+                                        Row(verticalAlignment=Alignment.CenterVertically) {
+                                            Icon(Icons.Default.AttachFile,null,
+                                                tint=if(mine) Color.White else messengerBlue,
+                                                modifier=Modifier.size(18.dp))
+                                            Text(attachment,color=if(mine) Color.White else messengerBlue,
+                                                fontSize=13.sp,maxLines=2,overflow=TextOverflow.Ellipsis)
+                                        }
                                     }
                                 }
                                 Row(Modifier.align(Alignment.End),
@@ -486,7 +551,8 @@ fun SupportMessenger(
                 }
                 if (messengerActive(ticket)) {
                     if (emojiOpen) MessengerEmojiPicker { draft=(draft+it).take(5000);emojiOpen=false }
-                    MessengerComposer(draft,{draft=it.take(5000)},file?.name,{file=null},
+                    MessengerComposer(draft,{draft=it.take(5000)},file,attachmentPhase,
+                        {file=null;attachmentPhase=SupportAttachmentPhase.READY},
                         {picker.launch(arrayOf("image/jpeg","image/png","image/webp","application/pdf"))},
                         {emojiOpen=!emojiOpen},{scope.launch{send()}},
                         !sending && !uncertain && (draft.isNotBlank() || file!=null),lang)
@@ -607,45 +673,55 @@ private fun MessengerEmojiPicker(onSelect:(String)->Unit) {
 
 @Composable
 private fun MessengerComposer(
-    draft:String,onDraft:(String)->Unit,filename:String?,clearFile:()->Unit,
-    onAttach:()->Unit,onEmoji:()->Unit,onSend:()->Unit,enabled:Boolean,
-    lang:Lang,expanded:Boolean=false
+    draft: String, onDraft: (String) -> Unit,
+    file: MessengerDocument?, phase: SupportAttachmentPhase,
+    clearFile: () -> Unit,
+    onAttach: () -> Unit, onEmoji: () -> Unit, onSend: () -> Unit,
+    enabled: Boolean, lang: Lang, expanded: Boolean = false
 ) {
     Column(Modifier.fillMaxWidth().background(messengerPaper)
-        .padding(horizontal=if(expanded) 0.dp else 15.dp,vertical=10.dp)) {
-        if (filename!=null) {
-            TextButton(onClick=clearFile) {
-                Text(filename+" ×",maxLines=1,overflow=TextOverflow.Ellipsis,color=messengerBlue)
-            }
-        }
-        Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
-            Row(Modifier.weight(1f).heightIn(min=62.dp)
-                .clip(RoundedCornerShape(18.dp))
-                .background(messengerGray)
-                .padding(start=15.dp,end=2.dp),
-                verticalAlignment=Alignment.CenterVertically) {
-                BasicTextField(
-                    value=draft,onValueChange=onDraft,modifier=Modifier.weight(1f),
-                    textStyle=androidx.compose.ui.text.TextStyle(fontSize=16.sp,color=messengerInk),
-                    maxLines=4,
-                    decorationBox={inner->
-                        Box {
-                            if(draft.isEmpty()) Text(tr(lang,"Text...","پیام..."),
-                                color=Color(0xFF707782),fontSize=16.sp)
-                            inner()
+        .padding(horizontal = if (expanded) 0.dp else 15.dp, vertical = 10.dp)) {
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Bottom) {
+            Column(Modifier.weight(1f).clip(RoundedCornerShape(18.dp))
+                .background(messengerGray)) {
+                // Keep attachment preview/status inside the input field itself.
+                if (file != null) {
+                    MessengerPendingAttachment(
+                        uri = file.uri, filename = file.name, mime = file.type,
+                        phase = phase, lang = lang, onRemove = clearFile
+                    )
+                }
+                Row(Modifier.fillMaxWidth().heightIn(min = 62.dp)
+                    .padding(start = 15.dp, end = 2.dp),
+                    verticalAlignment = Alignment.CenterVertically) {
+                    BasicTextField(
+                        value = draft, onValueChange = onDraft,
+                        modifier = Modifier.weight(1f),
+                        textStyle = androidx.compose.ui.text.TextStyle(
+                            fontSize = 16.sp, color = messengerInk),
+                        maxLines = 4,
+                        decorationBox = { inner ->
+                            Box {
+                                if (draft.isEmpty()) Text(tr(lang, "Text...", "پیام..."),
+                                    color = Color(0xFF707782), fontSize = 16.sp)
+                                inner()
+                            }
                         }
-                    }
-                )
-                MessengerIcon(Icons.Default.AttachFile,tr(lang,"Attach file","پیوست فایل"),onAttach)
-                MessengerIcon(Icons.Default.SentimentSatisfied,tr(lang,"Emoji","شکلک"),onEmoji)
+                    )
+                    MessengerIcon(Icons.Default.AttachFile,
+                        tr(lang,"Attach file","پیوست فایل"),onAttach,
+                        enabled = phase != SupportAttachmentPhase.UPLOADING)
+                    MessengerIcon(Icons.Default.SentimentSatisfied,
+                        tr(lang,"Emoji","شکلک"),onEmoji)
+                }
             }
-            if(!expanded) {
+            if (!expanded) {
                 Spacer(Modifier.width(10.dp))
-                FilledIconButton(onClick=onSend,enabled=enabled,
-                    modifier=Modifier.size(width=64.dp,height=61.dp),
-                    shape=RoundedCornerShape(17.dp),
-                    colors=IconButtonDefaults.filledIconButtonColors(
-                        containerColor=messengerButton,contentColor=Color.White
+                FilledIconButton(onClick = onSend, enabled = enabled,
+                    modifier = Modifier.size(width = 64.dp, height = 61.dp),
+                    shape = RoundedCornerShape(17.dp),
+                    colors = IconButtonDefaults.filledIconButtonColors(
+                        containerColor = messengerButton, contentColor = Color.White
                     )) {
                     Icon(Icons.Default.Send,tr(lang,"Send message","ارسال پیام"),
                         modifier=Modifier.size(26.dp))
