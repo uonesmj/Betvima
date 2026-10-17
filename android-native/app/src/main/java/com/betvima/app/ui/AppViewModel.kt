@@ -48,6 +48,8 @@ data class AppState(
     val pickFlight: PickFlight84? = null,
     val showLogin: Boolean = false, val registerScreen: Boolean = false,
     val authError: String? = null, val mfaRequired: Boolean = false,
+    val mfaChoices: List<AuthenticatorFactor> = emptyList(),
+    val selectedMfaFactor: String? = null,
     val signedIn: Boolean = false,
     val accountName: String? = null,
     val wallet: Wallet? = null, val bets: List<Bet> = emptyList(),
@@ -441,7 +443,10 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             pendingMfaFactor = null
         }
         mutable.update { it.copy(showLogin = show, registerScreen = register,
-            mfaRequired = if (show) it.mfaRequired else false, authError = null) }
+            mfaRequired = if (show) it.mfaRequired else false,
+            mfaChoices = if (show) it.mfaChoices else emptyList(),
+            selectedMfaFactor = if (show) it.selectedMfaFactor else null,
+            authError = null) }
     }
     fun setRegisterScreen(register: Boolean) =
         mutable.update { it.copy(registerScreen = register, authError = null) }
@@ -458,9 +463,10 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             onMfaCompleted(navigateHome)
         } catch (ex: TotpChallengeRequired) {
             pendingMfaSession = ex.firstFactorSession
-            pendingMfaFactor = ex.factorId
+            pendingMfaFactor = ex.factors.firstOrNull()?.id
             pendingMfaNavigateHome = navigateHome
-            mutable.update { it.copy(busy = false, mfaRequired = true, authError = null) }
+            mutable.update { it.copy(busy = false, mfaRequired = true,
+                mfaChoices = ex.factors, selectedMfaFactor = pendingMfaFactor, authError = null) }
         } catch (ex: Exception) {
             val text = when ((ex as? ApiFailure)?.code) {
                 400, 401, 403 -> tr(state.value.lang,
@@ -486,7 +492,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             quoteGeneration++
             mutable.update { it.copy(
                 mainBetReview = null, mainOddsAcceptedToken = null, mainBetUncertain = false, quote = null,
-                busy = false, showLogin = false, signedIn = true, mfaRequired = false, authError = null,
+                busy = false, showLogin = false, signedIn = true, mfaRequired = false,
+                mfaChoices = emptyList(), selectedMfaFactor = null, authError = null,
                 tab = if (navigateHome) Tab.HOME else it.tab,
                 homeMode = if (navigateHome) HomeMode.TOP else it.homeMode,
                 feature = if (navigateHome) Feature.NONE else it.feature,
@@ -497,6 +504,13 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             refreshAccount()
             if (state.value.tab == Tab.BETS) refreshBetHistory()
             refreshNotifications()
+    }
+
+    /** Select another verified TOTP factor without changing or persisting AAL1 tokens. */
+    fun chooseMfaFactor(id: String) {
+        if (state.value.mfaChoices.none { it.id == id && it.verified }) return
+        pendingMfaFactor = id
+        mutable.update { it.copy(selectedMfaFactor = id, authError = null) }
     }
 
     fun verifyMfa(code: String) = viewModelScope.launch {
