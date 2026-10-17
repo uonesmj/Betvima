@@ -265,7 +265,10 @@ fun SupportMessenger(
                 }
                 lastSupportId = latestSupport
                 messages = result.messages.distinctBy { it.id }
-                error = null
+                // Keep a rejected attachment's specific error on screen until
+                // the user replaces the file, successfully sends, or dismisses it.
+                if (attachmentPhase != SupportAttachmentPhase.FAILED &&
+                    attachmentPhase != SupportAttachmentPhase.VERIFY) error = null
             } catch (ex: Exception) {
                 if (messages.isEmpty()) error = ex.message ?: "Unable to load messages"
             }
