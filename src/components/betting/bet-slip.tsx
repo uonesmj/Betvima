@@ -18,6 +18,9 @@ import { useBetSlip } from '@/lib/store/betslip';
 import { isCurrentQuote, placementIntentFingerprint, quoteContextFingerprint } from '@/lib/bet-placement-fingerprint';
 import { actualOddsMovement, hasExplicitOddsConsent, type SignedOddsConsent } from '@/lib/odds/explicit-consent';
 import { formatMinor, formatOddsScaled } from '@/lib/i18n';
+import { potentialPayout as calculatePotentialPayout } from '@/domain/betslip';
+import { accumulatorOddsScaled } from '@/domain/odds';
+import { money } from '@/domain/money';
 import { ApiClientError, apiRequest } from '@/lib/hooks/useApi';
 
 interface QuoteResponse {
@@ -197,23 +200,30 @@ export function BetSlipRail() {
   }, [pendingQuote, currentContext, slip, t]);
 
   const stake = BigInt(slip.stakeMinor || '0');
+  const currency = session?.user?.currency ?? 'USD';
+  const previewOdds = useMemo(
+    () => slip.items.map((item) => BigInt(item.oddsScaled)),
+    [slip.items],
+  );
 
   const combinedOdds = useMemo(() => {
     if (pendingQuote?.combinedOddsScaled) {
       return BigInt(pendingQuote.combinedOddsScaled);
     }
-    if (slip.items.length === 0) return 0n;
-    const numerator = slip.items.reduce((acc, item) => acc * BigInt(item.oddsScaled), 1n);
-    const denominator = 10_000n ** BigInt(slip.items.length - 1);
-    return numerator / denominator;
-  }, [pendingQuote, slip.items]);
+    return previewOdds.length > 0 ? accumulatorOddsScaled(previewOdds) : 0n;
+  }, [pendingQuote, previewOdds]);
 
   const potentialPayout = useMemo(() => {
     if (pendingQuote?.potentialPayoutMinor) {
       return BigInt(pendingQuote.potentialPayoutMinor);
     }
-    return (combinedOdds * stake) / 10_000n;
-  }, [pendingQuote, combinedOdds, stake]);
+    // The UI estimate must use the same exact, once-rounded stake * odds
+    // calculation as the authoritative pricing service. Display odds are
+    // rounded independently and must never be used as the payout input.
+    return previewOdds.length > 0
+      ? calculatePotentialPayout(money(stake, currency), previewOdds).amount
+      : 0n;
+  }, [pendingQuote, previewOdds, stake, currency]);
 
   useEffect(() => {
     if (
