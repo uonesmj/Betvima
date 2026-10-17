@@ -3,6 +3,7 @@ import { PullToRefresh } from '@/components/layout/pull-to-refresh';
 import dynamic from 'next/dynamic';
 
 import { AuthSheet } from '@/components/account/auth-sheet';
+import { TwoFactorSettings } from '@/components/account/two-factor-settings';
 import { useApiQuery } from "@/lib/hooks/useApi";
 
 import Image from 'next/image';
@@ -1080,6 +1081,20 @@ export function PageShell({ children, title, subtitle, titleKey, subtitleKey, ac
       <SupportSheet close={() => setSupportSheetOpen(false)} />
     ) : null}
     {affiliateSheetOpen ? <AffiliatePromoSheet onClose={closeAffiliateSheet} /> : null}
+    {session?.authenticated && session.user?.mfaEnrolled && session.user?.mfaLevel !== 'aal2' ? (
+      <div className="fixed inset-0 z-[110] flex items-center justify-center overflow-y-auto bg-[#07111F]/95 p-4"
+        role="dialog" aria-modal="true" aria-label="Authenticator verification required">
+        <div className="w-full max-w-lg space-y-3">
+          <TwoFactorSettings onVerified={() => window.location.reload()} />
+          <button type="button"
+            onClick={async () => {
+              await getSupabaseBrowserClient().auth.signOut();
+              window.location.href = '/';
+            }}
+            className="text-sm text-white underline">Sign out</button>
+        </div>
+      </div>
+    ) : null}
     </>
   );
 }

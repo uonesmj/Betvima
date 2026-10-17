@@ -13,6 +13,7 @@ import { LanguageSelector } from '@/components/layout/language-selector';
 import { Card, ErrorNote, Field } from '@/components/ui/primitives';
 import { apiRequest, useApiQuery } from '@/lib/hooks/useApi';
 import { getSupabaseBrowserClient } from '@/lib/supabase/browser';
+import { TwoFactorSettings } from '@/components/account/two-factor-settings';
 import { formatDateTime, formatMinor } from '@/lib/i18n';
 
 interface ProfileData {
@@ -315,6 +316,7 @@ export function ProfileClient() {
             </div>
           </section>
 
+          <TwoFactorSettings adminRequired={Boolean(session.user?.isAdmin)} />
           <section className="rounded-[20px] border border-[#E8EBEF] bg-white p-4 shadow-[0_4px_18px_rgba(15,23,42,.045)] sm:p-5">
             <div className="grid grid-cols-3 gap-2 sm:gap-3">
               <div className="flex min-w-0 items-center gap-2 sm:gap-3">

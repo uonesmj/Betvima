@@ -14,6 +14,7 @@ import { isAdminRole, permissionsForRole, roleHasPermission } from './rbac';
 import type { AdminPermission, SessionUser, UUID, UserProfile } from '@/lib/types';
 import type { ActorContext } from '@/lib/ports/db';
 import { hashSignal, clientIpFromHeaders } from '@/server/utils/hash';
+import { assuranceLevelFromVerifiedToken, hasVerifiedTotp } from './mfa-policy';
 
 const ROLE_CACHE_TTL_MS = 10_000;
 const roleCache = new Map<string, { role: string; expires: number }>();
@@ -42,7 +43,7 @@ export async function resolveSession(request: Request): Promise<AuthResolution> 
     const bearerMatch = /^Bearer\s+(.+)$/i.exec(authorization);
     const bearerToken = bearerMatch?.[1]?.trim() || null;
 
-    let authUser: { id: string; email?: string | null } | null = null;
+    let authUser: { id: string; email?: string | null; factors?: { factor_type?: string; status?: string }[] } | null = null;
     let accessToken: string | null = bearerToken;
 
     if (bearerToken) {
@@ -78,6 +79,7 @@ export async function resolveSession(request: Request): Promise<AuthResolution> 
       authUser = {
         id: data.user.id,
         email: data.user.email,
+        factors: data.user.factors,
       };
     } else {
       /*
@@ -179,6 +181,7 @@ export async function resolveSession(request: Request): Promise<AuthResolution> 
           ? {
               id: data.user.id,
               email: data.user.email,
+              factors: data.user.factors,
             }
           : null;
 
@@ -217,6 +220,8 @@ export async function resolveSession(request: Request): Promise<AuthResolution> 
         currency: profile.preferredCurrency,
         affiliateId: profile.affiliateId,
         isAdmin: isAdminRole(profile.role),
+        mfaLevel: assuranceLevelFromVerifiedToken(accessToken),
+        mfaEnrolled: hasVerifiedTotp(authUser.factors),
       },
       authUnavailable: false,
       accessToken,
@@ -268,6 +273,10 @@ export function actorFrom(request: Request, auth: AuthResolution, correlationId:
 export function requireUser(auth: AuthResolution): SessionUser {
   if (auth.authUnavailable) throw new ApiError('SERVICE_UNAVAILABLE', 'Authentication backend is not configured (NEXT_PUBLIC_SUPABASE_URL / NEXT_PUBLIC_SUPABASE_ANON_KEY)');
   if (!auth.user) throw new ApiError('UNAUTHENTICATED');
+  // Opt-in customers must complete their enrolled TOTP before accessing APIs.
+  if (auth.user.mfaEnrolled && auth.user.mfaLevel !== 'aal2') {
+    throw new ApiError('FORBIDDEN', 'MFA_REQUIRED: Verify your authenticator code to continue');
+  }
   return auth.user;
 }
 
@@ -280,6 +289,11 @@ export function requirePermission(user: SessionUser, permission: AdminPermission
 /** The database re-checks admin rights; this is the fast, user-facing gate. */
 export function requireAdmin(user: SessionUser, permission?: AdminPermission): void {
   if (!user.isAdmin) throw new ApiError('FORBIDDEN', 'Administrative access required');
+  // Admins must enroll MFA and obtain an actual AAL2 session.
+  // No bypass through direct REST API calls, stale tabs or hidden admin screens.
+  if (!user.mfaEnrolled || user.mfaLevel !== 'aal2') {
+    throw new ApiError('FORBIDDEN', 'ADMIN_MFA_REQUIRED: Enroll and verify Google Authenticator before administrative actions');
+  }
   if (permission) requirePermission(user, permission);
 }
 

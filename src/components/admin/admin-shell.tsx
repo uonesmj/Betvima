@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { useApp } from '@/components/layout/providers';
+import { TwoFactorSettings } from '@/components/account/two-factor-settings';
 import { EmptyState, Skeleton } from '@/components/ui/primitives';
 
 const SECTIONS: { group: string; items: { href: string; label: string }[] }[] = [
@@ -82,6 +83,13 @@ export function AdminShell({ children, title, actions }: { children: React.React
         />
       </div>
     );
+  }
+
+  if (!session.user.mfaEnrolled || session.user.mfaLevel !== 'aal2') {
+    return <div className="mx-auto max-w-xl px-4 py-10">
+      <h1 className="mb-4 text-xl font-bold">Administrator security verification required</h1>
+      <TwoFactorSettings adminRequired onVerified={() => window.location.reload()} />
+    </div>;
   }
 
   return (
