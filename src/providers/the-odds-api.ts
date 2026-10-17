@@ -552,10 +552,7 @@ export class TheOddsApiSportsProvider implements SportsDataProvider {
   readonly configured = Boolean(API_KEY);
 
   async health() {
-    const requiredEnv = [
-      "SPORTS_PROVIDER_BASE_URL",
-      "SPORTS_PROVIDER_API_KEY",
-    ];
+    const requiredEnv = ["ODDS_API_KEY"];
 
     if (!API_KEY) {
       return {
@@ -564,7 +561,7 @@ export class TheOddsApiSportsProvider implements SportsDataProvider {
         configured: false,
         enabled: true,
         reachable: false,
-        lastError: "SPORTS_PROVIDER_API_KEY is not configured",
+        lastError: "ODDS_API_KEY is not configured (The Odds API only)",
         lastSuccessAt: null,
         requiredEnv,
         notes: "The Odds API is not configured.",

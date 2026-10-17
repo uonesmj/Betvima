@@ -2,13 +2,15 @@ import { describe, expect, it } from 'vitest';
 import { duePrematchRefreshes, prematchRefreshCadence } from '@/workers/prematch-refresh-cadence';
 
 describe('upcoming bookmaker price refresh cadence', () => {
-  it('uses the actual The Odds API provider, not legacy SPORTS_PROVIDER env', () => {
+  it('only schedules actual The Odds API provider; rejects other sources', () => {
     const odds = prematchRefreshCadence('the_odds_api', 40);
-    const fiveDollar = prematchRefreshCadence('5dollarfootballapi', 40);
+    const retired = prematchRefreshCadence('retired_vendor', 40);
     expect(odds.midMs).toBe(30_000);
     expect(odds.farMs).toBe(45_000);
-    expect(fiveDollar.midMs).toBe(300_000);
-    expect(fiveDollar.farMs).toBe(900_000);
+    expect(retired.nearLimit).toBe(0);
+    expect(retired.midLimit).toBe(0);
+    expect(retired.farLimit).toBe(0);
+    expect(retired.extendedLimit).toBe(0);
   });
   it('does not monopolize provider requests with dozens of extended-event calls', () => {
     const cadence = prematchRefreshCadence('the_odds_api', 80);
@@ -25,11 +27,11 @@ describe('upcoming bookmaker price refresh cadence', () => {
     expect(due.far).toBe(false);
     expect(due.next.mid).toBe(980_000);
   });
-  it('respects legacy provider quota pacing and its independent scheduling', () => {
-    const fiveDollar = prematchRefreshCadence('5dollarfootballapi', 40);
+  it('never schedules an unauthorized provider for bookmaker refresh', () => {
+    const unavailable = prematchRefreshCadence('retired_vendor', 40);
     const cadence = prematchRefreshCadence('the_odds_api', 40);
     const last = { near: 100_000, mid: 100_000, far: 100_000, extendedNear: 100_000, extendedFar: 100_000 };
-    expect(duePrematchRefreshes(150_000, last, fiveDollar).mid).toBe(false);
+    expect(duePrematchRefreshes(150_000, last, unavailable).mid).toBe(false);
     expect(duePrematchRefreshes(150_000, last, cadence).mid).toBe(true);
   });
 });

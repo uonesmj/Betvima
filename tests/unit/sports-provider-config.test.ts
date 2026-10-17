@@ -21,8 +21,8 @@ describe("Odds API configuration isolation", () => {
     return { health, fetchMock };
   }
 
-  it("does not use FiveDollar's legacy URL for Odds requests", async () => {
-    const { health, fetchMock } = await healthUrl("5dollarfootballapi");
+  it("does not use retired provider's legacy URL for Odds requests", async () => {
+    const { health, fetchMock } = await healthUrl("retired_vendor");
     expect(health.reachable).toBe(true);
     const url = new URL(String(fetchMock.mock.calls[0]?.[0]));
     expect(url.origin).toBe("https://api.the-odds-api.com");
@@ -37,14 +37,14 @@ describe("Odds API configuration isolation", () => {
   });
 
   it("prioritizes the dedicated Odds URL and key", async () => {
-    const { fetchMock } = await healthUrl("5dollarfootballapi", "https://odds.example.test");
+    const { fetchMock } = await healthUrl("retired_vendor", "https://odds.example.test");
     const url = new URL(String(fetchMock.mock.calls[0]?.[0]));
     expect(url.origin).toBe("https://odds.example.test");
     expect(url.searchParams.get("apiKey")).toBe("test-odds-key");
   });
 
-  it("does not use FiveDollar's key when the Odds key is missing", async () => {
-    const { health, fetchMock } = await healthUrl("5dollarfootballapi", "", "");
+  it("does not use retired provider's key when the Odds key is missing", async () => {
+    const { health, fetchMock } = await healthUrl("retired_vendor", "", "");
     expect(health.configured).toBe(false);
     expect(fetchMock).not.toHaveBeenCalled();
   });

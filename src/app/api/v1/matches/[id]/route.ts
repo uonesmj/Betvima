@@ -32,7 +32,8 @@ export const GET = withErrorHandling('matches.get', async (ctx, request: Request
   const history = await services.db.query<Record<string, unknown>>(
     `select h.selection_id, h.odds_scaled, h.previous_odds_scaled, h.provider_timestamp
        from nova.odds_history h join nova.selections s on s.id = h.selection_id
-      where s.match_id = $1 and h.provider_timestamp > now() - interval '2 hours'
+      where s.match_id = $1 and s.provider = 'the_odds_api'
+        and h.provider_timestamp > now() - interval '2 hours'
       order by h.provider_timestamp desc limit 60`,
     [match.id],
   );

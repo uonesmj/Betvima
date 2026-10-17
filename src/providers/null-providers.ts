@@ -34,7 +34,7 @@ const notConfigured = <T>(what: string, requiredEnv: string[]): ProviderResult<T
 export class DisabledSportsProvider implements SportsDataProvider {
   readonly name = 'disabled';
   readonly configured = false;
-  private readonly requiredEnv = ['SPORTS_PROVIDER', 'SPORTS_PROVIDER_BASE_URL', 'SPORTS_PROVIDER_API_KEY'];
+  private readonly requiredEnv = ['ODDS_API_KEY'];
 
   async health(): Promise<ProviderStatus> {
     return {
@@ -168,7 +168,7 @@ export function providers(): ProviderRegistryLike {
   };
   // Loudly state the configuration state at boot: no silent degradation.
   log.info('provider registry resolved', {
-    sports: env.SPORTS_PROVIDER, payments: env.PAYMENT_PROVIDER,
+    sports: primarySportsProvider.name, payments: env.PAYMENT_PROVIDER,
     email: env.RESEND_API_KEY ? 'resend' : 'disabled', sms: env.NOTIFY_SMS_PROVIDER, push: env.NOTIFY_PUSH_PROVIDER,
     sportsConfigured: env.sportsProviderEnabled, paymentsConfigured: env.paymentProviderEnabled,
   });
@@ -182,6 +182,8 @@ export function setProviders(next: ProviderRegistryLike | null): void {
 /** Persisted provider health rows (used by /admin/providers and /api/health). */
 export async function providerHealthRows(db: { query: (sql: string, params?: unknown[]) => Promise<Record<string, unknown>[]> }) {
   return db.query(
-    `select provider, kind, status, last_success_at, last_error, metadata from nova.provider_health order by kind, provider`,
+    `select provider, kind, status, last_success_at, last_error, metadata from nova.provider_health
+      where kind <> 'sports' or provider in ('the_odds_api', 'disabled')
+      order by kind, provider`,
   );
 }
