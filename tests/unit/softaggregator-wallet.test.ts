@@ -23,6 +23,7 @@ function makeFakeDb(initial = 1000n, held = 200n) {
   let preferredCurrency = 'USD';
   let boundCurrency: string | null = 'USD';
   let kycStatus = 'verified';
+  let documentApproved = true;
   let country = 'DE';
   let financialSchemaReady = true;
   const receipts = new Map<string, { identity_hash: string; response_error: 0 | 1 | 2; response_balance_minor: string; action: string; wallet_amount_minor: string; round_id: string; game_id: string; amount_minor: string; reversed: boolean }>();
@@ -56,6 +57,7 @@ function makeFakeDb(initial = 1000n, held = 200n) {
       if (sql.includes('from nova.profiles p')) {
         return {
           status: 'active', age_verified: true, kyc_status: kycStatus,
+          kyc_document_approved: documentApproved,
           country, currency: preferredCurrency,
           self_excluded: false, restricted: false,
           max_stake_per_bet_minor: null, max_stake_per_day_minor: null,
@@ -103,6 +105,7 @@ function makeFakeDb(initial = 1000n, held = 200n) {
     setPreferredCurrency: (currency: string) => { preferredCurrency = currency; },
     setBinding: (currency: string | null) => { boundCurrency = currency; },
     setKycStatus: (status: string) => { kycStatus = status; },
+    setDocumentApproved: (value: boolean) => { documentApproved = value; },
     setCountry: (value: string) => { country = value; },
     setSchemaReady: (ready: boolean) => { financialSchemaReady = ready; } };
 }
@@ -141,6 +144,14 @@ describe('SoftAggregator financial callback behavior (isolated DB contract)', ()
     vi.mocked(getDb).mockReturnValue(t.fake as unknown as Db);
     expect((await settleCasinoCallback(identity('owed-previous-win', 'credit', 200n))).error).toBe(0);
     expect(t.postings[0]?.p_type).toBe('win_credit');
+  });
+
+  it('rejects USD wagering if legacy profile is verified but documents lack review', async () => {
+    const t = makeFakeDb();
+    t.setDocumentApproved(false);
+    vi.mocked(getDb).mockReturnValue(t.fake as unknown as Db);
+    expect((await settleCasinoCallback(identity('no-docs', 'debit', 200n))).error).toBe(1);
+    expect(t.postings).toHaveLength(0);
   });
 
   it('denies wagering in a country absent from operator allowlist', async () => {
