@@ -39,7 +39,8 @@ data class AppState(
     val live: List<Match> = emptyList(), val upcoming: List<Match> = emptyList(),
     val liveLoading: Boolean = false, val upcomingLoading: Boolean = false,
     val detailLoading: Boolean = false,
-    val liveEnabled: Boolean = false, val detail: Match? = null,
+    val liveEnabled: Boolean = false, val wageringEnabled: Boolean = false,
+    val detail: Match? = null,
     val focusedMarketId: String? = null,
     val betDetail: BetDetail? = null, val betDetailLoading: Boolean = false,
     val betDetailVisible: Boolean = false,
@@ -104,6 +105,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     ))
     val state = mutable.asStateFlow()
     init {
+        refreshWageringAvailability()
         refreshAll()
         if (vault.signedIn()) {
             refreshAccount()
@@ -111,6 +113,12 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
     fun notice(message: String?) = mutable.update { it.copy(notice = message) }
+
+    /** Bootstrap reflects server kill switches, never a local permanent false. */
+    fun refreshWageringAvailability() = viewModelScope.launch {
+        val available = runCatching { api.wageringAvailable() }.getOrDefault(false)
+        mutable.update { it.copy(wageringEnabled = available) }
+    }
     fun language() =
         setLanguage(if (state.value.lang == Lang.EN) Lang.FA else Lang.EN)
     fun setLanguage(lang: Lang) {
@@ -846,11 +854,13 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             val payload = data.optJSONObject("quote")
                 ?: throw ApiFailure(502, "Signed price quote missing")
             val review = parseMainBetReview(payload, minor, currency, selected, requestNumber)
+            val wageringNow = runCatching { api.wageringAvailable() }.getOrDefault(false)
             if (requestNumber == quoteGeneration && session == sessionGeneration &&
                 selected == state.value.picks &&
                 state.value.wallet?.currency?.uppercase() == currency) {
                 mutable.update {
                     it.copy(busy = false, mainBetReview = review, mainOddsAcceptedToken = null,
+                        wageringEnabled = wageringNow,
                         quote = money(review.potentialPayoutMinor, currency))
                 }
             }
@@ -940,11 +950,12 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
      * an ambiguous network response requires checking My Bets.
      */
     fun placeMainBet(stake: String) = viewModelScope.launch {
-        // The native build cannot place wagers until operator, age and
-        // jurisdiction controls are reviewed and the build flag is enabled.
-        if (!com.betvima.app.BuildConfig.ENABLE_WAGERING) {
-            notice(tr(state.value.lang, "Main Account wagering is not yet authorized.",
-                "ثبت شرط از حساب اصلی هنوز مجاز نشده است."))
+        // The public bootstrap is display-only; the authenticated API and
+        // finance database still enforce all wagering preconditions.
+        if (!state.value.wageringEnabled) {
+            refreshWageringAvailability()
+            notice(tr(state.value.lang, "Wagering is disabled by the server.",
+                "ثبت شرط از طرف سرور غیرفعال است."))
             return@launch
         }
         val snapshot = state.value
