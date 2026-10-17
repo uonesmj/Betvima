@@ -384,12 +384,10 @@ function WithdrawPanel({
             key={item.id}
             type="button"
             disabled={!available}
-            onClick={() =>
-              setWithdrawMethod(
-                item.id as "crypto" | "voucher_uvoucher" | "voucher_hotvoucher",
-              );
-              setForm(v=>({...v,amount:'',destination:''}))
-            }
+            onClick={() => {
+              setWithdrawMethod(item.id as "crypto" | "voucher_uvoucher" | "voucher_hotvoucher");
+              setForm(v=>({...v,amount:'',destination:''}));
+            }}
             className={`min-h-[48px] rounded-xl px-2 text-xs font-black transition ${
               withdrawMethod === item.id
                 ? "bg-white text-[#087FF5] shadow-sm ring-2 ring-[#087FF5]/10"
