@@ -8,9 +8,9 @@ export function casinoGameGroup(game: CasinoCatalogueCategory): 'slots' | 'live'
   return 'other';
 }
 
-/** Surface both casino verticals even when the supplier lists thousands of slots first. */
+/** Surface live-dealer games first, then slots, even when the supplier lists thousands of slots first. */
 export function featuredCasinoGames<T extends CasinoCatalogueCategory>(games: readonly T[]): T[] {
   const slots = games.filter((game) => casinoGameGroup(game) === 'slots').slice(0, 4);
   const live = games.filter((game) => casinoGameGroup(game) === 'live').slice(0, 4);
-  return [...slots, ...live];
+  return [...live, ...slots];
 }
