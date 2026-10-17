@@ -212,7 +212,8 @@ export async function settleFiatCasinoCallback(
     if (w.is_frozen) {
       error = 2;
     } else if (isDebit && (local > before ||
-      (!event.rollback && (!(await pilotCasinoDebitPermitted(tx, userId, event.amountMinor!)) ||
+      (!event.rollback && (!allowed(roundCurrencyProfile) ||
+         !(await pilotCasinoDebitPermitted(tx, userId, event.amountMinor!)) ||
          roundCurrencyProfile.currency !== currency || event.amountMinor! < SOFTAGGREGATOR_MIN_BET_MINOR ||
         !(await limitsAllow(tx, userId, currency, local, roundCurrencyProfile)))))) {
       error = 1;
