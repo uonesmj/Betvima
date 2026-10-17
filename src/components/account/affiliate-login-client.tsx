@@ -6,7 +6,7 @@ import { useApp } from '@/components/layout/providers';
 import { useRouter } from 'next/navigation';
 import { Card, Field } from '@/components/ui/primitives';
 import { apiRequest } from '@/lib/hooks/useApi';
-import { getSupabaseBrowserClient } from '@/lib/supabase/browser';
+import { requestEmailPasswordRecovery } from '@/lib/supabase/recovery-email';
 
 export function AffiliateLoginClient() {
   const { locale } = useApp();
@@ -153,16 +153,7 @@ export function AffiliateLoginClient() {
         },
       );
 
-      const supabase =
-        getSupabaseBrowserClient();
-
-      await supabase.auth.resetPasswordForEmail(
-        email,
-        {
-          redirectTo:
-            `${window.location.origin}/auth/reset-password?from=affiliate`,
-        },
-      );
+      await requestEmailPasswordRecovery(email, 'affiliate');
 
       setMessage(
         'If an Affiliate account exists for this email, a password reset link has been sent.',

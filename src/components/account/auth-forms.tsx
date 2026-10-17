@@ -1,6 +1,6 @@
 'use client';
 
-import { getSupabaseBrowserClient } from '@/lib/supabase/browser';
+import { requestEmailPasswordRecovery } from '@/lib/supabase/recovery-email';
 import { useEffect, useRef, useState } from 'react';
 import Script from 'next/script';
 import { useApp } from '@/components/layout/providers';
@@ -113,10 +113,7 @@ export function AuthForms({
         },
       });
 
-      const supabase = getSupabaseBrowserClient();
-      await supabase.auth.resetPasswordForEmail(form.email.trim(), {
-        redirectTo: `${window.location.origin}/auth/reset-password`,
-      });
+      await requestEmailPasswordRecovery(form.email.trim(), 'sportsbook');
 
       setNotice('If an account exists for that email, a password reset link has been sent.');
     } catch {

@@ -2,10 +2,13 @@
 
 import { useApp } from '@/components/layout/providers';
 
-import { FormEvent, useEffect, useState } from 'react';
+import { FormEvent, useEffect, useRef, useState } from 'react';
+import { clearedPasswordRecoveryPath, parsePasswordRecoveryGrant } from '@/lib/auth/password-recovery';
 import { useRouter } from 'next/navigation';
 import { Eye, EyeOff, KeyRound, LockKeyhole, CheckCircle2 } from 'lucide-react';
 import { getSupabaseBrowserClient } from '@/lib/supabase/browser';
+import { createIsolatedRecoveryClient } from '@/lib/supabase/recovery-email';
+import type { SupabaseClient } from '@supabase/supabase-js';
 
 export default function ResetPasswordPage() {
   const { t, dir } = useApp();
@@ -14,78 +17,87 @@ export default function ResetPasswordPage() {
   const [confirm, setConfirm] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
-  const [ready, setReady] = useState(false);
+  const [state, setState] = useState<'checking' | 'ready' | 'invalid' | 'complete'>('checking');
+  const checkPromise = useRef<Promise<void> | null>(null);
+  const recoveryClient = useRef<SupabaseClient | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
 
   useEffect(() => {
-    let active = true;
-    const supabase = getSupabaseBrowserClient();
-
-    const init = async () => {
-      const { data: sessionData } = await supabase.auth.getSession();
-
-      if (sessionData.session) {
-        if (active) setReady(true);
-        return;
-      }
-
-      const hash = new URLSearchParams(window.location.hash.replace(/^#/, ''));
-      const accessToken = hash.get('access_token');
-      const refreshToken = hash.get('refresh_token');
-
-      if (accessToken && refreshToken) {
-        const { error: sessionError } = await supabase.auth.setSession({
-          access_token: accessToken,
-          refresh_token: refreshToken,
-        });
-
-        if (sessionError) {
-          if (active) setError('This reset link is invalid or has expired.');
-          return;
+    // The browser may already be signed into a DIFFERENT account. Only
+    // one-use recovery credentials from the emailed link grant permission.
+    // Keep one shared promise because React Strict Mode replays effects.
+    if (!checkPromise.current) {
+      checkPromise.current = (async () => {
+        const grant = parsePasswordRecoveryGrant(window.location.href);
+        if (grant.kind === 'invalid') {
+          throw new Error('This reset link is invalid or has expired. Request a new link.');
         }
 
-        window.history.replaceState(
-          {},
-          document.title,
-          window.location.pathname + window.location.search,
-        );
+        // Legacy PKCE email codes need the ordinary browser verifier.
+        // New app/email implicit tokens must never touch the PKCE SSR client.
+        const supabase = grant.kind === 'code'
+          ? getSupabaseBrowserClient()
+          : createIsolatedRecoveryClient();
+        recoveryClient.current = supabase;
+        try {
+          if (grant.kind === 'tokens') {
+            const { error: sessionError } = await supabase.auth.setSession({
+              access_token: grant.accessToken,
+              refresh_token: grant.refreshToken,
+            });
+            if (sessionError) throw sessionError;
+          } else if (grant.kind === 'code') {
+            const { error: exchangeError } =
+              await supabase.auth.exchangeCodeForSession(grant.code);
+            if (exchangeError) throw exchangeError;
+          } else {
+            const { error: verifyError } = await supabase.auth.verifyOtp({
+              token_hash: grant.tokenHash,
+              type: 'recovery',
+            });
+            if (verifyError) throw verifyError;
+          }
 
-        if (active) setReady(true);
-        return;
-      }
-
-      const code = new URLSearchParams(window.location.search).get('code');
-      if (code) {
-        const { error: exchangeError } =
-          await supabase.auth.exchangeCodeForSession(code);
-
-        if (exchangeError) {
-          if (active) setError('This reset link is invalid or has expired.');
-          return;
+          // An exchange can finish without a usable local session (notably
+          // in an email client's in-app browser). Do not show a password form
+          // in that case. getUser validates the session against Supabase.
+          const { data: sessionResult, error: sessionError } =
+            await supabase.auth.getSession();
+          if (sessionError || !sessionResult.session?.access_token) {
+            throw new Error('Recovery session missing.');
+          }
+          const { data: userResult, error: userError } =
+            await supabase.auth.getUser();
+          if (userError || !userResult.user ||
+              userResult.user.id !== sessionResult.session.user.id) {
+            throw new Error('Recovery session could not be verified.');
+          }
+        } finally {
+          // Never leave access or refresh tokens in browser history.
+          window.history.replaceState(
+            {}, document.title, clearedPasswordRecoveryPath(window.location.href),
+          );
         }
+      })();
+    }
 
-        window.history.replaceState(
-          {},
-          document.title,
-          window.location.pathname,
-        );
-
-        if (active) setReady(true);
-        return;
+    let mounted = true;
+    void checkPromise.current.then(() => {
+      if (mounted) {
+        setState('ready');
+        setError(null);
       }
-
-      if (active) {
-        setError('This reset link is invalid or has expired.');
+    }).catch(() => {
+      if (mounted) {
+        setState('invalid');
+        setError('This reset link is invalid or has expired. Request a new link.');
+        setPassword('');
+        setConfirm('');
       }
-    };
-
-    void init();
-
-    return () => {
-      active = false;
-    };
+    });
+    return () => { mounted = false; };
   }, []);
 
   const goBackToLogin = () => {
@@ -96,38 +108,56 @@ export default function ResetPasswordPage() {
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
+    if (state !== 'ready' || busy) return;
     setError(null);
 
-    if (password.length < 8) {
-      setError('Password must be at least 8 characters.');
+    if (password.length < 8 || password.length > 128) {
+      setError('Password must be between 8 and 128 characters.');
       return;
     }
-
     if (password !== confirm) {
       setError('Passwords do not match.');
       return;
     }
 
     setBusy(true);
-
     try {
-      const supabase = getSupabaseBrowserClient();
-      const { error: updateError } = await supabase.auth.updateUser({
-        password,
-      });
-
-      if (updateError) {
-        throw new Error(updateError.message);
+      const supabase = recoveryClient.current;
+      if (!supabase) throw new Error('RECOVERY_SESSION_EXPIRED');
+      const { data: sessionData, error: sessionError } =
+        await supabase.auth.getSession();
+      if (sessionError || !sessionData.session?.access_token) {
+        throw new Error('RECOVERY_SESSION_EXPIRED');
       }
-
-      await supabase.auth.signOut();
-      setSuccess(true);
+      const { data: userData, error: userError } = await supabase.auth.getUser();
+      if (userError || !userData.user ||
+          userData.user.id !== sessionData.session.user.id) {
+        throw new Error('RECOVERY_SESSION_EXPIRED');
+      }
+      const { error: updateError } = await supabase.auth.updateUser({ password });
+      if (updateError) {
+        if (/auth session missing|session.+(missing|expired)|invalid jwt|jwt expired/i
+          .test(updateError.message)) {
+          throw new Error('RECOVERY_SESSION_EXPIRED');
+        }
+        throw updateError;
+      }
+      setPassword('');
+      setConfirm('');
+      setState('complete');
+      // The update has succeeded; sign out without losing the success page.
+      await supabase.auth.signOut().catch(() => undefined);
     } catch (err) {
-      setError(
-        err instanceof Error
-          ? err.message
-          : 'Unable to update your password.',
-      );
+      if (err instanceof Error && err.message === 'RECOVERY_SESSION_EXPIRED') {
+        setState('invalid');
+        setError('Your recovery session has expired. Request a new reset link.');
+        setPassword('');
+        setConfirm('');
+      } else {
+        setError(
+          err instanceof Error ? err.message : 'Unable to update your password.',
+        );
+      }
     } finally {
       setBusy(false);
     }
@@ -137,12 +167,12 @@ export default function ResetPasswordPage() {
     <main dir={dir} className="min-h-screen bg-[#07111F] px-4 py-10 text-white">
       <div className="mx-auto flex min-h-[80vh] w-full max-w-[560px] items-center justify-center">
         <section className="w-full rounded-[28px] border border-[#24324A] bg-[#0B1728] p-6 shadow-[0_20px_70px_rgba(0,0,0,.35)] sm:p-8">
-          {success ? (
+          {state === 'complete' ? (
             <div className="text-center">
               <CheckCircle2 className="mx-auto h-12 w-12 text-[#00E07A]" />
               <h1 className="mt-4 text-2xl font-black">{t('auth.passwordUpdated')}</h1>
               <p className="mt-2 text-sm leading-6 text-[#91A1BA]">
-                Your NOVA password has been changed successfully. You can now sign in with your new password.
+                Your BetVima password has been changed successfully. You can now sign in with your new password.
               </p>
               <button
                 type="button"
@@ -158,7 +188,7 @@ export default function ResetPasswordPage() {
                 <KeyRound className="mx-auto h-10 w-10 text-[#00E07A]" />
                 <h1 className="mt-4 text-2xl font-black">{t('auth.createNewPassword')}</h1>
                 <p className="mt-2 text-sm leading-6 text-[#91A1BA]">
-                  Choose a new password for your NOVA account.
+                  Choose a new password for your BetVima account.
                 </p>
               </div>
 
@@ -168,7 +198,7 @@ export default function ResetPasswordPage() {
                 </div>
               ) : null}
 
-              {ready ? (
+              {state === 'ready' ? (
                 <form className="mt-6 space-y-4" onSubmit={submit}>
                   <label className="block">
                     <span className="mb-2 block text-sm font-bold text-[#9AAAC0]">
@@ -242,7 +272,7 @@ export default function ResetPasswordPage() {
                     )}
                   </button>
                 </form>
-              ) : !error ? (
+              ) : state === 'checking' ? (
                 <div className="mt-6 text-center text-sm text-[#91A1BA]">
                   Verifying your reset link...
                 </div>
