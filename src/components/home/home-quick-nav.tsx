@@ -1,5 +1,0 @@
-import Link from "next/link";
-import { Activity, Ticket, Trophy, WalletCards } from "lucide-react";
-import { useApp } from "@/components/layout/providers";
-const ITEMS=[{href:"/live",key:"nav.live",icon:Activity},{href:"/sports/football",key:"nav.sports",icon:Trophy},{href:"/bets",key:"nav.myBets",icon:Ticket},{href:"/wallet",key:"nav.wallet",icon:WalletCards}];
-export function HomeQuickNav(){const { t } = useApp();return <nav aria-label={t("nav.menu")} className="mb-5 flex gap-2 overflow-x-auto pb-1 md:grid md:grid-cols-4 md:overflow-visible md:pb-0">{ITEMS.map(({href,key,icon:Icon})=><Link key={key} href={href} className="group flex min-h-[58px] min-w-[92px] shrink-0 flex-col items-center justify-center gap-1.5 rounded-xl border border-nova-line bg-nova-surface2 px-3 py-2.5 text-[11px] font-medium nova-muted transition md:min-w-0 hover:border-nova-primary/40 hover:text-nova-text active:scale-[.98]"><Icon size={19} strokeWidth={1.8} className="transition group-hover:text-nova-primary" aria-hidden="true"/><span>{t(key)}</span></Link>)}</nav>}
