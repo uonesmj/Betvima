@@ -573,14 +573,16 @@ private fun TournamentShortcut(
             modifier = Modifier.size(74.dp)
         ) {
             Box(contentAlignment = Alignment.Center) {
-                val image = logo?.takeIf { it.startsWith("https://") }
-                if (image != null) {
-                    AsyncImage(model = image, contentDescription = label,
-                        modifier = Modifier.fillMaxSize().padding(9.dp))
-                } else {
+                val image = verifiedLogoUrl(logo)
+                var failed by remember(image) { mutableStateOf(false) }
+                if (image == null || failed) {
                     Icon(icon, contentDescription = null,
                         modifier = Modifier.size(36.dp),
                         tint = if (active) Palette.green else Color.White)
+                } else {
+                    AsyncImage(model = image, contentDescription = label,
+                        onError = { failed = true },
+                        modifier = Modifier.fillMaxSize().padding(9.dp))
                 }
             }
         }
