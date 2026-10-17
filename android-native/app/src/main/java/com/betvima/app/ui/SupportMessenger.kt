@@ -81,6 +81,28 @@ internal fun supportAttachmentPhaseLabel(phase: SupportAttachmentPhase, lang: La
 private fun definiteAttachmentFailure(error: Exception): Boolean =
     error is ApiFailure && error.code in 400..499 && error.code !in setOf(408, 409, 429)
 
+/** Keep server diagnostics actionable without exposing private backend details. */
+internal fun supportAttachmentErrorMessage(status: Int?, lang: Lang): String =
+    when (status) {
+        400, 415, 422 -> tr(lang,
+            "File content or format was rejected (HTTP $status). Choose a JPG, PNG, WEBP or PDF.",
+            "محتوا یا نوع فایل پذیرفته نشد (خطای $status). JPG، PNG، WEBP یا PDF انتخاب کنید.")
+        401, 403 -> tr(lang,
+            "Upload access denied (HTTP $status). Sign in again or contact support.",
+            "دسترسی آپلود رد شد (خطای $status). دوباره وارد شوید یا با پشتیبانی تماس بگیرید.")
+        413 -> tr(lang,
+            "Upload is too large for the gateway (HTTP 413). Choose a smaller image.",
+            "حجم عکس از محدودیت درگاه بیشتر است (خطای ۴۱۳). عکس کوچک‌تری انتخاب کنید.")
+        409 -> tr(lang,
+            "This conversation cannot accept uploads (HTTP 409). Refresh the chat.",
+            "این گفت‌وگو امکان دریافت فایل ندارد (خطای ۴۰۹). چت را تازه‌سازی کنید.")
+        429 -> tr(lang,
+            "Too many upload attempts (HTTP 429). Try again later.",
+            "تعداد تلاش‌ها زیاد است (خطای ۴۲۹). کمی بعد تلاش کنید.")
+        else -> tr(lang, "Upload rejected. Refresh the chat or contact support.",
+            "آپلود رد شد. گفتگو را تازه‌سازی کنید یا با پشتیبانی تماس بگیرید.")
+    }
+
 private fun messengerActive(ticket: SupportTicket): Boolean = supportActive(ticket.status)
 
 // Layout invariants for compact bubbles and safe navigation on gesture devices.
@@ -294,9 +316,7 @@ fun SupportMessenger(
             uncertain = !definite
             if (attached != null) attachmentPhase =
                 if (definite) SupportAttachmentPhase.FAILED else SupportAttachmentPhase.VERIFY
-            error = if (definite) tr(lang,
-                "Upload rejected. Check the file and retry.",
-                "ارسال فایل رد شد؛ فایل را بررسی و دوباره تلاش کنید.")
+            error = if (definite) supportAttachmentErrorMessage((ex as? ApiFailure)?.code, lang)
             else tr(lang,
                 "Delivery is not confirmed. Refresh the chat before trying again.",
                 "تأیید ارسال دریافت نشد؛ پیش از تلاش دوباره، گفتگو را تازه‌سازی کنید.")
