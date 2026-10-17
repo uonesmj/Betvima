@@ -877,7 +877,7 @@ class ApiClient {
             BitmapFactory.decodeByteArray(uploadBytes, 0, uploadBytes.size, info)
             if (info.outWidth < 1 || info.outHeight < 1)
                 throw ApiFailure(415, "Image cannot be decoded")
-            val opts = BitmapFactory.Options()
+            val opts = BitmapFactory.Options().apply { inSampleSize = 1 }
             while (maxOf(info.outWidth, info.outHeight) / opts.inSampleSize > 3200)
                 opts.inSampleSize *= 2
             val bitmap = BitmapFactory.decodeByteArray(uploadBytes, 0, uploadBytes.size, opts)
