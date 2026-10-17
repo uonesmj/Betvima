@@ -208,6 +208,9 @@ export class PostgresCatalogRepository implements CatalogRepository {
         and ($3::text is null or ht.name ilike '%' || $3 || '%' or at.name ilike '%' || $3 || '%'
              or l.name ilike '%' || $3 || '%' or l.name_fa ilike '%' || $3 || '%')
         and ($5::boolean is null or (m.status::text = any($4::text[])) = $5)
+        -- Align /matches?live=true with /live and the live worker.
+        -- Do not paginate or count long-finished provider ghosts as in-play.
+        and ($5::boolean is distinct from true or ${CURRENT_LIVE_FIXTURE_SQL})
         and ($6::timestamptz is null or m.scheduled_at >= $6)
         and ($7::timestamptz is null or m.scheduled_at <= $7)
         and ($8::text[] is null or m.status::text = any($8::text[]))`;
