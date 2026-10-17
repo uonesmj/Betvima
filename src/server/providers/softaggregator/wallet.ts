@@ -7,6 +7,7 @@ import { fiatCasinoBalance, settleFiatCasinoCallback } from './fiat-wallet';
 import { casinoFinancialSchemaReady } from './financial-readiness';
 import { casinoCountryPermitted } from './jurisdiction';
 import { bindCasinoPlayerWallet, readCasinoPlayerWallet } from './player-wallet-binding';
+import { casinoKycPermitted, casinoPreKycAllowsDebit, casinoPreKycRemaining, lockCasinoPreKycDebit } from './pre-kyc';
 
 export type CasinoBalanceResponse = { error: 0 | 1 | 2; balance: number };
 type ProfileRow = {
@@ -34,7 +35,7 @@ async function getProfile(db: Db, userId: string): Promise<ProfileRow | null> {
   return db.queryOne<ProfileRow>(sql, [userId]);
 }
 function accountCanBet(p: ProfileRow): boolean {
-  return p.status === 'active' && p.age_verified === true && p.kyc_status === 'verified' &&
+  return p.status === 'active' && p.age_verified === true && casinoKycPermitted(p) &&
     casinoCountryPermitted(p.country) && !p.self_excluded && !p.restricted;
 }
 export async function casinoPlayerMayLaunch(userId: string, commitBinding = false): Promise<{ country: string; walletCurrency: string }> {
@@ -43,6 +44,8 @@ export async function casinoPlayerMayLaunch(userId: string, commitBinding = fals
   if (!(await casinoFinancialSchemaReady(db))) throw new Error('CASINO_FINANCIAL_SCHEMA_MISSING');
   const p = await getProfile(db, userId);
   if (!p || !accountCanBet(p)) throw new Error('CASINO_PLAYER_NOT_ELIGIBLE');
+  if (p.kyc_status !== 'verified' && (await casinoPreKycRemaining(db, userId)) === 0n)
+    throw new Error('CASINO_KYC_REQUIRED_AFTER_10_USD');
   if (!p.country || !/^[A-Z]{2}$/.test(p.country)) throw new Error('CASINO_COUNTRY_REQUIRED');
   if (!["USD", "IRT", "IRR"].includes(p.currency)) throw new Error('CASINO_WALLET_CURRENCY_UNSUPPORTED');
   const wallet = await db.queryOne<WalletRow>(
@@ -146,6 +149,7 @@ export async function settleCasinoCallback(event: SignedCallback): Promise<Casin
     await tx.query('select pg_advisory_xact_lock(hashtext($1),hashtext($2))', [
       'softaggregator-round:' + userId, event.roundId! + ':' + event.gameId!,
     ]);
+    if (event.action === 'debit' && !event.rollback) await lockCasinoPreKycDebit(tx, userId);
     const round = await tx.queryOne<{ wallet_currency: string }>(
       'select wallet_currency from nova.softaggregator_round_fx ' +
       'where user_id=$1 and round_id=$2 and game_id=$3 for update',
@@ -211,7 +215,8 @@ export async function settleCasinoCallback(event: SignedCallback): Promise<Casin
     } else if (isDebit &&
       (before < event.amountMinor! ||
         (!event.rollback && (!accountCanBet(p) || p.currency !== currency || event.amountMinor! < SOFTAGGREGATOR_MIN_BET_MINOR ||
-          !(await limitAllows(tx, userId, event.amountMinor!, p)))))) {
+          !(await limitAllows(tx, userId, event.amountMinor!, p)) ||
+          !(await casinoPreKycAllowsDebit(tx, userId, p, event.amountMinor!)))))) {
       error = 1;
     } else {
       const signedAmount = isDebit ? -event.amountMinor! : event.amountMinor!;
