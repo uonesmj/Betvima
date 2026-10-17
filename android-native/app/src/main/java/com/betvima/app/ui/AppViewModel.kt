@@ -707,10 +707,15 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         try {
             val jwt = vault.accessToken(api) ?: throw ApiFailure(401, "Authentication required")
             val page = api.notifications(jwt, if (more) snapshot.notificationPage + 1 else 1)
+            val visible = page.items.filter { note ->
+                notificationStillVisible(note.createdAt, System.currentTimeMillis())
+            }
             if (generation == sessionGeneration && state.value.signedIn) mutable.update {
                 it.copy(
                     notifications = if (more)
-                        (it.notifications + page.items).distinctBy { n -> n.id } else page.items,
+                        (it.notifications + visible)
+                            .filter { n -> notificationStillVisible(n.createdAt, System.currentTimeMillis()) }
+                            .distinctBy { n -> n.id } else visible,
                     notificationPage = page.page,
                     notificationHasMore = page.hasMore,
                     notificationUnreadCount = page.unreadCount,
