@@ -22,6 +22,41 @@ The older generic `SPORTS_PROVIDER_BASE_URL`/`SPORTS_PROVIDER_API_KEY` variables
 * Worker code and environment both need updating on the actual VPS. The normal web deployment workflow does not restart worker processes.
 * Historical provider rows linked to prior bets should not be deleted or re-labeled, because that could corrupt results, disputes and settlement records.
 
+## BetsAPI Everything Trial — evaluation only (no production cutover)
+
+The operator has a three-day *Everything Trial*. Keep The Odds API serving all existing
+events, bet slips and settlement until a separately approved, tested migration is ready.
+
+1. **Revoke and rotate any trial token posted in a screenshot/chat.** The old token
+   should be treated as exposed. Never commit a token, store it in a mobile APK,
+   include it in `NEXT_PUBLIC_*`, or paste it in an issue/CI log.
+2. On the **web server's secret environment**, set:
+   ```sh
+   BETSAPI_TRIAL_ENABLED=true
+   BETSAPI_TRIAL_TOKEN=<newly-rotated-private-token>
+   ```
+3. Deploy the website through the standard owner-approved workflow and reload the
+   **web** process so the secret environment is available. This diagnostic does not
+   need an odds-worker restart and does not write to `nova.*`.
+4. As an admin, open `/admin/providers` and click **Test BetsAPI coverage**.
+   Or call `GET /api/v1/admin/betsapi/trial` with your authenticated admin session.
+   This read-only, rate-bounded probe samples up to five sports, two event-odds
+   books, and the Bet365 in-play entitlement. It caches results for 120 seconds.
+5. Inspect real availability, authorization, market coverage, request quotas and
+   source timestamps. Some packages grant Events API but not bookmaker-specific
+   Bet365 API; the trial must verify which groups are actually enabled.
+6. For migration, separately implement BetsAPI-owned match IDs, settlement data
+   lineage, margin/rules compatibility, a production worker, sport/market mappings,
+   and an **operator-approved** cutover. Do not re-label existing The Odds API
+   matches/quotes, or share their market IDs, or run both sources against the
+   same bet selection. Old accepted wagers must remain settleable.
+
+API documentation:
+- https://betsapi.com/docs/events/inplay.html
+- https://betsapi.com/docs/events/odds.html
+- https://betsapi.com/docs/bet365/
+- https://betsapi.com/docs/pricing.html
+
 ## 2. Payments (deposits, withdrawals, refunds, payout confirmations)
 
 ```
