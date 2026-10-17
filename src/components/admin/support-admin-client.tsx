@@ -122,14 +122,14 @@ function statusClass(status: Status) {
   if (status === 'waiting_support') return 'border-nova-primary/40 bg-nova-primary/10 text-nova-primary';
   if (status === 'waiting_user') return 'border-blue-400/30 bg-blue-400/10 text-blue-300';
   if (status === 'resolved') return 'border-yellow-400/30 bg-yellow-400/10 text-yellow-300';
-  if (status === 'closed') return 'border-nova-line bg-nova-surface2 nova-muted';
+  if (status === 'closed') return 'border-nova-line bg-nova-surface2 text-[#B7C4D8]';
   return 'border-nova-line bg-nova-surface2 text-nova-text';
 }
 
 function priorityClass(priority: Priority) {
   if (priority === 'urgent') return 'text-nova-danger';
   if (priority === 'high') return 'text-yellow-300';
-  if (priority === 'low') return 'nova-muted';
+  if (priority === 'low') return 'text-[#B7C4D8]';
   return 'text-nova-text';
 }
 
@@ -340,7 +340,7 @@ export function SupportAdminClient() {
   }
 
   return (
-    <div className="space-y-3">
+    <div className="min-w-0 space-y-3 text-[#EEF3FB]">
       {error ? (
         <div className="flex items-center justify-between gap-3 rounded-xl border border-nova-danger/30 bg-nova-danger/10 px-3 py-2 text-xs text-nova-danger">
           <span>{error}</span>
@@ -350,7 +350,7 @@ export function SupportAdminClient() {
 
       <div className="flex flex-wrap gap-2">
         <input
-          className="nova-input min-w-[220px] flex-1"
+          className="nova-input min-w-0 flex-[1_1_220px]"
           value={search}
           onChange={(event) => setSearch(event.target.value)}
           placeholder="Search subject, email, user ID..."
@@ -370,27 +370,27 @@ export function SupportAdminClient() {
         <button type="button" className="nova-btn-ghost" onClick={() => void loadTickets(true)}>Refresh</button>
       </div>
 
-      <div className="grid min-h-[680px] gap-3 lg:grid-cols-[360px_minmax(0,1fr)]">
-        <section className="overflow-hidden rounded-xl border border-nova-line bg-nova-surface">
+      <div className="grid min-w-0 grid-cols-1 items-start gap-3 xl:min-h-[620px] xl:grid-cols-[minmax(260px,325px)_minmax(0,1fr)]">
+        <section className={`${selectedId ? 'hidden xl:block' : 'block'} min-w-0 overflow-hidden rounded-xl border border-[#26364C] bg-[#111827]`}>
           <div className="flex items-center justify-between border-b border-nova-line px-3 py-3">
             <div>
               <h2 className="text-sm font-bold">Customer conversations</h2>
-              <p className="mt-0.5 text-[11px] nova-muted">{filteredTickets.length} visible tickets</p>
+              <p className="mt-0.5 text-[11px] text-[#B7C4D8]">{filteredTickets.length} visible tickets</p>
             </div>
             <span className="rounded-full border border-nova-primary/30 bg-nova-primary/10 px-2 py-1 text-[10px] text-nova-primary">LIVE</span>
           </div>
-          <div className="max-h-[625px] overflow-y-auto">
+          <div className="max-h-[min(70dvh,620px)] overflow-y-auto overscroll-contain xl:max-h-[750px]">
             {loadingList && tickets.length === 0 ? (
-              <div className="p-4 text-xs nova-muted">Loading conversations…</div>
+              <div className="p-4 text-xs text-[#B7C4D8]">Loading conversations…</div>
             ) : filteredTickets.length === 0 ? (
-              <div className="p-4 text-xs nova-muted">No support tickets found.</div>
+              <div className="p-4 text-xs text-[#B7C4D8]">No support tickets found.</div>
             ) : (
               filteredTickets.map((item) => (
                 <button
                   key={item.id}
                   type="button"
                   onClick={() => setSelectedId(item.id)}
-                  className={`block w-full border-b border-nova-line/70 px-3 py-3 text-start transition ${selectedId === item.id ? 'bg-nova-surface2' : 'hover:bg-nova-surface2/60'}`}
+                  className={`block w-full border-b border-[#26364C] px-3 py-3 text-start text-[#ECF3FB] transition ${selectedId === item.id ? 'bg-[#223652]' : 'hover:bg-[#1D3048]'}`}
                 >
                   <div className="flex items-start justify-between gap-2">
                     <span className="min-w-0 truncate text-sm font-semibold">{item.subject}</span>
@@ -399,13 +399,13 @@ export function SupportAdminClient() {
                     ) : null}
                   </div>
                   <div className="mt-1 flex items-center justify-between gap-2 text-[10px]">
-                    <span className="truncate nova-muted">{item.userEmail || item.userDisplayName || item.userId}</span>
-                    <span className="shrink-0 nova-muted">{formatTime(item.lastMessageAt || item.updatedAt)}</span>
+                    <span className="truncate text-[#B7C4D8]">{item.userEmail || item.userDisplayName || item.userId}</span>
+                    <span className="shrink-0 text-[#B7C4D8]">{formatTime(item.lastMessageAt || item.updatedAt)}</span>
                   </div>
                   <div className="mt-2 flex flex-wrap items-center gap-1.5">
                     <span className={`rounded-full border px-1.5 py-0.5 text-[9px] ${statusClass(item.status)}`}>{statusLabel(item.status)}</span>
                     <span className={`text-[9px] font-semibold ${priorityClass(item.priority)}`}>{priorityLabel(item.priority)}</span>
-                    <span className="text-[9px] nova-muted">{categoryLabel(item.category)}</span>
+                    <span className="text-[9px] text-[#B7C4D8]">{categoryLabel(item.category)}</span>
                   </div>
                 </button>
               ))
@@ -413,23 +413,26 @@ export function SupportAdminClient() {
           </div>
         </section>
 
-        <section className="flex min-h-0 flex-col overflow-hidden rounded-xl border border-nova-line bg-nova-surface">
+        <section className={`${selectedId ? 'flex' : 'hidden xl:flex'} min-h-0 min-w-0 flex-col overflow-hidden rounded-xl border border-[#26364C] bg-[#111827]`}>
           {!selectedId ? (
-            <div className="flex min-h-[680px] items-center justify-center p-6 text-center">
+            <div className="flex min-h-[320px] items-center justify-center p-6 text-center xl:min-h-[640px]">
               <div>
                 <div className="text-sm font-semibold">Select a conversation</div>
-                <p className="mt-1 text-xs nova-muted">Choose a customer ticket to view and reply.</p>
+                <p className="mt-1 text-xs text-[#B7C4D8]">Choose a customer ticket to view and reply.</p>
               </div>
             </div>
           ) : loadingTicket && !ticket ? (
-            <div className="p-6 text-xs nova-muted">Loading conversation…</div>
+            <div className="p-6 text-xs text-[#B7C4D8]">Loading conversation…</div>
           ) : ticket ? (
             <>
+              <button type="button" className="flex items-center gap-2 border-b border-[#253750] bg-[#17243A] px-4 py-3 text-left text-xs font-semibold text-[#C9E7FF] xl:hidden" onClick={() => setSelectedId(null)}>
+                <span aria-hidden="true">←</span> Back to conversations
+              </button>
               <div className="border-b border-nova-line p-3">
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div className="min-w-0">
                     <h2 data-i18n-ignore className="truncate text-base font-bold">{ticket.subject}</h2>
-                    <p className="mt-1 text-[11px] nova-muted">
+                    <p className="mt-1 text-[11px] text-[#B7C4D8]">
                       {ticket.userEmail || ticket.userDisplayName || ticket.userId} · {formatTime(ticket.createdAt)}
                     </p>
                   </div>
@@ -466,7 +469,7 @@ export function SupportAdminClient() {
 
                 <div className="mt-3 flex flex-wrap items-center gap-2">
                   <input
-                    className="nova-input min-w-[250px] flex-1 !py-1.5 text-xs"
+                    className="nova-input min-w-0 flex-1 !py-1.5 text-xs"
                     value={assignedTo}
                     onChange={(event) => setAssignedTo(event.target.value)}
                     placeholder="Support agent UUID (optional)"
@@ -475,32 +478,60 @@ export function SupportAdminClient() {
                   <button type="button" className="nova-btn-ghost !py-1.5 text-xs" disabled={busy} onClick={() => void applyAssignment()}>
                     {assignedTo.trim() ? 'Assign' : 'Unassign'}
                   </button>
-                  {ticket.assignedTo ? <span className="text-[10px] nova-muted">Assigned: {ticket.assignedTo}</span> : <span className="text-[10px] nova-muted">Unassigned</span>}
+                  {ticket.assignedTo ? <span className="text-[10px] text-[#B7C4D8]">Assigned: {ticket.assignedTo}</span> : <span className="text-[10px] text-[#B7C4D8]">Unassigned</span>}
                 </div>
               </div>
 
               {identityReviewer ? (
-                <section className="border-b border-nova-line bg-nova-surface2/60 p-3" aria-label="Approve identity in existing support chat">
-                  <div className="flex items-center justify-between gap-2 text-xs font-bold">
-                    <span>Identity review · support conversation</span>
-                    <span className="nova-muted">{identityStatus}</span>
+                <section className="shrink-0 space-y-3 border-b border-[#2F455F] bg-[#142136] p-4 sm:p-5" aria-label="Approve identity in existing support chat">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div>
+                      <h3 className="text-sm font-bold text-[#F5F8FE]">Identity verification</h3>
+                      <p className="mt-1 text-[11px] text-[#B7C9DD]">Review identity within this support conversation. No additional customer form is needed.</p>
+                    </div>
+                    <span className={`rounded-full border px-2.5 py-1 text-[11px] font-bold ${
+                      identityStatus === 'verified'
+                        ? 'border-emerald-400/35 bg-emerald-400/15 text-emerald-200'
+                        : identityStatus === 'pending'
+                          ? 'border-amber-400/35 bg-amber-400/15 text-amber-200'
+                          : 'border-[#5C7290] bg-[#243650] text-[#E2EDFA]'
+                    }`}>
+                      {identityStatus === 'verified' ? 'Approved' : identityStatus === 'pending' ? 'Pending review' : 'Not verified'}
+                    </span>
                   </div>
                   {identityStatus === 'verified' ? (
-                    <p className="mt-2 text-xs text-green-500">Approved — no further documents needed.</p>
+                    <p role="status" className="rounded-xl border border-emerald-400/30 bg-emerald-400/10 p-3 text-xs font-medium text-emerald-100">
+                      Identity approved for this account. No repeat document submission is required.
+                    </p>
                   ) : identityStatus === 'pending' ? (
-                    <p className="mt-2 text-xs nova-muted">Existing pending review must be resolved first.</p>
+                    <p role="status" className="rounded-xl border border-amber-400/30 bg-amber-400/10 p-3 text-xs text-amber-100">
+                      This account already has a pending identity review. Resolve it before approving from support.
+                    </p>
                   ) : (
-                    <div className="mt-2 grid gap-2 text-xs">
-                      <p className="nova-muted">Review the customer document in the chat below. Receiving a file alone never approves identity.</p>
-                      <div className="grid gap-2 sm:grid-cols-2">
-                        <label>Customer-uploaded ID
-                          <select className="nova-input mt-1 w-full text-xs" value={identityFile} onChange={e => setIdentityFile(e.target.value)}>
-                            <option value="">Choose an attachment</option>
-                            {userDocuments.map(a => <option key={a.id} value={a.id}>{a.originalName.slice(0, 60)} · {a.id.slice(0, 8)}</option>)}
+                    <div className="space-y-3">
+                      <p className="text-xs leading-5 text-[#CED9E8]">
+                        Select an ID uploaded by the customer in this exact ticket. Review the document and legal age before granting access; receiving a file alone does not approve identity.
+                      </p>
+                      {userDocuments.length === 0 ? (
+                        <p role="status" className="rounded-xl border border-amber-400/30 bg-amber-400/10 px-3 py-2.5 text-xs font-medium text-amber-100">
+                          No eligible customer ID attachment in this conversation. Ask the customer to send a JPG, PNG, WebP or PDF (up to 8 MB) through the existing support chat.
+                        </p>
+                      ) : null}
+                      <div className="grid min-w-0 gap-3 sm:grid-cols-2">
+                        <label className="block min-w-0 text-xs font-semibold text-[#ECF2FA]">
+                          Customer-uploaded document
+                          <select className="nova-input mt-1.5 block w-full min-w-0 !text-[#182431]" value={identityFile}
+                            disabled={identityBusy || userDocuments.length === 0} onChange={e => setIdentityFile(e.target.value)}>
+                            <option value="">Choose a document</option>
+                            {userDocuments.map(a => (
+                              <option key={a.id} value={a.id}>{a.originalName.slice(0, 60)} · {a.id.slice(0, 8)}</option>
+                            ))}
                           </select>
                         </label>
-                        <label>Document type
-                          <select className="nova-input mt-1 w-full text-xs" value={identityType}
+                        <label className="block min-w-0 text-xs font-semibold text-[#ECF2FA]">
+                          Identity document type
+                          <select className="nova-input mt-1.5 block w-full min-w-0 !text-[#182431]" value={identityType}
+                            disabled={identityBusy}
                             onChange={e => setIdentityType(e.target.value as typeof identityType)}>
                             <option value="national_id">National ID</option>
                             <option value="passport">Passport</option>
@@ -508,35 +539,49 @@ export function SupportAdminClient() {
                           </select>
                         </label>
                       </div>
-                      <label>Review explanation
-                        <textarea className="nova-input mt-1 w-full text-xs" value={identityReason} onChange={e => setIdentityReason(e.target.value)}
-                          placeholder="Reason and checks performed (minimum 8 characters)" maxLength={500} rows={2} />
+                      <label className="block text-xs font-semibold text-[#ECF2FA]">
+                        Review record and explanation
+                        <textarea className="nova-input mt-1.5 block w-full min-w-0 !text-[#182431]" value={identityReason}
+                          onChange={e => setIdentityReason(e.target.value)}
+                          disabled={identityBusy}
+                          placeholder="Record what was checked and why (at least 8 characters)" maxLength={500} rows={2} />
                       </label>
-                      <label className="flex items-start gap-2">
-                        <input type="checkbox" checked={identityConsent} onChange={e => setIdentityConsent(e.target.checked)} />
-                        Customer explicitly consented in this chat to using the ID for verification.
-                      </label>
-                      <label className="flex items-start gap-2">
-                        <input type="checkbox" checked={identityAge} onChange={e => setIdentityAge(e.target.checked)} />
-                        I independently confirmed legal age from this document.
-                      </label>
-                      <button type="button" className="nova-btn-primary text-xs" onClick={() => void approveIdentity()}
+                      <div className="space-y-2 rounded-xl border border-[#30445F] bg-[#0E192A] p-3">
+                        <label className="flex cursor-pointer items-start gap-2.5 text-xs leading-5 text-[#DCE6F3]">
+                          <input className="mt-1 size-4 shrink-0 accent-emerald-500" type="checkbox" checked={identityConsent}
+                            disabled={identityBusy}
+                            onChange={e => setIdentityConsent(e.target.checked)} />
+                          <span>I verified the customer explicitly consented in this conversation to using the ID for verification.</span>
+                        </label>
+                        <label className="flex cursor-pointer items-start gap-2.5 text-xs leading-5 text-[#DCE6F3]">
+                          <input className="mt-1 size-4 shrink-0 accent-emerald-500" type="checkbox" checked={identityAge}
+                            disabled={identityBusy}
+                            onChange={e => setIdentityAge(e.target.checked)} />
+                          <span>I independently confirmed the customer meets the legal gambling age using this ID.</span>
+                        </label>
+                      </div>
+                      <button type="button"
+                        className="flex min-h-11 w-full items-center justify-center rounded-xl bg-[#10B981] px-4 py-3 text-xs font-bold text-[#041D15] transition enabled:hover:bg-[#34D399] disabled:cursor-not-allowed disabled:bg-[#344A60] disabled:text-[#B9C9D8] disabled:opacity-75"
+                        onClick={() => void approveIdentity()}
                         disabled={identityBusy || !identityFile || !identityAge || !identityConsent || identityReason.trim().length < 8}>
-                        {identityBusy ? 'Approving…' : 'Approve identity for casino'}
+                        {identityBusy ? 'Saving approval…' : 'Approve verified identity for casino'}
                       </button>
+                      <p className="text-[11px] text-[#B5C5D9]">
+                        The action stays unavailable until a document, review reason, consent and legal-age check are present.
+                      </p>
                     </div>
                   )}
-                  {identityFeedback ? <p role="status" className="mt-2 text-xs">{identityFeedback}</p> : null}
+                  {identityFeedback ? <p role="status" className="rounded-lg bg-[#24364C] px-3 py-2 text-xs text-[#ECF4FC]">{identityFeedback}</p> : null}
                 </section>
               ) : null}
               <div className="min-h-0 flex-1 space-y-3 overflow-y-auto p-4">
                 {messages.length === 0 ? (
-                  <div className="text-xs nova-muted">No messages.</div>
+                  <div className="text-xs text-[#B7C4D8]">No messages.</div>
                 ) : (
                   messages.map((message) => (
                     <div key={message.id} className={`flex ${message.senderRole === 'support' ? 'justify-end' : 'justify-start'}`}>
                       <div className={`max-w-[78%] rounded-2xl border px-3 py-2 ${message.senderRole === 'support' ? 'border-nova-primary/30 bg-nova-primary/10' : message.senderRole === 'system' ? 'border-yellow-400/20 bg-yellow-400/5' : 'border-nova-line bg-nova-bg'}`}>
-                        <div className="mb-1 text-[9px] font-semibold uppercase tracking-wide nova-muted">{message.senderRole}</div>
+                        <div className="mb-1 text-[9px] font-semibold uppercase tracking-wide text-[#B7C4D8]">{message.senderRole}</div>
                         {message.body ? <div data-i18n-ignore className="whitespace-pre-wrap text-sm leading-6">{message.body}</div> : null}
                         {message.attachments?.map((attachment) => {
                           const href = "/api/v1/admin/support/" + selectedId + "/attachments/" + attachment.id;
@@ -546,12 +591,12 @@ export function SupportAdminClient() {
                               <img src={href} alt={attachment.originalName} className="max-h-64 max-w-full rounded-xl border border-nova-line object-contain" />
                             </a>
                           ) : (
-                            <a key={attachment.id} href={href} target="_blank" rel="noreferrer" className="mt-2 block rounded-xl border border-nova-line bg-nova-bg px-3 py-2 text-xs nova-muted hover:bg-white/5">
+                            <a key={attachment.id} href={href} target="_blank" rel="noreferrer" className="mt-2 block rounded-xl border border-nova-line bg-nova-bg px-3 py-2 text-xs text-[#B7C4D8] hover:bg-white/5">
                               {attachment.originalName} · {(attachment.sizeBytes / 1024 / 1024).toFixed(2)} MB
                             </a>
                           );
                         })}
-                        <div className="mt-1 text-[9px] nova-muted">{formatTime(message.createdAt)}</div>
+                        <div className="mt-1 text-[9px] text-[#B7C4D8]">{formatTime(message.createdAt)}</div>
                       </div>
                     </div>
                   ))
@@ -560,7 +605,7 @@ export function SupportAdminClient() {
 
               <form onSubmit={sendReply} className="border-t border-nova-line p-3">
                 {ticket.status === 'closed' ? (
-                  <div className="rounded-xl border border-nova-line bg-nova-bg px-3 py-3 text-xs nova-muted">
+                  <div className="rounded-xl border border-nova-line bg-nova-bg px-3 py-3 text-xs text-[#B7C4D8]">
                     This ticket is closed. Change the status above before replying.
                   </div>
                 ) : (
@@ -574,7 +619,7 @@ export function SupportAdminClient() {
                         maxLength={5000}
                       />
                       <div className="mt-2 flex items-center gap-2">
-                        <label className="cursor-pointer rounded-xl border border-nova-line bg-nova-bg px-3 py-2 text-xs font-semibold nova-muted hover:bg-white/5">
+                        <label className="cursor-pointer rounded-xl border border-nova-line bg-nova-bg px-3 py-2 text-xs font-semibold text-[#B7C4D8] hover:bg-white/5">
                           Attach
                           <input
                             type="file"
@@ -585,7 +630,7 @@ export function SupportAdminClient() {
                           />
                         </label>
                         {file ? (
-                          <button type="button" onClick={() => setFile(null)} className="max-w-[70%] truncate text-xs nova-muted hover:text-white">
+                          <button type="button" onClick={() => setFile(null)} className="max-w-[70%] truncate text-xs text-[#B7C4D8] hover:text-white">
                             {file.name}
                           </button>
                         ) : null}
@@ -599,7 +644,7 @@ export function SupportAdminClient() {
               </form>
             </>
           ) : (
-            <div className="p-6 text-xs nova-muted">Ticket unavailable.</div>
+            <div className="p-6 text-xs text-[#B7C4D8]">Ticket unavailable.</div>
           )}
         </section>
       </div>
