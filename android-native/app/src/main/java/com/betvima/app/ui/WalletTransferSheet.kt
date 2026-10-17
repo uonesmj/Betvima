@@ -424,7 +424,7 @@ fun WalletTransferSheet(
     val voucherMaximumRials = if (voucherFiat && liveVoucherRate != null) {
         val availableCap = if (!isDeposit) voucherAvailableMinor else null
         val bound = listOfNotNull(availableCap, voucherMaximumWallet).minOrNull()
-        bound?.let { voucherRialsFromWalletMinor(it, currency) }
+        bound?.let { voucherRialsFromWalletMinor(it.toString(), currency) }
     } else null
     val voucherMinimumText = voucherMinimumRials?.let { formatVoucherRials(it, lang) +
         wTr(lang, " IRR", " ریال") }
