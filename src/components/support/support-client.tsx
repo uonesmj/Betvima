@@ -91,7 +91,13 @@ export default function SupportClient({ onClose }: { onClose?: () => void }) {
       if (initial && !initialized.current) {
         initialized.current = true;
         const requested = new URLSearchParams(window.location.search).get('ticket');
-        const target = requested && uuid.test(requested) ? list.find(item => item.id === requested) : null;
+        let target = requested && uuid.test(requested) ? list.find(item => item.id === requested) : null;
+        // Older conversations can be outside the first page. Resolve an owned deep link
+        // via the guarded detail API rather than silently opening another ticket.
+        if (!target && requested && uuid.test(requested)) {
+          try { target = (await supportRequest('/api/v1/support/' + requested)).ticket || null; }
+          catch { /* Unknown or unauthorized ticket: display the user's own list. */ }
+        }
         // Resuming an existing active conversation MUST NOT create a fresh ticket.
         setSelected(target || list.find(active) || list[0] || null);
       }
