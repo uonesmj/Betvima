@@ -680,8 +680,10 @@ class ApiClient {
         // Re-read the live operator switches before *every* financial POST.
         // This is an additional client guard: the server still decides per-user
         // eligibility, limits, location, risk, quoted odds and atomic debit.
-        if (!wageringAvailable()) {
-            throw ApiFailure(403, "Wagering is not currently authorized by the server",
+        // A failed preflight occurs before any financial POST. Never mark it
+        // as an uncertain debit simply because the connectivity check failed.
+        if (!runCatching { wageringAvailable() }.getOrDefault(false)) {
+            throw ApiFailure(403, "Wagering is unavailable or blocked by the server",
                 serverCode = "WAGERING_DISABLED")
         }
         require(picks.isNotEmpty() && picks.size <= 20)
