@@ -94,7 +94,7 @@ describe('Bet365 site catalogue security and pagination', () => {
       JSON.stringify({ success: 0, error: 'token=' + token }),
       { status: 401 },
     ));
-    const result = await exploreBetsApi(token, { mode: 'live', sportId: 1 }, fake as typeof fetch);
+    const result = await exploreBetsApi(token, { mode: 'live', sportId: 18 }, fake as typeof fetch);
     expect(result.error).toBe('UPSTREAM_DENIED');
     expect(JSON.stringify(result)).not.toContain(token);
   });
