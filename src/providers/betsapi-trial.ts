@@ -45,7 +45,8 @@ export interface BetsApiTrialResult {
   focusCountries: Array<{ code: string; live: number; upcoming: number }>;
   oddsSample: Array<{ sport: string; eventId: string; marketKeys: number; latestOffers: number; freshMarkets: number; freshSelections: number; error: string | null }>;
   bet365: { permitted: boolean; eventCount: number; sampleFixtureId: string | null;
-    marketCount: number; priceCount: number; error: string | null };
+    marketCount: number; priceCount: number; error: string | null;
+    upcomingAccess: string; upcomingCount: number };
   remainingHourlyRequests: number | null;
   callsInProbe: number;
   durationMs: number;
@@ -55,10 +56,16 @@ export interface BetsApiTrialResult {
 const ORIGIN = 'https://api.b365api.com';
 type Fetcher = typeof fetch;
 const safeError = (value: unknown): string => {
+  // Only enum values are ever returned to admin clients. Provider errors can
+  // contain URLs with credentials; never echo arbitrary strings.
   const text = typeof value === 'string' ? value : '';
   return ['PERMISSION_DENIED', 'TOO_MANY_REQUESTS', 'AUTHORIZE_FAILED',
-    'NOT_FOUND', 'UNDER_MAINTENANCE', 'PARAM_INVALID', 'PARAM_REQUIRED'].includes(text)
-    ? text : 'UPSTREAM_UNAVAILABLE';
+    'NOT_FOUND', 'UNDER_MAINTENANCE', 'PARAM_INVALID', 'PARAM_REQUIRED',
+    'INTERNAL_SERVER_ERROR', 'METHOD_NOT_ALLOWED', 'UPSTREAM_TIMEOUT',
+    'UPSTREAM_NETWORK_ERROR', 'UPSTREAM_NON_JSON', 'UPSTREAM_HTTP_404',
+    'UPSTREAM_HTTP_5XX', 'UPSTREAM_HTTP_4XX', 'UPSTREAM_ERROR',
+    'UPSTREAM_RESPONSE_TOO_LARGE'].includes(text)
+    ? text : 'UPSTREAM_ERROR';
 };
 const record = (value: unknown): Record<string, unknown> =>
   value !== null && typeof value === 'object' && !Array.isArray(value)
@@ -89,26 +96,47 @@ export async function runBetsApiTrial(
     url.searchParams.set('token', token);
     // Never log the URL. BetsAPI requires token= in the query string.
     callsInProbe++;
-    const response = await fetcher(url.toString(), {
-      method: 'GET', cache: 'no-store', redirect: 'error',
-      signal: AbortSignal.timeout(7000),
-      headers: { Accept: 'application/json' },
-    });
+    let response: Response;
+    try {
+      response = await fetcher(url.toString(), {
+        method: 'GET', cache: 'no-store', redirect: 'error',
+        signal: AbortSignal.timeout(7000),
+        headers: { Accept: 'application/json' },
+      });
+    } catch (error) {
+      throw new Error(error instanceof Error &&
+        (error.name === 'TimeoutError' || error.name === 'AbortError')
+        ? 'UPSTREAM_TIMEOUT' : 'UPSTREAM_NETWORK_ERROR');
+    }
     const left = Number(response.headers.get('X-RateLimit-Remaining'));
     if (response.headers.has('X-RateLimit-Remaining') && Number.isFinite(left)) {
       remainingHourlyRequests = remainingHourlyRequests === null ? left : Math.min(left, remainingHourlyRequests);
     }
-    if (response.status === 401 || response.status === 403) throw new Error('PERMISSION_DENIED');
-    if (response.status === 429) throw new Error('TOO_MANY_REQUESTS');
-    if (!response.ok) throw new Error('UPSTREAM_UNAVAILABLE');
-    // Cap response sizes: a provider can return thousands of events.
+    // JSON error responses often carry a more specific BetsAPI R-Error code.
+    // Parse only bounded content and never include response text in errors.
     const length = Number(response.headers.get('content-length') || 0);
-    if (length > 3_000_000) throw new Error('RESPONSE_TOO_LARGE');
-    const payload: unknown = await response.json();
-    const envelope = record(payload) as ResultEnvelope;
-    if (Number(envelope.success) !== 1) {
-      throw new Error(safeError(envelope.error_code || envelope.error));
+    if (length > 3_000_000) throw new Error('UPSTREAM_RESPONSE_TOO_LARGE');
+    let envelope: ResultEnvelope;
+    try {
+      envelope = record(await response.json()) as ResultEnvelope;
+    } catch {
+      if (response.status >= 500) throw new Error('UPSTREAM_HTTP_5XX');
+      if (response.status === 404) throw new Error('UPSTREAM_HTTP_404');
+      if (response.status === 401 || response.status === 403) throw new Error('PERMISSION_DENIED');
+      if (response.status === 429) throw new Error('TOO_MANY_REQUESTS');
+      if (!response.ok) throw new Error('UPSTREAM_HTTP_4XX');
+      throw new Error('UPSTREAM_NON_JSON');
     }
+    const upstreamCode = safeError(envelope.error_code || envelope.error);
+    if (Number(envelope.success) !== 1) {
+      if (upstreamCode !== 'UPSTREAM_ERROR') throw new Error(upstreamCode);
+      if (response.status === 401 || response.status === 403) throw new Error('PERMISSION_DENIED');
+      if (response.status === 429) throw new Error('TOO_MANY_REQUESTS');
+      if (response.status >= 500) throw new Error('UPSTREAM_HTTP_5XX');
+      throw new Error('UPSTREAM_ERROR');
+    }
+    if (!response.ok) throw new Error(response.status >= 500
+      ? 'UPSTREAM_HTTP_5XX' : 'UPSTREAM_HTTP_4XX');
     return envelope;
   };
 
@@ -116,7 +144,8 @@ export async function runBetsApiTrial(
     configured: true, feed: 'betsapi', mode: 'read_only', checkedAt,
     sports: [], focusCountries: ['ir', 'tr', 'af', 'ge', 'az'].map(code => ({ code, live: 0, upcoming: 0 })), oddsSample: [],
     bet365: { permitted: false, eventCount: 0, sampleFixtureId: null,
-      marketCount: 0, priceCount: 0, error: null },
+      marketCount: 0, priceCount: 0, error: null,
+      upcomingAccess: 'NOT_TESTED', upcomingCount: 0 },
     remainingHourlyRequests: null, callsInProbe: 0, durationMs: 0,
     notes: [
       'Nothing is written to the sportsbook database; all live betting and settlement remain on the existing source.',
@@ -181,11 +210,15 @@ export async function runBetsApiTrial(
 
   // Bound to five real live events, price probes run concurrently to meet
   // the short 3-day trial window without 5 * 7s request waterfalls.
-  const samples = output.sports.flatMap(sport =>
-    sport.sample.slice(0, 1)
-      .filter(event => /^\d{1,16}$/.test(event.id))
-      .map(event => ({ sport, event })),
-  ).slice(0, 5);
+  // First-event sampling falsely reports a whole sport as unavailable if
+  // one isolated fixture has no prices. Include 3 football fixtures, then
+  // sample other sports, respecting a total budget of six odds calls.
+  const samples = [
+    ...output.sports.filter(s => s.sportId === 1).flatMap(sport =>
+      sport.sample.slice(0, 3).map(event => ({ sport, event }))),
+    ...output.sports.filter(s => s.sportId !== 1).flatMap(sport =>
+      sport.sample.slice(0, 1).map(event => ({ sport, event }))),
+  ].filter(({ event }) => /^\d{1,16}$/.test(event.id)).slice(0, 6);
   output.oddsSample = await Promise.all(samples.map(async ({ sport, event }) => {
     const item = {
       sport: sport.sport, eventId: event.id, marketKeys: 0, latestOffers: 0,
@@ -211,6 +244,16 @@ export async function runBetsApiTrial(
     }
     return item;
   }));
+
+  // Probe a second documented Bet365 family endpoint independently: a
+  // transient inplay_filter error is NOT evidence the trial lacks Bet365.
+  try {
+    const upcoming = await call('/v1/bet365/upcoming', { sport_id: '1', page: '1' });
+    output.bet365.upcomingAccess = 'AVAILABLE';
+    output.bet365.upcomingCount = eventList(upcoming.results).length;
+  } catch (error) {
+    output.bet365.upcomingAccess = safeError(error instanceof Error ? error.message : error);
+  }
 
   try {
     const data = await call('/v1/bet365/inplay_filter', { sport_id: '1' });
@@ -255,7 +298,8 @@ export function inspectBetsApiTrial(): Promise<BetsApiTrialResult> {
       checkedAt: new Date().toISOString(), sports: [],
       focusCountries: [], oddsSample: [],
       bet365: { permitted: false, eventCount: 0, sampleFixtureId: null,
-        marketCount: 0, priceCount: 0, error: 'NOT_CONFIGURED' },
+        marketCount: 0, priceCount: 0, error: 'NOT_CONFIGURED',
+        upcomingAccess: 'NOT_TESTED', upcomingCount: 0 },
       remainingHourlyRequests: null, callsInProbe: 0, durationMs: 0,
       notes: ['Set BETSAPI_TRIAL_ENABLED=true and a freshly rotated BETSAPI_TRIAL_TOKEN on the server. Never commit a token.'],
     });
