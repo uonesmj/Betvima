@@ -45,6 +45,8 @@ fun BetvimaApp(model: AppViewModel) {
     var languageOpen by rememberSaveable { mutableStateOf(false) }
     var searchOpen by rememberSaveable { mutableStateOf(false) }
     var notificationPopupOpen by rememberSaveable { mutableStateOf(false) }
+    var supportOpen by rememberSaveable { mutableStateOf(false) }
+    var supportRequestedTicketId by rememberSaveable { mutableStateOf<String?>(null) }
     var initialSplash by rememberSaveable { mutableStateOf(true) }
     var affiliateOpen by rememberSaveable { mutableStateOf(false) }
     var vipOpen by rememberSaveable { mutableStateOf(false) }
@@ -76,13 +78,28 @@ fun BetvimaApp(model: AppViewModel) {
             } else if (isForeground) {
                 val newResults = incoming.filter { note ->
                     note.id !in observedNotificationIds87 && note.eventKey in setOf(
-                        "bet.won", "bet.lost", "bet.void", "bet.partial"
+                        "bet.won", "bet.lost", "bet.void", "bet.partial", "support.reply"
                     )
                 }
                 observedNotificationIds87 += incoming.map { it.id }
-                if (deviceSettings87.appAlerts() && deviceSettings87.betAlerts()) {
+                if (deviceSettings87.appAlerts()) {
                     newResults.take(3).forEach { note ->
-                        snackbars.showSnackbar(note.title + " · " + note.body)
+                        if (note.eventKey == "support.reply") {
+                            if (!supportOpen) {
+                                val result = snackbars.showSnackbar(
+                                    tr(state.lang, "New BetVima support reply", "پاسخ جدید پشتیبانی بت‌ویما"),
+                                    actionLabel = tr(state.lang, "Open chat", "باز کردن چت"),
+                                    duration = SnackbarDuration.Long
+                                )
+                                if (result == SnackbarResult.ActionPerformed) {
+                                    supportRequestedTicketId = supportTicketFromNotificationHref(note.ctaHref)
+                                    supportOpen = true
+                                    model.markNotificationRead(note.id)
+                                }
+                            }
+                        } else if (deviceSettings87.betAlerts()) {
+                            snackbars.showSnackbar(note.title + " · " + note.body)
+                        }
                     }
                 }
             }
@@ -108,7 +125,7 @@ fun BetvimaApp(model: AppViewModel) {
         if (state.signedIn && isForeground) {
             model.refreshNotifications(silent = true)
             while (true) {
-                delay(45_000)
+                delay(15_000)
                 model.refreshNotifications(silent = true)
             }
         }
@@ -126,6 +143,15 @@ fun BetvimaApp(model: AppViewModel) {
     LaunchedEffect(state.feature) {
         if (state.feature == Feature.VIP) {
             vipOpen = true
+            model.feature(Feature.NONE)
+        }
+    }
+    // Native support is a full-screen modal, not a separate ticket-list page.
+    // Preserve the active server conversation when the user closes the modal.
+    LaunchedEffect(state.feature) {
+        if (state.feature == Feature.SUPPORT) {
+            supportRequestedTicketId = null
+            supportOpen = true
             model.feature(Feature.NONE)
         }
     }
@@ -168,7 +194,7 @@ fun BetvimaApp(model: AppViewModel) {
             }
         }
     }
-    BackHandler(enabled = !bonusOpen && !vipOpen && !affiliateOpen && (notificationPopupOpen || languageOpen || searchOpen || state.betDetailVisible || state.showLogin ||
+    BackHandler(enabled = !bonusOpen && !vipOpen && !affiliateOpen && !supportOpen && (notificationPopupOpen || languageOpen || searchOpen || state.betDetailVisible || state.showLogin ||
         state.showSlip || state.detail != null ||
         state.feature != Feature.NONE || accountOpen || drawer.isOpen ||
         state.tab != Tab.HOME || state.homeMode == HomeMode.TOP_BETS)) {
@@ -347,7 +373,7 @@ fun BetvimaApp(model: AppViewModel) {
                     notificationPopupOpen = false
                     model.showLogin(true)
                 },
-                onNavigate = { destination ->
+                onNavigate = { destination, ticketId ->
                     notificationPopupOpen = false
                     when (destination) {
                         NotificationDestination.BONUSES -> model.feature(Feature.BONUSES)
@@ -355,13 +381,24 @@ fun BetvimaApp(model: AppViewModel) {
                         NotificationDestination.CASINO -> model.feature(Feature.CASINO)
                         NotificationDestination.SPORTS -> model.tab(Tab.SPORTS)
                         NotificationDestination.BETS -> model.tab(Tab.BETS)
-                        NotificationDestination.SUPPORT -> model.feature(Feature.SUPPORT)
+                        NotificationDestination.SUPPORT -> {
+                            supportRequestedTicketId = ticketId
+                            supportOpen = true
+                        }
                         NotificationDestination.VIP -> model.feature(Feature.VIP)
                         NotificationDestination.AFFILIATE -> affiliateOpen = true
                         NotificationDestination.PROFILE -> model.feature(Feature.PROFILE)
                     }
                 }
             )
+        }
+        if (supportOpen) {
+            SupportMessenger(state, model, supportRequestedTicketId,
+                onDismiss = {
+                    supportOpen = false
+                    supportRequestedTicketId = null
+                    model.refreshNotifications(silent = true)
+                })
         }
         if (state.showSlip) SlipSheet(state, model)
         if (state.showLogin) LoginSheet(state, model)
