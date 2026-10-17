@@ -13,7 +13,7 @@ const mockFixture = (id: string) => ({
   home: { name: 'Home' }, away: { name: 'Away' },
   timer: { tm: '51' },
 });
-const fetcherWith = (resolver: (path: string, url: URL) => unknown) =>
+const fetcherWith = (resolver: (path: string, url: URL) => Record<string, unknown>) =>
   vi.fn(async (resource: RequestInfo | URL) => {
     const url = new URL(String(resource));
     expect(url.hostname).toBe('api.b365api.com');
