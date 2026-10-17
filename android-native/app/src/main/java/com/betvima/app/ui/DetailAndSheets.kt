@@ -306,7 +306,8 @@ fun LoginSheet(state: AppState, model: AppViewModel) {
     // Login credentials are memory-only and must not enter Android saved state.
     var password by remember { mutableStateOf("") }
     var visible by rememberSaveable { mutableStateOf(false) }
-    val uri = LocalUriHandler.current
+    var recovering by rememberSaveable { mutableStateOf(false) }
+    val recoveryApi = remember { ApiClient() }
     val sheet = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val closeScope = rememberCoroutineScope()
     val smoothClose: () -> Unit = {
@@ -464,7 +465,15 @@ fun LoginSheet(state: AppState, model: AppViewModel) {
             // AnimatedContent previously kept outgoing content mounted while
             // transitioning and could recreate the challenge mid-load.
             Column(verticalArrangement = Arrangement.spacedBy(9.dp)) {
-                    if (!state.registerScreen) {
+                    if (recovering && !state.registerScreen) {
+                        PasswordRecoveryPanel(
+                            lang = state.lang,
+                            account = RecoveryAccount.SPORTSBOOK,
+                            api = recoveryApi,
+                            initialEmail = email,
+                            onBack = { recovering = false }
+                        )
+                    } else if (!state.registerScreen) {
                         Text(tr(state.lang, "Welcome back", "خوش آمدید"),
                             fontSize = 24.sp, fontWeight = FontWeight.Black,
                             color = Palette.text)
@@ -512,9 +521,7 @@ fun LoginSheet(state: AppState, model: AppViewModel) {
                                 fontWeight = FontWeight.Black)
                         }
                         TextButton(
-                            onClick = {
-                                uri.openUri("https://betvima.com/auth/reset-password")
-                            },
+                            onClick = { recovering = true; password = "" },
                             modifier = Modifier.align(Alignment.End)) {
                             Text(tr(state.lang, "Forgot password?", "رمز را فراموش کرده‌اید؟"),
                                 color = Palette.blue, fontSize = 12.sp)
