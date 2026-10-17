@@ -100,7 +100,7 @@ internal fun recognizedCountryCode(value: String): String? {
     if (code.length == 2 && code in iso2) return code
     // Odds feeds sometimes deliver ISO 3166-1 alpha-3.
     if (code.length == 3) return iso2.firstOrNull {
-        runCatching { Locale("", it).isO3Country.equals(code, ignoreCase = true) }
+        runCatching { Locale("", it).getISO3Country().equals(code, ignoreCase = true) }
             .getOrDefault(false)
     }
     return null
