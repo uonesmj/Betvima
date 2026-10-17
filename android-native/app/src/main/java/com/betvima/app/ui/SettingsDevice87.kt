@@ -128,15 +128,6 @@ internal class SettingsDevice87(context: Context) {
         return true
     }
 
-    fun clearDisposableCache(): Long {
-        val dir = app.cacheDir
-        fun clean(folder: java.io.File): Long {
-            if (!folder.exists()) return 0L
-            if (folder.isFile) { val size = folder.length(); return if (folder.delete()) size else 0L }
-            return folder.listFiles()?.sumOf(::clean) ?: 0L
-        }
-        return dir.listFiles()?.sumOf(::clean) ?: 0L
-    }
 }
 
 internal fun shareBetvima(context: Context) {
