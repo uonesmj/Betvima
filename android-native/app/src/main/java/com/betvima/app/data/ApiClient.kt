@@ -125,6 +125,10 @@ class ApiClient {
     private val jsonType = "application/json".toMediaType()
 
     suspend fun get(path: String, token: String? = null): JSONObject = request(path, token)
+
+    /** Server-owned, read-only wagering availability; errors fail closed. */
+    suspend fun wageringAvailable(): Boolean =
+        get("/api/v1/mobile/config").optBoolean("wageringEnabled", false)
     /** Registration requires a Cloudflare-verified public API call, never a bearer session. */
     suspend fun registerAccount(payload: JSONObject): JSONObject =
         request("/api/v1/auth/register", body = payload)
@@ -673,7 +677,13 @@ class ApiClient {
         token: String, picks: List<Pick>, stakeMinor: String, currency: String,
         quoteToken: String, acceptedOdds: Map<String, String>, requestId: String
     ): JSONObject {
-        check(BuildConfig.ENABLE_WAGERING) { "Native real-money wagering is disabled" }
+        // Re-read the live operator switches before *every* financial POST.
+        // This is an additional client guard: the server still decides per-user
+        // eligibility, limits, location, risk, quoted odds and atomic debit.
+        if (!wageringAvailable()) {
+            throw ApiFailure(403, "Wagering is not currently authorized by the server",
+                serverCode = "WAGERING_DISABLED")
+        }
         require(picks.isNotEmpty() && picks.size <= 20)
         require(picks.map { it.matchId }.distinct().size == picks.size)
         require(stakeMinor.matches(Regex("[0-9]{1,19}")) && stakeMinor != "0")
