@@ -17,7 +17,7 @@ on:
       - 'src/components/admin/providers-client.tsx'
       - 'tests/unit/betsapi-trial.test.ts'
       - 'tests/unit/betsapi-normalization.test.ts'
-      - 'tests/unit/betsapi-sports.test.ts tests/unit/betsapi-explorer.test.ts'
+      - 'tests/unit/betsapi-sports.test.ts'
       - '.github/workflows/betsapi-trial-validation.yml'
 permissions:
   contents: read
@@ -32,7 +32,7 @@ jobs:
           node-version: '22'
           cache: npm
       - run: npm ci --ignore-scripts
-      - run: npx vitest run tests/unit/betsapi-trial.test.ts tests/unit/betsapi-normalization.test.ts tests/unit/betsapi-sports.test.ts
+      - run: npx vitest run tests/unit/betsapi-trial.test.ts tests/unit/betsapi-normalization.test.ts tests/unit/betsapi-sports.test.ts tests/unit/betsapi-explorer.test.ts
       - run: npm run typecheck
       - run: npm run lint
       - run: npm run build
