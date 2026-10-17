@@ -178,7 +178,9 @@ fun ReferenceSportRibbon(state: AppState, model: AppViewModel, live: Boolean = f
         else sportChips
     }
     val sportListState = rememberLazyListState()
-    LaunchedEffect(current, availableChips) {
+    // Do not re-trigger automatic horizontal scrolling whenever the live polling
+    // changes sport counts. Only an actual selection change should move the ribbon.
+    LaunchedEffect(current) {
         val index = availableChips.indexOfFirst { it.key == current }
         if (index >= 0) sportListState.animateScrollToItem(index)
     }
