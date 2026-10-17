@@ -406,26 +406,33 @@ function WithdrawPanel({
     const selectedVoucher = methods.find((method) => method.id === withdrawMethod);
     const voucherLabel = withdrawMethod === "voucher_uvoucher" ? t("wallet.uVoucher") : t("wallet.hotVoucher");
     const voucherAvailable = selectedVoucher?.isAvailable === true;
-    const voucherRate = Number(voucherQuote?.rateIrrPerUsd ?? 0)/10;
-    const voucherRateValid = Number.isFinite(voucherRate) && voucherRate > 0 &&
-      Date.now()-Date.parse(voucherQuote?.quotedAt??'') < 60_000;
-    const configuredUsdMinimum = selectedVoucher
-      ? Number(BigInt(selectedVoucher.minAmountMinor || '0')) / 100
-      : 0;
-    const voucherWalletMin = currency === 'USD'
-      ? configuredUsdMinimum
-      : voucherRateValid
-        ? Math.ceil(150 * voucherRate / (currency === 'IRT' ? 100 : 10))
-        : null;
-    const voucherWalletMax = currency === 'USD'
-      ? Number(BigInt(availableMinor || '0')) / 100
-      : Number(BigInt(availableMinor || '0'));
-    const voucherWalletUnit = currency === 'IRT' ? (locale === 'fa' ? 'تومان' : 'toman') : currency === 'IRR' ? (locale === 'fa' ? 'ریال' : 'rial') : 'USD';
-    const voucherMinIrrDisplay = voucherWalletMin === null
-      ? null
-      : new Intl.NumberFormat(locale.startsWith("fa") ? "fa-IR" : "en-US").format(voucherWalletMin);
-    const voucherInputValid = currency === 'USD' || voucherRateValid;
-
+    const isRialWallet=currency==='IRT'||currency==='IRR';
+    const rate=voucherQuoteFresh(voucherQuote)?voucherQuote!.rateIrrPerUsd:null;
+    const configuredMin=BigInt(selectedVoucher?.minAmountMinor??'0');
+    const minimumUsdMinor=configuredMin>150n?configuredMin:150n;
+    const maximumUsdMinor=BigInt(selectedVoucher?.maxAmountMinor??'0');
+    const available=BigInt(availableMinor||'0');
+    const maxWalletMinor=currency==='USD'
+      ? maximumUsdMinor>0n && maximumUsdMinor<available?maximumUsdMinor:available
+      : rate && isRialWallet && maximumUsdMinor>0n
+        ? (()=>{const cap=voucherUsdToWalletMinor(maximumUsdMinor,currency,rate);return cap<available?cap:available;})()
+        : available;
+    const minimumWalletMinor=isRialWallet&&rate?voucherMinimumWalletMinor(minimumUsdMinor,currency,rate):null;
+    const minimumRials=isRialWallet&&minimumWalletMinor!==null?voucherWalletMinorToIrr(minimumWalletMinor,currency):null;
+    const maximumRials=isRialWallet?voucherWalletMinorToIrr(maxWalletMinor,currency):null;
+    const voucherWalletUnit=isRialWallet?(locale==='fa'?'ریال':'IRR'):'USD';
+    const formattedMinimum=minimumRials!==null?formatVoucherRials(minimumRials,locale)+' '+voucherWalletUnit:null;
+    const formattedMaximum=maximumRials!==null?formatVoucherRials(maximumRials,locale)+' '+voucherWalletUnit:null;
+    const requestedRials=normalizeNumericInput(form.amount);
+    const requestedWalletMinor=isRialWallet?parsedVoucherRials(requestedRials,currency):null;
+    const parsedUsdMinor=isRialWallet
+      ? requestedWalletMinor!==null&&rate?voucherWithdrawalDebit(requestedWalletMinor,currency,rate).usdMinor:null
+      : /^\d+(?:\.\d{1,2})?$/.test(requestedRials)
+        ? (()=>{const [whole,fraction='']=requestedRials.split('.');return BigInt(whole!)*100n+BigInt(fraction.padEnd(2,'0'));})():null;
+    const voucherInputValid=parsedUsdMinor!==null&&parsedUsdMinor>=minimumUsdMinor&&
+      (maximumUsdMinor===0n||parsedUsdMinor<=maximumUsdMinor)&&
+      (isRialWallet?Boolean(rate)&&requestedWalletMinor!==null&&requestedWalletMinor<=available:parsedUsdMinor<=available);
+    
     return (
       <div className="overflow-hidden rounded-[24px] border border-[#E1E7EF] bg-white shadow-[0_12px_36px_rgba(15,23,42,.07)]">
         <div className="flex items-center justify-between border-b border-[#E8ECF2] px-4 py-4 sm:px-6">
@@ -713,8 +720,9 @@ export function WalletClient() {
       const normalized = normalizeNumericInput(amount);
       let amountMinor:bigint;
       if(currency==='IRT'||currency==='IRR'){
-        if(!/^\d{1,19}$/.test(normalized)||!voucherQuote)throw new Error('uWallet rate unavailable. Refresh quote.');
-        amountMinor=voucherWalletToUsdMinor(BigInt(normalized),currency,voucherQuote.rateIrrPerUsd);
+        const requestedWallet=parsedVoucherRials(normalized,currency);
+        if(requestedWallet===null||!voucherQuoteFresh(voucherQuote))throw new Error('uWallet rate unavailable or amount invalid. Refresh quote.');
+        amountMinor=voucherWalletToUsdMinor(requestedWallet,currency,voucherQuote!.rateIrrPerUsd);
       }else{
         if(!/^\d+(?:\.\d{1,2})?$/.test(normalized))throw new Error('Invalid USD voucher amount.');
         const [whole,fraction='']=normalized.split('.');
