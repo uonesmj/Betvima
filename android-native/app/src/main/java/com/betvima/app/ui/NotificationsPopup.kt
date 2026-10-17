@@ -59,7 +59,10 @@ fun NotificationsPopup(
 ) {
     var category by remember { mutableStateOf(NotificationCategory.ALL) }
     val lang = state.lang
-    val notices = state.notifications.filter { notificationMatchesCategory(it, category) }
+    val notices = state.notifications.filter {
+        notificationStillVisible(it.createdAt, System.currentTimeMillis()) &&
+            notificationMatchesCategory(it, category)
+    }
     Dialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(usePlatformDefaultWidth = false)
