@@ -147,6 +147,57 @@ fun walletInputMinor(source: String, currency: String): String? {
     }.getOrNull()
 }
 
+/** Voucher fiat forms always accept IRR, even if an existing account stores IRT (toman).
+ * Keep the original wallet denomination in all signed server requests.
+ */
+fun voucherWalletMinorFromRials(input: String, walletCurrency: String): String? {
+    if (walletCurrency == "USD") return walletInputMinor(input, "USD")
+    if (walletCurrency !in setOf("IRR", "IRT")) return null
+    val rials = walletInputMinor(input, "IRR")?.toBigIntegerOrNull() ?: return null
+    return when (walletCurrency) {
+        "IRR" -> rials.toString()
+        "IRT" -> if (rials.mod(BigInteger.TEN) == BigInteger.ZERO)
+            rials.divide(BigInteger.TEN).toString() else null
+        else -> null
+    }
+}
+
+fun voucherRialsFromWalletMinor(walletMinor: String, walletCurrency: String): BigInteger? =
+    runCatching {
+        val amount = BigInteger(walletMinor)
+        require(amount >= BigInteger.ZERO)
+        when (walletCurrency) {
+            "IRR" -> amount
+            "IRT" -> amount.multiply(BigInteger.TEN)
+            else -> error("Unsupported voucher fiat wallet currency")
+        }
+    }.getOrNull()
+
+/** Exact ceiling for $1.50 (150 cents) and any larger provider minimum. */
+fun voucherMinimumWalletMinor(usdMinor: String, currency: String, rateIrrPerUsd: String): String? =
+    runCatching {
+        require(currency in setOf("IRT", "IRR"))
+        val minor = BigInteger(usdMinor)
+        require(minor >= BigInteger.ZERO)
+        val rate = BigDecimal(rateIrrPerUsd)
+        require(rate > BigDecimal.ZERO)
+        val divisor = if (currency == "IRT") BigDecimal("1000") else BigDecimal("100")
+        BigDecimal(minor).multiply(rate).divide(divisor, 0, RoundingMode.CEILING)
+            .toBigIntegerExact().toString()
+    }.getOrNull()
+
+fun voucherMaximumWalletMinor(usdMinor: String, currency: String, rateIrrPerUsd: String): String? =
+    runCatching {
+        require(currency in setOf("IRT", "IRR"))
+        val minor = BigInteger(usdMinor)
+        require(minor >= BigInteger.ZERO)
+        val rate = BigDecimal(rateIrrPerUsd)
+        require(rate > BigDecimal.ZERO)
+        val divisor = if (currency == "IRT") BigDecimal("1000") else BigDecimal("100")
+        BigDecimal(minor).multiply(rate).divide(divisor, 0, RoundingMode.FLOOR)
+            .toBigIntegerExact().toString()
+    }.getOrNull()
+
 /** Exact floor conversion: never promise a voucher larger than the user's fiat input. */
 fun voucherUsdMinor(walletMinor: String, currency: String, rateIrrPerUsd: String): String? {
     if (currency == "USD") return walletMinor

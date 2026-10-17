@@ -33,6 +33,9 @@ import com.google.zxing.BarcodeFormat
 import com.google.zxing.EncodeHintType
 import com.google.zxing.MultiFormatWriter
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.delay
+import java.text.NumberFormat
+import java.util.Locale
 import org.json.JSONObject
 import java.math.BigDecimal
 import java.math.BigInteger
@@ -62,9 +65,20 @@ private fun walletMinCrypto(currency: String, usdRate: String?): BigInteger? {
 private fun moneyInCurrency(minor: String, currency: String): String =
     money(minor, currency)
 
+private fun formatVoucherRials(value: BigInteger, lang: Lang): String =
+    NumberFormat.getIntegerInstance(if (lang == Lang.FA) Locale.forLanguageTag("fa-IR") else Locale.US)
+        .format(value)
+
 private fun rateVoucherText(quote: WalletExchangeQuote?, lang: Lang): String =
     quote?.takeIf { it.valid() }?.let {
-        wTr(lang, "uWallet quote: ", "نرخ مرجع یوولت: ") + it.rateIrrPerUsd + " IRR/USD"
+        val formatted = runCatching {
+            NumberFormat.getNumberInstance(if (lang == Lang.FA)
+                Locale.forLanguageTag("fa-IR") else Locale.US).apply {
+                maximumFractionDigits = 2
+            }.format(BigDecimal(it.rateIrrPerUsd))
+        }.getOrDefault(it.rateIrrPerUsd)
+        wTr(lang, "Live uWallet rate: ", "نرخ لحظه‌ای یوولت: ") +
+            formatted + wTr(lang, " IRR per USD", " ریال به‌ازای هر دلار")
     } ?: wTr(lang, "uWallet rate unavailable; refresh.", "نرخ یوولت در دسترس نیست؛ تازه‌سازی کنید.")
 
 private fun walletIntentPayload(
@@ -116,7 +130,9 @@ internal fun walletTransferValidation(
         direction == "deposit" -> "USD"
         else -> walletCurrency
     }
-    val walletMinor = walletInputMinor(amount, inputCurrency) ?: return "amount"
+    val walletMinor = if (voucher && inputCurrency in setOf("IRT", "IRR"))
+        voucherWalletMinorFromRials(amount, inputCurrency) ?: return "amount"
+        else walletInputMinor(amount, inputCurrency) ?: return "amount"
     val minor = if (voucher && inputCurrency != "USD")
         voucherUsdMinor(walletMinor, inputCurrency, quote?.rateIrrPerUsd.orEmpty()) ?: return "quote"
         else walletMinor
@@ -148,6 +164,12 @@ internal fun walletTransferValidation(
     if (!voucher && !supportedWalletNetwork(coin, network)) return "network"
     return null
 }
+
+private fun voucherIssueText(issue: String, lang: Lang, voucherFiat: Boolean): String =
+    if (voucherFiat && issue == "minimum")
+        wTr(lang, "Below the rial minimum shown above.",
+            "مبلغ کمتر از حداقل برداشت/واریز ریالی نمایش‌داده‌شده است.")
+    else walletErrorText(issue, lang)
 
 private fun walletErrorText(issue: String, lang: Lang): String = when (issue) {
     "ledger" -> wTr(lang,"The account ledger requires review.", "دفترکل حساب نیازمند بررسی است.")
@@ -361,6 +383,15 @@ fun WalletTransferSheet(
         } finally { loading = false }
     }
 
+    LaunchedEffect(direction, method, currency) {
+        if (method != "crypto" && currency in setOf("IRR", "IRT")) {
+            while (true) {
+                delay(20_000L)
+                quote = runCatching { model.walletVoucherReference() }.getOrNull()
+            }
+        }
+    }
+
     val selectedPaymentMethod = methods?.method(paymentMethodId)
     val methodEnabled = methods?.enabled(
         if (isDeposit) "deposit" else "withdrawal", paymentMethodId) == true
@@ -369,13 +400,40 @@ fun WalletTransferSheet(
         wallet.availableMinor,wallet.integrity,methodEnabled,quote,usdRate,
         selectedPaymentMethod?.minMinor ?: "0", selectedPaymentMethod?.maxMinor ?: "0"
     )
-    val amountInputCurrency = if (!voucher && isDeposit) "USD" else currency
-    val walletMinor = walletInputMinor(amount, amountInputCurrency)
+    val amountInputCurrency = if (voucher && currency in setOf("IRR", "IRT")) "IRR"
+        else if (!voucher && isDeposit) "USD" else currency
+    val walletMinor = if (voucher && currency in setOf("IRT", "IRR"))
+        voucherWalletMinorFromRials(amount, currency)
+        else walletInputMinor(amount, amountInputCurrency)
     val transactionMinor = walletMinor?.let {
         if (voucher && currency != "USD")
             voucherUsdMinor(it,currency,quote?.rateIrrPerUsd.orEmpty()) else it
     }
-    val amountReadable = transactionMinor?.let {
+    val voucherFiat = voucher && currency in setOf("IRR", "IRT")
+    val liveVoucherRate = quote?.takeIf { it.valid() }?.rateIrrPerUsd
+    val minUsdMinor = maxOf(BigInteger("150"),
+        selectedPaymentMethod?.minMinor?.toBigIntegerOrNull() ?: BigInteger.ZERO)
+    val maxUsdMinor = selectedPaymentMethod?.maxMinor?.toBigIntegerOrNull() ?: BigInteger.ZERO
+    val voucherMinimumRials = if (voucherFiat && liveVoucherRate != null)
+        voucherMinimumWalletMinor(minUsdMinor.toString(), currency, liveVoucherRate)
+            ?.let { voucherRialsFromWalletMinor(it, currency) } else null
+    val voucherMaximumWallet = if (voucherFiat && liveVoucherRate != null && maxUsdMinor > BigInteger.ZERO)
+        voucherMaximumWalletMinor(maxUsdMinor.toString(), currency, liveVoucherRate)
+            ?.toBigIntegerOrNull() else null
+    val voucherAvailableMinor = wallet.availableMinor.toBigIntegerOrNull() ?: BigInteger.ZERO
+    val voucherMaximumRials = if (voucherFiat && liveVoucherRate != null) {
+        val availableCap = if (!isDeposit) voucherAvailableMinor else null
+        val bound = listOfNotNull(availableCap, voucherMaximumWallet).minOrNull()
+        bound?.let { voucherRialsFromWalletMinor(it.toString(), currency) }
+    } else null
+    val voucherMinimumText = voucherMinimumRials?.let { formatVoucherRials(it, lang) +
+        wTr(lang, " IRR", " ریال") }
+    val voucherMaximumText = voucherMaximumRials?.let { formatVoucherRials(it, lang) +
+        wTr(lang, " IRR", " ریال") }
+    val amountReadable = if (voucher && currency in setOf("IRR", "IRT")) {
+        walletMinor?.let { voucherRialsFromWalletMinor(it, currency) }
+            ?.let { formatVoucherRials(it, lang) + wTr(lang, " IRR", " ریال") }.orEmpty()
+    } else transactionMinor?.let {
         moneyInCurrency(it, if (isDeposit || voucher) "USD" else currency)
     }.orEmpty()
 
@@ -390,7 +448,7 @@ fun WalletTransferSheet(
         )
         if (freshIssue != null) {
             confirm = false
-            error = walletErrorText(freshIssue, lang)
+            error = voucherIssueText(freshIssue, lang, voucherFiat)
             return
         }
         scope.launch {
@@ -554,38 +612,89 @@ fun WalletTransferSheet(
                     }
                 }
                 OutlinedTextField(
-                    value = amount,
-                    onValueChange = { amount = it.take(25); error = null },
-                    label = {
-                        Text(wTr(lang, "Amount", "مبلغ") +
-                            " · " + amountInputCurrency)
+                    value = if (voucherFiat)
+                        normalizedWalletNumber(amount).toBigIntegerOrNull()
+                            ?.let { formatVoucherRials(it, lang) } ?: amount
+                        else amount,
+                    onValueChange = {
+                        amount = if (voucherFiat) normalizedWalletNumber(it).take(19)
+                            else it.take(25)
+                        error = null
                     },
-                    placeholder = { Text(if (currency == "IRR" && !isDeposit) "20000000" else "20.00") },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                    label = { Text(if (voucherFiat) wTr(lang, "Amount · IRR", "مبلغ · ریال")
+                        else wTr(lang, "Amount", "مبلغ") + " · " + amountInputCurrency) },
+                    placeholder = { Text(if (voucherFiat)
+                        voucherMinimumRials?.let { formatVoucherRials(it, lang) } ?: "—"
+                        else if (currency == "IRR" && !isDeposit) "20000000" else "20.00") },
+                    keyboardOptions = KeyboardOptions(keyboardType =
+                        if (voucherFiat) KeyboardType.Number else KeyboardType.Decimal),
                     singleLine = true, shape = RoundedCornerShape(14.dp),
                     modifier = Modifier.fillMaxWidth(),
                     trailingIcon = {
                         if (!isDeposit) TextButton(onClick = {
-                            amount = if (currency == "USD")
+                            amount = if (voucherFiat)
+                                voucherMaximumRials?.toString().orEmpty()
+                            else if (currency == "USD")
                                 BigDecimal(wallet.availableMinor).movePointLeft(2)
                                     .setScale(2).toPlainString()
                             else wallet.availableMinor
-                        }) { Text("MAX", fontSize = 10.sp, fontWeight = FontWeight.Black) }
-                        else Text(if (voucher) currency else "USD",
+                        }, enabled = !voucherFiat || voucherMaximumRials != null) {
+                            Text(wTr(lang, "MAX", "حداکثر"), fontSize = 10.sp,
+                                fontWeight = FontWeight.Black)
+                        }
+                        else Text(if (voucherFiat) wTr(lang, "IRR", "ریال")
+                            else if (voucher) currency else "USD",
                             fontSize = 11.sp, color = wMuted)
                     }
                 )
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(if (voucher) wTr(lang,"Minimum $1.50","حداقل ۱٫۵۰ دلار")
-                        else wTr(lang,"Minimum $20.00","حداقل ۲۰ دلار"),
-                        color = wMuted, fontSize = 10.sp)
-                    Spacer(Modifier.weight(1f))
-                    if (!isDeposit)
-                        Text(wTr(lang, "Available: ", "قابل برداشت: ") +
-                            money(wallet.availableMinor,wallet.currency),
+                if (voucherFiat) {
+                    Row(Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(9.dp)) {
+                        Surface(Modifier.weight(1f), color = Color(0xFFF5F8FC),
+                            border = BorderStroke(1.dp, wBorder),
+                            shape = RoundedCornerShape(13.dp)) {
+                            Column(Modifier.padding(11.dp)) {
+                                Text(wTr(lang,"Minimum", "حداقل برداشت/واریز"),
+                                    fontSize = 10.sp, color = wMuted)
+                                Text(voucherMinimumText ?: "—",
+                                    color = wText, fontSize = 12.sp,
+                                    fontWeight = FontWeight.Black)
+                            }
+                        }
+                        Surface(Modifier.weight(1f), color = Color(0xFFF5F8FC),
+                            border = BorderStroke(1.dp, wBorder),
+                            shape = RoundedCornerShape(13.dp)) {
+                            Column(Modifier.padding(11.dp)) {
+                                Text(wTr(lang,"Maximum", "حداکثر"),
+                                    fontSize = 10.sp, color = wMuted)
+                                Text(voucherMaximumText ?:
+                                    if (maxUsdMinor == BigInteger.ZERO && isDeposit)
+                                        wTr(lang,"Voucher face value","طبق اعتبار وچر") else "—",
+                                    color = wText, fontSize = 12.sp,
+                                    fontWeight = FontWeight.Black)
+                            }
+                        }
+                    }
+                    if (!isDeposit) {
+                        Text(wTr(lang,"Available balance: ","موجودی قابل برداشت: ") +
+                            (voucherRialsFromWalletMinor(wallet.availableMinor,currency)
+                                ?.let { formatVoucherRials(it, lang) +
+                                    wTr(lang, " IRR", " ریال") } ?: "—"),
+                            color = wMuted, fontSize = 11.sp)
+                    }
+                } else {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(if (voucher) wTr(lang,"Minimum $1.50","حداقل ۱٫۵۰ دلار")
+                            else wTr(lang,"Minimum $20.00","حداقل ۲۰ دلار"),
                             color = wMuted, fontSize = 10.sp)
+                        Spacer(Modifier.weight(1f))
+                        if (!isDeposit)
+                            Text(wTr(lang, "Available: ", "قابل برداشت: ") +
+                                money(wallet.availableMinor,wallet.currency),
+                                color = wMuted, fontSize = 10.sp)
+                    }
                 }
-                if (selectedPaymentMethod != null && methodEnabled) {
+                if (selectedPaymentMethod != null && methodEnabled && !voucherFiat) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(Icons.Default.Info, null, tint = wBlue,
                             modifier = Modifier.size(15.dp))
@@ -609,10 +718,10 @@ fun WalletTransferSheet(
                     Surface(color = Color(0xFFEEF4FF), shape = RoundedCornerShape(13.dp)) {
                         Column(Modifier.padding(11.dp)) {
                             Text(rateVoucherText(quote, lang), color = wText, fontSize = 10.sp)
-                            if (transactionMinor != null)
-                                Text(wTr(lang, "Estimated voucher: ", "معادل تقریبی ووچر: ") +
-                                    money(transactionMinor, "USD"),
-                                    color = wBlue, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                            Text(wTr(lang,
+                                "The final value is verified by uWallet; the rate is checked again at submission.",
+                                "مبلغ نهایی پس از بررسی کد توسط یوولت مشخص می‌شود؛ نرخ هنگام ثبت دوباره تأیید خواهد شد."),
+                                color = wBlue, fontSize = 11.sp)
                         }
                     }
                 }
@@ -709,7 +818,8 @@ fun WalletTransferSheet(
                     }
                 }
                 if (!loading && issue != null && amount.isNotBlank() && methodEnabled && !uncertainResult) {
-                    Text(walletErrorText(issue,lang), color = Color(0xFFB5472F), fontSize = 11.sp)
+                    Text(voucherIssueText(issue,lang,voucherFiat),
+                        color = Color(0xFFB5472F), fontSize = 11.sp)
                 }
                 OutlinedButton(onClick = { refreshKey++ },
                     modifier = Modifier.fillMaxWidth(),
