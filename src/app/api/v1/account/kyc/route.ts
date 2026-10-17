@@ -67,7 +67,7 @@ export const POST = withErrorHandling('account.kyc.submit', async (ctx, request:
   if (origin && new URL(origin).host !== new URL(request.url).host) {
     throw new ApiError('FORBIDDEN', 'Invalid request origin');
   }
-  const { services, user, actor } = await withUser(request, ctx);
+  const { services, user } = await withUser(request, ctx);
   await enforceRateLimit('kyc:submit:' + user.id, 3, 3600);
   const profile = await services.users.getProfile(user.id);
   if (!profile) throw new ApiError('NOT_FOUND', 'Profile not found');
@@ -133,12 +133,13 @@ export const POST = withErrorHandling('account.kyc.submit', async (ctx, request:
         [user.id, docType, docPath, selfiePath],
       );
       await tx.query("update nova.profiles set kyc_status='pending', age_verified=false where id=$1", [user.id]);
+      await tx.rpc('audit_event', {
+        p_actor_id: user.id, p_action: 'kyc.submitted', p_target_type: 'user', p_target_id: user.id,
+        p_before: { kycStatus: locked.kyc_status },
+        p_after: { submissionId: saved!.id, kycStatus: 'pending', selfieAttached: Boolean(selfiePath) },
+        p_reason: 'customer KYC submission',
+      });
       return saved!.id;
-    });
-    await services.admin.writeAudit({
-      actorId: user.id, action: 'kyc.submitted', entityType: 'profile', entityId: user.id,
-      after: { submissionId, documentType: docType, selfieAttached: Boolean(selfiePath) },
-      reason: 'customer KYC submission', correlationId: actor.correlationId,
     });
     return jsonOk({ kycStatus: 'pending', submissionId });
   } catch {
