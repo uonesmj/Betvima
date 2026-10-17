@@ -56,6 +56,23 @@ describe('catalog live availability', () => {
     }
   });
 
+  it('does not advertise empty market shells as current betting markets', async () => {
+    const now = new Date('2026-10-17T12:00:00Z').toISOString();
+    const markets = [
+      { id: 'stale', match_id: 'm', key: 'h2h', status: 'open', updated_at: now },
+      { id: 'priced', match_id: 'm', key: 'totals', status: 'open', updated_at: now },
+    ];
+    const selections = [
+      { id: 'priced-selection', market_id: 'priced', name: 'Over', code: 'OVER',
+        status: 'open', odds_scaled: '19000', odds_updated_at: now },
+    ];
+    const query = vi.fn().mockResolvedValueOnce(markets).mockResolvedValueOnce(selections);
+    const catalog = new PostgresCatalogRepository({ query } as unknown as Db);
+    const current = await catalog.listMarkets({ userId: null, role: 'anon' }, 'm');
+    expect(current.map((market) => market.key)).toEqual(['totals']);
+    expect(query.mock.calls[0]![0]).toContain("provider = 'the_odds_api'");
+  });
+
   it('does not expose an empty top market after freshness filtering', async () => {
     const query = vi.fn().mockResolvedValueOnce([{ id: 'match-test', status: 'live', sport_slug: 'football', scheduled_at: '2026-10-12T10:00:00Z' }])
       .mockResolvedValueOnce([{ id: 'market-test', match_id: 'match-test', key: 'h2h', status: 'open', selection_id: null }]);
