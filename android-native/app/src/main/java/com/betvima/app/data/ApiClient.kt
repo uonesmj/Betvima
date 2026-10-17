@@ -168,8 +168,47 @@ class ApiClient {
     /** Current password is checked by our authenticated backend before any update. */
     suspend fun changePassword88(token: String, current: String, next: String): JSONObject {
         require(next.length in 10..128 && current.isNotBlank())
-        return post("/api/v1/account/change-password",
-            JSONObject().put("currentPassword", current).put("newPassword", next), token)
+        return try {
+            post("/api/v1/account/change-password",
+                JSONObject().put("currentPassword", current).put("newPassword", next), token)
+        } catch (error: ApiFailure) {
+            if (error.code != 404) throw error
+            // Rolling-deployment fallback. The old password is still freshly
+            // reauthenticated against the SAME Supabase Auth used by sign-in.
+            // No service key, password caching or cross-account update.
+            val session = get("/api/v1/auth/session", token)
+            val account = session.optJSONObject("user")
+                ?: throw ApiFailure(401, "Session unavailable")
+            val accountId = account.optString("id")
+            val email = account.optString("email")
+            if (accountId.isBlank() || email.isBlank())
+                throw ApiFailure(401, "Account identity unavailable")
+            val config = get("/api/v1/mobile/config")
+            val origin = config.str("supabaseUrl").trimEnd('/')
+            val apiKey = config.str("supabaseAnonKey")
+            require(origin.startsWith("https://") && apiKey.isNotBlank())
+            val fresh = authRequest(origin, apiKey, "password",
+                JSONObject().put("email", email).put("password", current))
+            if (fresh.optJSONObject("user")?.optString("id") != accountId)
+                throw ApiFailure(401, "Current password cannot be verified")
+            val proof = fresh.str("access_token")
+            require(proof.isNotBlank())
+            withContext(Dispatchers.IO) {
+                val request = Request.Builder().url(origin + "/auth/v1/user")
+                    .header("apikey", apiKey)
+                    .header("Authorization", "Bearer " + proof)
+                    .put(JSONObject().put("password", next).toString()
+                        .toRequestBody(jsonType))
+                    .build()
+                client.newCall(request).execute().use { reply ->
+                    if (!reply.isSuccessful) {
+                        throw ApiFailure(reply.code,
+                            "Password update rejected by account provider")
+                    }
+                }
+            }
+            JSONObject().put("changed", true)
+        }
     }
 
     suspend fun loginHistory88(token: String, page: Int = 1): JSONObject {
