@@ -61,7 +61,40 @@ export const POST = withErrorHandling('admin.support.message', async (
       correlationId: actor.correlationId,
     });
 
-    return jsonCreated({ message });
+    // A reply is delivered to the owner's in-app inbox even when the chat popup
+    // is closed. The same inbox is used by the website and native Android app.
+    // The CTA points back to THIS existing ticket, never to a new ticket form.
+    const ticket = await services.support.getForAdmin(id);
+    let notificationQueued = false;
+    if (ticket) {
+      try {
+        const notice = await services.notifications.enqueue({
+          userId: ticket.userId,
+          eventKey: 'support.reply',
+          channels: ['in_app'],
+          locale: 'en',
+          title: 'New message from BetVima Support',
+          body: message.body.trim().slice(0, 200) || 'Support sent you an attachment.',
+          data: {
+            audience: 'personal',
+            ticketId: id,
+            messageId: message.id,
+            ctaLabel: 'Open chat',
+            ctaHref: '/support?ticket=' + encodeURIComponent(id),
+          },
+          dedupeKey: 'support-reply:' + message.id,
+        });
+        notificationQueued = notice.queued;
+      } catch (notifyError) {
+        // Do not pretend the message failed and provoke duplicate customer replies.
+        console.error('Support reply notification failed', {
+          ticketId: id, messageId: message.id,
+          error: notifyError instanceof Error ? notifyError.message : 'unknown',
+        });
+      }
+    }
+
+    return jsonCreated({ message, notificationQueued });
   } catch (error) {
     if (uploaded) {
       try {
