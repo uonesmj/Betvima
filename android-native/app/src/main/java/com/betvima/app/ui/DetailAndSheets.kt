@@ -305,6 +305,7 @@ fun LoginSheet(state: AppState, model: AppViewModel) {
     var email by rememberSaveable { mutableStateOf("") }
     // Login credentials are memory-only and must not enter Android saved state.
     var password by remember { mutableStateOf("") }
+    var authenticatorCode by remember { mutableStateOf("") }
     var visible by rememberSaveable { mutableStateOf(false) }
     var recovering by rememberSaveable { mutableStateOf(false) }
     val recoveryApi = remember { ApiClient() }
@@ -473,6 +474,44 @@ fun LoginSheet(state: AppState, model: AppViewModel) {
                             initialEmail = email,
                             onBack = { recovering = false }
                         )
+                    } else if (state.mfaRequired) {
+                        Text(tr(state.lang, "Authenticator verification", "تأیید دومرحله‌ای"),
+                            color = Palette.text, fontWeight = FontWeight.Black, fontSize = 23.sp)
+                        Text(tr(state.lang,
+                            "Open Google Authenticator and enter the six-digit code to finish signing in.",
+                            "Google Authenticator را باز کنید و کد شش‌رقمی را برای تکمیل ورود وارد کنید."),
+                            color = Palette.muted, fontSize = 12.sp)
+                        OutlinedTextField(
+                            value = authenticatorCode,
+                            onValueChange = { authenticatorCode = it.filter(Char::isDigit).take(6) },
+                            label = { Text(tr(state.lang, "6-digit security code", "کد امنیتی ۶ رقمی")) },
+                            leadingIcon = { Icon(Icons.Default.Security, null) },
+                            singleLine = true,
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(14.dp))
+                        Button(
+                            onClick = {
+                                model.verifyMfa(authenticatorCode)
+                                authenticatorCode = ""
+                                password = ""
+                            },
+                            enabled = !state.busy && authenticatorCode.length == 6,
+                            modifier = Modifier.fillMaxWidth().height(52.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = Palette.green, contentColor = Palette.ink)) {
+                            if (state.busy) CircularProgressIndicator(
+                                Modifier.size(19.dp), color = Palette.ink, strokeWidth = 2.dp)
+                            else Text(tr(state.lang, "Verify and sign in", "تأیید و ورود"),
+                                fontWeight = FontWeight.Black)
+                        }
+                        TextButton(onClick = {
+                            authenticatorCode = ""
+                            model.showLogin(false)
+                            model.showLogin(true)
+                        }) {
+                            Text(tr(state.lang, "Back to sign in", "بازگشت به ورود"), color = Palette.blue)
+                        }
                     } else if (!state.registerScreen) {
                         Text(tr(state.lang, "Welcome back", "خوش آمدید"),
                             fontSize = 24.sp, fontWeight = FontWeight.Black,

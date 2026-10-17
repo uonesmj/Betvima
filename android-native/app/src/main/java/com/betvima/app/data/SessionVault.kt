@@ -12,6 +12,10 @@ import javax.crypto.Cipher
 import javax.crypto.KeyGenerator
 import javax.crypto.spec.GCMParameterSpec
 
+/** Pending AAL1 login lives only in ViewModel memory until Supabase TOTP verification. */
+class TotpChallengeRequired(val firstFactorSession: JSONObject, val factorId: String) :
+    Exception("TOTP verification required")
+
 /** Android Keystore encrypted sessions; no backup or plaintext token fallback. */
 class SessionVault(context: Context, scope: String = "member") {
     // Keep affiliate credentials in a separate encrypted store. No accidental
@@ -64,6 +68,10 @@ class SessionVault(context: Context, scope: String = "member") {
         require(access.isNotBlank() && value.optString("refresh_token").isNotBlank()) {
             "Incomplete authentication response"
         }
+        // Supabase owns factor status. Never persist an AAL1 session for a user
+        // who has opted into TOTP; BetVima's financial endpoints reject AAL1.
+        val factor = api.mfaFactors(access).firstOrNull()
+        if (factor != null) throw TotpChallengeRequired(value, factor)
         // The bearer token is not considered an authenticated BetVima account
         // until the *BetVima server* validates it through withUser ownership guards.
         val verified = api.get("/api/v1/account/profile", access)
@@ -74,6 +82,18 @@ class SessionVault(context: Context, scope: String = "member") {
         save(value.put("local_expires_at", System.currentTimeMillis() / 1000L +
             value.optLong("expires_in", 3600)))
     }
+    /** After Supabase has returned AAL2 tokens, verify BetVima ownership
+     * before persisting the upgraded session to the Android Keystore.
+     */
+    suspend fun commitVerifiedMfaSession(value: JSONObject, api: ApiClient) = mutex.withLock {
+        val access = value.optString("access_token")
+        require(access.isNotBlank() && value.optString("refresh_token").isNotBlank())
+        val verified = api.get("/api/v1/account/profile", access)
+        require(verified.optJSONObject("session")?.optString("id").orEmpty().isNotBlank())
+        save(value.put("local_expires_at", System.currentTimeMillis() / 1000L +
+            value.optLong("expires_in", 3600)))
+    }
+
     /** Log in to a *separate* partner identity using its registered email.
      * Supabase authenticates; BetVima's withAffiliate guard must then verify
      * role, ownership and partner association before persisting this session.

@@ -52,6 +52,7 @@ internal fun AccountSettings87(state:AppState,model:AppViewModel) {
     var showPassword88 by remember { mutableStateOf(false) }
     var showLock88 by remember { mutableStateOf(false) }
     var showHistory88 by remember { mutableStateOf(false) }
+    var showMfa by remember { mutableStateOf(false) }
     var lockMode88 by remember { mutableStateOf(local.lockMode88()) }
 
     var langOpen by remember { mutableStateOf(false) }
@@ -95,6 +96,7 @@ internal fun AccountSettings87(state:AppState,model:AppViewModel) {
             "password" -> showPassword88=true
             "pin" -> showLock88=true
             "history" -> showHistory88=true
+            "mfa" -> showMfa=true
             else -> modal=v
         }
         feedback="";first="";last="";pin="";repeatPin=""
@@ -113,6 +115,9 @@ internal fun AccountSettings87(state:AppState,model:AppViewModel) {
         },onDismiss={showLock88=false})
     if (showHistory88) LoginHistoryDialog88(lang,api,vault,
         onDismiss={showHistory88=false})
+    if (showMfa) GoogleAuthenticatorDialog(lang, api, vault,
+        adminRequired = session?.optBoolean("isAdmin", false) == true,
+        onDismiss = { showMfa = false })
     if(langOpen)LanguagePickerDialog(lang,{model.setLanguage(it);langOpen=false},{langOpen=false})
 
     if(modal.isNotBlank()) AlertDialog(
@@ -156,10 +161,7 @@ internal fun AccountSettings87(state:AppState,model:AppViewModel) {
                     else label87(lang,"SMS verification service is not configured. A number cannot be called verified until a valid one-time code is confirmed by the server.",
                         "سرویس تأیید پیامکی پیکربندی نشده است. بدون دریافت و تأیید کد معتبر، شماره تأییدشده تلقی نمی‌شود."),
                     color=muted87,fontSize=12.sp)
-                "mfa"->Text(label87(lang,
-                    "Google Authenticator enrollment requires server-enforced second-factor checks at login and on sensitive account actions. It cannot be marked enabled before that flow is available.",
-                    "فعال‌سازی Google Authenticator نیازمند تأیید عامل دوم توسط سرور هنگام ورود و عملیات حساس است. پیش از آماده‌شدن این زیرساخت، فعال نمایش داده نمی‌شود."),
-                    color=muted87,fontSize=12.sp)
+                "mfa"->Text("Authenticator settings",color=muted87,fontSize=12.sp)
                 "history"->{
                     Text(label87(lang,"Last server-recorded login","آخرین ورود ثبت‌شده"),
                         color=muted87,fontSize=12.sp)
@@ -300,7 +302,7 @@ internal fun AccountSettings87(state:AppState,model:AppViewModel) {
             }}
             item{Group87(label87(lang,"SECURITY","امنیت")){
                 Tile87(Icons.Default.Security,"Google Authenticator",
-                    label87(lang,"Server activation required","نیازمند فعال‌سازی سرور"),"next"){open("mfa")}
+                    label87(lang,"Set up or manage 2FA","فعال‌سازی یا مدیریت دومرحله‌ای"),"next"){open("mfa")}
                 Tile87(Icons.Default.Key,label87(lang,"Change password","تغییر رمز عبور"),
                     label87(lang,"Verify current password","تأیید رمز فعلی"),"next"){open("password")}
                 Tile87(Icons.Default.Pin,label87(lang,"App lock","قفل برنامه"),
