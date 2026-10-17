@@ -13,7 +13,7 @@ type FiatCurrency = Extract<CasinoCurrency, 'IRR' | 'IRT'>;
 type BalanceResult = { error: 0 | 1 | 2; balance: number };
 type Wallet = { balance_minor: string; locked_minor: string; is_frozen: boolean };
 type Profile = {
-  status: string; age_verified: boolean; kyc_status: string; currency: string;
+  status: string; age_verified: boolean; kyc_status: string; kyc_document_approved: boolean; currency: string;
   country: string | null;
   self_excluded: boolean; restricted: boolean;
   max_stake_per_bet_minor: string | null; max_stake_per_day_minor: string | null;
@@ -36,13 +36,14 @@ function usable(row: Wallet | null): bigint {
     ? BigInt(row.balance_minor) - BigInt(row.locked_minor) : 0n;
 }
 function allowed(profile: Profile): boolean {
-  return profile.status === 'active' && profile.age_verified && profile.kyc_status === 'verified' &&
+  return profile.status === 'active' && profile.age_verified && profile.kyc_status === 'verified' && profile.kyc_document_approved === true &&
     casinoCountryPermitted(profile.country) && !profile.self_excluded && !profile.restricted;
 }
 
 async function readProfile(db: Db, userId: string, walletCurrency?: FiatCurrency): Promise<Profile | null> {
   return db.queryOne<Profile>([
     "select p.status::text as status, p.age_verified, p.kyc_status::text as kyc_status,", 
+    "exists(select 1 from nova.kyc_submissions k where k.user_id=p.id and k.status='verified' and k.legal_age_confirmed and k.reviewed_by is not null) as kyc_document_approved,",
     "p.preferred_currency as currency, p.jurisdiction as country,", 
     "coalesce(l.self_excluded_until > now(), false) as self_excluded,",
     "exists(select 1 from nova.user_restrictions r where r.user_id = p.id",
