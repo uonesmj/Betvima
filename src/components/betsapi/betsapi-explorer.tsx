@@ -339,6 +339,11 @@ export function BetsApiExplorer() {
                   <button type="button" className={button} onClick={() => chosen && void loadMarkets(chosen)}
                     disabled={marketBusy}>Update</button>
                 </div>
+                {markets.markets.some(m => m.selections.some(s => s.label.startsWith('Unlabelled outcome #'))) && (
+                  <p role="status" className="rounded-lg border border-amber-700/50 bg-amber-950/30 p-3 text-xs text-amber-200">
+                    Some Bet365 outcomes lack an unambiguous source label. Their IDs are shown for diagnostics only; do not use these reference prices for betting or settlement.
+                  </p>
+                )}
                 {!visibleMarkets.length && <p className="p-5 text-sm text-slate-400">
                   No currently priced markets returned by this request.
                 </p>}
