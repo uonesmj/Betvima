@@ -7,6 +7,8 @@ import { clearedPasswordRecoveryPath, parsePasswordRecoveryGrant } from '@/lib/a
 import { useRouter } from 'next/navigation';
 import { Eye, EyeOff, KeyRound, LockKeyhole, CheckCircle2 } from 'lucide-react';
 import { getSupabaseBrowserClient } from '@/lib/supabase/browser';
+import { createIsolatedRecoveryClient } from '@/lib/supabase/recovery-email';
+import type { SupabaseClient } from '@supabase/supabase-js';
 
 export default function ResetPasswordPage() {
   const { t, dir } = useApp();
@@ -17,6 +19,7 @@ export default function ResetPasswordPage() {
   const [showConfirm, setShowConfirm] = useState(false);
   const [state, setState] = useState<'checking' | 'ready' | 'invalid' | 'complete'>('checking');
   const checkPromise = useRef<Promise<void> | null>(null);
+  const recoveryClient = useRef<SupabaseClient | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
@@ -32,7 +35,12 @@ export default function ResetPasswordPage() {
           throw new Error('This reset link is invalid or has expired. Request a new link.');
         }
 
-        const supabase = getSupabaseBrowserClient();
+        // Legacy PKCE email codes need the ordinary browser verifier.
+        // New app/email implicit tokens must never touch the PKCE SSR client.
+        const supabase = grant.kind === 'code'
+          ? getSupabaseBrowserClient()
+          : createIsolatedRecoveryClient();
+        recoveryClient.current = supabase;
         try {
           if (grant.kind === 'tokens') {
             const { error: sessionError } = await supabase.auth.setSession({
@@ -114,7 +122,8 @@ export default function ResetPasswordPage() {
 
     setBusy(true);
     try {
-      const supabase = getSupabaseBrowserClient();
+      const supabase = recoveryClient.current;
+      if (!supabase) throw new Error('RECOVERY_SESSION_EXPIRED');
       const { data: sessionData, error: sessionError } =
         await supabase.auth.getSession();
       if (sessionError || !sessionData.session?.access_token) {
