@@ -146,6 +146,19 @@ describe('Bet365 missing outcome labels', () => {
   });
 });
 
+describe('Ambiguous source labels', () => {
+  it('rejects generic Selection with Yes/No suffix as a defined outcome', () => {
+    const parsed = parseBet365LivePreview('804', [[
+      { type: 'MG', ID: '1', NA: 'Team Clean Sheet' },
+      { type: 'PA', ID: '101', NA: 'Selection (Yes)', OD: '5/2' },
+      { type: 'PA', ID: '102', NA: 'Selection (No)', OD: '1/4' },
+    ]]);
+    expect(parsed.markets[0]?.selections.map(x => x.label)).toEqual([
+      'Unlabelled outcome #101', 'Unlabelled outcome #102',
+    ]);
+  });
+});
+
 describe('Bet365 MA market context', () => {
   it('retains explicit MA context for anonymous PA outcomes and resets on a new MG', () => {
     const parsed = parseBet365LivePreview('803', [[
