@@ -382,9 +382,11 @@ private fun LeagueSection(key: String, matches: List<Match>, expanded: Boolean,
                         maxLines = 2)
                     Row(verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(5.dp)) {
-                        CountryIdentity(matches.first().country)
+                        val country = resolvedCompetitionCountry(
+                            matches.first().country, matches.first().league)
+                        CountryIdentity(country)
                         Text(
-                            matches.first().country.takeIf { it.isNotBlank() }
+                            country.takeIf { it.isNotBlank() }
                                 ?.let(::countryDisplayName)
                                 ?: tr(state.lang, "International", "بین‌المللی"),
                             color = Palette.muted, fontSize = 10.sp, maxLines = 1,
