@@ -64,7 +64,7 @@ class FixtureIdentityTest {
         assertNull(knownPublicLeagueLogo("KBO Futures League"))
         assertNull(knownPublicLeagueLogo("NBA"))
         assertEquals("NPB", leagueBadgeInitials("NPB"))
-        assertEquals("KL", leagueBadgeInitials("K League 1"))
+        assertEquals("K1", leagueBadgeInitials("K League 1"))
         assertEquals("?", leagueBadgeInitials("  "))
     }
 
