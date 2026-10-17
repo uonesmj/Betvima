@@ -1,0 +1,31 @@
+name: Casino pilot unit and type safety
+on:
+  pull_request:
+    paths:
+      - 'src/server/providers/softaggregator/**'
+      - 'tests/unit/softaggregator-*.test.ts'
+      - '.github/workflows/casino-pilot-tests.yml'
+  push:
+    branches:
+      - 'feature/casino-pilot-limits-20261017'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  casino-pilot-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Install locked dependencies
+        run: npm ci --ignore-scripts
+      - name: Test pilot limits and both wallet implementations
+        run: npx vitest run tests/unit/softaggregator-pilot-limits.test.ts tests/unit/softaggregator-wallet.test.ts tests/unit/softaggregator-fiat-wallet.test.ts tests/unit/softaggregator-contract.test.ts
+      - name: Typecheck
+        run: npm run typecheck
