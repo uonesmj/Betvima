@@ -71,6 +71,14 @@ export function AuthForms({
 
   const isLogin = mode === 'login';
   const turnstileSiteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ?? '';
+  // Returning from an expired email recovery link must open the EMAIL request
+  // form, rather than the normal sign-in/password form.
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get('forgot') === '1') {
+      setMode('login');
+      setForgotPassword(true);
+    }
+  }, []);
   useEffect(() => {
     try {
       const params = new URLSearchParams(window.location.search);
