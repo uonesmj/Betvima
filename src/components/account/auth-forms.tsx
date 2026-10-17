@@ -264,6 +264,10 @@ export function AuthForms({
 
   if (awaitingTotp) {
     return <div className="space-y-4 p-3 text-slate-900">
+      <p className="rounded-lg bg-slate-100 p-3 text-xs text-slate-700">
+        If your primary authenticator is unavailable, choose your previously
+        enrolled backup authenticator below. A recovery code was not issued by Supabase.
+      </p>
       <TwoFactorSettings onVerified={() => { window.location.href = '/'; }} />
       <button type="button" className="text-sm text-slate-200 underline"
         onClick={() => { setAwaitingTotp(false); setMode('login'); }}>
