@@ -22,7 +22,7 @@ export interface Bet365PreviewResult {
 export function bet365OddsDecimal(value: unknown): string | null {
   const original = string(value).trim();
   if (/^\d+\/\d+$/.test(original)) {
-    const [a, b] = original.split('/').map(Number);
+    const [a = NaN, b = NaN] = original.split('/').map(Number);
     if (!b || !Number.isFinite(a / b) || a > 1000000) return null;
     const decimal = (1 + a / b).toFixed(4);
     return safePrice(decimal);
