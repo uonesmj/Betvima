@@ -32,6 +32,9 @@ export interface UserLimits {
 export interface SessionUser {
   id: UUID; email: string | null; role: UserRole; status: AccountStatus; permissions: AdminPermission[];
   locale: 'en'; currency: Currency; affiliateId: UUID | null; isAdmin: boolean;
+  /** AAL is read only after Supabase getUser has verified the JWT. */
+  mfaLevel?: 'aal1' | 'aal2';
+  mfaEnrolled?: boolean;
 }
 export interface AuthResult { user: SessionUser; accessToken: string; refreshToken: string; expiresAt: ISODateString }
 export type MfaMethod = 'totp' | 'sms' | 'email';
