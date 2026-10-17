@@ -413,8 +413,9 @@ fun SupportMessenger(
                     MessengerInput(name, { name=it.take(80) },
                         tr(lang,"Your name (optional)","نام شما (اختیاری)"))
                     Spacer(Modifier.height(16.dp))
-                    MessengerComposer(draft, {draft=it.take(5000)}, file?.name,
-                        {file=null}, {picker.launch(arrayOf("image/jpeg","image/png","image/webp","application/pdf"))},
+                    MessengerComposer(draft, {draft=it.take(5000)}, file, attachmentPhase,
+                        {file=null;attachmentPhase=SupportAttachmentPhase.READY},
+                        {picker.launch(arrayOf("image/jpeg","image/png","image/webp","application/pdf"))},
                         {emojiOpen=!emojiOpen}, {scope.launch{start()}}, !sending && !uncertain && draft.isNotBlank(),
                         lang, expanded=true)
                     if (emojiOpen) MessengerEmojiPicker { draft=(draft+it).take(5000);emojiOpen=false }
@@ -510,13 +511,21 @@ fun SupportMessenger(
                                 if (message.body.isNotBlank()) Text(message.body,
                                     color=if(mine) Color.White else messengerInk,
                                     fontSize=16.sp,lineHeight=23.sp)
-                                message.attachments.forEach { attachment ->
-                                    Row(verticalAlignment=Alignment.CenterVertically) {
-                                        Icon(Icons.Default.AttachFile,null,
-                                            tint=if(mine) Color.White else messengerBlue,
-                                            modifier=Modifier.size(18.dp))
-                                        Text(attachment,color=if(mine) Color.White else messengerBlue,
-                                            fontSize=13.sp, maxLines=2,overflow=TextOverflow.Ellipsis)
+                                if (message.attachmentDetails.isNotEmpty()) {
+                                    message.attachmentDetails.forEach { attachment ->
+                                        MessengerUploadedAttachment(
+                                            attachment, ticket.id, attachmentViewToken, mine, lang
+                                        )
+                                    }
+                                } else {
+                                    message.attachments.forEach { attachment ->
+                                        Row(verticalAlignment=Alignment.CenterVertically) {
+                                            Icon(Icons.Default.AttachFile,null,
+                                                tint=if(mine) Color.White else messengerBlue,
+                                                modifier=Modifier.size(18.dp))
+                                            Text(attachment,color=if(mine) Color.White else messengerBlue,
+                                                fontSize=13.sp,maxLines=2,overflow=TextOverflow.Ellipsis)
+                                        }
                                     }
                                 }
                                 Row(Modifier.align(Alignment.End),
@@ -542,7 +551,8 @@ fun SupportMessenger(
                 }
                 if (messengerActive(ticket)) {
                     if (emojiOpen) MessengerEmojiPicker { draft=(draft+it).take(5000);emojiOpen=false }
-                    MessengerComposer(draft,{draft=it.take(5000)},file?.name,{file=null},
+                    MessengerComposer(draft,{draft=it.take(5000)},file,attachmentPhase,
+                        {file=null;attachmentPhase=SupportAttachmentPhase.READY},
                         {picker.launch(arrayOf("image/jpeg","image/png","image/webp","application/pdf"))},
                         {emojiOpen=!emojiOpen},{scope.launch{send()}},
                         !sending && !uncertain && (draft.isNotBlank() || file!=null),lang)
