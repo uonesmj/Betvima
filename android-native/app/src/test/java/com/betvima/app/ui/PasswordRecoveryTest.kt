@@ -6,6 +6,14 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class PasswordRecoveryTest {
+    @Test fun failedChallengeOpensEmailRequestNotInvalidResetPage() {
+        assertEquals("https://betvima.com/auth/login?forgot=1",
+            recoveryLoginUrl(RecoveryAccount.SPORTSBOOK))
+        assertEquals("https://betvima.com/affiliate/login?forgot=1",
+            recoveryLoginUrl(RecoveryAccount.AFFILIATE))
+    }
+
+
     @Test fun emailChecksAreSharedByBothLoginFlows() {
         assertTrue(validRecoveryEmail("partner@example.com"))
         assertTrue(validRecoveryEmail(" member+tag@example.co.uk "))
