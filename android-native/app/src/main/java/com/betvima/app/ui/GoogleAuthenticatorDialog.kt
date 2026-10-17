@@ -48,7 +48,7 @@ internal fun GoogleAuthenticatorDialog(
     fun l(en: String, fa: String) = tr(lang, en, fa)
     LaunchedEffect(Unit) {
         try {
-            val jwt = vault.accessToken(api) ?: error("Sign in required")
+            val jwt = vault.accessToken(api) ?: throw IllegalStateException("Sign in required")
             factorId = api.mfaFactors(jwt).firstOrNull()
         } catch (ex: Exception) { error = ex.message ?: "Authenticator unavailable" }
         finally { loading = false }
@@ -102,7 +102,7 @@ internal fun GoogleAuthenticatorDialog(
                         color = Color(0xFFC5CBDA), fontSize = 12.sp)
                     Button(onClick = {
                         action {
-                            val jwt = vault.accessToken(api) ?: error("Sign in required")
+                            val jwt = vault.accessToken(api) ?: throw IllegalStateException("Sign in required")
                             pending = api.mfaEnroll(jwt)
                         }
                     }, enabled = !busy, modifier = Modifier.fillMaxWidth()) {
@@ -130,12 +130,12 @@ internal fun GoogleAuthenticatorDialog(
                         enabled = !busy && code.length == 6,
                         onClick = {
                             action {
-                                val jwt = vault.accessToken(api) ?: error("Sign in required")
+                                val jwt = vault.accessToken(api) ?: throw IllegalStateException("Sign in required")
                                 val id = pending?.optString("id").orEmpty().ifBlank { factorId.orEmpty() }
                                 val upgraded = api.mfaChallengeVerify(jwt, id, code)
                                 vault.commitVerifiedMfaSession(upgraded, api)
                                 if (disableRequested) {
-                                    if (adminRequired) error("Administrators must keep MFA enabled")
+                                    if (adminRequired) throw IllegalStateException("Administrators must keep MFA enabled")
                                     api.mfaUnenroll(upgraded.optString("access_token"), id)
                                     factorId = null
                                     disableRequested = false
