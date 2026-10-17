@@ -268,7 +268,7 @@ export async function runBetsApiTrial(
   if (liveCheck.status === 'fulfilled') {
     output.bet365.permitted = true;
     const matches = eventList(liveCheck.value.results)
-      .filter(match => /^\\d{1,16}$/.test(stringField(match.id)));
+      .filter(match => /^\d{1,16}$/.test(stringField(match.id)));
     output.bet365.eventCount = matches.length;
     // FI=id in /bet365/inplay_filter. our_event_id links to the Events API.
     // Never substitute an unrelated Events API event ID for the Bet365 FI.
@@ -304,7 +304,7 @@ export async function runBetsApiTrial(
       const fixtureId = stringField(match.id);
       const sample = {
         fixtureId,
-        linkedEventId: /^\\d{1,16}$/.test(stringField(match.our_event_id))
+        linkedEventId: /^\d{1,16}$/.test(stringField(match.our_event_id))
           ? stringField(match.our_event_id) : null,
         match: `${eventName(match, 'home')} — ${eventName(match, 'away')}`.slice(0, 185),
         markets: 0, selections: 0, error: null as string | null,
