@@ -5,7 +5,10 @@ import org.json.JSONObject
 import java.math.BigDecimal
 import java.math.RoundingMode
 
-data class Team(val name: String, val role: String, val logo: String?)
+data class Team(
+    val name: String, val role: String, val logo: String?,
+    val alternateLogos: List<String> = emptyList()
+)
 data class Selection(val id: String, val name: String, val oddsScaled: String, val status: String,
     val version: Int, val movement: String, val nameFa: String = "") {
     // The server has used 'open' for DB selections and 'active' in its catalogue type.
@@ -88,9 +91,16 @@ fun parseMatch(o: JSONObject, overrideMarkets: JSONArray? = null): Match = Match
     bettingAvailable = o.optBoolean("isBettingAvailable", false),
     minute = o.numberOrNull("minute"), homeScore = o.numberOrNull("homeScore"),
     awayScore = o.numberOrNull("awayScore"),
-    teams = o.arr("participants").objects().map {
-        Team(it.str("name", "TBD"), it.str("role"),
-            it.str("logoUrl", it.str("logo")).takeIf(String::isNotBlank))
+    teams = o.arr("participants").objects().map { participant ->
+        // Never borrow another team's art. These are alternate badge fields
+        // belonging to this exact participant, ranked in provider preference.
+        val logoKeys = listOf("logoUrl", "logo", "imageUrl", "image",
+            "badgeUrl", "badge", "crestUrl", "crest", "strTeamBadge", "thumbnail")
+        val artwork = logoKeys.mapNotNull { key ->
+            participant.str(key).trim().takeIf { it.isNotBlank() }
+        }.distinct()
+        Team(participant.str("name", "TBD"), participant.str("role"),
+            artwork.firstOrNull(), artwork.drop(1))
     },
     markets = (overrideMarkets ?: o.optJSONArray("topMarkets") ?: o.optJSONArray("markets") ?: JSONArray())
         .objects().map(::parseMarket),

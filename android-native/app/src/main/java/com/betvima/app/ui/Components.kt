@@ -263,8 +263,13 @@ fun SmallPill(text: String, background: Color, foreground: Color) {
  * and whenever the URL is absent or broken. Never guess another club's badge. */
 @Composable
 fun TeamBadge(team: Team, size: Int = 34) {
-    val safe = verifiedLogoUrl(team.logo)
-    var loaded by remember(safe, team.name) { mutableStateOf(false) }
+    val logoCandidates = remember(team.logo, team.alternateLogos) {
+        (listOfNotNull(team.logo) + team.alternateLogos)
+            .mapNotNull(::verifiedLogoUrl).distinct()
+    }
+    var candidateIndex by remember(logoCandidates, team.name) { mutableIntStateOf(0) }
+    val safe = logoCandidates.getOrNull(candidateIndex)
+    var loaded by remember(logoCandidates, team.name) { mutableStateOf(false) }
     val initials = remember(team.name) { teamBadgeInitials(team.name) }
     val hue = remember(team.name) {
         val palette = listOf(
@@ -294,7 +299,10 @@ fun TeamBadge(team: Team, size: Int = 34) {
                     contentDescription = team.name,
                     contentScale = androidx.compose.ui.layout.ContentScale.Fit,
                     onSuccess = { loaded = true },
-                    onError = { loaded = false },
+                    onError = {
+                        loaded = false
+                        if (candidateIndex < logoCandidates.lastIndex) candidateIndex += 1
+                    },
                     modifier = Modifier.fillMaxSize()
                         .padding((size * .09f).dp)
                         .graphicsLayer { alpha = if (loaded) 1f else 0f }
