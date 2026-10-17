@@ -193,7 +193,7 @@ export function AdminShell({ children, title, actions }: { children: React.React
 
           <div className="bv-admin-sidebar-footer">
             <span className="bv-admin-sidebar-status"><span className="bv-admin-status-dot" /> Secure admin session</span>
-            <span className="bv-admin-sidebar-user" title={session.user.email}>{session.user.email || 'Administrator'}</span>
+            <span className="bv-admin-sidebar-user" title={session.user.email ?? undefined}>{session.user.email || 'Administrator'}</span>
           </div>
         </aside>
 
