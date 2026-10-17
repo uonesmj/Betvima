@@ -22,6 +22,48 @@ The older generic `SPORTS_PROVIDER_BASE_URL`/`SPORTS_PROVIDER_API_KEY` variables
 * Worker code and environment both need updating on the actual VPS. The normal web deployment workflow does not restart worker processes.
 * Historical provider rows linked to prior bets should not be deleted or re-labeled, because that could corrupt results, disputes and settlement records.
 
+## BetsAPI game and full-market site catalogue (temporary migration phase)
+
+**UI:** `/betsapi` from the homepage and Admin → Providers.
+Browse 28 documented sports, Live / Upcoming, a country + league/team search,
+UTC-date filters and multiple Upcoming pages. Click an FI match to request all
+available bookmaker market groups. Both `/v1/bet365/event` and
+`/v4/bet365/prematch` are parsed (including v4 dynamic `others`).
+
+**Access immediately:** An existing admin can paste a **new rotated token**
+into the private field on `/betsapi`. The token remains only in volatile browser
+memory; API requests go through authenticated same-origin HTTPS POST. There is
+no need to add a token to GitHub, rebuild Android, or modify the financial DB.
+Once browser state is closed the token is gone.
+
+**Optional public read-only preview (after secure VPS provisioning):**
+```ini
+BETSAPI_TRIAL_ENABLED=true
+BETSAPI_TRIAL_TOKEN=<new-secret-from-betsapi-panel>
+BETSAPI_PUBLIC_PREVIEW_ENABLED=true
+BETSAPI_EXPLORER_REQUESTS_PER_HOUR=1000
+```
+The UI GET route fails closed if any required server config is missing.
+The private token MUST never be in any `NEXT_PUBLIC_*` field. Site browsing
+shares a bounded process-local upstream request budget and short cache. A public
+read-only feed requires operational monitoring to prevent overusing trial quota.
+
+**No wagering switch here:** Keep the existing The Odds API selection IDs,
+outstanding wagers, wallet debits, and settlement intact until the owner
+approves a separately tested source migration. The browse page is a *read-only*
+BetsAPI bookmaker preview, **not** a source-authorized betting endpoint.
+Even valid displayed prices may be suspended or out of date before use.
+
+**Limits:** Bet365 upcoming endpoint is paginated (max 100 pages); choose a UTC
+day to browse beyond that window. The parser supports up to 1000 market groups
+with up to 250 valid prices per group and hides upstream-suspended outcomes.
+No undocumented market outcome is invented. Some sports are not offered by
+Bet365; empty results are honest. Live pages cache up to ~12 s and can refresh
+every 30 s; prematch lists cache ~90 s.
+
+**Rollback:** `BETSAPI_PUBLIC_PREVIEW_ENABLED=false` hides the new public
+catalogue without affecting current betting or pending settlements.
+
 ## BetsAPI Everything Trial — evaluation only (no production cutover)
 
 The operator has a three-day *Everything Trial*. Keep The Odds API serving all existing
