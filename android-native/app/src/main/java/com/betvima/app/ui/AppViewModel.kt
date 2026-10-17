@@ -63,7 +63,9 @@ data class AppState(
     val notificationLoading: Boolean = false,
     val bonuses: List<Bonus> = emptyList(), val busy: Boolean = false,
     val accountLoading: Boolean = false,
-    val quote: String? = null, val notice: String? = null,
+    val quote: String? = null, val mainBetReview: MainBetReview? = null,
+    val mainOddsAcceptedToken: String? = null,
+    val mainBetUncertain: Boolean = false, val notice: String? = null,
     val searchTerm: String = "", val searchLoading: Boolean = false,
     val searchLive: List<Match> = emptyList(),
     val searchUpcoming: List<Match> = emptyList(),
@@ -81,6 +83,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     private var detailRequestNumber = 0
     private var accountRequestNumber = 0
     private var quoteGeneration = 0
+    private var mainBetSubmitting = false
+    private var mainOddsPolling = false
     private var flightRevision = 0L
     private var historyRequest = 0
     private var searchGeneration = 0
@@ -324,7 +328,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 picks = kept,
                 showSlip = if (added) false else s.showSlip && kept.isNotEmpty(),
                 pickFlight = motion,
-                quote = null
+                quote = null, mainBetReview = null, mainOddsAcceptedToken = null
             )
         }
     }
@@ -343,7 +347,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         quoteGeneration++
         mutable.update {
             val picks = it.picks.filterNot { p -> p.selectionId == id }
-            it.copy(picks = picks, quote = null, showSlip = picks.isNotEmpty(),
+            it.copy(picks = picks, quote = null, mainBetReview = null, mainOddsAcceptedToken = null,
+                showSlip = picks.isNotEmpty(),
                 pickFlight = null)
         }
     }
@@ -355,13 +360,13 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         require(picks.map { it.matchId }.distinct().size == picks.size)
         quoteGeneration++
         mutable.update { it.copy(
-            picks = picks, quote = null, busy = false, showSlip = true,
+            picks = picks, quote = null, mainBetReview = null, mainOddsAcceptedToken = null, busy = false, showSlip = true,
             pickFlight = null)
         }
     }
     fun clearPicks() {
         quoteGeneration++
-        mutable.update { it.copy(picks = emptyList(), quote = null, busy = false,
+        mutable.update { it.copy(picks = emptyList(), quote = null, mainBetReview = null, mainOddsAcceptedToken = null, busy = false,
             pickFlight = null) }
     }
     fun openBet(id: String) = viewModelScope.launch {
@@ -420,7 +425,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     }
     fun clearQuote() {
         quoteGeneration++
-        mutable.update { it.copy(quote = null, busy = false) }
+        mutable.update { it.copy(quote = null, mainBetReview = null, mainOddsAcceptedToken = null,
+            busy = if (mainBetSubmitting) it.busy else false) }
     }
     fun showSlip(show: Boolean) = mutable.update {
         it.copy(showSlip = show, pickFlight = null)
@@ -445,7 +451,9 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 vault.accessToken(api)?.let { api.recordLogin88(it) }
             }
             sessionGeneration++
+            quoteGeneration++
             mutable.update { it.copy(
+                mainBetReview = null, mainOddsAcceptedToken = null, mainBetUncertain = false, quote = null,
                 busy = false, showLogin = false, signedIn = true, authError = null,
                 tab = if (navigateHome) Tab.HOME else it.tab,
                 homeMode = if (navigateHome) HomeMode.TOP else it.homeMode,
@@ -483,7 +491,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         ticketLookupFailures.clear()
         ticketLookupInFlight.clear()
         mutable.update { it.copy(signedIn = false, accountName = null, wallet = null, bets = emptyList(), ticketMatches = emptyMap(),
-            bonuses = emptyList(), quote = null, showLogin = false,
+            bonuses = emptyList(), quote = null, mainBetReview = null, mainOddsAcceptedToken = null,
+            mainBetUncertain = false, showLogin = false,
             authError = null, accountLoading = false,
             betsPage = 1, betsHasMore = false, moreBetsLoading = false,
             historyQuery = BetHistoryQuery(), historyBets = emptyList(), historyPage = 1,
@@ -739,35 +748,198 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             }
         }
     }
+    /**
+     * Only prices a main-account bet. A second explicit action is necessary
+     * to submit its signed token to the backend. No funds change here.
+     */
     fun quote(stake: String) = viewModelScope.launch {
-        val selectedPicks = state.value.picks.toList()
-        if (selectedPicks.isEmpty()) return@launch
-        val request = ++quoteGeneration
-        val generation = sessionGeneration
-        val cents = runCatching {
-            BigDecimal(stake).movePointRight(2).setScale(0, RoundingMode.UNNECESSARY)
-                .toBigIntegerExact().also { require(it.signum() > 0) }.toString()
-        }.getOrElse {
-            notice("Enter a valid USD stake with at most two decimal places")
+        val snapshot = state.value
+        if (snapshot.busy || snapshot.mainBetUncertain || snapshot.picks.isEmpty()) return@launch
+        val currency = snapshot.wallet?.currency?.uppercase()?.takeIf {
+            it in setOf("USD", "IRR", "IRT")
+        } ?: run {
+            notice(tr(snapshot.lang, "Load your registered wallet before requesting a quote.",
+                "ابتدا کیف پول حساب کاربری بارگذاری شود."))
+            refreshAccount()
             return@launch
         }
-        val jwt = vault.accessToken(api) ?: run {
-            showLogin(true)
+        val minor = runCatching { mainBetStakeMinor(stake, currency) }.getOrElse {
+            notice(tr(snapshot.lang, "Enter a valid stake for your wallet currency.",
+                "مبلغ شرط را بر اساس ارز کیف پول معتبر وارد کنید."))
             return@launch
         }
-        mutable.update { it.copy(busy = true, quote = null) }
+        val selected = snapshot.picks.toList()
+        val requestNumber = ++quoteGeneration
+        val session = sessionGeneration
+        val jwt = vault.accessToken(api) ?: run { showLogin(true); return@launch }
+        mutable.update { it.copy(busy = true, quote = null, mainBetReview = null, mainOddsAcceptedToken = null) }
         try {
-            val result = api.quote(jwt, selectedPicks, cents).optJSONObject("quote")
-            val payout = result?.optString("potentialPayoutMinor").orEmpty()
-            if (request == quoteGeneration && generation == sessionGeneration &&
-                selectedPicks == state.value.picks) mutable.update {
-                it.copy(busy = false, quote =
-                    if (payout.isNotBlank()) money(payout, "USD") else null)
+            val data = api.quote(jwt, selected, minor, currency)
+            val payload = data.optJSONObject("quote")
+                ?: throw ApiFailure(502, "Signed price quote missing")
+            val review = parseMainBetReview(payload, minor, currency, selected, requestNumber)
+            if (requestNumber == quoteGeneration && session == sessionGeneration &&
+                selected == state.value.picks &&
+                state.value.wallet?.currency?.uppercase() == currency) {
+                mutable.update {
+                    it.copy(busy = false, mainBetReview = review, mainOddsAcceptedToken = null,
+                        quote = money(review.potentialPayoutMinor, currency))
+                }
             }
         } catch (ex: Exception) {
-            if (request == quoteGeneration && generation == sessionGeneration)
-                mutable.update { it.copy(busy = false,
-                    notice = tr(it.lang, "Quote unavailable", "استعلام ضریب ناموفق بود.")) }
+            if (requestNumber == quoteGeneration && session == sessionGeneration) {
+                val code = (ex as? ApiFailure)?.serverCode
+                mutable.update {
+                    it.copy(busy = false, quote = null, mainBetReview = null, mainOddsAcceptedToken = null,
+                        notice = tr(it.lang,
+                            "Official quote unavailable" + (code?.let { c -> " (" + c + ")" } ?: "") +
+                                ". Select a market with fresh odds and try again.",
+                            "استعلام رسمی قابل دریافت نیست؛ مارکت با ضریب تازه انتخاب کنید و دوباره تلاش کنید."))
+                }
+            }
+        }
+    }
+
+    /**
+     * Explicitly acknowledge the exact moved odds in one signed quote.
+     * It must never submit the wager or debit funds.
+     */
+    fun acceptMainOddsChanges(stake: String) {
+        val snapshot = state.value
+        val review = snapshot.mainBetReview ?: return
+        val currency = snapshot.wallet?.currency?.uppercase().orEmpty()
+        val minor = runCatching { mainBetStakeMinor(stake, currency) }.getOrNull()
+        if (!canAcceptChangedMainOdds(review, snapshot.picks, minor, currency,
+                quoteGeneration)) {
+            clearQuote()
+            notice(tr(snapshot.lang, "Odds expired. Request a fresh quote.",
+                "استعلام ضریب منقضی شده است؛ قیمت تازه دریافت کنید."))
+            return
+        }
+        mutable.update {
+            it.copy(mainOddsAcceptedToken = review.quoteToken, notice = null)
+        }
+    }
+
+    /**
+     * Read-only price heartbeat while the native slip is open. Poll at most
+     * every 10 seconds, never mutate wallet/bets, never auto-accept or submit.
+     * Do not replace an identical signed quote (which would erase consent).
+     */
+    fun pollMainOdds(stake: String) = viewModelScope.launch {
+        val snapshot = state.value
+        if (mainOddsPolling || mainBetSubmitting || snapshot.busy ||
+            !snapshot.signedIn || snapshot.mainBetUncertain ||
+            snapshot.mainOddsAcceptedToken != null || snapshot.picks.isEmpty()) return@launch
+        val currency = snapshot.wallet?.currency?.uppercase()?.takeIf {
+            it in setOf("USD", "IRR", "IRT")
+        } ?: return@launch
+        val minor = runCatching { mainBetStakeMinor(stake, currency) }.getOrNull()
+            ?: return@launch
+        val selected = snapshot.picks.toList()
+        val startingGeneration = quoteGeneration
+        val session = sessionGeneration
+        mainOddsPolling = true
+        try {
+            val token = vault.accessToken(api) ?: return@launch
+            val data = api.quote(token, selected, minor, currency)
+            val body = data.optJSONObject("quote") ?: return@launch
+            val next = parseMainBetReview(body, minor, currency, selected,
+                startingGeneration)
+            if (session != sessionGeneration || startingGeneration != quoteGeneration ||
+                selected != state.value.picks ||
+                state.value.mainOddsAcceptedToken != null ||
+                state.value.wallet?.currency?.uppercase() != currency) return@launch
+            val previous = state.value.mainBetReview
+            if (previous == null || previous.changes != next.changes ||
+                previous.potentialPayoutMinor != next.potentialPayoutMinor) {
+                mutable.update {
+                    it.copy(quote = money(next.potentialPayoutMinor, currency),
+                        mainBetReview = next, mainOddsAcceptedToken = null)
+                }
+            }
+        } catch (_: Exception) {
+            // The last displayed odds are not thereby deemed tradable.
+            // Explicit placement rechecks the official quote and market status.
+        } finally {
+            mainOddsPolling = false
+        }
+    }
+
+    /**
+     * Real-money submission. Only invoked by a second deliberate tap after
+     * rendering the signed quote and each changed price. No automatic retry:
+     * an ambiguous network response requires checking My Bets.
+     */
+    fun placeMainBet(stake: String) = viewModelScope.launch {
+        // The native build cannot place wagers until operator, age and
+        // jurisdiction controls are reviewed and the build flag is enabled.
+        if (!com.betvima.app.BuildConfig.ENABLE_WAGERING) {
+            notice(tr(state.value.lang, "Main Account wagering is not yet authorized.",
+                "ثبت شرط از حساب اصلی هنوز مجاز نشده است."))
+            return@launch
+        }
+        val snapshot = state.value
+        if (snapshot.busy || snapshot.mainBetUncertain || !snapshot.signedIn) return@launch
+        val review = snapshot.mainBetReview ?: return@launch
+        val currency = snapshot.wallet?.currency?.uppercase().orEmpty()
+        val minor = runCatching { mainBetStakeMinor(stake, currency) }.getOrNull()
+        if (!canConfirmMainBet(review, snapshot.picks, minor, currency, quoteGeneration,
+                acceptedQuoteToken = snapshot.mainOddsAcceptedToken)) {
+            clearQuote()
+            notice(tr(snapshot.lang,
+                "The official quote expired or your selections changed. Request a new quote.",
+                "استعلام منقضی شده یا انتخاب‌ها تغییر کرده‌اند؛ دوباره استعلام بگیرید."))
+            return@launch
+        }
+        if (mainBetSubmitting) return@launch
+        // Acquire the one-shot lock *before* any suspending auth/network call.
+        mainBetSubmitting = true
+        val session = sessionGeneration
+        mutable.update { it.copy(busy = true) }
+        try {
+            val jwt = vault.accessToken(api)
+                ?: throw ApiFailure(401, "Session expired")
+            api.placeMainBet(jwt, review.picks, review.stakeMinor, review.currency,
+                review.quoteToken,
+                review.changes.associate { it.selectionId to it.afterScaled },
+                mainBetRequestId(review.quoteToken))
+            if (session == sessionGeneration) {
+                quoteGeneration++
+                mutable.update {
+                    it.copy(busy = false, quote = null, mainBetReview = null, mainOddsAcceptedToken = null,
+                        picks = emptyList(), showSlip = false,
+                        notice = tr(it.lang,
+                            "Your bet was accepted. Check My Bets for its receipt.",
+                            "شرط ثبت شد. رسید آن را در بخش شرط‌های من بررسی کنید."))
+                }
+                refreshAccount()
+                refreshBetHistory()
+            }
+        } catch (ex: Exception) {
+            if (session == sessionGeneration) {
+                val response = ex as? ApiFailure
+                val definiteRejection = response != null &&
+                    response.code in 400..499 &&
+                    response.code !in setOf(408, 429)
+                quoteGeneration++
+                mutable.update {
+                    it.copy(busy = false, quote = null, mainBetReview = null, mainOddsAcceptedToken = null,
+                        mainBetUncertain = !definiteRejection,
+                        notice = if (definiteRejection)
+                            tr(it.lang,
+                                "Bet not accepted: " + (response?.serverCode ?: "QUOTE_REJECTED") +
+                                    ". Refresh your selections and request a new quote.",
+                                "شرط تأیید نشد. ضرایب را تازه کنید و دوباره استعلام بگیرید.")
+                        else tr(it.lang,
+                            "Bet status uncertain. Check My Bets or support before any new attempt.",
+                            "وضعیت ثبت شرط نامشخص است؛ پیش از ارسال مجدد، شرط‌های من یا پشتیبانی را بررسی کنید."))
+                }
+                if (!definiteRejection) refreshBetHistory()
+            }
+        } finally {
+            mainBetSubmitting = false
+            if (session == sessionGeneration) mutable.update { it.copy(busy = false) }
         }
     }
 }
