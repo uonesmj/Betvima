@@ -29,6 +29,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
@@ -93,6 +95,12 @@ fun SupportMessenger(
     val scope = rememberCoroutineScope()
     val prefs = remember(context) { context.getSharedPreferences("betvima_support_chat", 0) }
     val listState = rememberLazyListState()
+    // Bubble width follows its content; only long messages reach this viewport cap.
+    val bubbleMaxWidth = (LocalConfiguration.current.screenWidthDp * .76f).dp
+    val keyboardVisible = WindowInsets.ime.getBottom(LocalDensity.current) > 0
+    // Android 15 gesture navigation can draw over a fullscreen Dialog's bottom edge.
+    // Reserve a real layout slot instead of only relying on the window inset report.
+    val bottomClearance = if (keyboardVisible) 8.dp else 32.dp
     var tickets by remember { mutableStateOf<List<SupportTicket>>(emptyList()) }
     var chosen by remember { mutableStateOf<SupportTicket?>(null) }
     var messages by remember { mutableStateOf<List<SupportThreadMessage>>(emptyList()) }
@@ -288,12 +296,12 @@ fun SupportMessenger(
         onDismissRequest = onDismiss,
         properties = DialogProperties(
             usePlatformDefaultWidth = false,
-            decorFitsSystemWindows = false
+            decorFitsSystemWindows = true
         )
     ) {
         Column(
             Modifier.fillMaxSize().background(messengerPaper)
-                .statusBarsPadding().navigationBarsPadding().imePadding()
+                .statusBarsPadding().imePadding()
         ) {
             if (!state.signedIn) {
                 Row(Modifier.fillMaxWidth().padding(18.dp),
@@ -429,7 +437,7 @@ fun SupportMessenger(
                         Row(Modifier.fillMaxWidth(),
                             horizontalArrangement=if(mine) Arrangement.End else Arrangement.Start) {
                             Column(
-                                Modifier.fillMaxWidth(.86f)
+                                Modifier.widthIn(min = 108.dp, max = bubbleMaxWidth)
                                     .clip(RoundedCornerShape(
                                         topStart=21.dp,topEnd=21.dp,
                                         bottomEnd=if(mine) 5.dp else 21.dp,
@@ -450,7 +458,8 @@ fun SupportMessenger(
                                             fontSize=13.sp, maxLines=2,overflow=TextOverflow.Ellipsis)
                                     }
                                 }
-                                Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.End,
+                                Row(Modifier.align(Alignment.End),
+                                    horizontalArrangement=Arrangement.End,
                                     verticalAlignment=Alignment.CenterVertically) {
                                     if (mine) Icon(Icons.Default.Check,null,
                                         tint=Color.White.copy(alpha=.8f),modifier=Modifier.size(13.dp))
@@ -482,6 +491,8 @@ fun SupportMessenger(
                         Text(tr(lang,"Start a new chat","شروع گفت‌وگوی جدید"),color=messengerBlue)
                     }
                 }
+                // Keep the composer and send icon above the Android gesture area.
+                Spacer(Modifier.fillMaxWidth().height(bottomClearance))
             }
         }
         if (historyOpen) AlertDialog(
