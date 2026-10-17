@@ -74,7 +74,7 @@ export const POST = withErrorHandling('admin.support.message', async (
           channels: ['in_app'],
           locale: 'en',
           title: 'New message from BetVima Support',
-          body: message.body.trim().slice(0, 200) || 'Support sent you an attachment.',
+          body: 'Your support agent has replied. Open your chat to read the message.',
           data: {
             audience: 'personal',
             ticketId: id,
