@@ -532,7 +532,6 @@ export function MobileTabBar({ onSupportOpen }: { onSupportOpen?: () => void } =
   const { locale, t } = useApp();
   const pathname = usePathname();
   const [menuOpen, setMenuOpen] = useState(false);
-  const [casinoNoticeOpen, setCasinoNoticeOpen] = useState(false);
 
   // Mirror ReferenceAnimatedBottomNav.kt. Only the web implementation changes.
   const selected = menuOpen ? 'menu'
@@ -543,7 +542,6 @@ export function MobileTabBar({ onSupportOpen }: { onSupportOpen?: () => void } =
 
   useEffect(() => {
     setMenuOpen(false);
-    setCasinoNoticeOpen(false);
   }, [pathname]);
 
   useEffect(() => {
@@ -568,7 +566,7 @@ export function MobileTabBar({ onSupportOpen }: { onSupportOpen?: () => void } =
     { id: 'menu', href: '', title: label('Menu', 'منو'), icon: <Menu size={23} strokeWidth={2} /> },
     { id: 'home', href: '/', title: label('Home', 'خانه'), icon: <Home size={23} strokeWidth={2} /> },
     {
-      id: 'casino', href: '', title: label('Casino', 'کازینو'),
+      id: 'casino', href: '/casino', title: label('Casino', 'کازینو'),
       icon: <svg width="23" height="23" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
         <rect x="3" y="3" width="18" height="18" rx="3" />
         <circle cx="7.5" cy="7.5" r="1.1" fill="currentColor" stroke="none" />
@@ -617,22 +615,14 @@ export function MobileTabBar({ onSupportOpen }: { onSupportOpen?: () => void } =
                 <span aria-hidden="true" className={'h-[3px] rounded-full bg-current transition-all duration-[220ms] motion-reduce:transition-none ' + (active ? 'w-6' : 'w-0')} />
               </>
             );
-            return item.id === 'menu' || item.id === 'casino' ? (
+            return item.id === 'menu' ? (
               <button
                 key={item.id}
                 type="button"
                 className={common}
                 aria-label={item.title}
-                aria-expanded={item.id === 'menu' ? menuOpen : undefined}
-                onClick={() => {
-                  if (item.id === 'menu') {
-                    setCasinoNoticeOpen(false);
-                    setMenuOpen((open) => !open);
-                  } else {
-                    // The web repository has no /casino page yet: never send users to a 404.
-                    setCasinoNoticeOpen((open) => !open);
-                  }
-                }}
+                aria-expanded={menuOpen}
+                onClick={() => setMenuOpen((open) => !open)}
               >{content}</button>
             ) : (
               <Link key={item.id} href={item.href} className={common} aria-current={active ? 'page' : undefined} aria-label={item.title}>
@@ -641,12 +631,6 @@ export function MobileTabBar({ onSupportOpen }: { onSupportOpen?: () => void } =
             );
           })}
         </div>
-        {casinoNoticeOpen ? (
-          <div role="status" className="absolute inset-x-3 bottom-[calc(100%+8px)] mx-auto flex max-w-sm items-center justify-between gap-3 rounded-xl bg-[#20242A] px-4 py-3 text-start text-xs font-semibold text-white shadow-lg">
-            <span>{label('Casino is currently available in the Android app.', 'کازینو در حال حاضر در اپلیکیشن اندروید در دسترس است.')}</span>
-            <button type="button" aria-label={t('common.close')} onClick={() => setCasinoNoticeOpen(false)}><X size={17} /></button>
-          </div>
-        ) : null}
       </nav>
       {menuOpen ? (
         <div className="fixed inset-0 z-[70]" role="dialog" aria-modal="true" aria-label={label('Menu', 'منو')}>
