@@ -82,6 +82,10 @@ fun parseMarket(o: JSONObject) = Market(o.str("id"), o.str("key"),
     o.str("name", o.str("nameEn", o.str("key"))), o.str("status", "suspended"),
     o.arr("selections").objects().map(::parseSelection), nameFa = o.str("nameFa"),
     version = if (o.has("version") && !o.isNull("version")) o.optInt("version") else null)
+/** Native defence in depth: no retired vendor fixture may reach the app UI. */
+fun isOfficialSportsbookMatch(value: JSONObject): Boolean =
+    value.str("provider") == "the_odds_api"
+
 fun parseMatch(o: JSONObject, overrideMarkets: JSONArray? = null): Match = Match(
     id = o.str("id"), league = o.str("leagueName", "Football"),
     leagueLogo = o.str("leagueLogoUrl", o.str("leagueLogo")).takeIf(String::isNotBlank),
