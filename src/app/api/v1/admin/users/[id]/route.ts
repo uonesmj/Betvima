@@ -9,10 +9,9 @@ import { section, type DegradedSection } from '@/server/http/degrade';
 export const dynamic = 'force-dynamic';
 
 const patchSchema = z.object({
-  action: z.enum(['set_status', 'set_role', 'set_kyc', 'update_limits', 'add_note']),
+  action: z.enum(['set_status', 'set_role', 'update_limits', 'add_note']),
   status: z.enum(['active', 'restricted', 'suspended', 'closed', 'self_excluded']).optional(),
   role: z.enum(['user', 'affiliate', 'support', 'finance', 'risk_manager', 'settlement_manager', 'trader', 'affiliate_manager', 'admin', 'super_admin']).optional(),
-  kycStatus: z.enum(['not_started', 'pending', 'verified', 'rejected', 'expired']).optional(),
   reason: z.string().min(8).max(500).optional(),
   note: z.string().min(4).max(2000).optional(),
   limits: z.record(z.string().regex(/^\d{1,19}$/)).optional(),
@@ -51,7 +50,6 @@ export const PATCH = withErrorHandling('admin.users.patch', async (ctx, request:
   const { services, user } = await withUser(request, ctx);
   const body = await readJson(request, patchSchema, ctx);
   const permission = body.action === 'set_role' ? 'admin.roles'
-    : body.action === 'set_kyc' ? 'users.kyc'
     : body.action === 'update_limits' ? 'limits.edit'
     : body.action === 'add_note' ? 'users.notes' : 'users.status';
   requireAdmin(user, permission);
@@ -66,11 +64,6 @@ export const PATCH = withErrorHandling('admin.users.patch', async (ctx, request:
     case 'set_role': {
       if (!body.role) throw new ApiError('VALIDATION_FAILED', 'role is required');
       const profile = await services.users.setRole({ userId: id, role: body.role, actorId, reason: body.reason ?? 'role assignment' });
-      return jsonOk({ profile });
-    }
-    case 'set_kyc': {
-      if (!body.kycStatus) throw new ApiError('VALIDATION_FAILED', 'kycStatus is required');
-      const profile = await services.users.setKyc({ userId: id, status: body.kycStatus, actorId, note: body.note });
       return jsonOk({ profile });
     }
     case 'update_limits': {
