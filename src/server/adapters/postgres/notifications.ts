@@ -6,6 +6,9 @@ import { NOTIFICATION_TYPE, NOTIFICATION_TYPE_BY_EVENT } from '@/lib/db-enums';
 
 const CHANNELS: NotificationChannel[] = ['in_app'];
 
+/** User-facing in-app notices expire after exactly 24 hours. */
+export const NOTIFICATION_INBOX_RETENTION_HOURS = 24;
+
 export class PostgresNotificationRepository implements NotificationRepository {
   constructor(readonly db: Db) {}
 
@@ -58,18 +61,21 @@ export class PostgresNotificationRepository implements NotificationRepository {
       `select id, event_key, title, body, data, created_at, read_at from nova.notifications
         where user_id = $1 and channel = 'in_app'
           and scheduled_at <= now()
+          and created_at > now() - interval '24 hours'
           and ($2::boolean is not true or read_at is null)
         order by created_at desc limit $3 offset $4`,
       [userId, filter.unreadOnly ?? false, pageSize, (page - 1) * pageSize],
     );
     const count = await this.db.queryOne<Row>(
       `select count(*) as total from nova.notifications where user_id = $1 and channel = 'in_app'
-         and scheduled_at <= now() and ($2::boolean is not true or read_at is null)`,
+         and scheduled_at <= now() and created_at > now() - interval '24 hours'
+         and ($2::boolean is not true or read_at is null)`,
       [userId, filter.unreadOnly ?? false],
     );
     const unread = await this.db.queryOne<Row>(
       `select count(*) as unread from nova.notifications where user_id = $1
-         and channel = 'in_app' and scheduled_at <= now() and read_at is null`,
+         and channel = 'in_app' and scheduled_at <= now()
+         and created_at > now() - interval '24 hours' and read_at is null`,
       [userId],
     );
     const total = toNum(count?.total);
@@ -88,7 +94,8 @@ export class PostgresNotificationRepository implements NotificationRepository {
     const rows = await this.db.query<Row>(
       `update nova.notifications set read_at = now()
          where user_id = $1 and id = any($2::uuid[]) and read_at is null
-           and channel = 'in_app' and scheduled_at <= now() returning id`,
+           and channel = 'in_app' and scheduled_at <= now()
+           and created_at > now() - interval '24 hours' returning id`,
       [userId, pgArray(ids)],
     );
     return rows.length;
@@ -98,7 +105,8 @@ export class PostgresNotificationRepository implements NotificationRepository {
     const rows = await this.db.query<Row>(
       `update nova.notifications set read_at = now()
          where user_id = $1 and read_at is null
-           and channel = 'in_app' and scheduled_at <= now() returning id`, [userId],
+           and channel = 'in_app' and scheduled_at <= now()
+           and created_at > now() - interval '24 hours' returning id`, [userId],
     );
     return rows.length;
   }
