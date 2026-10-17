@@ -87,42 +87,6 @@ internal fun GoogleAuthenticatorDialog(
             bmp.asImageBitmap()
         }.getOrNull()
     }
-    if (confirmDisableOpen) {
-        AlertDialog(
-            onDismissRequest = { confirmDisableOpen = false },
-            containerColor = Color(0xFF202127),
-            shape = RoundedCornerShape(20.dp),
-            title = {
-                Text(l("Confirm authenticator removal", "تأیید حذف Authenticator"),
-                    color = Color.White, fontWeight = FontWeight.Bold)
-            },
-            text = {
-                Text(
-                    if (adminRequired && verifiedFactors.size == 1)
-                        l("Removing your last authenticator will immediately suspend all administrative access until you set up and verify a new authenticator. Your account and funds will remain intact. You must enter a fresh six-digit code to continue.",
-                          "با حذف آخرین Authenticator، دسترسی مدیریتی تا فعال‌سازی و تأیید دوباره عامل دوم متوقف می‌شود. حساب و موجودی شما تغییری نمی‌کند. برای ادامه کد شش‌رقمی جدید لازم است.")
-                    else l("Removing this authenticator requires a new six-digit code from the selected device.",
-                        "برای حذف این Authenticator باید کد شش‌رقمی جدید دستگاه انتخاب‌شده را وارد کنید."),
-                    color = Color(0xFFE1E4ED), fontSize = 13.sp, lineHeight = 20.sp
-                )
-            },
-            confirmButton = {
-                TextButton(onClick = {
-                    confirmDisableOpen = false
-                    code = ""
-                    disableRequested = true
-                }) {
-                    Text(l("Continue to verification", "ادامه و تأیید کد"),
-                        color = Color(0xFFFFAFAF))
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { confirmDisableOpen = false }) {
-                    Text(l("Cancel", "انصراف"), color = Color.White)
-                }
-            }
-        )
-    }
     AlertDialog(
         onDismissRequest = { if (!busy && !confirmDisableOpen) onDismiss() },
         containerColor = Color(0xFF202127),
@@ -303,4 +267,41 @@ internal fun GoogleAuthenticatorDialog(
             Text(l("Close", "بستن"), color = Color.White)
         } }
     )
+    if (confirmDisableOpen) {
+        AlertDialog(
+            onDismissRequest = { confirmDisableOpen = false },
+            containerColor = Color(0xFF202127),
+            shape = RoundedCornerShape(20.dp),
+            title = {
+                Text(l("Confirm authenticator removal", "تأیید حذف Authenticator"),
+                    color = Color.White, fontWeight = FontWeight.Bold)
+            },
+            text = {
+                Text(
+                    if (adminRequired && verifiedFactors.size == 1)
+                        l("Removing your last authenticator will immediately suspend all administrative access until you set up and verify a new authenticator. Your account and funds will remain intact. You must enter a fresh six-digit code to continue.",
+                          "با حذف آخرین Authenticator، دسترسی مدیریتی تا فعال‌سازی و تأیید دوباره عامل دوم متوقف می‌شود. حساب و موجودی شما تغییری نمی‌کند. برای ادامه کد شش‌رقمی جدید لازم است.")
+                    else l("Removing this authenticator requires a new six-digit code from the selected device.",
+                        "برای حذف این Authenticator باید کد شش‌رقمی جدید دستگاه انتخاب‌شده را وارد کنید."),
+                    color = Color(0xFFE1E4ED), fontSize = 13.sp, lineHeight = 20.sp
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    confirmDisableOpen = false
+                    code = ""
+                    disableRequested = true
+                }) {
+                    Text(l("Continue to verification", "ادامه و تأیید کد"),
+                        color = Color(0xFFFFAFAF))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { confirmDisableOpen = false }) {
+                    Text(l("Cancel", "انصراف"), color = Color.White)
+                }
+            }
+        )
+    }
+
 }
