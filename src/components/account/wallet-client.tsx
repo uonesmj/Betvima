@@ -5,7 +5,20 @@ import { useApp } from '@/components/layout/providers';
 import { Card, EmptyState, ErrorNote, Field, Skeleton, Stat, StatusPill } from '@/components/ui/primitives';
 import { apiRequest, useApiQuery } from '@/lib/hooks/useApi';
 import { formatDateTime, formatMinor } from '@/lib/i18n';
-import { voucherWalletToUsdMinor, voucherWithdrawalDebit } from '@/lib/voucher-fx';
+import { voucherIrrToWalletMinor, voucherMinimumWalletMinor, voucherUsdToWalletMinor, voucherWalletMinorToIrr, voucherWalletToUsdMinor, voucherWithdrawalDebit } from '@/lib/voucher-fx';
+function formatVoucherRials(value: bigint, locale: string): string {
+  return new Intl.NumberFormat(locale === 'fa' ? 'fa-IR' : 'en-US', { maximumFractionDigits: 0 }).format(value);
+}
+function voucherQuoteFresh(quote: UwalletReferenceQuote | null): boolean {
+  if (!quote || quote.source !== 'uwallet') return false;
+  const age = Date.now() - Date.parse(quote.quotedAt);
+  return Number.isFinite(age) && age >= -5_000 && age < 60_000;
+}
+function parsedVoucherRials(value: string, currency: string): bigint | null {
+  const raw = normalizeNumericInput(value);
+  if (!/^\d{1,19}$/.test(raw) || (currency !== 'IRT' && currency !== 'IRR')) return null;
+  try { return voucherIrrToWalletMinor(BigInt(raw), currency); } catch { return null; }
+}
 type UwalletReferenceQuote = { source:'uwallet'; rateIrrPerUsd:string; quotedAt:string; signature:string; distinctBuySellRatesAvailable:boolean };
 function normalizeNumericInput(value: string): string {
   return String(value ?? '')
@@ -170,7 +183,7 @@ function DepositPanel({
   const networks=networkMap[asset] || [];
   const filtered=currencies.filter(x=>`${x.name} ${x.code}`.toLowerCase().includes(currencySearch.toLowerCase()));
   const chooseKind=(next:DepositKind)=>{ if(next==='fiat') return;
-    setKind(next);setCurrencyOpen(false);setNetworkOpen(false);setCurrencySearch('');
+    setKind(next);setCurrencyOpen(false);setNetworkOpen(false);setCurrencySearch('');setForm(v=>({...v,amount:''}));
     if(next==='crypto'){setAsset('USDT');setNetwork('Tron (TRC-20)');}else if(next==='uvoucher' || next==='hotvoucher'){setAsset('USD');setNetwork('');setVoucherCode('');setForm(v=>({...v,methodId:next==='uvoucher'?'voucher_uvoucher':'voucher_hotvoucher'}));}else{setAsset(currency);setNetwork('');setForm(v=>({...v,methodId:''}));}
     void loadMethods(next === 'crypto' || next === 'uvoucher' || next === 'hotvoucher' ? 'USD' : currency);
   };
