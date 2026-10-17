@@ -30,7 +30,10 @@ interface TrialReport {
     freshMarkets: number; freshSelections: number; error: string | null }>;
   bet365: { permitted: boolean; eventCount: number; sampleFixtureId: string | null;
     marketCount: number; priceCount: number; error: string | null;
-    upcomingAccess: string; upcomingCount: number };
+    upcomingAccess: string; upcomingCount: number;
+    pricedEventCount: number; sampledEventCount: number;
+    samples: Array<{ fixtureId: string; linkedEventId: string | null; match: string;
+      markets: number; selections: number; error: string | null }> };
   callsInProbe: number; durationMs: number;
   notes: string[];
 }
@@ -191,12 +194,23 @@ export function ProvidersClient() {
               </table>
             </div>
             <div className="flex flex-wrap gap-3 text-xs">
-              <span>Bet365 live: <strong>{trial.bet365.permitted ? 'Available' : trial.bet365.error ?? 'Unavailable'}</strong>
-                {' '}· {trial.bet365.eventCount} live events · {trial.bet365.marketCount} priced market groups
-                {' '}· {trial.bet365.priceCount} selections
-                {' '}· Prematch endpoint: <strong>{trial.bet365.upcomingAccess}</strong>
-                {' '}({trial.bet365.upcomingCount} events on sampled page)
-                {trial.bet365.error ? ` (${trial.bet365.error})` : ''}</span>
+              <div className="w-full space-y-1 rounded-lg border border-nova-border p-3">
+                <p>Bet365 live list: <strong>{trial.bet365.permitted ? 'Available' : trial.bet365.error ?? 'Unavailable'}</strong>
+                  {' '}· {trial.bet365.eventCount} listed events</p>
+                <p>Live odds verified: <strong>{trial.bet365.pricedEventCount} / {trial.bet365.sampledEventCount} sampled fixtures</strong>
+                  {' '}· {trial.bet365.marketCount} fresh sample markets · {trial.bet365.priceCount} outcomes.
+                  {trial.bet365.error ? ` Diagnostic: ${trial.bet365.error}` : ''}</p>
+                <p>Bet365 Prematch list: <strong>{trial.bet365.upcomingAccess}</strong>
+                  {' '}· {trial.bet365.upcomingCount} events on sampled page.</p>
+                {trial.bet365.samples.map(sample => (
+                  <p key={sample.fixtureId}>
+                    FI {sample.fixtureId} · {sample.match || 'Unlabeled fixture'}
+                    {' '}· {sample.markets} markets / {sample.selections} outcomes
+                    {sample.error ? ` · ${sample.error}` : ''}
+                  </p>
+                ))}
+                <p className="nova-muted">Numbers describe selected fixtures only, not total Bet365 market availability.</p>
+              </div>
               {trial.oddsSample.map(row => (
                 <span key={row.eventId}>{row.sport}: {row.marketKeys} historical groups · <strong>{row.freshMarkets} fresh markets / {row.freshSelections} outcomes</strong>
                   {row.error && ` (${row.error})`}</span>
