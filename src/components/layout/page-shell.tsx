@@ -857,7 +857,7 @@ function SupportSheet({ close }: { close: () => void }) {
   return (
     <div className="fixed inset-0 z-[145] bg-black/45"
       role="dialog" aria-modal="true" aria-label={t('menu.support')}>
-      <section className={'absolute inset-0 mx-auto h-[100dvh] w-full max-w-[850px] overflow-hidden bg-white shadow-2xl transition-transform duration-200 ' +
+      <section className={'absolute inset-0 mx-auto h-[100dvh] w-full overflow-hidden bg-white shadow-2xl transition-transform duration-200 ' +
         (closing || opening ? 'translate-y-full' : 'translate-y-0')}>
         <SupportClient onClose={requestClose} />
       </section>
