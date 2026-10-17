@@ -188,16 +188,50 @@ export function CasinoCatalogueClient() {
   const [identityChecked, setIdentityChecked] = useState(false);
   const [realMoneyAvailable, setRealMoneyAvailable] = useState(false);
   const [realMoneyChecked, setRealMoneyChecked] = useState(false);
+  // The operator may approve KYC in another session while the customer is
+  // looking at the catalogue. Refresh the server-side approval automatically,
+  // so the buttons unlock without logging out, resubmitting, or reloading.
   useEffect(() => {
-    if (!session?.authenticated) { setIdentityAccess(false); setIdentityChecked(true); return; }
+    if (!session?.authenticated) {
+      setIdentityAccess(false);
+      setIdentityChecked(true);
+      return;
+    }
     const controller = new AbortController();
+    let inFlight = false;
     setIdentityChecked(false);
-    fetch('/api/v1/account/kyc', { credentials: 'same-origin', cache: 'no-store', signal: controller.signal })
-      .then(async (res) => res.ok ? res.json() as Promise<{ data?: { gameAccessApproved?: boolean } }> : null)
-      .then((body) => { if (!controller.signal.aborted) setIdentityAccess(body?.data?.gameAccessApproved === true); })
-      .catch(() => { if (!controller.signal.aborted) setIdentityAccess(false); })
-      .finally(() => { if (!controller.signal.aborted) setIdentityChecked(true); });
-    return () => controller.abort();
+    const refresh = async () => {
+      if (inFlight || controller.signal.aborted) return;
+      inFlight = true;
+      try {
+        const response = await fetch('/api/v1/account/kyc', {
+          credentials: 'same-origin', cache: 'no-store', signal: controller.signal,
+        });
+        if (!response.ok) throw new Error('CASINO_IDENTITY_STATUS_UNAVAILABLE');
+        const payload = await response.json() as { data?: { gameAccessApproved?: boolean } };
+        if (!controller.signal.aborted) {
+          setIdentityAccess(payload.data?.gameAccessApproved === true);
+        }
+      } catch {
+        if (!controller.signal.aborted) setIdentityAccess(false);
+      } finally {
+        inFlight = false;
+        if (!controller.signal.aborted) setIdentityChecked(true);
+      }
+    };
+    const onReturn = () => {
+      if (document.visibilityState === 'visible') void refresh();
+    };
+    void refresh();
+    const pollId = window.setInterval(onReturn, 15000);
+    document.addEventListener('visibilitychange', onReturn);
+    window.addEventListener('focus', onReturn);
+    return () => {
+      controller.abort();
+      window.clearInterval(pollId);
+      document.removeEventListener('visibilitychange', onReturn);
+      window.removeEventListener('focus', onReturn);
+    };
   }, [session?.authenticated, session?.user?.id]);
 
   // A single operator KYC approval stays on the account. Real-money capability is
@@ -209,18 +243,38 @@ export function CasinoCatalogueClient() {
       return;
     }
     const controller = new AbortController();
+    let inFlight = false;
     setRealMoneyChecked(false);
-    fetch('/api/v1/casino/eligibility', {
-      credentials: 'same-origin', cache: 'no-store', signal: controller.signal,
-    })
-      .then(async (response) => response.ok
-        ? response.json() as Promise<{ data?: { realMoneyEnabled?: boolean } }> : null)
-      .then((payload) => {
-        if (!controller.signal.aborted) setRealMoneyAvailable(payload?.data?.realMoneyEnabled === true);
-      })
-      .catch(() => { if (!controller.signal.aborted) setRealMoneyAvailable(false); })
-      .finally(() => { if (!controller.signal.aborted) setRealMoneyChecked(true); });
-    return () => controller.abort();
+    const refresh = async () => {
+      if (inFlight || controller.signal.aborted) return;
+      inFlight = true;
+      try {
+        const response = await fetch('/api/v1/casino/eligibility', {
+          credentials: 'same-origin', cache: 'no-store', signal: controller.signal,
+        });
+        if (!response.ok) throw new Error('CASINO_ELIGIBILITY_UNAVAILABLE');
+        const payload = await response.json() as { data?: { realMoneyEnabled?: boolean } };
+        if (!controller.signal.aborted) setRealMoneyAvailable(payload.data?.realMoneyEnabled === true);
+      } catch {
+        if (!controller.signal.aborted) setRealMoneyAvailable(false);
+      } finally {
+        inFlight = false;
+        if (!controller.signal.aborted) setRealMoneyChecked(true);
+      }
+    };
+    const onReturn = () => {
+      if (document.visibilityState === 'visible') void refresh();
+    };
+    void refresh();
+    const pollId = window.setInterval(onReturn, 30000);
+    document.addEventListener('visibilitychange', onReturn);
+    window.addEventListener('focus', onReturn);
+    return () => {
+      controller.abort();
+      window.clearInterval(pollId);
+      document.removeEventListener('visibilitychange', onReturn);
+      window.removeEventListener('focus', onReturn);
+    };
   }, [session?.authenticated, session?.user?.id, identityAccess, identityChecked]);
 
   useEffect(() => {
