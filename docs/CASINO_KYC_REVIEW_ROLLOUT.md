@@ -3,7 +3,7 @@
 ## Customer experience
 - A registered user may view the casino catalogue and use existing wallet/deposit flows.
 - `Settings → Identity verification` uploads an ID scan (JPEG, PNG, WebP or PDF, max 8 MB) and optionally a selfie.
-- The customer sees pending, approved or rejected with a review reason if rejected.
+- The customer sees pending, approved or rejected with a review reason if rejected. Submission and rejection are isolated to casino document review: neither should reset age/KYC already granted for sportsbook use.
 - Until approved, all game launch APIs (demo and paid) refuse the request; casino catalogue stays visible.
 - When approved, the account retains identity/age approval without repeat document submission or another manual KYC review before each session. The web casino catalogue offers `Play with real balance` automatically only when the dedicated server eligibility endpoint confirms all remaining real-money requirements. It offers `Play demo` separately. Eligibility is recomputed for each session, and the server rechecks it during launch and debit callbacks.
 - When approved, only the identity/age condition is satisfied. **Approving KYC does not enable real-money casino, bypass provider test-account allowlist, jurisdiction rules, financial-readiness requirements or launch switches.**
