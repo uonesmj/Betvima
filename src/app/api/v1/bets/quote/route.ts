@@ -46,6 +46,10 @@ function serializeQuote(quote: { combinedOddsScaled: bigint; potentialPayoutMino
     stakeMinor: quote.stakeMinor.toString(),
     combinedOddsScaled: quote.combinedOddsScaled.toString(),
     potentialPayoutMinor: quote.potentialPayoutMinor.toString(),
+    // Explicit minor-unit amounts for native clients: odds are a multiplier,
+    // not a currency value. Returns include the original stake.
+    potentialReturnMinor: quote.potentialPayoutMinor.toString(),
+    potentialProfitMinor: (quote.potentialPayoutMinor - quote.stakeMinor).toString(),
     maxPayout: quote.maxPayout.toString(),
     oddsChanges: quote.oddsChanges.map((c) => ({
       ...c, previousOddsScaled: c.previousOddsScaled.toString(), currentOddsScaled: c.currentOddsScaled.toString(),
