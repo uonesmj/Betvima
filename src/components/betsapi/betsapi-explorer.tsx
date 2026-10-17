@@ -156,9 +156,7 @@ export function BetsApiExplorer() {
     const all = (markets?.markets ?? []).flatMap(m => m.selections);
     const ambiguous = all.filter(s => /Unlabelled outcome #/i.test(s.label)).length;
     const valid = all.length - ambiguous;
-    const dated = markets?.refreshedAt ? Date.parse(markets.refreshedAt) : NaN;
-    const ageSeconds = Number.isFinite(dated) ? Math.max(0, Math.floor((Date.now() - dated) / 1000)) : null;
-    return { total: all.length, ambiguous, valid, ageSeconds };
+    return { total: all.length, ambiguous, valid };
   }, [markets]);
   const selectedMarkets = visibleMarkets.slice((marketPage - 1) * 20, marketPage * 20);
   const button = 'rounded-xl border border-white/15 px-3 py-2 text-sm transition hover:border-sky-400';
