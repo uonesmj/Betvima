@@ -166,7 +166,7 @@ export function normalizeBetsapiOdds(
 }
 
 export function normalizeBetsapiResult(
-  matchProviderId: string, raw: unknown, observedAt = new Date(),
+  matchProviderId: string, raw: unknown, observedAt = new Date(), fromOfficialEnded = false,
 ): ProviderResultSnapshot | null {
   const event = normalizeBetsapiEvent(raw);
   if (!event || event.providerId !== matchProviderId || event.status === 'scheduled') return null;
@@ -188,7 +188,7 @@ export function normalizeBetsapiResult(
     extraTime: false, penalties: false, penaltyHome: null, penaltyAway: null,
     revision: 1, observedAt: observedAt.toISOString(),
     // Never automatically settle from a raw inplay or ambiguous ended status.
-    authoritative: event.status === 'finished' && event.homeScore !== null &&
-      event.awayScore !== null,
+    authoritative: fromOfficialEnded && event.status === 'finished' &&
+      event.homeScore !== null && event.awayScore !== null,
   };
 }
