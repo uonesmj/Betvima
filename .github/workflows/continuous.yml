@@ -11,6 +11,9 @@ on:
       - 'src/app/api/v1/auth/login/route.ts'
       - 'src/app/auth/reset-password/**'
       - 'src/lib/auth/password-recovery.ts'
+      - 'src/lib/supabase/recovery-email.ts'
+      - 'src/components/account/auth-forms.tsx'
+      - 'src/components/account/affiliate-login-client.tsx'
       - 'tests/unit/password-recovery-link.test.ts'
   workflow_dispatch:
     inputs:
