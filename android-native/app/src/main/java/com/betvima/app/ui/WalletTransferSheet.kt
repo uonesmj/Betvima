@@ -497,7 +497,7 @@ fun WalletTransferSheet(
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     ) {
         Column(
-            Modifier.fillMaxWidth().fillMaxHeight(0.96f)
+            Modifier.fillMaxWidth().fillMaxHeight(0.92f)
                 .verticalScroll(transferScrollState)
                 .padding(horizontal = 17.dp).padding(bottom = 24.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
