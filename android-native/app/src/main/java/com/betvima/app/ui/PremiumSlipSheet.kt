@@ -192,6 +192,37 @@ private fun MainAccountSlipControls(
 ) {
     val lang=state.lang
     val curr=state.wallet?.currency ?: "USD"
+    var practiceReceipt by remember { mutableStateOf<MainBetReview?>(null) }
+    if (practiceReceipt != null) {
+        val receipt = requireNotNull(practiceReceipt)
+        AlertDialog(
+            onDismissRequest = { practiceReceipt = null },
+            title = {
+                Text(tr(lang, "Practice check passed", "آزمایش برگه موفق بود"),
+                    fontWeight = FontWeight.Black, color = slipNavy)
+            },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(tr(lang,
+                        "PRACTICE ONLY — no bet was submitted, no money was deducted and no receipt will appear in My Bets.",
+                        "فقط آزمایشی — هیچ شرطی ثبت نشده، مبلغی برداشت نشده و رسیدی در بخش شرط‌های من ایجاد نمی‌شود."),
+                        fontWeight = FontWeight.Bold, color = Color(0xFFAF4A26))
+                    Text(tr(lang, "Stake: ", "مبلغ: ") +
+                        money(receipt.stakeMinor, receipt.currency), color = slipText)
+                    Text(tr(lang, "Potential return: ", "بازگشت احتمالی: ") +
+                        money(receipt.potentialPayoutMinor, receipt.currency), color = slipText)
+                    Text(tr(lang, "Signed quote and changed-odds consent validated locally.",
+                        "اعتبار استعلام امضاشده و پذیرش تغییر ضرایب در اپ بررسی شد."),
+                        color = slipMuted)
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { practiceReceipt = null }) {
+                    Text(tr(lang, "Done", "بستن"))
+                }
+            }
+        )
+    }
     var stake by rememberSaveable(curr) {
         mutableStateOf(if (curr in setOf("IRR", "IRT")) "10000" else "5.00")
     }
@@ -420,13 +451,14 @@ private fun MainAccountSlipControls(
                 } else if(review != null &&
                     com.betvima.app.BuildConfig.ENABLE_WAGERING) {
                     model.placeMainBet(stake)
+                } else if(review != null) {
+                    // Practice mode uses the official signed quote but never sends a wager.
+                    practiceReceipt = model.verifyPracticeMainBet(stake)
                 } else if(review == null) {
                     model.quote(stake)
                 }
             },
-            enabled=canQuote && !state.busy && !state.mainBetUncertain &&
-                (review == null || awaitingOddsAcceptance ||
-                    com.betvima.app.BuildConfig.ENABLE_WAGERING),
+            enabled=canQuote && !state.busy && !state.mainBetUncertain,
             modifier=Modifier.fillMaxWidth().height(47.dp),
             shape=RoundedCornerShape(13.dp),
             colors=ButtonDefaults.buttonColors(
@@ -442,7 +474,7 @@ private fun MainAccountSlipControls(
                 awaitingOddsAcceptance ->
                     tr(lang,"Accept new odds (no bet yet)","پذیرش ضریب جدید (بدون ثبت شرط)")
                 review != null && !com.betvima.app.BuildConfig.ENABLE_WAGERING ->
-                    tr(lang,"Wagering not authorized","ثبت شرط غیرفعال است")
+                    tr(lang,"Test slip (no real bet)","تست برگه (بدون ثبت شرط واقعی)")
                 review != null -> tr(lang,"Place bet with approved odds","ثبت شرط با ضریب تأییدشده")
                 else -> tr(lang,"Get official quote","دریافت استعلام رسمی")
             },fontWeight=FontWeight.Black,fontSize=12.sp)
@@ -450,10 +482,10 @@ private fun MainAccountSlipControls(
         if (!compact) Text(tr(lang,
             if(com.betvima.app.BuildConfig.ENABLE_WAGERING)
                 "A server-signed quote is required. Funds move only after explicit confirmation."
-            else "Main Account: quote preview only until licensed real-money operation is enabled."
+            else "Practice verifies the official quote without placing a bet or charging your wallet. Real-money wagering is not authorized."
             ,if(com.betvima.app.BuildConfig.ENABLE_WAGERING)
                 "ثبت شرط فقط پس از استعلام رسمی سرور و تأیید شما انجام می‌شود."
-            else "حساب اصلی: صرفاً استعلام، تا زمان تأیید فعال‌سازی شرط با پول واقعی."),
+            else "آزمایش فقط استعلام را بررسی می‌کند؛ شرط واقعی ثبت یا از کیف پول مبلغی کسر نمی‌شود."),
             color=slipMuted,fontSize=9.sp,lineHeight=13.sp,maxLines=2)
     }
 }
