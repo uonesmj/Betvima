@@ -18,7 +18,7 @@ create table storage.buckets (
 create table public.ticket_attachments(id uuid primary key);
 grant all on public.ticket_attachments to anon, authenticated;
 \ir ../../supabase/migrations/0215_support_attachment_private_metadata.sql
-do $
+do $support_guard$
 begin
   if not (select relrowsecurity from pg_class
     where oid='public.ticket_attachments'::regclass) then
@@ -31,9 +31,9 @@ begin
   then
     raise exception 'Support evidence can still be modified directly by a client';
   end if;
-end $;
+end $support_guard$;
 
-do $$
+do $
 declare
   user_id constant uuid := '11111111-1111-4111-8111-111111111111';
   reviewer_id constant uuid := '22222222-2222-4222-8222-222222222222';
