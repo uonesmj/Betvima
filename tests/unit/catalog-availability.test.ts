@@ -29,6 +29,18 @@ describe('catalog live availability', () => {
     }
   });
 
+  it('keeps live cards and sport counters on the same source recency rule', async () => {
+    const query = vi.fn().mockResolvedValue([]);
+    const catalog = new PostgresCatalogRepository({ query } as unknown as Db);
+    await catalog.listLiveMatches({ userId: null, role: 'anon' }, 100);
+    await catalog.listLiveSportCounts({ userId: null, role: 'anon' });
+    for (const [sql] of query.mock.calls) {
+      expect(sql).toContain("m.scheduled_at >= now() - interval '10 hours'");
+      expect(sql).toContain("m.provider_updated_at >= now() - interval '30 minutes'");
+      expect(sql).toContain("fresh_selection.odds_updated_at >= now() - interval '45 seconds'");
+    }
+  });
+
   it('does not expose an empty top market after freshness filtering', async () => {
     const query = vi.fn().mockResolvedValueOnce([{ id: 'match-test', status: 'live', sport_slug: 'football', scheduled_at: '2026-10-12T10:00:00Z' }])
       .mockResolvedValueOnce([{ id: 'market-test', match_id: 'match-test', key: 'h2h', status: 'open', selection_id: null }]);
