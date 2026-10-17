@@ -33,6 +33,9 @@ import com.google.zxing.BarcodeFormat
 import com.google.zxing.EncodeHintType
 import com.google.zxing.MultiFormatWriter
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.delay
+import java.text.NumberFormat
+import java.util.Locale
 import org.json.JSONObject
 import java.math.BigDecimal
 import java.math.BigInteger
@@ -62,9 +65,20 @@ private fun walletMinCrypto(currency: String, usdRate: String?): BigInteger? {
 private fun moneyInCurrency(minor: String, currency: String): String =
     money(minor, currency)
 
+private fun formatVoucherRials(value: BigInteger, lang: Lang): String =
+    NumberFormat.getIntegerInstance(if (lang == Lang.FA) Locale.forLanguageTag("fa-IR") else Locale.US)
+        .format(value)
+
 private fun rateVoucherText(quote: WalletExchangeQuote?, lang: Lang): String =
     quote?.takeIf { it.valid() }?.let {
-        wTr(lang, "uWallet quote: ", "نرخ مرجع یوولت: ") + it.rateIrrPerUsd + " IRR/USD"
+        val formatted = runCatching {
+            NumberFormat.getNumberInstance(if (lang == Lang.FA)
+                Locale.forLanguageTag("fa-IR") else Locale.US).apply {
+                maximumFractionDigits = 2
+            }.format(BigDecimal(it.rateIrrPerUsd))
+        }.getOrDefault(it.rateIrrPerUsd)
+        wTr(lang, "Live uWallet rate: ", "نرخ لحظه‌ای یوولت: ") +
+            formatted + wTr(lang, " IRR per USD", " ریال به‌ازای هر دلار")
     } ?: wTr(lang, "uWallet rate unavailable; refresh.", "نرخ یوولت در دسترس نیست؛ تازه‌سازی کنید.")
 
 private fun walletIntentPayload(
@@ -116,7 +130,9 @@ internal fun walletTransferValidation(
         direction == "deposit" -> "USD"
         else -> walletCurrency
     }
-    val walletMinor = walletInputMinor(amount, inputCurrency) ?: return "amount"
+    val walletMinor = if (voucher && inputCurrency in setOf("IRT", "IRR"))
+        voucherWalletMinorFromRials(amount, inputCurrency) ?: return "amount"
+        else walletInputMinor(amount, inputCurrency) ?: return "amount"
     val minor = if (voucher && inputCurrency != "USD")
         voucherUsdMinor(walletMinor, inputCurrency, quote?.rateIrrPerUsd.orEmpty()) ?: return "quote"
         else walletMinor
@@ -369,13 +385,40 @@ fun WalletTransferSheet(
         wallet.availableMinor,wallet.integrity,methodEnabled,quote,usdRate,
         selectedPaymentMethod?.minMinor ?: "0", selectedPaymentMethod?.maxMinor ?: "0"
     )
-    val amountInputCurrency = if (!voucher && isDeposit) "USD" else currency
-    val walletMinor = walletInputMinor(amount, amountInputCurrency)
+    val amountInputCurrency = if (voucher && currency in setOf("IRR", "IRT")) "IRR"
+        else if (!voucher && isDeposit) "USD" else currency
+    val walletMinor = if (voucher && currency in setOf("IRT", "IRR"))
+        voucherWalletMinorFromRials(amount, currency)
+        else walletInputMinor(amount, amountInputCurrency)
     val transactionMinor = walletMinor?.let {
         if (voucher && currency != "USD")
             voucherUsdMinor(it,currency,quote?.rateIrrPerUsd.orEmpty()) else it
     }
-    val amountReadable = transactionMinor?.let {
+    val voucherFiat = voucher && currency in setOf("IRR", "IRT")
+    val liveVoucherRate = quote?.takeIf { it.valid() }?.rateIrrPerUsd
+    val minUsdMinor = maxOf(BigInteger("150"),
+        selectedPaymentMethod?.minMinor?.toBigIntegerOrNull() ?: BigInteger.ZERO)
+    val maxUsdMinor = selectedPaymentMethod?.maxMinor?.toBigIntegerOrNull() ?: BigInteger.ZERO
+    val voucherMinimumRials = if (voucherFiat && liveVoucherRate != null)
+        voucherMinimumWalletMinor(minUsdMinor.toString(), currency, liveVoucherRate)
+            ?.let { voucherRialsFromWalletMinor(it, currency) } else null
+    val voucherMaximumWallet = if (voucherFiat && liveVoucherRate != null && maxUsdMinor > BigInteger.ZERO)
+        voucherMaximumWalletMinor(maxUsdMinor.toString(), currency, liveVoucherRate)
+            ?.toBigIntegerOrNull() else null
+    val voucherAvailableMinor = wallet.availableMinor.toBigIntegerOrNull() ?: BigInteger.ZERO
+    val voucherMaximumRials = if (voucherFiat && liveVoucherRate != null) {
+        val availableCap = if (!isDeposit) voucherAvailableMinor else null
+        val bound = listOfNotNull(availableCap, voucherMaximumWallet).minOrNull()
+        bound?.let { voucherRialsFromWalletMinor(it, currency) }
+    } else null
+    val voucherMinimumText = voucherMinimumRials?.let { formatVoucherRials(it, lang) +
+        wTr(lang, " IRR", " ریال") }
+    val voucherMaximumText = voucherMaximumRials?.let { formatVoucherRials(it, lang) +
+        wTr(lang, " IRR", " ریال") }
+    val amountReadable = if (voucher && currency in setOf("IRR", "IRT")) {
+        walletMinor?.let { voucherRialsFromWalletMinor(it, currency) }
+            ?.let { formatVoucherRials(it, lang) + wTr(lang, " IRR", " ریال") }.orEmpty()
+    } else transactionMinor?.let {
         moneyInCurrency(it, if (isDeposit || voucher) "USD" else currency)
     }.orEmpty()
 
