@@ -10,5 +10,5 @@ export function rotateCoreSportGroups<T>(
   if (groups.length === 0) return [];
   const index = ((Math.trunc(sweep) % groups.length) + groups.length) % groups.length;
   const ordered = [...groups.slice(index), ...groups.slice(0, index)];
-  return ordered.map(([key, value]) => [key, value]);
+  return ordered.map(([key, value]): [string, T] => [key, value]);
 }
