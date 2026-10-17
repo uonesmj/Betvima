@@ -45,7 +45,10 @@ export function playerPassword(userId: string, secret: string): string {
   return createHmac('sha256', secret).update('softaggregator-player:' + userId).digest('hex');
 }
 
-export function validateCallback(url: URL, signature: string | null, salt: string, now = Date.now()): SignedCallback | null {
+export function validateCallback(
+  url: URL, signature: string | null, salt: string,
+  now = Date.now(), signedPayloadSecret: string = salt,
+): SignedCallback | null {
   if (!salt || salt.length < 12) return null;
   const params = url.searchParams;
   const names = [...params.keys()];
@@ -59,10 +62,11 @@ export function validateCallback(url: URL, signature: string | null, salt: strin
   const md5 = createHash('md5').update(timestamp + salt).digest('hex');
   if (!equalHex(md5, key)) return null;
   // Full-payload HMAC is mandatory; MD5(timestamp + salt) alone does NOT authenticate the amount.
-  if (!signature) return null;
-  const canonical = [...params.entries()].sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0)
-    .map(([name, value]) => name + '=' + value).join('&');
-  const expected = createHmac('sha256', salt).update(canonical).digest('hex');
+  if (!signature || Buffer.byteLength(signedPayloadSecret, 'utf8') < 12) return null;
+  // Percent-encoded canonicalization prevents delimiter-collision attacks.
+  const canonical = new URLSearchParams([...params.entries()]
+    .sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0)).toString();
+  const expected = createHmac('sha256', signedPayloadSecret).update(canonical).digest('hex');
   if (!equalHex(expected, signature.trim())) return null;
 
   const action = params.get('action');
