@@ -33,7 +33,7 @@ begin
   end if;
 end $support_guard$;
 
-do $
+do $kyc_smoke$
 declare
   user_id constant uuid := '11111111-1111-4111-8111-111111111111';
   reviewer_id constant uuid := '22222222-2222-4222-8222-222222222222';
@@ -109,4 +109,4 @@ begin
     raise exception 'Rejected evidence was incorrectly approved';
   end if;
   raise notice 'PASS: private bucket, RLS, pending uniqueness, rejection/retry, admin identity+age review';
-end $$;
+end $kyc_smoke$;
