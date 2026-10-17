@@ -24,6 +24,35 @@ export function voucherUsdToWalletMinor(usdMinor: bigint, walletCurrency: Vouche
   return (total + denom / 2n) / denom;
 }
 
+/** Smallest wallet-unit debit that can issue the requested USD cents.
+ * Using a rounded display quote here can fall one unit below the payout minimum.
+ */
+export function voucherMinimumWalletMinor(usdMinor: bigint, walletCurrency: VoucherFiatCurrency, rate: string): bigint {
+  if (usdMinor < 0n) throw new ApiError('BAD_REQUEST', 'Invalid voucher USD amount');
+  const denom = (walletCurrency === 'IRT' ? 1000n : walletCurrency === 'IRR' ? 100n : 0n) * SCALE;
+  if (!denom) throw new ApiError('BAD_REQUEST', 'Unsupported voucher wallet currency');
+  const numerator = usdMinor * scaledRate(rate);
+  return (numerator + denom - 1n) / denom;
+}
+
+/** Voucher forms display rial even when a legacy wallet is stored in toman. */
+export function voucherWalletMinorToIrr(walletMinor: bigint, currency: VoucherFiatCurrency): bigint {
+  if (walletMinor < 0n) throw new ApiError('BAD_REQUEST', 'Invalid voucher wallet amount');
+  return currency === 'IRT' ? walletMinor * 10n : currency === 'IRR' ? walletMinor : unsupportedCurrency();
+}
+
+export function voucherIrrToWalletMinor(irrAmount: bigint, currency: VoucherFiatCurrency): bigint {
+  if (irrAmount < 0n) throw new ApiError('BAD_REQUEST', 'Invalid voucher IRR amount');
+  if (currency === 'IRR') return irrAmount;
+  if (currency !== 'IRT') return unsupportedCurrency();
+  if (irrAmount % 10n !== 0n) throw new ApiError('BAD_REQUEST', 'Rial amount must be a multiple of 10 for toman wallets');
+  return irrAmount / 10n;
+}
+
+function unsupportedCurrency(): never {
+  throw new ApiError('BAD_REQUEST', 'Unsupported voucher wallet currency');
+}
+
 export function voucherWalletToUsdMinor(walletMinor: bigint, walletCurrency: VoucherFiatCurrency, rate: string): bigint {
   if (walletMinor < 0n) throw new ApiError('BAD_REQUEST', 'Invalid voucher wallet amount');
   const multiplier = walletCurrency === 'IRT' ? 1000n : walletCurrency === 'IRR' ? 100n : 0n;
