@@ -491,7 +491,7 @@ export function SupportAdminClient() {
                     <p className="mt-2 text-xs nova-muted">Existing pending review must be resolved first.</p>
                   ) : (
                     <div className="mt-2 grid gap-2 text-xs">
-                      <p className="nova-muted">Review the customer's document in the chat below. Receiving a file alone never approves identity.</p>
+                      <p className="nova-muted">Review the customer document in the chat below. Receiving a file alone never approves identity.</p>
                       <div className="grid gap-2 sm:grid-cols-2">
                         <label>Customer-uploaded ID
                           <select className="nova-input mt-1 w-full text-xs" value={identityFile} onChange={e => setIdentityFile(e.target.value)}>
