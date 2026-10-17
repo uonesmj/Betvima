@@ -4,6 +4,9 @@ on:
     paths:
       - 'src/app/api/v1/account/kyc/**'
       - 'src/app/api/v1/admin/kyc/**'
+      - 'src/app/api/v1/admin/support/**'
+      - 'src/components/admin/support-admin-client.tsx'
+      - 'supabase/migrations/0215_support_attachment_private_metadata.sql'
       - 'src/app/api/v1/casino/**'
       - 'src/app/account/kyc/**'
       - 'src/app/admin/kyc/**'

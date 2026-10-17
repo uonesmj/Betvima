@@ -102,8 +102,8 @@ export function CasinoGameCard({
         <p className="truncate text-[12px] font-extrabold text-[#20242A]" title={game.name}>{game.name}</p>
         <p className="mt-0.5 truncate text-[10px] font-semibold text-[#8A9199]">{groupLabel} · {game.providerName || game.provider}</p>
         {onPlay && locked ? (
-          <Link href="/account/kyc" className="mt-2 flex h-9 items-center justify-center rounded-[9px] bg-[#087FF5] text-[11px] font-extrabold text-white">
-            {label('Verify identity to play', 'احراز هویت برای بازی')}
+          <Link href="/support" className="mt-2 flex h-9 items-center justify-center rounded-[9px] bg-[#087FF5] text-[11px] font-extrabold text-white">
+            {label('Verify through support', 'احراز هویت از طریق پشتیبانی')}
           </Link>
         ) : onPlay ? (
           <div className="mt-2 grid gap-1.5">
@@ -314,7 +314,7 @@ export function CasinoCatalogueClient() {
     }
     if (sessionLoading || launchingId) return;
     if (!identityChecked || !identityAccess) {
-      setMessage(label('Your identity must be approved once before playing.', 'برای بازی، ابتدا باید احراز هویت شما یک‌بار تأیید شود.'));
+      setMessage(label('Send your ID in support chat for one-time approval.', 'مدرک خود را در چت پشتیبانی ارسال کنید تا یک‌بار تأیید شود.'));
       return;
     }
     if (!demo && !realMoneyAvailable) {
@@ -336,7 +336,7 @@ export function CasinoCatalogueClient() {
       if (!response.ok || !url || !url.startsWith('https://')) {
         if (payload.error === 'CASINO_KYC_REQUIRED') {
           setIdentityAccess(false);
-          setMessage(label('Identity approval is required to play.', 'برای بازی تأیید احراز هویت لازم است.'));
+          setMessage(label('Support must verify your identity before playing.', 'پشتیبانی باید هویت شما را پیش از بازی تأیید کند.'));
         } else if (payload.error === 'CASINO_GEO_VERIFICATION_REQUIRED' || payload.error === 'CASINO_COUNTRY_MISMATCH') {
           setRealMoneyAvailable(false);
           setMessage(label('Your current location could not be verified for real-money play.', 'موقعیت فعلی شما برای بازی با پول واقعی قابل تأیید نیست.'));
@@ -380,8 +380,8 @@ export function CasinoCatalogueClient() {
       </div>
       {session?.authenticated && identityChecked && !identityAccess ? (
         <div role="status" className="rounded-2xl border border-[#BCD8F6] bg-[#EFF7FF] px-4 py-4 text-xs font-semibold text-[#234A72]">
-          <p>{label('Games are visible, but play is locked until your identity and legal age have been approved by an operator.', 'بازی‌ها قابل مشاهده هستند، اما اجرای بازی تا تأیید هویت و سن قانونی شما توسط مدیر قفل است.')}</p>
-          <Link href="/account/kyc" className="mt-2 inline-block font-black text-[#087FF5] underline">{label('Upload identity documents', 'ارسال مدارک احراز هویت')}</Link>
+          <p>{label('Games are visible. Send your identity document through the existing support chat. An authorized reviewer will verify identity and legal age before games unlock.', 'بازی‌ها قابل مشاهده هستند. مدارک هویتی خود را در چت پشتیبانی موجود ارسال کنید تا مدیر مجاز هویت و سن قانونی را بررسی و تأیید کند.')}</p>
+          <Link href="/support" className="mt-2 inline-block font-black text-[#087FF5] underline">{label('Send your ID to support', 'ارسال مدارک به پشتیبانی')}</Link>
         </div>
       ) : null}
       {session?.authenticated && identityAccess && realMoneyChecked && !realMoneyAvailable ? (

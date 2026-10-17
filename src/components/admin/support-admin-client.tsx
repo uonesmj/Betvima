@@ -161,6 +161,15 @@ export function SupportAdminClient() {
   const [loadingList, setLoadingList] = useState(true);
   const [loadingTicket, setLoadingTicket] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [identityReviewer, setIdentityReviewer] = useState(false);
+  const [identityStatus, setIdentityStatus] = useState('unverified');
+  const [identityFile, setIdentityFile] = useState('');
+  const [identityType, setIdentityType] = useState<'national_id' | 'passport' | 'drivers_license'>('national_id');
+  const [identityReason, setIdentityReason] = useState('');
+  const [identityConsent, setIdentityConsent] = useState(false);
+  const [identityAge, setIdentityAge] = useState(false);
+  const [identityBusy, setIdentityBusy] = useState(false);
+  const [identityFeedback, setIdentityFeedback] = useState('');
 
   const filteredTickets = useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -217,12 +226,32 @@ export function SupportAdminClient() {
   }, [statusFilter, categoryFilter, priorityFilter]);
 
   useEffect(() => {
+    setIdentityReviewer(false);
+    setIdentityStatus('unverified');
+    setIdentityFile('');
+    setIdentityConsent(false);
+    setIdentityAge(false);
+    setIdentityFeedback('');
     if (!selectedId) {
       setTicket(null);
       setMessages([]);
       return;
     }
     void loadTicket(selectedId);
+    const controller = new AbortController();
+    fetch('/api/v1/admin/support/' + selectedId + '/kyc', {
+      credentials: 'same-origin', cache: 'no-store', signal: controller.signal,
+    }).then(async (response) => {
+      if (!response.ok) throw new Error('Not an authorized identity reviewer');
+      return response.json() as Promise<{ data?: { status: string } }>;
+    }).then((payload) => {
+      if (controller.signal.aborted) return;
+      setIdentityStatus(payload.data?.status ?? 'unverified');
+      setIdentityReviewer(true);
+    }).catch(() => {
+      if (!controller.signal.aborted) setIdentityReviewer(false);
+    });
+    return () => controller.abort();
   }, [selectedId]);
 
   useEffect(() => {
@@ -279,6 +308,35 @@ export function SupportAdminClient() {
   async function applyAssignment() {
     if (!selectedId) return;
     await updateTicket({ assignedTo: assignedTo.trim() || null });
+  }
+
+  const userDocuments = messages.filter(m => m.senderRole === 'user')
+    .flatMap(m => m.attachments)
+    .filter(a => a.uploaderRole === 'user' && a.bucketId === 'support-attachments'
+      && a.sizeBytes <= 8 * 1024 * 1024 && a.sizeBytes >= 12
+      && ['image/jpeg','image/png','image/webp','application/pdf'].includes(a.mimeType));
+
+  async function approveIdentity() {
+    if (!selectedId || !identityReviewer || !identityFile || !identityAge
+      || !identityConsent || identityReason.trim().length < 8 || identityBusy) return;
+    if (!window.confirm('Approve identity from the selected customer attachment?')) return;
+    setIdentityBusy(true);
+    setIdentityFeedback('');
+    try {
+      await request('/api/v1/admin/support/' + selectedId + '/kyc', {
+        method: 'POST', body: JSON.stringify({
+          attachmentId: identityFile, documentType: identityType,
+          ageConfirmed: true, consentConfirmed: true, reason: identityReason.trim(),
+        }),
+      });
+      setIdentityStatus('verified');
+      setIdentityFeedback('Identity verified and audit recorded. Customer chat notified.');
+      await loadTicket(selectedId, true);
+    } catch (e) {
+      setIdentityFeedback(e instanceof Error ? e.message : 'Approval failed.');
+    } finally {
+      setIdentityBusy(false);
+    }
   }
 
   return (
@@ -421,6 +479,56 @@ export function SupportAdminClient() {
                 </div>
               </div>
 
+              {identityReviewer ? (
+                <section className="border-b border-nova-line bg-nova-surface2/60 p-3" aria-label="Approve identity in existing support chat">
+                  <div className="flex items-center justify-between gap-2 text-xs font-bold">
+                    <span>Identity review · support conversation</span>
+                    <span className="nova-muted">{identityStatus}</span>
+                  </div>
+                  {identityStatus === 'verified' ? (
+                    <p className="mt-2 text-xs text-green-500">Approved — no further documents needed.</p>
+                  ) : identityStatus === 'pending' ? (
+                    <p className="mt-2 text-xs nova-muted">Existing pending review must be resolved first.</p>
+                  ) : (
+                    <div className="mt-2 grid gap-2 text-xs">
+                      <p className="nova-muted">Review the customer document in the chat below. Receiving a file alone never approves identity.</p>
+                      <div className="grid gap-2 sm:grid-cols-2">
+                        <label>Customer-uploaded ID
+                          <select className="nova-input mt-1 w-full text-xs" value={identityFile} onChange={e => setIdentityFile(e.target.value)}>
+                            <option value="">Choose an attachment</option>
+                            {userDocuments.map(a => <option key={a.id} value={a.id}>{a.originalName.slice(0, 60)} · {a.id.slice(0, 8)}</option>)}
+                          </select>
+                        </label>
+                        <label>Document type
+                          <select className="nova-input mt-1 w-full text-xs" value={identityType}
+                            onChange={e => setIdentityType(e.target.value as typeof identityType)}>
+                            <option value="national_id">National ID</option>
+                            <option value="passport">Passport</option>
+                            <option value="drivers_license">Driving license</option>
+                          </select>
+                        </label>
+                      </div>
+                      <label>Review explanation
+                        <textarea className="nova-input mt-1 w-full text-xs" value={identityReason} onChange={e => setIdentityReason(e.target.value)}
+                          placeholder="Reason and checks performed (minimum 8 characters)" maxLength={500} rows={2} />
+                      </label>
+                      <label className="flex items-start gap-2">
+                        <input type="checkbox" checked={identityConsent} onChange={e => setIdentityConsent(e.target.checked)} />
+                        Customer explicitly consented in this chat to using the ID for verification.
+                      </label>
+                      <label className="flex items-start gap-2">
+                        <input type="checkbox" checked={identityAge} onChange={e => setIdentityAge(e.target.checked)} />
+                        I independently confirmed legal age from this document.
+                      </label>
+                      <button type="button" className="nova-btn-primary text-xs" onClick={() => void approveIdentity()}
+                        disabled={identityBusy || !identityFile || !identityAge || !identityConsent || identityReason.trim().length < 8}>
+                        {identityBusy ? 'Approving…' : 'Approve identity for casino'}
+                      </button>
+                    </div>
+                  )}
+                  {identityFeedback ? <p role="status" className="mt-2 text-xs">{identityFeedback}</p> : null}
+                </section>
+              ) : null}
               <div className="min-h-0 flex-1 space-y-3 overflow-y-auto p-4">
                 {messages.length === 0 ? (
                   <div className="text-xs nova-muted">No messages.</div>
