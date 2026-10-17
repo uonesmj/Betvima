@@ -30,6 +30,19 @@ export function bet365OddsDecimal(value: unknown): string | null {
   return safePrice(original);
 }
 
+/** Use only explicit provider labels. Missing sides/names must not be invented. */
+function outcomeLabel(row: Record<string, unknown>, id: string, line = ''): string {
+  const raw = [row.NA, row.name, row.header, row.player_name, row.player,
+    row.team_name, row.team].map(string).map(x => x.trim()).filter(Boolean);
+  const unique = [...new Set(raw)];
+  const name = unique.filter(x => !/^selection$/i.test(x)).join(' ').slice(0, 135);
+  const handicap = line.trim();
+  if (name) return handicap && !name.includes(handicap)
+    ? `${name} (${handicap})` : name;
+  // Unlabelled source rows are diagnostic only, not executable outcomes.
+  return `Unlabelled outcome #${id}${handicap ? ` · line ${handicap}` : ''}`;
+}
+
 /** Recursively gather documented Bet365 event MG / PA records without
  * flattening away sibling records or assuming a single nesting level. */
 function liveRecords(value: unknown): Record<string, unknown>[] {
@@ -74,11 +87,10 @@ export function parseBet365LivePreview(fixtureId: string, results: unknown): Bet
     const price = bet365OddsDecimal(data.OD);
     const id = string(data.ID);
     const handicap = string(data.HA || data.HD || data.HC);
-    const label = (string(data.NA) || string(data.HA) || 'Selection').slice(0, 135);
     if (!price || !id || current.selections.length >= 250) continue;
     if (current.selections.some(s => s.id === id)) continue;
     current.selections.push({
-      id, label: handicap && label !== handicap ? `${label} (${handicap})` : label, decimal: price,
+      id, label: outcomeLabel(data, id, handicap), decimal: price,
     });
   }
   const offered = markets.filter(m => m.selections.length >= 1).slice(0, 1000);
@@ -113,9 +125,8 @@ export function parseBet365PrematchPreview(fixtureId: string, results: unknown):
         const row = object(item);
         const decimal = bet365OddsDecimal(row.odds);
         const id = string(row.id);
-        const label = [string(row.header), string(row.name), string(row.handicap)]
-          .filter(Boolean).join(' ').slice(0, 145);
-        return decimal && id && label ? { id, label, decimal } : null;
+        const label = outcomeLabel(row, id, string(row.handicap));
+        return decimal && id ? { id, label, decimal } : null;
       }).filter((row): row is NonNullable<typeof row> => row !== null).slice(0, 250);
       if (selections.length) {
         seen.add(key);
