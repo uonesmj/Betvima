@@ -54,6 +54,7 @@ internal fun GoogleAuthenticatorDialog(
     var pending by remember { mutableStateOf<JSONObject?>(null) }
     var code by remember { mutableStateOf("") }
     var disableRequested by remember { mutableStateOf(false) }
+    var confirmDisableOpen by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf("") }
     var message by remember { mutableStateOf("") }
     fun l(en: String, fa: String) = tr(lang, en, fa)
@@ -87,7 +88,7 @@ internal fun GoogleAuthenticatorDialog(
         }.getOrNull()
     }
     AlertDialog(
-        onDismissRequest = { if (!busy) onDismiss() },
+        onDismissRequest = { if (!busy && !confirmDisableOpen) onDismiss() },
         containerColor = Color(0xFF202127),
         shape = RoundedCornerShape(23.dp),
         title = { Text("Google Authenticator", color = Color.White, fontWeight = FontWeight.Black) },
@@ -177,7 +178,7 @@ internal fun GoogleAuthenticatorDialog(
                                 "افزودن Authenticator پشتیبان"))
                         }
                     }
-                    if (!adminRequired && !disableRequested) {
+                    if (!disableRequested) {
                         if (verifiedFactors.size > 1) {
                             Text(l("Select which authenticator to remove:",
                                 "برنامه موردنظر برای حذف را انتخاب کنید:"),
@@ -192,7 +193,7 @@ internal fun GoogleAuthenticatorDialog(
                                 )
                             }
                         }
-                        OutlinedButton(onClick = { disableRequested = true },
+                        OutlinedButton(onClick = { confirmDisableOpen = true },
                             modifier = Modifier.fillMaxWidth()) {
                             Text(if (verifiedFactors.size > 1)
                                 l("Remove selected authenticator (code required)",
@@ -218,13 +219,18 @@ internal fun GoogleAuthenticatorDialog(
                                 val upgraded = api.mfaChallengeVerify(jwt, id, code)
                                 vault.commitVerifiedMfaSession(upgraded, api)
                                 if (disableRequested) {
-                                    if (adminRequired) throw IllegalStateException("Administrators must keep MFA enabled")
+                                    // A fresh TOTP challenge is required even for an admin.
+                                    // With the last factor removed, server-side requireAdmin()
+                                    // blocks all administrative APIs until AAL2 is restored.
                                     api.mfaUnenroll(upgraded.optString("access_token"), id)
                                     verifiedFactors = api.mfaAllTotpFactors(
                                         upgraded.optString("access_token")).filter { it.verified }
                                     factorId = verifiedFactors.firstOrNull()?.id
                                     disableRequested = false
-                                    message = if (verifiedFactors.isEmpty())
+                                    message = if (verifiedFactors.isEmpty() && adminRequired)
+                                        l("Two-factor authentication disabled. Administrator access is suspended until you enroll and verify a new authenticator.",
+                                            "تأیید دومرحله‌ای غیرفعال شد. دسترسی مدیریتی تا ثبت و تأیید Authenticator جدید مسدود است.")
+                                    else if (verifiedFactors.isEmpty())
                                         l("Two-factor authentication disabled",
                                             "تأیید دومرحله‌ای غیرفعال شد")
                                     else l("Authenticator removed. Other factors remain active.",
@@ -248,8 +254,9 @@ internal fun GoogleAuthenticatorDialog(
                             else l("Verify and activate", "تأیید و فعال‌سازی"))
                     }
                 }
-                if (adminRequired) Text(l("Admin security policy requires this factor.",
-                    "طبق سیاست امنیتی، این عامل برای مدیران اجباری است."),
+                if (adminRequired) Text(l(
+                    "Admins may remove an authenticator with a fresh code. If no verified factor remains, administrative permissions pause until a new one is verified.",
+                    "ادمین می‌تواند با کد جدید عامل دوم را حذف کند. اگر هیچ عامل تأییدشده‌ای باقی نماند، دسترسی مدیریت تا فعال‌سازی عامل جدید متوقف می‌شود."),
                     color = Color(0xFFCFD3DD), fontSize = 11.sp)
                 if (busy) LinearProgressIndicator(Modifier.fillMaxWidth())
                 if (error.isNotBlank()) Text(error, color = Color(0xFFFFA9AA), fontSize = 12.sp)
@@ -260,4 +267,41 @@ internal fun GoogleAuthenticatorDialog(
             Text(l("Close", "بستن"), color = Color.White)
         } }
     )
+    if (confirmDisableOpen) {
+        AlertDialog(
+            onDismissRequest = { confirmDisableOpen = false },
+            containerColor = Color(0xFF202127),
+            shape = RoundedCornerShape(20.dp),
+            title = {
+                Text(l("Confirm authenticator removal", "تأیید حذف Authenticator"),
+                    color = Color.White, fontWeight = FontWeight.Bold)
+            },
+            text = {
+                Text(
+                    if (adminRequired && verifiedFactors.size == 1)
+                        l("Removing your last authenticator will immediately suspend all administrative access until you set up and verify a new authenticator. Your account and funds will remain intact. You must enter a fresh six-digit code to continue.",
+                          "با حذف آخرین Authenticator، دسترسی مدیریتی تا فعال‌سازی و تأیید دوباره عامل دوم متوقف می‌شود. حساب و موجودی شما تغییری نمی‌کند. برای ادامه کد شش‌رقمی جدید لازم است.")
+                    else l("Removing this authenticator requires a new six-digit code from the selected device.",
+                        "برای حذف این Authenticator باید کد شش‌رقمی جدید دستگاه انتخاب‌شده را وارد کنید."),
+                    color = Color(0xFFE1E4ED), fontSize = 13.sp, lineHeight = 20.sp
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    confirmDisableOpen = false
+                    code = ""
+                    disableRequested = true
+                }) {
+                    Text(l("Continue to verification", "ادامه و تأیید کد"),
+                        color = Color(0xFFFFAFAF))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { confirmDisableOpen = false }) {
+                    Text(l("Cancel", "انصراف"), color = Color.White)
+                }
+            }
+        )
+    }
+
 }
