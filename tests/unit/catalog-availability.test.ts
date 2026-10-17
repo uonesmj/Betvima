@@ -35,9 +35,24 @@ describe('catalog live availability', () => {
     await catalog.listLiveMatches({ userId: null, role: 'anon' }, 100);
     await catalog.listLiveSportCounts({ userId: null, role: 'anon' });
     for (const [sql] of query.mock.calls) {
-      expect(sql).toContain("m.scheduled_at >= now() - interval '10 hours'");
-      expect(sql).toContain("m.provider_updated_at >= now() - interval '30 minutes'");
+      expect(sql).not.toContain("m.scheduled_at >= now() - interval '10 hours'");
+      expect(sql).toContain("m.provider_updated_at >= now() - interval '15 minutes'");
       expect(sql).toContain("fresh_selection.odds_updated_at >= now() - interval '45 seconds'");
+    }
+  });
+
+  it('applies the same recency filter to /matches?live=true pagination and totals', async () => {
+    const query = vi.fn().mockResolvedValue([]);
+    const queryOne = vi.fn().mockResolvedValue({ total: 0 });
+    const catalog = new PostgresCatalogRepository({ query, queryOne } as unknown as Db);
+    await catalog.listMatches({ userId: null, role: 'anon' }, { live: true, page: 1, pageSize: 20 });
+    const [listSql] = query.mock.calls[0]!;
+    const [countSql] = queryOne.mock.calls[0]!;
+    for (const sql of [listSql, countSql]) {
+      expect(sql).toContain("$5::boolean is distinct from true");
+      expect(sql).toContain("m.provider_updated_at >= now() - interval '15 minutes'");
+      expect(sql).toContain("fresh_selection.provider_timestamp between");
+      expect(sql).toContain("m.provider = 'the_odds_api'");
     }
   });
 
