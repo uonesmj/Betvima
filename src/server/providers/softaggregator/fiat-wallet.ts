@@ -7,6 +7,7 @@ import {
   validateCasinoFxSnapshot, type CasinoCurrency, type CasinoFxSnapshot,
 } from './fx';
 import { casinoCountryPermitted } from './jurisdiction';
+import { pilotCasinoDebitPermitted } from './pilot-limits';
 
 type FiatCurrency = Extract<CasinoCurrency, 'IRR' | 'IRT'>;
 type BalanceResult = { error: 0 | 1 | 2; balance: number };
@@ -212,6 +213,7 @@ export async function settleFiatCasinoCallback(
       error = 2;
     } else if (isDebit && (local > before ||
       (!event.rollback && (!allowed(roundCurrencyProfile) ||
+         !(await pilotCasinoDebitPermitted(tx, userId, event.amountMinor!)) ||
          roundCurrencyProfile.currency !== currency || event.amountMinor! < SOFTAGGREGATOR_MIN_BET_MINOR ||
         !(await limitsAllow(tx, userId, currency, local, roundCurrencyProfile)))))) {
       error = 1;

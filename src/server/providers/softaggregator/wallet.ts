@@ -6,6 +6,7 @@ import { casinoRealMoneyUserAllowed } from './client';
 import { fiatCasinoBalance, settleFiatCasinoCallback } from './fiat-wallet';
 import { casinoFinancialSchemaReady } from './financial-readiness';
 import { casinoCountryPermitted } from './jurisdiction';
+import { pilotCasinoDebitPermitted } from './pilot-limits';
 import { bindCasinoPlayerWallet, readCasinoPlayerWallet } from './player-wallet-binding';
 
 export type CasinoBalanceResponse = { error: 0 | 1 | 2; balance: number };
@@ -74,6 +75,7 @@ function safeResponse(error: 0 | 1 | 2, value: bigint): CasinoBalanceResponse {
   return callbackResponse(error, value);
 }
 async function limitAllows(db: Db, userId: string, amount: bigint, p: ProfileRow): Promise<boolean> {
+  if (!(await pilotCasinoDebitPermitted(db, userId, amount))) return false;
   if (p.max_stake_per_bet_minor !== null && amount > BigInt(p.max_stake_per_bet_minor)) return false;
   const sql = [
     "select coalesce(sum(case when type = 'bet_debit' and created_at >= date_trunc('day', now() at time zone 'UTC') at time zone 'UTC'",
