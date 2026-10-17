@@ -17,6 +17,7 @@ import {
 const BASE = 'https://api.b365api.com';
 const SPARE_BASE = 'https://api.betsapi.com';
 const MAX_PER_CALL = 12;
+const MAX_DISCOVERY_PAGES = 3;
 const DEFAULT_HOURLY_BUDGET = 1500;
 const supportedId = (id: string) => /^\d{1,16}$/.test(id);
 type Json = Record<string, unknown>;
@@ -40,7 +41,7 @@ let consumed = 0;
 let lastRemaining: number | null = null;
 const quota = () => {
   const now = Math.floor(Date.now() / 3_600_000);
-  if (hourWindow !== now) { hourWindow = now; consumed = 0; }
+  if (hourWindow !== now) { hourWindow = now; consumed = 0; lastRemaining = null; }
   const cap = Number(process.env.BETSAPI_HOURLY_REQUEST_BUDGET || DEFAULT_HOURLY_BUDGET);
   const limit = Number.isSafeInteger(cap) ? Math.max(50, Math.min(cap, 3000)) : DEFAULT_HOURLY_BUDGET;
   if (consumed >= limit || (lastRemaining !== null && lastRemaining < 50)) {
@@ -142,17 +143,24 @@ export class BetsApiSportsProvider implements SportsDataProvider {
       try {
         // First page is a bounded read; future day+league pagination will be
         // scheduled separately after the operator validates trial quota.
-        const envelope = await this.request('/v3/events/upcoming', {
-          sport_id: String(sport.id), page: '1',
-        });
-        successes++;
-        for (const event of events(envelope.results)) {
-          const parsed = normalizeBetsapiEvent(event);
-          if (parsed && parsed.status === 'scheduled' &&
-            Date.parse(parsed.scheduledAt) >= from && Date.parse(parsed.scheduledAt) <= to) {
-            all.set(parsed.providerId, parsed);
-            this.remember(parsed);
+        const requested = Number(process.env.BETSAPI_DISCOVERY_PAGES || 2);
+        const pageLimit = Number.isSafeInteger(requested)
+          ? Math.max(1, Math.min(requested, MAX_DISCOVERY_PAGES)) : 2;
+        for (let page = 1; page <= pageLimit; page++) {
+          const envelope = await this.request('/v3/events/upcoming', {
+            sport_id: String(sport.id), page: String(page),
+          });
+          successes++;
+          const batch = events(envelope.results);
+          for (const event of batch) {
+            const parsed = normalizeBetsapiEvent(event);
+            if (parsed && parsed.status === 'scheduled' &&
+              Date.parse(parsed.scheduledAt) >= from && Date.parse(parsed.scheduledAt) <= to) {
+              all.set(parsed.providerId, parsed);
+              this.remember(parsed);
+            }
           }
+          if (batch.length < 50) break;
         }
       } catch (e) {
         if (errorCode(e) === 'BETSAPI_RATE_LIMITED' ||
