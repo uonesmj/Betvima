@@ -23,7 +23,7 @@ export const GET = withErrorHandling('account.kyc.get', async (ctx, request: Req
   );
   const approved = await casinoIdentityApproved(user.id);
   return NextResponse.json({ ok: true, data: {
-    kycStatus: profile.kycStatus,
+    kycStatus: submission?.status ?? profile.kycStatus,
     gameAccessApproved: approved,
     status: profile.status,
     canSubmit: !approved && submission?.status !== 'pending',
@@ -137,11 +137,12 @@ export const POST = withErrorHandling('account.kyc.submit', async (ctx, request:
         'values($1,$2,$3,$4) returning id',
         [user.id, docType, docPath, selfiePath],
       );
-      await tx.query("update nova.profiles set kyc_status='pending', age_verified=false where id=$1", [user.id]);
+      // Casino document submission must not revoke unrelated sportsbook age/KYC flags.
+      // The pending status lives only in the private casino review record.
       await tx.rpc('audit_event', {
         p_actor_id: user.id, p_action: 'kyc.submitted', p_target_type: 'user', p_target_id: user.id,
         p_before: { kycStatus: locked.kyc_status },
-        p_after: { submissionId: saved!.id, kycStatus: 'pending', selfieAttached: Boolean(selfiePath) },
+        p_after: { submissionId: saved!.id, casinoReview: 'pending', selfieAttached: Boolean(selfiePath) },
         p_reason: 'customer KYC submission',
       });
       return saved!.id;
