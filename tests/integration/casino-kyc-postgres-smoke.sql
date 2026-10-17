@@ -13,6 +13,26 @@ create table storage.buckets (
 );
 \ir ../../supabase/migrations/0214_casino_kyc_review.sql
 
+-- Existing support attachment metadata must be server-only before staff may
+-- approve an identity from a chat attachment. Reproduce old public grants.
+create table public.ticket_attachments(id uuid primary key);
+grant all on public.ticket_attachments to anon, authenticated;
+\ir ../../supabase/migrations/0215_support_attachment_private_metadata.sql
+do $
+begin
+  if not (select relrowsecurity from pg_class
+    where oid='public.ticket_attachments'::regclass) then
+    raise exception 'Support evidence table RLS must be enabled';
+  end if;
+  if has_table_privilege('anon','public.ticket_attachments','SELECT')
+    or has_table_privilege('anon','public.ticket_attachments','INSERT')
+    or has_table_privilege('authenticated','public.ticket_attachments','UPDATE')
+    or has_table_privilege('authenticated','public.ticket_attachments','DELETE')
+  then
+    raise exception 'Support evidence can still be modified directly by a client';
+  end if;
+end $;
+
 do $$
 declare
   user_id constant uuid := '11111111-1111-4111-8111-111111111111';
