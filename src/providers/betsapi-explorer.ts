@@ -116,6 +116,18 @@ type Fetcher = typeof fetch;
 interface ProviderEnvelope { results?: unknown; pager?: unknown; success?: unknown; error_code?: unknown }
 const cache = new Map<string, { at: number; promise: Promise<unknown> }>();
 const CACHE_LIMIT = 700;
+// Trial budget is 1800/h; reserve capacity for admin diagnostics and other
+// backend work. Shared on this server process and applied only on cache misses.
+let quotaHour = -1;
+let quotaRequests = 0;
+function budgeted(): void {
+  const hour = Math.floor(Date.now() / 3_600_000);
+  if (hour !== quotaHour) { quotaHour = hour; quotaRequests = 0; }
+  const raw = Number(process.env.BETSAPI_EXPLORER_REQUESTS_PER_HOUR ?? '1000');
+  const limit = Number.isSafeInteger(raw) ? Math.max(20, Math.min(1500, raw)) : 1000;
+  if (quotaRequests >= limit) throw new ExplorerUpstreamError('UPSTREAM_QUOTA');
+  quotaRequests++;
+}
 export class ExplorerUpstreamError extends Error {
   constructor(readonly code: ExplorerError) { super(code); }
 }
@@ -142,6 +154,7 @@ async function request(
     if (cache.size >= CACHE_LIMIT) cache.delete(cache.keys().next().value!);
   }
   const promise = (async () => {
+    budgeted();
     let response: Response;
     try {
       response = await fetcher(url.toString(), {
