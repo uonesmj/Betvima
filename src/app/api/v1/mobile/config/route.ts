@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
 import { serverEnv } from '@/server/env';
+import { createServices } from '@/server/services/container';
+import { isMobileWageringAvailable } from '@/lib/mobile-wagering';
 
 export const dynamic = 'force-dynamic';
 
@@ -9,6 +11,17 @@ export const dynamic = 'force-dynamic';
  */
 export async function GET() {
   const env = serverEnv();
+  // The app must follow the actual server-side kill switches, never a static false.
+  // Fail closed on database/configuration errors. This does not grant a user
+  // permission to bet: the authenticated placement endpoint validates that.
+  let wageringEnabled = false;
+  if (env.supabaseConfigured && env.configurationComplete) {
+    try {
+      wageringEnabled = isMobileWageringAvailable(await createServices().admin.operations());
+    } catch {
+      wageringEnabled = false;
+    }
+  }
   return NextResponse.json({
     ok: true,
     data: {
@@ -18,7 +31,7 @@ export async function GET() {
       // Public widget SITE key only. The verification secret remains exclusively on the server.
       turnstileSiteKey: env.NEXT_PUBLIC_TURNSTILE_SITE_KEY,
       minAge: 18,
-      wageringEnabled: false,
+      wageringEnabled,
     },
   }, { headers: { 'Cache-Control': 'no-store' } });
 }
