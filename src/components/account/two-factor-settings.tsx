@@ -17,6 +17,8 @@ export function TwoFactorSettings({
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [factorId, setFactorId] = useState<string | null>(null);
+  const [verifiedFactors, setVerifiedFactors] = useState<Array<{ id: string; name: string }>>([]);
+  const [copyMessage, setCopyMessage] = useState('');
   const [enrollment, setEnrollment] = useState<TotpEnrollment | null>(null);
   const [code, setCode] = useState('');
   const [isAal2, setIsAal2] = useState(false);
@@ -29,7 +31,11 @@ export function TwoFactorSettings({
     const [{ data: factors, error: factorsError }, { data: aal, error: aalError }] =
       await Promise.all([client.auth.mfa.listFactors(), client.auth.mfa.getAuthenticatorAssuranceLevel()]);
     if (factorsError || aalError) throw factorsError ?? aalError;
-    setFactorId(factors?.totp?.find((factor) => factor.status === 'verified')?.id ?? null);
+    const verified = (factors?.totp ?? [])
+      .filter((factor) => factor.status === 'verified')
+      .map((factor) => ({ id: factor.id, name: factor.friendly_name ?? 'Authenticator' }));
+    setVerifiedFactors(verified);
+    setFactorId((selected) => verified.find((factor) => factor.id === selected)?.id ?? verified[0]?.id ?? null);
     setIsAal2(aal?.currentLevel === 'aal2');
   }, []);
 
@@ -47,19 +53,29 @@ export function TwoFactorSettings({
     finally { setBusy(false); }
   };
 
-  const begin = () => perform(async () => {
+  const begin = (backup = false) => perform(async () => {
     const client = getSupabaseBrowserClient();
-    // Clean up a previously abandoned (unverified) setup before starting over.
+    const friendlyName = backup ? 'BetVima Backup Authenticator' : 'BetVima Authenticator';
+    // Recreate only an abandoned enrollment of the SAME name. Never delete
+    // an active factor, particularly one owned by an administrator.
     const { data: current, error: listError } = await client.auth.mfa.listFactors();
     if (listError) throw listError;
+    if (current?.all?.some((factor) => factor.factor_type === 'totp' &&
+      factor.status === 'verified' && factor.friendly_name === friendlyName)) {
+      throw new Error('This authenticator is already active');
+    }
     for (const factor of current?.all ?? []) {
-      if (factor.factor_type === 'totp' && factor.status === 'unverified') {
+      if (factor.factor_type === 'totp' && factor.status === 'unverified' &&
+        factor.friendly_name === friendlyName) {
         const { error } = await client.auth.mfa.unenroll({ factorId: factor.id });
         if (error) throw error;
       }
     }
-    const { data, error } = await client.auth.mfa.enroll({ factorType: 'totp', friendlyName: 'BetVima Authenticator' });
+    const { data, error } = await client.auth.mfa.enroll({
+      factorType: 'totp', friendlyName,
+    });
     if (error || !data) throw error ?? new Error('Enrollment unavailable');
+    setCopyMessage('');
     setEnrollment({ id: data.id, totp: data.totp });
   });
 
@@ -87,9 +103,12 @@ export function TwoFactorSettings({
     if (verified.error) throw verified.error;
     const { error } = await client.auth.mfa.unenroll({ factorId });
     if (error) throw error;
-    setFactorId(null); setCode(''); setIsAal2(false); setDisableRequested(false);
+    setCode(''); setDisableRequested(false);
+    await reload();
     await refreshSession();
-    setMessage(fa ? 'تأیید دومرحله‌ای غیرفعال شد' : 'Two-factor authentication disabled');
+    setMessage(verifiedFactors.length > 1
+      ? (fa ? 'برنامه انتخاب‌شده حذف شد؛ عامل پشتیبان همچنان فعال است.' : 'Selected authenticator removed; another factor remains active.')
+      : (fa ? 'تأیید دومرحله‌ای غیرفعال شد' : 'Two-factor authentication disabled'));
   });
 
   if (loading) return <p className="py-3 text-sm text-slate-500">{fa ? 'در حال بررسی امنیت حساب...' : 'Checking security status...'}</p>;
@@ -106,9 +125,25 @@ export function TwoFactorSettings({
         : (fa ? 'غیرفعال' : 'Not enabled')}</p>
 
       {!factorId && !enrollment ? (
-        <button type="button" disabled={busy} onClick={begin} className="rounded-lg bg-[#1268d4] px-4 py-2.5 text-sm font-bold text-white disabled:opacity-50">
+        <button type="button" disabled={busy} onClick={() => begin(false)} className="rounded-lg bg-[#1268d4] px-4 py-2.5 text-sm font-bold text-white disabled:opacity-50">
           {fa ? 'فعال‌سازی Google Authenticator' : 'Set up authenticator'}
         </button>
+      ) : null}
+
+      {factorId && isAal2 && !enrollment ? (
+        <div className="space-y-2 rounded-xl border border-slate-200 p-3">
+          <p className="text-xs text-slate-600">{fa
+            ? 'برای بازیابی دسترسی، یک Authenticator دوم روی دستگاه دیگری ثبت کنید. Supabase کد بازیابی یک‌بارمصرف صادر نمی‌کند.'
+            : 'For account recovery, enroll a separate authenticator on another device. Supabase does not issue one-time recovery codes.'}</p>
+          {verifiedFactors.length === 1 ? (
+            <button type="button" disabled={busy} onClick={() => begin(true)}
+              className="rounded-lg border border-blue-300 px-4 py-2 text-sm font-bold text-blue-700 disabled:opacity-50">
+              {fa ? 'افزودن Authenticator پشتیبان' : 'Add backup authenticator'}
+            </button>
+          ) : <p className="text-sm font-semibold text-emerald-700">
+            {fa ? 'Authenticator پشتیبان ثبت شده است.' : 'Backup authenticator is enrolled.'}
+          </p>}
+        </div>
       ) : null}
 
       {enrollment ? (
@@ -120,7 +155,34 @@ export function TwoFactorSettings({
             <img src={enrollment.totp.qr_code} alt="TOTP setup QR" className="h-44 w-44 rounded-lg bg-white p-2" />
           ) : null}
           <p className="break-all rounded bg-slate-100 p-2 font-mono text-xs" aria-label="Manual authenticator setup key">{enrollment.totp?.secret ?? ''}</p>
+          {enrollment.totp?.secret ? (
+            <button type="button" className="rounded-lg border border-slate-300 px-3 py-2 text-xs font-bold"
+              onClick={() => void navigator.clipboard.writeText(enrollment.totp!.secret!).then(
+                () => setCopyMessage(fa ? 'کلید کپی شد؛ محرمانه نگه دارید.' : 'Setup key copied; keep it private.'),
+                () => setCopyMessage(fa ? 'کپی ممکن نبود؛ کلید را دستی وارد کنید.' : 'Copy unavailable; enter the key manually.')
+              )}>
+              {fa ? 'کپی کلید راه‌اندازی' : 'Copy setup key'}
+            </button>
+          ) : null}
+          {copyMessage && <p className="text-xs text-slate-600" role="status">{copyMessage}</p>}
         </div>
+      ) : null}
+
+      {factorId && verifiedFactors.length > 1 && !enrollment &&
+        (!isAal2 || disableRequested) ? (
+        <label className="block text-xs text-slate-600">
+          {fa ? 'انتخاب برنامه اصلی یا پشتیبان' : 'Choose primary or backup authenticator'}
+          <select className="mt-1 block w-full rounded-lg border border-slate-300 p-2"
+            value={factorId} onChange={(event) => { setFactorId(event.target.value); setCode(''); }}>
+            {verifiedFactors.map((factor) => (
+              <option key={factor.id} value={factor.id}>
+                {factor.name.includes('Backup')
+                  ? (fa ? 'Authenticator پشتیبان' : 'Backup authenticator')
+                  : (fa ? 'Authenticator اصلی' : 'Primary authenticator')}
+              </option>
+            ))}
+          </select>
+        </label>
       ) : null}
 
       {enrollment || (factorId && (!isAal2 || disableRequested)) ? (
@@ -139,7 +201,9 @@ export function TwoFactorSettings({
 
       {factorId && isAal2 && !adminRequired && !disableRequested ? (
         <button type="button" disabled={busy} onClick={() => setDisableRequested(true)} className="rounded-lg border border-red-300 px-3 py-2 text-sm font-semibold text-red-700 disabled:opacity-50">
-          {fa ? 'غیرفعال‌سازی دومرحله‌ای' : 'Disable two-factor authentication'}
+          {verifiedFactors.length > 1
+            ? (fa ? 'حذف برنامه انتخاب‌شده' : 'Remove selected authenticator')
+            : (fa ? 'غیرفعال‌سازی دومرحله‌ای' : 'Disable two-factor authentication')}
         </button>
       ) : null}
 
