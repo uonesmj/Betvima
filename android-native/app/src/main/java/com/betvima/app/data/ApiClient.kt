@@ -3,6 +3,7 @@ package com.betvima.app.data
 import com.betvima.app.BuildConfig
 import android.content.ContentResolver
 import android.net.Uri
+import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import okhttp3.MultipartBody
 import okhttp3.Response
 import java.io.ByteArrayOutputStream
@@ -105,6 +106,49 @@ class ApiClient {
     /** Registration requires a Cloudflare-verified public API call, never a bearer session. */
     suspend fun registerAccount(payload: JSONObject): JSONObject =
         request("/api/v1/auth/register", body = payload)
+    /**
+     * Match the existing web recovery flow: validate a one-use Cloudflare token
+     * against BetVima's rate-limited endpoint, then request the email from
+     * Supabase Auth. No service-role key, local password reset, or stored token.
+     * The official web recovery page handles the emailed recovery session.
+     */
+    suspend fun sendPasswordResetLink(
+        email: String, turnstileToken: String, redirectUrl: String
+    ) {
+        require(email.trim().length in 5..254 && email.contains('@'))
+        require(turnstileToken.length in 10..2048)
+        require(redirectUrl == "https://betvima.com/auth/reset-password" ||
+            redirectUrl == "https://betvima.com/auth/reset-password?from=affiliate")
+        // A token is bound by Turnstile to the 'forgot-password' action.
+        request("/api/v1/auth/password-reset",
+            body = JSONObject().put("turnstileToken", turnstileToken))
+        val config = get("/api/v1/mobile/config")
+        if (!config.optBoolean("authenticationConfigured"))
+            throw ApiFailure(503, "Password recovery unavailable")
+        val origin = config.str("supabaseUrl").trimEnd('/')
+        val publicKey = config.str("supabaseAnonKey")
+        val parsed = origin.toHttpUrlOrNull()
+        require(parsed != null && parsed.isHttps && parsed.username.isEmpty() &&
+            parsed.password.isEmpty() && parsed.encodedPath == "/" &&
+            parsed.query == null && parsed.fragment == null && publicKey.isNotBlank()) {
+            "Invalid public authentication configuration"
+        }
+        withContext(Dispatchers.IO) {
+            val endpoint = origin + "/auth/v1/recover?redirect_to=" +
+                URLEncoder.encode(redirectUrl, "UTF-8")
+            val request = Request.Builder().url(endpoint)
+                .header("apikey", publicKey)
+                .header("Accept", "application/json")
+                .header("Cache-Control", "no-store")
+                .post(JSONObject().put("email", email.trim()).toString().toRequestBody(jsonType))
+                .build()
+            client.newCall(request).execute().use { response ->
+                if (!response.isSuccessful)
+                    throw ApiFailure(response.code, "Password recovery service unavailable")
+            }
+        }
+    }
+
     /** Read-only eligibility check; actual referral attribution remains server-controlled. */
     suspend fun validateReferralCode(code: String): Boolean {
         require(code.matches(Regex("[A-Z0-9_-]{3,64}")))

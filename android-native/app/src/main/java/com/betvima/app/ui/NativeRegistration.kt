@@ -112,9 +112,10 @@ private fun allowedAuthUrl(url: Uri?): Boolean {
 /** The only WebView in registration is the real Cloudflare widget, not the website. */
 @SuppressLint("SetJavaScriptEnabled")
 @Composable
-private fun RealTurnstileWidget(
+internal fun RealTurnstileWidget(
     siteKey: String,
     revision: Int,
+    action: String = "register",
     callback: (String?) -> Unit,
     onReady: () -> Unit,
     onFailure: () -> Unit
@@ -126,7 +127,8 @@ private fun RealTurnstileWidget(
     // A regular Turnstile widget is ~65 CSS pixels high. Allow the actual
     // Cloudflare challenge to expand dynamically instead of cropping it.
     var challengeHeight by remember(siteKey, revision) { mutableIntStateOf(86) }
-    key(siteKey, revision) {
+    require(action in setOf("register", "forgot-password"))
+    key(siteKey, revision, action) {
         AndroidView(
             modifier = Modifier.fillMaxWidth().height(challengeHeight.dp),
             factory = {
@@ -190,7 +192,7 @@ private fun RealTurnstileWidget(
                                 if(!window.turnstile || !window.turnstile.render)throw Error('not_ready');
                                 window.turnstile.render('#widget',{
                                   sitekey:'SITE_KEY_PLACEHOLDER',
-                                  action:'register',size:'flexible',theme:'light',
+                                  action:'ACTION_PLACEHOLDER',size:'flexible',theme:'light',
                                   appearance:'always',
                                   callback:function(token){NativeTurnstile.verified(token)},
                                   'expired-callback':function(){NativeTurnstile.invalid()},
@@ -213,6 +215,7 @@ private fun RealTurnstileWidget(
                                 async defer onerror="NativeTurnstile.unavailable()"></script>
                         </body></html>
                     """.trimIndent().replace("SITE_KEY_PLACEHOLDER", siteKey)
+                        .replace("ACTION_PLACEHOLDER", action)
                     loadDataWithBaseURL(
                         "https://betvima.com/auth/register", html, "text/html", "UTF-8", null
                     )

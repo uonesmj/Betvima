@@ -15,6 +15,8 @@ export async function GET() {
       authenticationConfigured: env.supabaseConfigured,
       supabaseUrl: env.supabaseConfigured ? env.NEXT_PUBLIC_SUPABASE_URL : null,
       supabaseAnonKey: env.supabaseConfigured ? env.NEXT_PUBLIC_SUPABASE_ANON_KEY : null,
+      // Public Cloudflare site key for the native challenge; never expose the secret key.
+      turnstileSiteKey: env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || null,
       minAge: 18,
       wageringEnabled: false,
     },
