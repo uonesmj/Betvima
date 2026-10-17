@@ -15,8 +15,8 @@ function signed(params: Record<string, string>, timestamp = String(now / 1000)) 
     timestamp,
     key: createHash('md5').update(timestamp + salt).digest('hex'),
   });
-  const canonical = [...values.entries()].sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0)
-    .map(([name, value]) => name + '=' + value).join('&');
+  const canonical = new URLSearchParams([...values.entries()]
+    .sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0)).toString();
   const hmac = createHmac('sha256', salt).update(canonical).digest('hex');
   return { url: new URL('https://betvima.com/api/webhooks/softaggregator?' + values.toString()), hmac };
 }
