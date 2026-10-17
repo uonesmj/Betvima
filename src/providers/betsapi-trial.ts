@@ -31,7 +31,8 @@ export interface BetsApiTrialSport {
   liveWithClock: number;
   liveWithScore: number;
   upcomingFixtures: number;
-  sample: Array<{ id: string; bet365Id: string | null; home: string; away: string; minute: number | null }>;
+  sample: Array<{ id: string; bet365Id: string | null; home: string; away: string; minute: number | null; score: string | null; league: string }>;
+  upcomingSample: Array<{ id: string; home: string; away: string; league: string; time: string | null }>;
   error: string | null;
 }
 
@@ -129,7 +130,7 @@ export async function runBetsApiTrial(
     const row: BetsApiTrialSport = {
       sport: sport.name, sportId: sport.id, liveFixtures: 0,
       liveWithClock: 0, liveWithScore: 0,
-      upcomingFixtures: 0, sample: [], error: null,
+      upcomingFixtures: 0, sample: [], upcomingSample: [], error: null,
     };
     const [liveResult, upcomingResult] = await Promise.allSettled([
       call('/v3/events/inplay', { sport_id: String(sport.id) }),
@@ -140,18 +141,27 @@ export async function runBetsApiTrial(
       row.liveFixtures = live.length;
       row.liveWithClock = live.filter(event => numericField(record(event.timer).tm) !== null).length;
       row.liveWithScore = live.filter(event => /^\\d+-\\d+$/.test(stringField(event.ss))).length;
-      row.sample = live.slice(0, 2).map(event => ({
+      row.sample = live.slice(0, 20).map(event => ({
         id: stringField(event.id).slice(0, 32),
         bet365Id: /^\\d{1,16}$/.test(stringField(event.bet365_id))
           ? stringField(event.bet365_id) : null,
         home: eventName(event, 'home'), away: eventName(event, 'away'),
         minute: numericField(record(event.timer).tm),
+        score: /^\\d+-\\d+$/.test(stringField(event.ss)) ? stringField(event.ss) : null,
+        league: stringField(record(event.league).name).slice(0, 90),
       }));
     } else row.error = safeError(liveResult.reason instanceof Error ? liveResult.reason.message : liveResult.reason);
     if (upcomingResult.status === 'fulfilled') {
       const data = upcomingResult.value;
       const total = numericField(record(data.pager).total);
       row.upcomingFixtures = total ?? eventList(data.results).length;
+      row.upcomingSample = eventList(data.results).slice(0, 20).map(event => ({
+        id: stringField(event.id).slice(0, 32),
+        home: eventName(event, 'home'), away: eventName(event, 'away'),
+        league: stringField(record(event.league).name).slice(0, 90),
+        time: Number.isFinite(Number(event.time)) && Number(event.time) > 1_500_000_000
+          ? new Date(Number(event.time) * 1000).toISOString() : null,
+      }));
     } else row.error = row.error ?? safeError(upcomingResult.reason instanceof Error
       ? upcomingResult.reason.message : upcomingResult.reason);
     return row;
