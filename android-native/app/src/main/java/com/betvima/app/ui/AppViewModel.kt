@@ -817,6 +817,29 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     /**
+     * Non-financial practice check for builds where wagering is not authorized.
+     * Uses the same signed-price freshness and explicit odds-consent checks
+     * as real placement but NEVER calls /api/v1/bets or mutates a wallet.
+     */
+    fun verifyPracticeMainBet(stake: String): MainBetReview? {
+        if (com.betvima.app.BuildConfig.ENABLE_WAGERING) return null
+        val snapshot = state.value
+        val review = snapshot.mainBetReview ?: return null
+        val currency = snapshot.wallet?.currency?.uppercase().orEmpty()
+        val minor = runCatching { mainBetStakeMinor(stake, currency) }.getOrNull()
+        if (!snapshot.signedIn || snapshot.mainBetUncertain ||
+            !canConfirmMainBet(review, snapshot.picks, minor, currency, quoteGeneration,
+                acceptedQuoteToken = snapshot.mainOddsAcceptedToken)) {
+            clearQuote()
+            notice(tr(snapshot.lang,
+                "The practice quote expired or selections changed. Request a fresh quote.",
+                "استعلام آزمایشی منقضی شده یا انتخاب‌ها تغییر کرده‌اند؛ دوباره استعلام بگیرید."))
+            return null
+        }
+        return review
+    }
+
+    /**
      * Read-only price heartbeat while the native slip is open. Poll at most
      * every 10 seconds, never mutate wallet/bets, never auto-accept or submit.
      * Do not replace an identical signed quote (which would erase consent).
