@@ -6,12 +6,13 @@ import { apiRequest } from '@/lib/hooks/useApi';
 
 type Mode = 'live' | 'upcoming';
 interface Fixture {
-  fi: string; eventId: string | null; sportId: number;
+  fi: string | null; eventId: string | null; sportId: number;
   home: string; away: string; league: string; country: string | null;
   kickoff: string | null; score: string | null; minute: number | null;
 }
 interface MatchList {
   readOnly: true; configured: boolean; mode: Mode; sportId: number;
+  feed: 'bet365' | 'events';
   page: number; pageCount: number | null; total: number | null;
   refreshedAt: string; fixtures: Fixture[]; error: string | null;
 }
@@ -53,10 +54,12 @@ const prettyError = (value: string | null) => ({
   UPSTREAM_INVALID: 'The bookmaker returned an invalid or oversized response.',
   INVALID_FILTER: 'Invalid filters.',
   FORBIDDEN_ORIGIN: 'The request was rejected by the same-origin protection.',
+  NO_BET365_MARKETS: 'This Events API fixture is listed, but it has no linked Bet365 FI. No bookmaker market is available for this match.',
 }[value ?? ''] ?? (value ?? ''));
 
 export function BetsApiExplorer() {
   const [mode, setMode] = useState<Mode>('live');
+  const [feed, setFeed] = useState<'bet365' | 'events'>('bet365');
   const [sport, setSport] = useState(1);
   const [page, setPage] = useState(1);
   const [date, setDate] = useState('');
@@ -75,7 +78,8 @@ export function BetsApiExplorer() {
   const [failure, setFailure] = useState('');
   const access = activeToken;
   const request = useCallback(async (params: {
-    mode: Mode; sportId: number; page?: number; day?: string; fi?: string;
+    mode: Mode; sportId: number; feed?: 'bet365' | 'events';
+    page?: number; day?: string; fi?: string;
   }): Promise<ResponseData> => {
     const url = '/api/v1/betsapi/explorer';
     if (access) {
@@ -85,6 +89,7 @@ export function BetsApiExplorer() {
     }
     const query = new URLSearchParams({
       mode: params.mode, sportId: String(params.sportId),
+      feed: params.feed ?? 'bet365',
       page: String(params.page ?? 1),
     });
     if (params.fi) query.set('fi', params.fi);
@@ -96,14 +101,22 @@ export function BetsApiExplorer() {
     setListBusy(true);
     setFailure('');
     try {
-      const data = await request({ mode, sportId: sport, page,
+      const data = await request({ mode, sportId: sport, feed, page,
         day: mode === 'upcoming' && date ? date.replaceAll('-', '') : undefined });
       if ('fixtures' in data) setList(data);
     } catch {
       setFailure('Cannot load sports catalogue. Please retry.');
     } finally { setListBusy(false); }
-  }, [request, mode, sport, page, date]);
+  }, [request, mode, sport, page, date, feed]);
   const loadMarkets = useCallback(async (fixture: Fixture) => {
+    if (!fixture.fi) {
+      setMarkets({
+        source: 'betsapi_bet365', readOnly: true, configured: Boolean(access),
+        mode, fi: '', refreshedAt: new Date().toISOString(),
+        marketCount: 0, selectionCount: 0, markets: [], error: 'NO_BET365_MARKETS',
+      });
+      return;
+    }
     setMarketBusy(true);
     try {
       const data = await request({ mode, sportId: sport, fi: fixture.fi });
@@ -112,7 +125,7 @@ export function BetsApiExplorer() {
       setMarkets(null);
       setFailure('Unable to load market details.');
     } finally { setMarketBusy(false); }
-  }, [request, mode, sport]);
+  }, [request, mode, sport, access]);
 
   useEffect(() => { void loadFixtures(); }, [loadFixtures]);
   useEffect(() => {
@@ -191,6 +204,17 @@ export function BetsApiExplorer() {
           </details>
         </section>
 
+        <div className="flex flex-wrap items-center gap-2 text-sm">
+          <span className="text-slate-400">Match source:</span>
+          <button type="button" className={button + (feed === 'bet365' ? ' border-sky-400 bg-blue-900/60' : '')}
+            onClick={() => { setFeed('bet365'); setPage(1); setList(null); setChosen(null); setMarkets(null); }}>
+            Bet365 · bookmaker fixtures
+          </button>
+          <button type="button" className={button + (feed === 'events' ? ' border-sky-400 bg-blue-900/60' : '')}
+            onClick={() => { setFeed('events'); setPage(1); setList(null); setChosen(null); setMarkets(null); }}>
+            All BetsAPI Events · including unpriced
+          </button>
+        </div>
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex rounded-xl bg-[#161e2b] p-1">
             {(['live', 'upcoming'] as const).map(value =>
@@ -274,7 +298,7 @@ export function BetsApiExplorer() {
                     <span>{f.home} — {f.away}</span>
                     <span className="shrink-0 font-bold text-emerald-400">{f.score ?? '›'}</span>
                   </div>
-                  <p className="mt-1 text-xs text-slate-500">Bet365 FI {f.fi} · View all markets ›</p>
+                  <p className="mt-1 text-xs text-slate-500">{f.fi ? 'Bet365 FI ' + f.fi + ' · View available markets ›' : 'Events API fixture · No linked Bet365 prices'}</p>
                 </button>
               ))}
             </div>
