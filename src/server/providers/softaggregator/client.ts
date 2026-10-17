@@ -1,6 +1,7 @@
 import { closeSync, constants, fstatSync, openSync, readFileSync } from 'node:fs';
 import { playerPassword, playerUsername } from './contract';
 import { casinoCountryPermitted } from './jurisdiction';
+import { softAggregatorLaunchFields } from './launch-fields';
 
 const ENDPOINT = 'https://api.softaggregator.com/api/v1';
 // Provider-confirmed allowlisted client signature; Node's default UA can be blocked by Cloudflare.
@@ -161,11 +162,8 @@ export async function launchCasinoGame(input: {
   if (!game) throw new Error('CASINO_GAME_NOT_FOUND');
   // Provider confirms some demo titles (including Aviator) have a false catalogue flag.
   // Attempt getGameDemo for any legitimate catalogued game and defer support to the API.
-  const base = {
-    gameid: input.gameId, currency: 'USD',
-    lang: input.lang === 'fa' ? 'en' : 'en', // The provider's documented languages do not include Persian.
-    device: input.device, homeurl: 'https://betvima.com',
-  };
+  // Provider launch fields are isolated from BetVima's player eligibility policy.
+  // In particular, the SoftAggregator contract never receives KYC or age state.
   // SoftAggregator documents getGameDemo as using the same player credentials
   // as getGame. Ensure the player before either launch. Neither mode can move
   // funds here: wallet debits/credits are handled only by the signed callback.
@@ -179,8 +177,7 @@ export async function launchCasinoGame(input: {
   try {
     launch = await callSoftAggregator<string | { gameurl?: unknown }>(
       input.demo ? 'getGameDemo' : 'getGame', {
-        ...identity, ...base,
-        ...(!input.demo ? { country: input.country! } : {}),
+        ...identity, ...softAggregatorLaunchFields(input),
       });
   } catch (error) {
     // The supplier marks almost every title as "no demo" in its catalogue,
