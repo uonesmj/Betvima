@@ -1,6 +1,6 @@
 /**
- * Scheduling is tied to the actual odds owner, NOT SPORTS_PROVIDER (which may
- * still point to a separate legacy results/fixture provider on the VPS).
+ * The Odds API is the only supported provider for bookmaker prices and fixtures.
+ * An unrecognized provider is never assigned a positive refresh budget.
  *
  * The Odds API prices expire after 300s for upcoming matches. With 5-minute
  * mid-fixture polling, selections spend much of their life safely suspended.
@@ -37,30 +37,18 @@ export function prematchRefreshCadence(providerName: string, configuredExtendedL
     };
   }
 
-  if (provider === '5dollarfootballapi') {
-    return {
-      nearMs: 60_000,
-      midMs: 5 * 60_000,
-      farMs: 15 * 60_000,
-      extendedNearMs: 10 * 60_000,
-      extendedFarMs: 15 * 60_000,
-      nearLimit: 24,
-      midLimit: 12,
-      farLimit: 4,
-      extendedLimit: configuredExtendedLimit,
-    };
-  }
-
+  // Fail closed if a stale service configuration tries to request quotes from
+  // an unauthorized source; do not consume time, quota or publish its prices.
   return {
-    nearMs: 30_000,
-    midMs: 60_000,
-    farMs: 5 * 60_000,
-    extendedNearMs: 60_000,
-    extendedFarMs: 5 * 60_000,
-    nearLimit: 24,
-    midLimit: 12,
-    farLimit: 4,
-    extendedLimit: configuredExtendedLimit,
+    nearMs: Number.MAX_SAFE_INTEGER,
+    midMs: Number.MAX_SAFE_INTEGER,
+    farMs: Number.MAX_SAFE_INTEGER,
+    extendedNearMs: Number.MAX_SAFE_INTEGER,
+    extendedFarMs: Number.MAX_SAFE_INTEGER,
+    nearLimit: 0,
+    midLimit: 0,
+    farLimit: 0,
+    extendedLimit: 0,
   };
 }
 
