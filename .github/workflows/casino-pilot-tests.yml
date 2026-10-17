@@ -4,10 +4,14 @@ on:
     paths:
       - 'src/server/providers/softaggregator/**'
       - 'tests/unit/softaggregator-*.test.ts'
+      - 'tests/unit/softaggregator-*.test.js'
+      - 'ops/cloudflare/softaggregator-callback-worker.js'
+      - 'vitest.config.ts'
       - '.github/workflows/casino-pilot-tests.yml'
   push:
     branches:
       - 'feature/casino-pilot-limits-20261017'
+      - 'feature/casino-callback-trusted-edge-20261017'
   workflow_dispatch:
 
 permissions:
@@ -26,6 +30,6 @@ jobs:
       - name: Install locked dependencies
         run: npm ci --ignore-scripts
       - name: Test pilot limits and both wallet implementations
-        run: npx vitest run tests/unit/softaggregator-pilot-limits.test.ts tests/unit/softaggregator-wallet.test.ts tests/unit/softaggregator-fiat-wallet.test.ts tests/unit/softaggregator-contract.test.ts
+        run: npx vitest run tests/unit/softaggregator-pilot-limits.test.ts tests/unit/softaggregator-wallet.test.ts tests/unit/softaggregator-fiat-wallet.test.ts tests/unit/softaggregator-contract.test.ts tests/unit/softaggregator-edge-mode-gate.test.ts tests/unit/softaggregator-callback-edge-interoperability.test.js
       - name: Typecheck
         run: npm run typecheck

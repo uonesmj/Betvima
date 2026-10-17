@@ -125,7 +125,9 @@ async function run() {
       providerApiConfigured: Boolean(
         process.env.SOFTAGGREGATOR_API_LOGIN && process.env.SOFTAGGREGATOR_API_PASSWORD,
       ),
-      callbackHmacConfigured: (process.env.SOFTAGGREGATOR_SALT_KEY ?? '').length >= 12,
+      callbackHmacConfigured: (process.env.SOFTAGGREGATOR_SALT_KEY ?? '').length >= 12 &&
+        Buffer.byteLength(process.env.SOFTAGGREGATOR_EDGE_HMAC_SECRET ?? '', 'utf8') >= 32 &&
+        process.env.SOFTAGGREGATOR_CALLBACK_EDGE_READY === 'true',
       geoHmacConfigured: Buffer.byteLength(process.env.CASINO_GEO_HMAC_SECRET ?? '') >= 32,
       explicitCountryList: explicitCasinoCountryList(
         process.env.SOFTAGGREGATOR_ALLOWED_COUNTRIES,

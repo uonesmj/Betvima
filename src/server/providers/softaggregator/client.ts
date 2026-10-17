@@ -80,7 +80,12 @@ export function casinoRealMoneyEnabled() {
   return process.env.SOFTAGGREGATOR_ENABLED === 'true' &&
     process.env.SOFTAGGREGATOR_REAL_MONEY_ENABLED === 'true' &&
     process.env.SOFTAGGREGATOR_FINANCIAL_SCHEMA_READY === 'true' &&
-    (process.env.SOFTAGGREGATOR_SALT_KEY ?? '').length >= 12;
+    (process.env.SOFTAGGREGATOR_SALT_KEY ?? '').length >= 12 &&
+    // The provider's documented MD5 authenticates ONLY its timestamp.
+    // Real money requires a vendor-IP-restricted edge that HMAC-signs every
+    // callback field with an independent secret. Demo needs neither gate.
+    process.env.SOFTAGGREGATOR_CALLBACK_EDGE_READY === 'true' &&
+    Buffer.byteLength(process.env.SOFTAGGREGATOR_EDGE_HMAC_SECRET ?? '', 'utf8') >= 32;
 }
 /**
  * Explicit one-account pilot allowlist. Enabling the provider's real-money flag
