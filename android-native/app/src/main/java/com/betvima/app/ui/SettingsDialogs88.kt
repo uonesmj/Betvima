@@ -1,6 +1,8 @@
 package com.betvima.app.ui
 
 import androidx.compose.foundation.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -47,9 +49,10 @@ private fun SecureField88(value:String,onValue:(String)->Unit,label:String,
 @Composable
 private fun SecureShell88(title:String,close:()->Unit,content:@Composable ColumnScope.()->Unit){
     Dialog(onDismissRequest=close,properties=DialogProperties(usePlatformDefaultWidth=false)){
-        Column(Modifier.fillMaxWidth(.91f)
+        Column(Modifier.fillMaxWidth(.96f).heightIn(max=690.dp)
             .background(sheetBg88, RoundedCornerShape(26.dp))
-            .padding(21.dp),verticalArrangement=Arrangement.spacedBy(14.dp)){
+            .verticalScroll(rememberScrollState())
+            .padding(16.dp),verticalArrangement=Arrangement.spacedBy(12.dp)){
             Row(verticalAlignment=Alignment.CenterVertically){
                 Text(title,color=white88,fontWeight=FontWeight.Black,fontSize=20.sp,
                     modifier=Modifier.weight(1f))
@@ -128,6 +131,7 @@ internal fun AppLockDialog88(lang:Lang,settings:SettingsDevice87,
     var firstPattern by remember { mutableStateOf("") }
     var repeatedPattern by remember { mutableStateOf("") }
     var error by remember { mutableStateOf("") }
+    var confirmDisable by remember { mutableStateOf(false) }
     fun approve(value:String){
         when(settings.unlock88(value)){
             1 -> {priorSecret=value;authorized=true;error=""}
@@ -143,6 +147,24 @@ internal fun AppLockDialog88(lang:Lang,settings:SettingsDevice87,
             onChanged();onDismiss()
         }else error=t88(lang,"Could not update the app lock","تغییر قفل انجام نشد")
     }
+    if (confirmDisable) AlertDialog(
+        onDismissRequest={confirmDisable=false},
+        shape=RoundedCornerShape(24.dp),containerColor=sheetBg88,
+        title={Text(t88(lang,"Turn off app lock?","قفل برنامه خاموش شود؟"),
+            color=white88,fontWeight=FontWeight.Black)},
+        text={Text(t88(lang,
+            "You have verified the current lock. Turning it off will remove the PIN or pattern from this device.",
+            "قفل فعلی تأیید شده است. با خاموش‌کردن، پین یا الگوی این دستگاه حذف می‌شود."),
+            color=gray88,fontSize=13.sp)},
+        confirmButton={TextButton(onClick={
+            confirmDisable=false
+            commit("none","")
+        }){Text(t88(lang,"Turn off lock","خاموش‌کردن قفل"),
+            color=Color(0xFFFF9FAE))}},
+        dismissButton={TextButton(onClick={confirmDisable=false}){
+            Text(t88(lang,"Cancel","انصراف"),color=gray88)
+        }}
+    )
     SecureShell88(t88(lang,"App lock protection","قفل برنامه"),onDismiss) {
         if(!authorized){
             Text(t88(lang,"Confirm your existing lock before changing it.",
@@ -166,12 +188,27 @@ internal fun AppLockDialog88(lang:Lang,settings:SettingsDevice87,
             Text(t88(lang,"Choose how to unlock this device",
                 "روش بازکردن قفل این دستگاه را انتخاب کنید"),
                 color=gray88,fontSize=12.sp)
-            Row(horizontalArrangement=Arrangement.spacedBy(8.dp)){
-                listOf("pin" to t88(lang,"Numeric PIN","پین عددی"),
-                    "pattern" to t88(lang,"Dot pattern","الگوی نقطه‌ای")).forEach{(value,label)->
+            Row(horizontalArrangement=Arrangement.spacedBy(6.dp),
+                verticalAlignment=Alignment.CenterVertically){
+                listOf("pin" to t88(lang,"PIN","عدد"),
+                    "pattern" to t88(lang,"Pattern","الگو")).forEach{(value,label)->
                     FilterChip(selected=mode==value,onClick={
                         mode=value;pin="";repeatPin="";firstPattern="";repeatedPattern="";error=""
-                    },label={Text(label)},modifier=Modifier.weight(1f))
+                    },label={Text(label,fontSize=12.sp)},
+                        modifier=Modifier.weight(1f))
+                }
+                if(priorMode!="none") {
+                    OutlinedButton(onClick={confirmDisable=true},
+                        modifier=Modifier.weight(1.1f).height(46.dp),
+                        shape=RoundedCornerShape(16.dp),
+                        border=BorderStroke(1.dp,Color(0xFFB64F63)),
+                        contentPadding=PaddingValues(horizontal=2.dp)) {
+                        Icon(Icons.Default.PowerSettingsNew,null,
+                            tint=Color(0xFFFF9DAF),modifier=Modifier.size(15.dp))
+                        Spacer(Modifier.width(3.dp))
+                        Text(t88(lang,"Off","خاموش"),
+                            color=Color(0xFFFFABBB),fontSize=12.sp)
+                    }
                 }
             }
             if(mode=="pin"){
@@ -209,11 +246,7 @@ internal fun AppLockDialog88(lang:Lang,settings:SettingsDevice87,
                 Text(t88(lang,"Activate "+if(mode=="pin")"PIN" else "pattern",
                     "فعال‌سازی "+if(mode=="pin")"پین" else "الگو"))
             }
-            if(priorMode!="none")OutlinedButton(onClick={commit("none","")},
-                modifier=Modifier.fillMaxWidth(),
-                border=BorderStroke(1.dp,Color(0xFF99505F))){
-                Text(t88(lang,"Remove app lock","حذف قفل برنامه"),color=Color(0xFFFFB1BC))
-            }
+
         }
         if(error.isNotBlank())Text(error,color=Color(0xFFFFA3AD),fontSize=12.sp)
     }
