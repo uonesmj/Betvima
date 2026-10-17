@@ -25,6 +25,18 @@ class SlipWinningsTest {
         assertEquals("0.25", result.returnUsd)
         assertEquals("0.05", result.profitUsd)
     }
+    @Test fun fiveDollarStakeAtFourPointSixOdds() {
+        val result = previewSlipWinnings("5.00", listOf(pick("46000")))!!
+        assertEquals("23.00", result.returnUsd)
+        assertEquals("18.00", result.profitUsd)
+        assertEquals("4.60", result.combinedOdds)
+    }
+    @Test fun rialStakeHasNoFractionalMinorUnits() {
+        val result = previewSlipWinnings("10000", listOf(pick("46000")), "IRR")!!
+        assertEquals("46000", result.returnUsd)
+        assertEquals("36000", result.profitUsd)
+        assertNull(previewSlipWinnings("10000.50", listOf(pick("46000")), "IRR"))
+    }
     @Test fun invalidPricesAndStakesShowNoEstimates() {
         assertNull(previewSlipWinnings("0", listOf(pick("19300"))))
         assertNull(previewSlipWinnings("-1", listOf(pick("19300"))))
