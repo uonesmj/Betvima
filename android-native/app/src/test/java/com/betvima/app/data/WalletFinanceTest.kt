@@ -24,6 +24,45 @@ class WalletFinanceTest {
         assertNull(voucherUsdMinor("2500000", "IRR", "0"))
     }
 
+    @Test fun voucherMinimumMatchesLiveUwalletRialsWithoutRoundingBelowOneFifty() {
+        val rate = "2527062.20000000"
+        assertEquals("3790594", voucherMinimumWalletMinor("150", "IRR", rate))
+        assertEquals("379060", voucherMinimumWalletMinor("150", "IRT", rate))
+        assertEquals(java.math.BigInteger("3790600"),
+            voucherRialsFromWalletMinor("379060", "IRT"))
+        assertEquals("150", voucherUsdMinor("3790594", "IRR", rate))
+        assertEquals("149", voucherUsdMinor("3790593", "IRR", rate))
+        assertEquals("150", voucherUsdMinor("379060", "IRT", rate))
+        assertEquals("150", voucherUsdMinor(voucherWalletMinorFromRials(
+            "۳٬۷۹۰٬۶۰۰", "IRT")!!, "IRT", rate))
+        assertEquals("3790594", voucherWalletMinorFromRials("3,790,594", "IRR"))
+        assertNull(voucherWalletMinorFromRials("3790594", "IRT"))
+        assertNull(voucherMinimumWalletMinor("150", "IRT", "0"))
+    }
+
+    @Test fun voucherDisplayedMaximumDoesNotExceedConfiguredProviderUsdLimit() {
+        val rate = "2527062.20000000"
+        val walletIrrMax = voucherMaximumWalletMinor("1000", "IRR", rate)!!
+        assertEquals("1000", voucherUsdMinor(walletIrrMax, "IRR", rate))
+        assertEquals("1000", voucherUsdMinor(walletIrrMax, "IRR", rate))
+        assertEquals("25270622", walletIrrMax)
+    }
+
+    @Test fun voucherTomanAccountsOnlyAcceptRialInputsWithoutSilentFactorTen() {
+        val quote = WalletExchangeQuote("2527062.20000000",
+            Instant.now().toString(), "a".repeat(64))
+        val valid = walletTransferValidation(
+            "withdraw","voucher_hotvoucher","USDT","Tron (TRC-20)",
+            "IRT","۳٬۷۹۰٬۶۰۰","test@example.com","", "400000",
+            "ok",true,quote,null)
+        assertNull(valid)
+        val nonDivisible = walletTransferValidation(
+            "withdraw","voucher_hotvoucher","USDT","Tron (TRC-20)",
+            "IRT","3790594","test@example.com","", "400000",
+            "ok",true,quote,null)
+        assertEquals("amount", nonDivisible)
+    }
+
     @Test fun allCryptoNetworksExactlyMatchServerAllowedValues() {
         for (coin in walletCoins) {
             for (network in coin.networkOptions) assertTrue(supportedWalletNetwork(coin.code, network))
