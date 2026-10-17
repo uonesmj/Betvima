@@ -313,7 +313,7 @@ export class PostgresCatalogRepository implements CatalogRepository {
     return filter?.includeSuspended
       ? markets
       : markets.filter((market) => market.selections.some((selection) =>
-          selection.status === 'open' && selection.oddsScaled > 10_000n,
+          (selection.status === 'active' || String(selection.status) === 'open') && selection.oddsScaled > 10_000n,
         ));
   }
 
