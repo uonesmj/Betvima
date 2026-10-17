@@ -171,6 +171,17 @@ fun HomePage(state: AppState, model: AppViewModel, onSearch: () -> Unit) {
                     }
                 }
             }
+            item(key = "home-casino95", contentType = "casino") {
+                Column(Modifier.padding(horizontal = 15.dp)) {
+                    ReferenceSectionHeader(state.lang, "Casino", "کازینو",
+                        Icons.Default.Casino, Palette.blue) {
+                        model.feature(Feature.CASINO)
+                    }
+                    CasinoHomeCarousel95(state.lang, model) {
+                        model.feature(Feature.CASINO)
+                    }
+                }
+            }
         }
         item(key = "premium-home-footer", contentType = "footer") {
             PremiumAppFooter(state, model) {
