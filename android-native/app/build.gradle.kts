@@ -10,12 +10,12 @@ android {
         applicationId = "com.betvima.app"
         minSdk = 26
         targetSdk = 35
-        versionCode = 108
-        versionName = "0.108.0"
+        versionCode = 109
+        versionName = "0.109.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         buildConfigField("String", "API_BASE_URL", "\"https://betvima.com/\"")
-        // Server-side allowlist and finance gate remain authoritative for any wagering.
-        buildConfigField("boolean", "ENABLE_WAGERING", "false")
+        // Server-owned wagering switches are read at runtime. No bundled
+        // permanent real-money authorization flag can become stale.
     }
     buildTypes {
         release {
