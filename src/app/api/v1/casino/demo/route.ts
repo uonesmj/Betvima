@@ -32,8 +32,8 @@ export const POST = withErrorHandling('casino.demo', async (ctx, request: Reques
   const url = await launchCasinoGame({
     userId: user.id,
     gameId: input.gameId,
-    device: input.device,
-    lang: input.lang,
+    device: input.device ?? 'mobile',
+    lang: input.lang ?? 'en',
     demo: true,
   });
   return NextResponse.json({ ok: true, data: { url, currency: 'USD', demo: true } }, {
