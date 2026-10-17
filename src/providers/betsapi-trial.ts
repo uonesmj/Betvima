@@ -4,6 +4,7 @@
  * The client must stay on the first-party backend; never ship API keys in APKs.
  */
 import { parseBet365LivePreview } from './betsapi-bet365-preview';
+import { normalizeBetsapiOdds } from './betsapi-normalization';
 
 export const BETSAPI_TRIAL_SPORTS = [
   { id: 1, name: 'Football' },
@@ -18,6 +19,7 @@ export const BETSAPI_TRIAL_SPORTS = [
 interface ResultEnvelope {
   success?: number | string;
   results?: unknown;
+  pager?: unknown;
   error?: unknown;
   error_code?: unknown;
 }
@@ -39,7 +41,7 @@ export interface BetsApiTrialResult {
   mode: 'read_only';
   checkedAt: string;
   sports: BetsApiTrialSport[];
-  oddsSample: Array<{ sport: string; eventId: string; marketKeys: number; latestOffers: number; error: string | null }>;
+  oddsSample: Array<{ sport: string; eventId: string; marketKeys: number; latestOffers: number; freshMarkets: number; freshSelections: number; error: string | null }>;
   bet365: { permitted: boolean; eventCount: number; sampleFixtureId: string | null;
     marketCount: number; priceCount: number; error: string | null };
   remainingHourlyRequests: number | null;
@@ -161,11 +163,18 @@ export async function runBetsApiTrial(
     if (output.oddsSample.length >= 5) break;
     for (const event of sport.sample.slice(0, 1)) {
       if (!/^\d{1,16}$/.test(event.id)) continue;
-      const item = { sport: sport.sport, eventId: event.id, marketKeys: 0, latestOffers: 0, error: null as string | null };
+      const item = { sport: sport.sport, eventId: event.id, marketKeys: 0, latestOffers: 0,
+        freshMarkets: 0, freshSelections: 0, error: null as string | null };
       try {
         const data = await call('/v2/event/odds', { event_id: event.id });
         const odds = record(record(data.results).odds);
         item.marketKeys = Object.keys(odds).length;
+        // Historical groups are NOT fresh executable markets.
+        const latest = normalizeBetsapiOdds(
+          `${sport.sportId}:${event.id}`, data.results, new Date(), true,
+        );
+        item.freshMarkets = latest.markets.length;
+        item.freshSelections = latest.markets.reduce((sum, market) => sum + market.selections.length, 0);
         for (const entries of Object.values(odds)) {
           const latest = Array.isArray(entries) ? record(entries[0]) : {};
           if (['home_od', 'draw_od', 'away_od', 'over_od', 'under_od'].some(field => {
