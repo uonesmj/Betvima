@@ -50,3 +50,18 @@ fun notificationDisplayDate(date: String, language: Lang): String {
         date.take(10)
     }
 }
+
+/** Only an authenticated, owned UUID may become a direct support destination. */
+fun validSupportNotificationTicketId(value: String): Boolean =
+    Regex("^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$")
+        .matches(value)
+
+/** Reject non-BetVima URLs, extra query fields, fragments and malformed IDs. */
+fun supportTicketFromNotificationHref(href: String?): String? {
+    if (notificationDestination(href) != NotificationDestination.SUPPORT) return null
+    val value = href?.trim() ?: return null
+    val query = value.substringAfter('?', "")
+    if (!query.startsWith("ticket=")) return null
+    val id = query.removePrefix("ticket=")
+    return id.takeIf(::validSupportNotificationTicketId)
+}
