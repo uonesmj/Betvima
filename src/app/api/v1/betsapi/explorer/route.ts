@@ -13,7 +13,7 @@ const inputSchema = z.object({
   mode: z.enum(['live', 'upcoming']),
   sportId: z.number().int().positive(),
   page: z.number().int().min(1).max(100).optional(),
-  fi: z.string().regex(/^\\d{1,16}$/).optional(),
+  fi: z.string().regex(/^\d{1,16}$/).optional(),
 });
 type Input = z.infer<typeof inputSchema>;
 const options = (x: Input): ExplorerInput => ({
