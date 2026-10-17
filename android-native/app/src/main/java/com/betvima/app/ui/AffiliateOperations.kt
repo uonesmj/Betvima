@@ -33,7 +33,8 @@ import java.util.UUID
 /** Mirrors the native site's authenticated partner reporting, without invented financial figures. */
 @Composable
 fun AffiliateOperations(state: AppState, model: AppViewModel, currency: String,
-    minimumPayoutMinor: String = "0") {
+    minimumPayoutMinor: String = "0", initialTab: String = "referrals",
+    showNavigation: Boolean = true) {
     val context = LocalContext.current
     val api = remember { ApiClient() }
     val vault = remember { SessionVault(context, "affiliate") }
@@ -46,7 +47,7 @@ fun AffiliateOperations(state: AppState, model: AppViewModel, currency: String,
         "links" to tr(state.lang, "Links", "لینک‌ها"),
         "wallets" to tr(state.lang, "Wallets", "کیف‌پول‌ها")
     )
-    var selected by rememberSaveable { mutableStateOf("referrals") }
+    var selected by rememberSaveable(initialTab) { mutableStateOf(initialTab) }
     var page by rememberSaveable { mutableIntStateOf(1) }
     var refresh by remember { mutableIntStateOf(0) }
     var busy by remember { mutableStateOf(false) }
@@ -117,9 +118,10 @@ fun AffiliateOperations(state: AppState, model: AppViewModel, currency: String,
     }
 
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        SectionHeading(tr(state.lang, "Partner workspace", "فضای کاری افیلیت"),
+        if (showNavigation) {
+          SectionHeading(tr(state.lang, "Partner workspace", "فضای کاری افیلیت"),
             tr(state.lang, "Secure referrals, statements and payout actions", "زیرمجموعه‌ها، صورتحساب و درخواست برداشت امن"))
-        LazyRow(
+          LazyRow(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             contentPadding=PaddingValues(vertical=3.dp)
         ) {
@@ -149,6 +151,7 @@ fun AffiliateOperations(state: AppState, model: AppViewModel, currency: String,
                     }
                 }
             }
+        }
         }
         if (busy) LinearProgressIndicator(Modifier.fillMaxWidth(), color = Palette.green)
         if (error != null) BvInformationStrip(error.orEmpty(), Icons.Default.WarningAmber,
