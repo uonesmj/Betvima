@@ -35,7 +35,7 @@ function outcomeLabel(row: Record<string, unknown>, id: string, line = ''): stri
   const raw = [row.NA, row.name, row.header, row.player_name, row.player,
     row.team_name, row.team].map(string).map(x => x.trim()).filter(Boolean);
   const unique = [...new Set(raw)];
-  const name = unique.filter(x => !/^selection$/i.test(x)).join(' ').slice(0, 135);
+  const name = unique.filter(x => !/^selection(?:\\s*\\([^)]*\\))?$/i.test(x)).join(' ').slice(0, 135);
   const handicap = line.trim();
   if (name) return handicap && !name.includes(handicap)
     ? `${name} (${handicap})` : name;
