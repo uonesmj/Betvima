@@ -22,6 +22,7 @@ import {
 import { marketRuleFor, marketDisplayOrder } from '@/domain/market-rules';
 import { attachCachedLogo } from "@/server/services/logo-resolver";
 import { LIVE_MATCH_STATUSES } from '@/lib/match-state';
+import { CURRENT_LIVE_FIXTURE_SQL } from '@/lib/odds/live-fixture-recency';
 import {
   MATCH_SOURCE_ODDS,
   attachProviderMatchIdentity,
@@ -885,6 +886,7 @@ async function runDedicatedLiveTick(ctx: WorkerContext): Promise<void> {
             where m.provider = $1
               and m.provider_id is not null
               and m.status::text = any($2::text[])
+              and ${CURRENT_LIVE_FIXTURE_SQL}
             order by
               (select max(sl.odds_updated_at)
                  from nova.markets mk
