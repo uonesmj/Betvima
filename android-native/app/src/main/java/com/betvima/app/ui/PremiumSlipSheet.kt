@@ -259,20 +259,27 @@ private fun MainAccountSlipControls(
             }
         }
         if (state.picks.isNotEmpty()) {
-            val estimate = remember(stake, state.picks) {
-                previewSlipWinnings(stake, state.picks)
+            val estimate = remember(stake, state.picks, curr) {
+                previewSlipWinnings(stake, state.picks, curr)
             }
             if (estimate != null) {
-                // When a live server quote exists, it overrides the illustrative
-                // payout derived from current client odds. Neither is settlement.
-                val officialPayout = state.quote
-                    ?.removeSuffix(" USD")
-                    ?.takeIf { it.matches(Regex("[0-9]+\\.[0-9]{2}")) }
+                // Official signed quote is already denominated in wallet minor units.
+                // Do not parse the decorated, localized state.quote string as USD.
+                val officialPayout = review?.takeIf {
+                    it.currency == curr &&
+                        it.picks == state.picks &&
+                        it.stakeMinor == runCatching { mainBetStakeMinor(stake, curr) }.getOrNull() &&
+                        runCatching {
+                            java.time.Instant.parse(it.expiresAt).toEpochMilli() >
+                                System.currentTimeMillis()
+                        }.getOrDefault(false)
+                }?.potentialPayoutMinor?.toBigDecimalOrNull()
+                    ?.movePointLeft(if (curr == "USD") 2 else 0)?.toPlainString()
                 val possibleReturn = officialPayout ?: estimate.returnUsd
-                val netProfit = remember(possibleReturn, estimate.stakeUsd) {
+                val netProfit = remember(possibleReturn, estimate.stakeUsd, curr) {
                     java.math.BigDecimal(possibleReturn)
                         .subtract(java.math.BigDecimal(estimate.stakeUsd))
-                        .setScale(2, java.math.RoundingMode.HALF_UP)
+                        .setScale(if (curr == "USD") 2 else 0, java.math.RoundingMode.HALF_UP)
                         .toPlainString()
                 }
                 Surface(
@@ -328,7 +335,7 @@ private fun MainAccountSlipControls(
                                             maxLines = 1
                                         )
                                         Text(
-                                            "$" + possibleReturn,
+                                            formatSlipOutcome(possibleReturn, curr, lang == Lang.FA) ?: "—",
                                             color = slipText, fontSize = 14.sp,
                                             fontWeight = FontWeight.Black,
                                             maxLines = 1
@@ -341,7 +348,7 @@ private fun MainAccountSlipControls(
                                             maxLines = 1
                                         )
                                         Text(
-                                            "$" + netProfit,
+                                            formatSlipOutcome(netProfit, curr, lang == Lang.FA) ?: "—",
                                             color = Color(0xFF008752), fontSize = 14.sp,
                                             fontWeight = FontWeight.Black,
                                             maxLines = 1
