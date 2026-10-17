@@ -18,6 +18,7 @@ interface HealthRow {
 }
 
 interface TrialReport {
+  focusCountries: Array<{ code: string; live: number; upcoming: number }>;
   configured: boolean; checkedAt: string; remainingHourlyRequests: number | null; mode: 'read_only';
   sports: Array<{ sport: string; sportId: number; liveFixtures: number;
     liveWithClock: number; liveWithScore: number; upcomingFixtures: number;
@@ -163,6 +164,18 @@ export function ProvidersClient() {
         {trial?.configured && (
           <div className="space-y-3">
             <p className="text-xs nova-muted">Checked: {formatDateTime(trial.checkedAt, locale)} · Mode: read-only · Requests used: {trial.callsInProbe} · Duration: {Math.round(trial.durationMs / 1000)}s · Hourly requests remaining: {trial.remainingHourlyRequests ?? 'unknown'}</p>
+            <div className="flex flex-wrap items-center gap-2 text-xs">
+              <span className="nova-muted">Priority countries (current snapshot):</span>
+              {trial.focusCountries.map(c => (
+                <span key={c.code} className="rounded-md border border-nova-border px-2 py-1">
+                  {c.code.toUpperCase()} · {c.live} live / {c.upcoming} upcoming
+                </span>
+              ))}
+              <button type="button" className="rounded-md border border-nova-border px-3 py-1"
+                onClick={() => { void navigator.clipboard?.writeText(JSON.stringify(trial, null, 2)); }}>
+                Copy report for purchase decision
+              </button>
+            </div>
             <div className="overflow-x-auto">
               <table className="nova-table">
                 <thead><tr><th>Sport</th><th>Live</th><th>Clock / score</th><th>Upcoming</th><th>Example fixture</th><th>Source status</th></tr></thead>
