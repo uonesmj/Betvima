@@ -673,45 +673,55 @@ private fun MessengerEmojiPicker(onSelect:(String)->Unit) {
 
 @Composable
 private fun MessengerComposer(
-    draft:String,onDraft:(String)->Unit,filename:String?,clearFile:()->Unit,
-    onAttach:()->Unit,onEmoji:()->Unit,onSend:()->Unit,enabled:Boolean,
-    lang:Lang,expanded:Boolean=false
+    draft: String, onDraft: (String) -> Unit,
+    file: MessengerDocument?, phase: SupportAttachmentPhase,
+    clearFile: () -> Unit,
+    onAttach: () -> Unit, onEmoji: () -> Unit, onSend: () -> Unit,
+    enabled: Boolean, lang: Lang, expanded: Boolean = false
 ) {
     Column(Modifier.fillMaxWidth().background(messengerPaper)
-        .padding(horizontal=if(expanded) 0.dp else 15.dp,vertical=10.dp)) {
-        if (filename!=null) {
-            TextButton(onClick=clearFile) {
-                Text(filename+" ×",maxLines=1,overflow=TextOverflow.Ellipsis,color=messengerBlue)
-            }
-        }
-        Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
-            Row(Modifier.weight(1f).heightIn(min=62.dp)
-                .clip(RoundedCornerShape(18.dp))
-                .background(messengerGray)
-                .padding(start=15.dp,end=2.dp),
-                verticalAlignment=Alignment.CenterVertically) {
-                BasicTextField(
-                    value=draft,onValueChange=onDraft,modifier=Modifier.weight(1f),
-                    textStyle=androidx.compose.ui.text.TextStyle(fontSize=16.sp,color=messengerInk),
-                    maxLines=4,
-                    decorationBox={inner->
-                        Box {
-                            if(draft.isEmpty()) Text(tr(lang,"Text...","پیام..."),
-                                color=Color(0xFF707782),fontSize=16.sp)
-                            inner()
+        .padding(horizontal = if (expanded) 0.dp else 15.dp, vertical = 10.dp)) {
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Bottom) {
+            Column(Modifier.weight(1f).clip(RoundedCornerShape(18.dp))
+                .background(messengerGray)) {
+                // Keep attachment preview/status inside the input field itself.
+                if (file != null) {
+                    MessengerPendingAttachment(
+                        uri = file.uri, filename = file.name, mime = file.type,
+                        phase = phase, lang = lang, onRemove = clearFile
+                    )
+                }
+                Row(Modifier.fillMaxWidth().heightIn(min = 62.dp)
+                    .padding(start = 15.dp, end = 2.dp),
+                    verticalAlignment = Alignment.CenterVertically) {
+                    BasicTextField(
+                        value = draft, onValueChange = onDraft,
+                        modifier = Modifier.weight(1f),
+                        textStyle = androidx.compose.ui.text.TextStyle(
+                            fontSize = 16.sp, color = messengerInk),
+                        maxLines = 4,
+                        decorationBox = { inner ->
+                            Box {
+                                if (draft.isEmpty()) Text(tr(lang, "Text...", "پیام..."),
+                                    color = Color(0xFF707782), fontSize = 16.sp)
+                                inner()
+                            }
                         }
-                    }
-                )
-                MessengerIcon(Icons.Default.AttachFile,tr(lang,"Attach file","پیوست فایل"),onAttach)
-                MessengerIcon(Icons.Default.SentimentSatisfied,tr(lang,"Emoji","شکلک"),onEmoji)
+                    )
+                    MessengerIcon(Icons.Default.AttachFile,
+                        tr(lang,"Attach file","پیوست فایل"),onAttach,
+                        enabled = phase != SupportAttachmentPhase.UPLOADING)
+                    MessengerIcon(Icons.Default.SentimentSatisfied,
+                        tr(lang,"Emoji","شکلک"),onEmoji)
+                }
             }
-            if(!expanded) {
+            if (!expanded) {
                 Spacer(Modifier.width(10.dp))
-                FilledIconButton(onClick=onSend,enabled=enabled,
-                    modifier=Modifier.size(width=64.dp,height=61.dp),
-                    shape=RoundedCornerShape(17.dp),
-                    colors=IconButtonDefaults.filledIconButtonColors(
-                        containerColor=messengerButton,contentColor=Color.White
+                FilledIconButton(onClick = onSend, enabled = enabled,
+                    modifier = Modifier.size(width = 64.dp, height = 61.dp),
+                    shape = RoundedCornerShape(17.dp),
+                    colors = IconButtonDefaults.filledIconButtonColors(
+                        containerColor = messengerButton, contentColor = Color.White
                     )) {
                     Icon(Icons.Default.Send,tr(lang,"Send message","ارسال پیام"),
                         modifier=Modifier.size(26.dp))
