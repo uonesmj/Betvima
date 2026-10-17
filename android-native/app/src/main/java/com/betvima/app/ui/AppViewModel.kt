@@ -47,7 +47,7 @@ data class AppState(
     val picks: List<Pick> = emptyList(), val showSlip: Boolean = false,
     val pickFlight: PickFlight84? = null,
     val showLogin: Boolean = false, val registerScreen: Boolean = false,
-    val authError: String? = null,
+    val authError: String? = null, val mfaRequired: Boolean = false,
     val signedIn: Boolean = false,
     val accountName: String? = null,
     val wallet: Wallet? = null, val bets: List<Bet> = emptyList(),
@@ -76,6 +76,10 @@ data class AppState(
 class AppViewModel(app: Application) : AndroidViewModel(app) {
     private val api = ApiClient()
     private val vault = SessionVault(app)
+    // First factor session is ephemeral and never written to storage.
+    private var pendingMfaSession: org.json.JSONObject? = null
+    private var pendingMfaFactor: String? = null
+    private var pendingMfaNavigateHome = false
     private val preferences = app.getSharedPreferences("native_preferences", android.content.Context.MODE_PRIVATE)
     private var sessionGeneration = 0
     private var liveRequestNumber = 0
@@ -431,8 +435,14 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     fun showSlip(show: Boolean) = mutable.update {
         it.copy(showSlip = show, pickFlight = null)
     }
-    fun showLogin(show: Boolean, register: Boolean = false) =
-        mutable.update { it.copy(showLogin = show, registerScreen = register, authError = null) }
+    fun showLogin(show: Boolean, register: Boolean = false) {
+        if (!show) {
+            pendingMfaSession = null
+            pendingMfaFactor = null
+        }
+        mutable.update { it.copy(showLogin = show, registerScreen = register,
+            mfaRequired = if (show) it.mfaRequired else false, authError = null) }
+    }
     fun setRegisterScreen(register: Boolean) =
         mutable.update { it.copy(registerScreen = register, authError = null) }
     fun signIn(email: String, password: String, navigateHome: Boolean = false) = viewModelScope.launch {
@@ -445,26 +455,12 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         mutable.update { it.copy(busy = true, notice = null, authError = null) }
         try {
             vault.signIn(email.trim(), password, api)
-            // Audit the newly authenticated device. A history service outage
-            // must never convert a valid login into an authentication failure.
-            runCatching {
-                vault.accessToken(api)?.let { api.recordLogin88(it) }
-            }
-            sessionGeneration++
-            quoteGeneration++
-            mutable.update { it.copy(
-                mainBetReview = null, mainOddsAcceptedToken = null, mainBetUncertain = false, quote = null,
-                busy = false, showLogin = false, signedIn = true, authError = null,
-                tab = if (navigateHome) Tab.HOME else it.tab,
-                homeMode = if (navigateHome) HomeMode.TOP else it.homeMode,
-                feature = if (navigateHome) Feature.NONE else it.feature,
-                detail = if (navigateHome) null else it.detail,
-                detailLoading = if (navigateHome) false else it.detailLoading
-            ) }
-            if (navigateHome) refreshAll()
-            refreshAccount()
-            if (state.value.tab == Tab.BETS) refreshBetHistory()
-            refreshNotifications()
+            onMfaCompleted(navigateHome)
+        } catch (ex: TotpChallengeRequired) {
+            pendingMfaSession = ex.firstFactorSession
+            pendingMfaFactor = ex.factorId
+            pendingMfaNavigateHome = navigateHome
+            mutable.update { it.copy(busy = false, mfaRequired = true, authError = null) }
         } catch (ex: Exception) {
             val text = when ((ex as? ApiFailure)?.code) {
                 400, 401, 403 -> tr(state.value.lang,
@@ -480,7 +476,60 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             mutable.update { it.copy(busy = false, authError = text) }
         }
     }
+    private suspend fun onMfaCompleted(navigateHome: Boolean) {
+            // Audit the newly authenticated device. A history service outage
+            // must never convert a valid login into an authentication failure.
+            runCatching {
+                vault.accessToken(api)?.let { api.recordLogin88(it) }
+            }
+            sessionGeneration++
+            quoteGeneration++
+            mutable.update { it.copy(
+                mainBetReview = null, mainOddsAcceptedToken = null, mainBetUncertain = false, quote = null,
+                busy = false, showLogin = false, signedIn = true, mfaRequired = false, authError = null,
+                tab = if (navigateHome) Tab.HOME else it.tab,
+                homeMode = if (navigateHome) HomeMode.TOP else it.homeMode,
+                feature = if (navigateHome) Feature.NONE else it.feature,
+                detail = if (navigateHome) null else it.detail,
+                detailLoading = if (navigateHome) false else it.detailLoading
+            ) }
+            if (navigateHome) refreshAll()
+            refreshAccount()
+            if (state.value.tab == Tab.BETS) refreshBetHistory()
+            refreshNotifications()
+    }
+
+    fun verifyMfa(code: String) = viewModelScope.launch {
+        if (state.value.busy) return@launch
+        if (!code.matches(Regex("[0-9]{6}"))) {
+            mutable.update { it.copy(authError = tr(it.lang,
+                "Enter the six-digit authenticator code.", "کد شش‌رقمی برنامه امنیتی را وارد کنید.")) }
+            return@launch
+        }
+        val firstFactor = pendingMfaSession
+        val factor = pendingMfaFactor
+        if (firstFactor == null || factor == null) {
+            mutable.update { it.copy(mfaRequired = false, authError = tr(it.lang,
+                "Sign in again to verify your code.", "برای تأیید کد دوباره وارد شوید.")) }
+            return@launch
+        }
+        mutable.update { it.copy(busy = true, authError = null) }
+        try {
+            val elevated = api.mfaChallengeVerify(firstFactor.optString("access_token"), factor, code)
+            vault.commitVerifiedMfaSession(elevated, api)
+            pendingMfaSession = null
+            pendingMfaFactor = null
+            onMfaCompleted(pendingMfaNavigateHome)
+        } catch (ex: Exception) {
+            mutable.update { it.copy(busy = false, authError = tr(it.lang,
+                "Authenticator code is invalid or expired. Try again.",
+                "کد برنامه امنیتی نامعتبر یا منقضی است. دوباره امتحان کنید.")) }
+        }
+    }
+
     fun signOut() {
+        pendingMfaSession = null
+        pendingMfaFactor = null
         closeBet()
         closeMatch()
         quoteGeneration++
