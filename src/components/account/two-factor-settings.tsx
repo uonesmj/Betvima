@@ -20,6 +20,7 @@ export function TwoFactorSettings({
   const [enrollment, setEnrollment] = useState<TotpEnrollment | null>(null);
   const [code, setCode] = useState('');
   const [isAal2, setIsAal2] = useState(false);
+  const [disableRequested, setDisableRequested] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
 
@@ -78,12 +79,15 @@ export function TwoFactorSettings({
 
   const disable = () => perform(async () => {
     if (adminRequired) throw new Error('Administrator accounts must keep two-factor authentication enabled');
-    if (!factorId || !isAal2) throw new Error('First verify your current authenticator code');
+    if (!factorId) throw new Error('No enrolled authenticator');
+    if (!/^\\d{6}$/.test(code)) throw new Error('Enter a fresh six-digit authenticator code');
     if (!window.confirm(fa ? 'تأیید می‌کنید که حفاظت دومرحله‌ای غیرفعال شود؟' : 'Disable two-factor authentication on this account?')) return;
     const client = getSupabaseBrowserClient();
+    const verified = await client.auth.mfa.challengeAndVerify({ factorId, code });
+    if (verified.error) throw verified.error;
     const { error } = await client.auth.mfa.unenroll({ factorId });
     if (error) throw error;
-    setFactorId(null); setCode(''); setIsAal2(false);
+    setFactorId(null); setCode(''); setIsAal2(false); setDisableRequested(false);
     await refreshSession();
     setMessage(fa ? 'تأیید دومرحله‌ای غیرفعال شد' : 'Two-factor authentication disabled');
   });
@@ -119,21 +123,22 @@ export function TwoFactorSettings({
         </div>
       ) : null}
 
-      {enrollment || (factorId && !isAal2) ? (
+      {enrollment || (factorId && (!isAal2 || disableRequested)) ? (
         <div className="flex flex-wrap items-center gap-2">
           <input inputMode="numeric" autoComplete="one-time-code" maxLength={6} pattern="[0-9]{6}" value={code}
             onChange={(event) => setCode(event.target.value.replace(/\D/g, '').slice(0, 6))}
             aria-label="Six-digit authenticator code" placeholder="000000"
             className="w-32 rounded-lg border border-slate-300 px-3 py-2.5 font-mono tracking-widest" />
-          <button type="button" disabled={busy || code.length !== 6} onClick={verify}
+          <button type="button" disabled={busy || code.length !== 6}
+            onClick={disableRequested ? disable : verify}
             className="rounded-lg bg-[#087849] px-4 py-2.5 text-sm font-bold text-white disabled:opacity-50">
-            {fa ? 'تأیید کد' : 'Verify code'}
+            {disableRequested ? (fa ? 'تأیید و غیرفعال‌سازی' : 'Verify and disable') : (fa ? 'تأیید کد' : 'Verify code')}
           </button>
         </div>
       ) : null}
 
-      {factorId && isAal2 && !adminRequired ? (
-        <button type="button" disabled={busy} onClick={disable} className="rounded-lg border border-red-300 px-3 py-2 text-sm font-semibold text-red-700 disabled:opacity-50">
+      {factorId && isAal2 && !adminRequired && !disableRequested ? (
+        <button type="button" disabled={busy} onClick={() => setDisableRequested(true)} className="rounded-lg border border-red-300 px-3 py-2 text-sm font-semibold text-red-700 disabled:opacity-50">
           {fa ? 'غیرفعال‌سازی دومرحله‌ای' : 'Disable two-factor authentication'}
         </button>
       ) : null}
