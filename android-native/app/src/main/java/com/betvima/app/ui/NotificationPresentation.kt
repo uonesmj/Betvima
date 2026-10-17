@@ -6,6 +6,16 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
+/** In-app notices expire exactly 24h after their server-created timestamp. */
+const val NOTIFICATION_VISIBLE_HOURS = 24L
+
+fun notificationStillVisible(createdAt: String, nowMillis: Long): Boolean =
+    try {
+        Instant.parse(createdAt).toEpochMilli() > nowMillis - NOTIFICATION_VISIBLE_HOURS * 3_600_000L
+    } catch (_: Exception) {
+        false
+    }
+
 /** Never infer general announcements from their title or fabricated examples. */
 enum class NotificationCategory { ALL, PERSONAL, GENERAL }
 

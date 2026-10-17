@@ -60,6 +60,7 @@ class MainAccountWagerTest {
             .put("previousOddsScaled","33500")
             .put("currentOddsScaled","32000"))
         val payload=quote().put("oddsChanges",changes)
+            .put("potentialPayoutMinor", "1600")
         val review=parseMainBetReview(payload,"500","USD",listOf(pick),5,now)
         assertEquals("32000",review.changes.first().afterScaled)
         assertEquals(pick.selectionId,review.changes.first().selectionId)
@@ -83,6 +84,29 @@ class MainAccountWagerTest {
             parseMainBetReview(forged,"500","USD",listOf(pick),5,now)
         }
     }
+    @Test fun rejectOddsMultiplierPresentedAsMoney() {
+        // $5 x 4.60 must be $23, never a $4.60 'official return'.
+        val selection = pick.copy(oddsScaled = "46000")
+        val good = quote().put("potentialPayoutMinor", "2300")
+        assertEquals("2300",
+            parseMainBetReview(good, "500", "USD", listOf(selection), 8, now).potentialPayoutMinor)
+        val bad = quote().put("potentialPayoutMinor", "460")
+        assertThrows(IllegalArgumentException::class.java) {
+            parseMainBetReview(bad, "500", "USD", listOf(selection), 8, now)
+        }
+    }
+
+    @Test fun movedOddsRequireNewPriceToMatchPayout() {
+        val changes = JSONArray().put(JSONObject()
+            .put("selectionId", pick.selectionId)
+            .put("previousOddsScaled", "33500")
+            .put("currentOddsScaled", "32000"))
+        val staleMoney = quote().put("oddsChanges", changes)
+        assertThrows(IllegalArgumentException::class.java) {
+            parseMainBetReview(staleMoney, "500", "USD", listOf(pick), 8, now)
+        }
+    }
+
     @Test fun stableRequestIdPreventsDuplicateChargeIntent() {
         val one=mainBetRequestId("server-signed-quote-for-first-bet")
         val again=mainBetRequestId("server-signed-quote-for-first-bet")

@@ -13,13 +13,13 @@ Open `android-native/` in Android Studio (JDK 17, Android SDK 35) and sync Gradl
 - Native home uses real upcoming market data for its Top Bets ranking, and keeps Esports off Home while retaining it in the dedicated sports ribbon. The API sport key for ice hockey is `hockey`, as defined by the backend.
 - Requests use HTTPS to BetVima API with server-issued data. Empty / degraded catalogue is shown honestly; no fake fixtures, odds or wallet balances.
 - Supabase password sign-in uses the project's public anonymous client key obtained from `/api/v1/mobile/config`. The session JWT is verified **server-side** for account requests and stored encrypted with Android Keystore. Registration goes through the existing web registration flow with Turnstile until a dedicated mobile onboarding process is reviewed.
-- All *real-money wager submission* is disabled in the native build and the mobile bootstrap. **Do not enable** without verified age checks, jurisdiction/geolocation enforcement on the server, approved gambling licence, controls for responsible gambling, anti-abuse review and Play certification. UI selections and quotes are not proof of authorization.
+- *Real-money wager submission* is controlled by the live server bootstrap and the authenticated server-side betting/finance rules, never by a hardcoded APK boolean. An unavailable or disabled server state fails closed. Proper licensing, age and jurisdiction checks, responsible-gambling safeguards and distribution approval remain operator obligations; selecting odds or receiving a signed quote never by itself grants authorization.
 - Do not put provider or service-role secrets into the APK. Never compute final odds or financial balances client-side.
 - Privacy: no tracking SDK, no runtime location permission, no plaintext HTTP, no Android backups for auth storage. Access tokens are not logged.
 
 ## Google Play release prerequisites
 
-Google requires adult-only rating, per-jurisdiction gaming licences and app approval, underage and unauthorized geography prevention, free download, and a responsible-gambling disclosure. This app is **not yet approved or ready for real-money release**. See https://support.google.com/googleplay/android-developer/answer/9877032.
+Google requires adult-only rating, per-jurisdiction gaming licences and app approval, underage and unauthorized geography prevention, free download, and a responsible-gambling disclosure. Distribution of this app for real-money wagering requires operator verification of applicable approvals and country-specific licensing. See https://support.google.com/googleplay/android-developer/answer/9877032.
 
 ## Debug APK updates
 

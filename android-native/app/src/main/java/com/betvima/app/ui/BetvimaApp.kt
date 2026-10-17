@@ -64,8 +64,8 @@ fun BetvimaApp(model: AppViewModel) {
     var observedNotificationIds87 by remember(state.signedIn) {
         mutableStateOf(emptySet<String>())
     }
-    // Present new, server-authenticated settlement events while the app is open.
-    // This is not background push and does not create synthetic win/loss results.
+    // Support replies stay in the bell inbox only: never show a bottom Snackbar.
+    // Keep the existing optional bet settlement feedback unchanged.
     LaunchedEffect(state.notifications, state.signedIn, isForeground) {
         if (!state.signedIn) {
             notificationBaseline87 = false
@@ -78,26 +78,13 @@ fun BetvimaApp(model: AppViewModel) {
             } else if (isForeground) {
                 val newResults = incoming.filter { note ->
                     note.id !in observedNotificationIds87 && note.eventKey in setOf(
-                        "bet.won", "bet.lost", "bet.void", "bet.partial", "support.reply"
+                        "bet.won", "bet.lost", "bet.void", "bet.partial"
                     )
                 }
                 observedNotificationIds87 += incoming.map { it.id }
                 if (deviceSettings87.appAlerts()) {
-                    newResults.take(3).forEach { note ->
-                        if (note.eventKey == "support.reply") {
-                            if (!supportOpen) {
-                                val result = snackbars.showSnackbar(
-                                    tr(state.lang, "New BetVima support reply", "پاسخ جدید پشتیبانی بت‌ویما"),
-                                    actionLabel = tr(state.lang, "Open chat", "باز کردن چت"),
-                                    duration = SnackbarDuration.Long
-                                )
-                                if (result == SnackbarResult.ActionPerformed) {
-                                    supportRequestedTicketId = supportTicketFromNotificationHref(note.ctaHref)
-                                    supportOpen = true
-                                    model.markNotificationRead(note.id)
-                                }
-                            }
-                        } else if (deviceSettings87.betAlerts()) {
+                    if (deviceSettings87.betAlerts()) {
+                        newResults.take(3).forEach { note ->
                             snackbars.showSnackbar(note.title + " · " + note.body)
                         }
                     }
