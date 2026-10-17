@@ -42,7 +42,7 @@ export const GET = withErrorHandling('affiliate.referrals', async (ctx, request:
         player_net_minor: string;
         ledger_minor: string;
       }>(
-        \`with money_rows as (
+        `with money_rows as (
           select p.user_id, p.currency,
                  coalesce(sum(p.amount_minor) filter
                    (where p.type = 'deposit' and p.status = 'succeeded'), 0) deposit_minor,
@@ -79,7 +79,7 @@ export const GET = withErrorHandling('affiliate.referrals', async (ctx, request:
           from money_rows
          where currency is not null
          group by user_id, currency
-         order by user_id, currency\`,
+         order by user_id, currency`,
         [affiliate.id, ids],
       )
     : [];
