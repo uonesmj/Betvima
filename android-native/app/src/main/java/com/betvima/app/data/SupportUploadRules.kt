@@ -23,7 +23,7 @@ fun supportSafeFilename(name: String): String =
 fun supportActualMime(header: ByteArray): String? {
     fun isAt(offset: Int, vararg values: Int): Boolean =
         header.size >= offset + values.size &&
-            values.indices.all { i -> header[offset + i].toInt() and 0xff == values[i] }
+            values.indices.all { i -> (header[offset + i].toInt() and 0xff) == values[i] }
     return when {
         isAt(0, 0xff, 0xd8, 0xff) -> "image/jpeg"
         isAt(0, 0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a) -> "image/png"
