@@ -2,6 +2,9 @@ import { describe, expect, it } from 'vitest';
 import {
   assertVoucherRateStillCurrent,
   voucherUsdToWalletMinor,
+  voucherIrrToWalletMinor,
+  voucherMinimumWalletMinor,
+  voucherWalletMinorToIrr,
   voucherWalletToUsdMinor,
   voucherWithdrawalDebit,
 } from '@/lib/voucher-fx';
@@ -32,6 +35,26 @@ describe('uWallet voucher reference FX: exact integer accounting', () => {
       expect(debit).toBeLessThanOrEqual(walletMinor);
       expect(debit).toBe(voucherUsdToWalletMinor(usdMinor,currency,rate));
     }
+  });
+
+
+  it('quotes a $1.50 voucher minimum precisely in rial, without underpaying a cent', () => {
+    const minimumIrr = voucherMinimumWalletMinor(150n, 'IRR', rate);
+    const minimumIrt = voucherMinimumWalletMinor(150n, 'IRT', rate);
+    expect(minimumIrr).toBe(3790594n);
+    expect(minimumIrt).toBe(379060n);
+    expect(voucherWalletToUsdMinor(minimumIrr, 'IRR', rate)).toBe(150n);
+    expect(voucherWalletToUsdMinor(minimumIrr - 1n, 'IRR', rate)).toBe(149n);
+    expect(voucherWalletMinorToIrr(minimumIrt, 'IRT')).toBe(3790600n);
+    expect(voucherIrrToWalletMinor(3790600n, 'IRT')).toBe(minimumIrt);
+    expect(voucherIrrToWalletMinor(minimumIrr, 'IRR')).toBe(minimumIrr);
+  });
+
+  it('rejects non-divisible rial inputs for legacy toman wallets', () => {
+    expect(() => voucherIrrToWalletMinor(3790594n, 'IRT')).toThrow('multiple of 10');
+    expect(() => voucherIrrToWalletMinor(-10n, 'IRR')).toThrow();
+    expect(() => voucherMinimumWalletMinor(-1n, 'IRR', rate)).toThrow();
+    expect(() => voucherMinimumWalletMinor(150n, 'IRR', '0')).toThrow();
   });
 
   it('rejects forged, zero and out-of-range quotes', () => {
