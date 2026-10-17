@@ -23,10 +23,10 @@ describe('mobile wagering availability (display only)', () => {
   it.each(['GLOBAL', 'BETTING', 'PREMATCH_BETTING'])(
     'fails closed when a required operation is missing: %s',
     (key) => {
-      const operations = enabledOperations.filter((op) => op.key !== key);
-      if (key === 'PREMATCH_BETTING') {
-        operations.find((op) => op.key === 'LIVE_BETTING')!.isEnabled = false;
-      }
+      const operations = enabledOperations
+        .filter((op) => op.key !== key)
+        .map((op) => key === 'PREMATCH_BETTING' && op.key === 'LIVE_BETTING'
+          ? { ...op, isEnabled: false } : op);
       expect(isMobileWageringAvailable(operations)).toBe(false);
     },
   );
