@@ -28,7 +28,17 @@ const SPORTS = [
   { id: 1, name: 'Football' }, { id: 18, name: 'Basketball' },
   { id: 13, name: 'Tennis' }, { id: 91, name: 'Volleyball' },
   { id: 17, name: 'Ice Hockey' }, { id: 3, name: 'Cricket' },
-  { id: 78, name: 'Handball' },
+  { id: 78, name: 'Handball' }, { id: 16, name: 'Baseball' },
+  { id: 12, name: 'American Football' }, { id: 92, name: 'Table Tennis' },
+  { id: 15, name: 'Darts' }, { id: 14, name: 'Snooker' },
+  { id: 83, name: 'Futsal' }, { id: 94, name: 'Badminton' },
+  { id: 8, name: 'Rugby Union' }, { id: 19, name: 'Rugby League' },
+  { id: 36, name: 'Australian Rules' }, { id: 90, name: 'Floorball' },
+  { id: 95, name: 'Beach Volleyball' }, { id: 110, name: 'Water Polo' },
+  { id: 107, name: 'Squash' }, { id: 151, name: 'E-sports' },
+  { id: 162, name: 'MMA / UFC' }, { id: 9, name: 'Boxing' },
+  { id: 2, name: 'Horse Racing' }, { id: 4, name: 'Greyhounds' },
+  { id: 66, name: 'Bowls' }, { id: 75, name: 'Gaelic Sports' },
 ];
 const time = (value: string | null): string => value
   ? new Date(value).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
@@ -48,6 +58,7 @@ export function BetsApiExplorer() {
   const [mode, setMode] = useState<Mode>('live');
   const [sport, setSport] = useState(1);
   const [page, setPage] = useState(1);
+  const [date, setDate] = useState('');
   const [trialToken, setTrialToken] = useState('');
   const [activeToken, setActiveToken] = useState('');
   const [search, setSearch] = useState('');
@@ -63,7 +74,7 @@ export function BetsApiExplorer() {
   const [failure, setFailure] = useState('');
   const access = activeToken;
   const request = useCallback(async (params: {
-    mode: Mode; sportId: number; page?: number; fi?: string;
+    mode: Mode; sportId: number; page?: number; day?: string; fi?: string;
   }): Promise<ResponseData> => {
     const url = '/api/v1/betsapi/explorer';
     if (access) {
@@ -76,6 +87,7 @@ export function BetsApiExplorer() {
       page: String(params.page ?? 1),
     });
     if (params.fi) query.set('fi', params.fi);
+    if (params.day) query.set('day', params.day);
     return apiRequest<ResponseData>(url + '?' + query, { cache: 'no-store' });
   }, [access]);
 
@@ -83,12 +95,13 @@ export function BetsApiExplorer() {
     setListBusy(true);
     setFailure('');
     try {
-      const data = await request({ mode, sportId: sport, page });
+      const data = await request({ mode, sportId: sport, page,
+        day: mode === 'upcoming' && date ? date.replaceAll('-', '') : undefined });
       if ('fixtures' in data) setList(data);
     } catch {
       setFailure('Cannot load sports catalogue. Please retry.');
     } finally { setListBusy(false); }
-  }, [request, mode, sport, page]);
+  }, [request, mode, sport, page, date]);
   const loadMarkets = useCallback(async (fixture: Fixture) => {
     setMarketBusy(true);
     try {
@@ -196,6 +209,20 @@ export function BetsApiExplorer() {
               disabled={listBusy} className={button}>{listBusy ? 'Loading…' : 'Refresh'}</button>
           </div>
         </div>
+
+        {mode === 'upcoming' && (
+          <div className="flex flex-wrap items-center gap-3 rounded-xl border border-white/10 bg-[#111721] px-4 py-3">
+            <label className="text-sm text-slate-300" htmlFor="betsapi-upcoming-date">Upcoming UTC date</label>
+            <input id="betsapi-upcoming-date" type="date" value={date}
+              onChange={e => { setDate(e.target.value); setPage(1); setList(null); }}
+              className="rounded-lg border border-white/15 bg-[#1a2330] px-3 py-2 text-sm text-white" />
+            <button type="button" className={button}
+              onClick={() => { setDate(''); setPage(1); setList(null); }}>All dates (first 100 pages)</button>
+            <span className="text-xs text-slate-400">
+              Pick a UTC day to browse distant fixtures beyond the upstream page-100 limit.
+            </span>
+          </div>
+        )}
 
         <div className="flex gap-2 overflow-x-auto pb-2">
           {SPORTS.map(s => <button key={s.id} type="button" onClick={() => setFilter(mode, s.id)}
