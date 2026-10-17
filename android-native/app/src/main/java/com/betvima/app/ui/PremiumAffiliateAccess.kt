@@ -134,12 +134,24 @@ fun AffiliateAccessPanel(lang: Lang, api: ApiClient, vault: SessionVault,
     var registering by rememberSaveable(initialRegister) { mutableStateOf(initialRegister) }
     var username by rememberSaveable { mutableStateOf("") }
     var email by rememberSaveable { mutableStateOf("") }
-    var password by rememberSaveable { mutableStateOf("") }
+    // Credentials must not be saved in the Android state bundle.
+    var password by remember { mutableStateOf("") }
+    var recovering by rememberSaveable { mutableStateOf(false) }
     var payoutAccount by rememberSaveable { mutableStateOf("") }
     var showPassword by remember { mutableStateOf(false) }
     var working by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
     var message by remember { mutableStateOf<String?>(null) }
+    if (recovering) {
+        PasswordRecoveryPanel(
+            lang = lang,
+            account = RecoveryAccount.AFFILIATE,
+            api = api,
+            initialEmail = email,
+            onBack = { recovering = false }
+        )
+        return
+    }
     val validEmail = AffiliateInputRules.validEmail(email)
     val validPassword = AffiliateInputRules.validPassword(password)
     val validRegister = AffiliateInputRules.validRegistration(
@@ -276,6 +288,16 @@ fun AffiliateAccessPanel(lang: Lang, api: ApiClient, vault: SessionVault,
                     Text(if(registering)tr(lang,"Create partner account","ساخت حساب همکاری")
                         else tr(lang,"Open partner dashboard","ورود به پنل همکاری"),
                         fontWeight=FontWeight.Black,fontSize=13.sp)
+                }
+            }
+            if (!registering) {
+                TextButton(onClick = { recovering = true; password = "" },
+                    modifier = Modifier.align(Alignment.End)) {
+                    Icon(Icons.Default.LockReset, null, tint = affiliateBlue,
+                        modifier = Modifier.size(17.dp))
+                    Spacer(Modifier.width(6.dp))
+                    Text(tr(lang, "Forgot Affiliate password?", "فراموشی رمز افیلیت؟"),
+                        color = affiliateBlue, fontWeight = FontWeight.Bold, fontSize = 12.sp)
                 }
             }
             Text(tr(lang,
