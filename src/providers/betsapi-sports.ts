@@ -54,6 +54,11 @@ export class BetsApiSportsProvider implements SportsDataProvider {
   private readonly key: string;
   readonly configured: boolean;
   private readonly requester: typeof fetch;
+  private readonly knownMatchLive = new Map<string, boolean>();
+  private remember(match: ProviderMatch) {
+    if (this.knownMatchLive.size >= 2500) this.knownMatchLive.clear();
+    this.knownMatchLive.set(match.providerId, match.status === 'live');
+  }
   constructor(options?: { token?: string; fetcher?: typeof fetch }) {
     this.key = options?.token ?? process.env.BETSAPI_TRIAL_TOKEN ?? '';
     this.requester = options?.fetcher ?? fetch;
@@ -146,6 +151,7 @@ export class BetsApiSportsProvider implements SportsDataProvider {
           if (parsed && parsed.status === 'scheduled' &&
             Date.parse(parsed.scheduledAt) >= from && Date.parse(parsed.scheduledAt) <= to) {
             all.set(parsed.providerId, parsed);
+            this.remember(parsed);
           }
         }
       } catch (e) {
@@ -170,7 +176,10 @@ export class BetsApiSportsProvider implements SportsDataProvider {
         successes++;
         for (const row of events(data.results)) {
           const match = normalizeBetsapiEvent(row);
-          if (match?.status === 'live') all.set(match.providerId, match);
+          if (match?.status === 'live') {
+            all.set(match.providerId, match);
+            this.remember(match);
+          }
         }
       } catch (e) {
         if (['BETSAPI_RATE_LIMITED', 'BETSAPI_BUDGET_EXHAUSTED'].includes(errorCode(e))) {
@@ -185,6 +194,9 @@ export class BetsApiSportsProvider implements SportsDataProvider {
     if (!this.configured) return failed('NOT_CONFIGURED');
     if (ids.length > MAX_PER_CALL) return failed('BETSAPI_BUDGET_EXHAUSTED');
     if (ids.some(id => !parseBetsapiIdentity(id))) return failed('BETSAPI_SCHEMA_INVALID');
+    // Fail closed for unknown fixture state. Without a provider-observed live
+    // or scheduled status, no quote should be assigned a freshness window.
+    if (ids.some(id => !this.knownMatchLive.has(id))) return failed('BETSAPI_SCHEMA_INVALID');
     const result: ProviderOddsBundle[] = [];
     let failures = 0;
     // Explicit upper bound and sequential pacing: maximum 12 upstream calls.
@@ -193,7 +205,9 @@ export class BetsApiSportsProvider implements SportsDataProvider {
       try {
         const payload = await this.request('/v2/event/odds', { event_id: identity.eventId, source: 'bet365' });
         // Only the Events API ID is accepted. Bet365 FI must NEVER be reused.
-        const normalized = normalizeBetsapiOdds(id, payload.results, new Date(), false);
+        const normalized = normalizeBetsapiOdds(
+          id, payload.results, new Date(), this.knownMatchLive.get(id)!,
+        );
         result.push(normalized);
       } catch { failures++; }
     }
