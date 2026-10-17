@@ -187,6 +187,8 @@ describe('SoftAggregator demo-only launch API', () => {
     process.env.SOFTAGGREGATOR_REAL_MONEY_ENABLED = 'true';
     process.env.SOFTAGGREGATOR_FINANCIAL_SCHEMA_READY = 'true';
     process.env.SOFTAGGREGATOR_SALT_KEY = 'staging-contract-test-salt';
+    process.env.SOFTAGGREGATOR_CALLBACK_EDGE_READY = 'true';
+    process.env.SOFTAGGREGATOR_EDGE_HMAC_SECRET = 'staging-independent-edge-hmac-secret-32-plus-chars';
     delete process.env.SOFTAGGREGATOR_TEST_USER_ID;
     expect(casinoRealMoneyUserAllowed(pilot)).toBe(false);
     process.env.SOFTAGGREGATOR_TEST_USER_ID = pilot;
@@ -213,6 +215,8 @@ describe('SoftAggregator demo-only launch API', () => {
       SOFTAGGREGATOR_REAL_MONEY_ENABLED: 'true',
       SOFTAGGREGATOR_FINANCIAL_SCHEMA_READY: 'true',
       SOFTAGGREGATOR_SALT_KEY: 'fake-provider-test-salt-key',
+      SOFTAGGREGATOR_CALLBACK_EDGE_READY: 'true',
+      SOFTAGGREGATOR_EDGE_HMAC_SECRET: 'staging-independent-edge-hmac-secret-32-plus-chars',
       SOFTAGGREGATOR_TEST_USER_ID: pilot,
       SOFTAGGREGATOR_ALLOWED_COUNTRIES: 'DE',
     });
@@ -254,6 +258,8 @@ describe('SoftAggregator demo-only launch API', () => {
       SOFTAGGREGATOR_REAL_MONEY_ENABLED: 'true',
       SOFTAGGREGATOR_FINANCIAL_SCHEMA_READY: 'true',
       SOFTAGGREGATOR_SALT_KEY: 'fake-provider-test-salt-key',
+      SOFTAGGREGATOR_CALLBACK_EDGE_READY: 'true',
+      SOFTAGGREGATOR_EDGE_HMAC_SECRET: 'staging-independent-edge-hmac-secret-32-plus-chars',
       SOFTAGGREGATOR_TEST_USER_ID: pilot,
       SOFTAGGREGATOR_ALLOWED_COUNTRIES: 'DE',
     });
