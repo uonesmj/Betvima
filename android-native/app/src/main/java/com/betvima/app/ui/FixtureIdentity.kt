@@ -156,7 +156,8 @@ internal fun resolvedCompetitionCountry(country: String, league: String): String
         "a league", "a league men", "a league women" -> "Australia"
         "kbo", "kbo league", "k league 1", "k league 2" -> "South Korea"
         "npb", "nippon professional baseball", "j1 league", "j2 league" -> "Japan"
-        "turkey super lig", "turkish super lig", "super lig turkey" -> "Turkey"
+        "turkey super lig", "turkey super league", "turkish super lig",
+        "turkish super league", "super lig turkey" -> "Turkey"
         else -> country
     }
 }
