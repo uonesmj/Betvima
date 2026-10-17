@@ -50,3 +50,8 @@ export function clearedPasswordRecoveryPath(href: string): string {
   return url.pathname +
     (url.searchParams.get('from') === 'affiliate' ? '?from=affiliate' : '');
 }
+
+/** Retry starts at the email+Cloudflare form, never at the token-only reset page. */
+export function passwordRecoveryRequestPath(fromAffiliate: boolean): string {
+  return fromAffiliate ? '/affiliate/login?forgot=1' : '/auth/login?forgot=1';
+}

@@ -27,6 +27,13 @@ export function AffiliateLoginClient() {
   const turnstileSiteKey =
     process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ?? '';
 
+  // Support the safe retry link from an expired Affiliate recovery email.
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get('forgot') === '1') {
+      setForgotPassword(true);
+    }
+  }, []);
+
   useEffect(() => {
     if (!forgotPassword || !turnstileSiteKey) return;
 

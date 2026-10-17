@@ -3,7 +3,7 @@
 import { useApp } from '@/components/layout/providers';
 
 import { FormEvent, useEffect, useRef, useState } from 'react';
-import { clearedPasswordRecoveryPath, parsePasswordRecoveryGrant } from '@/lib/auth/password-recovery';
+import { clearedPasswordRecoveryPath, parsePasswordRecoveryGrant, passwordRecoveryRequestPath } from '@/lib/auth/password-recovery';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft, ArrowRight, BadgeCheck, Check, CheckCircle2, Eye, EyeOff, KeyRound, LockKeyhole, MailCheck, ShieldCheck, Sparkles } from 'lucide-react';
 import Image from 'next/image';
@@ -105,7 +105,9 @@ export default function ResetPasswordPage() {
   const goBackToLogin = () => {
     const fromAffiliate =
       new URLSearchParams(window.location.search).get('from') === 'affiliate';
-    router.push(fromAffiliate ? '/affiliate/login' : '/auth/login');
+    router.push(state === 'invalid'
+      ? passwordRecoveryRequestPath(fromAffiliate)
+      : fromAffiliate ? '/affiliate/login' : '/auth/login');
   };
 
   const submit = async (event: FormEvent) => {

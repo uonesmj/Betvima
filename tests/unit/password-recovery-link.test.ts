@@ -2,9 +2,16 @@ import { describe, expect, it } from 'vitest';
 import {
   clearedPasswordRecoveryPath,
   parsePasswordRecoveryGrant,
+  passwordRecoveryRequestPath,
 } from '@/lib/auth/password-recovery';
 
 describe('Supabase password recovery redirect', () => {
+  it('restarts expired recovery from the proper email request form', () => {
+    expect(passwordRecoveryRequestPath(false)).toBe('/auth/login?forgot=1');
+    expect(passwordRecoveryRequestPath(true)).toBe('/affiliate/login?forgot=1');
+    expect(passwordRecoveryRequestPath(false)).not.toContain('/reset-password');
+  });
+
   it('accepts an explicit recovery session from an email link', () => {
     expect(parsePasswordRecoveryGrant(
       'https://betvima.com/auth/reset-password?from=affiliate#access_token=one&refresh_token=two&type=recovery',
