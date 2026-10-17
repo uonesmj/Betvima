@@ -12,6 +12,8 @@ vi.mock('@/server/providers/softaggregator/wallet', () => ({
 }));
 
 const SALT = 'cash-staging-provider-salt-never-real-0123456';
+// Simulated trusted edge signs the canonical full query independently of provider MD5.
+const EDGE_SECRET = 'test-independent-edge-hmac-secret-40-plus-chars';
 const USERNAME = 'bv_7aa50699cba14767b7b4dcd644399816';
 
 function signedCallback(params: Record<string, string>, mutateSignature = false): Request {
@@ -21,10 +23,9 @@ function signedCallback(params: Record<string, string>, mutateSignature = false)
     key: createHash('md5').update(timestamp + SALT).digest('hex'),
     ...params,
   });
-  const canonical = [...fields.entries()]
-    .sort(([nameA], [nameB]) => nameA < nameB ? -1 : nameA > nameB ? 1 : 0)
-    .map(([name, value]) => name + '=' + value).join('&');
-  const signature = createHmac('sha256', SALT).update(canonical).digest('hex');
+  const canonical = new URLSearchParams([...fields.entries()]
+    .sort(([nameA], [nameB]) => nameA < nameB ? -1 : nameA > nameB ? 1 : 0)).toString();
+  const signature = createHmac('sha256', EDGE_SECRET).update(canonical).digest('hex');
   return new Request('https://betvima.com/api/webhooks/softaggregator?' + fields.toString(), {
     method: 'GET', headers: { 'x-signature': mutateSignature ? '0'.repeat(64) : signature },
   });
@@ -34,6 +35,7 @@ describe('SoftAggregator signed HTTP wallet webhook — no actual funds', () => 
   beforeEach(() => {
     vi.resetAllMocks();
     vi.stubEnv('SOFTAGGREGATOR_SALT_KEY', SALT);
+    vi.stubEnv('SOFTAGGREGATOR_EDGE_HMAC_SECRET', EDGE_SECRET);
     vi.mocked(casinoRealMoneyEnabled).mockReturnValue(true);
   });
   afterEach(() => vi.unstubAllEnvs());
