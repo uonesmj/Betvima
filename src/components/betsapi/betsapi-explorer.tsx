@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
 import { apiRequest } from '@/lib/hooks/useApi';
 
 type Mode = 'live' | 'upcoming';
@@ -157,7 +158,7 @@ export function BetsApiExplorer() {
               selections are not linked to wallets, coupons or settlement.
             </p>
           </div>
-          <a href="/sports" className={button}>Back to BetVima sports</a>
+          <Link href="/" className={button}>Back to BetVima sports</Link>
         </header>
 
         <section className="rounded-2xl border border-sky-800/40 bg-sky-950/30 p-4">
