@@ -2,72 +2,110 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import type { LucideIcon } from 'lucide-react';
+import {
+  Activity, AlertTriangle, ArrowUpRight, BarChart3, Bell, ChevronRight,
+  ClipboardList, CreditCard, Database, FileText, Headphones, Home, Image,
+  LayoutDashboard, Menu, Search, Server, Settings, Shield, ShieldAlert,
+  SlidersHorizontal, Trophy, UserCheck, Users, Wallet, X, Handshake,
+} from 'lucide-react';
 import { useApp } from '@/components/layout/providers';
 import { TwoFactorSettings } from '@/components/account/two-factor-settings';
 import { EmptyState, Skeleton } from '@/components/ui/primitives';
 
-const SECTIONS: { group: string; items: { href: string; label: string }[] }[] = [
+type AdminLink = { href: string; label: string; icon: LucideIcon };
+type AdminSection = { group: string; items: AdminLink[] };
+
+const SECTIONS: AdminSection[] = [
   {
-    group: 'Overview',
+    group: 'Workspace',
     items: [
-      { href: '/admin/dashboard', label: 'Dashboard' },
-      { href: '/admin/health', label: 'System health' },
-      { href: '/admin/workers', label: 'Workers & jobs' },
-      { href: '/admin/providers', label: 'Providers' },
-      { href: '/admin/logos', label: 'Logos' },
+      { href: '/admin/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+      { href: '/admin/health', label: 'System health', icon: Activity },
+      { href: '/admin/workers', label: 'Workers & jobs', icon: Server },
+      { href: '/admin/providers', label: 'Providers', icon: Database },
+      { href: '/admin/logos', label: 'Brand assets', icon: Image },
     ],
   },
   {
     group: 'Customers',
     items: [
-      { href: '/admin/users', label: 'Users' },
-      { href: '/admin/kyc', label: 'Identity reviews' },
-      { href: '/admin/bets', label: 'Bets' },
-      { href: '/admin/payments', label: 'Payments' },
-      { href: '/admin/support', label: 'Live Support' },
-      { href: '/admin/notifications', label: 'Notifications' },
-      { href: '/admin/wallet-adjustments', label: 'Wallet adjustments' },
+      { href: '/admin/users', label: 'Users', icon: Users },
+      { href: '/admin/kyc', label: 'Identity reviews', icon: UserCheck },
+      { href: '/admin/bets', label: 'Bets', icon: ClipboardList },
+      { href: '/admin/payments', label: 'Payments', icon: CreditCard },
+      { href: '/admin/support', label: 'Live support', icon: Headphones },
+      { href: '/admin/notifications', label: 'Notifications', icon: Bell },
+      { href: '/admin/wallet-adjustments', label: 'Wallet adjustments', icon: Wallet },
     ],
   },
   {
-    group: 'Trading',
+    group: 'Sports & trading',
     items: [
-      { href: '/admin/matches', label: 'Matches & results' },
-      { href: '/admin/risk-rules', label: 'Risk rules' },
-      { href: '/admin/risk-decisions', label: 'Risk decisions' },
-      { href: '/admin/settlements', label: 'Settlements' },
+      { href: '/admin/matches', label: 'Matches & results', icon: Trophy },
+      { href: '/admin/risk-rules', label: 'Risk rules', icon: ShieldAlert },
+      { href: '/admin/risk-decisions', label: 'Risk decisions', icon: AlertTriangle },
+      { href: '/admin/settlements', label: 'Settlements', icon: ClipboardList },
     ],
   },
   {
     group: 'Affiliates',
     items: [
-      { href: '/admin/affiliates', label: 'Affiliates' },
-      { href: '/admin/affiliate-payouts', label: 'Payouts' },
-      { href: '/admin/affiliate-fraud', label: 'Fraud flags' },
+      { href: '/admin/affiliates', label: 'Affiliates', icon: Handshake },
+      { href: '/admin/affiliate-payouts', label: 'Payouts', icon: CreditCard },
+      { href: '/admin/affiliate-fraud', label: 'Fraud flags', icon: ShieldAlert },
     ],
   },
   {
-    group: 'Operations',
+    group: 'Administration',
     items: [
-      { href: '/admin/operations', label: 'Kill switches' },
-      { href: '/admin/settings', label: 'Settings' },
-      { href: '/admin/audit', label: 'Audit log' },
-      { href: '/admin/reconciliation', label: 'Reconciliation' },
-      { href: '/admin/roles', label: 'Roles' },
-      { href: '/admin/reports', label: 'Reports' },
+      { href: '/admin/operations', label: 'Kill switches', icon: SlidersHorizontal },
+      { href: '/admin/settings', label: 'Settings', icon: Settings },
+      { href: '/admin/audit', label: 'Audit log', icon: FileText },
+      { href: '/admin/reconciliation', label: 'Reconciliation', icon: Database },
+      { href: '/admin/roles', label: 'Roles & access', icon: Shield },
+      { href: '/admin/reports', label: 'Reports', icon: BarChart3 },
     ],
   },
 ];
+
+function isActive(pathname: string, href: string) {
+  return pathname === href || pathname.startsWith(href + '/');
+}
 
 export function AdminShell({ children, title, actions }: { children: React.ReactNode; title: string; actions?: React.ReactNode }) {
   const { t, session, refreshSession } = useApp();
   const pathname = usePathname();
   const [checked, setChecked] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const [navSearch, setNavSearch] = useState('');
+  const searchRef = useRef<HTMLInputElement>(null);
+  const menuButtonRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     void refreshSession().finally(() => setChecked(true));
   }, [refreshSession]);
+
+  useEffect(() => {
+    setMobileOpen(false);
+  }, [pathname]);
+
+  useEffect(() => {
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === 'Escape' && mobileOpen) {
+        setMobileOpen(false);
+        menuButtonRef.current?.focus();
+      }
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
+        event.preventDefault();
+        setMobileOpen(true);
+        window.requestAnimationFrame(() => searchRef.current?.focus());
+      }
+    }
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
+  }, [mobileOpen]);
 
   if (!checked) {
     return <div className="p-6"><Skeleton className="h-40 w-full" /></div>;
@@ -92,47 +130,110 @@ export function AdminShell({ children, title, actions }: { children: React.React
     </div>;
   }
 
-  return (
-    <div className="min-h-dvh bg-nova-bg">
-      <header className="sticky top-0 z-40 border-b border-nova-line bg-nova-bg/95 backdrop-blur">
-        <div className="nova-container flex h-14 items-center gap-3">
-          <Link href="/admin/dashboard" className="font-bold text-nova-gold">NOVA Admin</Link>
-          <span className="nova-chip">{session.user.role}</span>
-          <span className="ms-auto text-xs nova-muted">{session.user.email}</span>
-          <Link href="/" className="nova-btn-ghost !py-1 text-xs">Site</Link>
-        </div>
-      </header>
+  const activeLink = SECTIONS.flatMap((section) => section.items.map((item) => ({ ...item, group: section.group })))
+    .find((item) => isActive(pathname, item.href));
+  const searchTerm = navSearch.trim().toLowerCase();
+  const visibleSections = SECTIONS.map((section) => ({
+    ...section,
+    items: section.items.filter((item) => !searchTerm ||
+      item.label.toLowerCase().includes(searchTerm) || section.group.toLowerCase().includes(searchTerm)),
+  })).filter((section) => section.items.length > 0);
 
-      <div className="nova-container flex gap-4 py-4">
-        <aside className="hidden w-56 shrink-0 lg:block">
-          <nav className="sticky top-20 space-y-4">
-            {SECTIONS.map((section) => (
-              <div key={section.group}>
-                <div className="mb-1 text-[11px] uppercase tracking-wide nova-muted">{section.group}</div>
-                <ul className="space-y-0.5">
-                  {section.items.map((item) => (
-                    <li key={item.href}>
-                      <Link
-                        href={item.href}
-                        className={`block rounded-lg px-2.5 py-1.5 text-sm ${pathname === item.href ? 'bg-nova-surface2 text-nova-text' : 'nova-muted hover:text-nova-text'}`}
-                      >
-                        {item.label}
+  return (
+    <div className="bv-admin">
+      {mobileOpen ? (
+        <button
+          className="bv-admin-scrim"
+          type="button"
+          aria-label="Close navigation"
+          onClick={() => setMobileOpen(false)}
+        />
+      ) : null}
+
+      <div className="bv-admin-frame">
+        <aside id="admin-primary-navigation" className={`bv-admin-sidebar ${mobileOpen ? 'is-open' : ''}`} aria-label="Admin navigation">
+          <div className="bv-admin-brand">
+            <Link href="/admin/dashboard" className="bv-admin-brand-link" onClick={() => setMobileOpen(false)}>
+              <span className="bv-admin-brand-mark" aria-hidden="true">B</span>
+              <span className="bv-admin-brand-words"><strong>BetVima</strong><small>ADMIN CONSOLE</small></span>
+            </Link>
+            <button className="bv-admin-close" type="button" onClick={() => setMobileOpen(false)} aria-label="Close navigation">
+              <X size={19} />
+            </button>
+          </div>
+
+          <div className="bv-admin-sidebar-search">
+            <Search size={17} aria-hidden="true" />
+            <input ref={searchRef} aria-label="Find an admin page" value={navSearch}
+              onChange={(event) => setNavSearch(event.target.value)} placeholder="Find a page..." />
+            <kbd>⌘ K</kbd>
+          </div>
+
+          <nav className="bv-admin-nav" aria-label="Admin sections">
+            {visibleSections.length ? visibleSections.map((section) => (
+              <section key={section.group} className="bv-admin-nav-section" aria-label={section.group}>
+                <h2 className="bv-admin-nav-heading">{section.group}</h2>
+                <div className="bv-admin-nav-links">
+                  {section.items.map((item) => {
+                    const Icon = item.icon;
+                    const selected = isActive(pathname, item.href);
+                    return (
+                      <Link key={item.href} href={item.href} aria-current={selected ? 'page' : undefined}
+                        className={`bv-admin-nav-link ${selected ? 'is-active' : ''}`} onClick={() => setMobileOpen(false)}>
+                        <Icon size={17} strokeWidth={1.8} aria-hidden="true" />
+                        <span>{item.label}</span>
+                        {selected ? <ChevronRight className="bv-admin-active-arrow" size={15} aria-hidden="true" /> : null}
                       </Link>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            ))}
+                    );
+                  })}
+                </div>
+              </section>
+            )) : <p className="bv-admin-nav-empty">No pages match this search.</p>}
           </nav>
+
+          <div className="bv-admin-sidebar-footer">
+            <span className="bv-admin-sidebar-status"><span className="bv-admin-status-dot" /> Secure admin session</span>
+            <span className="bv-admin-sidebar-user" title={session.user.email ?? undefined}>{session.user.email || 'Administrator'}</span>
+          </div>
         </aside>
 
-        <main className="min-w-0 flex-1">
-          <div className="mb-4 flex flex-wrap items-end justify-between gap-2">
-            <h1 className="text-lg font-bold">{title}</h1>
-            {actions}
-          </div>
-          {children}
-        </main>
+        <div className="bv-admin-workspace">
+          <header className="bv-admin-topbar">
+            <div className="bv-admin-topbar-leading">
+              <button ref={menuButtonRef} type="button" className="bv-admin-menu-button"
+                aria-label="Open admin navigation" aria-expanded={mobileOpen} aria-controls="admin-primary-navigation"
+                onClick={() => setMobileOpen(true)}>
+                <Menu size={21} />
+              </button>
+              <div className="bv-admin-topbar-location">
+                <span className="bv-admin-topbar-kicker">BetVima / Admin</span>
+                <span className="bv-admin-topbar-current">{activeLink?.label ?? 'Overview'}</span>
+              </div>
+            </div>
+            <div className="bv-admin-topbar-actions">
+              <span className="bv-admin-role" title="Your administrator role"><Shield size={13} /> {session.user.role}</span>
+              <Link href="/" className="bv-admin-site-link" aria-label="Visit BetVima website">
+                <Home size={16} aria-hidden="true" /><span>View site</span><ArrowUpRight size={14} aria-hidden="true" />
+              </Link>
+            </div>
+          </header>
+
+          <main className="bv-admin-main" id="admin-main-content">
+            <div className="bv-admin-page-heading">
+              <div>
+                <div className="bv-admin-breadcrumbs">
+                  <Link href="/admin/dashboard">Administration</Link>
+                  <ChevronRight size={13} aria-hidden="true" />
+                  <span>{activeLink?.group ?? 'Workspace'}</span>
+                </div>
+                <h1>{title}</h1>
+                <p>Manage your BetVima workspace</p>
+              </div>
+              {actions ? <div className="bv-admin-page-actions">{actions}</div> : null}
+            </div>
+            <div className="bv-admin-page-content">{children}</div>
+          </main>
+        </div>
       </div>
     </div>
   );
