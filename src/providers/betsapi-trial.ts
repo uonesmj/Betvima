@@ -42,6 +42,7 @@ export interface BetsApiTrialResult {
   mode: 'read_only';
   checkedAt: string;
   sports: BetsApiTrialSport[];
+  focusCountries: Array<{ code: string; live: number; upcoming: number }>;
   oddsSample: Array<{ sport: string; eventId: string; marketKeys: number; latestOffers: number; freshMarkets: number; freshSelections: number; error: string | null }>;
   bet365: { permitted: boolean; eventCount: number; sampleFixtureId: string | null;
     marketCount: number; priceCount: number; error: string | null };
@@ -113,7 +114,7 @@ export async function runBetsApiTrial(
 
   const output: BetsApiTrialResult = {
     configured: true, feed: 'betsapi', mode: 'read_only', checkedAt,
-    sports: [], oddsSample: [],
+    sports: [], focusCountries: ['ir', 'tr', 'af', 'ge', 'az'].map(code => ({ code, live: 0, upcoming: 0 })), oddsSample: [],
     bet365: { permitted: false, eventCount: 0, sampleFixtureId: null,
       marketCount: 0, priceCount: 0, error: null },
     remainingHourlyRequests: null, callsInProbe: 0, durationMs: 0,
@@ -139,6 +140,11 @@ export async function runBetsApiTrial(
     if (liveResult.status === 'fulfilled') {
       const live = eventList(liveResult.value.results);
       row.liveFixtures = live.length;
+      for (const event of live) {
+        const cc = stringField(record(event.league).cc).toLowerCase();
+        const region = output.focusCountries.find(x => x.code === cc);
+        if (region) region.live++;
+      }
       row.liveWithClock = live.filter(event => numericField(record(event.timer).tm) !== null).length;
       row.liveWithScore = live.filter(event => /^\d+-\d+$/.test(stringField(event.ss))).length;
       row.sample = live.slice(0, 20).map(event => ({
@@ -155,6 +161,11 @@ export async function runBetsApiTrial(
       const data = upcomingResult.value;
       const total = numericField(record(data.pager).total);
       row.upcomingFixtures = total ?? eventList(data.results).length;
+      for (const event of eventList(data.results)) {
+        const cc = stringField(record(event.league).cc).toLowerCase();
+        const region = output.focusCountries.find(x => x.code === cc);
+        if (region) region.upcoming++;
+      }
       row.upcomingSample = eventList(data.results).slice(0, 20).map(event => ({
         id: stringField(event.id).slice(0, 32),
         home: eventName(event, 'home'), away: eventName(event, 'away'),
@@ -241,7 +252,8 @@ export function inspectBetsApiTrial(): Promise<BetsApiTrialResult> {
   if (!token || process.env.BETSAPI_TRIAL_ENABLED !== 'true') {
     return Promise.resolve({
       configured: false, feed: 'betsapi', mode: 'read_only',
-      checkedAt: new Date().toISOString(), sports: [], oddsSample: [],
+      checkedAt: new Date().toISOString(), sports: [],
+      focusCountries: [], oddsSample: [],
       bet365: { permitted: false, eventCount: 0, sampleFixtureId: null,
         marketCount: 0, priceCount: 0, error: 'NOT_CONFIGURED' },
       remainingHourlyRequests: null, callsInProbe: 0, durationMs: 0,
