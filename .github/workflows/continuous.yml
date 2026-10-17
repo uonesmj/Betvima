@@ -14,6 +14,7 @@ on:
       - 'src/lib/supabase/recovery-email.ts'
       - 'src/components/account/auth-forms.tsx'
       - 'src/components/account/affiliate-login-client.tsx'
+      - 'src/components/layout/providers.tsx'
       - 'tests/unit/password-recovery-link.test.ts'
   workflow_dispatch:
     inputs:
