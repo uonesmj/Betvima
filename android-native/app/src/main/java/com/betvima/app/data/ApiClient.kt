@@ -24,6 +24,22 @@ class ApiFailure(val code: Int, override val message: String, val serverCode: St
 /** Factor IDs and friendly names are server-authoritative, not an authentication proof. */
 data class AuthenticatorFactor(val id: String, val name: String, val verified: Boolean)
 
+/** Pure parsing: an unverified enrollment must never count as an enabled factor. */
+fun parseTotpFactors(user: JSONObject): List<AuthenticatorFactor> {
+    val arr = user.optJSONArray("factors") ?: JSONArray()
+    return (0 until arr.length()).mapNotNull { index ->
+        val factor = arr.optJSONObject(index) ?: return@mapNotNull null
+        if (factor.optString("factor_type") != "totp") return@mapNotNull null
+        val id = factor.optString("id")
+        if (!Regex("[a-fA-F0-9-]{36}").matches(id)) return@mapNotNull null
+        AuthenticatorFactor(
+            id, factor.optString("friendly_name").ifBlank { "Authenticator" }.take(80),
+            factor.optString("status") == "verified"
+        )
+    }
+}
+
+
 
 /** Omit the sport filter for Top. The web catalogue treats absent sport as all sports. */
 fun upcomingQueryPath(sport: String): String {
@@ -330,20 +346,8 @@ class ApiClient {
 
     suspend fun mfaUser(token: String): JSONObject = mfaAuthCall(token, "GET", "/user")
 
-    suspend fun mfaAllTotpFactors(token: String): List<AuthenticatorFactor> {
-        val arr = mfaUser(token).optJSONArray("factors") ?: JSONArray()
-        return (0 until arr.length()).mapNotNull { i ->
-            val factor = arr.optJSONObject(i) ?: return@mapNotNull null
-            if (factor.str("factor_type") != "totp") return@mapNotNull null
-            val id = factor.str("id").takeIf { it.matches(Regex("[a-fA-F0-9-]{36}")) }
-                ?: return@mapNotNull null
-            AuthenticatorFactor(
-                id = id,
-                name = factor.str("friendly_name").ifBlank { "Authenticator" }.take(80),
-                verified = factor.str("status") == "verified"
-            )
-        }
-    }
+    suspend fun mfaAllTotpFactors(token: String): List<AuthenticatorFactor> =
+        parseTotpFactors(mfaUser(token))
 
     suspend fun mfaFactors(token: String): List<String> =
         mfaAllTotpFactors(token).filter { it.verified }.map { it.id }
