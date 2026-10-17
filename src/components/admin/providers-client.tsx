@@ -1,8 +1,9 @@
 'use client';
 
+import { useState } from 'react';
 import { useApp } from '@/components/layout/providers';
 import { Card, EmptyState, ErrorNote, Skeleton, StatusPill } from '@/components/ui/primitives';
-import { useApiQuery } from '@/lib/hooks/useApi';
+import { apiRequest, useApiQuery } from '@/lib/hooks/useApi';
 import { formatDateTime } from '@/lib/i18n';
 
 interface ProviderStatus {
@@ -16,8 +17,31 @@ interface HealthRow {
   last_error: string | null; consecutive_failures: number; latency_ms: number | null; updated_at: string;
 }
 
+interface TrialReport {
+  configured: boolean; checkedAt: string; remainingHourlyRequests: number | null; mode: 'read_only';
+  sports: Array<{ sport: string; sportId: number; liveFixtures: number; upcomingFixtures: number;
+    sample: Array<{ id: string; home: string; away: string; minute: number | null }>; error: string | null }>;
+  oddsSample: Array<{ sport: string; eventId: string; marketKeys: number; latestOffers: number; error: string | null }>;
+  bet365: { permitted: boolean; eventCount: number; error: string | null };
+  notes: string[];
+}
+
 export function ProvidersClient() {
   const { t, locale } = useApp();
+  const [trial, setTrial] = useState<TrialReport | null>(null);
+  const [trialBusy, setTrialBusy] = useState(false);
+  const [trialError, setTrialError] = useState<string | null>(null);
+  async function checkBetsApi() {
+    setTrialBusy(true);
+    setTrialError(null);
+    try {
+      setTrial(await apiRequest<TrialReport>('/api/v1/admin/betsapi/trial', { cache: 'no-store' }));
+    } catch {
+      setTrialError('Could not inspect the trial feed. Check server configuration and permissions.');
+    } finally {
+      setTrialBusy(false);
+    }
+  }
   const { data, loading, error, reload } = useApiQuery<{ statuses: ProviderStatus[]; health: HealthRow[] }>('/api/v1/admin/providers', { pollMs: 60_000 });
 
   if (loading && !data) return <Skeleton className="h-48 w-full" />;
@@ -47,6 +71,47 @@ export function ProvidersClient() {
           Nothing is faked: with a provider disabled the platform returns NOT_CONFIGURED and keeps money and odds untouched.
           Add the environment variables and restart the server/workers to activate an integration.
         </p>
+      </Card>
+
+      <Card>
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 className="text-sm font-semibold">BetsAPI — 3-day evaluation</h2>
+            <p className="text-xs nova-muted">Read-only coverage probe. Does not change public odds, wagers, or settlement.</p>
+          </div>
+          <button type="button" className="rounded-lg border border-nova-border px-4 py-2 text-sm font-semibold hover:opacity-80"
+            disabled={trialBusy} onClick={() => void checkBetsApi()}>
+            {trialBusy ? 'Checking live data…' : 'Test BetsAPI coverage'}
+          </button>
+        </div>
+        {trialError && <p role="alert" className="text-xs text-nova-danger">{trialError}</p>}
+        {trial && !trial.configured && (
+          <p className="text-xs nova-muted">Trial is not yet configured on the server. Use a freshly rotated BETSAPI_TRIAL_TOKEN and BETSAPI_TRIAL_ENABLED=true.</p>
+        )}
+        {trial?.configured && (
+          <div className="space-y-3">
+            <p className="text-xs nova-muted">Checked: {formatDateTime(trial.checkedAt, locale)} · Mode: read-only · Hourly requests remaining: {trial.remainingHourlyRequests ?? 'unknown'}</p>
+            <div className="overflow-x-auto">
+              <table className="nova-table">
+                <thead><tr><th>Sport</th><th>Live</th><th>Upcoming (page 1)</th><th>Example fixture</th><th>Source status</th></tr></thead>
+                <tbody>{trial.sports.map(row => (
+                  <tr key={row.sportId}>
+                    <td>{row.sport}</td><td>{row.liveFixtures}</td><td>{row.upcomingFixtures}</td>
+                    <td className="text-xs">{row.sample[0] ? `${row.sample[0].home} — ${row.sample[0].away}` : '—'}</td>
+                    <td className="text-xs">{row.error ?? 'OK'}</td>
+                  </tr>
+                ))}</tbody>
+              </table>
+            </div>
+            <div className="flex flex-wrap gap-3 text-xs">
+              <span>Bet365 entitlement: <strong>{trial.bet365.permitted ? 'Available' : trial.bet365.error ?? 'Unavailable'}</strong></span>
+              {trial.oddsSample.map(row => (
+                <span key={row.eventId}>{row.sport}: {row.marketKeys} market keys, {row.latestOffers} priced groups {row.error && `(${row.error})`}</span>
+              ))}
+            </div>
+            <p className="text-xs nova-muted">BetsAPI trial data is diagnostic only; do not infer that quoted markets are eligible for real-money placement.</p>
+          </div>
+        )}
       </Card>
 
       <Card>
