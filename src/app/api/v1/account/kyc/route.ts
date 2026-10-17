@@ -4,6 +4,7 @@ import { withErrorHandling, jsonOk, ApiError } from '@/lib/errors';
 import { withUser } from '@/server/http/guard';
 import { enforceRateLimit } from '@/server/http/request';
 import { serviceRoleClient } from '@/server/db/supabase';
+import { casinoIdentityApproved } from '@/server/kyc/eligibility';
 import { KYC_BUCKET, KYC_MAX_FILE_BYTES, permittedKycFile } from '@/server/kyc/files';
 
 export const dynamic = 'force-dynamic';
@@ -22,6 +23,7 @@ export const GET = withErrorHandling('account.kyc.get', async (ctx, request: Req
   );
   return NextResponse.json({ ok: true, data: {
     kycStatus: profile.kycStatus,
+    gameAccessApproved: await casinoIdentityApproved(user.id),
     status: profile.status,
     canSubmit: profile.kycStatus !== 'verified' && submission?.status !== 'pending',
     submission: submission ? {
