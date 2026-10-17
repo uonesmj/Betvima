@@ -5,6 +5,7 @@ import { withAdmin } from '@/server/http/guard';
 import { readJson, enforceRateLimit } from '@/server/http/request';
 import { serviceRoleClient } from '@/server/db/supabase';
 import { KYC_BUCKET } from '@/server/kyc/files';
+import type { Db } from '@/lib/ports/db';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -20,9 +21,7 @@ type Submission = {
   selfie_path: string | null; status: string; review_note: string | null;
   created_at: string; email: string | null; public_id: string;
 };
-async function getSubmission(id: string, db: {
-  queryOne<T>(sql: string, params: unknown[]): Promise<T | null>
-}) {
+async function getSubmission(id: string, db: Db) {
   return db.queryOne<Submission>(
     'select k.id,k.user_id,k.document_type,k.document_path,k.selfie_path,k.status,' +
     'k.review_note,k.created_at::text,p.email,p.public_id from nova.kyc_submissions k ' +
