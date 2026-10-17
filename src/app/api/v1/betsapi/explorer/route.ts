@@ -11,6 +11,7 @@ export const runtime = 'nodejs';
 const inputSchema = z.object({
   token: z.string().regex(/^[A-Za-z0-9_-]{12,180}$/).optional(),
   mode: z.enum(['live', 'upcoming']),
+  feed: z.enum(['bet365', 'events']).optional(),
   sportId: z.number().int().positive(),
   page: z.number().int().min(1).max(100).optional(),
   day: z.string().regex(/^[0-9]{8}$/).optional(),
@@ -18,7 +19,7 @@ const inputSchema = z.object({
 });
 type Input = z.infer<typeof inputSchema>;
 const options = (x: Input): ExplorerInput => ({
-  mode: x.mode, sportId: x.sportId, page: x.page, day: x.day, fi: x.fi,
+  mode: x.mode, sportId: x.sportId, feed: x.feed, page: x.page, day: x.day, fi: x.fi,
 });
 
 /**
@@ -30,6 +31,7 @@ export const GET = withErrorHandling('betsapi.explore.public', async (_ctx, requ
   const u = new URL(request.url);
   const input = inputSchema.omit({ token: true }).safeParse({
     mode: u.searchParams.get('mode') ?? 'live',
+    feed: u.searchParams.get('feed') ?? 'bet365',
     sportId: Number(u.searchParams.get('sportId') ?? '1'),
     page: Number(u.searchParams.get('page') ?? '1'),
     day: u.searchParams.get('day') || undefined,
