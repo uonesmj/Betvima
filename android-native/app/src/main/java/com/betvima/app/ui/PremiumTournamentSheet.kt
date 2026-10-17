@@ -128,7 +128,7 @@ fun PremiumTournamentSheet(
                     val first = entry.value.first()
                     PremiumLeagueChoice(
                         name = first.league,
-                        subtitle = first.country,
+                        subtitle = resolvedCompetitionCountry(first.country, first.league),
                         match = first,
                         count = entry.value.size,
                         checked = selected == entry.key,
