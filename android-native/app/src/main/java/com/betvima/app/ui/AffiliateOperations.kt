@@ -438,51 +438,111 @@ fun AffiliateOperations(state: AppState, model: AppViewModel, currency: String,
                     }
                 }
                 "links" -> {
-                    values.forEach { row ->
-                        val destination = row.str("url")
-                        Column(verticalArrangement=Arrangement.spacedBy(5.dp)) {
-                            PartnerRow(
-                                title=row.str("campaign",row.str("code")),
-                                subtitle=destination,
-                                value=row.optInt("clicks").toString()+" "+tr(state.lang,"clicks","کلیک"),
-                                icon=Icons.Default.Link
-                            )
-                            if(destination.startsWith("https://")) {
-                                OutlinedButton(onClick={
-                                    clipboard.setText(AnnotatedString(destination))
-                                    actionMessage=tr(state.lang,"Campaign URL copied","لینک کمپین کپی شد")
-                                },modifier=Modifier.fillMaxWidth(),
-                                    border=BorderStroke(1.dp,affiliateOutline),
-                                    shape=RoundedCornerShape(11.dp)) {
-                                    Icon(Icons.Default.ContentCopy,null,
-                                        modifier=Modifier.size(16.dp),tint=affiliateBlue)
-                                    Spacer(Modifier.width(6.dp))
-                                    Text(tr(state.lang,"Copy campaign link","کپی لینک کمپین"),
-                                        color=affiliateBlue,fontWeight=FontWeight.Bold)
-                                }
+                    PartnerInfoCard(tr(state.lang,"Your campaign links","لینک‌های کمپین"),
+                        tr(state.lang,"Create a separate link for each campaign to track clicks.",
+                            "برای هر کمپین یک لینک جدا بسازید تا کلیک‌های آن مشخص باشد."),
+                        Icons.Default.AutoAwesome) {
+                        listOf(
+                            tr(state.lang,"1 · Enter a recognizable campaign name",
+                                "۱ · نام مشخصی برای کمپین وارد کنید"),
+                            tr(state.lang,"2 · Generate your unique referral URL",
+                                "۲ · لینک اختصاصی معرفی را بسازید"),
+                            tr(state.lang,"3 · Copy or share it with your audience",
+                                "۳ · لینک را کپی یا برای مخاطبان ارسال کنید"),
+                            tr(state.lang,"4 · Review traffic in the campaign list below",
+                                "۴ · تعداد کلیک‌ها را در لیست زیر بررسی کنید")
+                        ).forEach { hint ->
+                            Row(verticalAlignment=Alignment.CenterVertically) {
+                                Icon(Icons.Default.CheckCircle,null,tint=Palette.green,
+                                    modifier=Modifier.size(16.dp))
+                                Spacer(Modifier.width(8.dp))
+                                Text(hint,color=affiliateInk,fontSize=11.sp,lineHeight=17.sp)
                             }
+                        }
+                        Divider(color=affiliateOutline)
+                        val original=data?.str("primaryUrl")?:""
+                        Text(tr(state.lang,"Default referral link",
+                            "لینک معرفی اصلی"),color=Palette.muted,fontSize=11.sp)
+                        Text(original.ifBlank{"—"},color=affiliateBlue,
+                            fontWeight=FontWeight.Bold,fontSize=12.sp,
+                            maxLines=2,overflow=TextOverflow.Ellipsis)
+                        OutlinedButton(onClick={
+                            if(original.startsWith("https://")){
+                                clipboard.setText(AnnotatedString(original))
+                                actionMessage=tr(state.lang,"Referral URL copied",
+                                    "لینک معرفی کپی شد")
+                            }
+                        },enabled=original.startsWith("https://"),
+                            modifier=Modifier.fillMaxWidth()) {
+                            Icon(Icons.Default.ContentCopy,null,
+                                modifier=Modifier.size(17.dp))
+                            Spacer(Modifier.width(5.dp))
+                            Text(tr(state.lang,"Copy main referral link",
+                                "کپی لینک اصلی"),fontSize=12.sp)
                         }
                     }
-                    Surface(color=Color.White,shape=RoundedCornerShape(18.dp),
-                        border=BorderStroke(1.dp,Palette.border)) {
-                        Column(Modifier.padding(14.dp),verticalArrangement=Arrangement.spacedBy(8.dp)) {
-                            Text(tr(state.lang,"Create a campaign link","ساخت لینک کمپین"),
+                    PartnerInfoCard(tr(state.lang,"Create a campaign link",
+                        "ساخت لینک اختصاصی کمپین"),
+                        tr(state.lang,"Example: Telegram October, Instagram Story",
+                            "مثال: تلگرام مهر، استوری اینستاگرام"),
+                        Icons.Default.AddLink) {
+                        OutlinedTextField(campaign,{campaign=it.take(60)},
+                            label={Text(tr(state.lang,"Campaign name","نام کمپین"))},
+                            placeholder={Text("Telegram Campaign")},
+                            supportingText={Text(tr(state.lang,
+                                "2–60 characters; the code and final URL are generated securely by the server.",
+                                "نام بین ۲ تا ۶۰ کاراکتر؛ شناسه و آدرس نهایی را سرور می‌سازد."),
+                                fontSize=10.sp)},
+                            singleLine=true,modifier=Modifier.fillMaxWidth(),
+                            shape=RoundedCornerShape(14.dp))
+                        Button(enabled=!actionBusy&&AffiliateInputRules.validCampaign(campaign),
+                            onClick={
+                                runAction { token ->
+                                    api.post("/api/v1/affiliate/links",
+                                        JSONObject().put("campaign",campaign.trim()),token)
+                                    campaign=""
+                                    actionMessage=tr(state.lang,"Campaign link created",
+                                        "لینک کمپین ساخته شد")
+                                }
+                            },
+                            modifier=Modifier.fillMaxWidth().heightIn(min=52.dp),
+                            shape=RoundedCornerShape(15.dp),
+                            colors=ButtonDefaults.buttonColors(containerColor=affiliateBlue)) {
+                            Icon(Icons.Default.Link,null,tint=Color.White,
+                                modifier=Modifier.size(17.dp))
+                            Spacer(Modifier.width(6.dp))
+                            Text(tr(state.lang,"Generate referral link",
+                                "ساخت لینک معرفی"),color=Color.White,
                                 fontWeight=FontWeight.Black)
-                            OutlinedTextField(campaign,{campaign=it.take(60)},
-                                label={Text(tr(state.lang,"Campaign name","نام کمپین"))},
-                                singleLine=true,modifier=Modifier.fillMaxWidth())
-                            Button(enabled=!actionBusy && AffiliateInputRules.validCampaign(campaign),
-                                onClick={
-                                    runAction { token ->
-                                        api.post("/api/v1/affiliate/links",
-                                            JSONObject().put("campaign",campaign.trim()),token)
-                                        campaign=""
-                                        actionMessage=tr(state.lang,"Link created","لینک ساخته شد")
-                                    }
-                                }, colors=ButtonDefaults.buttonColors(containerColor=Palette.green)) {
-                                Text(tr(state.lang,"Create link","ساخت لینک"),color=Palette.ink)
-                            }
                         }
+                    }
+                    SectionHeading(tr(state.lang,"Your created links",
+                        "لینک‌های ایجادشده"),
+                        tr(state.lang,
+                            "Each card contains the real link, click count and share actions",
+                            "هر کارت شامل لینک واقعی، آمار کلیک و ابزار اشتراک‌گذاری است"))
+                    if(values.isEmpty()&&!busy) PartnerEmptyPanel(state.lang,
+                        tr(state.lang,"No campaign links yet",
+                            "هنوز لینک کمپینی نساخته‌اید"),
+                        tr(state.lang,
+                            "Your main referral link above is ready to use. Create a campaign to track traffic separately.",
+                            "لینک اصلی بالا آماده است؛ برای مشاهده جداگانه ترافیک هر کمپین، لینک جدید بسازید."),
+                        Icons.Default.Link)
+                    values.forEach { row->
+                        PartnerCampaignCard(row,state.lang,
+                            onCopy={ destination ->
+                                clipboard.setText(AnnotatedString(destination))
+                                actionMessage=tr(state.lang,"Link copied","لینک کپی شد")
+                            },
+                            onShare={ destination ->
+                                val intent=Intent(Intent.ACTION_SEND).apply {
+                                    type="text/plain"
+                                    putExtra(Intent.EXTRA_TEXT,destination)
+                                }
+                                context.startActivity(Intent.createChooser(intent,
+                                    tr(state.lang,"Share campaign link",
+                                        "اشتراک لینک کمپین")))
+                            })
                     }
                 }
                 "wallets" -> {
