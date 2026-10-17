@@ -140,14 +140,14 @@ export async function runBetsApiTrial(
       const live = eventList(liveResult.value.results);
       row.liveFixtures = live.length;
       row.liveWithClock = live.filter(event => numericField(record(event.timer).tm) !== null).length;
-      row.liveWithScore = live.filter(event => /^\\d+-\\d+$/.test(stringField(event.ss))).length;
+      row.liveWithScore = live.filter(event => /^\d+-\d+$/.test(stringField(event.ss))).length;
       row.sample = live.slice(0, 20).map(event => ({
         id: stringField(event.id).slice(0, 32),
-        bet365Id: /^\\d{1,16}$/.test(stringField(event.bet365_id))
+        bet365Id: /^\d{1,16}$/.test(stringField(event.bet365_id))
           ? stringField(event.bet365_id) : null,
         home: eventName(event, 'home'), away: eventName(event, 'away'),
         minute: numericField(record(event.timer).tm),
-        score: /^\\d+-\\d+$/.test(stringField(event.ss)) ? stringField(event.ss) : null,
+        score: /^\d+-\d+$/.test(stringField(event.ss)) ? stringField(event.ss) : null,
         league: stringField(record(event.league).name).slice(0, 90),
       }));
     } else row.error = safeError(liveResult.reason instanceof Error ? liveResult.reason.message : liveResult.reason);
@@ -172,7 +172,7 @@ export async function runBetsApiTrial(
   // the short 3-day trial window without 5 * 7s request waterfalls.
   const samples = output.sports.flatMap(sport =>
     sport.sample.slice(0, 1)
-      .filter(event => /^\\d{1,16}$/.test(event.id))
+      .filter(event => /^\d{1,16}$/.test(event.id))
       .map(event => ({ sport, event })),
   ).slice(0, 5);
   output.oddsSample = await Promise.all(samples.map(async ({ sport, event }) => {
