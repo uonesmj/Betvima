@@ -198,7 +198,7 @@ export function ProvidersClient() {
                 <p>Bet365 live list: <strong>{trial.bet365.permitted ? 'Available' : trial.bet365.error ?? 'Unavailable'}</strong>
                   {' '}· {trial.bet365.eventCount} listed events</p>
                 <p>Live odds verified: <strong>{trial.bet365.pricedEventCount} / {trial.bet365.sampledEventCount} sampled fixtures</strong>
-                  {' '}· {trial.bet365.marketCount} fresh sample markets · {trial.bet365.priceCount} outcomes.
+                  {' '}· {trial.bet365.marketCount} priced sample markets · {trial.bet365.priceCount} outcomes.
                   {trial.bet365.error ? ` Diagnostic: ${trial.bet365.error}` : ''}</p>
                 <p>Bet365 Prematch list: <strong>{trial.bet365.upcomingAccess}</strong>
                   {' '}· {trial.bet365.upcomingCount} events on sampled page.</p>
