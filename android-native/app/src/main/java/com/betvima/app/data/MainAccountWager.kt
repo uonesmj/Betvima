@@ -2,6 +2,7 @@ package com.betvima.app.data
 
 import org.json.JSONObject
 import java.math.BigDecimal
+import java.math.BigInteger
 import java.math.RoundingMode
 import java.time.Instant
 
@@ -62,6 +63,20 @@ fun parseMainBetReview(
         it.beforeScaled.matches(Regex("[0-9]{1,12}")) &&
         it.afterScaled.matches(Regex("[0-9]{1,12}")) })
     require(parsedChanges.map { it.selectionId }.distinct().size == parsedChanges.size)
+    // Do not label a bare odds multiplier as an official monetary return. A
+    // signed quote is authoritative only when its stake, changed prices and
+    // minor-unit payout agree with the same once-rounded backend formula.
+    val currentPrices = parsedChanges.associate { it.selectionId to it.afterScaled }
+    val prices = picks.map { (currentPrices[it.selectionId] ?: it.oddsScaled).toBigInteger() }
+    require(prices.all { it in BigInteger("10100")..BigInteger("10000000") })
+    val denominator = BigInteger("10000").pow(prices.size)
+    val numerator = prices.fold(stakeMinor.toBigInteger()) { total, price ->
+        total.multiply(price)
+    }
+    val calculatedPayout = numerator.add(denominator.divide(BigInteger.TWO)).divide(denominator)
+    require(payout.toBigInteger() == calculatedPayout) {
+        "Server quote payout does not match stake and authoritative odds"
+    }
     return MainBetReview(token, expiry, stakeMinor, currency, payout,
         picks.toList(), parsedChanges, generation)
 }

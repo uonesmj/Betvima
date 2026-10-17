@@ -218,7 +218,8 @@ private fun MainAccountSlipControls(
                 OutlinedTextField(
                     value=stake,
                     onValueChange={
-                        if(it.matches(Regex("[0-9]{0,10}(\\.[0-9]{0,2})?"))) {
+                        if (it.matches(if (curr in setOf("IRR", "IRT")) Regex("[0-9]{0,14}")
+                            else Regex("[0-9]{0,10}(\\.[0-9]{0,2})?"))) {
                             stake=it
                             model.clearQuote()
                         }
@@ -259,20 +260,21 @@ private fun MainAccountSlipControls(
             }
         }
         if (state.picks.isNotEmpty()) {
-            val estimate = remember(stake, state.picks) {
-                previewSlipWinnings(stake, state.picks)
+            val estimate = remember(stake, state.picks, curr) {
+                previewSlipWinnings(stake, state.picks, curr)
             }
             if (estimate != null) {
                 // When a live server quote exists, it overrides the illustrative
                 // payout derived from current client odds. Neither is settlement.
                 val officialPayout = state.quote
-                    ?.removeSuffix(" USD")
-                    ?.takeIf { it.matches(Regex("[0-9]+\\.[0-9]{2}")) }
+                    ?.removeSuffix(" " + curr)
+                    ?.takeIf { it.matches(if (curr in setOf("IRR", "IRT")) Regex("[0-9]+")
+                        else Regex("[0-9]+\\.[0-9]{2}")) }
                 val possibleReturn = officialPayout ?: estimate.returnUsd
                 val netProfit = remember(possibleReturn, estimate.stakeUsd) {
                     java.math.BigDecimal(possibleReturn)
                         .subtract(java.math.BigDecimal(estimate.stakeUsd))
-                        .setScale(2, java.math.RoundingMode.HALF_UP)
+                        .setScale(if (curr in setOf("IRR", "IRT")) 0 else 2, java.math.RoundingMode.HALF_UP)
                         .toPlainString()
                 }
                 Surface(
@@ -328,7 +330,8 @@ private fun MainAccountSlipControls(
                                             maxLines = 1
                                         )
                                         Text(
-                                            "$" + possibleReturn,
+                                            (if (curr == "USD") "$" else "") + possibleReturn +
+                                                (if (curr == "USD") "" else " " + curr),
                                             color = slipText, fontSize = 14.sp,
                                             fontWeight = FontWeight.Black,
                                             maxLines = 1
@@ -341,7 +344,8 @@ private fun MainAccountSlipControls(
                                             maxLines = 1
                                         )
                                         Text(
-                                            "$" + netProfit,
+                                            (if (curr == "USD") "$" else "") + netProfit +
+                                                (if (curr == "USD") "" else " " + curr),
                                             color = Color(0xFF008752), fontSize = 14.sp,
                                             fontWeight = FontWeight.Black,
                                             maxLines = 1
@@ -418,7 +422,7 @@ private fun MainAccountSlipControls(
                 } else if(awaitingOddsAcceptance) {
                     model.acceptMainOddsChanges(stake)
                 } else if(review != null &&
-                    com.betvima.app.BuildConfig.ENABLE_WAGERING) {
+                    state.wageringEnabled) {
                     model.placeMainBet(stake)
                 } else if(review == null) {
                     model.quote(stake)
@@ -426,7 +430,7 @@ private fun MainAccountSlipControls(
             },
             enabled=canQuote && !state.busy && !state.mainBetUncertain &&
                 (review == null || awaitingOddsAcceptance ||
-                    com.betvima.app.BuildConfig.ENABLE_WAGERING),
+                    state.wageringEnabled),
             modifier=Modifier.fillMaxWidth().height(47.dp),
             shape=RoundedCornerShape(13.dp),
             colors=ButtonDefaults.buttonColors(
@@ -441,17 +445,17 @@ private fun MainAccountSlipControls(
                 !state.signedIn -> tr(lang,"Login to bet","ورود برای شرط")
                 awaitingOddsAcceptance ->
                     tr(lang,"Accept new odds (no bet yet)","پذیرش ضریب جدید (بدون ثبت شرط)")
-                review != null && !com.betvima.app.BuildConfig.ENABLE_WAGERING ->
+                review != null && !state.wageringEnabled ->
                     tr(lang,"Wagering not authorized","ثبت شرط غیرفعال است")
                 review != null -> tr(lang,"Place bet with approved odds","ثبت شرط با ضریب تأییدشده")
                 else -> tr(lang,"Get official quote","دریافت استعلام رسمی")
             },fontWeight=FontWeight.Black,fontSize=12.sp)
         }
         if (!compact) Text(tr(lang,
-            if(com.betvima.app.BuildConfig.ENABLE_WAGERING)
+            if(state.wageringEnabled)
                 "A server-signed quote is required. Funds move only after explicit confirmation."
             else "Main Account: quote preview only until licensed real-money operation is enabled."
-            ,if(com.betvima.app.BuildConfig.ENABLE_WAGERING)
+            ,if(state.wageringEnabled)
                 "ثبت شرط فقط پس از استعلام رسمی سرور و تأیید شما انجام می‌شود."
             else "حساب اصلی: صرفاً استعلام، تا زمان تأیید فعال‌سازی شرط با پول واقعی."),
             color=slipMuted,fontSize=9.sp,lineHeight=13.sp,maxLines=2)
