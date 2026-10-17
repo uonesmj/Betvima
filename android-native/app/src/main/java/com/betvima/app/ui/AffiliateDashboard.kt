@@ -526,7 +526,8 @@ fun AffiliateDashboard(state: AppState, model: AppViewModel) {
                     AffiliateOperations(
                         state,model,currency,
                         partner?.str("minPayoutMinor","0") ?: "0",
-                        initialTab=page,showNavigation=false
+                        initialTab=page,showNavigation=false,
+                        onNavigate={ destination -> page=destination; menuOpen=false }
                     )
                 }
             }
