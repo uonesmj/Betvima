@@ -1,30 +1,26 @@
 # External providers — what is required to switch each feature on
 
-The platform is deliberately provider-agnostic: adapters, database structures, error states and
-tests exist; only credentials and the vendor-specific mapping are missing. Until then every feature
-reports `NOT_CONFIGURED` and refuses the operation instead of faking success.
+The sportsbook uses **The Odds API exclusively** for fixtures, results, live odds and all betting markets. No backup football odds/results vendor is registered. Missing upstream data is not replaced by stale odds. Financial history for legacy fixtures is retained only to preserve settlement and audit integrity.
 
-## 1. Sports data + odds (live betting, automatic settlement from provider results)
+## 1. Sports data + odds (The Odds API only)
 
-Required environment variables:
+Configure the web server and both odds workers with The Odds API credentials:
 
-```
-SPORTS_PROVIDER=<vendor adapter name>      # currently: disabled | http
-SPORTS_PROVIDER_BASE_URL=https://...
-SPORTS_PROVIDER_API_KEY=...
-SPORTS_PROVIDER_LIVE_WS_URL=wss://...      # optional: streaming odds
+```sh
+ODDS_API_KEY=<The Odds API key>
+ODDS_API_BASE_URL=https://api.the-odds-api.com
+ODDS_API_SPORT_KEYS=soccer_epl
+ODDS_API_REGIONS=eu
+ODDS_API_MARKETS=h2h,spreads,totals
 SPORTS_ODDS_FRESHNESS_SECONDS=45
-SPORTS_LIVE_FRESHNESS_SECONDS=12
 ```
 
-What must be provided: a vendor implementing `SportsDataProvider`
-(`fetchMatches`, `fetchLiveMatches`, `fetchOdds`, `fetchResult`, `fetchResults`) with a documented
-payload mapping. The adapter is the only new code required; publishing odds, freshness checks,
-anomaly detection (`detectOddsAnomalies`), suspension of stale selections and settlement enqueueing
-already exist and are exercised by the odds and settlement workers.
+The older generic `SPORTS_PROVIDER_BASE_URL`/`SPORTS_PROVIDER_API_KEY` variables are accepted **only** as a compatibility alias when `SPORTS_PROVIDER=the_odds_api`; a retired provider is never instantiated. Prefer dedicated `ODDS_API_*` variables. Remove unused retired vendor keys from VPS secrets after confirming these variables are loaded by both workers.
 
-Without it: matches/odds lists are empty and labelled, live betting is unavailable, results must be
-entered by an operator in `/admin/matches/[id]` (automatic settlement then works exactly as designed).
+* The Odds API supports only its actual bookmaker markets and fixture data; do not synthesize missing live minutes or odds.
+* `/api/v1/live`, `/api/v1/matches` and mobile clients read the same authenticated first-party catalogue, restricted to `the_odds_api`.
+* Worker code and environment both need updating on the actual VPS. The normal web deployment workflow does not restart worker processes.
+* Historical provider rows linked to prior bets should not be deleted or re-labeled, because that could corrupt results, disputes and settlement records.
 
 ## 2. Payments (deposits, withdrawals, refunds, payout confirmations)
 
