@@ -1,6 +1,8 @@
 'use client';
 
 import { requestEmailPasswordRecovery } from '@/lib/supabase/recovery-email';
+import { getSupabaseBrowserClient } from '@/lib/supabase/browser';
+import { TwoFactorSettings } from '@/components/account/two-factor-settings';
 import { useEffect, useRef, useState } from 'react';
 import Script from 'next/script';
 import { useApp } from '@/components/layout/providers';
@@ -60,6 +62,7 @@ export function AuthForms({
   });
 
   const [showPassword, setShowPassword] = useState(false);
+  const [awaitingTotp, setAwaitingTotp] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -181,7 +184,7 @@ export function AuthForms({
         );
         setMode('login');
       } else {
-        const result = await apiRequest('/api/v1/auth/login', {
+        await apiRequest('/api/v1/auth/login', {
             method: 'POST',
             json: {
               email: form.email,
@@ -189,6 +192,15 @@ export function AuthForms({
               turnstileToken,
             },
           });
+          // Never navigate past an enrolled factor on an AAL1 session.
+          const client = getSupabaseBrowserClient();
+          const { data: factors, error: factorsError } = await client.auth.mfa.listFactors();
+          if (factorsError) throw factorsError;
+          if (factors?.totp?.some((factor) => factor.status === 'verified')) {
+            setAwaitingTotp(true);
+            await refreshSession();
+            return;
+          }
           await refreshSession();
           window.location.href = '/';
       }
@@ -249,6 +261,16 @@ export function AuthForms({
   }, [turnstileReady, isLogin, forgotPassword, turnstileSiteKey]);
 
 
+
+  if (awaitingTotp) {
+    return <div className="space-y-4 p-3 text-slate-900">
+      <TwoFactorSettings onVerified={() => { window.location.href = '/'; }} />
+      <button type="button" className="text-sm text-slate-200 underline"
+        onClick={() => { setAwaitingTotp(false); setMode('login'); }}>
+        Back to sign in
+      </button>
+    </div>;
+  }
 
   if (session?.authUnavailable) {
     return (
