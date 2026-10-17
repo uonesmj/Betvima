@@ -3,6 +3,8 @@ on:
   pull_request:
     paths:
       - 'src/server/providers/softaggregator/**'
+      - 'src/app/api/v1/casino/demo/route.ts'
+      - 'src/components/casino/casino-showcase.tsx'
       - 'tests/unit/softaggregator-*.test.ts'
       - 'tests/unit/softaggregator-*.test.js'
       - 'ops/cloudflare/softaggregator-callback-worker.js'
@@ -30,6 +32,6 @@ jobs:
       - name: Install locked dependencies
         run: npm ci --ignore-scripts
       - name: Test pilot limits and both wallet implementations
-        run: npx vitest run tests/unit/softaggregator-pilot-limits.test.ts tests/unit/softaggregator-wallet.test.ts tests/unit/softaggregator-fiat-wallet.test.ts tests/unit/softaggregator-contract.test.ts tests/unit/softaggregator-edge-mode-gate.test.ts tests/unit/softaggregator-countryless-demo.test.ts tests/unit/softaggregator-callback-edge-interoperability.test.js
+        run: npx vitest run tests/unit/softaggregator-pilot-limits.test.ts tests/unit/softaggregator-wallet.test.ts tests/unit/softaggregator-fiat-wallet.test.ts tests/unit/softaggregator-contract.test.ts tests/unit/softaggregator-edge-mode-gate.test.ts tests/unit/softaggregator-countryless-demo.test.ts tests/unit/softaggregator-demo-only-route.test.ts tests/unit/softaggregator-callback-edge-interoperability.test.js
       - name: Typecheck
         run: npm run typecheck
