@@ -11,7 +11,7 @@ android {
         minSdk = 26
         targetSdk = 35
         versionCode = 103
-        versionName = "0.99.3"
+        versionName = "0.99.4"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         buildConfigField("String", "API_BASE_URL", "\"https://betvima.com/\"")
         // Server-side allowlist and finance gate remain authoritative for any wagering.
