@@ -707,7 +707,7 @@ async function runOddsMaintenanceDetached(
             ? ctx.services.providers.sportsProviders
             : [ctx.services.providers.sports]
         ).filter((provider, index, all) =>
-          provider.configured &&
+          provider.name === MATCH_SOURCE_ODDS && provider.configured &&
           all.findIndex((item) => item.name === provider.name) === index
         );
 
@@ -785,7 +785,7 @@ async function runDedicatedLiveDiscovery(ctx: WorkerContext): Promise<void> {
       ? ctx.services.providers.sportsProviders
       : [ctx.services.providers.sports]
   ).filter((provider, index, all) =>
-    provider.configured &&
+    provider.name === MATCH_SOURCE_ODDS && provider.configured &&
     all.findIndex((item) => item.name === provider.name) === index
   );
 
@@ -1004,7 +1004,7 @@ async function reconcileLiveResults(ctx: WorkerContext): Promise<{ checked: numb
       ? ctx.services.providers.sportsProviders
       : [ctx.services.providers.sports]
   ).filter((provider, index, all) =>
-    provider.configured &&
+    provider.name === MATCH_SOURCE_ODDS && provider.configured &&
     all.findIndex((item) => item.name === provider.name) === index
   );
 
