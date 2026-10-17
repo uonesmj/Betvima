@@ -63,6 +63,10 @@ export function AppProviders({ children, initialLocale = DEFAULT_LOCALE }: { chi
   }, [refreshSession]);
 
   useEffect(() => {
+    // The password reset route accepts implicit recovery tokens from email.
+    // Initializing the shared PKCE browser client there can consume/reject
+    // those tokens before the isolated recovery form has verified them.
+    if (window.location.pathname === '/auth/reset-password') return;
     let subscription: { unsubscribe: () => void } | null = null;
     try {
       const supabase = getSupabaseBrowserClient();
