@@ -13,8 +13,10 @@ import javax.crypto.KeyGenerator
 import javax.crypto.spec.GCMParameterSpec
 
 /** Pending AAL1 login lives only in ViewModel memory until Supabase TOTP verification. */
-class TotpChallengeRequired(val firstFactorSession: JSONObject, val factorId: String) :
-    Exception("TOTP verification required")
+class TotpChallengeRequired(
+    val firstFactorSession: JSONObject,
+    val factors: List<AuthenticatorFactor>
+) : Exception("TOTP verification required")
 
 /** Android Keystore encrypted sessions; no backup or plaintext token fallback. */
 class SessionVault(context: Context, scope: String = "member") {
@@ -70,8 +72,8 @@ class SessionVault(context: Context, scope: String = "member") {
         }
         // Supabase owns factor status. Never persist an AAL1 session for a user
         // who has opted into TOTP; BetVima's financial endpoints reject AAL1.
-        val factor = api.mfaFactors(access).firstOrNull()
-        if (factor != null) throw TotpChallengeRequired(value, factor)
+        val factors = api.mfaAllTotpFactors(access).filter { it.verified }
+        if (factors.isNotEmpty()) throw TotpChallengeRequired(value, factors)
         // The bearer token is not considered an authenticated BetVima account
         // until the *BetVima server* validates it through withUser ownership guards.
         val verified = api.get("/api/v1/account/profile", access)
