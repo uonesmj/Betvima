@@ -40,6 +40,20 @@ class NotificationPresentationTest {
         assertNull(notificationDestination("/bonuses\\redirect"))
     }
 
+    @Test fun replyCtaTargetsTheExactSupportTicket() {
+        val id = "550e8400-e29b-41d4-a716-446655440000"
+        assertEquals(NotificationDestination.SUPPORT,
+            notificationDestination("/support?ticket=$id"))
+        assertEquals(id, supportTicketFromNotificationHref("/support?ticket=$id"))
+        assertNull(supportTicketFromNotificationHref("/support"))
+        assertNull(supportTicketFromNotificationHref("/support?ticket=invalid"))
+        assertNull(supportTicketFromNotificationHref("/support?ticket=$id&redirect=/casino"))
+        assertNull(supportTicketFromNotificationHref("https://evil.example/support?ticket=$id"))
+        assertNull(supportTicketFromNotificationHref("//evil.example/support?ticket=$id"))
+        assertNull(supportTicketFromNotificationHref("/support?ticket=%2F$id"))
+        assertNull(supportTicketFromNotificationHref("/bonuses?ticket=$id"))
+    }
+
     @Test fun badDateNeverCrashesPopup() {
         assertEquals("unknown", notificationDisplayDate("unknown", Lang.EN))
         assertEquals("16/10/2026", notificationDisplayDate("2026-10-16T10:00:00Z", Lang.EN)
