@@ -3,6 +3,8 @@ package com.betvima.app.data
 import com.betvima.app.BuildConfig
 import android.content.ContentResolver
 import android.net.Uri
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import okhttp3.MultipartBody
 import okhttp3.Response
@@ -860,12 +862,55 @@ class ApiClient {
                 }
                 require(total > 0) { "The selected file is empty" }
             }
+        // The Android document provider's declared MIME may differ from the
+        // actual content (including renamed photos). The server checks magic
+        // bytes, so normalize only among explicitly allowed real file types.
+        var uploadBytes = bytes.toByteArray()
+        var actualMime = detectSupportMime(uploadBytes)
+            ?: throw ApiFailure(415, "Unsupported image or document format")
+        require(actualMime in supportAttachmentMimeTypes)
+        if (supportRequiresPhotoOptimization(actualMime, uploadBytes.size)) {
+            // A 10 MiB image can be accepted by Storage yet rejected by the
+            // ingress proxy's 8 MiB generic body cap. Optimize photo copies
+            // locally to <6 MiB while keeping sufficient document readability.
+            val info = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+            BitmapFactory.decodeByteArray(uploadBytes, 0, uploadBytes.size, info)
+            if (info.outWidth < 1 || info.outHeight < 1)
+                throw ApiFailure(415, "Image cannot be decoded")
+            val opts = BitmapFactory.Options().apply { inSampleSize = 1 }
+            while (maxOf(info.outWidth, info.outHeight) / opts.inSampleSize > 3200)
+                opts.inSampleSize *= 2
+            val bitmap = BitmapFactory.decodeByteArray(uploadBytes, 0, uploadBytes.size, opts)
+                ?: throw ApiFailure(415, "Image cannot be decoded")
+            try {
+                if (actualMime != "image/jpeg" && bitmap.hasAlpha()) {
+                    throw ApiFailure(413,
+                        "This large transparent image needs a smaller export.")
+                }
+                val out = ByteArrayOutputStream()
+                var fitted = false
+                for (quality in listOf(91, 86, 80, 74, 66, 58)) {
+                    out.reset()
+                    val encoded = bitmap.compress(Bitmap.CompressFormat.JPEG, quality, out)
+                    if (encoded && out.size() in 1..SUPPORT_INGRESS_SAFE_BYTES) {
+                        fitted = true
+                        break
+                    }
+                }
+                if (!fitted) throw ApiFailure(413,
+                    "Image cannot be fitted within the upload gateway limit.")
+                uploadBytes = out.toByteArray()
+                actualMime = "image/jpeg"
+            } finally {
+                bitmap.recycle()
+            }
+        }
         val body = MultipartBody.Builder()
             .setType(MultipartBody.FORM)
             .addFormDataPart("body", text.trim())
             .addFormDataPart(
-                "file", supportSafeFilename(fileName),
-                bytes.toByteArray().toRequestBody(mimeType.toMediaType())
+                "file", supportCanonicalUploadFilename(fileName, actualMime),
+                uploadBytes.toRequestBody(actualMime.toMediaType())
             )
             .build()
         val req = Request.Builder()
