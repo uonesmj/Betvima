@@ -65,6 +65,11 @@ private data class MessengerDocument(
 
 private fun messengerActive(ticket: SupportTicket): Boolean = supportActive(ticket.status)
 
+// Layout invariants for compact bubbles and safe navigation on gesture devices.
+internal fun supportChatBubbleCapDp(viewportDp: Int): Float = viewportDp * .76f
+internal fun supportChatBottomClearanceDp(keyboardVisible: Boolean): Int =
+    if (keyboardVisible) 8 else 32
+
 @Composable
 private fun MessengerIcon(
     icon: androidx.compose.ui.graphics.vector.ImageVector,
@@ -96,11 +101,11 @@ fun SupportMessenger(
     val prefs = remember(context) { context.getSharedPreferences("betvima_support_chat", 0) }
     val listState = rememberLazyListState()
     // Bubble width follows its content; only long messages reach this viewport cap.
-    val bubbleMaxWidth = (LocalConfiguration.current.screenWidthDp * .76f).dp
+    val bubbleMaxWidth = supportChatBubbleCapDp(LocalConfiguration.current.screenWidthDp).dp
     val keyboardVisible = WindowInsets.ime.getBottom(LocalDensity.current) > 0
     // Android 15 gesture navigation can draw over a fullscreen Dialog's bottom edge.
     // Reserve a real layout slot instead of only relying on the window inset report.
-    val bottomClearance = if (keyboardVisible) 8.dp else 32.dp
+    val bottomClearance = supportChatBottomClearanceDp(keyboardVisible).dp
     var tickets by remember { mutableStateOf<List<SupportTicket>>(emptyList()) }
     var chosen by remember { mutableStateOf<SupportTicket?>(null) }
     var messages by remember { mutableStateOf<List<SupportThreadMessage>>(emptyList()) }
