@@ -11,7 +11,7 @@ export type NotificationEventKey =
   | 'wallet.withdrawal_paid' | 'wallet.withdrawal_rejected' | 'wallet.low_balance' | 'wallet.limit_warning'
   | 'affiliate.approved' | 'affiliate.referred_user' | 'affiliate.commission_earned' | 'affiliate.settlement_completed'
   | 'affiliate.payout_paid' | 'affiliate.payout_rejected' | 'affiliate.fraud_review'
-  | 'account.status_changed' | 'account.kyc_required' | 'system.maintenance' | 'promo.generic';
+  | 'account.status_changed' | 'account.kyc_required' | 'support.reply' | 'system.maintenance' | 'promo.generic';
 export interface NotificationRecord {
   id: UUID; userId: UUID; eventKey: NotificationEventKey; channel: NotificationChannel; status: NotificationStatus;
   title: string; body: string; data: Record<string, unknown> | null; locale: 'en';

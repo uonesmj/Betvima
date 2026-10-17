@@ -259,14 +259,16 @@ export function SupportAdminClient() {
     if (!selectedId || !draft.trim() || busy) return;
     setBusy(true);
     try {
-      await request(`/api/v1/admin/support/${selectedId}/messages`, {
+      const result = await request<{ notificationQueued?: boolean }>(`/api/v1/admin/support/${selectedId}/messages`, {
         method: 'POST',
         body: JSON.stringify({ body: draft.trim() }),
       });
       setDraft('');
       await loadTicket(selectedId, true);
       await loadTickets(true);
-      setError(null);
+      setError(result.notificationQueued === false
+        ? 'Reply sent, but the customer notification could not be queued. Check the notification service.'
+        : null);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Unable to send the reply.');
     } finally {

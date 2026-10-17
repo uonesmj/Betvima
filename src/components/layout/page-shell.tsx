@@ -838,78 +838,28 @@ export function Footer({
 }
 
 
-function SupportSheet({
-  close
-}: { close: () => void }) {
+function SupportSheet({ close }: { close: () => void }) {
   const { t } = useApp();
   const [closing, setClosing] = useState(false);
   const [opening, setOpening] = useState(true);
 
   useEffect(() => {
-    const timer = window.setTimeout(() => setOpening(false), 50);
-    return () => window.clearTimeout(timer);
+    const id = window.setTimeout(() => setOpening(false), 30);
+    return () => window.clearTimeout(id);
   }, []);
 
   const requestClose = useCallback(() => {
     if (closing) return;
     setClosing(true);
-    window.setTimeout(close, 320);
+    window.setTimeout(close, 220);
   }, [closing, close]);
 
-  useEffect(() => {
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") requestClose();
-    };
-    document.addEventListener("keydown", onKeyDown);
-    return () => document.removeEventListener("keydown", onKeyDown);
-  }, [requestClose]);
-
   return (
-    <div
-      className="fixed inset-0 z-[100] flex items-end justify-center"
-      role="dialog"
-      aria-modal="true"
-      aria-label={t("menu.support")}
-      onMouseDown={(event) => {
-        if (event.target === event.currentTarget) requestClose();
-      }}
-    >
-      <button
-        type="button"
-        className={`absolute inset-0 h-full w-full bg-black/75 backdrop-blur-sm transition-opacity duration-500 ease-out ${
-          closing ? "opacity-0" : "opacity-100"
-        }`}
-        aria-label={t("common.close")}
-        onClick={requestClose}
-      />
-      <section
-        className={`relative z-10 flex h-[88vh] max-h-[88vh] w-full flex-col overflow-hidden rounded-t-[28px] border border-white/10 bg-[#080D18] shadow-[0_-18px_60px_rgba(0,0,0,.55)] transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] sm:h-[90vh] sm:max-h-[90vh] sm:max-w-[720px] ${
-          closing ? "translate-y-full" : opening ? "translate-y-full" : "translate-y-0"
-        }`}
-        onMouseDown={(event) => event.stopPropagation()}
-      >
-        <div className="flex shrink-0 items-center justify-between border-b border-white/10 bg-[#0B1118] px-5 py-4">
-          <div className="flex items-center gap-3">
-            <span className="grid h-10 w-10 place-items-center rounded-xl bg-[#303136] text-white">
-              <Headphones size={20} />
-            </span>
-            <div>
-              <p className="text-sm font-black text-white">{t("menu.support")}</p>
-              <p className="mt-0.5 text-xs text-slate-500">24/7 Live Chat</p>
-            </div>
-          </div>
-          <button
-            type="button"
-            onClick={requestClose}
-            className="grid h-10 w-10 place-items-center rounded-xl bg-[#20252A] text-white transition duration-200 hover:bg-[#2B3036] active:scale-90"
-            aria-label={t("common.close")}
-          >
-            <X size={20} strokeWidth={2} />
-          </button>
-        </div>
-        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-3 sm:p-5">
-          <SupportClient />
-        </div>
+    <div className="fixed inset-0 z-[145] bg-black/45"
+      role="dialog" aria-modal="true" aria-label={t('menu.support')}>
+      <section className={'absolute inset-0 mx-auto h-[100dvh] w-full overflow-hidden bg-white shadow-2xl transition-transform duration-200 ' +
+        (closing || opening ? 'translate-y-full' : 'translate-y-0')}>
+        <SupportClient onClose={requestClose} />
       </section>
     </div>
   );
