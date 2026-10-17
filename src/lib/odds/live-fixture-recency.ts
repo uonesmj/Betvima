@@ -4,8 +4,9 @@
  * This never edits provider results, match status, wagers or settlement.
  */
 export const CURRENT_LIVE_FIXTURE_SQL = `(
-  m.scheduled_at >= now() - interval '10 hours'
-  or m.provider_updated_at >= now() - interval '30 minutes'
+  -- A kickoff timestamp is NOT evidence that the fixture is still live.
+  -- A stale match status can outlive its last provider update by days.
+  m.provider_updated_at >= now() - interval '15 minutes'
   or exists (
     select 1 from nova.markets fresh_market
       join nova.selections fresh_selection on fresh_selection.market_id = fresh_market.id

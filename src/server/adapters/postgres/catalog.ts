@@ -208,6 +208,9 @@ export class PostgresCatalogRepository implements CatalogRepository {
         and ($3::text is null or ht.name ilike '%' || $3 || '%' or at.name ilike '%' || $3 || '%'
              or l.name ilike '%' || $3 || '%' or l.name_fa ilike '%' || $3 || '%')
         and ($5::boolean is null or (m.status::text = any($4::text[])) = $5)
+        -- Align /matches?live=true with /live and the live worker.
+        -- Do not paginate or count long-finished provider ghosts as in-play.
+        and ($5::boolean is distinct from true or ${CURRENT_LIVE_FIXTURE_SQL})
         and ($6::timestamptz is null or m.scheduled_at >= $6)
         and ($7::timestamptz is null or m.scheduled_at <= $7)
         and ($8::text[] is null or m.status::text = any($8::text[]))`;
@@ -268,6 +271,7 @@ export class PostgresCatalogRepository implements CatalogRepository {
     const rows = await this.db.query<Row>(
       `select * from nova.markets
         where match_id = $1
+          and provider = 'the_odds_api'
           and ($2::boolean is null or is_live = $2)
           and status <> 'manual_review'
           and ($3::boolean or status <> 'closed')
@@ -302,7 +306,15 @@ export class PostgresCatalogRepository implements CatalogRepository {
       const marketId = toStr(row.market_id);
       byMarket.set(marketId, [...(byMarket.get(marketId) ?? []), mapSelection(row)]);
     }
-    return rows.map((r) => mapMarket(r, byMarket.get(toStr(r.id)) ?? []));
+    const markets = rows.map((r) => mapMarket(r, byMarket.get(toStr(r.id)) ?? []));
+    // A market with no current selectable bookmaker outcome is not an
+    // available market. Never show historical empty market shells as offers.
+    // Admin/diagnostic callers may explicitly request suspended markets.
+    return filter?.includeSuspended
+      ? markets
+      : markets.filter((market) => market.selections.some((selection) =>
+          (selection.status === 'active' || String(selection.status) === 'open') && selection.oddsScaled > 10_000n,
+        ));
   }
 
   async getMarket(_c: ActorContext, marketId: UUID): Promise<Market | null> {

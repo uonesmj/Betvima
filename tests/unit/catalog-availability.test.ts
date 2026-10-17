@@ -35,10 +35,42 @@ describe('catalog live availability', () => {
     await catalog.listLiveMatches({ userId: null, role: 'anon' }, 100);
     await catalog.listLiveSportCounts({ userId: null, role: 'anon' });
     for (const [sql] of query.mock.calls) {
-      expect(sql).toContain("m.scheduled_at >= now() - interval '10 hours'");
-      expect(sql).toContain("m.provider_updated_at >= now() - interval '30 minutes'");
+      expect(sql).not.toContain("m.scheduled_at >= now() - interval '10 hours'");
+      expect(sql).toContain("m.provider_updated_at >= now() - interval '15 minutes'");
       expect(sql).toContain("fresh_selection.odds_updated_at >= now() - interval '45 seconds'");
     }
+  });
+
+  it('applies the same recency filter to /matches?live=true pagination and totals', async () => {
+    const query = vi.fn().mockResolvedValue([]);
+    const queryOne = vi.fn().mockResolvedValue({ total: 0 });
+    const catalog = new PostgresCatalogRepository({ query, queryOne } as unknown as Db);
+    await catalog.listMatches({ userId: null, role: 'anon' }, { live: true, page: 1, pageSize: 20 });
+    const [listSql] = query.mock.calls[0]!;
+    const [countSql] = queryOne.mock.calls[0]!;
+    for (const sql of [listSql, countSql]) {
+      expect(sql).toContain("$5::boolean is distinct from true");
+      expect(sql).toContain("m.provider_updated_at >= now() - interval '15 minutes'");
+      expect(sql).toContain("fresh_selection.provider_timestamp between");
+      expect(sql).toContain("m.provider = 'the_odds_api'");
+    }
+  });
+
+  it('does not advertise empty market shells as current betting markets', async () => {
+    const now = new Date('2026-10-17T12:00:00Z').toISOString();
+    const markets = [
+      { id: 'stale', match_id: 'm', key: 'h2h', status: 'open', updated_at: now },
+      { id: 'priced', match_id: 'm', key: 'totals', status: 'open', updated_at: now },
+    ];
+    const selections = [
+      { id: 'priced-selection', market_id: 'priced', name: 'Over', code: 'OVER',
+        status: 'open', odds_scaled: '19000', odds_updated_at: now },
+    ];
+    const query = vi.fn().mockResolvedValueOnce(markets).mockResolvedValueOnce(selections);
+    const catalog = new PostgresCatalogRepository({ query } as unknown as Db);
+    const current = await catalog.listMarkets({ userId: null, role: 'anon' }, 'm');
+    expect(current.map((market) => market.key)).toEqual(['totals']);
+    expect(query.mock.calls[0]![0]).toContain("provider = 'the_odds_api'");
   });
 
   it('does not expose an empty top market after freshness filtering', async () => {

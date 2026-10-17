@@ -767,16 +767,19 @@ async function runOddsMaintenanceDetached(
 
 const LIVE_DISCOVERY_INTERVAL_MS = Math.max(
   60_000,
-  Number(process.env.ODDS_LIVE_DISCOVERY_INTERVAL_MS ?? 60_000) || 60_000,
+  Number(process.env.ODDS_LIVE_DISCOVERY_INTERVAL_MS ?? 120_000) || 120_000,
 );
 let lastLiveDiscoveryAt = 0;
-
+let liveDiscoveryInFlight = false;
 
 async function runDedicatedLiveDiscovery(ctx: WorkerContext): Promise<void> {
   const now = Date.now();
-  if (now - lastLiveDiscoveryAt < LIVE_DISCOVERY_INTERVAL_MS) return;
+  // Live tick repeats every five seconds but full multisport discovery
+  // may take longer than its cadence. Never queue overlapping sweeps.
+  if (liveDiscoveryInFlight || now - lastLiveDiscoveryAt < LIVE_DISCOVERY_INTERVAL_MS) return;
+  liveDiscoveryInFlight = true;
   lastLiveDiscoveryAt = now;
-
+  try {
   const providers = (
     ctx.services.providers.sportsProviders?.length
       ? ctx.services.providers.sportsProviders
@@ -850,6 +853,9 @@ async function runDedicatedLiveDiscovery(ctx: WorkerContext): Promise<void> {
         error: error instanceof Error ? error.message : String(error),
       }));
     }
+  }
+  } finally {
+    liveDiscoveryInFlight = false;
   }
 }
 

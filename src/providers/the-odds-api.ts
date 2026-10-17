@@ -1,4 +1,5 @@
 import { createRequestAdmissionQueue, type RequestPriority } from './odds-request-admission';
+import { rotateCoreSportGroups } from './odds-core-fairness';
 import { selectExtendedEventMarkets } from './extended-event-markets';
 import type {
   ProviderMatch,
@@ -395,6 +396,8 @@ let frequencyBlockedUntil = 0;
 // must not sit behind a long queue of optional per-event market discovery.
 const requestAdmission = createRequestAdmissionQueue();
 let lastRequestStartedAt = 0;
+// Shared by live/prematch core requests; advance which sport wins scarce time slots.
+let coreSportSweep = 0;
 
 const QUOTA_COOLDOWN_MS = Math.max(
   5 * 60 * 1000,
@@ -946,7 +949,8 @@ export class TheOddsApiSportsProvider implements SportsDataProvider {
       let firstError: string | null = null;
       let skippedForBudget = 0;
 
-      for (const [sportKey, eventIds] of grouped) {
+      const orderedGroups = rotateCoreSportGroups([...grouped], coreSportSweep++);
+      for (const [sportKey, eventIds] of orderedGroups) {
         for (let offset = 0; offset < eventIds.length; offset += 50) {
           if (Date.now() - coreStartedAt >= coreBudgetMs) {
             skippedForBudget += Math.ceil((eventIds.length-offset)/50);
