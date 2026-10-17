@@ -15,7 +15,6 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
@@ -48,13 +47,6 @@ fun CasinoHomeCarousel95(lang: Lang, model: AppViewModel, onViewAll: () -> Unit)
         loading = true
         // Load each vertical separately: the first general catalogue page may
         // consist entirely of slots, hiding all live-dealer games.
-        val slots = try {
-            model.casinoGames(1, "slots", "", "").games.take(4)
-        } catch (cancel: CancellationException) {
-            throw cancel
-        } catch (_: Exception) {
-            emptyList()
-        }
         val live = try {
             model.casinoGames(1, "live", "", "").games.take(4)
         } catch (cancel: CancellationException) {
@@ -62,7 +54,15 @@ fun CasinoHomeCarousel95(lang: Lang, model: AppViewModel, onViewAll: () -> Unit)
         } catch (_: Exception) {
             emptyList()
         }
-        games = (slots + live).distinctBy { it.id }
+        val slots = try {
+            model.casinoGames(1, "slots", "", "").games.take(4)
+        } catch (cancel: CancellationException) {
+            throw cancel
+        } catch (_: Exception) {
+            emptyList()
+        }
+        // Live dealer games appear first, then slots. Never insert dummy games.
+        games = (live + slots).distinctBy { it.id }
         loading = false
     }
 
@@ -106,6 +106,7 @@ private fun CasinoHomeGameCard95(game: CasinoGame, lang: Lang, onOpen: () -> Uni
     val isLive = game.category.contains("live", ignoreCase = true)
     val categoryName = casinoCategoryLabel(game.category, fa)
     var imageFailed by remember(game.id) { mutableStateOf(false) }
+
     Surface(
         modifier = Modifier.width(315.dp).clickable(onClick = onOpen),
         shape = RoundedCornerShape(21.dp),
@@ -114,47 +115,13 @@ private fun CasinoHomeGameCard95(game: CasinoGame, lang: Lang, onOpen: () -> Uni
         shadowElevation = 2.dp
     ) {
         Column {
-            Row(
-                Modifier.fillMaxWidth()
-                    .background(Brush.horizontalGradient(
-                        listOf(Color(0xFFF1F7F9), Color(0xFFFCFDFE))))
-                    .padding(start = 12.dp, end = 12.dp, top = 8.dp, bottom = 7.dp),
-                verticalAlignment = Alignment.CenterVertically
+            // The supplied artwork fills the entire upper card, edge to edge.
+            // Category badges overlay the image rather than stealing artwork space.
+            Box(
+                modifier = Modifier.fillMaxWidth().height(246.dp)
+                    .background(Color(0xFFF3F6F9)),
+                contentAlignment = Alignment.Center
             ) {
-                Surface(
-                    modifier = Modifier.size(34.dp),
-                    color = Color.White,
-                    shape = RoundedCornerShape(11.dp),
-                    border = BorderStroke(1.dp, casinoCardBorder95)
-                ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Icon(Icons.Default.Casino, null, tint = casinoCardBlue95,
-                            modifier = Modifier.size(21.dp))
-                    }
-                }
-                Spacer(Modifier.width(9.dp))
-                Column(Modifier.weight(1f)) {
-                    Text(game.providerName.ifBlank { game.provider },
-                        color = casinoCardInk95, fontSize = 13.sp,
-                        fontWeight = FontWeight.ExtraBold, maxLines = 1,
-                        overflow = TextOverflow.Ellipsis)
-                    Text(categoryName, color = casinoCardMuted95,
-                        fontSize = 9.sp, maxLines = 1,
-                        overflow = TextOverflow.Ellipsis)
-                }
-                Surface(
-                    color = if (isLive) Color(0xFFFFEAF2) else Color(0xFFE8F8F1),
-                    shape = RoundedCornerShape(8.dp)
-                ) {
-                    Text(if (isLive) "LIVE" else "SLOTS",
-                        modifier = Modifier.padding(horizontal = 9.dp, vertical = 7.dp),
-                        color = if (isLive) Color(0xFFC71961) else Color(0xFF008957),
-                        fontWeight = FontWeight.Black, fontSize = 10.sp)
-                }
-            }
-            HorizontalDivider(color = casinoCardBorder95, thickness = .7.dp)
-            Box(Modifier.fillMaxWidth().height(138.dp).background(Color(0xFFF3F6F9)),
-                contentAlignment = Alignment.Center) {
                 if (game.imageUrl != null && !imageFailed) {
                     AsyncImage(
                         model = game.imageUrl,
@@ -165,27 +132,61 @@ private fun CasinoHomeGameCard95(game: CasinoGame, lang: Lang, onOpen: () -> Uni
                     )
                 } else {
                     Icon(Icons.Default.VideogameAsset, null,
-                        tint = Color(0xFFB2BEC9), modifier = Modifier.size(42.dp))
+                        tint = Color(0xFFB2BEC9), modifier = Modifier.size(48.dp))
+                }
+
+                Surface(
+                    modifier = Modifier.align(Alignment.TopStart).padding(11.dp),
+                    shape = RoundedCornerShape(10.dp),
+                    color = if (isLive) Color(0xFFFFEAF2) else Color(0xFFE8F8F1)
+                ) {
+                    Text(
+                        if (isLive) "LIVE" else "SLOTS",
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 7.dp),
+                        color = if (isLive) Color(0xFFC71961) else Color(0xFF008957),
+                        fontWeight = FontWeight.Black, fontSize = 10.sp
+                    )
+                }
+                Surface(
+                    modifier = Modifier.align(Alignment.TopEnd).padding(11.dp),
+                    shape = RoundedCornerShape(10.dp),
+                    color = Color(0xE6212832)
+                ) {
+                    Row(
+                        Modifier.padding(horizontal = 9.dp, vertical = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(5.dp)
+                    ) {
+                        Icon(Icons.Default.Casino, null,
+                            tint = Color.White, modifier = Modifier.size(14.dp))
+                        Text(categoryName, color = Color.White,
+                            fontSize = 10.sp, fontWeight = FontWeight.Bold,
+                            maxLines = 1)
+                    }
                 }
             }
             HorizontalDivider(color = casinoCardBorder95, thickness = .7.dp)
-            Column(Modifier.fillMaxWidth().padding(horizontal = 13.dp, vertical = 10.dp),
-                verticalArrangement = Arrangement.spacedBy(5.dp)) {
+            Column(
+                Modifier.fillMaxWidth().padding(horizontal = 13.dp, vertical = 11.dp),
+                verticalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
                 Text(game.name, color = casinoCardInk95,
                     fontWeight = FontWeight.ExtraBold, fontSize = 13.sp,
                     maxLines = 1, overflow = TextOverflow.Ellipsis)
-                Text(categoryName + "  ·  " + game.providerName,
+                Text(categoryName + "  ·  " + game.providerName.ifBlank { game.provider },
                     color = casinoCardMuted95, fontSize = 10.sp,
                     maxLines = 1, overflow = TextOverflow.Ellipsis)
                 Spacer(Modifier.height(2.dp))
                 Surface(
+                    modifier = Modifier.fillMaxWidth(),
                     color = casinoCardBlue95,
-                    shape = RoundedCornerShape(10.dp),
-                    modifier = Modifier.fillMaxWidth()
+                    shape = RoundedCornerShape(10.dp)
                 ) {
-                    Row(Modifier.height(39.dp),
+                    Row(
+                        Modifier.height(39.dp),
                         horizontalArrangement = Arrangement.Center,
-                        verticalAlignment = Alignment.CenterVertically) {
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
                         Text(tr(lang, "View game", "مشاهده بازی"),
                             fontSize = 11.sp, color = Color.White,
                             fontWeight = FontWeight.ExtraBold)
