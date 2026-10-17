@@ -32,3 +32,6 @@ fun supportActualMime(header: ByteArray): String? {
         else -> null
     }
 }
+
+/** A known-local file rejection; no upload request has been sent. */
+class InvalidSupportFileException(message: String) : IllegalArgumentException(message)
