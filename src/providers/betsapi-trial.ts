@@ -3,6 +3,8 @@
  * bookmaker/settlement source. No request or token is logged or serialized.
  * The client must stay on the first-party backend; never ship API keys in APKs.
  */
+import { parseBet365LivePreview } from './betsapi-bet365-preview';
+
 export const BETSAPI_TRIAL_SPORTS = [
   { id: 1, name: 'Football' },
   { id: 18, name: 'Basketball' },
@@ -34,7 +36,8 @@ export interface BetsApiTrialResult {
   checkedAt: string;
   sports: BetsApiTrialSport[];
   oddsSample: Array<{ sport: string; eventId: string; marketKeys: number; latestOffers: number; error: string | null }>;
-  bet365: { permitted: boolean; eventCount: number; error: string | null };
+  bet365: { permitted: boolean; eventCount: number; sampleFixtureId: string | null;
+    marketCount: number; priceCount: number; error: string | null };
   remainingHourlyRequests: number | null;
   notes: string[];
 }
@@ -99,7 +102,8 @@ export async function runBetsApiTrial(
   const output: BetsApiTrialResult = {
     configured: true, feed: 'betsapi', mode: 'read_only', checkedAt,
     sports: [], oddsSample: [],
-    bet365: { permitted: false, eventCount: 0, error: null },
+    bet365: { permitted: false, eventCount: 0, sampleFixtureId: null,
+      marketCount: 0, priceCount: 0, error: null },
     remainingHourlyRequests: null,
     notes: [
       'Nothing is written to the sportsbook database; all live betting and settlement remain on the existing source.',
@@ -163,7 +167,21 @@ export async function runBetsApiTrial(
   try {
     const data = await call('/v1/bet365/inplay_filter', { sport_id: '1' });
     output.bet365.permitted = true;
-    output.bet365.eventCount = eventList(data.results).length;
+    const matches = eventList(data.results);
+    output.bet365.eventCount = matches.length;
+    const first = matches.map(match => stringField(match.id))
+      .find(id => /^\d{1,16}$/.test(id));
+    if (first) {
+      output.bet365.sampleFixtureId = first;
+      try {
+        const rich = await call('/v1/bet365/event', { FI: first });
+        const summary = parseBet365LivePreview(first, rich.results);
+        output.bet365.marketCount = summary.marketCount;
+        output.bet365.priceCount = summary.priceCount;
+      } catch (error) {
+        output.bet365.error = safeError(error instanceof Error ? error.message : error);
+      }
+    }
   } catch (error) {
     output.bet365.error = safeError(error instanceof Error ? error.message : error);
   }
@@ -181,7 +199,8 @@ export function inspectBetsApiTrial(): Promise<BetsApiTrialResult> {
     return Promise.resolve({
       configured: false, feed: 'betsapi', mode: 'read_only',
       checkedAt: new Date().toISOString(), sports: [], oddsSample: [],
-      bet365: { permitted: false, eventCount: 0, error: 'NOT_CONFIGURED' },
+      bet365: { permitted: false, eventCount: 0, sampleFixtureId: null,
+        marketCount: 0, priceCount: 0, error: 'NOT_CONFIGURED' },
       remainingHourlyRequests: null,
       notes: ['Set BETSAPI_TRIAL_ENABLED=true and a freshly rotated BETSAPI_TRIAL_TOKEN on the server. Never commit a token.'],
     });

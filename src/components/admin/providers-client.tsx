@@ -22,8 +22,18 @@ interface TrialReport {
   sports: Array<{ sport: string; sportId: number; liveFixtures: number; upcomingFixtures: number;
     sample: Array<{ id: string; home: string; away: string; minute: number | null }>; error: string | null }>;
   oddsSample: Array<{ sport: string; eventId: string; marketKeys: number; latestOffers: number; error: string | null }>;
-  bet365: { permitted: boolean; eventCount: number; error: string | null };
+  bet365: { permitted: boolean; eventCount: number; sampleFixtureId: string | null;
+    marketCount: number; priceCount: number; error: string | null };
   notes: string[];
+}
+
+interface NormalizedReport {
+  mode: 'shadow_read_only'; activeSource: 'the_odds_api'; inspectedSource: 'betsapi';
+  configured: boolean; checkedAt: string; liveCount: number; diagnostic: string | null;
+  live: Array<{ providerId: string; sport: string; home: string; away: string;
+    score: string | null; minute: number | null;
+    marketCount: number; selectionCount: number;
+    markets: Array<{ key: string; selections: Array<{ code: string; decimalOdds: string }> }> }>;
 }
 
 export function ProvidersClient() {
@@ -31,6 +41,18 @@ export function ProvidersClient() {
   const [trial, setTrial] = useState<TrialReport | null>(null);
   const [trialBusy, setTrialBusy] = useState(false);
   const [trialError, setTrialError] = useState<string | null>(null);
+  const [shadow, setShadow] = useState<NormalizedReport | null>(null);
+  const [shadowError, setShadowError] = useState<string | null>(null);
+  const [shadowBusy, setShadowBusy] = useState(false);
+  async function inspectShadow() {
+    setShadowBusy(true);
+    setShadowError(null);
+    try {
+      setShadow(await apiRequest<NormalizedReport>('/api/v1/admin/betsapi/normalized', { cache: 'no-store' }));
+    } catch {
+      setShadowError('Could not inspect staged BetsAPI markets.');
+    } finally { setShadowBusy(false); }
+  }
   async function checkBetsApi() {
     setTrialBusy(true);
     setTrialError(null);
@@ -85,6 +107,36 @@ export function ProvidersClient() {
           </button>
         </div>
         {trialError && <p role="alert" className="text-xs text-nova-danger">{trialError}</p>}
+        <div className="mb-3 flex flex-wrap gap-3">
+          <button type="button" onClick={() => void inspectShadow()} disabled={shadowBusy}
+            className="rounded-lg border border-nova-border px-4 py-2 text-xs font-semibold hover:opacity-80">
+            {shadowBusy ? 'Inspecting…' : 'Inspect normalized live odds (shadow)'}
+          </button>
+          <span className="self-center text-xs nova-muted">No betting, deposits, or settlement changes.</span>
+        </div>
+        {shadowError && <p role="alert" className="text-xs text-nova-danger">{shadowError}</p>}
+        {shadow && (
+          <div className="mb-4 space-y-2">
+            <p className="text-xs nova-muted">Active: The Odds API · Shadow: BetsAPI · Live fixtures: {shadow.liveCount}
+              {shadow.diagnostic ? ` · ${shadow.diagnostic}` : ''}</p>
+            {shadow.live.map(event => (
+              <div key={event.providerId} className="rounded-lg border border-nova-border p-3">
+                <p className="text-sm font-semibold">{event.home} — {event.away}
+                  {' '}· {event.score ?? '—'} · {event.minute ?? '—'} min</p>
+                <p className="text-xs nova-muted">{event.marketCount} fresh markets · {event.selectionCount} priced outcomes</p>
+                {event.markets.map(market => (
+                  <div key={market.key} className="flex flex-wrap gap-2 text-xs">
+                    <strong>{market.key}</strong>
+                    {market.selections.map((selection, i) => (
+                      <span key={`${selection.code}:${i}`}>{selection.code}: {selection.decimalOdds}</span>
+                    ))}
+                  </div>
+                ))}
+              </div>
+            ))}
+          </div>
+        )}
+
         {trial && !trial.configured && (
           <p className="text-xs nova-muted">Trial is not yet configured on the server. Use a freshly rotated BETSAPI_TRIAL_TOKEN and BETSAPI_TRIAL_ENABLED=true.</p>
         )}
@@ -104,7 +156,10 @@ export function ProvidersClient() {
               </table>
             </div>
             <div className="flex flex-wrap gap-3 text-xs">
-              <span>Bet365 entitlement: <strong>{trial.bet365.permitted ? 'Available' : trial.bet365.error ?? 'Unavailable'}</strong></span>
+              <span>Bet365: <strong>{trial.bet365.permitted ? 'Available' : trial.bet365.error ?? 'Unavailable'}</strong>
+                {' '}· {trial.bet365.eventCount} live events · {trial.bet365.marketCount} priced market groups
+                {' '}· {trial.bet365.priceCount} selections
+                {trial.bet365.error ? ` (${trial.bet365.error})` : ''}</span>
               {trial.oddsSample.map(row => (
                 <span key={row.eventId}>{row.sport}: {row.marketKeys} market keys, {row.latestOffers} priced groups {row.error && `(${row.error})`}</span>
               ))}
