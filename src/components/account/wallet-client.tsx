@@ -247,17 +247,32 @@ function DepositPanel({
           const methodId=kind==='uvoucher'?'voucher_uvoucher':'voucher_hotvoucher';
           const method=methods.find(m=>m.id===methodId);
           const available=Boolean(method?.isAvailable);
-          const min=method?.minAmountMinor ? Number(method.minAmountMinor)/100 : 1;
-          const max=method?.maxAmountMinor && method.maxAmountMinor!=='0' ? Number(method.maxAmountMinor)/100 : null;
-          const amount=Number(normalizeNumericInput(form.amount)||0);
-          const rate=Number(voucherQuote?.rateIrrPerUsd??0);
-          const estimatedUsd=currency==='USD'?amount:rate>0&&Number.isFinite(rate)?amount*(currency==='IRT'?10:1)/rate:0;
-          const validAmount=Number.isFinite(estimatedUsd)&&estimatedUsd>=min&&(max===null||estimatedUsd<=max)&&(currency==='USD'||Boolean(voucherQuote));
+          const isRialWallet=currency==='IRT'||currency==='IRR';
+          const rate=voucherQuoteFresh(voucherQuote)?voucherQuote!.rateIrrPerUsd:null;
+          const configuredMin=BigInt(method?.minAmountMinor??'0');
+          const minimumUsdMinor=configuredMin>150n?configuredMin:150n;
+          const maximumUsdMinor=BigInt(method?.maxAmountMinor??'0');
+          const minRials=isRialWallet&&rate?voucherWalletMinorToIrr(voucherMinimumWalletMinor(minimumUsdMinor,currency,rate),currency):null;
+          const maxRials=isRialWallet&&rate&&maximumUsdMinor>0n?voucherWalletMinorToIrr(voucherUsdToWalletMinor(maximumUsdMinor,currency,rate),currency):null;
+          const raw=normalizeNumericInput(form.amount);
+          const requestedMinor=isRialWallet?parsedVoucherRials(raw,currency):null;
+          const usdMinor=isRialWallet
+            ? requestedMinor!==null&&rate?voucherWalletToUsdMinor(requestedMinor,currency,rate):null
+            : /^\d+(?:\.\d{1,2})?$/.test(raw)?(()=>{const [whole,fraction='']=raw.split('.');return BigInt(whole!)*100n+BigInt(fraction.padEnd(2,'0'));})():null;
+          const validAmount=usdMinor!==null&&usdMinor>=minimumUsdMinor&&(maximumUsdMinor===0n||usdMinor<=maximumUsdMinor)&&(!isRialWallet||Boolean(rate));
+          const unit=locale==='fa'?'ریال':'IRR';
           return <>
             <div>
-              <label className="mb-2 block text-sm font-medium text-[#172033]">{currency==='IRT'?(locale==='fa'?'مبلغ تقریبی واریز (تومان)':'Estimated deposit amount (toman)'):currency==='IRR'?(locale==='fa'?'مبلغ تقریبی واریز (ریال)':'Estimated deposit amount (rial)'):t("wallet.amountUsd")}</label>
-              <input value={form.amount} onChange={e=>setForm(v=>({...v,amount:e.target.value,methodId}))} inputMode={currency==='USD'?'decimal':'numeric'} placeholder={currency==='USD'?t("wallet.voucherAmountPlaceholder"):'24000000'} className="w-full rounded-xl border border-[#DDE5EF] bg-white px-4 py-3 text-[#172033] outline-none focus:border-[#173DAA]"/>
-              {currency!=='USD'?<p className="mt-2 text-xs font-semibold text-[#506582]">{locale==='fa'?'نرخ مرجع uWallet:':'uWallet reference rate:'}{' '}{rate>0?new Intl.NumberFormat(locale==='fa'?'fa-IR':'en-US',{maximumFractionDigits:2}).format(rate/10)+(locale==='fa'?' تومان/دلار':' toman/USD'):voucherQuoteLoading?(locale==='fa'?'در حال دریافت...':'Loading...'):(locale==='fa'?'در دسترس نیست':'Unavailable')}{' — '}{locale==='fa'?'معادل تقریبی':'Approximate equivalent'} {'$'}{estimatedUsd.toFixed(2)} {locale==='fa'?'دلار. واریز نهایی بر اساس اعتبار واقعی کد در uWallet محاسبه می‌شود.':'USD. The final deposit is calculated from the voucher’s actual value in uWallet.'}</p>:null}
+              {isRialWallet?<div className="mb-3 grid grid-cols-2 gap-2">
+                <div className="rounded-xl border border-[#DEE8F4] bg-white p-3"><span className="block text-[11px] text-[#7A8494]">{locale==='fa'?'حداقل واریز':'Minimum deposit'}</span><b className="mt-1 block break-words text-sm text-[#172033]">{minRials!==null?formatVoucherRials(minRials,locale)+' '+unit:'—'}</b></div>
+                <div className="rounded-xl border border-[#DEE8F4] bg-white p-3"><span className="block text-[11px] text-[#7A8494]">{locale==='fa'?'حداکثر واریز':'Maximum deposit'}</span><b className="mt-1 block break-words text-sm text-[#172033]">{maxRials!==null?formatVoucherRials(maxRials,locale)+' '+unit:maximumUsdMinor===0n?(locale==='fa'?'طبق اعتبار کد':'Voucher face value'):'—'}</b></div>
+              </div>:<p className="mb-2 text-xs font-semibold text-[#526074]">Min {(Number(minimumUsdMinor)/100).toFixed(2)} USD{maximumUsdMinor>0n?' · Max '+(Number(maximumUsdMinor)/100).toFixed(2)+' USD':''}</p>}
+              <label className="mb-2 block text-xs font-black uppercase text-[#526074]">{isRialWallet?(locale==='fa'?'مبلغ واریز (ریال)':'Deposit amount (IRR)'):t('wallet.amountUsd')}</label>
+              <div className="flex min-h-[60px] items-center rounded-2xl border border-[#DDE5EF] bg-white px-4 focus-within:border-[#087FF5] focus-within:ring-4 focus-within:ring-[#087FF5]/10">
+                <input value={isRialWallet&&/^\d+$/.test(raw)?formatVoucherRials(BigInt(raw),locale):form.amount} onChange={e=>setForm(v=>({...v,amount:normalizeNumericInput(e.target.value),methodId}))} inputMode={isRialWallet?'numeric':'decimal'} dir="ltr" placeholder={isRialWallet?(minRials!==null?formatVoucherRials(minRials,'en'):'—'):'1.50'} className="min-w-0 flex-1 bg-transparent py-3 text-lg font-black text-[#172033] outline-none"/>
+                <b className="shrink-0 text-xs font-black text-[#7B8798]">{isRialWallet?unit:'USD'}</b>
+              </div>
+              {isRialWallet?<p className="mt-3 rounded-xl border border-[#D8E5F7] bg-[#F1F7FF] p-3 text-xs font-semibold leading-5 text-[#506582]"><b className="mb-1 block text-[#173DAA]">{locale==='fa'?'نرخ زنده uWallet':'Live uWallet rate'}</b>{rate?formatVoucherRials(BigInt(Math.round(Number(rate))),locale)+' '+unit+(locale==='fa'?' به‌ازای هر دلار':' per USD'):voucherQuoteLoading?(locale==='fa'?'در حال دریافت نرخ...':'Loading rate...'):(locale==='fa'?'نرخ در دسترس نیست؛ واریز غیرفعال است.':'Rate unavailable; deposit disabled.')}<span className="mt-1 block text-[#78849A]">{locale==='fa'?'مبلغ نهایی پس از تأیید اعتبار کد در uWallet محاسبه می‌شود.':'Final amount is determined from the voucher value verified by uWallet.'}</span></p>:null}
             </div>
             <div>
               <label className="mb-2 block text-sm font-medium text-[#172033]">{t("wallet.voucherCode")}</label>
