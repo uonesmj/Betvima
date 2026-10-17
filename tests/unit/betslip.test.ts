@@ -80,6 +80,19 @@ describe('betslip: structural validation', () => {
     expect(potentialPayout(money(100_000n, 'IRT'), [25_000n, 20_000n]).amount).toBe(500_000n);
     expect(combinedOddsDisplay([25_000n, 20_000n])).toBe('5.00');
   });
+
+  it('multiplies the full USD stake by odds (not merely quoting the odds as dollars)', () => {
+    const stake = money(500n, 'USD'); // $5.00
+    const payout = potentialPayout(stake, [46_000n]); // 4.60 decimal odds
+    expect(payout.amount).toBe(2_300n); // $23.00 including stake
+    expect(payout.amount - stake.amount).toBe(1_800n); // $18.00 net profit
+    expect(potentialPayout(money(1_000n, 'USD'), [46_000n]).amount).toBe(4_600n);
+  });
+
+  it('rounds accumulator payouts once in minor units, not from rounded display odds', () => {
+    const payout = potentialPayout(money(101n, 'USD'), [12_345n, 19_876n]);
+    expect(payout.amount).toBe(248n); // $1.01 * 1.2345 * 1.9876 = $2.4779...
+  });
 });
 
 describe('betslip: stake validation', () => {
