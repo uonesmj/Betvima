@@ -363,7 +363,14 @@ export function BetsApiExplorer() {
                 <div className="max-h-[75vh] space-y-3 overflow-y-auto">
                   {selectedMarkets.map((market, index) => (
                     <div key={market.key + index} className="rounded-xl border border-white/10 bg-[#1b2431] p-3">
-                      <h3 className="mb-3 text-sm font-bold">{market.title}</h3>
+                      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                        <h3 className="text-sm font-bold">{market.title}</h3>
+                        <span className={market.selections.some(s => /Unlabelled outcome #/i.test(s.label))
+                          ? 'text-xs text-amber-300' : 'text-xs text-emerald-300'}>
+                          {market.selections.filter(s => !/Unlabelled outcome #/i.test(s.label)).length}
+                          /{market.selections.length} named
+                        </span>
+                      </div>
                       <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
                         {market.selections.map(selection => (
                           <div key={selection.id} title="Reference price only; wagering not enabled"
