@@ -241,17 +241,48 @@ export class BetsApiSportsProvider implements SportsDataProvider {
   async fetchResults(from: string, to: string, ids: string[] = []):
     Promise<ProviderResult<ProviderResultSnapshot[]>> {
     if (!this.configured) return failed('NOT_CONFIGURED');
-    if (ids.length > MAX_PER_CALL || ids.some(id => !parseBetsapiIdentity(id))) {
-      return failed('BETSAPI_SCHEMA_INVALID');
-    }
-    // Return only verified event-id matches, never third-party score guesses.
-    const results: ProviderResultSnapshot[] = [];
+    const start = Date.parse(from), finish = Date.parse(to);
+    if (!Number.isFinite(start) || !Number.isFinite(finish) || finish < start ||
+      finish - start > 3 * 86_400_000 || ids.length > MAX_PER_CALL ||
+      ids.some(id => !parseBetsapiIdentity(id))) return failed('BETSAPI_SCHEMA_INVALID');
+    if (!ids.length) return ok([]);
+    // Use the authoritative /events/ended family, never a live/view snapshot.
+    // Results are bounded to requested IDs. Incomplete paging fails closed:
+    // unmatched events never become 'finished' by inference.
+    const groups = new Map<number, Set<string>>();
     for (const id of ids) {
-      const item = await this.fetchResult(id);
-      if (item.ok && item.value &&
-        Date.parse(item.value.observedAt) >= Date.parse(from) &&
-        Date.parse(item.value.observedAt) <= Date.parse(to)) results.push(item.value);
+      const parsed = parseBetsapiIdentity(id)!;
+      groups.set(parsed.sportId, (groups.get(parsed.sportId) ?? new Set()).add(id));
     }
-    return ok(results);
+    const results = new Map<string, ProviderResultSnapshot>();
+    const dates: string[] = [];
+    for (let time = new Date(start).setUTCHours(0, 0, 0, 0);
+      time <= finish && dates.length < 4; time += 86_400_000) {
+      const date = new Date(time);
+      dates.push(`${date.getUTCFullYear()}${String(date.getUTCMonth() + 1).padStart(2, '0')}${String(date.getUTCDate()).padStart(2, '0')}`);
+    }
+    for (const [sportId, wanted] of groups) {
+      for (const day of dates) {
+        try {
+          const payload = await this.request('/v3/events/ended', {
+            sport_id: String(sportId), day, page: '1',
+          });
+          for (const row of events(payload.results)) {
+            const event = normalizeBetsapiEvent(row);
+            if (!event || !wanted.has(event.providerId) ||
+              event.status !== 'finished') continue;
+            const snapshot = normalizeBetsapiResult(
+              event.providerId, row, new Date(), true,
+            );
+            if (snapshot?.authoritative) results.set(event.providerId, snapshot);
+          }
+        } catch (e) {
+          if (['BETSAPI_RATE_LIMITED', 'BETSAPI_BUDGET_EXHAUSTED'].includes(errorCode(e))) {
+            return failed(errorCode(e), true);
+          }
+        }
+      }
+    }
+    return ok([...results.values()]);
   }
 }
