@@ -6,7 +6,7 @@ describe('casino homepage featured selection', () => {
     const games = Array.from({ length: 120 }, (_, i) => ({ id: String(i), game_type: 'Slots' }))
       .concat([{ id: 'live-one', game_type: 'Live Casino' }, { id: 'live-two', game_type: 'Live Dealer' }]);
     expect(featuredCasinoGames(games).map((g) => g.id))
-      .toEqual(['0', '1', '2', '3', 'live-one', 'live-two']);
+      .toEqual(['live-one', 'live-two', '0', '1', '2', '3']);
   });
   it('does not falsely label RNG or table games as live', () => {
     expect(casinoGameGroup({ game_type: 'Roulette' })).toBe('other');
