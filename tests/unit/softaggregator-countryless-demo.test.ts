@@ -53,18 +53,26 @@ describe('SoftAggregator country-free demo (no financial movement)', () => {
     expect(methods.some(x => ['debit', 'credit', 'balance'].includes(String(x.method)))).toBe(false);
   });
 
-  it('never falls back to money play when a provider refuses demo', async () => {
+  it('never falls back to money play when the supplier refuses demo', async () => {
     vi.stubGlobal('fetch', vi.fn(async (_url: string, init?: RequestInit) => {
       const input = JSON.parse(String(init?.body ?? '{}')) as Record<string, unknown>;
       methods.push(input);
       if (input.method === 'getGameList') return Response.json({error:0,response:[{
-        id_hash:'sandbox/RejectDemo',name:'Demo denied',provider:'test',game_type:'video-slots',
+        id_hash:sampleGame,name:'Sample Slot',provider:'test',game_type:'video-slots',
       }]});
       if (input.method === 'createPlayer') return Response.json({error:0,response:{}});
-      return Response.json({error:3,message:'demo unsupported'});
+      if (input.method === 'getGameDemo')
+        return Response.json({error:3,message:'demo unsupported'});
+      throw new Error('Unexpected cash provider method');
     }));
-    // Cached catalogues are not critical to this assertion: an invalid/unsupported
-    // game must never trigger an accidental real-money request either.
+    await expect(launchCasinoGame({
+      userId, gameId: sampleGame, demo: true, lang: 'en', device: 'mobile',
+    })).rejects.toThrow('CASINO_DEMO_UNAVAILABLE');
+    expect(methods.some(x => x.method === 'getGameDemo')).toBe(true);
+    expect(methods.some(x => x.method === 'getGame')).toBe(false);
+  });
+
+  it('denies real-money launch even when user ID exists but authorization is off', async () => {
     await expect(launchCasinoGame({
       userId, gameId: sampleGame, demo: false, lang: 'en', device: 'mobile',
     })).rejects.toThrow('CASINO_REAL_MONEY_DISABLED');
