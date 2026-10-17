@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { withErrorHandling } from '@/lib/errors';
+import { withErrorHandling, ApiError } from '@/lib/errors';
 import { withUser } from '@/server/http/guard';
 import { casinoIdentityApproved } from '@/server/kyc/eligibility';
 
