@@ -6,6 +6,9 @@ on:
     paths:
       - 'ops/continuous/**'
       - '.github/workflows/continuous.yml'
+      - 'src/app/api/v1/account/change-password/**'
+      - 'src/app/api/v1/account/login-history/**'
+      - 'src/app/api/v1/auth/login/route.ts'
   workflow_dispatch:
     inputs:
       approve_production:
