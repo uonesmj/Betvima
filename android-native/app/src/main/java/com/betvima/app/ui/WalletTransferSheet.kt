@@ -377,6 +377,15 @@ fun WalletTransferSheet(
         } finally { loading = false }
     }
 
+    LaunchedEffect(direction, method, currency) {
+        if (method != "crypto" && currency in setOf("IRR", "IRT")) {
+            while (true) {
+                delay(20_000L)
+                quote = runCatching { model.walletVoucherReference() }.getOrNull()
+            }
+        }
+    }
+
     val selectedPaymentMethod = methods?.method(paymentMethodId)
     val methodEnabled = methods?.enabled(
         if (isDeposit) "deposit" else "withdrawal", paymentMethodId) == true
@@ -597,36 +606,87 @@ fun WalletTransferSheet(
                     }
                 }
                 OutlinedTextField(
-                    value = amount,
-                    onValueChange = { amount = it.take(25); error = null },
-                    label = {
-                        Text(wTr(lang, "Amount", "مبلغ") +
-                            " · " + amountInputCurrency)
+                    value = if (voucherFiat)
+                        normalizedWalletNumber(amount).toBigIntegerOrNull()
+                            ?.let { formatVoucherRials(it, lang) } ?: amount
+                        else amount,
+                    onValueChange = {
+                        amount = if (voucherFiat) normalizedWalletNumber(it).take(19)
+                            else it.take(25)
+                        error = null
                     },
-                    placeholder = { Text(if (currency == "IRR" && !isDeposit) "20000000" else "20.00") },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                    label = { Text(if (voucherFiat) wTr(lang, "Amount · IRR", "مبلغ · ریال")
+                        else wTr(lang, "Amount", "مبلغ") + " · " + amountInputCurrency) },
+                    placeholder = { Text(if (voucherFiat)
+                        voucherMinimumRials?.let { formatVoucherRials(it, lang) } ?: "—"
+                        else if (currency == "IRR" && !isDeposit) "20000000" else "20.00") },
+                    keyboardOptions = KeyboardOptions(keyboardType =
+                        if (voucherFiat) KeyboardType.Number else KeyboardType.Decimal),
                     singleLine = true, shape = RoundedCornerShape(14.dp),
                     modifier = Modifier.fillMaxWidth(),
                     trailingIcon = {
                         if (!isDeposit) TextButton(onClick = {
-                            amount = if (currency == "USD")
+                            amount = if (voucherFiat)
+                                voucherMaximumRials?.toString().orEmpty()
+                            else if (currency == "USD")
                                 BigDecimal(wallet.availableMinor).movePointLeft(2)
                                     .setScale(2).toPlainString()
                             else wallet.availableMinor
-                        }) { Text("MAX", fontSize = 10.sp, fontWeight = FontWeight.Black) }
-                        else Text(if (voucher) currency else "USD",
+                        }, enabled = !voucherFiat || voucherMaximumRials != null) {
+                            Text(wTr(lang, "MAX", "حداکثر"), fontSize = 10.sp,
+                                fontWeight = FontWeight.Black)
+                        }
+                        else Text(if (voucherFiat) wTr(lang, "IRR", "ریال")
+                            else if (voucher) currency else "USD",
                             fontSize = 11.sp, color = wMuted)
                     }
                 )
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(if (voucher) wTr(lang,"Minimum $1.50","حداقل ۱٫۵۰ دلار")
-                        else wTr(lang,"Minimum $20.00","حداقل ۲۰ دلار"),
-                        color = wMuted, fontSize = 10.sp)
-                    Spacer(Modifier.weight(1f))
-                    if (!isDeposit)
-                        Text(wTr(lang, "Available: ", "قابل برداشت: ") +
-                            money(wallet.availableMinor,wallet.currency),
+                if (voucherFiat) {
+                    Row(Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(9.dp)) {
+                        Surface(Modifier.weight(1f), color = Color(0xFFF5F8FC),
+                            border = BorderStroke(1.dp, wBorder),
+                            shape = RoundedCornerShape(13.dp)) {
+                            Column(Modifier.padding(11.dp)) {
+                                Text(wTr(lang,"Minimum", "حداقل برداشت/واریز"),
+                                    fontSize = 10.sp, color = wMuted)
+                                Text(voucherMinimumText ?: "—",
+                                    color = wText, fontSize = 12.sp,
+                                    fontWeight = FontWeight.Black)
+                            }
+                        }
+                        Surface(Modifier.weight(1f), color = Color(0xFFF5F8FC),
+                            border = BorderStroke(1.dp, wBorder),
+                            shape = RoundedCornerShape(13.dp)) {
+                            Column(Modifier.padding(11.dp)) {
+                                Text(wTr(lang,"Maximum", "حداکثر"),
+                                    fontSize = 10.sp, color = wMuted)
+                                Text(voucherMaximumText ?:
+                                    if (maxUsdMinor == BigInteger.ZERO && isDeposit)
+                                        wTr(lang,"Voucher face value","طبق اعتبار وچر") else "—",
+                                    color = wText, fontSize = 12.sp,
+                                    fontWeight = FontWeight.Black)
+                            }
+                        }
+                    }
+                    if (!isDeposit) {
+                        Text(wTr(lang,"Available balance: ","موجودی قابل برداشت: ") +
+                            (voucherRialsFromWalletMinor(wallet.availableMinor,currency)
+                                ?.let { formatVoucherRials(it, lang) +
+                                    wTr(lang, " IRR", " ریال") } ?: "—"),
+                            color = wMuted, fontSize = 11.sp)
+                    }
+                } else {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(if (voucher) wTr(lang,"Minimum $1.50","حداقل ۱٫۵۰ دلار")
+                            else wTr(lang,"Minimum $20.00","حداقل ۲۰ دلار"),
                             color = wMuted, fontSize = 10.sp)
+                        Spacer(Modifier.weight(1f))
+                        if (!isDeposit)
+                            Text(wTr(lang, "Available: ", "قابل برداشت: ") +
+                                money(wallet.availableMinor,wallet.currency),
+                                color = wMuted, fontSize = 10.sp)
+                    }
                 }
                 if (selectedPaymentMethod != null && methodEnabled) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
