@@ -30,9 +30,11 @@ describe('BetsAPI evaluation adapter', () => {
     expect(result.mode).toBe('read_only');
     expect(result.sports[0]).toMatchObject({ sport: 'Football', liveFixtures: 1 });
     expect(result.sports[0]?.sample[0]?.minute).toBe(45);
-    expect(result.oddsSample).toEqual([{
-      sport: 'Football', eventId: '12345', marketKeys: 2, latestOffers: 1, error: null,
-    }]);
+    expect(result.oddsSample[0]).toMatchObject({
+      sport: 'Football', eventId: '12345', marketKeys: 2, latestOffers: 1,
+      freshMarkets: 0, freshSelections: 0, error: null,
+    });
+    expect(result.callsInProbe).toBe(4);
     expect(result.bet365.permitted).toBe(true);
     expect(result.remainingHourlyRequests).toBe(3550);
     expect(requests).toHaveLength(4);
