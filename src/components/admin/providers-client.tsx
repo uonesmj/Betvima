@@ -19,11 +19,17 @@ interface HealthRow {
 
 interface TrialReport {
   configured: boolean; checkedAt: string; remainingHourlyRequests: number | null; mode: 'read_only';
-  sports: Array<{ sport: string; sportId: number; liveFixtures: number; upcomingFixtures: number;
-    sample: Array<{ id: string; home: string; away: string; minute: number | null }>; error: string | null }>;
-  oddsSample: Array<{ sport: string; eventId: string; marketKeys: number; latestOffers: number; error: string | null }>;
+  sports: Array<{ sport: string; sportId: number; liveFixtures: number;
+    liveWithClock: number; liveWithScore: number; upcomingFixtures: number;
+    sample: Array<{ id: string; bet365Id: string | null; home: string; away: string; minute: number | null;
+      score: string | null; league: string }>;
+    upcomingSample: Array<{ id: string; home: string; away: string; league: string; time: string | null }>;
+    error: string | null }>;
+  oddsSample: Array<{ sport: string; eventId: string; marketKeys: number; latestOffers: number;
+    freshMarkets: number; freshSelections: number; error: string | null }>;
   bet365: { permitted: boolean; eventCount: number; sampleFixtureId: string | null;
     marketCount: number; priceCount: number; error: string | null };
+  callsInProbe: number; durationMs: number;
   notes: string[];
 }
 
@@ -39,6 +45,8 @@ interface NormalizedReport {
 export function ProvidersClient() {
   const { t, locale } = useApp();
   const [trial, setTrial] = useState<TrialReport | null>(null);
+  const [trialToken, setTrialToken] = useState('');
+  const [showTrialList, setShowTrialList] = useState(false);
   const [trialBusy, setTrialBusy] = useState(false);
   const [trialError, setTrialError] = useState<string | null>(null);
   const [shadow, setShadow] = useState<NormalizedReport | null>(null);
@@ -57,7 +65,12 @@ export function ProvidersClient() {
     setTrialBusy(true);
     setTrialError(null);
     try {
-      setTrial(await apiRequest<TrialReport>('/api/v1/admin/betsapi/trial', { cache: 'no-store' }));
+      setTrial(trialToken.trim()
+        ? await apiRequest<TrialReport>('/api/v1/admin/betsapi/trial', {
+            method: 'POST', json: { token: trialToken.trim() }, cache: 'no-store',
+          })
+        : await apiRequest<TrialReport>('/api/v1/admin/betsapi/trial', { cache: 'no-store' }));
+      setTrialToken('');
     } catch {
       setTrialError('Could not inspect the trial feed. Check server configuration and permissions.');
     } finally {
@@ -101,10 +114,17 @@ export function ProvidersClient() {
             <h2 className="text-sm font-semibold">BetsAPI — 3-day evaluation</h2>
             <p className="text-xs nova-muted">Read-only coverage probe. Does not change public odds, wagers, or settlement.</p>
           </div>
-          <button type="button" className="rounded-lg border border-nova-border px-4 py-2 text-sm font-semibold hover:opacity-80"
-            disabled={trialBusy} onClick={() => void checkBetsApi()}>
-            {trialBusy ? 'Checking live data…' : 'Test BetsAPI coverage'}
-          </button>
+          <div className="flex flex-wrap items-center gap-2">
+            <input type="password" autoComplete="off" spellCheck={false}
+              aria-label="New BetsAPI token for one-time test" value={trialToken}
+              onChange={(e) => setTrialToken(e.target.value)}
+              placeholder="New token (one-time, never saved)"
+              className="min-w-[215px] rounded-lg border border-nova-border bg-transparent px-3 py-2 text-xs" />
+            <button type="button" className="rounded-lg border border-nova-border px-4 py-2 text-sm font-semibold hover:opacity-80"
+              disabled={trialBusy} onClick={() => void checkBetsApi()}>
+              {trialBusy ? 'Checking live data…' : 'Run 7-sport evaluation'}
+            </button>
+          </div>
         </div>
         {trialError && <p role="alert" className="text-xs text-nova-danger">{trialError}</p>}
         <div className="mb-3 flex flex-wrap gap-3">
@@ -138,17 +158,18 @@ export function ProvidersClient() {
         )}
 
         {trial && !trial.configured && (
-          <p className="text-xs nova-muted">Trial is not yet configured on the server. Use a freshly rotated BETSAPI_TRIAL_TOKEN and BETSAPI_TRIAL_ENABLED=true.</p>
+          <p className="text-xs nova-muted">Enter a freshly rotated token in the field above to evaluate immediately, or set BETSAPI_TRIAL_TOKEN in the server environment.</p>
         )}
         {trial?.configured && (
           <div className="space-y-3">
-            <p className="text-xs nova-muted">Checked: {formatDateTime(trial.checkedAt, locale)} · Mode: read-only · Hourly requests remaining: {trial.remainingHourlyRequests ?? 'unknown'}</p>
+            <p className="text-xs nova-muted">Checked: {formatDateTime(trial.checkedAt, locale)} · Mode: read-only · Requests used: {trial.callsInProbe} · Duration: {Math.round(trial.durationMs / 1000)}s · Hourly requests remaining: {trial.remainingHourlyRequests ?? 'unknown'}</p>
             <div className="overflow-x-auto">
               <table className="nova-table">
-                <thead><tr><th>Sport</th><th>Live</th><th>Upcoming (page 1)</th><th>Example fixture</th><th>Source status</th></tr></thead>
+                <thead><tr><th>Sport</th><th>Live</th><th>Clock / score</th><th>Upcoming</th><th>Example fixture</th><th>Source status</th></tr></thead>
                 <tbody>{trial.sports.map(row => (
                   <tr key={row.sportId}>
-                    <td>{row.sport}</td><td>{row.liveFixtures}</td><td>{row.upcomingFixtures}</td>
+                    <td>{row.sport}</td><td>{row.liveFixtures}</td>
+                    <td>{row.liveWithClock}/{row.liveWithScore}</td><td>{row.upcomingFixtures}</td>
                     <td className="text-xs">{row.sample[0] ? `${row.sample[0].home} — ${row.sample[0].away}` : '—'}</td>
                     <td className="text-xs">{row.error ?? 'OK'}</td>
                   </tr>
@@ -161,9 +182,31 @@ export function ProvidersClient() {
                 {' '}· {trial.bet365.priceCount} selections
                 {trial.bet365.error ? ` (${trial.bet365.error})` : ''}</span>
               {trial.oddsSample.map(row => (
-                <span key={row.eventId}>{row.sport}: {row.marketKeys} market keys, {row.latestOffers} priced groups {row.error && `(${row.error})`}</span>
+                <span key={row.eventId}>{row.sport}: {row.marketKeys} historical groups · <strong>{row.freshMarkets} fresh markets / {row.freshSelections} outcomes</strong>
+                  {row.error && ` (${row.error})`}</span>
               ))}
             </div>
+            <button type="button" onClick={() => setShowTrialList(v => !v)}
+              className="rounded-lg border border-nova-border px-3 py-2 text-xs">
+              {showTrialList ? 'Hide sample fixtures' : 'Show live and upcoming fixture lists'}
+            </button>
+            {showTrialList && trial.sports.map(sport => (
+              <div key={sport.sportId} className="space-y-2 rounded-lg border border-nova-border p-3">
+                <p className="text-sm font-semibold">{sport.sport}</p>
+                <p className="text-xs nova-muted">Live — {sport.liveFixtures} fixtures</p>
+                {sport.sample.map(row => (
+                  <p key={`l-${sport.sportId}-${row.id}`} className="text-xs">
+                    {row.home} – {row.away} · {row.league} · {row.score ?? '—'} · {row.minute ?? '—'}m
+                  </p>
+                ))}
+                <p className="text-xs nova-muted">Upcoming — {sport.upcomingFixtures} fixtures</p>
+                {sport.upcomingSample.map(row => (
+                  <p key={`u-${sport.sportId}-${row.id}`} className="text-xs">
+                    {row.home} – {row.away} · {row.league} · {row.time ? formatDateTime(row.time, locale) : '—'}
+                  </p>
+                ))}
+              </div>
+            ))}
             <p className="text-xs nova-muted">BetsAPI trial data is diagnostic only; do not infer that quoted markets are eligible for real-money placement.</p>
           </div>
         )}
