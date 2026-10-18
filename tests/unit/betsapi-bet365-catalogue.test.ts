@@ -1,7 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { parseBet365Catalogue, canPublishBet365CatalogueToWagering, identifyBet365SettlementCandidate, identifyBet365SelectionCandidate } from '@/providers/betsapi-bet365-catalogue';
+import { parseBet365Catalogue, canPublishBet365CatalogueToWagering, identifyBet365SettlementCandidate, identifyBet365SelectionCandidate, validateBet365FixtureLink } from '@/providers/betsapi-bet365-catalogue';
 
 describe('Bet365 catalogue read-only mapping', () => {
+  it('never equates bookmaker FI with Events identity without a verified link', () => {
+    expect(validateBet365FixtureLink('123', '1:123', null)).toBe(false);
+    expect(validateBet365FixtureLink('123', '1:123', { fi: '123', eventsProviderId: '1:123' })).toBe(true);
+    expect(validateBet365FixtureLink('123', '1:124', { fi: '123', eventsProviderId: '1:123' })).toBe(false);
+    expect(validateBet365FixtureLink('bad', '1:123', { fi: 'bad', eventsProviderId: '1:123' })).toBe(false);
+  });
+
   it('assigns only unambiguous diagnostic selection candidates', () => {
     expect(identifyBet365SelectionCandidate('1X2', 'Home', null)).toBe('HOME');
     expect(identifyBet365SelectionCandidate('1X2', 'Team Alpha', null)).toBeNull();
