@@ -58,6 +58,16 @@ const prettyError = (value: string | null) => ({
   NO_BET365_MARKETS: 'This Events API fixture is listed, but it has no linked Bet365 FI. No bookmaker market is available for this match.',
 }[value ?? ''] ?? (value ?? ''));
 
+// Read-only classification: a known side/line is useful context, not a verified full outcome.
+function labelTier(label: string, marketTitle: string): 'named' | 'partial' | 'unresolved' {
+  if (!/Unlabelled outcome #/i.test(label)) return 'named';
+  const side = /\b(Over|Under|Exactly)\b/i.test(label);
+  const line = /\bline\s*[+-]?\d+(?:\.\d+)?\b/i.test(label);
+  if (side && line && /(?:Goals|Corners|Handicap|Minutes|Cards|Line)/i.test(marketTitle)) return 'partial';
+  if (line && /Handicap/i.test(marketTitle) && !/\bDraw\b/i.test(label)) return 'partial';
+  return 'unresolved';
+}
+
 export function BetsApiExplorer() {
   const [mode, setMode] = useState<Mode>('live');
   const [feed, setFeed] = useState<'bet365' | 'events'>('bet365');
@@ -154,9 +164,11 @@ export function BetsApiExplorer() {
   }), [markets, marketQuery]);
   const coverage = useMemo(() => {
     const all = (markets?.markets ?? []).flatMap(m => m.selections);
-    const ambiguous = all.filter(s => /Unlabelled outcome #/i.test(s.label)).length;
-    const valid = all.length - ambiguous;
-    return { total: all.length, ambiguous, valid };
+    const tiers = (markets?.markets ?? []).flatMap(m => m.selections.map(s => labelTier(s.label, m.title)));
+    const valid = tiers.filter(t => t === 'named').length;
+    const partial = tiers.filter(t => t === 'partial').length;
+    const unresolved = tiers.filter(t => t === 'unresolved').length;
+    return { total: all.length, valid, partial, unresolved };
   }, [markets]);
   const selectedMarkets = visibleMarkets.slice((marketPage - 1) * 20, marketPage * 20);
   const button = 'rounded-xl border border-white/15 px-3 py-2 text-sm transition hover:border-sky-400';
@@ -345,16 +357,17 @@ export function BetsApiExplorer() {
                   <button type="button" className={button} onClick={() => chosen && void loadMarkets(chosen)}
                     disabled={marketBusy}>Update</button>
                 </div>
-                <div role="status" className="grid grid-cols-2 gap-2 rounded-xl border border-white/10 bg-[#161e2b] p-3 text-xs sm:grid-cols-4">
+                <div role="status" className="grid grid-cols-2 gap-2 rounded-xl border border-white/10 bg-[#161e2b] p-3 text-xs sm:grid-cols-5">
                   <div><span className="block text-slate-400">Market groups</span><strong>{markets.marketCount}</strong></div>
                   <div><span className="block text-slate-400">Priced outcomes</span><strong>{coverage.total}</strong></div>
                   <div><span className="block text-slate-400">Explicitly named</span><strong>{coverage.valid}</strong></div>
-                  <div><span className="block text-slate-400">Ambiguous labels</span><strong className={coverage.ambiguous ? 'text-amber-300' : 'text-emerald-300'}>{coverage.ambiguous}</strong></div>
-                  <p className="col-span-2 text-slate-400 sm:col-span-4">Diagnostic counts for this selected fixture only, not guaranteed executable markets. Last snapshot: {time(markets.refreshedAt)}.</p>
+                  <div><span className="block text-slate-400">Partial context</span><strong className="text-amber-300">{coverage.partial}</strong></div>
+                   <div><span className="block text-slate-400">Unresolved identity</span><strong className={coverage.unresolved ? 'text-rose-300' : 'text-emerald-300'}>{coverage.unresolved}</strong></div>
+                  <p className="col-span-2 text-slate-400 sm:col-span-5">Diagnostic counts for this selected fixture only, not guaranteed executable markets. Last snapshot: {time(markets.refreshedAt)}.</p>
                 </div>
-                {coverage.ambiguous > 0 && (
+                {(coverage.partial + coverage.unresolved) > 0 && (
                   <p role="status" className="rounded-lg border border-amber-700/50 bg-amber-950/30 p-3 text-xs text-amber-200">
-                    Some Bet365 outcomes lack an unambiguous source label. Their IDs are shown for diagnostics only; do not use these reference prices for betting or settlement.
+                    Partial context means a line or side can be read, but the source outcome name is still missing. Unresolved means identity cannot be established. Neither category is validated for wagering or settlement.
                   </p>
                 )}
                 {!visibleMarkets.length && <p className="p-5 text-sm text-slate-400">
@@ -365,10 +378,10 @@ export function BetsApiExplorer() {
                     <div key={market.key + index} className="rounded-xl border border-white/10 bg-[#1b2431] p-3">
                       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
                         <h3 className="text-sm font-bold">{market.title}</h3>
-                        <span className={market.selections.some(s => /Unlabelled outcome #/i.test(s.label))
-                          ? 'text-xs text-amber-300' : 'text-xs text-emerald-300'}>
-                          {market.selections.filter(s => !/Unlabelled outcome #/i.test(s.label)).length}
-                          /{market.selections.length} named
+                        <span className="text-xs text-slate-300">
+                          <span className="text-emerald-300">{market.selections.filter(s => labelTier(s.label, market.title) === 'named').length} named</span>
+                          {' · '}<span className="text-amber-300">{market.selections.filter(s => labelTier(s.label, market.title) === 'partial').length} partial</span>
+                          {' · '}<span className="text-rose-300">{market.selections.filter(s => labelTier(s.label, market.title) === 'unresolved').length} unresolved</span>
                         </span>
                       </div>
                       <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
