@@ -126,8 +126,10 @@ export function BetsApiEventMarkets({
   }, [mode, sportKey, fi]);
 
   const backHref = mode === 'live' ? '/live?sport=' + encodeURIComponent(sportKey) : '/sports/' + encodeURIComponent(sportKey);
-  const home = fixture?.participants.find(p => p.role === 'HOME')?.name;
-  const away = fixture?.participants.find(p => p.role === 'AWAY')?.name;
+  const homeTeam = fixture?.participants.find(p => p.role === 'HOME');
+  const awayTeam = fixture?.participants.find(p => p.role === 'AWAY');
+  const home = homeTeam?.name;
+  const away = awayTeam?.name;
   const homeScore = fixture?.homeScore, awayScore = fixture?.awayScore;
   const validMarkets = useMemo(() => activeMarkets.map(m => ({
     ...m, selections: m.selections.filter(s => usable(s.label)),
@@ -161,7 +163,7 @@ export function BetsApiEventMarkets({
       </header>
       <div className="grid grid-cols-[minmax(0,1fr)_92px_minmax(0,1fr)] items-center gap-2 px-3 py-6 sm:grid-cols-[minmax(0,1fr)_140px_minmax(0,1fr)]">
         <div className="flex min-w-0 flex-col items-center gap-2 text-center">
-          <TeamLogo url={null} name={home} size={48} />
+          <TeamLogo url={homeTeam?.logoUrl ?? null} name={home} size={48} />
           <strong className="line-clamp-2 text-sm font-extrabold text-[#202832]">{home ?? (isFa ? 'تیم میزبان' : 'Home')}</strong>
         </div>
         <div className="text-center">
@@ -171,7 +173,7 @@ export function BetsApiEventMarkets({
           <p className="mt-2 text-[10px] text-[#738293]">{mode === 'live' ? (isFa ? 'نتیجه زنده' : 'Live score') : (isFa ? 'پیش از مسابقه' : 'Pre-match')}</p>
         </div>
         <div className="flex min-w-0 flex-col items-center gap-2 text-center">
-          <TeamLogo url={null} name={away} size={48} />
+          <TeamLogo url={awayTeam?.logoUrl ?? null} name={away} size={48} />
           <strong className="line-clamp-2 text-sm font-extrabold text-[#202832]">{away ?? (isFa ? 'تیم مهمان' : 'Away')}</strong>
         </div>
       </div>
