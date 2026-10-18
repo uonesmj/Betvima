@@ -4,6 +4,8 @@
 Neither token nor provider response is written to disk.
 """
 import getpass
+import os
+from pathlib import Path
 import json
 import re
 import subprocess
@@ -15,7 +17,10 @@ def main():
     if len(sys.argv) != 3 or not re.fullmatch(r"[0-9]{1,16}", sys.argv[1]) or sys.argv[2] not in ("live", "upcoming"):
         raise SystemExit("Usage: python3 scripts/betsapi-market-coverage.py FI live|upcoming")
     fi, mode = sys.argv[1:]
-    token = getpass.getpass("BetsAPI token (hidden): ").strip()
+    secret_path = Path("/etc/betvima/betsapi-token")
+    token = (os.environ.get("BETSAPI_TOKEN") or (secret_path.read_text().strip() if secret_path.is_file() else "")).strip()
+    if not token:
+        token = getpass.getpass("BetsAPI token (hidden): ").strip()
     if not re.fullmatch(r"[A-Za-z0-9_-]{12,180}", token):
         raise SystemExit("INVALID_TOKEN")
     route = "/v1/bet365/event" if mode == "live" else "/v4/bet365/prematch"
