@@ -204,8 +204,8 @@ export function BetsApiExplorer() {
         const market = catalogue?.markets.find(m => m.key === p.marketId);
         const fresh = market?.selections.find(s => s.id === p.selectionId)?.decimal ?? null;
         const valid = fresh !== null && /^\d{1,4}(?:\.\d{1,4})?$/.test(fresh) && Number(fresh) > 1;
-        return {...p, latestOdds: valid ? fresh : null,
-          priceState: !valid ? 'unavailable' : Number(fresh) === Number(p.odds) ? 'unchanged' : 'changed'};
+        const priceState: typeof p.priceState = !valid ? 'unavailable' : Number(fresh) === Number(p.odds) ? 'unchanged' : 'changed';
+        return {...p, latestOdds: valid ? fresh : null, priceState};
       }));
     } finally { setRecheckBusy(false); }
   };
