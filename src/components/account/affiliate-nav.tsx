@@ -72,6 +72,8 @@ export function AffiliateNav() {
     );
   });
 
+  if (pathname === '/affiliate/login' || pathname === '/affiliate/register' || pathname.startsWith('/affiliate/forgot-password') || pathname.startsWith('/affiliate/reset-password')) return null;
+
   return (
     <>
       <div className="affiliate-desktop-nav hidden items-center gap-1 lg:flex">
