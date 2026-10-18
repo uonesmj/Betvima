@@ -4,6 +4,7 @@
 Never writes database rows or approves a fixture link. Token is entered via getpass,
 not printed or stored. Results are diagnostic candidates only.
 """
+import argparse
 import getpass
 import json
 import re
@@ -109,10 +110,23 @@ def compare(bet365_rows, events_rows):
     return bet365, events, candidates, ambiguous, unmatched_fi, len(duplicate_fis), len(duplicate_events)
 
 
-def main():
-    token = getpass.getpass("BetsAPI token (hidden): ").strip()
-    if not re.fullmatch(r"[A-Za-z0-9_-]{12,180}", token):
-        raise SystemExit("INVALID_TOKEN")
+def candidate_stability(first, second):
+    """Two observations can corroborate stability, never prove provider identity."""
+    a = {x["bet365_fi"]: x["events_provider_id"] for x in first}
+    b = {x["bet365_fi"]: x["events_provider_id"] for x in second}
+    stable = sorted(key for key in a.keys() & b.keys() if a[key] == b[key])
+    conflicts = sorted(key for key in a.keys() & b.keys() if a[key] != b[key])
+    return {
+        "stable_observed_candidates": len(stable),
+        "conflicting_fi_mappings": len(conflicts),
+        "conflict_sample": [{"fi": key, "first_event_id": a[key],
+                             "second_event_id": b[key]} for key in conflicts[:10]],
+        "verified_links": 0,
+        "independently_verified": False,
+    }
+
+
+def collect_snapshot(token):
     outputs = {}
     for label, path, timeout in (
         ("bet365", "/v1/bet365/inplay_filter", 35),
@@ -123,8 +137,21 @@ def main():
             print(f"{label}: {len(outputs[label])} raw items, {seconds}s", flush=True)
         except Exception as error:
             print(f"{label}: FAILED ({type(error).__name__}); no links generated", flush=True)
-            return 2
-    fi, ev, candidates, ambiguous, unmatched, duplicate_fis, duplicate_events = compare(outputs["bet365"], outputs["events"])
+            return None
+    return compare(outputs["bet365"], outputs["events"])
+
+
+def main():
+    parser = argparse.ArgumentParser(description="Read-only FI reconciliation evidence")
+    parser.add_argument("--repeat", action="store_true", help="Repeat one snapshot after 45 seconds; four API calls total")
+    args = parser.parse_args()
+    token = getpass.getpass("BetsAPI token (hidden): ").strip()
+    if not re.fullmatch(r"[A-Za-z0-9_-]{12,180}", token):
+        raise SystemExit("INVALID_TOKEN")
+    snapshot = collect_snapshot(token)
+    if snapshot is None:
+        return 2
+    fi, ev, candidates, ambiguous, unmatched, duplicate_fis, duplicate_events = snapshot
     report = {
         "read_only": True, "verified_links": 0,
         "bet365_usable_fi": len(fi), "events_usable_ids": len(ev),
@@ -139,6 +166,19 @@ def main():
         "ambiguous_sample": ambiguous[:10],
         "warning": "Names and kickoff provide candidates only; do not insert mappings into wager tables.",
     }
+    if args.repeat:
+        print("Waiting 45 seconds before second observation...", flush=True)
+        time.sleep(45)
+        second = collect_snapshot(token)
+        if second is None:
+            print("Second snapshot failed: no stability verdict", flush=True)
+            return 2
+        report["second_snapshot"] = {
+            "bet365_usable_fi": len(second[0]),
+            "events_usable_ids": len(second[1]),
+            "unique_name_time_candidates": len(second[2]),
+        }
+        report["two_snapshot_stability"] = candidate_stability(candidates, second[2])
     print(json.dumps(report, ensure_ascii=False, indent=2))
     return 0
 
