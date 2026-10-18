@@ -6,6 +6,8 @@ import { translateVisibleText } from '@/lib/i18n/ui-phrases';
 
 type Translation = { english: string; persian: string };
 const ATTRIBUTES = ['placeholder', 'title', 'aria-label', 'alt'] as const;
+// Preserve media and branded imagery attributes: translating alt would alter accessible brand names.
+const EXCLUDED_MEDIA = 'svg, img, picture, video, canvas, [data-locale-stable]';
 const EXCLUDED = 'script, style, noscript, code, pre, input, textarea, select, option, [contenteditable], [translate="no"], [data-i18n-ignore]';
 const SPORT_CONTEXT = '[data-match-id], [data-testid="match-card"], .home-reference-card, [class*="team-name"], [class*="league-name"], [class*="match-hero"], [class*="match-list"], [class*="market-list"], [class*="fixture"]';
 
@@ -38,7 +40,7 @@ export function SiteLocaleBridge() {
 
     const translateNode = (node: Text) => {
       const parent = node.parentElement;
-      if (!parent || blocked(parent)) return;
+      if (!parent || blocked(parent) || parent.closest(EXCLUDED_MEDIA)) return;
       const value = node.nodeValue ?? '';
       const previous = cache.get(node);
       if (!inPersian) {
@@ -57,7 +59,7 @@ export function SiteLocaleBridge() {
     };
 
     const translateAttributes = (element: Element) => {
-      if (blocked(element)) return;
+      if (blocked(element) || element.matches(EXCLUDED_MEDIA)) return;
       let tracked = attrs.get(element);
       if (!tracked) {
         tracked = new Map();
