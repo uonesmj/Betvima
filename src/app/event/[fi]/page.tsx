@@ -1,7 +1,7 @@
 import { PageShell } from '@/components/layout/page-shell';
 import { BetsApiEventMarkets } from '@/components/betsapi/betsapi-event-markets';
-import { exploreBetsApi } from '@/providers/betsapi-explorer';
-import { betsApiToken, getBetsApiSport } from '@/server/betsapi-feed';
+import { readBetsApiMarkets } from '@/server/betsapi-market-cache';
+import { getBetsApiSport } from '@/server/betsapi-feed';
 import { BETSAPI_SPORTS } from '@/lib/betsapi-sports-map';
 
 export const dynamic = 'force-dynamic';
@@ -22,7 +22,7 @@ export default async function EventPage({
   const valid = /^\d{1,16}$/.test(fi) && Boolean(sport);
   const [details, listing] = valid && sport
     ? await Promise.all([
-        exploreBetsApi(betsApiToken(), { mode, sportId, fi }),
+        readBetsApiMarkets(mode, sportId, fi),
         getBetsApiSport(mode, sport.key),
       ])
     : [null, null];
