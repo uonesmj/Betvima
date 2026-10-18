@@ -3,7 +3,6 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
-import { translateVisibleText } from '@/lib/i18n/ui-phrases';
 import { useApp } from '@/components/layout/providers';
 import { getSupabaseBrowserClient } from '@/lib/supabase/browser';
 
