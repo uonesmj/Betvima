@@ -11,7 +11,7 @@ import time
 import unicodedata
 import urllib.parse
 import urllib.request
-from datetime import datetime, timezone
+from collections import Counter
 
 BASE = "https://api.b365api.com"
 EXCLUDED = ("esoccer", "virtual", "cyber", "gg league", "battle volta")
@@ -62,11 +62,18 @@ def identity(row):
 def compare(bet365_rows, events_rows):
     bet365 = [item for row in bet365_rows if (item := identity(row))]
     events = [item for row in events_rows if (item := identity(row))]
+    fi_counts = Counter(row['id'] for row in bet365)
+    event_counts = Counter(row['id'] for row in events)
+    # Duplicate source identifiers are not evidence of a one-to-one mapping.
+    duplicate_fis = {k for k, n in fi_counts.items() if n > 1}
+    duplicate_events = {k for k, n in event_counts.items() if n > 1}
     fi_to_events = {}
     event_to_fis = {}
     for fi in bet365:
-        matches = [event for event in events
-                   if fi["home"] == event["home"] and fi["away"] == event["away"]
+        if fi['id'] in duplicate_fis:
+            continue
+        matches = [event for event in events if event['id'] not in duplicate_events
+                   and fi["home"] == event["home"] and fi["away"] == event["away"]
                    and abs(fi["epoch"] - event["epoch"]) <= 300]
         if matches:
             fi_to_events[fi["id"]] = (fi, matches)
@@ -82,13 +89,15 @@ def compare(bet365_rows, events_rows):
                                "independently_verified": False})
         else:
             ambiguous.append({"fi": fi_id, "possible_events": len(matches)})
-    unmatched_fi = [item for item in bet365 if item["id"] not in fi_to_events]
+    unmatched_fi = [item.copy() for item in bet365 if item["id"] not in fi_to_events]
     # Diagnostic categories are evidence, not permission to join fixture IDs.
     for item in unmatched_fi:
         same_teams = [x for x in events if x["home"] == item["home"] and x["away"] == item["away"]]
         same_kickoff = [x for x in events if abs(x["epoch"] - item["epoch"]) <= 300]
         swapped = [x for x in same_kickoff if x["home"] == item["away"] and x["away"] == item["home"]]
-        if same_teams:
+        if item['id'] in duplicate_fis:
+            item['reason'] = 'DUPLICATE_FI'
+        elif same_teams:
             item["reason"] = "KICKOFF_DIFFERENCE"
             item["closest_offset_seconds"] = min(abs(x["epoch"] - item["epoch"]) for x in same_teams)
         elif swapped:
@@ -97,7 +106,7 @@ def compare(bet365_rows, events_rows):
             item["reason"] = "TEAM_NAME_MISMATCH_OR_MISSING_EVENT"
         else:
             item["reason"] = "NO_NEARBY_KICKOFF"
-    return bet365, events, candidates, ambiguous, unmatched_fi
+    return bet365, events, candidates, ambiguous, unmatched_fi, len(duplicate_fis), len(duplicate_events)
 
 
 def main():
@@ -115,12 +124,15 @@ def main():
         except Exception as error:
             print(f"{label}: FAILED ({type(error).__name__}); no links generated", flush=True)
             return 2
-    fi, ev, candidates, ambiguous, unmatched = compare(outputs["bet365"], outputs["events"])
+    fi, ev, candidates, ambiguous, unmatched, duplicate_fis, duplicate_events = compare(outputs["bet365"], outputs["events"])
     report = {
         "read_only": True, "verified_links": 0,
         "bet365_usable_fi": len(fi), "events_usable_ids": len(ev),
         "unique_name_time_candidates": len(candidates),
         "ambiguous_fi": len(ambiguous),
+        "duplicate_fi_identifiers": duplicate_fis,
+        "duplicate_event_identifiers": duplicate_events,
+        "unmatched_reason_counts": dict(Counter(row["reason"] for row in unmatched)),
         "unmatched_fi": len(unmatched),
         "unmatched_sample": [{"fi": x["id"], "home": x["home"], "away": x["away"], "reason": x["reason"], "closest_offset_seconds": x.get("closest_offset_seconds")} for x in unmatched[:20]],
         "candidates_sample": candidates[:20],
