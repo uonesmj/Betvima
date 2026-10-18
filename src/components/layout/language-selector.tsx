@@ -27,7 +27,7 @@ export function LanguageSelector({ variant = 'drawer' }: LanguageSelectorProps) 
   const compact = variant === 'footer';
 
   return (
-    <div ref={ref} className="relative">
+    <div ref={ref} className="relative shrink-0">
       <button
         type="button"
         aria-haspopup="menu"
@@ -36,12 +36,12 @@ export function LanguageSelector({ variant = 'drawer' }: LanguageSelectorProps) 
         onClick={() => setOpen((value) => !value)}
         className={
           compact
-            ? 'inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-xs font-semibold text-white/80 transition hover:bg-white/[0.08]'
-            : 'inline-flex h-10 items-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-3 text-sm font-semibold text-white transition hover:bg-white/[0.08]'
+            ? 'inline-flex min-w-[112px] items-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-xs font-semibold text-white/80 transition hover:bg-white/[0.08]'
+            : 'inline-flex h-10 min-w-[112px] items-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-3 text-sm font-semibold text-white transition hover:bg-white/[0.08]'
         }
       >
         <Languages className="h-4 w-4" />
-        <span translate="no">{LOCALE_META[locale].nativeLabel}</span>
+        <span dir="ltr" translate="no" className="min-w-0 flex-1 text-center">{LOCALE_META[locale].nativeLabel}</span>
         <ChevronDown className={`h-4 w-4 transition-transform ${open ? 'rotate-180' : ''}`} />
       </button>
 
