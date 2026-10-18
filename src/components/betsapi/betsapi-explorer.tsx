@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { apiRequest } from '@/lib/hooks/useApi';
 import { labelTier } from '@/providers/betsapi-label-quality';
@@ -60,6 +60,7 @@ const prettyError = (value: string | null) => ({
 }[value ?? ''] ?? (value ?? ''));
 
 export function BetsApiExplorer() {
+  const deepLinkConsumed = useRef(false);
   const [mode, setMode] = useState<Mode>('live');
   const [feed, setFeed] = useState<'bet365' | 'events'>('bet365');
   const [sport, setSport] = useState(1);
@@ -78,6 +79,8 @@ export function BetsApiExplorer() {
   const [listBusy, setListBusy] = useState(false);
   const [marketBusy, setMarketBusy] = useState(false);
   const [failure, setFailure] = useState('');
+  const [previewSelections, setPreviewSelections] = useState<Array<{ fi: string; match: string; market: string; marketId: string; selection: string; selectionId: string; odds: string; mode: Mode; priceState: 'unchecked' | 'unchanged' | 'changed' | 'unavailable'; latestOdds: string | null; acceptedPreviewOdds: string | null }>>([]);
+  const [recheckBusy, setRecheckBusy] = useState(false);
   const access = activeToken;
   const request = useCallback(async (params: {
     mode: Mode; sportId: number; feed?: 'bet365' | 'events';
@@ -141,6 +144,20 @@ export function BetsApiExplorer() {
     return () => window.clearInterval(timer);
   }, [autoRefresh, mode, loadFixtures, loadMarkets, chosen]);
 
+  useEffect(() => {
+    if (deepLinkConsumed.current || !list || list.error || typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+    const fi = params.get('fi');
+    if (!fi || !/^\d{1,16}$/.test(fi)) { deepLinkConsumed.current = true; return; }
+    const item = list.fixtures.find(f => f.fi === fi);
+    if (!item) return;
+    deepLinkConsumed.current = true;
+    setChosen(item);
+    setMarkets(null);
+    setMarketPage(1);
+    void loadMarkets(item);
+  }, [list, loadMarkets]);
+
   const displayed = useMemo(() => (list?.fixtures ?? []).filter(f => {
     const q = search.trim().toLowerCase();
     return (!q || [f.home, f.away, f.league].some(v => v.toLowerCase().includes(q))) &&
@@ -161,6 +178,38 @@ export function BetsApiExplorer() {
     const unresolved = tiers.filter(t => t === 'unresolved').length;
     return { total: all.length, valid, partial, unresolved };
   }, [markets]);
+  const addPreview = (market: Market, selection: Market['selections'][number]) => {
+    if (!chosen?.fi || !/^\d{1,16}$/.test(chosen.fi)) return;
+    const item = { fi: chosen.fi, match: chosen.home + ' — ' + chosen.away,
+      market: market.title, marketId: market.key, selection: selection.label,
+      selectionId: selection.id, odds: selection.decimal, mode, priceState: 'unchecked' as const, latestOdds: null, acceptedPreviewOdds: null };
+    setPreviewSelections(previous => [
+      ...previous.filter(p => p.fi !== item.fi), item,
+    ].slice(-20));
+  };
+  const recheckPreview = async () => {
+    if (recheckBusy || !previewSelections.length) return;
+    setRecheckBusy(true);
+    try {
+      const groups = [...new Map(previewSelections.map(p => [p.fi + ':' + p.mode, { fi: p.fi, mode: p.mode }])).values()];
+      const snapshots = await Promise.all(groups.map(async group => {
+        try {
+          const result = await request({ mode: group.mode, sportId: sport, fi: group.fi });
+          return { key: group.fi + ':' + group.mode, data: 'markets' in result && !result.error ? result : null };
+        } catch { return { key: group.fi + ':' + group.mode, data: null }; }
+      }));
+      const byFixture = new Map(snapshots.map(s => [s.key, s.data]));
+      setPreviewSelections(items => items.map(p => {
+        const catalogue = byFixture.get(p.fi + ':' + p.mode);
+        const market = catalogue?.markets.find(m => m.key === p.marketId);
+        const fresh = market?.selections.find(s => s.id === p.selectionId)?.decimal ?? null;
+        const valid = fresh !== null && /^\d{1,4}(?:\.\d{1,4})?$/.test(fresh) && Number(fresh) > 1;
+        const priceState: typeof p.priceState = !valid ? 'unavailable' : Number(fresh) === Number(p.odds) ? 'unchanged' : 'changed';
+        return {...p, latestOdds: valid ? fresh : null, priceState,
+          acceptedPreviewOdds: valid && p.acceptedPreviewOdds === fresh ? p.acceptedPreviewOdds : null};
+      }));
+    } finally { setRecheckBusy(false); }
+  };
   const selectedMarkets = visibleMarkets.slice((marketPage - 1) * 20, marketPage * 20);
   const button = 'rounded-xl border border-white/15 px-3 py-2 text-sm transition hover:border-sky-400';
   const setFilter = (nextMode: Mode, nextSport: number, nextPage = 1) => {
@@ -270,6 +319,53 @@ export function BetsApiExplorer() {
           {prettyError(list.error)}
         </p>}
 
+        <section aria-label="Bet365 read-only betslip" className="rounded-2xl border border-sky-800/40 bg-[#111a2b] p-4">
+          <div className="flex items-center justify-between gap-3">
+            <h2 className="font-bold">Preview Bet Slip · {previewSelections.length} picks</h2>
+            <div className="flex items-center gap-3">
+              <button type="button" disabled={recheckBusy || !previewSelections.length}
+                onClick={() => void recheckPreview()} className="text-xs text-sky-300 underline disabled:opacity-40">
+                {recheckBusy ? 'Checking…' : 'Recheck source prices'}
+              </button>
+              <button type="button" onClick={() => setPreviewSelections([])}
+                className="text-xs text-sky-300 underline">Clear</button>
+            </div>
+          </div>
+          <p className="mt-1 text-xs text-amber-200">Inspection only — no stake, payout, wallet deduction or bet placement. Prices can change.</p>
+          {previewSelections.length === 0
+            ? <p className="mt-3 text-sm text-slate-400">Choose an outcome below to inspect a preview selection.</p>
+            : <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                {previewSelections.map(p => (
+                  <div key={p.fi} className="rounded-lg border border-white/10 bg-[#192437] p-3 text-xs">
+                    <p className="font-semibold">{p.match}</p>
+                    <p className="mt-1 text-slate-300">{p.market} · {p.selection}</p>
+                    <p role="status" className={p.priceState === 'changed' || p.priceState === 'unavailable' ? 'mt-1 text-amber-300' : 'mt-1 text-slate-400'}>
+                      {p.priceState === 'unchecked' ? 'Not rechecked' :
+                        p.priceState === 'unavailable' ? 'Outcome no longer available — preview only' :
+                        p.priceState === 'changed' ? 'Price changed to ' + p.latestOdds + ' — requires acceptance in a future real quote' :
+                        'Same reference price on latest snapshot'}
+                    </p>
+                    {p.priceState === 'changed' && p.latestOdds && (
+                      <button type="button" className="mt-2 rounded-lg border border-amber-500/50 px-2 py-1 text-xs text-amber-100"
+                        onClick={() => setPreviewSelections(items => items.map(item =>
+                          item.fi === p.fi && item.selectionId === p.selectionId
+                            ? {...item, acceptedPreviewOdds: item.latestOdds}
+                            : item))}>
+                        {p.acceptedPreviewOdds === p.latestOdds
+                          ? 'New reference price acknowledged'
+                          : 'Acknowledge changed reference price'}
+                      </button>
+                    )}
+                    {p.acceptedPreviewOdds && <p className="mt-1 text-slate-400">Acknowledgment applies only to this snapshot. Recheck before wagering.</p>}
+                    <div className="mt-2 flex items-center justify-between">
+                      <strong className="text-sky-300">{p.odds}</strong>
+                      <button type="button" className="text-rose-300 underline"
+                        onClick={() => setPreviewSelections(items => items.filter(x => x.fi !== p.fi))}>Remove</button>
+                    </div>
+                  </div>
+                ))}
+              </div>}
+        </section>
         <div className="grid gap-4 lg:grid-cols-[minmax(310px,4fr)_minmax(390px,5fr)]">
           <section className="min-w-0 space-y-3 rounded-2xl border border-white/10 bg-[#111721] p-3">
             <div className="flex items-center justify-between gap-3 px-1">
@@ -377,11 +473,11 @@ export function BetsApiExplorer() {
                       </div>
                       <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
                         {market.selections.map(selection => (
-                          <div key={selection.id} title="Reference price only; wagering not enabled"
-                            className="flex items-center justify-between gap-2 rounded-lg bg-[#253247] px-3 py-3 text-xs">
+                          <button type="button" key={selection.id} title="Add to read-only preview slip" onClick={() => addPreview(market, selection)}
+                            className="flex items-center justify-between gap-2 rounded-lg bg-[#253247] px-3 py-3 text-left text-xs transition hover:bg-[#304866] focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-400">
                             <span className="min-w-0 break-words text-slate-200">{selection.label}</span>
                             <strong className="shrink-0 text-sky-300">{selection.decimal}</strong>
-                          </div>
+                          </button>
                         ))}
                       </div>
                     </div>

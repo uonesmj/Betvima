@@ -6,7 +6,9 @@ import type {
 } from "@/lib/ports/providers";
 
 /** Single authorized sportsbook data and bookmaker source. */
-export const MATCH_SOURCE_ODDS = "the_odds_api";
+export const MATCH_SOURCE_ODDS = process.env.SPORTS_PROVIDER === "betsapi" &&
+  process.env.BETSAPI_PROVIDER_ACTIVATION === "validated"
+  ? "betsapi" : "the_odds_api";
 
 /** Preserve the canonical match mapping used by existing settled and pending bets. */
 export async function attachProviderMatchIdentity(
@@ -16,6 +18,16 @@ export async function attachProviderMatchIdentity(
   internalId: string,
 ): Promise<boolean> {
   if (provider !== MATCH_SOURCE_ODDS) return false;
+  // A BetsAPI event must not inherit the internal UUID of a legacy Odds API
+  // fixture: old bet legs and settlement would then silently change meaning.
+  // Fail closed when a different source already owns the destination UUID.
+  const conflict = await db.queryOne<{ provider: string; provider_id: string }>(
+    `select provider, provider_id from nova.provider_entities
+       where entity_type = 'match' and internal_id = $1
+         and provider <> $2 limit 1`,
+    [internalId, provider],
+  );
+  if (conflict) return false;
   const row = await db.queryOne<{ internal_id: string }>(
     `insert into nova.provider_entities
        (provider, entity_type, provider_id, internal_id, last_seen_at)
@@ -49,7 +61,7 @@ export async function fetchOddsForOwningProvider(
       ok: false,
       value: null,
       errorCode: "ODDS_PROVIDER_NOT_AUTHORIZED",
-      errorMessage: "Only The Odds API may supply sportsbook prices",
+      errorMessage: "Only the explicitly selected authorized sportsbook source may supply prices",
       retryable: false,
     };
   }

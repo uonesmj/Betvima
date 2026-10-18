@@ -166,7 +166,9 @@ async function request(
     try {
       response = await fetcher(url.toString(), {
         method: 'GET', headers: { Accept: 'application/json' },
-        cache: 'no-store', redirect: 'error', signal: AbortSignal.timeout(10_000),
+        cache: 'no-store', redirect: 'error', signal: AbortSignal.timeout(
+          endpoint === '/v1/bet365/inplay_filter' || endpoint === '/v3/events/inplay' ? 25_000 :
+          endpoint === '/v1/bet365/event' ? 20_000 : 15_000),
       });
     } catch (error) {
       throw new ExplorerUpstreamError(error instanceof Error &&

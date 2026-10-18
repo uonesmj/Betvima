@@ -1,0 +1,98 @@
+import { describe, expect, it } from 'vitest';
+import { parseBet365Catalogue, canPublishBet365CatalogueToWagering, identifyBet365SettlementCandidate, identifyBet365SelectionCandidate, validateBet365FixtureLink, compareBet365FixtureIdentity, summarizeBet365Catalogue } from '@/providers/betsapi-bet365-catalogue';
+
+describe('Bet365 catalogue read-only mapping', () => {
+  it('finds bookmaker MG/PA records nested under a non-results wrapper', () => {
+    const payload = [{ data: { event: { odds: [
+      { type: 'MG', ID: '10', NA: 'Match Result' },
+      { type: 'PA', ID: '100', NA: 'Home', OD: '2/1' },
+      { type: 'PA', ID: '101', NA: 'Away', OD: '3/1' },
+    ] } } }];
+    const catalogue = parseBet365Catalogue('789', 'live', payload);
+    expect(catalogue.marketCount).toBe(1);
+    expect(catalogue.selectionCount).toBe(2);
+    expect(catalogue.readOnly).toBe(true);
+  });
+
+  it('reports actionable diagnostics while keeping all Bet365 markets read-only', () => {
+    const data = parseBet365Catalogue('789', 'live', [[
+      { type: 'MG', ID: '10', NA: 'Match Result', SU: '0' },
+      { type: 'PA', ID: '100', NA: 'Home', OD: '2/1', SU: '0' },
+      { type: 'PA', ID: '101', NA: 'Away', OD: '3/1', SU: '1' },
+      { type: 'MG', ID: '11', NA: 'Unknown Market', SU: '0' },
+      { type: 'PA', ID: '102', NA: 'Unknown Pick', OD: '4/1', SU: '0' },
+    ]]);
+    expect(summarizeBet365Catalogue(data)).toMatchObject({
+      marketGroups: 2, selections: 3, openPricedSelections: 2,
+      suspendedSelections: 1, exactMappedSelections: 1,
+      unresolvedSelections: 1, readOnly: true, wageringEligible: false,
+    });
+  });
+
+  it('requires exact teams, near-identical kickoff and independent verification for fixture candidates', () => {
+    const fi = { id: '991', home: 'Alpha FC', away: 'Beta', startsAt: '2026-10-19T14:00:00Z' };
+    const ev = { id: '1:123', home: 'Alpha FC', away: 'Beta', startsAt: '2026-10-19T14:03:00Z' };
+    expect(compareBet365FixtureIdentity(fi, ev)).toMatchObject({ candidate: true, reasons: [], requiresIndependentVerification: true });
+    expect(compareBet365FixtureIdentity(fi, {...ev, home: 'Other'}).candidate).toBe(false);
+    expect(compareBet365FixtureIdentity(fi, {...ev, home: 'Beta', away: 'Alpha FC'}).candidate).toBe(false);
+    expect(compareBet365FixtureIdentity(fi, {...ev, startsAt: '2026-10-19T14:06:00Z'}).candidate).toBe(false);
+    expect(compareBet365FixtureIdentity(fi, {...ev, startsAt: 'invalid'}).candidate).toBe(false);
+  });
+
+  it('never equates bookmaker FI with Events identity without a verified link', () => {
+    expect(validateBet365FixtureLink('123', '1:123', null)).toBe(false);
+    expect(validateBet365FixtureLink('123', '1:123', { fi: '123', eventsProviderId: '1:123' })).toBe(true);
+    expect(validateBet365FixtureLink('123', '1:124', { fi: '123', eventsProviderId: '1:123' })).toBe(false);
+    expect(validateBet365FixtureLink('bad', '1:123', { fi: 'bad', eventsProviderId: '1:123' })).toBe(false);
+  });
+
+  it('assigns only unambiguous diagnostic selection candidates', () => {
+    expect(identifyBet365SelectionCandidate('1X2', 'Home', null)).toBe('HOME');
+    expect(identifyBet365SelectionCandidate('1X2', 'Team Alpha', null)).toBeNull();
+    expect(identifyBet365SelectionCandidate('DOUBLE_CHANCE', '1X', null)).toBe('HOME_DRAW');
+    expect(identifyBet365SelectionCandidate('BTTS', 'Yes', null)).toBe('YES');
+    expect(identifyBet365SelectionCandidate('OVER_UNDER', 'Over', '2.5')).toBe('OVER_2_5');
+    expect(identifyBet365SelectionCandidate('OVER_UNDER', 'Over', null)).toBeNull();
+    expect(identifyBet365SelectionCandidate('OVER_UNDER', 'Over', 'garbled')).toBeNull();
+    expect(canPublishBet365CatalogueToWagering()).toBe(false);
+  });
+
+  it('identifies only explicitly matched market titles without authorizing wagers', () => {
+    expect(identifyBet365SettlementCandidate('Fulltime Result')).toBe('1X2');
+    expect(identifyBet365SettlementCandidate('Asian Handicap')).toBe('ASIAN_HANDICAP');
+    expect(identifyBet365SettlementCandidate('Alternative Asian Handicap')).toBeNull();
+    expect(identifyBet365SettlementCandidate('1st Half Asian Handicap')).toBeNull();
+    expect(identifyBet365SettlementCandidate('4th Goal')).toBeNull();
+    expect(canPublishBet365CatalogueToWagering()).toBe(false);
+  });
+
+  it('keeps FI-scoped selection identity for prematch groups', () => {
+    const result = parseBet365Catalogue('12345', 'upcoming', [{
+      main: { sp: { winner: { id: '10', name: 'Full Time Result',
+        odds: [{ id: '1', name: 'Home', odds: '2.25' },
+          { id: '2', name: 'Away', odds: '3.10' }] } } },
+    }]);
+    expect(result.readOnly).toBe(true);
+    expect(result.marketCount).toBe(1);
+    expect(result.selectionCount).toBe(2);
+    expect(result.markets[0]?.selections[0]?.id).toContain('bet365:12345:');
+  });
+  it('keeps suspended markets and individual unavailable picks visible but non-executable', () => {
+    const result = parseBet365Catalogue('999', 'live', [[
+      { type: 'MG', ID: '15', NA: 'Goals', SU: '1' },
+      { type: 'MA', NA: '2.5', SU: '0' },
+      { type: 'PA', ID: '10', NA: 'Over', HA: '2.5', OD: '5/4', SU: '0' },
+      { type: 'MG', ID: '16', NA: 'Match result', SU: '0' },
+      { type: 'PA', ID: '11', NA: 'Home', OD: '2/1', SU: '1' },
+    ]]);
+    expect(result.marketCount).toBe(2);
+    expect(result.markets[0]?.status).toBe('suspended');
+    expect(result.markets[0]?.selections[0]).toMatchObject({status: 'suspended',line:'2.5'});
+    expect(result.markets[1]?.status).toBe('open');
+    expect(result.markets[1]?.selections[0]?.status).toBe('suspended');
+  });
+  it('rejects invalid bookmaker FI and prohibits wagering publication', () => {
+    expect(() => parseBet365Catalogue('../x', 'live', [])).toThrow('INVALID_BET365_FI');
+    expect(canPublishBet365CatalogueToWagering()).toBe(false);
+  });
+});

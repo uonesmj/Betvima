@@ -9,7 +9,8 @@ import { object, string, safePrice } from './betsapi-normalization';
 export interface Bet365PreviewMarket {
   key: string;
   title: string;
-  selections: Array<{ id: string; label: string; decimal: string }>;
+  status?: 'open' | 'suspended';
+  selections: Array<{ id: string; label: string; decimal: string; status?: 'open' | 'suspended'; line?: string | null }>;
 }
 export interface Bet365PreviewResult {
   source: 'betsapi_bet365';
@@ -58,26 +59,32 @@ function liveRecords(value: unknown): Record<string, unknown>[] {
       found.push(record);
       return;
     }
-    if (record.results) visit(record.results, depth + 1);
+    // BetsAPI commonly nests one or more arrays under results; preserve record order.
+    for (const child of Object.values(record)) {
+      if (child !== null && typeof child === 'object') visit(child, depth + 1);
+    }
   }
   visit(value, 0);
   return found;
 }
 
-export function parseBet365LivePreview(fixtureId: string, results: unknown): Bet365PreviewResult {
+export function parseBet365LivePreview(fixtureId: string, results: unknown, includeSuspended = false): Bet365PreviewResult {
   if (!/^\d{1,16}$/.test(fixtureId)) throw new Error('INVALID_BET365_FI');
   const markets: Bet365PreviewMarket[] = [];
   let current: Bet365PreviewMarket | null = null;
   let currentSubmarket = '';
+  let submarketSuspended = false;
   const seenKeys = new Set<string>();
   for (const data of liveRecords(results)) {
     if (data.type === 'MG') {
       currentSubmarket = '';
+      submarketSuspended = false;
       const id = string(data.ID);
       const title = string(data.NA).slice(0, 150);
       const key = `bet365:${fixtureId}:${id}`;
-      current = id && title && data.SU !== '1' && !seenKeys.has(key)
-        ? { key, title, selections: [] }
+      const isSuspended = data.SU === '1';
+      current = id && title && !seenKeys.has(key)
+        ? { key, title, status: isSuspended ? 'suspended' : 'open', selections: [] }
         : null;
       if (current) {
         markets.push(current);
@@ -88,10 +95,11 @@ export function parseBet365LivePreview(fixtureId: string, results: unknown): Bet
     if (data.type === 'MA') {
       // Bet365 MA rows hold the group/line context for following PA rows.
       // Never guess missing Over/Under, player, or team names.
-      currentSubmarket = data.SU === '1' ? '' : string(data.NA).trim().slice(0, 110);
+      submarketSuspended = data.SU === '1';
+      currentSubmarket = string(data.NA).trim().slice(0, 110);
       continue;
     }
-    if (data.type !== 'PA' || !current || data.SU === '1') continue;
+    if (data.type !== 'PA' || !current || (!includeSuspended && (data.SU === '1' || submarketSuspended || current.status === 'suspended'))) continue;
     const price = bet365OddsDecimal(data.OD);
     const id = string(data.ID);
     const handicap = string(data.HA || data.HD || data.HC);
@@ -103,6 +111,8 @@ export function parseBet365LivePreview(fixtureId: string, results: unknown): Bet
         if (!currentSubmarket || label.toLowerCase().includes(currentSubmarket.toLowerCase())) return label;
         return `${currentSubmarket} · ${label}`.slice(0, 200);
       })(), decimal: price,
+      status: data.SU === '1' || submarketSuspended || current.status === 'suspended' ? 'suspended' : 'open',
+      line: handicap || null,
     });
   }
   const offered = markets.filter(m => m.selections.length >= 1).slice(0, 1000);
@@ -118,7 +128,7 @@ export function parseBet365LivePreview(fixtureId: string, results: unknown): Bet
  * corners_cards, others (possibly nested arrays), and sport-specific groups.
  * Traverse actual `sp` objects in every section instead of hardcoding only
  * first two response items or omitting `others`. */
-export function parseBet365PrematchPreview(fixtureId: string, results: unknown): Bet365PreviewResult {
+export function parseBet365PrematchPreview(fixtureId: string, results: unknown, includeSuspended = false): Bet365PreviewResult {
   if (!/^\d{1,16}$/.test(fixtureId)) throw new Error('INVALID_BET365_FI');
   const markets: Bet365PreviewMarket[] = [];
   const seen = new Set<string>();
@@ -133,16 +143,17 @@ export function parseBet365PrematchPreview(fixtureId: string, results: unknown):
       const id = string(group.id) || category;
       const key = `bet365:${fixtureId}:${category}:${id}`;
       if (seen.has(key)) return;
+      const groupSuspended = group.SU === '1' || group.suspended === true || group.status === 'suspended';
       const selections = group.odds.map(item => {
         const row = object(item);
         const decimal = bet365OddsDecimal(row.odds);
         const id = string(row.id);
         const label = outcomeLabel(row, id, string(row.handicap));
-        return decimal && id ? { id, label, decimal } : null;
+        return decimal && id && (includeSuspended || !(groupSuspended || row.SU === '1' || row.suspended === true)) ? { id, label, decimal, status: groupSuspended || row.SU === '1' || row.suspended === true ? 'suspended' as const : 'open' as const, line: string(row.handicap) || null } : null;
       }).filter((row): row is NonNullable<typeof row> => row !== null).slice(0, 250);
       if (selections.length) {
         seen.add(key);
-        markets.push({ key, title: string(group.name) || category.replaceAll('_', ' '), selections });
+        markets.push({ key, title: string(group.name) || category.replaceAll('_', ' '), status: groupSuspended ? 'suspended' : 'open', selections });
       }
       return;
     }

@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { z } from 'zod';
 import { jsonOk, withErrorHandling } from '@/lib/errors';
 import { withAdmin } from '@/server/http/guard';
@@ -7,6 +8,19 @@ import { exploreBetsApi, type ExplorerInput } from '@/providers/betsapi-explorer
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 export const runtime = 'nodejs';
+
+/** Optional local trial credential on the staging server; never sent to browsers. */
+function serverPreviewToken(): string | null {
+  if (process.env.BETSAPI_TRIAL_ENABLED !== 'true') return null;
+  const configured = process.env.BETSAPI_TRIAL_TOKEN?.trim();
+  if (configured && /^[A-Za-z0-9_-]{12,180}$/.test(configured)) return configured;
+  try {
+    const fromFile = readFileSync('/etc/betvima/betsapi-token', 'utf8').trim();
+    return /^[A-Za-z0-9_-]{12,180}$/.test(fromFile) ? fromFile : null;
+  } catch {
+    return null;
+  }
+}
 
 const inputSchema = z.object({
   token: z.string().regex(/^[A-Za-z0-9_-]{12,180}$/).optional(),
@@ -38,9 +52,8 @@ export const GET = withErrorHandling('betsapi.explore.public', async (_ctx, requ
     fi: u.searchParams.get('fi') || undefined,
   });
   if (!input.success) return jsonOk({ error: 'INVALID_FILTER', readOnly: true });
-  const token = process.env.BETSAPI_PUBLIC_PREVIEW_ENABLED === 'true' &&
-    process.env.BETSAPI_TRIAL_ENABLED === 'true'
-    ? process.env.BETSAPI_TRIAL_TOKEN : null;
+  const token = process.env.BETSAPI_PUBLIC_PREVIEW_ENABLED === 'true'
+    ? serverPreviewToken() : null;
   return jsonOk(await exploreBetsApi(token, options(input.data)));
 });
 
@@ -60,7 +73,6 @@ export const POST = withErrorHandling('betsapi.explore.admin', async (ctx, reque
   }
   await enforceRateLimit(`betsapi-explorer-${user.id}`, 180, 3600);
   const input = await readJson(request, inputSchema, ctx);
-  const token = input.token || (process.env.BETSAPI_TRIAL_ENABLED === 'true'
-    ? process.env.BETSAPI_TRIAL_TOKEN : null);
+  const token = input.token || serverPreviewToken();
   return jsonOk(await exploreBetsApi(token, options(input)));
 });
