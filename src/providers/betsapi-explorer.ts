@@ -151,7 +151,7 @@ function budgeted(): void {
 export class ExplorerUpstreamError extends Error {
   constructor(readonly code: ExplorerError) { super(code); }
 }
-async function request(
+export async function request(
   token: string, endpoint: string, params: Record<string, string>, fetcher: Fetcher = fetch,
   cacheMs = 12_000,
 ): Promise<ProviderEnvelope> {
@@ -163,6 +163,9 @@ async function request(
     '/v4/bet365/prematch',
     '/v3/events/inplay',
     '/v3/events/upcoming',
+    '/v1/events/search',
+    '/v1/event/view',
+    '/v1/event/history',
   ];
   if (!allowed.includes(endpoint)) throw new ExplorerUpstreamError('UPSTREAM_INVALID');
   const url = new URL(endpoint, ORIGIN);
