@@ -36,6 +36,11 @@ export interface ExplorerFixture {
   eventId: string | null;
   sportId: number;
   league: string;
+  /** Bet365 league identity, not interchangeable with Events API ids. */
+  leagueId: string | null;
+  leagueLogoUrl: string | null;
+  homeLogoUrl: string | null;
+  awayLogoUrl: string | null;
   country: string | null;
   home: string;
   away: string;
@@ -86,6 +91,12 @@ const number = (x: unknown): number | null => {
 };
 const sourceEvent = (r: Record<string, unknown>, side: 'home' | 'away') =>
   val(rec(r[side]).name).slice(0, 140);
+/** Official BetsAPI team images use image_id, not Bet365's unrelated team.id. */
+export function betsApiTeamImageUrl(value: unknown): string | null {
+  const id = val(rec(value).image_id).trim();
+  return /^\d{1,14}$/.test(id) && id !== '0'
+    ? `https://assets.b365api.com/images/team/m/${id}.png` : null;
+}
 const safeIso = (seconds: unknown): string | null => {
   const value = number(seconds);
   return value !== null && value >= 1500000000 && value <= 4102444800
@@ -108,6 +119,10 @@ export function parseExplorerFixture(
   return {
     fi, eventId: /^\d{1,16}$/.test(eventId) ? eventId : null, sportId,
     home, away, league: val(rec(row.league).name).slice(0, 140) || 'Other competitions',
+    leagueId: /^\d{1,16}$/.test(val(rec(row.league).id)) ? val(rec(row.league).id) : null,
+    leagueLogoUrl: null,
+    homeLogoUrl: betsApiTeamImageUrl(row.home),
+    awayLogoUrl: betsApiTeamImageUrl(row.away),
     country: /^[a-z]{2}$/.test(country) ? country : null,
     kickoff: safeIso(row.time),
     score: /^\d{1,3}-\d{1,3}$/.test(ss) ? ss : null,
