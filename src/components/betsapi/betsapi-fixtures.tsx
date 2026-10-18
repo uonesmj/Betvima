@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { MatchCard, type MatchView } from '@/components/betting/match-card';
 import { useApp } from '@/components/layout/providers';
-import { BETSAPI_SPORTS, type BetsMode } from '@/server/betsapi-feed';
+import { BETSAPI_SPORTS, type BetsMode } from '@/lib/betsapi-sports-map';
 import Link from 'next/link';
 
 type Listing = { matches: MatchView[]; total: number | null; pageCount: number | null;
