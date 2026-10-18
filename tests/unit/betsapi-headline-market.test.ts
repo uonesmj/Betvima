@@ -16,7 +16,7 @@ describe('BetsAPI fixture card odds preview', () => {
     ]);
     expect(result?.key).toBe('1x2');
     expect(result?.selections).toHaveLength(3);
-    expect(result?.selections[1].decimal).toBe('1.2500');
+    expect(result?.selections[1]?.decimal).toBe('1.2500');
   });
 
   it('never shows unlabelled or invalid bookmaker outcomes in card previews', () => {
