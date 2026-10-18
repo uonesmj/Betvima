@@ -75,8 +75,8 @@ const LOCAL_LEAGUE_LOGOS: Record<string, string> = {
   "primeira liga": "/sports/leagues/liga-portugal.svg",
   "liga portugal": "/sports/leagues/liga-portugal.svg",
   // USA
-  mls: "/sports/leagues/mls.svg",
-  "major league soccer": "/sports/leagues/mls.svg",
+  mls: "/sports/leagues/mls.png",
+  "major league soccer": "/sports/leagues/mls.png",
   // Europe
   "champions league": "/sports/leagues/champions-league.svg",
   "uefa champions league": "/sports/leagues/champions-league.svg",
