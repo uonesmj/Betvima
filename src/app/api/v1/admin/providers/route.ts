@@ -12,7 +12,7 @@ export const GET = withErrorHandling('admin.providers', async (ctx, request: Req
   const rows = await services.db.query<Record<string, unknown>>(
     `select provider, kind, status, last_success_at, last_error_at, last_error, consecutive_failures, latency_ms, metadata, updated_at
        from nova.provider_health
-       where kind <> 'sports' or provider in ('the_odds_api', 'disabled')
+       where kind <> 'sports' or provider = 'disabled'
        order by kind, provider`,
   );
   return jsonOk({ statuses, health: rows });
