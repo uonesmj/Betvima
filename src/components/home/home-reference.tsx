@@ -591,6 +591,8 @@ export function HomeReference({  sports,
   topBets: MatchView[];
   topBetsUnavailable?: boolean;
   liveEnabled: boolean;
+  bet365Live?: Bet365HomeFixture[];
+  bet365Upcoming?: Bet365HomeFixture[];
 }) {
 
   const footballUpcoming = upcoming.filter(
