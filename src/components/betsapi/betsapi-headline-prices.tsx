@@ -45,7 +45,7 @@ export function BetsApiHeadlinePrices({
     const controller = new AbortController();
     setLoaded(false);
     setData(null);
-    const query = new URLSearchParams({ mode: match[1], sportId: match[2], fi: match[3] });
+    const query = new URLSearchParams({ mode: match[1]!, sportId: match[2]!, fi: match[3]! });
     fetch('/api/v1/betsapi/card-prices?' + query, { cache: 'no-store', signal: controller.signal })
       .then(r => { if (!r.ok) throw new Error('NETWORK'); return r.json() as Promise<Envelope>; })
       .then(body => setData(body.ok ? body.data ?? null : null))
