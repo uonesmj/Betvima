@@ -223,7 +223,7 @@ describe('Persian translation safety and dictionary parity', () => {
     const dictionaries = readFileSync('src/lib/i18n/dictionaries.ts', 'utf8');
     const englishSection = dictionaries.split('const en: Dict = {')[1]?.split('const fa: Dict = {')[0] ?? '';
     const persianSection = dictionaries.split('const fa: Dict = {')[1]?.split('};export const DICTIONARIES')[0] ?? '';
-    const keys = (source: string) => [...source.matchAll(/['"]([^'"\n]+)['"]\s*:/g)].map((match) => match[1]);
+    const keys = (source: string) => source.split(String.fromCharCode(10)).map((line) => line.match(/^\s*['"]([^'"]+)['"]\s*:/)?.[1]).filter((key): key is string => Boolean(key));
     const persianKeys = new Set(keys(persianSection));
     expect(keys(englishSection).filter((key) => !persianKeys.has(key))).toEqual([]);
   });
