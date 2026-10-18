@@ -34,8 +34,8 @@ JS
 step "TypeScript" npm run typecheck
 step "BetsAPI unit tests" ./node_modules/.bin/vitest run tests/unit/betsapi-fi-link-evidence.test.ts tests/unit/betsapi-bet365-projection.test.ts tests/unit/betsapi-price-change-preview.test.ts tests/unit/betsapi-strict-diagnostic.test.ts --maxWorkers=1 --minWorkers=1
 step "No-money-flow contract" check_contract
-step "Next.js build" npm run build
-if [[ -n "$BETSAPI_PREVIEW_BASE" ]]; then
+step "Next.js build" env NODE_OPTIONS=--max-old-space-size=1500 npm run build
+if [[ -n "${BETSAPI_PREVIEW_BASE:-}" ]]; then
   base="$(printf '%s' "$BETSAPI_PREVIEW_BASE" | sed 's:/*$::')"
   if [[ "$base" == http://127.0.0.1:* || "$base" == http://localhost:* ]]; then
     step "Local explorer HTTP" curl -fsS --max-time 40 -o /dev/null "$base/betsapi"
