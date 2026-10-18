@@ -97,7 +97,7 @@ export class BetsApiEventsProvider implements SportsDataProvider {
       if (!parsed) throw Error('INVALID_EVENT_ID');
       const raw = await this.request('/v2/event/odds', {event_id: parsed.eventId});
       return normalizeBetsapiOdds(id, raw, new Date(), live, live ? 12 : 45);
-    })));
+    }));
   }
   async fetchOdds(ids: string[]): Promise<ProviderResult<ProviderOddsBundle[]>> { return this.quote(ids, true); }
   async fetchEventOdds(ids: string[]): Promise<ProviderResult<ProviderOddsBundle[]>> { return this.quote(ids, false); }
