@@ -69,12 +69,13 @@ function marketOrder(market: Market): number {
 }
 
 export function BetsApiEventMarkets({
-  fi, mode, sportKey, fixture, markets, error, reportedCount,
+  fi, mode, sportKey, fixture, initial, markets, error, reportedCount,
 }: {
   fi: string;
   mode: 'live' | 'upcoming';
   sportKey: string;
   fixture: MatchView | null;
+  initial?: { home: string; away: string; kickoff: string };
   markets: Market[];
   error: string | null;
   reportedCount: number;
@@ -141,7 +142,7 @@ export function BetsApiEventMarkets({
     <Link href={backHref} className="inline-flex items-center gap-1.5 text-sm font-semibold text-[#087FF5]">
       <ChevronLeft size={17} /> {isFa ? 'بازگشت به مسابقات' : 'Back to matches'}
     </Link>
-    <BetsApiMatchOverview fi={fi} mode={mode} sportKey={sportKey} fixture={fixture} />
+    <BetsApiMatchOverview fi={fi} mode={mode} sportKey={sportKey} fixture={fixture} initial={initial} />
 
     <div role="status" className="rounded-xl border border-[#F2E2B5] bg-[#FFF9E8] px-3 py-2.5 text-xs font-medium leading-5 text-[#86601F]">
       {isFa ? 'ضرایب فقط برای بررسی نمایش داده می‌شوند. ثبت شرط تا زمان تأیید اتصال مالی و تسویه غیرفعال است.' :
