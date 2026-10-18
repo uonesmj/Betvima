@@ -7,7 +7,7 @@ import { string, safePrice } from './betsapi-normalization';
 /** Strict, read-only candidates; not a permission to take wagers.
  * Period, line, selection side and authoritative settlement must be validated separately. */
 export function identifyBet365SettlementCandidate(name: string): string | null {
-  const normalized = name.toLowerCase().trim().replace(/\\s+/g, ' ');
+  const normalized = name.toLowerCase().trim().replace(/\s+/g, ' ');
   const exact: Record<string, string> = {
     'fulltime result': '1X2',
     'full time result': '1X2',
