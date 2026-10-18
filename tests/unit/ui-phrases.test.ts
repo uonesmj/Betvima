@@ -216,3 +216,21 @@ describe('English-first locale persistence and stable selector dimensions', () =
     expect(selector).toContain('dir="ltr" translate="no"');
   });
 });
+
+
+describe('Persian translation safety and dictionary parity', () => {
+  it('requires each English dictionary key to have an explicitly registered Persian entry', () => {
+    const dictionaries = readFileSync('src/lib/i18n/dictionaries.ts', 'utf8');
+    const englishSection = dictionaries.split('const en: Dict = {')[1]?.split('const fa: Dict = {')[0] ?? '';
+    const persianSection = dictionaries.split('const fa: Dict = {')[1]?.split('};export const DICTIONARIES')[0] ?? '';
+    const keys = (source: string) => [...source.matchAll(/['"]([^'"\\n]+)['"]\\s*:/g)].map((match) => match[1]);
+    const persianKeys = new Set(keys(persianSection));
+    expect(keys(englishSection).filter((key) => !persianKeys.has(key))).toEqual([]);
+  });
+
+  it('does not translate user input or mutate structural page layout', () => {
+    const bridge = readFileSync('src/components/layout/site-locale-bridge.tsx', 'utf8');
+    expect(bridge).toContain('input, textarea, select, option, [contenteditable]');
+    expect(bridge).not.toContain('setAttribute(\'dir\', \'rtl\')');
+  });
+});
