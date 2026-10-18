@@ -2,6 +2,18 @@ import { describe, expect, it } from 'vitest';
 import { parseBet365Catalogue, canPublishBet365CatalogueToWagering, identifyBet365SettlementCandidate, identifyBet365SelectionCandidate, validateBet365FixtureLink, compareBet365FixtureIdentity, summarizeBet365Catalogue } from '@/providers/betsapi-bet365-catalogue';
 
 describe('Bet365 catalogue read-only mapping', () => {
+  it('finds bookmaker MG/PA records nested under a non-results wrapper', () => {
+    const payload = [{ data: { event: { odds: [
+      { type: 'MG', ID: '10', NA: 'Match Result' },
+      { type: 'PA', ID: '100', NA: 'Home', OD: '2/1' },
+      { type: 'PA', ID: '101', NA: 'Away', OD: '3/1' },
+    ] } } }];
+    const catalogue = parseBet365Catalogue('789', 'live', payload);
+    expect(catalogue.marketCount).toBe(1);
+    expect(catalogue.selectionCount).toBe(2);
+    expect(catalogue.readOnly).toBe(true);
+  });
+
   it('reports actionable diagnostics while keeping all Bet365 markets read-only', () => {
     const data = parseBet365Catalogue('789', 'live', [[
       { type: 'MG', ID: '10', NA: 'Match Result', SU: '0' },
