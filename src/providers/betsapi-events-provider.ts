@@ -2,6 +2,7 @@
  * and Bet365 full-market integration have passed explicit validation. */
 import type { ProviderMatch, ProviderOddsBundle, ProviderResult, ProviderResultSnapshot, ProviderStatus, SportsDataProvider } from '@/lib/ports/providers';
 import { BETSAPI_SPORTS, normalizeBetsapiEvent, normalizeBetsapiOdds, normalizeBetsapiResult, parseBetsapiIdentity, object } from './betsapi-normalization';
+import { parseBet365Catalogue, type Bet365Catalogue } from './betsapi-bet365-catalogue';
 
 const BASE = 'https://api.b365api.com';
 type Envelope = { success?: number | string; results?: unknown; pager?: unknown };
@@ -22,7 +23,7 @@ export class BetsApiEventsProvider implements SportsDataProvider {
   }
   private async request(endpoint: string, params: Record<string, string>): Promise<unknown> {
     if (!this.configured) throw Error('NOT_CONFIGURED');
-    const allowed = new Set(['/v3/events/inplay','/v3/events/upcoming','/v3/events/view','/v3/events/ended','/v2/event/odds']);
+    const allowed = new Set(['/v3/events/inplay','/v3/events/upcoming','/v3/events/view','/v3/events/ended','/v2/event/odds','/v1/bet365/event','/v4/bet365/prematch']);
     if (!allowed.has(endpoint)) throw Error('INVALID_ENDPOINT');
     const url = new URL(endpoint, BASE);
     for (const [k, v] of Object.entries(params)) url.searchParams.set(k, v);
@@ -86,6 +87,16 @@ export class BetsApiEventsProvider implements SportsDataProvider {
   }
   async fetchOdds(ids: string[]): Promise<ProviderResult<ProviderOddsBundle[]>> { return this.quote(ids, true); }
   async fetchEventOdds(ids: string[]): Promise<ProviderResult<ProviderOddsBundle[]>> { return this.quote(ids, false); }
+  /** Full bookmaker catalogue is available for display only; it cannot enter
+   * real-money selection tables until mapping and grading are proven. */
+  async fetchBet365Catalogue(fi: string, mode: 'live' | 'upcoming'): Promise<ProviderResult<Bet365Catalogue>> {
+    if (!/^\\d{1,16}$/.test(fi)) return fail('INVALID_BET365_FI');
+    return this.guarded(async () => {
+      const path = mode === 'live' ? '/v1/bet365/event' : '/v4/bet365/prematch';
+      const data = await this.request(path, { FI: fi });
+      return parseBet365Catalogue(fi, mode, data);
+    });
+  }
   async fetchResult(id: string): Promise<ProviderResult<ProviderResultSnapshot>> {
     const parsed = parseBetsapiIdentity(id);
     if (!parsed) return fail('INVALID_EVENT_ID');
