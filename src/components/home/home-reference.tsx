@@ -591,6 +591,8 @@ export function HomeReference({  sports,
   topBets: MatchView[];
   topBetsUnavailable?: boolean;
   liveEnabled: boolean;
+  liveTotal?: number | null;
+  upcomingTotal?: number | null;
 }) {
 
   const footballUpcoming = upcoming.filter(
