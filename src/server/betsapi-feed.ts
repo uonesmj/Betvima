@@ -32,6 +32,43 @@ async function read(mode: BetsMode, sportId: number, page: number): Promise<Expl
   return data;
 }
 
+/**
+ * Bet365 inplay_filter supplies scores/fixtures but usually has no 'timer'.
+ * Events inplay carries 'timer.tm' for the SAME event through our_event_id.
+ * One coalesced, 45s-cached, football-only request across all visitors keeps
+ * subscription usage bounded. Do not match teams solely by name/league.
+ */
+let eventsClockCache: { expires: number; result: Promise<ExplorerList> } | null = null;
+async function liveFootballClocks(): Promise<ExplorerList> {
+  const now = Date.now();
+  if (eventsClockCache && now < eventsClockCache.expires) return eventsClockCache.result;
+  const result = exploreBetsApi(betsApiToken(), {
+    mode: 'live', feed: 'events', sportId: 1,
+  }) as Promise<ExplorerList>;
+  eventsClockCache = { expires: now + 45_000, result };
+  return result;
+}
+
+export function fillBetsApiMissingMinutes(
+  fixtures: ExplorerFixture[], events: ExplorerFixture[],
+): ExplorerFixture[] {
+  const byId = new Map(events.filter(event => event.eventId && event.minute !== null)
+    .map(event => [event.eventId, event]));
+  return fixtures.map(fixture => {
+    if (fixture.minute !== null || !fixture.eventId) return fixture;
+    const event = byId.get(fixture.eventId);
+    if (!event || event.minute === null ||
+        (event.fi !== null && fixture.fi !== event.fi)) return fixture;
+    // Events API and Bet365 may use different translations/abbreviations of
+    // team names. A confirmed linked FI is stronger than text labels.
+    if (event.fi === null && (
+        event.home.trim().toLowerCase() !== fixture.home.trim().toLowerCase() ||
+        event.away.trim().toLowerCase() !== fixture.away.trim().toLowerCase()
+    )) return fixture;
+    return { ...fixture, minute: event.minute };
+  });
+}
+
 function parsedScore(score: string | null): [number | null, number | null] {
   if (!score || !/^\d{1,3}-\d{1,3}$/.test(score)) return [null, null];
   const [home, away] = score.split('-').map(Number);
@@ -62,7 +99,13 @@ export async function getBetsApiSport(mode: BetsMode, sportKey: string, page = 1
   const selectedPage = mode === 'live' ? 1 : Math.min(100, Math.max(1, page));
   try {
     const data = leagueId ? await exploreBetsApi(betsApiToken(), { mode, sportId: sport.id, feed: 'bet365', page: selectedPage, leagueId }) as ExplorerList : await read(mode, sport.id, selectedPage);
-    const matches = await attachBet365Logos(data.fixtures.map(f => sourceMatch(f, sport.key, mode)), sport.key);
+    let fixtures = data.fixtures;
+    if (mode === 'live' && sport.id === 1 && fixtures.some(f => f.minute === null && f.eventId)) {
+      // Only Events IDs explicitly bridged by Bet365 are eligible.
+      const events = await liveFootballClocks().catch(() => null);
+      if (events && !events.error) fixtures = fillBetsApiMissingMinutes(fixtures, events.fixtures);
+    }
+    const matches = await attachBet365Logos(fixtures.map(f => sourceMatch(f, sport.key, mode)), sport.key);
     return {
       source: 'betsapi_bet365' as const,
       matches,
