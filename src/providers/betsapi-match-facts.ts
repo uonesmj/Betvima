@@ -6,6 +6,7 @@ import {
   request, ExplorerUpstreamError, type ExplorerError,
 } from './betsapi-explorer';
 import { object, string } from './betsapi-normalization';
+import { betsApiLiveMinute } from './betsapi-match-clock';
 
 const rec = object;
 const val = (x: unknown) => string(x).trim();
@@ -149,10 +150,9 @@ export function parseBet365MatchStats(fi: string, payload: unknown): MatchLiveFa
     away: values.get(metric.key)?.[1] ?? null,
   }));
   const score = val(event?.SS);
-  const tm = numeric(event?.TM);
   return {
     fi, home, away, score: /^\d{1,3}-\d{1,3}$/.test(score) ? score : null,
-    minute: tm !== null && tm <= 200 ? tm : null,
+    minute: event ? betsApiLiveMinute(event) : null,
     stats, updatedAt: new Date().toISOString(), error: null,
   };
 }
