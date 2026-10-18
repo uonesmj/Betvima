@@ -158,6 +158,7 @@ async function request(
   const allowed = [
     '/v1/bet365/inplay_filter',
     '/v1/bet365/upcoming',
+    '/v1/bet365/league',
     '/v1/bet365/event',
     '/v4/bet365/prematch',
     '/v3/events/inplay',
@@ -220,6 +221,7 @@ export interface ExplorerInput {
   page?: number;
   day?: string;
   fi?: string;
+  leagueId?: string;
 }
 const validSport = (sportId: number) => BETSAPI_EXPLORER_SPORTS.some(s => s.id === sportId);
 const safeError = (error: unknown): ExplorerError =>
@@ -234,7 +236,8 @@ export async function exploreBetsApi(
   const base = { source: 'betsapi_bet365' as const, readOnly: true as const, configured, refreshedAt };
   const fi = input.fi;
   if (!validSport(input.sportId) || (fi !== undefined && !/^\d{1,16}$/.test(fi)) ||
-    (input.day && !/^\d{8}$/.test(input.day))) {
+    (input.day && !/^\d{8}$/.test(input.day)) ||
+    (input.leagueId && !/^\d{1,16}$/.test(input.leagueId))) {
     throw new ExplorerUpstreamError('UPSTREAM_INVALID');
   }
   if (fi) {
@@ -262,9 +265,11 @@ export async function exploreBetsApi(
       ? (input.mode === 'live' ? '/v3/events/inplay' : '/v3/events/upcoming')
       : (input.mode === 'live' ? '/v1/bet365/inplay_filter' : '/v1/bet365/upcoming');
     const payload = await request(token!, endpoint,
-      input.mode === 'live' ? { sport_id: String(input.sportId) } :
-        { sport_id: String(input.sportId), page: String(page),
-          ...(input.day ? { day: input.day } : {}) },
+      input.mode === 'live'
+        ? { sport_id: String(input.sportId), ...(input.leagueId ? { league_id: input.leagueId } : {}) }
+        : { sport_id: String(input.sportId), page: String(page),
+            ...(input.day ? { day: input.day } : {}),
+            ...(input.leagueId ? { league_id: input.leagueId } : {}) },
       fetcher, input.mode === 'live' ? 12_000 : 90_000);
     const data = Array.isArray(payload.results) ? payload.results : [];
     const fixtures = data.slice(0, 2200).map(row => parseExplorerFixture(row, input.sportId, feed))
@@ -276,4 +281,38 @@ export async function exploreBetsApi(
       pageCount: input.mode === 'upcoming' && total !== null && perPage !== null && perPage > 0
         ? Math.ceil(total / perPage) : null };
   } catch (error) { return { ...empty, error: safeError(error) }; }
+}
+
+/** Dedicated Bet365 league directory, not derived only from page-one fixtures. */
+export interface BetsApiLeague {
+  id: string;
+  name: string;
+  country: string | null;
+}
+export async function listBetsApiLeagues(
+  token: string | null | undefined,
+  sportId: number,
+  fetcher: Fetcher = fetch,
+): Promise<{ leagues: BetsApiLeague[]; error: ExplorerError | null }> {
+  if (!validSport(sportId)) return { leagues: [], error: 'UPSTREAM_INVALID' };
+  if (!token?.trim()) return { leagues: [], error: 'NOT_CONFIGURED' };
+  try {
+    const payload = await request(token, '/v1/bet365/league', { sport_id: String(sportId) }, fetcher, 600_000);
+    const rows = Array.isArray(payload.results) ? payload.results : [];
+    const seen = new Set<string>();
+    const leagues: BetsApiLeague[] = [];
+    for (const raw of rows.slice(0, 4000)) {
+      const item = rec(raw);
+      const id = val(item.id);
+      const name = val(item.name).trim().slice(0, 140);
+      const country = val(item.cc).toLowerCase();
+      if (!/^\d{1,16}$/.test(id) || !name || seen.has(id)) continue;
+      seen.add(id);
+      leagues.push({ id, name, country: /^[a-z]{2}$/.test(country) ? country : null });
+    }
+    leagues.sort((a, b) => a.name.localeCompare(b.name));
+    return { leagues, error: null };
+  } catch (error) {
+    return { leagues: [], error: safeError(error) };
+  }
 }
