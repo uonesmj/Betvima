@@ -59,7 +59,10 @@ function liveRecords(value: unknown): Record<string, unknown>[] {
       found.push(record);
       return;
     }
-    if (record.results) visit(record.results, depth + 1);
+    // BetsAPI commonly nests one or more arrays under results; preserve record order.
+    for (const child of Object.values(record)) {
+      if (child !== null && typeof child === 'object') visit(child, depth + 1);
+    }
   }
   visit(value, 0);
   return found;
