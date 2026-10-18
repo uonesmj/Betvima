@@ -82,7 +82,8 @@ def compare(bet365_rows, events_rows):
                                "independently_verified": False})
         else:
             ambiguous.append({"fi": fi_id, "possible_events": len(matches)})
-    return bet365, events, candidates, ambiguous
+    unmatched_fi = [item for item in bet365 if item["id"] not in fi_to_events]
+    return bet365, events, candidates, ambiguous, unmatched_fi
 
 
 def main():
@@ -100,12 +101,14 @@ def main():
         except Exception as error:
             print(f"{label}: FAILED ({type(error).__name__}); no links generated", flush=True)
             return 2
-    fi, ev, candidates, ambiguous = compare(outputs["bet365"], outputs["events"])
+    fi, ev, candidates, ambiguous, unmatched = compare(outputs["bet365"], outputs["events"])
     report = {
         "read_only": True, "verified_links": 0,
         "bet365_usable_fi": len(fi), "events_usable_ids": len(ev),
         "unique_name_time_candidates": len(candidates),
         "ambiguous_fi": len(ambiguous),
+        "unmatched_fi": len(unmatched),
+        "unmatched_sample": [{"fi": x["id"], "home": x["home"], "away": x["away"]} for x in unmatched[:10]],
         "candidates_sample": candidates[:20],
         "ambiguous_sample": ambiguous[:10],
         "warning": "Names and kickoff provide candidates only; do not insert mappings into wager tables.",
