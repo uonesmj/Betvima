@@ -30,8 +30,8 @@ export async function BetsApiLiveStrip() {
         </div>
         <Link className="text-sm font-semibold text-sky-300 underline" href="/betsapi">Browse markets</Link>
       </div>
-      <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-        {data.fixtures.slice(0, 12).map(fixture => (
+      <div className="grid max-h-[65vh] gap-2 overflow-y-auto overscroll-contain sm:grid-cols-2 lg:grid-cols-3">
+        {data.fixtures.map(fixture => (
           <div key={fixture.fi} className="rounded-lg border border-white/10 bg-[#192437] p-3 text-sm">
             <p className="mb-1 truncate text-xs text-slate-400">{fixture.league}</p>
             <p className="font-semibold">{fixture.home} — {fixture.away}</p>
@@ -39,7 +39,7 @@ export async function BetsApiLiveStrip() {
           </div>
         ))}
       </div>
-      <p className="mt-2 text-xs text-slate-400">{data.fixtures.length} Bet365 football fixtures returned in this snapshot.</p>
+      <p className="mt-2 text-xs text-slate-400">{data.fixtures.length} Bet365 football fixtures available in this scrollable preview.</p>
     </section>
   );
 }
