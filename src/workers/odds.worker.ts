@@ -780,6 +780,9 @@ async function runDedicatedLiveDiscovery(ctx: WorkerContext): Promise<void> {
   liveDiscoveryInFlight = true;
   lastLiveDiscoveryAt = now;
   try {
+  // Distributed lock prevents parallel discovery sweeps across live-worker replicas.
+  // The lock expiry exceeds the 25s provider timeout but stays bounded.
+  await ctx.withLock("odds:live-discovery", 90, async () => {
   const providers = (
     ctx.services.providers.sportsProviders?.length
       ? ctx.services.providers.sportsProviders
@@ -854,6 +857,7 @@ async function runDedicatedLiveDiscovery(ctx: WorkerContext): Promise<void> {
       }));
     }
   }
+  });
   } finally {
     liveDiscoveryInFlight = false;
   }
