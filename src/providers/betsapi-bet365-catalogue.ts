@@ -88,6 +88,32 @@ export function parseBet365Catalogue(fi: string, mode: 'live' | 'upcoming', resp
     selectionCount: markets.reduce((sum, m) => sum + m.selections.length, 0),
     markets, readOnly: true };
 }
+/** Aggregate diagnostics only: never authorizes quote placement or settlement. */
+export function summarizeBet365Catalogue(catalogue: Bet365Catalogue) {
+  const totals = {
+    marketGroups: catalogue.markets.length,
+    selections: 0,
+    openPricedSelections: 0,
+    suspendedSelections: 0,
+    exactMappedSelections: 0,
+    unresolvedSelections: 0,
+    readOnly: true as const,
+    wageringEligible: false as const,
+  };
+  for (const market of catalogue.markets) {
+    for (const selection of market.selections) {
+      totals.selections++;
+      if (market.status === 'suspended' || selection.status === 'suspended') {
+        totals.suspendedSelections++;
+        continue;
+      }
+      totals.openPricedSelections++;
+      if (market.settlementCandidate && selection.selectionCandidate) totals.exactMappedSelections++;
+      else totals.unresolvedSelections++;
+    }
+  }
+  return totals;
+}
 /** FI and Events API identities inhabit different namespaces.
  * This helper is deliberately conservative: matching numeric suffixes is NOT
  * evidence that two fixtures are identical. */
