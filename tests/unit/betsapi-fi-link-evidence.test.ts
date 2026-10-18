@@ -17,21 +17,29 @@ describe('Bet365 independent fixture identity evidence', () => {
     const verdict = evaluateBet365FixtureLink({
       ...fixture,
       bookmaker: { ...fixture.bookmaker, away: 'Another Team' },
-      corroboration: {source: 'provider_mapping', reference: 'provider:ref123', verifiedAt: now.toISOString()},
+      corroboration: {source: 'provider_mapping', reference: 'provider:ref123', mappedBookmakerFi: '203034631', mappedEventsProviderId: '1:203034631', verifiedAt: now.toISOString()},
     }, now);
     expect(verdict.verified).toBe(false);
     expect(verdict.reasons).toContain('TEAM_MISMATCH');
   });
   it('rejects stale evidence', () => {
     const verdict = evaluateBet365FixtureLink({...fixture, corroboration: {
-      source: 'operator_verified', reference: 'audit:link123', verifiedAt: '2026-10-16T12:00:00Z',
+      source: 'operator_verified', reference: 'audit:link123', mappedBookmakerFi: '203034631', mappedEventsProviderId: '1:203034631', verifiedAt: '2026-10-16T12:00:00Z',
     }}, now);
     expect(verdict.verified).toBe(false);
     expect(verdict.reasons).toContain('STALE_CORROBORATION');
   });
+  it('rejects a plausible but differently mapped bookmaker FI', () => {
+    const verdict = evaluateBet365FixtureLink({...fixture, corroboration: {
+      source: 'provider_mapping', reference: 'provider:ref123',
+      mappedBookmakerFi: '203034632', mappedEventsProviderId: '1:203034631', verifiedAt: now.toISOString(),
+    }}, now);
+    expect(verdict.verified).toBe(false);
+    expect(verdict.reasons).toContain('CORROBORATED_ID_MISMATCH');
+  });
   it('accepts independently corroborated consistent identity evidence', () => {
     const verdict = evaluateBet365FixtureLink({...fixture, corroboration: {
-      source: 'provider_mapping', reference: 'provider:ref123', verifiedAt: now.toISOString(),
+      source: 'provider_mapping', reference: 'provider:ref123', mappedBookmakerFi: '203034631', mappedEventsProviderId: '1:203034631', verifiedAt: now.toISOString(),
     }}, now);
     expect(verdict.verified).toBe(true);
   });
