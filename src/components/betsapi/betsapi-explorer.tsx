@@ -79,6 +79,7 @@ export function BetsApiExplorer() {
   const [listBusy, setListBusy] = useState(false);
   const [marketBusy, setMarketBusy] = useState(false);
   const [failure, setFailure] = useState('');
+  const [previewSelections, setPreviewSelections] = useState<Array<{ fi: string; match: string; market: string; marketId: string; selection: string; selectionId: string; odds: string }>>([]);
   const access = activeToken;
   const request = useCallback(async (params: {
     mode: Mode; sportId: number; feed?: 'bet365' | 'events';
@@ -176,6 +177,15 @@ export function BetsApiExplorer() {
     const unresolved = tiers.filter(t => t === 'unresolved').length;
     return { total: all.length, valid, partial, unresolved };
   }, [markets]);
+  const addPreview = (market: Market, selection: Market['selections'][number]) => {
+    if (!chosen?.fi || !/^\d{1,16}$/.test(chosen.fi)) return;
+    const item = { fi: chosen.fi, match: chosen.home + ' — ' + chosen.away,
+      market: market.title, marketId: market.key, selection: selection.label,
+      selectionId: selection.id, odds: selection.decimal };
+    setPreviewSelections(previous => [
+      ...previous.filter(p => p.fi !== item.fi), item,
+    ].slice(-20));
+  };
   const selectedMarkets = visibleMarkets.slice((marketPage - 1) * 20, marketPage * 20);
   const button = 'rounded-xl border border-white/15 px-3 py-2 text-sm transition hover:border-sky-400';
   const setFilter = (nextMode: Mode, nextSport: number, nextPage = 1) => {
@@ -285,6 +295,29 @@ export function BetsApiExplorer() {
           {prettyError(list.error)}
         </p>}
 
+        <section aria-label="Bet365 read-only betslip" className="rounded-2xl border border-sky-800/40 bg-[#111a2b] p-4">
+          <div className="flex items-center justify-between gap-3">
+            <h2 className="font-bold">Preview Bet Slip · {previewSelections.length} picks</h2>
+            <button type="button" onClick={() => setPreviewSelections([])}
+              className="text-xs text-sky-300 underline">Clear</button>
+          </div>
+          <p className="mt-1 text-xs text-amber-200">Inspection only — no stake, payout, wallet deduction or bet placement. Prices can change.</p>
+          {previewSelections.length === 0
+            ? <p className="mt-3 text-sm text-slate-400">Choose an outcome below to inspect a preview selection.</p>
+            : <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                {previewSelections.map(p => (
+                  <div key={p.fi} className="rounded-lg border border-white/10 bg-[#192437] p-3 text-xs">
+                    <p className="font-semibold">{p.match}</p>
+                    <p className="mt-1 text-slate-300">{p.market} · {p.selection}</p>
+                    <div className="mt-2 flex items-center justify-between">
+                      <strong className="text-sky-300">{p.odds}</strong>
+                      <button type="button" className="text-rose-300 underline"
+                        onClick={() => setPreviewSelections(items => items.filter(x => x.fi !== p.fi))}>Remove</button>
+                    </div>
+                  </div>
+                ))}
+              </div>}
+        </section>
         <div className="grid gap-4 lg:grid-cols-[minmax(310px,4fr)_minmax(390px,5fr)]">
           <section className="min-w-0 space-y-3 rounded-2xl border border-white/10 bg-[#111721] p-3">
             <div className="flex items-center justify-between gap-3 px-1">
@@ -392,11 +425,11 @@ export function BetsApiExplorer() {
                       </div>
                       <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
                         {market.selections.map(selection => (
-                          <div key={selection.id} title="Reference price only; wagering not enabled"
-                            className="flex items-center justify-between gap-2 rounded-lg bg-[#253247] px-3 py-3 text-xs">
+                          <button type="button" key={selection.id} title="Add to read-only preview slip" onClick={() => addPreview(market, selection)}
+                            className="flex items-center justify-between gap-2 rounded-lg bg-[#253247] px-3 py-3 text-left text-xs transition hover:bg-[#304866] focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-400">
                             <span className="min-w-0 break-words text-slate-200">{selection.label}</span>
                             <strong className="shrink-0 text-sky-300">{selection.decimal}</strong>
-                          </div>
+                          </button>
                         ))}
                       </div>
                     </div>
