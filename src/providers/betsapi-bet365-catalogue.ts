@@ -19,6 +19,8 @@ export function identifyBet365SettlementCandidate(name: string): string | null {
     'asian handicap': 'ASIAN_HANDICAP',
     'goals over/under': 'OVER_UNDER',
     'half time result': 'HALF_TIME',
+    'goals odd/even': 'GOALS_ODD_EVEN',
+    'last team to score': 'LAST_TEAM_TO_SCORE',
   };
   return exact[normalized] ?? null;
 }
@@ -37,6 +39,8 @@ export function identifyBet365SelectionCandidate(marketType: string | null, labe
     return codes[name] ?? null;
   }
   if (marketType === 'BTTS') return name === 'yes' ? 'YES' : name === 'no' ? 'NO' : null;
+  if (marketType === 'GOALS_ODD_EVEN') return name === 'odd' ? 'ODD' : name === 'even' ? 'EVEN' : null;
+  if (marketType === 'LAST_TEAM_TO_SCORE') return name === 'home' ? 'HOME' : name === 'away' ? 'AWAY' : name === 'neither' ? 'NEITHER' : null;
   if (marketType === 'OVER_UNDER') {
     const raw = line?.trim() || /^((?:over|under))\s+([0-9]+(?:\.[0-9]+)?)$/.exec(name)?.[2] || '';
     if (!/^[0-9]{1,2}(?:\.(?:0|25|5|50|75))?$/.test(raw)) return null;
