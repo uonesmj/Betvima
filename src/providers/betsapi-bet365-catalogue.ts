@@ -22,11 +22,34 @@ export function identifyBet365SettlementCandidate(name: string): string | null {
   };
   return exact[normalized] ?? null;
 }
+/** Diagnostic selection code only. Never infer a side from the team name or
+ * from fuzzy text. Goal lines must be explicitly present and numeric. */
+export function identifyBet365SelectionCandidate(marketType: string | null, label: string, line: string | null): string | null {
+  if (!marketType) return null;
+  const name = label.trim().toLowerCase().replace(/\s+/g, ' ');
+  const sides: Record<string, string> = { home: 'HOME', draw: 'DRAW', away: 'AWAY' };
+  if (marketType === '1X2') return sides[name] ?? null;
+  if (marketType === 'DOUBLE_CHANCE') {
+    const codes: Record<string, string> = {
+      '1x': 'HOME_DRAW', '12': 'HOME_AWAY', 'x2': 'DRAW_AWAY',
+      'home or draw': 'HOME_DRAW', 'home or away': 'HOME_AWAY', 'draw or away': 'DRAW_AWAY',
+    };
+    return codes[name] ?? null;
+  }
+  if (marketType === 'BTTS') return name === 'yes' ? 'YES' : name === 'no' ? 'NO' : null;
+  if (marketType === 'OVER_UNDER') {
+    const raw = line?.trim() || /^((?:over|under))\s+([0-9]+(?:\.[0-9]+)?)$/.exec(name)?.[2] || '';
+    if (!/^[0-9]{1,2}(?:\.[02575])?$/.test(raw)) return null;
+    const side = /^(over|under)(?:\s|$)/.exec(name)?.[1];
+    return side ? side.toUpperCase() + '_' + raw.replace('.', '_') : null;
+  }
+  return null;
+}
 export type Bet365CatalogueMarket = {
   id: string; name: string; mode: 'live' | 'upcoming';
   settlementCandidate: string | null;
   status: 'open' | 'suspended';
-  selections: Array<{ id: string; name: string; odds: string; status: 'open' | 'suspended'; line: string | null }>;
+  selections: Array<{ id: string; name: string; odds: string; status: 'open' | 'suspended'; line: string | null; selectionCandidate: string | null }>;
 };
 export type Bet365Catalogue = {
   fi: string; mode: 'live' | 'upcoming'; marketCount: number;
@@ -49,14 +72,16 @@ export function parseBet365Catalogue(fi: string, mode: 'live' | 'upcoming', resp
     if (!market.key || seen.has(market.key)) continue;
     seen.add(market.key);
     const usedSelections = new Set<string>();
+    const settlementCandidate = identifyBet365SettlementCandidate(market.title);
     const selections = market.selections.filter(s => !!safePrice(s.decimal) && !!s.id && !unlabelled(s.label))
       .filter(s => { if (usedSelections.has(s.id)) return false; usedSelections.add(s.id); return true; })
       .map(s => ({ id: `${market.key}:${s.id}`, name: s.label, odds: s.decimal,
         status: market.status === 'suspended' || s.status === 'suspended' ? 'suspended' as const : 'open' as const,
-        line: s.line ?? lineFromLabel(s.label) }));
+        line: s.line ?? lineFromLabel(s.label),
+        selectionCandidate: identifyBet365SelectionCandidate(settlementCandidate, s.label, s.line ?? lineFromLabel(s.label)) }));
     if (!selections.length) continue;
     markets.push({ id: market.key, name: market.title, mode,
-      settlementCandidate: identifyBet365SettlementCandidate(market.title),
+      settlementCandidate,
       status: market.status === 'suspended' ? 'suspended' : 'open', selections });
   }
   return { fi, mode, marketCount: markets.length,
