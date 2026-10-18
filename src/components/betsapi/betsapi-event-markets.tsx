@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { formatBetsApiOdds } from '@/lib/betsapi-odds-display';
 import { sportByKey } from '@/lib/betsapi-sports-map';
 import Link from 'next/link';
@@ -85,6 +85,7 @@ export function BetsApiEventMarkets({
   const [search, setSearch] = useState('');
   const [limit, setLimit] = useState(40);
   const [activeMarkets, setActiveMarkets] = useState<Market[]>(markets);
+  const lastMarketSignature = useRef(JSON.stringify(markets));
   const [feedError, setFeedError] = useState<string | null>(error);
   const [lastChanged, setLastChanged] = useState<string | null>(null);
   const [snapshotCount, setSnapshotCount] = useState(reportedCount);
@@ -109,13 +110,12 @@ export function BetsApiEventMarkets({
         if (incoming.error) { setFeedError(incoming.error); return; }
         setFeedError(null);
         setSnapshotCount(incoming.marketCount);
-        setActiveMarkets(previous => {
-          if (JSON.stringify(previous) !== JSON.stringify(incoming.markets)) {
-            setLastChanged(new Date().toLocaleTimeString());
-            return incoming.markets;
-          }
-          return previous;
-        });
+        const signature = JSON.stringify(incoming.markets);
+        if (signature !== lastMarketSignature.current) {
+          lastMarketSignature.current = signature;
+          setLastChanged(new Date().toLocaleTimeString());
+          setActiveMarkets(incoming.markets);
+        }
       } catch { if (!cancelled) setFeedError('REFRESH_UNAVAILABLE'); }
       finally { inflight = false; }
     };
