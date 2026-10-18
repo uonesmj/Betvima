@@ -96,6 +96,34 @@ export function validateBet365FixtureLink(fi: string, eventsProviderId: string, 
   if (!verified) return false;
   return verified.fi === fi && verified.eventsProviderId === eventsProviderId;
 }
+/** Read-only identity reconciliation. A candidate is never a verified mapping:
+ * independent operator/provider corroboration is required before wager linkage. */
+export type Bet365FixtureIdentity = {
+  id: string;
+  home: string;
+  away: string;
+  startsAt: string;
+};
+export type Bet365Reconciliation = {
+  candidate: boolean;
+  reasons: string[];
+  requiresIndependentVerification: true;
+};
+const canonicalTeam = (value: string): string =>
+  value.normalize('NFKC').trim().toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').replace(/\s+/g, ' ').trim();
+export function compareBet365FixtureIdentity(fi: Bet365FixtureIdentity, event: Bet365FixtureIdentity): Bet365Reconciliation {
+  const reasons: string[] = [];
+  if (!/^\d{1,16}$/.test(fi.id) || !/^\d{1,3}:\d{1,16}$/.test(event.id)) reasons.push('INVALID_ID');
+  const fHome = canonicalTeam(fi.home), fAway = canonicalTeam(fi.away);
+  const eHome = canonicalTeam(event.home), eAway = canonicalTeam(event.away);
+  if (!fHome || !fAway || !eHome || !eAway) reasons.push('MISSING_TEAM');
+  else if (fHome !== eHome || fAway !== eAway) reasons.push('TEAM_MISMATCH');
+  if (fHome && fAway && fHome === fAway) reasons.push('INVALID_TEAMS');
+  const a = Date.parse(fi.startsAt), b = Date.parse(event.startsAt);
+  if (!Number.isFinite(a) || !Number.isFinite(b)) reasons.push('INVALID_KICKOFF');
+  else if (Math.abs(a - b) > 5 * 60_000) reasons.push('KICKOFF_MISMATCH');
+  return { candidate: reasons.length === 0, reasons, requiresIndependentVerification: true };
+}
 /** Runtime guard against accidentally publishing unverified market catalogues
  * to the canonical wager-selection and settlement tables. */
 export function canPublishBet365CatalogueToWagering(): false { return false; }
