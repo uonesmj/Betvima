@@ -17,6 +17,17 @@ def row(ident, home="Alpha FC", away="Beta", time="1792300000"):
     }
 
 class FixtureEvidenceTests(unittest.TestCase):
+    def test_stability_never_authorizes_wagering(self):
+        first = [{"bet365_fi": "111", "events_provider_id": "1:222"},
+                 {"bet365_fi": "333", "events_provider_id": "1:444"}]
+        second = [{"bet365_fi": "111", "events_provider_id": "1:222"},
+                  {"bet365_fi": "333", "events_provider_id": "1:555"}]
+        report = module.candidate_stability(first, second)
+        self.assertEqual(report["stable_observed_candidates"], 1)
+        self.assertEqual(report["conflicting_fi_mappings"], 1)
+        self.assertEqual(report["verified_links"], 0)
+        self.assertFalse(report["independently_verified"])
+
     def test_unique_identity_is_only_a_candidate(self):
         _, _, candidates, ambiguous, _, duplicates_fi, duplicates_events = module.compare(
             [row("111")], [row("222")])
