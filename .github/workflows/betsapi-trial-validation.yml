@@ -3,6 +3,8 @@ on:
   pull_request:
     paths:
       - 'src/providers/betsapi-trial.ts'
+      - 'src/providers/betsapi-label-quality.ts'
+      - 'tests/unit/betsapi-label-quality.test.ts'
       - 'src/providers/betsapi-explorer.ts'
       - 'src/providers/betsapi-bet365-preview.ts'
       - 'src/components/betsapi/**'
@@ -32,7 +34,7 @@ jobs:
           node-version: '22'
           cache: npm
       - run: npm ci --ignore-scripts
-      - run: npx vitest run tests/unit/betsapi-trial.test.ts tests/unit/betsapi-normalization.test.ts tests/unit/betsapi-sports.test.ts tests/unit/betsapi-explorer.test.ts
+      - run: npx vitest run tests/unit/betsapi-trial.test.ts tests/unit/betsapi-normalization.test.ts tests/unit/betsapi-sports.test.ts tests/unit/betsapi-explorer.test.ts tests/unit/betsapi-label-quality.test.ts
       - run: npm run typecheck
       - run: npm run lint
       - run: npm run build
