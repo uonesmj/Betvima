@@ -97,3 +97,26 @@ describe('Bet365 preview is a separate bookmaker identity, not a bettable Events
     expect(result.markets[0]?.key).toContain('bet365:92809252:main:');
   });
 });
+
+
+describe('Bet365 outcome names vs metadata headers', () => {
+  it('does not concatenate correct-score labels with positional header values', () => {
+    const preview = parseBet365PrematchPreview('100000', [{
+      goals: { sp: { score: { id: 'score', name: 'Correct Score', odds: [
+        { id: '21', name: '1-0', header: '1', odds: '17.00' },
+        { id: '22', name: '0-0', header: 'Draw', odds: '21.00' },
+      ] } } },
+    }]);
+    expect(preview.markets[0]?.selections.map(x => x.label)).toEqual(['1-0','0-0']);
+    expect(preview.markets[0]?.selections.map(x => x.decimal)).toEqual(['17.00','21.00']);
+  });
+  it('preserves a real handicap and falls back to a provider header only when no name exists', () => {
+    const preview = parseBet365PrematchPreview('100001', [{
+      main: { sp: { asian: { id: 'asian', name: 'Asian Handicap', odds: [
+        { id: '31', name: 'Home', header: '1', handicap: '-0.5', odds: '1.85' },
+        { id: '32', name: '', header: 'Away', handicap: '+0.5', odds: '1.92' },
+      ] } } },
+    }]);
+    expect(preview.markets[0]?.selections.map(x => x.label)).toEqual(['Home (-0.5)','Away (+0.5)']);
+  });
+});

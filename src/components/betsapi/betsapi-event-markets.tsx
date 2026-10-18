@@ -29,6 +29,43 @@ function groupOf(title: string): Group {
 }
 const usable = (label: string) => Boolean(label.trim()) && !/Unlabelled outcome/i.test(label);
 
+/** Long scorelines and player markets remain accessible without filling dozens of mobile screens. */
+function MarketSection({ market, isFa }: { market: Market; isFa: boolean }) {
+  const [expanded, setExpanded] = useState(false);
+  const shown = expanded ? market.selections : market.selections.slice(0, 9);
+  const remaining = market.selections.length - shown.length;
+  return <section className="overflow-hidden rounded-xl border border-[#DDE5ED] bg-white shadow-[0_2px_10px_rgba(18,35,51,.03)]">
+    <div className="border-b border-[#EDF0F3] px-3.5 py-3">
+      <h3 className="text-sm font-extrabold text-[#263345]">{market.title}</h3>
+    </div>
+    <div className={`grid gap-1.5 p-2.5 ${market.selections.length < 3 ? 'grid-cols-2' : 'grid-cols-3'}`}>
+      {shown.map((s, index) => <div key={s.id + ':' + index} aria-disabled="true" title={s.label}
+        className="flex min-h-[62px] min-w-0 flex-col items-center justify-center gap-1 rounded-lg border border-[#E5EAF0] bg-[#F6F8FB] px-1.5 py-2 text-center">
+        <span className="line-clamp-2 text-[10px] font-semibold leading-4 text-[#6D7B89]">{s.label}</span>
+        <strong className="text-[13px] font-black tabular-nums text-[#243547]">{s.decimal}</strong>
+      </div>)}
+    </div>
+    {market.selections.length > 9 && <button type="button"
+      aria-expanded={expanded}
+      onClick={() => setExpanded(value => !value)}
+      className="w-full border-t border-[#EDF0F3] bg-[#F8FAFC] px-3 py-2 text-center text-[11px] font-extrabold text-[#087FF5]">
+      {expanded
+        ? (isFa ? 'نمایش گزینه‌های کمتر' : 'Show fewer selections')
+        : (isFa ? `نمایش ${remaining} گزینه بیشتر` : `Show ${remaining} more selections`)}
+    </button>}
+  </section>;
+}
+
+function marketOrder(market: Market): number {
+  const title = market.title.toLowerCase().trim();
+  if (/^(?:full ?time result|match result|ft result|1x2|match winner)$/.test(title)) return 0;
+  if (/^(?:double chance|both teams to score|btts|draw no bet|match betting|winner)$/.test(title)) return 1;
+  if (/^(?:match goals|total goals|goals over\/under|goals over under|total points|goal line)$/.test(title)) return 2;
+  if (/correct score|final score/.test(title)) return 8;
+  const group = groupOf(title);
+  return ({ main: 3, goals: 4, corners: 5, cards: 6, players: 7, other: 9, all: 10 } as Record<Group, number>)[group];
+}
+
 export function BetsApiEventMarkets({
   fi, mode, sportKey, fixture, markets, error, reportedCount,
 }: {
@@ -51,7 +88,7 @@ export function BetsApiEventMarkets({
   const homeScore = fixture?.homeScore, awayScore = fixture?.awayScore;
   const validMarkets = useMemo(() => markets.map(m => ({
     ...m, selections: m.selections.filter(s => usable(s.label)),
-  })).filter(m => m.selections.length > 0), [markets]);
+  })).filter(m => m.selections.length > 0).sort((a,b) => marketOrder(a) - marketOrder(b)), [markets]);
   const filtered = useMemo(() => validMarkets.filter(m =>
     (group === 'all' || groupOf(m.title) === group) &&
     (!search.trim() || m.title.toLowerCase().includes(search.trim().toLowerCase())
@@ -129,18 +166,7 @@ export function BetsApiEventMarkets({
       </div>
       {!filtered.length && <p className="rounded-xl bg-white p-5 text-sm text-[#738293]">{isFa ? 'مارکت قابل نمایشی در این دسته وجود ندارد.' : 'No labeled selections available in this category.'}</p>}
       <div className="grid gap-3 md:grid-cols-2">
-        {filtered.slice(0, limit).map(m => <section key={m.key} className="overflow-hidden rounded-xl border border-[#DDE5ED] bg-white shadow-[0_2px_10px_rgba(18,35,51,.03)]">
-          <div className="border-b border-[#EDF0F3] px-3.5 py-3">
-            <h3 className="text-sm font-extrabold text-[#263345]">{m.title}</h3>
-          </div>
-          <div className={`grid gap-1.5 p-2.5 ${m.selections.length < 3 ? 'grid-cols-2' : 'grid-cols-3'}`}>
-            {m.selections.map((s, index) => <div key={s.id + ':' + index} aria-disabled="true" title={s.label}
-              className="flex min-h-[62px] min-w-0 flex-col items-center justify-center gap-1 rounded-lg border border-[#E5EAF0] bg-[#F6F8FB] px-1.5 py-2 text-center">
-              <span className="line-clamp-2 text-[10px] font-semibold leading-4 text-[#6D7B89]">{s.label}</span>
-              <strong className="text-[13px] font-black tabular-nums text-[#243547]">{s.decimal}</strong>
-            </div>)}
-          </div>
-        </section>)}
+        {filtered.slice(0, limit).map(m => <MarketSection key={m.key} market={m} isFa={isFa} />)}
       </div>
       {filtered.length > limit && <button type="button"
         onClick={() => setLimit(n => n + 40)}

@@ -32,14 +32,21 @@ export function bet365OddsDecimal(value: unknown): string | null {
 
 /** Use only explicit provider labels. Missing sides/names must not be invented. */
 function outcomeLabel(row: Record<string, unknown>, id: string, line = ''): string {
-  const raw = [row.NA, row.name, row.header, row.player_name, row.player,
-    row.team_name, row.team].map(string).map(x => x.trim()).filter(Boolean);
-  const unique = [...new Set(raw)];
-  const name = unique.filter(x => !/^selection(?:\s*\([^)]*\))?$/i.test(x)).join(' ').slice(0, 135);
+  // The upstream "header" often contains the GROUP or a positional marker
+  // rather than another part of the participant name (e.g. name="1-0",
+  // header="1"). Concatenating all columns produced misleading "1-0 1"
+  // results in Correct Score markets. Prefer one explicit identity field;
+  // keep the handicap separately when supplied.
+  const identity = [row.NA, row.name, row.team_name, row.player_name,
+    row.player, row.team, row.header]
+    .map(string).map(value => value.trim())
+    .find(value => value &&
+      !/^(?:selection|outcome|option)(?:\s*\((?:yes|no)\))?$/i.test(value));
   const handicap = line.trim();
-  if (name) return handicap && !name.includes(handicap)
-    ? `${name} (${handicap})` : name;
-  // Unlabelled source rows are diagnostic only, not executable outcomes.
+  if (identity) {
+    return handicap && !identity.includes(handicap)
+      ? `${identity.slice(0, 135)} (${handicap})` : identity.slice(0, 135);
+  }
   return `Unlabelled outcome #${id}${handicap ? ` · line ${handicap}` : ''}`;
 }
 

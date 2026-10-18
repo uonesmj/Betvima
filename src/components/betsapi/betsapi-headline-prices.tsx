@@ -58,17 +58,25 @@ export function BetsApiHeadlinePrices({
   const market = data?.market;
   const pending = !visible || !loaded;
   const available = !!market && market.selections.length > 0;
+  const otherOffers = !available && (data?.marketCount ?? 0) > 0;
+  const status = pending
+    ? (locale === 'fa' ? 'در حال دریافت ضرایب…' : 'Loading odds…')
+    : data?.error === 'PREVIEW_BUDGET_EXHAUSTED' || data?.error === 'UPSTREAM_QUOTA'
+      ? (locale === 'fa' ? 'محدودیت اعتبار نمایش ضرایب' : 'Odds preview quota reached')
+      : data?.error
+        ? (locale === 'fa' ? 'خطا در دریافت ضرایب' : 'Odds feed unavailable')
+        : otherOffers
+          ? (locale === 'fa' ? 'مارکت اصلی موجود نیست؛ سایر مارکت‌ها در جزئیات' : 'Main odds unavailable · other markets in details')
+          : (locale === 'fa' ? 'مارکت دارای ضریب موجود نیست' : 'No priced market offered');
   const background = compact ? 'border-t border-[#E5E7EB] bg-[#F5F6F8] p-2' : 'space-y-2';
   return (
     <div ref={ref} className={background} aria-label={locale === 'fa' ? 'نمایش ضرایب BetsAPI' : 'BetsAPI odds preview'}>
       <div className="flex min-w-0 items-center justify-between gap-2">
         <span className={`min-w-0 truncate font-semibold text-[#677380] ${compact ? 'text-[9px]' : 'text-[11px]'}`}>
-          {available ? market.name : pending
-            ? (locale === 'fa' ? 'در حال دریافت ضرایب…' : 'Loading odds…')
-            : locale === 'fa' ? 'ضریب فعلاً موجود نیست' : 'Odds currently unavailable'}
+          {available ? market.name : status}
         </span>
         <span className={`shrink-0 font-bold text-[#8B95A2] ${compact ? 'text-[9px]' : 'text-[10px]'}`}>
-          {available ? `${data?.marketCount ?? 0} markets` : 'BetsAPI'}
+          {data?.marketCount ? `${data.marketCount} ${data.marketCount === 1 ? 'market' : 'markets'}` : 'BetsAPI'}
         </span>
       </div>
       <div className={`grid grid-cols-3 ${compact ? 'gap-1' : 'gap-1.5'}`}>
