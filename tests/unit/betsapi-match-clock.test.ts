@@ -32,9 +32,10 @@ describe('BetsAPI factual in-play clocks', () => {
     const bet = parseExplorerFixture(base,1)!;
     expect(bet.minute).toBeNull();
     const events = parseExplorerFixture({...base,id:'909',bet365_id:'12345',timer:{tm:'67',tt:'0'}},1,'events')!;
-    const wrong = parseExplorerFixture({...base,id:'909',bet365_id:'12345',
+    const wrong = parseExplorerFixture({...base,id:'909',bet365_id:null,
       home:{name:'Another club'},timer:{tm:'99'}},1,'events')!;
     expect(fillBetsApiMissingMinutes([bet],[events])[0]?.minute).toBe(67);
+    expect(fillBetsApiMissingMinutes([bet],[{...events,home:'Other Team'}])[0]?.minute).toBe(67);
     expect(fillBetsApiMissingMinutes([bet],[wrong])[0]?.minute).toBeNull();
     expect(fillBetsApiMissingMinutes([{...bet,minute:71}],[events])[0]?.minute).toBe(71);
   });
