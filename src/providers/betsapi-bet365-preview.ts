@@ -113,8 +113,8 @@ export function parseBet365LivePreview(fixtureId: string, results: unknown): Bet
         // already identifies the correct 5-2 score. Drop ONLY that positional
         // metadata for scoreline offers, never drop named team/handicap context.
         if (/^(?:correct score|final score|exact score|half.?time score)$/i.test(current.title.trim()) &&
-            /^\\d{1,3}$/.test(currentSubmarket) &&
-            /^\\d{1,3}\\s*[-:]\\s*\\d{1,3}(?:\\b|$)/.test(label)) return label;
+            /^\d{1,3}$/.test(currentSubmarket) &&
+            /^\d{1,3}\s*[-:]\s*\d{1,3}(?:\b|$)/.test(label)) return label;
         return `${currentSubmarket} · ${label}`.slice(0, 200);
       })(), decimal: price,
     });
