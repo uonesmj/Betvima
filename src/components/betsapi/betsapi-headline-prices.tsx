@@ -43,7 +43,6 @@ export function BetsApiHeadlinePrices({
     const controller = new AbortController();
     let working = false;
     setLoaded(false);
-    setData(null);
     const query = new URLSearchParams({ mode: match[1]!, sportId: match[2]!, fi: match[3]! });
     const read = async () => {
       if (working || controller.signal.aborted || document.visibilityState !== 'visible' || !navigator.onLine) return;
