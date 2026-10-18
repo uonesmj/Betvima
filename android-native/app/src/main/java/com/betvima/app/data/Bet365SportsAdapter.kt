@@ -135,3 +135,15 @@ internal fun withBet365Details(match: Match, data: JSONObject): Match {
         bettingAvailable = false
     )
 }
+
+/** Live clock is a factual provider field, never inferred from odds or kickoff. */
+internal fun withBet365MatchMinute(match: Match, facts: JSONObject?): Match {
+    if (facts == null || !match.live || bet365Ref(match.id) == null) return match
+    val raw = facts.opt("minute")
+    val minute = when (raw) {
+        is Number -> raw.toInt().takeIf { raw.toDouble() == it.toDouble() }
+        is String -> raw.toIntOrNull()
+        else -> null
+    }?.takeIf { it in 0..200 }
+    return if (minute != null) match.copy(minute = minute) else match
+}
