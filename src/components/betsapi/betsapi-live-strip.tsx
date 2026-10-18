@@ -15,31 +15,31 @@ function token(): string | null {
   } catch { return null; }
 }
 
-export async function BetsApiLiveStrip() {
-  if (process.env.BETSAPI_LIVE_SIDEBY_SIDE_ENABLED !== 'true') return null;
+export async function BetsApiLiveStrip({ mode = 'live' }: { mode?: 'live' | 'upcoming' }) {
+  if (process.env.BETSAPI_LIVE_SIDEBY_SIDE_ENABLED === 'false') return null;
   const secret = token();
   if (!secret) return null;
-  const data = await exploreBetsApi(secret, { mode: 'live', sportId: 1, feed: 'bet365' });
+  const data = await exploreBetsApi(secret, { mode, sportId: 1, feed: 'bet365' });
   if (!('fixtures' in data) || data.error || !data.fixtures.length) return null;
   return (
-    <section className="rounded-xl border border-sky-800/40 bg-[#111a2b] p-3 text-white" aria-label="Bet365 live preview">
+    <section className="rounded-xl border border-sky-800/40 bg-[#111a2b] p-3 text-white" aria-label={`Bet365 ${mode} fixtures`}>
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <div>
-          <h2 className="text-base font-bold">Bet365 Live · Preview</h2>
+          <h2 className="text-base font-bold">{mode === 'live' ? 'Bet365 Live' : 'Bet365 Upcoming'} · Preview</h2>
           <p className="text-xs text-slate-400">Read-only source fixtures. These games cannot be added to the bet slip or settled yet.</p>
         </div>
         <Link className="text-sm font-semibold text-sky-300 underline" href="/betsapi">Browse markets</Link>
       </div>
       <div className="grid max-h-[65vh] gap-2 overflow-y-auto overscroll-contain sm:grid-cols-2 lg:grid-cols-3">
         {data.fixtures.map(fixture => (
-          <Link key={fixture.fi} href={fixture.fi ? `/betsapi?mode=live&sport=1&fi=${encodeURIComponent(fixture.fi)}` : "/betsapi"} className="block rounded-lg border border-white/10 bg-[#192437] p-3 text-sm transition hover:border-sky-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-400">
+          <Link key={fixture.fi} href={fixture.fi ? `/betsapi?mode=${mode}&sport=1&fi=${encodeURIComponent(fixture.fi)}` : "/betsapi"} className="block rounded-lg border border-white/10 bg-[#192437] p-3 text-sm transition hover:border-sky-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-400">
             <p className="mb-1 truncate text-xs text-slate-400">{fixture.league}</p>
             <p className="font-semibold">{fixture.home} — {fixture.away}</p>
-            <p className="mt-1 text-xs text-sky-300">{fixture.score ?? 'LIVE'} · View markets (no wagering)</p>
+            <p className="mt-1 text-xs text-sky-300">{mode === 'live' ? (fixture.score ?? 'LIVE') : (fixture.kickoff ? new Date(fixture.kickoff).toLocaleString() : 'Upcoming')} · View markets (no wagering)</p>
           </Link>
         ))}
       </div>
-      <p className="mt-2 text-xs text-slate-400">{data.fixtures.length} Bet365 football fixtures available in this scrollable preview.</p>
+      <p className="mt-2 text-xs text-slate-400">{data.fixtures.length} Bet365 football ${mode} fixtures available in this scrollable preview.</p>
     </section>
   );
 }
