@@ -32,11 +32,11 @@ export async function BetsApiLiveStrip() {
       </div>
       <div className="grid max-h-[65vh] gap-2 overflow-y-auto overscroll-contain sm:grid-cols-2 lg:grid-cols-3">
         {data.fixtures.map(fixture => (
-          <div key={fixture.fi} className="rounded-lg border border-white/10 bg-[#192437] p-3 text-sm">
+          <Link key={fixture.fi} href={fixture.fi ? `/betsapi?mode=live&sport=1&fi=${encodeURIComponent(fixture.fi)}` : "/betsapi"} className="block rounded-lg border border-white/10 bg-[#192437] p-3 text-sm transition hover:border-sky-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-400">
             <p className="mb-1 truncate text-xs text-slate-400">{fixture.league}</p>
             <p className="font-semibold">{fixture.home} — {fixture.away}</p>
-            <p className="mt-1 text-xs text-sky-300">{fixture.score ?? 'LIVE'} · Preview only</p>
-          </div>
+            <p className="mt-1 text-xs text-sky-300">{fixture.score ?? 'LIVE'} · View markets (no wagering)</p>
+          </Link>
         ))}
       </div>
       <p className="mt-2 text-xs text-slate-400">{data.fixtures.length} Bet365 football fixtures available in this scrollable preview.</p>
