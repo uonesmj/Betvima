@@ -1,7 +1,16 @@
 import { describe, expect, it } from 'vitest';
-import { parseBet365Catalogue, canPublishBet365CatalogueToWagering } from '@/providers/betsapi-bet365-catalogue';
+import { parseBet365Catalogue, canPublishBet365CatalogueToWagering, identifyBet365SettlementCandidate } from '@/providers/betsapi-bet365-catalogue';
 
 describe('Bet365 catalogue read-only mapping', () => {
+  it('identifies only explicitly matched market titles without authorizing wagers', () => {
+    expect(identifyBet365SettlementCandidate('Fulltime Result')).toBe('1X2');
+    expect(identifyBet365SettlementCandidate('Asian Handicap')).toBe('ASIAN_HANDICAP');
+    expect(identifyBet365SettlementCandidate('Alternative Asian Handicap')).toBeNull();
+    expect(identifyBet365SettlementCandidate('1st Half Asian Handicap')).toBeNull();
+    expect(identifyBet365SettlementCandidate('4th Goal')).toBeNull();
+    expect(canPublishBet365CatalogueToWagering()).toBe(false);
+  });
+
   it('keeps FI-scoped selection identity for prematch groups', () => {
     const result = parseBet365Catalogue('12345', 'upcoming', [{
       main: { sp: { winner: { id: '10', name: 'Full Time Result',
