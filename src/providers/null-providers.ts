@@ -140,7 +140,11 @@ export function providers(): ProviderRegistryLike {
   const betsApi = new BetsApiEventsProvider();
   const useBetsApi = process.env.SPORTS_PROVIDER === 'betsapi' &&
     process.env.BETSAPI_PROVIDER_ACTIVATION === 'validated' && betsApi.configured;
-  const sportsProviders = useBetsApi ? [betsApi] : oddsProvider.configured ? [oddsProvider] : [];
+  // An explicit BetsAPI selection must fail closed instead of silently falling back
+  // to Odds API; that would mismatch the worker's canonical source identity.
+  const sportsProviders = process.env.SPORTS_PROVIDER === 'betsapi'
+    ? (useBetsApi ? [betsApi] : [])
+    : oddsProvider.configured ? [oddsProvider] : [];
   const primarySportsProvider = sportsProviders[0] ?? new DisabledSportsProvider();
 
   registry = {
