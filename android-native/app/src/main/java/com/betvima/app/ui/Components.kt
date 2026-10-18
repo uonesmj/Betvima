@@ -26,6 +26,8 @@ import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.betvima.app.data.*
 
+val LocalBvLanguage = androidx.compose.runtime.compositionLocalOf { Lang.EN }
+
 fun tr(lang: Lang, en: String, fa: String) = if (lang == Lang.FA) fa else en
 
 /**
@@ -464,8 +466,7 @@ fun EmptyPanel(title: String, detail: String, onRetry: (() -> Unit)? = null) {
                 modifier = Modifier.padding(top = 7.dp))
             if (onRetry != null) {
                 Spacer(Modifier.height(10.dp))
-                BvPrimaryButton(if (LocalLayoutDirection.current == LayoutDirection.Rtl)
-                    "تازه‌سازی" else "Refresh",
+                BvPrimaryButton(tr(LocalBvLanguage.current, "Refresh", "تازه‌سازی"),
                     onClick = onRetry, icon = Icons.Default.Refresh)
             }
         }
