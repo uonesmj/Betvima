@@ -23,15 +23,17 @@ describe('single source of truth for sports data', () => {
       .toContain('if (matchProvider !== MATCH_SOURCE_ODDS) return null');
   });
 
-  it('keeps old bookmaker health rows out of active provider panels', () => {
+  it('hides retired Odds API health rows from the active provider panel', () => {
     for (const path of ['src/app/api/v1/admin/providers/route.ts', 'src/providers/null-providers.ts']) {
-      expect(source(path)).toContain("where kind <> 'sports' or provider in ('the_odds_api', 'disabled')");
+      expect(source(path)).toContain("where kind <> 'sports' or provider = 'disabled'");
     }
   });
 
-  it('uses only The Odds API as the registered provider', () => {
+  it('detaches The Odds API runtime from all active providers and gates ingestion', () => {
     const code = source('src/providers/null-providers.ts');
-    expect(code).toContain('const sportsProviders = oddsProvider.configured ? [oddsProvider] : [];');
-    expect(code).not.toMatch(/new \w*(?:OtherOdds|LegacySports|FootballFeed)Provider\(/);
+    expect(code).toContain('const sportsProviders: SportsDataProvider[] = [];');
+    expect(code).not.toContain('new TheOddsApiSportsProvider()');
+    expect(source('src/server/env.ts')).toContain('sportsProviderEnabled: false,');
+    expect(source('src/app/api/v1/live/route.ts')).toContain("sportsSourceRevision: 'betsapi-bet365-only-v1'");
   });
 });
