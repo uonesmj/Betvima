@@ -222,7 +222,7 @@ function MatchCard({
 
       {/* Teams / score */}
       <Link
-        href={sportsbookMatchHref(match.id)}
+        href={sportsbookMatchHref(match.id, match)}
         className="block px-3 py-3 transition hover:bg-[#FAFBFC]"
       >
         <div className="mb-2 flex items-center justify-between text-[9px] font-black uppercase tracking-[.08em] text-[#8A9199]">
