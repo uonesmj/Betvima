@@ -83,6 +83,20 @@ def compare(bet365_rows, events_rows):
         else:
             ambiguous.append({"fi": fi_id, "possible_events": len(matches)})
     unmatched_fi = [item for item in bet365 if item["id"] not in fi_to_events]
+    # Diagnostic categories are evidence, not permission to join fixture IDs.
+    for item in unmatched_fi:
+        same_teams = [x for x in events if x["home"] == item["home"] and x["away"] == item["away"]]
+        same_kickoff = [x for x in events if abs(x["epoch"] - item["epoch"]) <= 300]
+        swapped = [x for x in same_kickoff if x["home"] == item["away"] and x["away"] == item["home"]]
+        if same_teams:
+            item["reason"] = "KICKOFF_DIFFERENCE"
+            item["closest_offset_seconds"] = min(abs(x["epoch"] - item["epoch"]) for x in same_teams)
+        elif swapped:
+            item["reason"] = "SWAPPED_TEAMS"
+        elif same_kickoff:
+            item["reason"] = "TEAM_NAME_MISMATCH_OR_MISSING_EVENT"
+        else:
+            item["reason"] = "NO_NEARBY_KICKOFF"
     return bet365, events, candidates, ambiguous, unmatched_fi
 
 
@@ -108,7 +122,7 @@ def main():
         "unique_name_time_candidates": len(candidates),
         "ambiguous_fi": len(ambiguous),
         "unmatched_fi": len(unmatched),
-        "unmatched_sample": [{"fi": x["id"], "home": x["home"], "away": x["away"]} for x in unmatched[:10]],
+        "unmatched_sample": [{"fi": x["id"], "home": x["home"], "away": x["away"], "reason": x["reason"], "closest_offset_seconds": x.get("closest_offset_seconds")} for x in unmatched[:20]],
         "candidates_sample": candidates[:20],
         "ambiguous_sample": ambiguous[:10],
         "warning": "Names and kickoff provide candidates only; do not insert mappings into wager tables.",
