@@ -44,13 +44,13 @@ export function sourceMatch(f: ExplorerFixture, sportKey: string, mode: BetsMode
   return {
     id: `betsapi:${mode}:${f.sportId}:${f.fi ?? f.eventId ?? 'unlinked'}`,
     // External Bet365 league IDs must never occupy local UUID slots.
-    sportKey, leagueId: null, leagueName: f.league, leagueLogoUrl: f.leagueLogoUrl,
+    sportKey, leagueId: null, leagueName: f.league, leagueLogoUrl: f.leagueLogoUrl ?? null,
     countryCode: f.country, status: mode === 'live' ? 'live' : 'scheduled',
     scheduledAt: f.kickoff ?? '', minute: f.minute, period: null,
     homeScore, awayScore, isLive: mode === 'live', isBettingAvailable: false,
     participants: [
-      { teamId: '', role: 'HOME', name: f.home, logoUrl: f.homeLogoUrl },
-      { teamId: '', role: 'AWAY', name: f.away, logoUrl: f.awayLogoUrl },
+      { teamId: '', role: 'HOME', name: f.home, logoUrl: f.homeLogoUrl ?? null },
+      { teamId: '', role: 'AWAY', name: f.away, logoUrl: f.awayLogoUrl ?? null },
     ],
     marketsCount: 0, topMarkets: [],
   };
