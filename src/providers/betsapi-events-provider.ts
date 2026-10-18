@@ -75,16 +75,17 @@ export class BetsApiEventsProvider implements SportsDataProvider {
       return [...new Map(matches.filter(x => {const time = new Date(x.scheduledAt).getTime(); return time >= start && time <= end;}).map(x => [x.providerId,x])).values()];
     });
   }
-  async fetchOdds(matchProviderIds: string[]): Promise<ProviderResult<ProviderOddsBundle[]>> {
+  private async quote(matchProviderIds: string[], live: boolean): Promise<ProviderResult<ProviderOddsBundle[]>> {
     if (matchProviderIds.length > 15) return fail('REQUEST_BUDGET');
     return this.guarded(async () => Promise.all(matchProviderIds.map(async id => {
       const parsed = parseBetsapiIdentity(id);
       if (!parsed) throw Error('INVALID_EVENT_ID');
       const raw = await this.request('/v2/event/odds', {event_id: parsed.eventId});
-      return normalizeBetsapiOdds(id, raw, new Date(), true);
+      return normalizeBetsapiOdds(id, raw, new Date(), live, live ? 12 : 45);
     })));
   }
-  async fetchEventOdds(ids: string[]): Promise<ProviderResult<ProviderOddsBundle[]>> { return this.fetchOdds(ids); }
+  async fetchOdds(ids: string[]): Promise<ProviderResult<ProviderOddsBundle[]>> { return this.quote(ids, true); }
+  async fetchEventOdds(ids: string[]): Promise<ProviderResult<ProviderOddsBundle[]>> { return this.quote(ids, false); }
   async fetchResult(id: string): Promise<ProviderResult<ProviderResultSnapshot>> {
     const parsed = parseBetsapiIdentity(id);
     if (!parsed) return fail('INVALID_EVENT_ID');
