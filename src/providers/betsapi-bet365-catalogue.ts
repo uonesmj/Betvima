@@ -88,6 +88,14 @@ export function parseBet365Catalogue(fi: string, mode: 'live' | 'upcoming', resp
     selectionCount: markets.reduce((sum, m) => sum + m.selections.length, 0),
     markets, readOnly: true };
 }
+/** FI and Events API identities inhabit different namespaces.
+ * This helper is deliberately conservative: matching numeric suffixes is NOT
+ * evidence that two fixtures are identical. */
+export function validateBet365FixtureLink(fi: string, eventsProviderId: string, verified: { fi: string; eventsProviderId: string } | null): boolean {
+  if (!/^\d{1,16}$/.test(fi) || !/^\d{1,3}:\d{1,16}$/.test(eventsProviderId)) return false;
+  if (!verified) return false;
+  return verified.fi === fi && verified.eventsProviderId === eventsProviderId;
+}
 /** Runtime guard against accidentally publishing unverified market catalogues
  * to the canonical wager-selection and settlement tables. */
 export function canPublishBet365CatalogueToWagering(): false { return false; }
