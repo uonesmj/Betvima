@@ -14,6 +14,10 @@ internal val bet365FixturePattern = Regex("^betsapi:(live|upcoming):([0-9]{1,4})
 internal val bet365PrimarySports = listOf(
     "football", "basketball", "tennis", "volleyball", "ice-hockey", "cricket", "handball"
 )
+/** Cover the existing native Live category ribbon without altering one UI chip. */
+internal val bet365LiveSports = bet365PrimarySports + listOf(
+    "baseball", "american-football", "table-tennis", "esports", "mma", "boxing"
+)
 private val bet365AvailableSports = setOf(
     "football", "basketball", "tennis", "volleyball", "ice-hockey", "cricket", "handball",
     "baseball", "american-football", "table-tennis", "darts", "snooker", "futsal",
