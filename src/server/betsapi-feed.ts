@@ -6,6 +6,7 @@
 import { exploreBetsApi, type ExplorerFixture, type ExplorerList } from '@/providers/betsapi-explorer';
 import { BETSAPI_SPORTS, sportByKey, type BetsMode } from '@/lib/betsapi-sports-map';
 import type { MatchViewPayload } from '@/server/queries/public';
+import { attachBet365Logos } from '@/server/betsapi-logos';
 
 export function betsApiToken(): string | null {
   return process.env.BETSAPI_PUBLIC_PREVIEW_ENABLED === 'true'
@@ -24,7 +25,7 @@ async function read(mode: BetsMode, sportId: number, page: number): Promise<Expl
     if (!('fixtures' in result)) throw new Error('UNEXPECTED_BETSAPI_RESULT');
     return result;
   });
-  memo.set(key, { expires: now + (mode === 'live' ? 60000 : 300000), data });
+  memo.set(key, { expires: now + (mode === 'live' ? 15000 : 90000), data });
   if (memo.size > 250) {
     for (const [k, v] of memo) if (v.expires < now) memo.delete(k);
   }
@@ -42,27 +43,28 @@ export function sourceMatch(f: ExplorerFixture, sportKey: string, mode: BetsMode
   const [homeScore, awayScore] = parsedScore(f.score);
   return {
     id: `betsapi:${mode}:${f.sportId}:${f.fi ?? f.eventId ?? 'unlinked'}`,
-    sportKey, leagueId: null, leagueName: f.league, leagueLogoUrl: null,
+    sportKey, leagueId: f.leagueId, leagueName: f.league, leagueLogoUrl: f.leagueLogoUrl,
     countryCode: f.country, status: mode === 'live' ? 'live' : 'scheduled',
     scheduledAt: f.kickoff ?? '', minute: f.minute, period: null,
     homeScore, awayScore, isLive: mode === 'live', isBettingAvailable: false,
     participants: [
-      { teamId: '', role: 'HOME', name: f.home, logoUrl: null },
-      { teamId: '', role: 'AWAY', name: f.away, logoUrl: null },
+      { teamId: '', role: 'HOME', name: f.home, logoUrl: f.homeLogoUrl },
+      { teamId: '', role: 'AWAY', name: f.away, logoUrl: f.awayLogoUrl },
     ],
     marketsCount: 0, topMarkets: [],
   };
 }
 
-export async function getBetsApiSport(mode: BetsMode, sportKey: string, page = 1) {
+export async function getBetsApiSport(mode: BetsMode, sportKey: string, page = 1, leagueId?: string) {
   const sport = sportByKey(sportKey);
   if (!sport) return { source: 'betsapi_bet365', matches: [], total: null, pageCount: null, error: 'UNSUPPORTED_SPORT', page, sportKey };
   const selectedPage = mode === 'live' ? 1 : Math.min(100, Math.max(1, page));
   try {
-    const data = await read(mode, sport.id, selectedPage);
+    const data = leagueId ? await exploreBetsApi(betsApiToken(), { mode, sportId: sport.id, feed: 'bet365', page: selectedPage, leagueId }) as ExplorerList : await read(mode, sport.id, selectedPage);
+    const matches = await attachBet365Logos(data.fixtures.map(f => sourceMatch(f, sport.key, mode)), sport.key);
     return {
       source: 'betsapi_bet365' as const,
-      matches: data.fixtures.map(f => sourceMatch(f, sport.key, mode)),
+      matches,
       total: data.total,
       pageCount: data.pageCount,
       error: data.error,
