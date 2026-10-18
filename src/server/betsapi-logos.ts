@@ -28,7 +28,7 @@ export async function attachBet365Logos(matches: MatchViewPayload[], sport: stri
     ...leagueNames.map(name => ({ entity: 'league' as const, name })),
   ];
   const now = Date.now();
-  const fresh = requests.filter(r => !(saved.get(`${sport}:${r.entity}:${norm(r.name)}`)?.until! > now));
+  const fresh = requests.filter(r => (saved.get(`${sport}:${r.entity}:${norm(r.name)}`)?.until ?? 0) <= now);
   if (fresh.length) {
     const byName = new Map<string, string>();
     try {
@@ -80,7 +80,7 @@ export async function attachBet365Logos(matches: MatchViewPayload[], sport: stri
     leagueLogoUrl: match.leagueLogoUrl ?? get('league', match.leagueName ?? '') ??
       getLocalLeagueLogo(match.leagueName),
     participants: match.participants.map(p => ({
-      ...p, logoUrl: p.logoUrl ?? get('team', p.name),
+      ...p, logoUrl: get('team', p.name) ?? p.logoUrl,
     })),
   }));
 }
