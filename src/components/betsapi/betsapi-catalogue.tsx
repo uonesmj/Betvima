@@ -40,8 +40,7 @@ export function BetsApiCatalogue({ mode }: { mode: Mode }) {
     return () => { active = false; controller.abort(); if (timer) window.clearInterval(timer); };
   }, [mode, sport, page]);
   const fixtures = value?.fixtures ?? [];
-  const start = mode === 'live' ? 0 : (page - 1) * fixtures.length;
-  const visible = mode === 'live' ? fixtures.slice(0, PAGE_SIZE) : fixtures.slice(0, PAGE_SIZE);
+  const visible = mode === 'live' ? fixtures.slice(0, PAGE_SIZE) : fixtures;
   return <section dir="ltr" className="mx-3 my-3 rounded-2xl border border-sky-500/30 bg-[#101824] p-3 text-white sm:p-4" aria-label={'BetsAPI ' + mode + ' catalogue'}>
     <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
       <div>
