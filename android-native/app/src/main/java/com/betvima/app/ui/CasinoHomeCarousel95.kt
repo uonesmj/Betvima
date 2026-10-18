@@ -42,8 +42,9 @@ private val casinoCardBlue95 = Color(0xFF087FF5)
 fun CasinoHomeCarousel95(lang: Lang, model: AppViewModel, onViewAll: () -> Unit) {
     var games by remember { mutableStateOf<List<CasinoGame>>(emptyList()) }
     var loading by remember { mutableStateOf(true) }
+    var refreshSerial by remember { mutableIntStateOf(0) }
 
-    LaunchedEffect(Unit) {
+    LaunchedEffect(refreshSerial) {
         loading = true
         // Load each vertical separately: the first general catalogue page may
         // consist entirely of slots, hiding all live-dealer games.
@@ -82,9 +83,10 @@ fun CasinoHomeCarousel95(lang: Lang, model: AppViewModel, onViewAll: () -> Unit)
         }
     } else if (games.isEmpty()) {
         Surface(color = Color.White, shape = RoundedCornerShape(21.dp),
-            border = BorderStroke(1.dp, casinoCardBorder95)) {
-            Text(tr(lang, "Casino games are temporarily unavailable.",
-                "بازی‌های کازینو فعلاً در دسترس نیستند."),
+            border = BorderStroke(1.dp, casinoCardBorder95),
+            modifier = Modifier.clickable { refreshSerial++ }) {
+            Text(tr(lang, "Casino games are unavailable. Tap to retry.",
+                "بازی‌های کازینو در دسترس نیستند. برای تلاش مجدد لمس کنید."),
                 modifier = Modifier.fillMaxWidth().padding(22.dp),
                 color = casinoCardMuted95, fontSize = 12.sp)
         }
