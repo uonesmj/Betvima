@@ -79,7 +79,7 @@ export function BetsApiExplorer() {
   const [listBusy, setListBusy] = useState(false);
   const [marketBusy, setMarketBusy] = useState(false);
   const [failure, setFailure] = useState('');
-  const [previewSelections, setPreviewSelections] = useState<Array<{ fi: string; match: string; market: string; marketId: string; selection: string; selectionId: string; odds: string; mode: Mode; priceState: 'unchecked' | 'unchanged' | 'changed' | 'unavailable'; latestOdds: string | null }>>([]);
+  const [previewSelections, setPreviewSelections] = useState<Array<{ fi: string; match: string; market: string; marketId: string; selection: string; selectionId: string; odds: string; mode: Mode; priceState: 'unchecked' | 'unchanged' | 'changed' | 'unavailable'; latestOdds: string | null; acceptedPreviewOdds: string | null }>>([]);
   const [recheckBusy, setRecheckBusy] = useState(false);
   const access = activeToken;
   const request = useCallback(async (params: {
@@ -182,7 +182,7 @@ export function BetsApiExplorer() {
     if (!chosen?.fi || !/^\d{1,16}$/.test(chosen.fi)) return;
     const item = { fi: chosen.fi, match: chosen.home + ' — ' + chosen.away,
       market: market.title, marketId: market.key, selection: selection.label,
-      selectionId: selection.id, odds: selection.decimal, mode, priceState: 'unchecked' as const, latestOdds: null };
+      selectionId: selection.id, odds: selection.decimal, mode, priceState: 'unchecked' as const, latestOdds: null, acceptedPreviewOdds: null };
     setPreviewSelections(previous => [
       ...previous.filter(p => p.fi !== item.fi), item,
     ].slice(-20));
@@ -205,7 +205,8 @@ export function BetsApiExplorer() {
         const fresh = market?.selections.find(s => s.id === p.selectionId)?.decimal ?? null;
         const valid = fresh !== null && /^\d{1,4}(?:\.\d{1,4})?$/.test(fresh) && Number(fresh) > 1;
         const priceState: typeof p.priceState = !valid ? 'unavailable' : Number(fresh) === Number(p.odds) ? 'unchanged' : 'changed';
-        return {...p, latestOdds: valid ? fresh : null, priceState};
+        return {...p, latestOdds: valid ? fresh : null, priceState,
+          acceptedPreviewOdds: valid && p.acceptedPreviewOdds === fresh ? p.acceptedPreviewOdds : null};
       }));
     } finally { setRecheckBusy(false); }
   };
@@ -344,6 +345,18 @@ export function BetsApiExplorer() {
                         p.priceState === 'changed' ? 'Price changed to ' + p.latestOdds + ' — requires acceptance in a future real quote' :
                         'Same reference price on latest snapshot'}
                     </p>
+                    {p.priceState === 'changed' && p.latestOdds && (
+                      <button type="button" className="mt-2 rounded-lg border border-amber-500/50 px-2 py-1 text-xs text-amber-100"
+                        onClick={() => setPreviewSelections(items => items.map(item =>
+                          item.fi === p.fi && item.selectionId === p.selectionId
+                            ? {...item, acceptedPreviewOdds: item.latestOdds}
+                            : item))}>
+                        {p.acceptedPreviewOdds === p.latestOdds
+                          ? 'New reference price acknowledged'
+                          : 'Acknowledge changed reference price'}
+                      </button>
+                    )}
+                    {p.acceptedPreviewOdds && <p className="mt-1 text-slate-400">Acknowledgment applies only to this snapshot. Recheck before wagering.</p>}
                     <div className="mt-2 flex items-center justify-between">
                       <strong className="text-sky-300">{p.odds}</strong>
                       <button type="button" className="text-rose-300 underline"
