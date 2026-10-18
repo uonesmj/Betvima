@@ -39,7 +39,7 @@ export function identifyBet365SelectionCandidate(marketType: string | null, labe
   if (marketType === 'BTTS') return name === 'yes' ? 'YES' : name === 'no' ? 'NO' : null;
   if (marketType === 'OVER_UNDER') {
     const raw = line?.trim() || /^((?:over|under))\s+([0-9]+(?:\.[0-9]+)?)$/.exec(name)?.[2] || '';
-    if (!/^[0-9]{1,2}(?:\.[02575])?$/.test(raw)) return null;
+    if (!/^[0-9]{1,2}(?:\.(?:0|25|5|50|75))?$/.test(raw)) return null;
     const side = /^(over|under)(?:\s|$)/.exec(name)?.[1];
     return side ? side.toUpperCase() + '_' + raw.replace('.', '_') : null;
   }
