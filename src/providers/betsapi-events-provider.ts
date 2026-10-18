@@ -11,6 +11,20 @@ const fail = <T>(code: string): ProviderResult<T> => ({ ok: false, value: null, 
 const ok = <T>(value: T): ProviderResult<T> => ({ ok: true, value });
 const ids = (xs: unknown): Record<string, unknown>[] => Array.isArray(xs) ? xs.filter((x): x is Record<string, unknown> => !!x && typeof x === 'object' && !Array.isArray(x)) : [];
 const validToken = (token: string) => /^[A-Za-z0-9_-]{12,180}$/.test(token);
+
+/** Limit in-flight upstream requests; preserve input order and fail closed on errors. */
+async function mapBetsApiBounded<T, R>(items: readonly T[], mapper: (item: T) => Promise<R>, limit = 3): Promise<R[]> {
+  const result = new Array<R>(items.length);
+  let cursor = 0;
+  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, async () => {
+    while (cursor < items.length) {
+      const index = cursor++;
+      result[index] = await mapper(items[index]!);
+    }
+  }));
+  return result;
+}
+
 export class BetsApiEventsProvider implements SportsDataProvider {
   readonly name = 'betsapi';
   readonly configured: boolean;
@@ -57,7 +71,7 @@ export class BetsApiEventsProvider implements SportsDataProvider {
     if (sport && !sports.has(sport)) return ok([]);
     return this.guarded(async () => {
       const chosen = sport ? [sports.get(sport)!] : [...sports.values()];
-      const pages = await Promise.all(chosen.map(id => this.request('/v3/events/inplay', { sport_id: String(id) })));
+      const pages = await mapBetsApiBounded(chosen, id => this.request('/v3/events/inplay', { sport_id: String(id) }));
       return pages.flatMap((page, i) => ids(page).map(event => normalizeBetsapiEvent({ ...event, sport_id: chosen[i] })).filter((m): m is ProviderMatch => m !== null));
     });
   }
@@ -71,14 +85,14 @@ export class BetsApiEventsProvider implements SportsDataProvider {
       for (let ms = Date.UTC(new Date(start).getUTCFullYear(), new Date(start).getUTCMonth(), new Date(start).getUTCDate()); ms <= end; ms += 86400000) days.push(new Date(ms).toISOString().slice(0,10).replace(/-/g,''));
       const requests = selected.flatMap(sportId => days.map(day => ({sportId, day})));
       if (requests.length > 35) throw Error('REQUEST_BUDGET');
-      const results = await Promise.all(requests.map(x => this.request('/v3/events/upcoming', {sport_id: String(x.sportId), day: x.day, page: '1'})));
+      const results = await mapBetsApiBounded(requests, x => this.request('/v3/events/upcoming', {sport_id: String(x.sportId), day: x.day, page: '1'}));
       const matches = results.flatMap((page, i) => ids(page).map(event => normalizeBetsapiEvent({...event, sport_id: requests[i]!.sportId})).filter((m): m is ProviderMatch => m !== null));
       return [...new Map(matches.filter(x => {const time = new Date(x.scheduledAt).getTime(); return time >= start && time <= end;}).map(x => [x.providerId,x])).values()];
     });
   }
   private async quote(matchProviderIds: string[], live: boolean): Promise<ProviderResult<ProviderOddsBundle[]>> {
     if (matchProviderIds.length > 15) return fail('REQUEST_BUDGET');
-    return this.guarded(async () => Promise.all(matchProviderIds.map(async id => {
+    return this.guarded(async () => mapBetsApiBounded(matchProviderIds, async id => {
       const parsed = parseBetsapiIdentity(id);
       if (!parsed) throw Error('INVALID_EVENT_ID');
       const raw = await this.request('/v2/event/odds', {event_id: parsed.eventId});
