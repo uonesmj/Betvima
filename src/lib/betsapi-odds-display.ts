@@ -8,5 +8,6 @@ export function formatBetsApiOdds(value: string | number | null | undefined): st
   if (!Number.isFinite(decimal) || decimal <= 1 || decimal > 100_000) return '—';
   // Use a sportsbook-like 2-decimal screen quote, with unnecessary zeros removed.
   // Internal source price remains unchanged at full precision.
+  if (decimal < 1.01) return decimal.toFixed(4).replace(/0+$/, '');
   return decimal.toFixed(2).replace(/\.?0+$/, '');
 }
