@@ -33,6 +33,13 @@ def normalized_team(raw):
     return " ".join(re.findall(r"[^\W_]+", value, flags=re.UNICODE))
 
 
+def score(row):
+    """Read a strictly formatted live score; missing data is never a match."""
+    value = str(row.get("ss") or "") if isinstance(row, dict) else ""
+    match = re.fullmatch(r"([0-9]{1,2})-([0-9]{1,2})", value)
+    return (int(match.group(1)), int(match.group(2))) if match else None
+
+
 def identity(row):
     if not isinstance(row, dict):
         return None
@@ -57,6 +64,7 @@ def identity(row):
     except (ValueError, TypeError):
         return None
     return {"id": event_id, "home": home_name, "away": away_name, "epoch": epoch,
+            "score": score(row),
             "league": str(league.get("name") or "")[:100]}
 
 
@@ -84,9 +92,13 @@ def compare(bet365_rows, events_rows):
     for fi_id, (fi, matches) in fi_to_events.items():
         if len(matches) == 1 and len(event_to_fis[matches[0]["id"]]) == 1:
             event = matches[0]
+            if fi["score"] is not None and event["score"] is not None and fi["score"] != event["score"]:
+                ambiguous.append({"fi": fi_id, "possible_events": 1, "reason": "SCORE_CONFLICT"})
+                continue
             candidates.append({"bet365_fi": fi_id, "events_provider_id": "1:" + event["id"],
                                "home": fi["home"], "away": fi["away"],
                                "kickoff_delta_seconds": abs(fi["epoch"] - event["epoch"]),
+                               "score_corroborated": fi["score"] is not None and event["score"] is not None,
                                "independently_verified": False})
         else:
             ambiguous.append({"fi": fi_id, "possible_events": len(matches)})
@@ -157,6 +169,8 @@ def main():
         "bet365_usable_fi": len(fi), "events_usable_ids": len(ev),
         "unique_name_time_candidates": len(candidates),
         "ambiguous_fi": len(ambiguous),
+        "score_corroborated_candidates": sum(bool(x["score_corroborated"]) for x in candidates),
+        "score_conflicts": sum(x.get("reason") == "SCORE_CONFLICT" for x in ambiguous),
         "duplicate_fi_identifiers": duplicate_fis,
         "duplicate_event_identifiers": duplicate_events,
         "unmatched_reason_counts": dict(Counter(row["reason"] for row in unmatched)),
