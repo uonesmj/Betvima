@@ -58,9 +58,13 @@ export function fillBetsApiMissingMinutes(
     if (fixture.minute !== null || !fixture.eventId) return fixture;
     const event = byId.get(fixture.eventId);
     if (!event || event.minute === null ||
-        event.fi !== null && fixture.fi !== event.fi ||
+        (event.fi !== null && fixture.fi !== event.fi)) return fixture;
+    // Events API and Bet365 may use different translations/abbreviations of
+    // team names. A confirmed linked FI is stronger than text labels.
+    if (event.fi === null && (
         event.home.trim().toLowerCase() !== fixture.home.trim().toLowerCase() ||
-        event.away.trim().toLowerCase() !== fixture.away.trim().toLowerCase()) return fixture;
+        event.away.trim().toLowerCase() !== fixture.away.trim().toLowerCase()
+    )) return fixture;
     return { ...fixture, minute: event.minute };
   });
 }
