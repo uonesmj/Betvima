@@ -101,6 +101,20 @@ class Bet365SportsAdapterTest {
         assertTrue(enriched.markets.all { !it.available })
     }
 
+    @Test fun eventClockUpdatesWithoutChangingNativeMarketOrVisualModels() {
+        val old = parseMatch(fixture.put("minute", JSONObject.NULL))
+        assertNull(old.minute)
+        val updated = withBet365MatchMinute(old, JSONObject().put("minute", 79))
+        assertEquals(79, updated.minute)
+        assertEquals(old.id, updated.id)
+        assertEquals(old.league, updated.league)
+        assertEquals(old.home.logo, updated.home.logo)
+        assertFalse(updated.bettingAvailable)
+        assertNull(withBet365MatchMinute(old, JSONObject().put("minute", "error")).minute)
+        assertNull(withBet365MatchMinute(old, JSONObject().put("minute", 210)).minute)
+        assertNull(withBet365MatchMinute(old, null).minute)
+    }
+
     @Test fun pathsContainOnlyValidatedProviderIds() {
         val ref = bet365Ref("betsapi:upcoming:17:203138143")!!
         assertEquals("/api/v1/betsapi/card-prices?mode=upcoming&sportId=17&fi=203138143",
