@@ -90,7 +90,7 @@ export class BetsApiEventsProvider implements SportsDataProvider {
   /** Full bookmaker catalogue is available for display only; it cannot enter
    * real-money selection tables until mapping and grading are proven. */
   async fetchBet365Catalogue(fi: string, mode: 'live' | 'upcoming'): Promise<ProviderResult<Bet365Catalogue>> {
-    if (!/^\\d{1,16}$/.test(fi)) return fail('INVALID_BET365_FI');
+    if (!/^[0-9]{1,16}$/.test(fi)) return fail('INVALID_BET365_FI');
     return this.guarded(async () => {
       const path = mode === 'live' ? '/v1/bet365/event' : '/v4/bet365/prematch';
       const data = await this.request(path, { FI: fi });
