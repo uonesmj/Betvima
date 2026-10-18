@@ -14,6 +14,30 @@ try {
   if (!object || !Array.isArray(object.results) || String(object.success) !== '1') {
     throw new Error('INVALID_BETSAPI_RESPONSE');
   }
+
+  const shape = (value: unknown) => {
+    const counts: Record<string, number> = {};
+    const seen = new Set<unknown>();
+    let visited = 0;
+    function walk(node: unknown, depth: number): void {
+      if (depth > 10 || visited++ > 100000 || node === null || typeof node !== 'object' || seen.has(node)) return;
+      seen.add(node);
+      if (Array.isArray(node)) { for (const child of node) walk(child, depth + 1); return; }
+      const record = node as Record<string, unknown>;
+      const kind = typeof record.type === 'string' ? record.type : '';
+      if (kind === 'MG' || kind === 'MA' || kind === 'PA') counts[kind] = (counts[kind] ?? 0) + 1;
+      if (Array.isArray(record.odds)) counts.oddsArrays = (counts.oddsArrays ?? 0) + 1;
+      for (const value of Object.values(record)) walk(value, depth + 1);
+    }
+    walk(value, 0);
+    return {
+      rootResults: Array.isArray(value) ? value.length : null,
+      firstItemType: Array.isArray(value) && value.length ? (Array.isArray(value[0]) ? 'array' : typeof value[0]) : null,
+      records: counts,
+      truncatedScan: visited > 100000,
+    };
+  };
+  const upstreamShape = shape(object.results);
   const catalogue = parseBet365Catalogue(fi, mode, object.results);
   const totals = summarizeBet365Catalogue(catalogue);
   const groups = catalogue.markets.map(market => ({
@@ -25,7 +49,7 @@ try {
   })).sort((a, b) => b.selections - a.selections).slice(0, 20);
   console.log(JSON.stringify({
     source: 'bet365', fixtureId: fi, mode,
-    ...totals, largestMarketGroups: groups,
+    ...totals, upstreamShape, largestMarketGroups: groups,
     verifiedFixtureIdentity: false, authoritativeSettlement: false,
     warning: 'Diagnostic only. All prices remain read-only and cannot be staked.',
   }, null, 2));
