@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { formatBetsApiOdds } from '@/lib/betsapi-odds-display';
+import { sportByKey } from '@/lib/betsapi-sports-map';
 import Link from 'next/link';
 import { useApp } from '@/components/layout/providers';
 import { TeamLogo, LeagueLogo } from '@/components/ui/logo';
@@ -95,14 +96,9 @@ export function BetsApiEventMarkets({
       if (cancelled || inflight || document.visibilityState !== 'visible' || !navigator.onLine) return;
       inflight = true;
       try {
-        const q = new URLSearchParams({ fi, mode, sportId: String(
-          ({ football: 1, basketball: 18, tennis: 13, volleyball: 91, 'ice-hockey': 17,
-            cricket: 3, handball: 78, baseball: 16, 'american-football': 12,
-            'table-tennis': 92, darts: 15, snooker: 14, futsal: 83, badminton: 94,
-            'rugby-union': 8, 'rugby-league': 19, 'australian-rules': 36,
-            floorball: 90, 'beach-volleyball': 95, 'water-polo': 110, squash: 107,
-            esports: 151, mma: 162, boxing: 9, 'horse-racing': 2,
-            greyhounds: 4, bowls: 66, 'gaelic-sports': 75 } as Record<string, number>)[sportKey] ?? 1) });
+        const sportId = sportByKey(sportKey)?.id;
+        if (!sportId) return;
+        const q = new URLSearchParams({ fi, mode, sportId: String(sportId) });
         const response = await fetch('/api/v1/betsapi/market-refresh?' + q, { cache: 'no-store' });
         if (!response.ok) throw new Error('NETWORK');
         const wrapper = await response.json() as { ok: boolean; data?: {
