@@ -14,7 +14,10 @@ export const GET = withErrorHandling('betsapi.catalogue', async (_ctx, request: 
     return jsonOk({ source: 'betsapi_bet365', error: 'INVALID_MODE', matches: [] });
   const sportKey = url.searchParams.get('sport') || 'football';
   if (!sportByKey(sportKey)) return jsonOk({ source: 'betsapi_bet365', error: 'UNSUPPORTED_SPORT', matches: [] });
+  const leagueId = url.searchParams.get('leagueId') || undefined;
+  if (leagueId && !/^\d{1,16}$/.test(leagueId))
+    return jsonOk({ source: 'betsapi_bet365', error: 'INVALID_LEAGUE', matches: [] });
   const rawPage = Number(url.searchParams.get('page') || 1);
   const page = Number.isSafeInteger(rawPage) ? Math.max(1, Math.min(100, rawPage)) : 1;
-  return jsonOk(await getBetsApiSport(mode, sportKey, page));
+  return jsonOk(await getBetsApiSport(mode, sportKey, page, leagueId));
 });
