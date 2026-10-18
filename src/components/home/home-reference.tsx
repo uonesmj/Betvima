@@ -1,3 +1,4 @@
+import { Bet365HomeCards, type Bet365HomeFixture } from '@/components/betsapi/betsapi-home-cards';
 'use client';
 import { useApp } from "../layout/providers";
 import { CasinoHomeCarousel } from '@/components/casino/casino-showcase';
@@ -130,6 +131,8 @@ function MatchCard({
 }: {
   match: MatchView;
   liveEnabled: boolean;
+  bet365Live?: Bet365HomeFixture[];
+  bet365Upcoming?: Bet365HomeFixture[];
 }) {
   const { locale } = useApp();
   const toggle = useBetSlip((s) => s.toggle);
@@ -579,6 +582,8 @@ export function HomeReference({  sports,
   topBets,
   topBetsUnavailable = false,
   liveEnabled,
+  bet365Live = [],
+  bet365Upcoming = [],
 }: {
   sports: Sport[];
   live: MatchView[];
@@ -623,10 +628,12 @@ export function HomeReference({  sports,
           href="/live"
           icon={<Radio size={17} />}
           live
-          count={live.length}
+          count={bet365Live.length || live.length}
         />
 
-        {live.length > 0 ? (
+        {bet365Live.length > 0 ? (
+          <Bet365HomeCards fixtures={bet365Live} mode="live" />
+        ) : live.length > 0 ? (
           <div className="flex snap-x snap-mandatory gap-2.5 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden xl:grid xl:grid-cols-3 xl:overflow-visible xl:gap-3">
             {live.map((match) => (
               <MatchCard
@@ -671,10 +678,12 @@ export function HomeReference({  sports,
           title="Upcoming"
           href="/sports/football"
           icon={<Clock3 size={17} />}
-          count={upcomingOnly.length}
+          count={bet365Upcoming.length || upcomingOnly.length}
         />
 
-        {upcomingOnly.length > 0 ? (
+        {bet365Upcoming.length > 0 ? (
+          <Bet365HomeCards fixtures={bet365Upcoming} mode="upcoming" />
+        ) : upcomingOnly.length > 0 ? (
           <div className="flex snap-x snap-mandatory gap-2.5 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden xl:grid xl:grid-cols-3 xl:overflow-visible xl:gap-3">
             {upcomingOnly.map((match) => (
               <MatchCard
