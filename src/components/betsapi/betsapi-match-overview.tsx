@@ -27,8 +27,9 @@ const phrases = {
   en: ['Score','Live statistics','Match information'],
   fa: ['نتیجه بازی','آمار زنده','اطلاعات و سوابق'],
 };
-export function BetsApiMatchOverview({fixture,fi,sportKey,mode}:{
+export function BetsApiMatchOverview({fixture,fi,sportKey,mode,initial}:{
   fixture:MatchView|null; fi:string; sportKey:string; mode:'live'|'upcoming';
+  initial?: {home:string;away:string;kickoff:string};
 }) {
   const {locale}=useApp(), fa=locale==='fa';
   const [tab,setTab]=useState(0);
@@ -41,8 +42,8 @@ export function BetsApiMatchOverview({fixture,fi,sportKey,mode}:{
   const sportId=sportByKey(sportKey)?.id??1;
   const ht=fixture?.participants.find(p=>p.role==='HOME');
   const at=fixture?.participants.find(p=>p.role==='AWAY');
-  const home=ht?.name||stats?.home||'', away=at?.name||stats?.away||'';
-  const kickoff=fixture?.scheduledAt??'';
+  const home=ht?.name||stats?.home||initial?.home||'', away=at?.name||stats?.away||initial?.away||'';
+  const kickoff=fixture?.scheduledAt||initial?.kickoff||'';
   const score=stats?.score??(fixture?.homeScore!=null&&fixture?.awayScore!=null?
     String(fixture.homeScore)+'-'+String(fixture.awayScore):null);
   const minute=stats?.minute??fixture?.minute;
