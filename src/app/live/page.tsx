@@ -1,3 +1,4 @@
+import { BetsApiLiveStrip } from '@/components/betsapi/betsapi-live-strip';
 import { PageShell } from '@/components/layout/page-shell';
 import { ServiceNotice } from '@/components/layout/service-notice';
 import { MatchListClient } from '@/components/betting/match-list-client';
@@ -39,6 +40,7 @@ export default async function LivePage({
   return (
     <PageShell titleKey="live.title">
       <div className="space-y-4">
+        <BetsApiLiveStrip />
         {!providerConfigured ? (
           <ServiceNotice
             tone="warning"
