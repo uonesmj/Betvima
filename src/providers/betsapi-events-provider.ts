@@ -29,7 +29,7 @@ export class BetsApiEventsProvider implements SportsDataProvider {
     for (const [k, v] of Object.entries(params)) url.searchParams.set(k, v);
     url.searchParams.set('token', this.token);
     let response: Response;
-    try { response = await this.fetcher(url, { cache: 'no-store', redirect: 'error', signal: AbortSignal.timeout(9000) }); }
+    try { response = await this.fetcher(url, { cache: 'no-store', redirect: 'error', signal: AbortSignal.timeout(endpoint === '/v3/events/inplay' || endpoint === '/v3/events/upcoming' ? 25000 : 12000) }); }
     catch (e) { throw Error(e instanceof Error && /abort|timeout/i.test(e.name) ? 'UPSTREAM_TIMEOUT' : 'UPSTREAM_NETWORK'); }
     if (response.status === 429) throw Error('UPSTREAM_RATE_LIMIT');
     if (response.status === 401 || response.status === 403) throw Error('UPSTREAM_DENIED');
