@@ -1,7 +1,22 @@
 import { describe, expect, it } from 'vitest';
-import { parseBet365Catalogue, canPublishBet365CatalogueToWagering, identifyBet365SettlementCandidate, identifyBet365SelectionCandidate, validateBet365FixtureLink, compareBet365FixtureIdentity } from '@/providers/betsapi-bet365-catalogue';
+import { parseBet365Catalogue, canPublishBet365CatalogueToWagering, identifyBet365SettlementCandidate, identifyBet365SelectionCandidate, validateBet365FixtureLink, compareBet365FixtureIdentity, summarizeBet365Catalogue } from '@/providers/betsapi-bet365-catalogue';
 
 describe('Bet365 catalogue read-only mapping', () => {
+  it('reports actionable diagnostics while keeping all Bet365 markets read-only', () => {
+    const data = parseBet365Catalogue('789', 'live', [[
+      { type: 'MG', ID: '10', NA: 'Match Result', SU: '0' },
+      { type: 'PA', ID: '100', NA: 'Home', OD: '2/1', SU: '0' },
+      { type: 'PA', ID: '101', NA: 'Away', OD: '3/1', SU: '1' },
+      { type: 'MG', ID: '11', NA: 'Unknown Market', SU: '0' },
+      { type: 'PA', ID: '102', NA: 'Unknown Pick', OD: '4/1', SU: '0' },
+    ]]);
+    expect(summarizeBet365Catalogue(data)).toMatchObject({
+      marketGroups: 2, selections: 3, openPricedSelections: 2,
+      suspendedSelections: 1, exactMappedSelections: 1,
+      unresolvedSelections: 1, readOnly: true, wageringEligible: false,
+    });
+  });
+
   it('requires exact teams, near-identical kickoff and independent verification for fixture candidates', () => {
     const fi = { id: '991', home: 'Alpha FC', away: 'Beta', startsAt: '2026-10-19T14:00:00Z' };
     const ev = { id: '1:123', home: 'Alpha FC', away: 'Beta', startsAt: '2026-10-19T14:03:00Z' };
