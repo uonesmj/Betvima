@@ -65,7 +65,7 @@ function liveRecords(value: unknown): Record<string, unknown>[] {
   return found;
 }
 
-export function parseBet365LivePreview(fixtureId: string, results: unknown): Bet365PreviewResult {
+export function parseBet365LivePreview(fixtureId: string, results: unknown, includeSuspended = false): Bet365PreviewResult {
   if (!/^\d{1,16}$/.test(fixtureId)) throw new Error('INVALID_BET365_FI');
   const markets: Bet365PreviewMarket[] = [];
   let current: Bet365PreviewMarket | null = null;
@@ -96,7 +96,7 @@ export function parseBet365LivePreview(fixtureId: string, results: unknown): Bet
       currentSubmarket = string(data.NA).trim().slice(0, 110);
       continue;
     }
-    if (data.type !== 'PA' || !current) continue;
+    if (data.type !== 'PA' || !current || (!includeSuspended && (data.SU === '1' || submarketSuspended || current.status === 'suspended'))) continue;
     const price = bet365OddsDecimal(data.OD);
     const id = string(data.ID);
     const handicap = string(data.HA || data.HD || data.HC);
@@ -125,7 +125,7 @@ export function parseBet365LivePreview(fixtureId: string, results: unknown): Bet
  * corners_cards, others (possibly nested arrays), and sport-specific groups.
  * Traverse actual `sp` objects in every section instead of hardcoding only
  * first two response items or omitting `others`. */
-export function parseBet365PrematchPreview(fixtureId: string, results: unknown): Bet365PreviewResult {
+export function parseBet365PrematchPreview(fixtureId: string, results: unknown, includeSuspended = false): Bet365PreviewResult {
   if (!/^\d{1,16}$/.test(fixtureId)) throw new Error('INVALID_BET365_FI');
   const markets: Bet365PreviewMarket[] = [];
   const seen = new Set<string>();
@@ -146,7 +146,7 @@ export function parseBet365PrematchPreview(fixtureId: string, results: unknown):
         const decimal = bet365OddsDecimal(row.odds);
         const id = string(row.id);
         const label = outcomeLabel(row, id, string(row.handicap));
-        return decimal && id ? { id, label, decimal, status: groupSuspended || row.SU === '1' || row.suspended === true ? 'suspended' as const : 'open' as const, line: string(row.handicap) || null } : null;
+        return decimal && id && (includeSuspended || !(groupSuspended || row.SU === '1' || row.suspended === true)) ? { id, label, decimal, status: groupSuspended || row.SU === '1' || row.suspended === true ? 'suspended' as const : 'open' as const, line: string(row.handicap) || null } : null;
       }).filter((row): row is NonNullable<typeof row> => row !== null).slice(0, 250);
       if (selections.length) {
         seen.add(key);
