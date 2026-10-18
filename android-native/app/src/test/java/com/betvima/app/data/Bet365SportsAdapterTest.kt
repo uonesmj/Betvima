@@ -63,11 +63,11 @@ class Bet365SportsAdapterTest {
                 .put("name", "Fulltime Result")
                 .put("selections", JSONArray()
                     .put(JSONObject().put("label", "Home FC")
-                        .put("decimal", "2.1000").put("id", "1"))
+                        .put("decimal", "2.1000"))
                     .put(JSONObject().put("label", "Draw")
-                        .put("decimal", "3.2500").put("id", "2"))
+                        .put("decimal", "3.2500"))
                     .put(JSONObject().put("label", "Away FC")
-                        .put("decimal", "4.0000").put("id", "3"))))
+                        .put("decimal", "4.0000"))))
         val enriched = withBet365Headline(m, preview)
         assertEquals(26, enriched.marketsCount)
         assertEquals(3, enriched.featured?.selections?.size)
@@ -77,6 +77,7 @@ class Bet365SportsAdapterTest {
         assertFalse(enriched.featured!!.available)
         assertTrue(enriched.featured!!.selections.none { it.available })
         assertTrue(enriched.featured!!.selections.all { it.id.startsWith("bet365-preview:") })
+        assertTrue(enriched.featured!!.selections.all { it.id.contains("display-index-") })
     }
 
     @Test fun matchDetailsUseReadOnlyBet365Markets() {
