@@ -1,4 +1,5 @@
 'use client';
+import { sportsbookMatchHref } from '@/lib/betsapi-links';
 import { useApp } from "../layout/providers";
 import { CasinoHomeCarousel } from '@/components/casino/casino-showcase';
 
@@ -130,6 +131,8 @@ function MatchCard({
 }: {
   match: MatchView;
   liveEnabled: boolean;
+  liveTotal?: number | null;
+  upcomingTotal?: number | null;
 }) {
   const { locale } = useApp();
   const toggle = useBetSlip((s) => s.toggle);
@@ -185,7 +188,7 @@ function MatchCard({
             {match.isLive ? (
               <span className="inline-flex items-center gap-1.5 rounded-full bg-[#FFF0F2] px-2.5 py-1 text-[10px] font-black text-[#F04A63]">
                 <span className="h-1.5 w-1.5 rounded-full bg-[#F04A63]" />
-                LIVE {match.minute ?? 0}&apos;
+                {match.minute == null ? 'LIVE' : `LIVE ${match.minute}′`}
               </span>
             ) : (
               <span className="inline-flex items-center gap-1 rounded-full bg-[#F3F6FA] px-2.5 py-1 text-[10px] font-extrabold text-[#59636E]">
@@ -218,7 +221,7 @@ function MatchCard({
 
       {/* Teams / score */}
       <Link
-        href={`/match/${match.id}`}
+        href={sportsbookMatchHref(match.id)}
         className="block px-3 py-3 transition hover:bg-[#FAFBFC]"
       >
         <div className="mb-2 flex items-center justify-between text-[9px] font-black uppercase tracking-[.08em] text-[#8A9199]">
@@ -579,6 +582,8 @@ export function HomeReference({  sports,
   topBets,
   topBetsUnavailable = false,
   liveEnabled,
+  liveTotal,
+  upcomingTotal,
 }: {
   sports: Sport[];
   live: MatchView[];
@@ -623,7 +628,7 @@ export function HomeReference({  sports,
           href="/live"
           icon={<Radio size={17} />}
           live
-          count={live.length}
+          count={liveTotal ?? live.length}
         />
 
         {live.length > 0 ? (
@@ -641,8 +646,8 @@ export function HomeReference({  sports,
         )}
       </section>
 
-      {/* Top Bets */}
-      <section className="mb-6">
+      {/* Top Bets: only vetted selections can appear here. */}
+      {featuredBets.length > 0 && <section className="mb-6">
         <SectionHeader
           title="Top Bets"
           href="/topbets"
@@ -663,7 +668,7 @@ export function HomeReference({  sports,
         ) : (
           <EmptyState text={topBetsUnavailable ? "Top bets are temporarily unavailable." : "No upcoming matches with active odds right now."} />
         )}
-      </section>
+      </section>}
 
       {/* Upcoming */}
       <section className="mb-6">
@@ -671,7 +676,7 @@ export function HomeReference({  sports,
           title="Upcoming"
           href="/sports/football"
           icon={<Clock3 size={17} />}
-          count={upcomingOnly.length}
+          count={upcomingTotal ?? upcomingOnly.length}
         />
 
         {upcomingOnly.length > 0 ? (
