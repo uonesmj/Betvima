@@ -1,7 +1,17 @@
 import { describe, expect, it } from 'vitest';
-import { parseBet365Catalogue, canPublishBet365CatalogueToWagering, identifyBet365SettlementCandidate, identifyBet365SelectionCandidate, validateBet365FixtureLink } from '@/providers/betsapi-bet365-catalogue';
+import { parseBet365Catalogue, canPublishBet365CatalogueToWagering, identifyBet365SettlementCandidate, identifyBet365SelectionCandidate, validateBet365FixtureLink, compareBet365FixtureIdentity } from '@/providers/betsapi-bet365-catalogue';
 
 describe('Bet365 catalogue read-only mapping', () => {
+  it('requires exact teams, near-identical kickoff and independent verification for fixture candidates', () => {
+    const fi = { id: '991', home: 'Alpha FC', away: 'Beta', startsAt: '2026-10-19T14:00:00Z' };
+    const ev = { id: '1:123', home: 'Alpha FC', away: 'Beta', startsAt: '2026-10-19T14:03:00Z' };
+    expect(compareBet365FixtureIdentity(fi, ev)).toMatchObject({ candidate: true, reasons: [], requiresIndependentVerification: true });
+    expect(compareBet365FixtureIdentity(fi, {...ev, home: 'Other'}).candidate).toBe(false);
+    expect(compareBet365FixtureIdentity(fi, {...ev, home: 'Beta', away: 'Alpha FC'}).candidate).toBe(false);
+    expect(compareBet365FixtureIdentity(fi, {...ev, startsAt: '2026-10-19T14:06:00Z'}).candidate).toBe(false);
+    expect(compareBet365FixtureIdentity(fi, {...ev, startsAt: 'invalid'}).candidate).toBe(false);
+  });
+
   it('never equates bookmaker FI with Events identity without a verified link', () => {
     expect(validateBet365FixtureLink('123', '1:123', null)).toBe(false);
     expect(validateBet365FixtureLink('123', '1:123', { fi: '123', eventsProviderId: '1:123' })).toBe(true);
