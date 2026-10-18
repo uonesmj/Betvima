@@ -197,3 +197,22 @@ describe('Persian footer, bonus, VIP and affiliate completion', () => {
     expect(translateVisibleText('1.65')).toBe('1.65');
   });
 });
+
+
+describe('English-first locale persistence and stable selector dimensions', () => {
+  it('uses English before hydration regardless of deployment locale configuration', () => {
+    const providers = readFileSync('src/components/layout/providers.tsx', 'utf8');
+    expect(providers).toContain('useState<Locale>(DEFAULT_LOCALE)');
+    expect(providers).toContain("window.localStorage.getItem('nova-locale')");
+    expect(providers).toContain("window.localStorage.setItem('nova-locale', next)");
+    expect(providers).toContain("setLocaleState(DEFAULT_LOCALE)");
+    expect(providers).toContain("document.documentElement.dir = 'ltr'");
+  });
+
+  it('keeps the language control width and text flow stable in both languages', () => {
+    const selector = readFileSync('src/components/layout/language-selector.tsx', 'utf8');
+    expect(selector).toContain('shrink-0');
+    expect(selector).toContain('min-w-[112px]');
+    expect(selector).toContain('dir="ltr" translate="no"');
+  });
+});
