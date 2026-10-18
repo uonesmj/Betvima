@@ -5,6 +5,8 @@ Enter API token once. Never logs token, raw payload, or writes any file.
 Maximum 1 discovery plus 8 fixture calls. Never places or settles a wager.
 """
 import getpass
+import os
+from pathlib import Path
 import json
 import re
 import subprocess
@@ -49,7 +51,10 @@ def valid_price(value):
     return False
 
 def main():
-    token = getpass.getpass("BetsAPI token (hidden): ").strip()
+    secret_path = Path("/etc/betvima/betsapi-token")
+    token = (os.environ.get("BETSAPI_TOKEN") or (secret_path.read_text().strip() if secret_path.is_file() else "")).strip()
+    if not token:
+        token = getpass.getpass("BetsAPI token (hidden): ").strip()
     if not re.fullmatch(r"[A-Za-z0-9_-]{12,180}", token):
         return 2
     try:
