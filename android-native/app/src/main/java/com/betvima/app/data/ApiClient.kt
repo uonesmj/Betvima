@@ -12,6 +12,7 @@ import java.io.ByteArrayOutputStream
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.coroutines.supervisorScope
 import kotlinx.coroutines.withContext
 import okhttp3.MediaType.Companion.toMediaType
@@ -585,8 +586,19 @@ class ApiClient {
                 ?: throw ApiFailure(404, "BetsAPI fixture unavailable")
             val response = get(bet365PricesPath(ref))
             val enriched = withBet365Details(match, response)
-            remember(listOf(enriched))
-            return enriched
+            // Bet365's filtered list may omit timer.tm even for a real live
+            // match. The event facts endpoint reads TM/TT/TS/TU, capped to a
+            // small best-effort timeout. No visual component is modified.
+            val freshFacts = if (ref.mode == "live" && ref.sportId == "1") {
+                withTimeoutOrNull(4_000L) {
+                    runCatching {
+                        get("/api/v1/betsapi/match-facts?section=stats&mode=live&sportId=1&fi=" + ref.fi)
+                    }.getOrNull()
+                }
+            } else null
+            val current = withBet365MatchMinute(enriched, freshFacts)
+            remember(listOf(current))
+            return current
         }
         // Retain account access to historical bets identified by internal UUID.
         require(id.matches(Regex("[a-fA-F0-9-]{36}")))
