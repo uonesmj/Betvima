@@ -150,8 +150,10 @@ export function serverEnv(): ServerEnv {
     supabaseConfigured,
     configurationProblems: problems,
     configurationComplete: problems.length === 0,
-    sportsProviderEnabled: Boolean(env.ODDS_API_KEY) ||
-      (env.SPORTS_PROVIDER === 'the_odds_api' && Boolean(env.SPORTS_PROVIDER_API_KEY)),
+    sportsProviderEnabled: env.SPORTS_PROVIDER === 'betsapi'
+      ? process.env.BETSAPI_PROVIDER_ACTIVATION === 'validated' && /^[A-Za-z0-9_-]{12,180}$/.test(process.env.BETSAPI_TRIAL_TOKEN || '')
+      : Boolean(env.ODDS_API_KEY) ||
+        (env.SPORTS_PROVIDER === 'the_odds_api' && Boolean(env.SPORTS_PROVIDER_API_KEY)),
     paymentProviderEnabled: env.PAYMENT_PROVIDER !== 'disabled' && Boolean(env.PAYMENT_PROVIDER_API_KEY),
     paymentProvider: env.PAYMENT_PROVIDER,
     paymentProviderBaseUrl: env.PAYMENT_PROVIDER_BASE_URL,
