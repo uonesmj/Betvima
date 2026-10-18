@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { apiRequest } from '@/lib/hooks/useApi';
 import { labelTier } from '@/providers/betsapi-label-quality';
@@ -60,6 +60,7 @@ const prettyError = (value: string | null) => ({
 }[value ?? ''] ?? (value ?? ''));
 
 export function BetsApiExplorer() {
+  const deepLinkConsumed = useRef(false);
   const [mode, setMode] = useState<Mode>('live');
   const [feed, setFeed] = useState<'bet365' | 'events'>('bet365');
   const [sport, setSport] = useState(1);
@@ -140,6 +141,20 @@ export function BetsApiExplorer() {
     }, 30_000);
     return () => window.clearInterval(timer);
   }, [autoRefresh, mode, loadFixtures, loadMarkets, chosen]);
+
+  useEffect(() => {
+    if (deepLinkConsumed.current || !list || list.error || typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+    const fi = params.get('fi');
+    if (!fi || !/^\d{1,16}$/.test(fi)) { deepLinkConsumed.current = true; return; }
+    const item = list.fixtures.find(f => f.fi === fi);
+    if (!item) return;
+    deepLinkConsumed.current = true;
+    setChosen(item);
+    setMarkets(null);
+    setMarketPage(1);
+    void loadMarkets(item);
+  }, [list, loadMarkets]);
 
   const displayed = useMemo(() => (list?.fixtures ?? []).filter(f => {
     const q = search.trim().toLowerCase();
