@@ -499,7 +499,7 @@ class ApiClient {
 
     /** Keep the existing native Live rows and cards; switch only fixture source. */
     suspend fun live(): Pair<List<Match>, Boolean> {
-        val sports = bet365PrimarySports
+        val sports = bet365LiveSports
         val lists = supervisorScope {
             sports.map { sport -> async {
                 runCatching { bet365List("live", sport) }
