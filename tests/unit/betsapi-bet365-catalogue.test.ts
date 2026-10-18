@@ -13,6 +13,20 @@ describe('Bet365 catalogue read-only mapping', () => {
     expect(result.selectionCount).toBe(2);
     expect(result.markets[0]?.selections[0]?.id).toContain('bet365:12345:');
   });
+  it('keeps suspended markets and individual unavailable picks visible but non-executable', () => {
+    const result = parseBet365Catalogue('999', 'live', [[
+      { type: 'MG', ID: '15', NA: 'Goals', SU: '1' },
+      { type: 'MA', NA: '2.5', SU: '0' },
+      { type: 'PA', ID: '10', NA: 'Over', HA: '2.5', OD: '5/4', SU: '0' },
+      { type: 'MG', ID: '16', NA: 'Match result', SU: '0' },
+      { type: 'PA', ID: '11', NA: 'Home', OD: '2/1', SU: '1' },
+    ]]);
+    expect(result.marketCount).toBe(2);
+    expect(result.markets[0]?.status).toBe('suspended');
+    expect(result.markets[0]?.selections[0]).toMatchObject({status: 'suspended',line:'2.5'});
+    expect(result.markets[1]?.status).toBe('open');
+    expect(result.markets[1]?.selections[0]?.status).toBe('suspended');
+  });
   it('rejects invalid bookmaker FI and prohibits wagering publication', () => {
     expect(() => parseBet365Catalogue('../x', 'live', [])).toThrow('INVALID_BET365_FI');
     expect(canPublishBet365CatalogueToWagering()).toBe(false);
