@@ -46,9 +46,9 @@ fun LanguagePickerDialog(
         },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                LocaleOption("🇮🇷", "فارسی", "Persian · راست‌به‌چپ",
+                LocaleOption("🇮🇷", "فارسی", "فارسی · نمایش متن راست‌به‌چپ",
                     current == Lang.FA) { onSelect(Lang.FA) }
-                LocaleOption("🇬🇧", "English", "English · Left to right",
+                LocaleOption("🇬🇧", "English", "English · text left to right",
                     current == Lang.EN) { onSelect(Lang.EN) }
             }
         },
