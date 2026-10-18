@@ -6,7 +6,9 @@ import type {
 } from "@/lib/ports/providers";
 
 /** Single authorized sportsbook data and bookmaker source. */
-export const MATCH_SOURCE_ODDS = "the_odds_api";
+export const MATCH_SOURCE_ODDS = process.env.SPORTS_PROVIDER === "betsapi" &&
+  process.env.BETSAPI_PROVIDER_ACTIVATION === "validated"
+  ? "betsapi" : "the_odds_api";
 
 /** Preserve the canonical match mapping used by existing settled and pending bets. */
 export async function attachProviderMatchIdentity(
@@ -49,7 +51,7 @@ export async function fetchOddsForOwningProvider(
       ok: false,
       value: null,
       errorCode: "ODDS_PROVIDER_NOT_AUTHORIZED",
-      errorMessage: "Only The Odds API may supply sportsbook prices",
+      errorMessage: "Only the explicitly selected authorized sportsbook source may supply prices",
       retryable: false,
     };
   }
