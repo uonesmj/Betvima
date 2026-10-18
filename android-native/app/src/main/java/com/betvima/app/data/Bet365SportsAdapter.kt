@@ -71,13 +71,19 @@ private fun scaledQuote(decimal: String): String? = runCatching {
  * external provider is NOT a tradable selection in BetVima's local ledger.
  * UI components still render the decimal price but cannot activate bet buttons.
  */
-internal fun parseBet365Market(raw: JSONObject, fixtureId: String, position: Int): Market? {
+internal fun parseBet365Market(raw: JSONObject, fixtureId: String, position: Int,
+    displayOnlyIdentity: Boolean = false): Market? {
     val title = raw.str("title", raw.str("name"))
     if (title.isBlank() || title.length > 180 || !fixtureId.startsWith("betsapi:")) return null
     val key = raw.str("key", "market_$position").take(70)
         .replace(Regex("[^a-zA-Z0-9_-]"), "_")
-    val selections = raw.arr("selections").objects().take(100).mapNotNull { selection ->
-        val id = selection.str("id")
+    val selections = raw.arr("selections").objects().take(100).mapIndexedNotNull { index, selection ->
+        // Headline endpoint intentionally omits vendor selection ids.
+        // Invent ONLY an unmistakably non-wagerable display identity, and
+        // only in this path. Full detail must retain actual bookmaker id.
+        val id = selection.str("id").ifBlank {
+            if (displayOnlyIdentity) "display-index-$index" else ""
+        }
         val label = selection.str("label", selection.str("name"))
         val quote = scaledQuote(selection.str("decimal"))
         if (id.isBlank() || id.length > 100 || label.isBlank() ||
@@ -106,7 +112,7 @@ internal fun withBet365Headline(match: Match, data: JSONObject): Match {
     val raw = data.optJSONObject("market") ?: return match.copy(bettingAvailable = false)
     val marketJson = JSONObject().put("key", "headline")
         .put("title", raw.str("name")).put("selections", raw.arr("selections"))
-    val market = parseBet365Market(marketJson, match.id, 0)
+    val market = parseBet365Market(marketJson, match.id, 0, displayOnlyIdentity = true)
     return match.copy(
         markets = if (market != null) listOf(market) else emptyList(),
         marketsCount = data.optInt("marketCount", 0).coerceAtLeast(0),
