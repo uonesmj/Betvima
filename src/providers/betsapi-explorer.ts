@@ -37,10 +37,10 @@ export interface ExplorerFixture {
   sportId: number;
   league: string;
   /** Bet365 league identity, not interchangeable with Events API ids. */
-  leagueId: string | null;
-  leagueLogoUrl: string | null;
-  homeLogoUrl: string | null;
-  awayLogoUrl: string | null;
+  leagueId?: string | null;
+  leagueLogoUrl?: string | null;
+  homeLogoUrl?: string | null;
+  awayLogoUrl?: string | null;
   country: string | null;
   home: string;
   away: string;
