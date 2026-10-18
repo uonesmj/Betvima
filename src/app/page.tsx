@@ -1,3 +1,4 @@
+import { BetsApiLiveStrip } from '@/components/betsapi/betsapi-live-strip';
 import Link from 'next/link';
 import { Activity, ArrowLeft, CircleDot, Dumbbell, Gamepad2, Swords, Target, Trophy, Zap } from 'lucide-react';
 import { PageShell } from '@/components/layout/page-shell';
@@ -31,6 +32,10 @@ export default async function HomePage() {
         <Link href="/betsapi" className="shrink-0 rounded-lg bg-blue-600 px-4 py-2 font-semibold hover:bg-blue-500">
           Browse BetsAPI markets ↗
         </Link>
+      </div>
+      <div className="mx-3 mb-4 space-y-4" dir="ltr">
+        <BetsApiLiveStrip mode="live" />
+        <BetsApiLiveStrip mode="upcoming" />
       </div>
       <div dir="ltr" className="w-full">
         <HomeReference
