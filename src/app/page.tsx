@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { BetsApiCatalogue } from '@/components/betsapi/betsapi-catalogue';
 import { Activity, ArrowLeft, CircleDot, Dumbbell, Gamepad2, Swords, Target, Trophy, Zap } from 'lucide-react';
 import { PageShell } from '@/components/layout/page-shell';
 import { HomeReference } from '@/components/home/home-reference';
@@ -32,6 +33,8 @@ export default async function HomePage() {
           Browse BetsAPI markets ↗
         </Link>
       </div>
+      <BetsApiCatalogue mode="live" />
+      <BetsApiCatalogue mode="upcoming" />
       <div dir="ltr" className="w-full">
         <HomeReference
           sports={data.sports}

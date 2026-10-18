@@ -1,3 +1,4 @@
+import { BetsApiCatalogue } from '@/components/betsapi/betsapi-catalogue';
 import { PageShell } from '@/components/layout/page-shell';
 import { ServiceNotice } from '@/components/layout/service-notice';
 import { MatchListClient } from '@/components/betting/match-list-client';
@@ -39,6 +40,7 @@ export default async function LivePage({
   return (
     <PageShell titleKey="live.title">
       <div className="space-y-4">
+        <BetsApiCatalogue mode="live" />
         {!providerConfigured ? (
           <ServiceNotice
             tone="warning"
