@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { sportsbookMatchHref } from '@/lib/betsapi-links';
+import { BetsApiHeadlinePrices } from '@/components/betsapi/betsapi-headline-prices';
 import { CalendarDays, ChevronRight, LockKeyhole, Radio } from 'lucide-react';
 import { useApp } from '@/components/layout/providers';
 import { translateSportName, translateBettingSelection } from '@/lib/i18n/ui-phrases';
@@ -130,6 +131,10 @@ export function MatchCard({
           ))}
         </Link>
         <div className="h-px bg-[#E2E7EC]/70" />
+        {match.id.startsWith('betsapi:') ? (
+          <BetsApiHeadlinePrices matchId={match.id} />
+        ) : (
+          <>
         <div className="flex min-w-0 items-center justify-between gap-2">
           <span className="min-w-0 truncate text-[11px] text-[#798592]">{marketName}</span>
           <span className="shrink-0 text-[9px] font-bold text-[#798592]">{locale === 'fa' ? 'ضرایب' : 'ODDS'}</span>
@@ -149,6 +154,8 @@ export function MatchCard({
             {match.marketsCount ? `+${match.marketsCount}` : <ChevronRight size={17}/>}
           </Link>
         </div>
+          </>
+        )}
       </div>
     </article>
   );
