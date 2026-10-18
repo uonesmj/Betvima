@@ -1,4 +1,5 @@
 import { TheOddsApiSportsProvider } from "./the-odds-api";
+import { BetsApiEventsProvider } from "./betsapi-events-provider";
 import { NowPaymentsProvider } from "./nowpayments";
 import { ResendEmailProvider } from './resend-email';
 /**
@@ -134,9 +135,12 @@ export function providers(): ProviderRegistryLike {
   if (registry) return registry;
   const env = serverEnv();
   const oddsProvider = new TheOddsApiSportsProvider();
-  // The Odds API is the only permitted sports data and bookmaker source.
-  // No alternate football feed, fallback registry or implicit credentials.
-  const sportsProviders = oddsProvider.configured ? [oddsProvider] : [];
+  // BetsAPI opt-in is deliberately OFF unless independently configured.
+  // Never mix its event IDs with legacy The Odds API selection identities.
+  const betsApi = new BetsApiEventsProvider();
+  const useBetsApi = process.env.SPORTS_PROVIDER === 'betsapi' &&
+    process.env.BETSAPI_PROVIDER_ACTIVATION === 'validated' && betsApi.configured;
+  const sportsProviders = useBetsApi ? [betsApi] : oddsProvider.configured ? [oddsProvider] : [];
   const primarySportsProvider = sportsProviders[0] ?? new DisabledSportsProvider();
 
   registry = {
@@ -183,7 +187,7 @@ export function setProviders(next: ProviderRegistryLike | null): void {
 export async function providerHealthRows(db: { query: (sql: string, params?: unknown[]) => Promise<Record<string, unknown>[]> }) {
   return db.query(
     `select provider, kind, status, last_success_at, last_error, metadata from nova.provider_health
-      where kind <> 'sports' or provider in ('the_odds_api', 'disabled')
+      where kind <> 'sports' or provider in ('the_odds_api', 'betsapi', 'disabled')
       order by kind, provider`,
   );
 }
