@@ -395,7 +395,7 @@ export function ReferenceSportsNav({ showTournament = true, showSportsCarousel =
     let cancelled = false;
     const loadLiveSportCounts = async () => {
       try {
-        const response = await fetch('/api/v1/live?limit=1', { cache: 'no-store' });
+        const response = await fetch('/api/v1/betsapi/catalogue?mode=home', { cache: 'no-store' });
         if (!response.ok) return;
         const data = await response.json();
         const counts = data?.data?.liveSportCounts ?? data?.liveSportCounts;
