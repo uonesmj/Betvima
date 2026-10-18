@@ -1,5 +1,5 @@
-import { Bet365HomeCards, type Bet365HomeFixture } from '@/components/betsapi/betsapi-home-cards';
 'use client';
+import { Bet365HomeCards, type Bet365HomeFixture } from '@/components/betsapi/betsapi-home-cards';
 import { useApp } from "../layout/providers";
 import { CasinoHomeCarousel } from '@/components/casino/casino-showcase';
 
