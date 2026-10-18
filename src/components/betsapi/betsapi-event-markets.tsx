@@ -148,9 +148,16 @@ export function BetsApiEventMarkets({
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h2 className="text-lg font-extrabold text-[#253345]">{isFa ? 'مارکت‌های مسابقه' : 'Match markets'}</h2>
         <span className="rounded-lg bg-white px-3 py-1.5 text-xs font-semibold text-[#758496]">
-          {validMarkets.length} {isFa ? 'مارکت قابل نمایش' : 'labeled markets'}{reportedCount > validMarkets.length ? ` / ${reportedCount}` : ''}
+          {validMarkets.length} {isFa ? 'مارکت با عنوان معتبر' : 'markets with verified labels'}
         </span>
       </div>
+      {reportedCount > validMarkets.length && (
+        <p className="text-[11px] leading-5 text-[#758496]">
+          {isFa
+            ? `${reportedCount - validMarkets.length} گروه دیگر از API دریافت شده، اما عنوان گزینه‌هایشان کافی نیست؛ برای جلوگیری از نمایش گمراه‌کننده پنهان شده‌اند.`
+            : `${reportedCount - validMarkets.length} additional API market groups have insufficiently identified outcomes and are hidden to avoid misleading prices.`}
+        </p>
+      )}
       <div className="relative">
         <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#8394A4]" />
         <input type="search" value={search} onChange={e => { setSearch(e.target.value); setLimit(40); }}
