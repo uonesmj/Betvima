@@ -12,6 +12,9 @@ export interface FixtureLinkEvidence {
     source: 'provider_mapping' | 'operator_verified';
     reference: string;
     verifiedAt: string;
+    /** IDs independently recorded by the corroborating source; never inferred from names. */
+    mappedBookmakerFi: string;
+    mappedEventsProviderId: string;
   } | null;
 }
 export interface FixtureLinkVerdict {
@@ -29,6 +32,8 @@ export function evaluateBet365FixtureLink(evidence: FixtureLinkEvidence, now: Da
   if (!proof) reasons.push('NO_INDEPENDENT_CORROBORATION');
   else {
     if (!/^[A-Za-z0-9:_./-]{8,160}$/.test(proof.reference)) reasons.push('INVALID_REFERENCE');
+    if (proof.mappedBookmakerFi !== evidence.bookmaker.id ||
+        proof.mappedEventsProviderId !== evidence.events.id) reasons.push('CORROBORATED_ID_MISMATCH');
     const proofTime = Date.parse(proof.verifiedAt);
     if (!Number.isFinite(proofTime) || !Number.isFinite(now.getTime()) ||
       proofTime > now.getTime() + 60_000 || now.getTime() - proofTime > 24 * 3600_000) {
