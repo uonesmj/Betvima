@@ -18,6 +18,16 @@ export async function attachProviderMatchIdentity(
   internalId: string,
 ): Promise<boolean> {
   if (provider !== MATCH_SOURCE_ODDS) return false;
+  // A BetsAPI event must not inherit the internal UUID of a legacy Odds API
+  // fixture: old bet legs and settlement would then silently change meaning.
+  // Fail closed when a different source already owns the destination UUID.
+  const conflict = await db.queryOne<{ provider: string; provider_id: string }>(
+    `select provider, provider_id from nova.provider_entities
+       where entity_type = 'match' and internal_id = $1
+         and provider <> $2 limit 1`,
+    [internalId, provider],
+  );
+  if (conflict) return false;
   const row = await db.queryOne<{ internal_id: string }>(
     `insert into nova.provider_entities
        (provider, entity_type, provider_id, internal_id, last_seen_at)
