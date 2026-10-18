@@ -46,9 +46,9 @@ fun LanguagePickerDialog(
         },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                LocaleOption("🇮🇷", "فارسی", "Persian · راست‌به‌چپ",
+                LocaleOption("🇮🇷", "فارسی", "فارسی · نمایش متن راست‌به‌چپ",
                     current == Lang.FA) { onSelect(Lang.FA) }
-                LocaleOption("🇬🇧", "English", "English · Left to right",
+                LocaleOption("🇬🇧", "English", "English · text left to right",
                     current == Lang.EN) { onSelect(Lang.EN) }
             }
         },
@@ -74,9 +74,9 @@ private fun LocaleOption(
             Spacer(Modifier.width(13.dp))
             Column(Modifier.weight(1f),
                 verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                Text(title, color = Palette.text,
+                Text(title, color = Palette.text, maxLines = 1,
                     fontWeight = FontWeight.ExtraBold, fontSize = 16.sp)
-                Text(description, color = Palette.muted, fontSize = 11.sp)
+                Text(description, color = Palette.muted, fontSize = 11.sp, maxLines = 2)
             }
             if (selected) Icon(Icons.Default.Check, null,
                 tint = Palette.green, modifier = Modifier.size(22.dp))

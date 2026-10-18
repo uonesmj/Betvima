@@ -25,7 +25,7 @@ enum class Lang { EN, FA }
 data class AppState(
     val tab: Tab = Tab.HOME, val homeMode: HomeMode = HomeMode.TOP,
     val feature: Feature = Feature.NONE,
-    val lang: Lang = Lang.FA, val sport: String = "all",
+    val lang: Lang = Lang.EN, val sport: String = "all",
     val tournamentLeague: String = "",
     val live: List<Match> = emptyList(), val upcoming: List<Match> = emptyList(),
     val liveLoading: Boolean = false, val upcomingLoading: Boolean = false,
@@ -79,7 +79,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     private val ticketLookupSemaphore = Semaphore(2)
     private val mutable = MutableStateFlow(AppState(
         signedIn = vault.signedIn(),
-        lang = if (preferences.getString("language", "fa") == "en") Lang.EN else Lang.FA
+        lang = if (preferences.getString("language", "en") == "fa") Lang.FA else Lang.EN
     ))
     val state = mutable.asStateFlow()
     init {

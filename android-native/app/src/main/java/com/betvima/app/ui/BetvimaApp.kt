@@ -119,8 +119,7 @@ fun BetvimaApp(model: AppViewModel) {
         }
     }
 
-    CompositionLocalProvider(LocalLayoutDirection provides
-        (if (state.lang == Lang.FA) LayoutDirection.Rtl else LayoutDirection.Ltr)) {
+    CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr, LocalBvLanguage provides state.lang) {
         ModalNavigationDrawer(
             drawerState = drawer,
             drawerContent = {
