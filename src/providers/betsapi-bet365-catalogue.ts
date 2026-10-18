@@ -23,7 +23,7 @@ const lineFromLabel = (name: string) => {
 /** Deterministic IDs are namespace scoped to FI and bookmaker market. */
 export function parseBet365Catalogue(fi: string, mode: 'live' | 'upcoming', response: unknown): Bet365Catalogue {
   if (!safeId(fi)) throw new Error('INVALID_BET365_FI');
-  const parsed = mode === 'live' ? parseBet365LivePreview(fi, response) : parseBet365PrematchPreview(fi, response);
+  const parsed = mode === 'live' ? parseBet365LivePreview(fi, response, true) : parseBet365PrematchPreview(fi, response, true);
   const seen = new Set<string>();
   const markets: Bet365CatalogueMarket[] = [];
   for (const market of parsed.markets) {
