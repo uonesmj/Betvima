@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { apiRequest } from '@/lib/hooks/useApi';
+import { labelTier } from '@/providers/betsapi-label-quality';
 
 type Mode = 'live' | 'upcoming';
 interface Fixture {
@@ -57,16 +58,6 @@ const prettyError = (value: string | null) => ({
   FORBIDDEN_ORIGIN: 'The request was rejected by the same-origin protection.',
   NO_BET365_MARKETS: 'This Events API fixture is listed, but it has no linked Bet365 FI. No bookmaker market is available for this match.',
 }[value ?? ''] ?? (value ?? ''));
-
-// Read-only classification: a known side/line is useful context, not a verified full outcome.
-function labelTier(label: string, marketTitle: string): 'named' | 'partial' | 'unresolved' {
-  if (!/Unlabelled outcome #/i.test(label)) return 'named';
-  const side = /\b(Over|Under|Exactly)\b/i.test(label);
-  const line = /\bline\s*[+-]?\d+(?:\.\d+)?\b/i.test(label);
-  if (side && line && /(?:Goals|Corners|Handicap|Minutes|Cards|Line)/i.test(marketTitle)) return 'partial';
-  if (line && /Handicap/i.test(marketTitle) && !/\bDraw\b/i.test(label)) return 'partial';
-  return 'unresolved';
-}
 
 export function BetsApiExplorer() {
   const [mode, setMode] = useState<Mode>('live');
