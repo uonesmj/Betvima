@@ -11,6 +11,23 @@ const makeFetch = (handler: (url: URL) => Response) =>
   vi.fn(async (input: RequestInfo | URL) => handler(new URL(String(input)))) as unknown as typeof fetch;
 
 describe('BetsAPI candidate provider contract (synthetic data; never production)', () => {
+  it('caps simultaneous live-fixture discovery requests at three', async () => {
+    let active = 0;
+    let peak = 0;
+    const fetcher = vi.fn(async (_input: RequestInfo | URL) => {
+      active++;
+      peak = Math.max(peak, active);
+      await new Promise(resolve => setTimeout(resolve, 5));
+      active--;
+      return Response.json({ success: 1, results: [] });
+    }) as unknown as typeof fetch;
+    const provider = new BetsApiEventsProvider(TOKEN, fetcher);
+    const result = await provider.fetchLiveMatches();
+    expect(result.ok).toBe(true);
+    expect(peak).toBeLessThanOrEqual(3);
+    expect(peak).toBeGreaterThan(0);
+  });
+
   it('parses genuine-shaped live events, preserves provider identity and does not leak token', async () => {
     const fetcher = makeFetch(url => {
       expect(url.hostname).toBe('api.b365api.com');
