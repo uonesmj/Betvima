@@ -160,11 +160,18 @@ fun CasinoLobby(state: AppState, model: AppViewModel) {
             total = result.total
         } catch (cancel: CancellationException) {
             throw cancel
-        } catch (_: Exception) {
-            error = tr(state.lang,
-                "The casino catalogue is not available yet. Please try again.",
-                "فهرست بازی‌ها هنوز در دسترس نیست. دوباره تلاش کنید.")
-            if (page == 1) { games = emptyList(); total = 0 }
+        } catch (failure: Exception) {
+            val status = (failure as? ApiFailure)?.code
+            error = when (status) {
+                503 -> tr(state.lang,
+                    "Casino is unavailable on the server. Please try again later.",
+                    "کازینو در سرور در دسترس نیست. لطفاً بعداً دوباره تلاش کنید.")
+                else -> tr(state.lang,
+                    "Unable to refresh casino games. Please check your connection and retry.",
+                    "به‌روزرسانی بازی‌های کازینو انجام نشد. اتصال خود را بررسی و دوباره تلاش کنید.")
+            }
+            // Retain previously fetched real game cards during temporary outages.
+            // Never manufacture games or bypass server authorization to launch.
         } finally {
             loading = false
         }
