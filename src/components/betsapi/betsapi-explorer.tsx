@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { apiRequest } from '@/lib/hooks/useApi';
 import { labelTier } from '@/providers/betsapi-label-quality';
+import { formatBetsApiOdds } from '@/lib/betsapi-odds-display';
 
 type Mode = 'live' | 'upcoming';
 interface Fixture {
@@ -380,7 +381,7 @@ export function BetsApiExplorer() {
                           <div key={selection.id} title="Reference price only; wagering not enabled"
                             className="flex items-center justify-between gap-2 rounded-lg bg-[#253247] px-3 py-3 text-xs">
                             <span className="min-w-0 break-words text-slate-200">{selection.label}</span>
-                            <strong className="shrink-0 text-sky-300">{selection.decimal}</strong>
+                            <strong className="shrink-0 text-sky-300">{formatBetsApiOdds(selection.decimal)}</strong>
                           </div>
                         ))}
                       </div>
