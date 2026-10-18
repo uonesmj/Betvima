@@ -18,7 +18,7 @@ interface AppContextValue {
 const AppContext = createContext<AppContextValue | null>(null);
 
 export function AppProviders({ children, initialLocale = DEFAULT_LOCALE }: { children: ReactNode; initialLocale?: Locale }) {
-  const [locale, setLocaleState] = useState<Locale>(initialLocale === 'fa' ? 'fa' : DEFAULT_LOCALE);
+  const [locale, setLocaleState] = useState<Locale>(DEFAULT_LOCALE);
   const [session, setSession] = useState<SessionInfo | null>(null);
   const [sessionLoading, setSessionLoading] = useState(true);
   const [hydrated, setHydrated] = useState(false);
@@ -54,10 +54,10 @@ export function AppProviders({ children, initialLocale = DEFAULT_LOCALE }: { chi
       if (stored === 'fa' || stored === 'en') {
         setLocaleState(stored);
       } else {
-        setLocaleState(initialLocale === 'fa' ? 'fa' : DEFAULT_LOCALE);
+        setLocaleState(DEFAULT_LOCALE);
       }
     } catch {
-      setLocaleState(initialLocale === 'fa' ? 'fa' : DEFAULT_LOCALE);
+      setLocaleState(DEFAULT_LOCALE);
     }
     void refreshSession();
   }, [refreshSession]);
