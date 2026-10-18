@@ -1,50 +1,30 @@
-import Link from 'next/link';
-import { BetsApiCatalogue } from '@/components/betsapi/betsapi-catalogue';
-import { Activity, ArrowLeft, CircleDot, Dumbbell, Gamepad2, Swords, Target, Trophy, Zap } from 'lucide-react';
 import { PageShell } from '@/components/layout/page-shell';
 import { HomeReference } from '@/components/home/home-reference';
-import { ServiceNotice } from '@/components/layout/service-notice';
-import { MatchListClient } from '@/components/betting/match-list-client';
-import { getHomepageData, getServiceAvailability } from '@/server/queries/public';
+import { getBetsApiHomepage } from '@/server/betsapi-feed';
+import { BETSAPI_SPORTS } from '@/lib/betsapi-sports-map';
 
 export const dynamic = 'force-dynamic';
-const SPORT_ICONS = { football: Trophy, basketball: CircleDot, tennis: Target, volleyball: Activity, 'ice-hockey': Zap, handball: Dumbbell, baseball: CircleDot, 'american-football': Trophy, cricket: Activity, mma: Swords, boxing: Dumbbell, 'table-tennis': Target, esports: Gamepad2 } as const;
 
+/** The home sports cards use only BetsAPI; old provider DB fixtures are never selected. */
 export default async function HomePage() {
-  const [data, availability] = await Promise.all([getHomepageData(), getServiceAvailability()]);
-  const liveEnabled = availability.liveBettingEnabled;
-  const maintenance = availability.operations.find((o) => o.key === 'MAINTENANCE_MODE')?.isEnabled ?? false;
-
-  return (
-    <PageShell
-    >
-      {maintenance ? (
-        <ServiceNotice tone="danger" titleKey="page.maintenance" childrenKey="page.maintenanceDetail" />
-      ) : null}
-      {!availability.sportsConfigured ? (
-        <ServiceNotice tone="warning" titleKey="page.oddsUnavailable" childrenKey="page.oddsUnavailableDetail" />
-      ) : null}
-      {!liveEnabled ? (
-        <ServiceNotice tone="warning" titleKey="page.liveBettingUnavailable" childrenKey="page.liveBettingUnavailableDetail" />
-      ) : null}
-      <div dir="ltr" className="mx-3 mb-3 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-sky-500/30 bg-[#10233c] p-3 text-sm text-white">
-        <span><strong>BetsAPI</strong> · Preview live games, upcoming fixtures and Bet365 markets before source migration</span>
-        <Link href="/betsapi" className="shrink-0 rounded-lg bg-blue-600 px-4 py-2 font-semibold hover:bg-blue-500">
-          Browse BetsAPI markets ↗
-        </Link>
-      </div>
-      <BetsApiCatalogue mode="live" />
-      <BetsApiCatalogue mode="upcoming" />
-      <div dir="ltr" className="w-full">
-        <HomeReference
-          sports={data.sports}
-          live={data.live}
-          upcoming={data.upcoming}
-          topBets={data.topBets}
-          topBetsUnavailable={data.degraded.includes('topBets')}
-          liveEnabled={liveEnabled}
-        />
-      </div>
-    </PageShell>
-  );
+  const data = await getBetsApiHomepage();
+  return <PageShell>
+    {!data.configured || data.errors.length > 0 ? (
+      <p role="alert" className="mx-3 my-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+        BetsAPI {data.configured ? 'is temporarily unavailable for some sports. Numbers may be incomplete.' : 'is not configured for public catalogues.'}
+      </p>
+    ) : null}
+    <div dir="ltr" className="w-full">
+      <HomeReference
+        sports={BETSAPI_SPORTS.map(s => ({ key: s.key, name: s.name }))}
+        live={data.live}
+        upcoming={data.upcoming}
+        topBets={[]}
+        topBetsUnavailable
+        liveEnabled={false}
+        liveTotal={data.liveTotal}
+        upcomingTotal={data.upcomingTotal}
+      />
+    </div>
+  </PageShell>;
 }
