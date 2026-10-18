@@ -116,6 +116,12 @@ export const POST = withErrorHandling('admin.support.kyc.approve', async (
   let submissionId: string;
   try {
     submissionId = await services.db.transaction(async (tx) => {
+      // The HTTP guard has already verified this operator's AAL2 session and
+      // BOTH users.kyc and support.view permissions. Propagate that trusted
+      // role only within this SQL transaction, where profiles_guard evaluates
+      // nova.is_admin(); it must never come from client request fields.
+      // SET LOCAL expires at COMMIT/ROLLBACK and cannot leak through the pool.
+      await tx.query("select set_config('nova.user_role', $1, true)", [user.role]);
       const locked = await tx.queryOne<{ id: string; status: string }>(
         'select id,status::text from nova.profiles where id=$1 for update', [ticket.userId],
       );
