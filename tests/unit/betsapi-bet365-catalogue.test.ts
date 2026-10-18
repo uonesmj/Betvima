@@ -1,7 +1,18 @@
 import { describe, expect, it } from 'vitest';
-import { parseBet365Catalogue, canPublishBet365CatalogueToWagering, identifyBet365SettlementCandidate } from '@/providers/betsapi-bet365-catalogue';
+import { parseBet365Catalogue, canPublishBet365CatalogueToWagering, identifyBet365SettlementCandidate, identifyBet365SelectionCandidate } from '@/providers/betsapi-bet365-catalogue';
 
 describe('Bet365 catalogue read-only mapping', () => {
+  it('assigns only unambiguous diagnostic selection candidates', () => {
+    expect(identifyBet365SelectionCandidate('1X2', 'Home', null)).toBe('HOME');
+    expect(identifyBet365SelectionCandidate('1X2', 'Team Alpha', null)).toBeNull();
+    expect(identifyBet365SelectionCandidate('DOUBLE_CHANCE', '1X', null)).toBe('HOME_DRAW');
+    expect(identifyBet365SelectionCandidate('BTTS', 'Yes', null)).toBe('YES');
+    expect(identifyBet365SelectionCandidate('OVER_UNDER', 'Over', '2.5')).toBe('OVER_2_5');
+    expect(identifyBet365SelectionCandidate('OVER_UNDER', 'Over', null)).toBeNull();
+    expect(identifyBet365SelectionCandidate('OVER_UNDER', 'Over', 'garbled')).toBeNull();
+    expect(canPublishBet365CatalogueToWagering()).toBe(false);
+  });
+
   it('identifies only explicitly matched market titles without authorizing wagers', () => {
     expect(identifyBet365SettlementCandidate('Fulltime Result')).toBe('1X2');
     expect(identifyBet365SettlementCandidate('Asian Handicap')).toBe('ASIAN_HANDICAP');
