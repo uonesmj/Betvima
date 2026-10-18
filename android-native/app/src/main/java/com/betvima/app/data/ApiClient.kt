@@ -405,7 +405,21 @@ class ApiClient {
             if (query.isNotBlank()) append("&q=" + URLEncoder.encode(query.trim(), "UTF-8"))
             if (provider.isNotEmpty()) append("&provider=" + URLEncoder.encode(provider, "UTF-8"))
         }
-        return parseCasinoPage(get(route))
+        // Retry transient connectivity/provider failures only. Never retry auth, disabled
+        // casino (503 CASINO_DISABLED), or other deliberate availability gates.
+        for (attempt in 0..2) {
+            try {
+                return parseCasinoPage(get(route))
+            } catch (cancel: kotlinx.coroutines.CancellationException) {
+                throw cancel
+            } catch (failure: IOException) {
+                val status = (failure as? ApiFailure)?.code
+                val transient = status == null || status == 502 || status == 504 || status == 429
+                if (!transient || attempt == 2) throw failure
+                kotlinx.coroutines.delay(400L * (attempt + 1))
+            }
+        }
+        error("Unreachable casino catalogue retry state")
     }
 
     /** Server verifies account, wallet currency and pilot-only real-money access. */
