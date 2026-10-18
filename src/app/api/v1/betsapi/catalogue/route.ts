@@ -1,5 +1,6 @@
 import { jsonOk, withErrorHandling } from '@/lib/errors';
-import { getBetsApiHomepage, getBetsApiSport, sportByKey } from '@/server/betsapi-feed';
+import { getBetsApiHomepage, getBetsApiSport } from '@/server/betsapi-feed';
+import { sportByKey } from '@/lib/betsapi-sports-map';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
