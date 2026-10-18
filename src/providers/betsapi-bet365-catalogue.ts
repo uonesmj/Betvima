@@ -4,8 +4,27 @@
 import { parseBet365LivePreview, parseBet365PrematchPreview } from './betsapi-bet365-preview';
 import { string, safePrice } from './betsapi-normalization';
 
+/** Strict, read-only candidates; not a permission to take wagers.
+ * Period, line, selection side and authoritative settlement must be validated separately. */
+export function identifyBet365SettlementCandidate(name: string): string | null {
+  const normalized = name.toLowerCase().trim().replace(/\\s+/g, ' ');
+  const exact: Record<string, string> = {
+    'fulltime result': '1X2',
+    'full time result': '1X2',
+    'match result': '1X2',
+    'double chance': 'DOUBLE_CHANCE',
+    'draw no bet': 'DRAW_NO_BET',
+    'both teams to score': 'BTTS',
+    'correct score': 'CORRECT_SCORE',
+    'asian handicap': 'ASIAN_HANDICAP',
+    'goals over/under': 'OVER_UNDER',
+    'half time result': 'HALF_TIME',
+  };
+  return exact[normalized] ?? null;
+}
 export type Bet365CatalogueMarket = {
   id: string; name: string; mode: 'live' | 'upcoming';
+  settlementCandidate: string | null;
   status: 'open' | 'suspended';
   selections: Array<{ id: string; name: string; odds: string; status: 'open' | 'suspended'; line: string | null }>;
 };
@@ -37,6 +56,7 @@ export function parseBet365Catalogue(fi: string, mode: 'live' | 'upcoming', resp
         line: s.line ?? lineFromLabel(s.label) }));
     if (!selections.length) continue;
     markets.push({ id: market.key, name: market.title, mode,
+      settlementCandidate: identifyBet365SettlementCandidate(market.title),
       status: market.status === 'suspended' ? 'suspended' : 'open', selections });
   }
   return { fi, mode, marketCount: markets.length,
