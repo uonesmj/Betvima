@@ -1,4 +1,3 @@
-import { TheOddsApiSportsProvider } from "./the-odds-api";
 import { NowPaymentsProvider } from "./nowpayments";
 import { ResendEmailProvider } from './resend-email';
 /**
@@ -34,13 +33,13 @@ const notConfigured = <T>(what: string, requiredEnv: string[]): ProviderResult<T
 export class DisabledSportsProvider implements SportsDataProvider {
   readonly name = 'disabled';
   readonly configured = false;
-  private readonly requiredEnv = ['ODDS_API_KEY'];
+  private readonly requiredEnv = ['BETSAPI_TRIAL_TOKEN'];
 
   async health(): Promise<ProviderStatus> {
     return {
       provider: 'disabled', category: 'sports', configured: false, enabled: false, reachable: null,
       lastError: null, lastSuccessAt: null, requiredEnv: this.requiredEnv,
-      notes: 'No sports data provider configured. Live scores, odds ingestion and automatic settlement of provider-driven markets stay off; administrative/manual settlement remains available.',
+      notes: 'Sportsbook ingestion is disabled pending BetsAPI wager-grade reconciliation. Public read-only Bet365 fixtures are supplied separately. Historical wagers remain on their original settlement path.',
     };
   }
   async fetchMatches() { return notConfigured<never[]>('sports.fetchMatches', this.requiredEnv); }
@@ -61,7 +60,7 @@ export class DisabledLiveDataProvider implements LiveDataProvider {
     return { provider: 'disabled', category: 'sports', configured: false,
       enabled: false, reachable: null, lastError: null, lastSuccessAt: null,
       requiredEnv: [],
-      notes: 'Separate football live-statistics feed removed; The Odds API remains the sole sports source.' };
+      notes: 'Separate football live-statistics feed not configured. BetsAPI is the public fixture source.' };
   }
   async fetchLiveFixtures() { return notConfigured<never[]>('live.fetchLiveFixtures', []); }
   async fetchEvents() { return notConfigured<never[]>('live.fetchEvents', []); }
@@ -133,11 +132,11 @@ let registry: ProviderRegistryLike | null = null;
 export function providers(): ProviderRegistryLike {
   if (registry) return registry;
   const env = serverEnv();
-  const oddsProvider = new TheOddsApiSportsProvider();
-  // The Odds API is the only permitted sports data and bookmaker source.
-  // No alternate football feed, fallback registry or implicit credentials.
-  const sportsProviders = oddsProvider.configured ? [oddsProvider] : [];
-  const primarySportsProvider = sportsProviders[0] ?? new DisabledSportsProvider();
+  // Retire The Odds API from runtime completely, even if its historical env key remains.
+  // Bet365 public fixtures are delivered via the read-only catalogue module;
+  // never allow old sportsbook odds into wallets, wagers, or settlement.
+  const sportsProviders: SportsDataProvider[] = [];
+  const primarySportsProvider = new DisabledSportsProvider();
 
   registry = {
     sports: primarySportsProvider,
@@ -183,7 +182,7 @@ export function setProviders(next: ProviderRegistryLike | null): void {
 export async function providerHealthRows(db: { query: (sql: string, params?: unknown[]) => Promise<Record<string, unknown>[]> }) {
   return db.query(
     `select provider, kind, status, last_success_at, last_error, metadata from nova.provider_health
-      where kind <> 'sports' or provider in ('the_odds_api', 'disabled')
+      where kind <> 'sports' or provider = 'disabled'
       order by kind, provider`,
   );
 }

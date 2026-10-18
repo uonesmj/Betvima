@@ -150,8 +150,9 @@ export function serverEnv(): ServerEnv {
     supabaseConfigured,
     configurationProblems: problems,
     configurationComplete: problems.length === 0,
-    sportsProviderEnabled: Boolean(env.ODDS_API_KEY) ||
-      (env.SPORTS_PROVIDER === 'the_odds_api' && Boolean(env.SPORTS_PROVIDER_API_KEY)),
+    // The legacy odds worker may not ingest from retained The Odds API credentials.
+    // BetsAPI catalogue remains read-only until wager + settlement wiring is verified.
+    sportsProviderEnabled: false,
     paymentProviderEnabled: env.PAYMENT_PROVIDER !== 'disabled' && Boolean(env.PAYMENT_PROVIDER_API_KEY),
     paymentProvider: env.PAYMENT_PROVIDER,
     paymentProviderBaseUrl: env.PAYMENT_PROVIDER_BASE_URL,

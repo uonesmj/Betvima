@@ -1,40 +1,22 @@
 import { withErrorHandling, jsonOk } from '@/lib/errors';
-import { createServices } from '@/server/services/container';
-import { serviceRoleContext } from '@/server/context';
-import { intParam, searchParams } from '@/server/http/request';
-
+import { getBetsApiSport } from '@/server/betsapi-feed';
+import { sportByKey } from '@/lib/betsapi-sports-map';
 export const dynamic = 'force-dynamic';
-
-/** Match list: filter by sport/league/live, paginated, ordered by kick-off. */
-export const GET = withErrorHandling('matches.list', async (ctx, request: Request) => {
-  const services = createServices();
-  const params = searchParams(request);
-  const page = intParam(params, 'page', 1, 500);
-  const pageSize = intParam(params, 'pageSize', 20, 50);
-  const liveParam = params.get('live');
-  const live = liveParam === null ? undefined : liveParam === 'true';
-  const isLive = live === true;
-  const fromParam = params.get('from');
-  const toParam = params.get('to');
-  const from = isLive
-    ? undefined
-    : fromParam
-      ? new Date(fromParam).toISOString()
-      : new Date().toISOString();
-  const to = isLive || !toParam
-    ? undefined
-    : new Date(toParam).toISOString();
-  const result = await services.catalog.listMatches(serviceRoleContext, {
-    sportKey: params.get('sport') ?? undefined,
-    leagueId: params.get('league') ?? undefined,
-    live,
-    status: isLive ? undefined : ['scheduled'],
-    from,
-    to,
-    search: params.get('q') ?? undefined,
-    page, pageSize,
-    sortBy: 'scheduled_at',
-    sortDirection: 'asc',
+/** Public search/catalogue never falls back to historical Odds API database records. */
+export const GET = withErrorHandling('matches.list', async (_ctx, request: Request) => {
+  const p = new URL(request.url).searchParams;
+  const mode = p.get('live') === 'true' ? 'live' : 'upcoming';
+  const sport = p.get('sport') || 'football';
+  const page = Math.max(1, Math.min(100, Number.parseInt(p.get('page') || '1', 10) || 1));
+  if (!sportByKey(sport)) return jsonOk({ items: [], total: 0, page, pageSize: 50, hasMore: false, source: 'betsapi_bet365' });
+  const data = await getBetsApiSport(mode, sport, page);
+  const search = (p.get('q') || '').trim().toLowerCase();
+  const items = search ? data.matches.filter(m =>
+    [m.leagueName, ...m.participants.map(x => x.name)].some(v => (v || '').toLowerCase().includes(search))) : data.matches;
+  return jsonOk({
+    items, total: search ? items.length : data.total,
+    page, pageSize: items.length,
+    hasMore: mode === 'upcoming' && data.pageCount !== null && page < data.pageCount,
+    source: 'betsapi_bet365', readOnly: true, error: data.error,
   });
-  return jsonOk(result);
 });

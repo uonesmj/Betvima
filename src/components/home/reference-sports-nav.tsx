@@ -35,7 +35,7 @@ const sports: SportItem[] = [
   { label: 'Football', sportKey: 'football', image: '/icons/sports/football.svg', href: '/sports/football' },
   { label: 'Tennis', sportKey: 'tennis', image: '/icons/sports/tennis.svg', href: '/sports/tennis' },
   { label: 'Basketball', sportKey: 'basketball', image: '/icons/sports/basketball.svg', href: '/sports/basketball' },
-  { label: 'Ice Hockey', sportKey: 'hockey', image: '/icons/sports/hockey.svg', href: '/sports/hockey' },
+  { label: 'Ice Hockey', sportKey: 'ice-hockey', image: '/icons/sports/hockey.svg', href: '/sports/hockey' },
   { label: 'Table Tennis', sportKey: 'table-tennis', image: '/icons/sports/table-tennis.svg', href: '/sports/table-tennis' },
   { label: 'Volleyball', sportKey: 'volleyball', image: '/icons/sports/volleyball.svg', href: '/sports/volleyball' },
   { label: 'Baseball', sportKey: 'baseball', image: '/icons/sports/baseball.svg', href: '/sports/baseball' },
@@ -395,7 +395,7 @@ export function ReferenceSportsNav({ showTournament = true, showSportsCarousel =
     let cancelled = false;
     const loadLiveSportCounts = async () => {
       try {
-        const response = await fetch('/api/v1/live?limit=1', { cache: 'no-store' });
+        const response = await fetch('/api/v1/betsapi/catalogue?mode=home', { cache: 'no-store' });
         if (!response.ok) return;
         const data = await response.json();
         const counts = data?.data?.liveSportCounts ?? data?.liveSportCounts;
@@ -550,7 +550,7 @@ export function ReferenceSportsNav({ showTournament = true, showSportsCarousel =
                     </span>
                     {pathname === '/live' ? (
                       <span className="mt-0.5 text-[9px] font-semibold leading-none tabular-nums text-[#8993A1]">
-                        {sport.sportKey ? (liveSportCounts[sport.sportKey] ?? 0) : Object.values(liveSportCounts).reduce((sum, count) => sum + count, 0)}
+                        {sport.sportKey ? (liveSportCounts[sport.sportKey] ?? '—') : Object.values(liveSportCounts).reduce((sum, count) => sum + count, 0)}
                       </span>
                     ) : null}
                   </Link>
