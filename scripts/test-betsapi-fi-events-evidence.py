@@ -48,6 +48,24 @@ class FixtureEvidenceTests(unittest.TestCase):
         self.assertEqual(candidates, [])
         self.assertEqual(duplicates_events, 1)
 
+    def test_score_conflict_is_quarantined(self):
+        a = row("111")
+        b = row("222")
+        a["ss"] = "2-0"
+        b["ss"] = "1-0"
+        _, _, candidates, ambiguous, _, _, _ = module.compare([a], [b])
+        self.assertEqual(candidates, [])
+        self.assertEqual(ambiguous[0]["reason"], "SCORE_CONFLICT")
+
+    def test_missing_score_is_not_independent_evidence(self):
+        a = row("111")
+        b = row("222")
+        a["ss"] = "0-0"
+        _, _, candidates, _, _, _, _ = module.compare([a], [b])
+        self.assertEqual(len(candidates), 1)
+        self.assertFalse(candidates[0]["score_corroborated"])
+        self.assertFalse(candidates[0]["independently_verified"])
+
     def test_swapped_teams_are_not_linked(self):
         _, _, candidates, _, unmatched, _, _ = module.compare(
             [row("111")], [row("222", "Beta", "Alpha FC")])
