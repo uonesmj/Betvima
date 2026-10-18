@@ -12,7 +12,7 @@ export default async function EventPage({
   params, searchParams,
 }: {
   params: Promise<{ fi: string }>;
-  searchParams: Promise<{ mode?: string; sportId?: string }>;
+  searchParams: Promise<{ mode?: string; sportId?: string; home?: string; away?: string; kickoff?: string }>;
 }) {
   const { fi } = await params;
   const q = await searchParams;
@@ -29,10 +29,13 @@ export default async function EventPage({
   const markets = details && 'markets' in details ? details.markets : [];
   const marketCount = details && 'marketCount' in details ? details.marketCount : 0;
   const error = !valid ? 'INVALID_FIXTURE' : details && 'error' in details ? details.error : 'PROVIDER_UNAVAILABLE';
+  const initial = q.home && q.away && q.kickoff && q.home.length <= 140 && q.away.length <= 140
+    && q.home !== q.away && Number.isFinite(Date.parse(q.kickoff))
+    ? { home: q.home, away: q.away, kickoff: q.kickoff } : undefined;
   const fixture = listing?.matches.find(match => match.id === `betsapi:${mode}:${sportId}:${fi}`) ?? null;
 
   return <PageShell>
     <BetsApiEventMarkets fi={fi} mode={mode} sportKey={sport?.key ?? 'football'}
-      fixture={fixture} markets={markets} error={error} reportedCount={marketCount} />
+      fixture={fixture} initial={initial} markets={markets} error={error} reportedCount={marketCount} />
   </PageShell>;
 }
