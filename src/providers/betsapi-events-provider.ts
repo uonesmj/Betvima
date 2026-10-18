@@ -3,6 +3,7 @@
 import type { ProviderMatch, ProviderOddsBundle, ProviderResult, ProviderResultSnapshot, ProviderStatus, SportsDataProvider } from '@/lib/ports/providers';
 import { BETSAPI_SPORTS, normalizeBetsapiEvent, normalizeBetsapiOdds, normalizeBetsapiResult, parseBetsapiIdentity, object } from './betsapi-normalization';
 import { parseBet365Catalogue, type Bet365Catalogue } from './betsapi-bet365-catalogue';
+import { projectBet365ReadOnly, type Bet365Projection } from './betsapi-bet365-projection';
 
 const BASE = 'https://api.b365api.com';
 type Envelope = { success?: number | string; results?: unknown; pager?: unknown };
@@ -110,6 +111,12 @@ export class BetsApiEventsProvider implements SportsDataProvider {
       const data = await this.request(path, { FI: fi });
       return parseBet365Catalogue(fi, mode, data);
     });
+  }
+  /** Quarantined provider-shaped market projection for offline QA, never wagering. */
+  async fetchBet365Projection(fi: string, mode: 'live' | 'upcoming'): Promise<ProviderResult<Bet365Projection>> {
+    const catalogue = await this.fetchBet365Catalogue(fi, mode);
+    if (!catalogue.ok || !catalogue.value) return fail(catalogue.errorCode || 'CATALOGUE_UNAVAILABLE');
+    return ok(projectBet365ReadOnly(catalogue.value, new Date()));
   }
   async fetchResult(id: string): Promise<ProviderResult<ProviderResultSnapshot>> {
     const parsed = parseBetsapiIdentity(id);
