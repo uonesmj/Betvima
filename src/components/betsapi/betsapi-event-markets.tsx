@@ -5,9 +5,9 @@ import { formatBetsApiOdds } from '@/lib/betsapi-odds-display';
 import { sportByKey } from '@/lib/betsapi-sports-map';
 import Link from 'next/link';
 import { useApp } from '@/components/layout/providers';
-import { TeamLogo, LeagueLogo } from '@/components/ui/logo';
 import type { MatchView } from '@/components/betting/match-card';
-import { CalendarDays, ChevronLeft, Radio, Search } from 'lucide-react';
+import { ChevronLeft, Search } from 'lucide-react';
+import { BetsApiMatchOverview } from '@/components/betsapi/betsapi-match-overview';
 
 type Market = { key: string; title: string; selections: { id: string; label: string; decimal: string }[] };
 type Group = 'all' | 'main' | 'goals' | 'corners' | 'cards' | 'players' | 'other';
@@ -69,12 +69,13 @@ function marketOrder(market: Market): number {
 }
 
 export function BetsApiEventMarkets({
-  fi, mode, sportKey, fixture, markets, error, reportedCount,
+  fi, mode, sportKey, fixture, initial, markets, error, reportedCount,
 }: {
   fi: string;
   mode: 'live' | 'upcoming';
   sportKey: string;
   fixture: MatchView | null;
+  initial?: { home: string; away: string; kickoff: string };
   markets: Market[];
   error: string | null;
   reportedCount: number;
@@ -126,11 +127,6 @@ export function BetsApiEventMarkets({
   }, [mode, sportKey, fi]);
 
   const backHref = mode === 'live' ? '/live?sport=' + encodeURIComponent(sportKey) : '/sports/' + encodeURIComponent(sportKey);
-  const homeTeam = fixture?.participants.find(p => p.role === 'HOME');
-  const awayTeam = fixture?.participants.find(p => p.role === 'AWAY');
-  const home = homeTeam?.name;
-  const away = awayTeam?.name;
-  const homeScore = fixture?.homeScore, awayScore = fixture?.awayScore;
   const validMarkets = useMemo(() => activeMarkets.map(m => ({
     ...m, selections: m.selections.filter(s => usable(s.label)),
   })).filter(m => m.selections.length > 0).sort((a,b) => marketOrder(a) - marketOrder(b)), [activeMarkets]);
@@ -146,42 +142,7 @@ export function BetsApiEventMarkets({
     <Link href={backHref} className="inline-flex items-center gap-1.5 text-sm font-semibold text-[#087FF5]">
       <ChevronLeft size={17} /> {isFa ? 'بازگشت به مسابقات' : 'Back to matches'}
     </Link>
-    <section className="overflow-hidden rounded-2xl border border-[#DDE5EE] bg-white shadow-[0_4px_18px_rgba(18,35,51,.055)]">
-      <header className="flex items-center justify-between gap-3 border-b border-[#E5EBF0] bg-gradient-to-r from-[#F0F7FC] to-white px-4 py-3">
-        <div className="flex min-w-0 items-center gap-2">
-          <LeagueLogo url={fixture?.leagueLogoUrl ?? null} name={fixture?.leagueName ?? sportKey} sportKey={sportKey} size={34} />
-          <div className="min-w-0">
-            <p className="truncate text-sm font-extrabold text-[#253345]">{fixture?.leagueName ?? (isFa ? 'جزئیات مسابقه' : 'Match details')}</p>
-            <p className="text-[11px] font-medium text-[#738293]">{sportKey.replaceAll('-', ' ')} · Bet365</p>
-          </div>
-        </div>
-        <span className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[11px] font-black ${mode === 'live' ? 'bg-[#FFE9F1] text-[#CB2161]' : 'bg-[#E8F6ED] text-[#078554]'}`}>
-          {mode === 'live' ? <Radio size={13} /> : <CalendarDays size={13} />}
-          {mode === 'live' ? (isFa ? 'زنده' : 'LIVE') : (isFa ? 'آینده' : 'UPCOMING')}
-          {mode === 'live' && fixture?.minute != null ? ` ${fixture.minute}′` : ''}
-        </span>
-      </header>
-      <div className="grid grid-cols-[minmax(0,1fr)_92px_minmax(0,1fr)] items-center gap-2 px-3 py-6 sm:grid-cols-[minmax(0,1fr)_140px_minmax(0,1fr)]">
-        <div className="flex min-w-0 flex-col items-center gap-2 text-center">
-          <TeamLogo url={homeTeam?.logoUrl ?? null} name={home} size={48} />
-          <strong className="line-clamp-2 text-sm font-extrabold text-[#202832]">{home ?? (isFa ? 'تیم میزبان' : 'Home')}</strong>
-        </div>
-        <div className="text-center">
-          <div className="whitespace-nowrap text-2xl font-black tabular-nums text-[#1D2938] sm:text-3xl">
-            {mode === 'live' && homeScore != null && awayScore != null ? `${homeScore} : ${awayScore}` : 'VS'}
-          </div>
-          <p className="mt-2 text-[10px] text-[#738293]">{mode === 'live' ? (isFa ? 'نتیجه زنده' : 'Live score') : (isFa ? 'پیش از مسابقه' : 'Pre-match')}</p>
-        </div>
-        <div className="flex min-w-0 flex-col items-center gap-2 text-center">
-          <TeamLogo url={awayTeam?.logoUrl ?? null} name={away} size={48} />
-          <strong className="line-clamp-2 text-sm font-extrabold text-[#202832]">{away ?? (isFa ? 'تیم مهمان' : 'Away')}</strong>
-        </div>
-      </div>
-      <footer className="flex flex-wrap items-center justify-between gap-2 border-t border-[#E9EDF2] bg-[#F9FAFB] px-4 py-2.5 text-xs text-[#708093]">
-        <span>{isFa ? 'شناسه مسابقه' : 'Fixture ID'}: {fi}</span>
-        <span>{isFa ? 'منبع ضرایب: BetsAPI' : 'Odds source: BetsAPI / Bet365'}</span>
-      </footer>
-    </section>
+    <BetsApiMatchOverview fi={fi} mode={mode} sportKey={sportKey} fixture={fixture} initial={initial} />
 
     <div role="status" className="rounded-xl border border-[#F2E2B5] bg-[#FFF9E8] px-3 py-2.5 text-xs font-medium leading-5 text-[#86601F]">
       {isFa ? 'ضرایب فقط برای بررسی نمایش داده می‌شوند. ثبت شرط تا زمان تأیید اتصال مالی و تسویه غیرفعال است.' :

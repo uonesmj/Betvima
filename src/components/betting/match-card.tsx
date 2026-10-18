@@ -88,7 +88,7 @@ export function MatchCard({
     <article data-testid="match-card" data-match-id={match.id}
       data-live={match.isLive ? 'true' : 'false'}
       className="nova-match-card overflow-hidden rounded-[21px] border border-[#E2E7EC] bg-white shadow-[0_3px_13px_rgba(18,35,51,.055)]" data-compact={compact}>
-      <Link href={sportsbookMatchHref(match.id)}
+      <Link href={sportsbookMatchHref(match.id, match)}
         className="flex min-w-0 items-center gap-2.5 border-b border-[#E2E7EC] bg-gradient-to-r from-[#F1F7F9] to-[#FCFDFE] px-3.5 py-3">
         <span className="grid h-[37px] w-[37px] shrink-0 place-items-center rounded-xl border border-[#E2E7EC] bg-white">
           <LeagueLogo url={match.leagueLogoUrl} name={match.leagueName} sportKey={match.sportKey} size={26} />
@@ -108,7 +108,7 @@ export function MatchCard({
         </span>
       </Link>
       <div className="space-y-2.5 px-3.5 pb-3.5 pt-2.5">
-        <Link href={sportsbookMatchHref(match.id)} className="flex items-center gap-2">
+        <Link href={sportsbookMatchHref(match.id, match)} className="flex items-center gap-2">
           <span className={match.isLive ? 'text-[#E91F70]' : 'text-[#00A66A]'}>
             {match.isLive ? <Radio size={15}/> : <CalendarDays size={15}/>}
           </span>
@@ -118,7 +118,7 @@ export function MatchCard({
           {match.isLive && (match.homeScore !== null || match.awayScore !== null) &&
             <span className="ml-auto text-[9px] font-bold text-[#798592]">{locale === 'fa' ? 'نتیجه' : 'SCORE'}</span>}
         </Link>
-        <Link href={sportsbookMatchHref(match.id)} className="block space-y-2">
+        <Link href={sportsbookMatchHref(match.id, match)} className="block space-y-2">
           {teams.map(({ team, score }, i) => (
             <div key={i} className="flex min-w-0 items-center gap-2">
               <TeamLogo url={team?.logoUrl} name={team?.name} size={27} />
@@ -149,7 +149,7 @@ export function MatchCard({
                 shortLabel={market.key === 'h2h' && market.selections.length >= 3 ? ['1','X','2'][index] : undefined} />
             ) : <div key={index} className="grid h-[53px] place-items-center rounded-[10px] bg-[#F3F6F9] text-sm text-[#798592]">—</div>;
           })}
-          <Link href={sportsbookMatchHref(match.id)} aria-label={t('match.allMarkets')}
+          <Link href={sportsbookMatchHref(match.id, match)} aria-label={t('match.allMarkets')}
             className="grid h-[53px] place-items-center rounded-[10px] border border-[#D4E5F8] bg-[#EAF3FF] text-[12px] font-black text-[#087FF5]">
             {match.marketsCount ? `+${match.marketsCount}` : <ChevronRight size={17}/>}
           </Link>
