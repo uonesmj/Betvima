@@ -108,6 +108,13 @@ export function parseBet365LivePreview(fixtureId: string, results: unknown): Bet
       id, label: (() => {
         const label = outcomeLabel(data, id, handicap);
         if (!currentSubmarket || label.toLowerCase().includes(currentSubmarket.toLowerCase())) return label;
+        // Bet365 sends bare MA numeric headers as grouping metadata in score
+        // markets. "1 · 5-2" is not a 1-5-2 scoreline; the provider PA name
+        // already identifies the correct 5-2 score. Drop ONLY that positional
+        // metadata for scoreline offers, never drop named team/handicap context.
+        if (/^(?:correct score|final score|exact score|half.?time score)$/i.test(current.title.trim()) &&
+            /^\\d{1,3}$/.test(currentSubmarket) &&
+            /^\\d{1,3}\\s*[-:]\\s*\\d{1,3}(?:\\b|$)/.test(label)) return label;
         return `${currentSubmarket} · ${label}`.slice(0, 200);
       })(), decimal: price,
     });
