@@ -1,6 +1,7 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { formatBetsApiOdds } from '@/lib/betsapi-odds-display';
 import Link from 'next/link';
 import { useApp } from '@/components/layout/providers';
 import { TeamLogo, LeagueLogo } from '@/components/ui/logo';
@@ -42,7 +43,7 @@ function MarketSection({ market, isFa }: { market: Market; isFa: boolean }) {
       {shown.map((s, index) => <div key={s.id + ':' + index} aria-disabled="true" title={s.label}
         className="flex min-h-[62px] min-w-0 flex-col items-center justify-center gap-1 rounded-lg border border-[#E5EAF0] bg-[#F6F8FB] px-1.5 py-2 text-center">
         <span className="line-clamp-2 text-[10px] font-semibold leading-4 text-[#6D7B89]">{s.label}</span>
-        <strong className="text-[13px] font-black tabular-nums text-[#243547]">{s.decimal}</strong>
+        <strong className="text-[13px] font-black tabular-nums text-[#243547]">{formatBetsApiOdds(s.decimal)}</strong>
       </div>)}
     </div>
     {market.selections.length > 9 && <button type="button"
@@ -82,13 +83,59 @@ export function BetsApiEventMarkets({
   const [group, setGroup] = useState<Group>('all');
   const [search, setSearch] = useState('');
   const [limit, setLimit] = useState(40);
+  const [activeMarkets, setActiveMarkets] = useState<Market[]>(markets);
+  const [feedError, setFeedError] = useState<string | null>(error);
+  const [lastChanged, setLastChanged] = useState<string | null>(null);
+  const [snapshotCount, setSnapshotCount] = useState(reportedCount);
+  useEffect(() => {
+    if (mode !== 'live') return;
+    let cancelled = false;
+    let inflight = false;
+    const update = async () => {
+      if (cancelled || inflight || document.visibilityState !== 'visible' || !navigator.onLine) return;
+      inflight = true;
+      try {
+        const q = new URLSearchParams({ fi, mode, sportId: String(
+          ({ football: 1, basketball: 18, tennis: 13, volleyball: 91, 'ice-hockey': 17,
+            cricket: 3, handball: 78, baseball: 16, 'american-football': 12,
+            'table-tennis': 92, darts: 15, snooker: 14, futsal: 83, badminton: 94,
+            'rugby-union': 8, 'rugby-league': 19, 'australian-rules': 36,
+            floorball: 90, 'beach-volleyball': 95, 'water-polo': 110, squash: 107,
+            esports: 151, mma: 162, boxing: 9, 'horse-racing': 2,
+            greyhounds: 4, bowls: 66, 'gaelic-sports': 75 } as Record<string, number>)[sportKey] ?? 1) });
+        const response = await fetch('/api/v1/betsapi/market-refresh?' + q, { cache: 'no-store' });
+        if (!response.ok) throw new Error('NETWORK');
+        const wrapper = await response.json() as { ok: boolean; data?: {
+          markets: Market[]; marketCount: number; error: string | null;
+        } };
+        const incoming = wrapper.data;
+        if (cancelled || !wrapper.ok || !incoming) return;
+        if (incoming.error) { setFeedError(incoming.error); return; }
+        setFeedError(null);
+        setSnapshotCount(incoming.marketCount);
+        setActiveMarkets(previous => {
+          if (JSON.stringify(previous) !== JSON.stringify(incoming.markets)) {
+            setLastChanged(new Date().toLocaleTimeString());
+            return incoming.markets;
+          }
+          return previous;
+        });
+      } catch { if (!cancelled) setFeedError('REFRESH_UNAVAILABLE'); }
+      finally { inflight = false; }
+    };
+    const timer = window.setInterval(() => { void update(); }, 10_000);
+    const onVisible = () => { if (document.visibilityState === 'visible') void update(); };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => { cancelled = true; window.clearInterval(timer); document.removeEventListener('visibilitychange', onVisible); };
+  }, [mode, sportKey, fi]);
+
   const backHref = mode === 'live' ? '/live?sport=' + encodeURIComponent(sportKey) : '/sports/' + encodeURIComponent(sportKey);
   const home = fixture?.participants.find(p => p.role === 'HOME')?.name;
   const away = fixture?.participants.find(p => p.role === 'AWAY')?.name;
   const homeScore = fixture?.homeScore, awayScore = fixture?.awayScore;
-  const validMarkets = useMemo(() => markets.map(m => ({
+  const validMarkets = useMemo(() => activeMarkets.map(m => ({
     ...m, selections: m.selections.filter(s => usable(s.label)),
-  })).filter(m => m.selections.length > 0).sort((a,b) => marketOrder(a) - marketOrder(b)), [markets]);
+  })).filter(m => m.selections.length > 0).sort((a,b) => marketOrder(a) - marketOrder(b)), [activeMarkets]);
   const filtered = useMemo(() => validMarkets.filter(m =>
     (group === 'all' || groupOf(m.title) === group) &&
     (!search.trim() || m.title.toLowerCase().includes(search.trim().toLowerCase())
@@ -143,18 +190,22 @@ export function BetsApiEventMarkets({
         'Prices are for viewing only. Wager placement is disabled until price acceptance and settlement are validated.'}
     </div>
 
-    {error && <p role="alert" className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900">{isFa ? 'مارکت‌های این مسابقه دریافت نشدند' : 'Markets could not be loaded'}: {error}</p>}
-    {!error && <>
+    {feedError && <p role="alert" className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900">{isFa ? 'مارکت‌های این مسابقه دریافت نشدند' : 'Markets could not be loaded'}: {feedError}</p>}
+    {(!feedError || activeMarkets.length > 0) && <>
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h2 className="text-lg font-extrabold text-[#253345]">{isFa ? 'مارکت‌های مسابقه' : 'Match markets'}</h2>
+        {mode === 'live' && <span className="text-[11px] font-medium text-[#5F7894]">
+          {isFa ? 'بررسی خودکار هر ۱۰ ثانیه' : 'Auto-check every 10s'}
+          {lastChanged ? ` · ${isFa ? 'آخرین تغییر' : 'Last change'} ${lastChanged}` : ''}
+        </span>}
         <span className="rounded-lg bg-white px-3 py-1.5 text-xs font-semibold text-[#758496]">
           {validMarkets.length} {isFa ? 'مارکت با عنوان معتبر' : 'markets with verified labels'}
         </span>
       </div>
-      {reportedCount > validMarkets.length && (
+      {snapshotCount > validMarkets.length && (
         <p className="text-[11px] leading-5 text-[#758496]">
           {isFa
-            ? `${reportedCount - validMarkets.length} گروه دیگر از API دریافت شده، اما عنوان گزینه‌هایشان کافی نیست؛ برای جلوگیری از نمایش گمراه‌کننده پنهان شده‌اند.`
+            ? `${snapshotCount - validMarkets.length} گروه دیگر از API دریافت شده، اما عنوان گزینه‌هایشان کافی نیست؛ برای جلوگیری از نمایش گمراه‌کننده پنهان شده‌اند.`
             : `${reportedCount - validMarkets.length} additional API market groups have insufficiently identified outcomes and are hidden to avoid misleading prices.`}
         </p>
       )}
