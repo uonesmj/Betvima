@@ -1,5 +1,6 @@
 'use client';
 import { sportsbookMatchHref } from '@/lib/betsapi-links';
+import { BetsApiHeadlinePrices } from '@/components/betsapi/betsapi-headline-prices';
 import { useApp } from "../layout/providers";
 import { CasinoHomeCarousel } from '@/components/casino/casino-showcase';
 
@@ -286,7 +287,9 @@ function MatchCard({
       </Link>
 
       {/* Odds */}
-      {market ? (
+      {match.id.startsWith('betsapi:') ? (
+        <BetsApiHeadlinePrices matchId={match.id} variant="home" />
+      ) : market ? (
         <div className="border-t border-[#E5E7EB] bg-[#F5F6F8] p-1.5">
           <div className="mb-1 flex items-center justify-between gap-1">
             <span className="truncate text-[7px] font-extrabold uppercase tracking-wide text-[#69717A]">
