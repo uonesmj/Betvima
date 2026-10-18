@@ -10,6 +10,9 @@ import okhttp3.MultipartBody
 import okhttp3.Response
 import java.io.ByteArrayOutputStream
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.supervisorScope
 import kotlinx.coroutines.withContext
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
@@ -456,24 +459,137 @@ class ApiClient {
         return parseSlipOddsMatch(get("/api/v1/matches/" + matchId + "/odds"))
     }
 
-    suspend fun live(): Pair<List<Match>, Boolean> {
-        val data = get("/api/v1/live?limit=100")
-        return data.arr("matches").objects().map(::parseMatch) to
-            (data.optBoolean("liveBettingEnabled") && !data.optBoolean("catalogueUnavailable"))
+    // Only sports-data caching changes in version 0.112. No Compose, assets,
+    // tabs, layouts, slips, wallets or authentication source files are changed.
+    private val fixtureLock = Any()
+    private val fixtureCache = LinkedHashMap<String, Match>()
+    private val headlineCache = LinkedHashMap<String, Pair<Long, JSONObject>>()
+
+    private fun remember(matches: List<Match>): List<Match> {
+        synchronized(fixtureLock) {
+            matches.forEach { fixtureCache[it.id] = it }
+            while (fixtureCache.size > 900) fixtureCache.remove(fixtureCache.keys.first())
+        }
+        return matches
     }
-    suspend fun upcoming(sport: String = "all"): List<Match> =
-        get(upcomingQueryPath(sport)).arr("items").objects().map(::parseMatch)
+
+    private suspend fun bet365List(mode: String, sport: String): List<Match> =
+        remember(parseBet365Catalogue(get(bet365CataloguePath(mode, sport)))
+            .map { it.copy(
+                sport = if (it.sport == "ice-hockey") "hockey" else it.sport,
+                bettingAvailable = false
+            ) })
+
+    private suspend fun bet365Prices(ref: Bet365Ref): JSONObject {
+        val key = "${ref.mode}:${ref.sportId}:${ref.fi}"
+        val cached = synchronized(fixtureLock) { headlineCache[key] }
+        val now = System.currentTimeMillis()
+        val expiryMs = if (ref.mode == "live") 25_000L else 90_000L
+        if (cached != null && now - cached.first < expiryMs) return cached.second
+        val result = get(bet365PricesPath(ref, headline = true))
+        if (result.str("source") == BET365_SOURCE && result.str("error").isBlank()) {
+            synchronized(fixtureLock) {
+                headlineCache[key] = now to result
+                while (headlineCache.size > 400)
+                    headlineCache.remove(headlineCache.keys.first())
+            }
+        }
+        return result
+    }
+
+    /** Keep the existing native Live rows and cards; switch only fixture source. */
+    suspend fun live(): Pair<List<Match>, Boolean> {
+        val sports = bet365PrimarySports
+        val lists = supervisorScope {
+            sports.map { sport -> async {
+                runCatching { bet365List("live", sport) }
+            } }.awaitAll()
+        }
+        if (lists.all { it.isFailure })
+            throw ApiFailure(503, "BetsAPI live fixtures unavailable")
+        val distinct = lists.flatMap { it.getOrDefault(emptyList()) }.distinctBy { it.id }
+        // Preview prices can never become bets: all imported markets are suspended,
+        // every fixture has bettingAvailable=false and liveEnabled is false.
+        return enrichBet365Cards(distinct) to false
+    }
+
+    /** Top and sport-specific Upcoming use the same unchanged native cards. */
+    suspend fun upcoming(sport: String = "all"): List<Match> {
+        val keys = if (sport == "all") bet365PrimarySports
+                   else listOf(betsApiSport(sport) ?: return emptyList())
+        val lists = supervisorScope {
+            keys.map { key -> async {
+                runCatching { bet365List("upcoming", key) }
+            } }.awaitAll()
+        }
+        if (lists.all { it.isFailure })
+            throw ApiFailure(503, "BetsAPI upcoming fixtures unavailable")
+        val matches = lists.flatMap { it.getOrDefault(emptyList()) }
+            .distinctBy { it.id }.sortedBy { it.starts }
+        return enrichBet365Cards(matches)
+    }
+
+    /** Bound requests for headline previews: never fetch every visible fixture
+     * at once and never inject BetsAPI ids into the wager-placement protocol.
+     */
+    private suspend fun enrichBet365Cards(matches: List<Match>): List<Match> {
+        if (matches.isEmpty()) return matches
+        val maxPreviews = 12
+        val headlines = supervisorScope {
+            matches.take(maxPreviews).map { match -> async {
+                val ref = bet365Ref(match.id)
+                if (ref == null) null else runCatching {
+                    withContext(Dispatchers.IO) { bet365Prices(ref) }
+                }.getOrNull()
+            } }.awaitAll()
+        }
+        val priced = matches.mapIndexed { index, match ->
+            headlines.getOrNull(index)?.let { withBet365Headline(match, it) } ?: match
+        }
+        return remember(priced)
+    }
 
     /**
-     * Backend catalogue search (not just the first page already present in the UI).
-     * q is URI-encoded, bound to the existing read-only /matches endpoint.
+     * Search keeps native UI untouched. The server's /matches endpoint now
+     * returns exclusively BetsAPI fixtures; reject any previous bookmaker feed.
      */
     suspend fun searchMatches(query: String, live: Boolean): List<Match> {
-        return get(searchQueryPath(query, live)).arr("items").objects().map(::parseMatch)
+        val data = get(searchQueryPath(query, live))
+        return remember(parseBet365Catalogue(
+            JSONObject().put("source", data.str("source"))
+                .put("error", data.str("error"))
+                .put("matches", data.arr("items"))
+        ).map { it.copy(
+            sport = if (it.sport == "ice-hockey") "hockey" else it.sport,
+            bettingAvailable = false
+        ) })
     }
 
+    /** Bet365 FI has its own namespace. Read-only market details are obtained
+     * through the site's provider proxy, NEVER the legacy local UUID endpoint.
+     */
     suspend fun detail(id: String): Match {
-        require(id.matches(Regex("[A-Za-z0-9-]{1,100}")))
+        val ref = bet365Ref(id)
+        if (ref != null) {
+            val match = synchronized(fixtureLock) { fixtureCache[id] }
+                ?: run {
+                    val sport = when (ref.sportId) {
+                        "1" -> "football"; "18" -> "basketball"; "13" -> "tennis"
+                        "91" -> "volleyball"; "17" -> "ice-hockey"
+                        "3" -> "cricket"; "78" -> "handball"; "16" -> "baseball"
+                        "12" -> "american-football"; "92" -> "table-tennis"
+                        else -> null
+                    }
+                    sport?.let { bet365List(ref.mode, it).firstOrNull { m -> m.id == id } }
+                }
+                ?: throw ApiFailure(404, "BetsAPI fixture unavailable")
+            val response = get(bet365PricesPath(ref))
+            val enriched = withBet365Details(match, response)
+            remember(listOf(enriched))
+            return enriched
+        }
+        // Retain account access to historical bets identified by internal UUID.
+        require(id.matches(Regex("[a-fA-F0-9-]{36}")))
         val data = get("/api/v1/matches/" + id)
         val match = data.optJSONObject("match") ?: throw ApiFailure(404, "Match unavailable")
         return parseMatch(match, data.optJSONArray("markets"))
