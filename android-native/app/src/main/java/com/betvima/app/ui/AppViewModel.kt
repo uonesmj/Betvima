@@ -95,6 +95,20 @@ internal fun sportsFeedError123(error: Exception, lang: Lang): String {
     }
 }
 
+/** Pure navigation transition. A temporary provider market error must retain
+ * the verified fixture card instead of returning the user to the home list.
+ */
+internal fun beginMatchNavigation123(state: AppState, id: String): AppState {
+    val preview = state.detail?.takeIf { it.id == id }
+        ?: (state.live + state.upcoming + state.searchLive + state.searchUpcoming)
+            .firstOrNull { it.id == id }
+    return state.copy(detail = preview, detailLoading = true,
+        detailError = null, liveFacts = null,
+        focusedMarketId = state.focusedMarketId?.takeIf { preview != null })
+}
+internal fun failedMatchNavigation123(state: AppState, message: String): AppState =
+    state.copy(detailLoading = false, detailError = message)
+
 /** Screen state lives outside composables; every value comes from BetVima API. */
 class AppViewModel(app: Application) : AndroidViewModel(app) {
     private val api = ApiClient()
@@ -314,16 +328,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
      */
     fun openMatch(id: String) = viewModelScope.launch {
         val request = ++detailRequestNumber
-        val current = state.value
-        val preview = current.detail?.takeIf { it.id == id }
-            ?: (current.live + current.upcoming +
-                current.searchLive + current.searchUpcoming)
-                .firstOrNull { it.id == id }
-        mutable.update {
-            it.copy(detailLoading = true, detail = preview,
-                detailError = null, liveFacts = null, focusedMarketId =
-                    if (it.focusedMarketId != null && preview != null) it.focusedMarketId else null)
-        }
+        val preview = beginMatchNavigation123(state.value, id).detail
+        mutable.update { beginMatchNavigation123(it, id) }
         try {
             val match = api.detail(id)
             if (request == detailRequestNumber) mutable.update {
