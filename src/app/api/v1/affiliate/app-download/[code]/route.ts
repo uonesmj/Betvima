@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { readFile, mkdir, access } from 'node:fs/promises';
+import { constants as fsConstants } from 'node:fs';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import path from 'node:path';
@@ -16,7 +17,9 @@ const DOWNLOAD_DIR = '/var/www/nova/public/downloads/affiliate-app';
 const RELEASE_APK = path.join(ANDROID_DIR, 'app/build/outputs/apk/release/app-release.apk');
 const VERSION_FILE = path.join(ANDROID_DIR, 'app/build.gradle.kts');
 // A deployment must update the installed native sources before enabling downloads.
-const MINIMUM_NATIVE_VERSION = 120;
+// The approved native 0.124.0 source includes the corrected affiliate reporting UX.
+// Older pre-124 sources must not be shipped to newly referred users.
+const MINIMUM_NATIVE_VERSION = 124;
 
 const validCode = (code: string): boolean => /^[A-Z0-9_-]{3,64}$/.test(code);
 const nativeVersion = (gradle: string): { code: number; name: string } | null => {
@@ -29,9 +32,30 @@ const nativeVersion = (gradle: string): { code: number; name: string } | null =>
   return { code, name };
 };
 
-async function signedApk(file: string): Promise<boolean> {
+// Production Next.js inherits a restricted PATH from the reviewed deployer.
+// Resolve SDK tools by absolute path rather than assuming 'apksigner' or
+// '/usr/local/bin/gradle' is visible to PM2. Never search untrusted paths.
+const SDK_PATHS = [
+  '/usr/local/lib/android/sdk', '/opt/android-sdk', '/usr/lib/android-sdk',
+  '/home/novaadmin/Android/Sdk',
+];
+async function firstExecutable(candidates: string[]): Promise<string | null> {
+  for (const candidate of candidates) {
+    try { await access(candidate, fsConstants.X_OK); return candidate; } catch { /* next */ }
+  }
+  return null;
+}
+const gradleCandidates = [
+  '/opt/gradle/bin/gradle', '/opt/gradle-8.10.2/bin/gradle',
+  '/usr/local/gradle/bin/gradle', '/usr/local/bin/gradle', '/usr/bin/gradle',
+];
+const signerCandidates = [
+  '/usr/bin/apksigner', '/usr/local/bin/apksigner',
+  ...SDK_PATHS.map(dir => path.join(dir, 'build-tools/35.0.0/apksigner')),
+];
+async function signedApk(file: string, signer: string): Promise<boolean> {
   try {
-    await execFileAsync('apksigner', ['verify', '--print-certs', file], {
+    await execFileAsync(signer, ['verify', '--print-certs', file], {
       timeout: 20_000, maxBuffer: 128_000,
     });
     return true;
@@ -93,6 +117,14 @@ export async function GET(
       );
     }
 
+    const gradle = await firstExecutable(gradleCandidates);
+    const signer = await firstExecutable(signerCandidates);
+    if (!gradle || !signer) {
+      return NextResponse.json(
+        { ok: false, error: 'ANDROID_BUILD_TOOLS_NOT_CONFIGURED' },
+        { status: 503, headers: { 'Cache-Control': 'no-store' } },
+      );
+    }
     const tmp = `${output}.tmp`;
     // Inputs are validated before passing to a shell command. The global lock
     // avoids racing Gradle's shared output directory across different affiliates.
@@ -100,9 +132,11 @@ export async function GET(
       'set -e',
       `cd '${ANDROID_DIR}'`,
       `if [ -f '${output}' ]; then exit 0; fi`,
-      'if [ -x ./gradlew ]; then GRADLE=./gradlew; else GRADLE=gradle; fi',
-      `"$GRADLE" --no-daemon :app:assembleRelease -PaffiliateRef='${clean}'`,
-      `apksigner verify --print-certs '${RELEASE_APK}' > /dev/null`,
+      `'${gradle}' --no-daemon --no-configuration-cache :app:assembleRelease -PaffiliateRef='${clean}'`,
+      // Fail closed rather than accidentally publishing a release with a
+      // different partner ID left in a shared Gradle build directory.
+      `grep -F 'AFFILIATE_REFERRAL_CODE = "${clean}"' 'app/build/generated/source/buildConfig/release/com/betvima/app/BuildConfig.java' > /dev/null`,
+      `'${signer}' verify --print-certs '${RELEASE_APK}' > /dev/null`,
       `cp '${RELEASE_APK}' '${tmp}'`,
       `mv '${tmp}' '${output}'`,
     ].join('\n');
@@ -124,7 +158,8 @@ export async function GET(
     }
   }
 
-  if (!(await signedApk(output))) {
+  const verifier = await firstExecutable(signerCandidates);
+  if (!verifier || !(await signedApk(output, verifier))) {
     return NextResponse.json(
       { ok: false, error: 'ANDROID_APK_SIGNATURE_INVALID' },
       { status: 503, headers: { 'Cache-Control': 'no-store' } },
