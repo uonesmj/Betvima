@@ -6,7 +6,7 @@ import {
   request, ExplorerUpstreamError, type ExplorerError,
 } from './betsapi-explorer';
 import { object, string } from './betsapi-normalization';
-import { betsApiLiveMinute } from './betsapi-match-clock';
+import { betsApiLiveClock } from './betsapi-match-clock';
 
 const rec = object;
 const val = (x: unknown) => string(x).trim();
@@ -41,6 +41,8 @@ export interface MatchLiveFacts {
   fi: string;
   score: string | null;
   minute: number | null;
+  clockSeconds?: number | null;
+  clockRunning?: boolean;
   home: string | null;
   away: string | null;
   stats: StatLine[];
@@ -150,9 +152,11 @@ export function parseBet365MatchStats(fi: string, payload: unknown): MatchLiveFa
     away: values.get(metric.key)?.[1] ?? null,
   }));
   const score = val(event?.SS);
+  const clock = event ? betsApiLiveClock(event) : { minute: null, clockSeconds: null, clockRunning: false };
   return {
     fi, home, away, score: /^\d{1,3}-\d{1,3}$/.test(score) ? score : null,
-    minute: event ? betsApiLiveMinute(event) : null,
+    minute: clock.minute, clockSeconds: clock.clockSeconds,
+    clockRunning: clock.clockRunning,
     stats, updatedAt: new Date().toISOString(), error: null,
   };
 }
@@ -202,7 +206,7 @@ export async function fetchMatchLiveFacts(token: string | null, fi: string,
   fetcher: Fetcher = fetch): Promise<MatchLiveFacts> {
   const empty: MatchLiveFacts = {
     fi, home: null, away: null, score: null, minute: null,
-    stats: [], updatedAt: new Date().toISOString(),
+    clockSeconds: null, clockRunning: false, stats: [], updatedAt: new Date().toISOString(),
     error: token ? null : 'NOT_CONFIGURED',
   };
   if (!token) return empty;
