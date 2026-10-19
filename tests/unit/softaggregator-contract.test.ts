@@ -1,7 +1,7 @@
 import { createHash, createHmac } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
 import {
-  validateCallback, playerUsername, userIdFromUsername, playerPassword,
+  validateCallback, verifySupplierCallbackSignature, playerUsername, userIdFromUsername, playerPassword,
 } from '@/server/providers/softaggregator/contract';
 
 const salt = 'testing-provider-salt-value-32-chars-long';
@@ -40,6 +40,32 @@ describe('SoftAggregator full-payload callback authentication', () => {
     expect(event?.identityHash).toHaveLength(64);
     expect(event?.callId).toBe('c001');
   });
+  it('matches the supplier-documented decoded canonicalization separately from edge signing', () => {
+    const d = signed({
+      action: 'debit', username, currency: 'USD', call_id: 'test-12',
+      amount: '250', game_id: 'provider/game', round_id: 'round-1',
+    });
+    const decodedCanonical = [...d.url.searchParams.entries()]
+      .sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0)
+      .map(([name, value]) => name + '=' + value).join('&');
+    const providerHmac = createHmac('sha256', salt).update(decodedCanonical).digest('hex');
+    expect(verifySupplierCallbackSignature(d.url, providerHmac, salt)).toBe(true);
+    // The encoded edge canonicalization uses %2F, not the vendor's '/':
+    expect(verifySupplierCallbackSignature(d.url, d.hmac, salt)).toBe(false);
+    expect(verifySupplierCallbackSignature(d.url, null, salt)).toBe(false);
+    d.url.searchParams.set('amount', '999');
+    expect(verifySupplierCallbackSignature(d.url, providerHmac, salt)).toBe(false);
+  });
+
+  it('refuses ambiguous supplier canonicalization and duplicate fields', () => {
+    const d = signed({ action: 'balance', username, currency: 'USD' });
+    d.url.searchParams.set('type', 'bet&amount=250');
+    expect(verifySupplierCallbackSignature(d.url, '0'.repeat(64), salt)).toBe(false);
+    const other = signed({ action: 'balance', username, currency: 'USD' });
+    other.url.searchParams.append('action', 'debit');
+    expect(verifySupplierCallbackSignature(other.url, '0'.repeat(64), salt)).toBe(false);
+  });
+
   it('rejects a missing or altered HMAC even when the legacy MD5 key is valid', () => {
     const d = signed({ action: 'credit', username, currency: 'USD', call_id: 'x2', amount: '200' });
     expect(validateCallback(d.url, null, salt, now)).toBeNull();
