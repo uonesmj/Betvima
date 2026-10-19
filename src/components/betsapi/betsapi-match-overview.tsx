@@ -5,6 +5,7 @@ import { ChevronLeft, ChevronRight, Clock3, MapPin, Activity } from 'lucide-reac
 import { useApp } from '@/components/layout/providers';
 import { LeagueLogo, TeamLogo } from '@/components/ui/logo';
 import { sportByKey } from '@/lib/betsapi-sports-map';
+import { LiveMatchPulseBoard } from '@/components/betsapi/betsapi-live-activity';
 import type { MatchView } from '@/components/betting/match-card';
 import type { MatchLiveFacts, MatchBackground, MatchEventItem } from '@/providers/betsapi-match-facts';
 
@@ -46,7 +47,8 @@ export function BetsApiMatchOverview({fixture,fi,sportKey,mode,initial}:{
   const kickoff=fixture?.scheduledAt||initial?.kickoff||'';
   const score=stats?.score??(fixture?.homeScore!=null&&fixture?.awayScore!=null?
     String(fixture.homeScore)+'-'+String(fixture.awayScore):null);
-  const minute=stats?.minute??fixture?.minute;
+  const minute=stats?.clockSeconds!=null?
+    Math.floor(stats.clockSeconds/60):stats?.minute??fixture?.minute;
   const names=fa?phrases.fa:phrases.en;
   const showTab=(n:number)=>setTab(Math.max(0,Math.min(2,n)));
 
@@ -137,8 +139,14 @@ export function BetsApiMatchOverview({fixture,fi,sportKey,mode,initial}:{
             <span className="text-[10px] text-slate-400">{fa?'مهمان':'Away'}</span>
           </div>
         </div>
+        {mode==='live'&&<div className="px-3 pb-3">
+          <LiveMatchPulseBoard facts={stats} home={home} away={away} fa={fa} compact/>
+        </div>}
       </div>}
       {tab===1&&<div role="tabpanel" className="p-3">
+        {mode==='live'&&<div className="mb-3">
+          <LiveMatchPulseBoard facts={stats} home={home} away={away} fa={fa}/>
+        </div>}
         <div className="mb-3 flex items-center justify-between">
           <strong className="flex items-center gap-1 text-sm text-[#253345]"><Activity size={16}/>{fa?'آمار مسابقه':'Match statistics'}</strong>
           {mode==='live'&&<span className="text-[10px] text-slate-400">{fa?'بررسی هر ۲۰ ثانیه':'Checks every 20s'}</span>}

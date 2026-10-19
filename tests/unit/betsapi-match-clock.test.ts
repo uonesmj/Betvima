@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { betsApiLiveMinute } from '@/providers/betsapi-match-clock';
+import { betsApiLiveMinute, betsApiLiveClock } from '@/providers/betsapi-match-clock';
 import { parseExplorerFixture } from '@/providers/betsapi-explorer';
 import { parseBet365MatchStats } from '@/providers/betsapi-match-facts';
 import { fillBetsApiMissingMinutes } from '@/server/betsapi-feed';
@@ -43,5 +43,37 @@ describe('BetsAPI factual in-play clocks', () => {
     const facts=parseBet365MatchStats('12345',[[{type:'EV',FI:'12345',TM:'62',TS:'12',TT:'0',SS:'0-0'}]]);
     expect(facts.minute).toBe(62);
     expect(facts.score).toBe('0-0');
+  });
+});
+
+describe('real-time match clock: stop on break and stale upstream TU', () => {
+  it('returns a second-precision running timer only for fresh confirmed TT/TU', () => {
+    const now = Date.UTC(2026,9,19,12,0,45);
+    const source = { TM:'60', TS:'21', TT:'1', TU:'20261019130000' };
+    expect(betsApiLiveClock(source,now)).toEqual({
+      minute:61, clockSeconds:3666, clockRunning:true,
+    });
+    expect(betsApiLiveClock({ ...source,TT:'0' },now)).toEqual({
+      minute:60, clockSeconds:3621, clockRunning:false,
+    });
+    expect(betsApiLiveClock({ ...source,TU:'20261019090000' },now).clockRunning).toBe(false);
+    expect(betsApiLiveClock({ TM:'60', TS:'21', TT:'1' },now).clockRunning).toBe(false);
+    expect(betsApiLiveClock({ TM:'180', TS:'07', TT:'1', TU:'20261019130000' },now).clockRunning).toBe(true);
+    expect(betsApiLiveClock({ TM:'201', TS:'07', TT:'1' },now).clockSeconds).toBeNull();
+  });
+  it('preserves only real counters from the provider, not bookmaker prices', () => {
+    const actual=parseBet365MatchStats('924411', [[
+      {type:'EV',TM:'62',TS:'09',TT:'0',SS:'3-2'},
+      {type:'SC',NA:'ICorner'},
+      {type:'SL',ID:'0',D1:'5'}, {type:'SL',ID:'1',D1:'2'},
+      {type:'SC',NA:'IFoul'},
+      {type:'SL',ID:'0',D1:'7'}, {type:'SL',ID:'1',D1:'9'},
+      {type:'MG',NA:'Corners',PA:'5/4'},
+      {type:'PA',OD:'6/4'},
+    ]]);
+    expect(actual.stats.find(x=>x.key==='corners')).toMatchObject({home:5,away:2});
+    expect(actual.stats.find(x=>x.key==='fouls')).toMatchObject({home:7,away:9});
+    expect(actual.clockRunning).toBe(false);
+    expect(actual.clockSeconds).toBe(3729);
   });
 });
