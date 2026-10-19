@@ -9,6 +9,7 @@ import androidx.compose.runtime.setValue
 import com.betvima.app.data.LiveMatchFacts
 import com.betvima.app.data.Match
 import kotlinx.coroutines.delay
+import java.time.Instant
 
 /**
  * The same factual clock formatting for the Live catalogue and detail page.
@@ -26,11 +27,19 @@ internal fun rememberVerifiedMatchClock(match: Match, facts: LiveMatchFacts? = n
     val seconds = activeFacts?.clockSeconds ?: match.clockSeconds
     val ticking = if (activeFacts != null) activeFacts.clockRunning else match.clockRunning
     val observed = activeFacts?.observedAt ?: match.clockObservedAt
-    var delta by remember(match.id, observed, seconds, ticking) { mutableIntStateOf(0) }
+    // When the user opens a match from a card, that card snapshot may already
+    // be ~45 seconds old. Account for its timestamp so both pages stay aligned.
+    val initialAge = if (ticking && !observed.isNullOrBlank()) runCatching {
+        ((System.currentTimeMillis() - Instant.parse(observed).toEpochMilli()) / 1000)
+            .coerceIn(0L, 60L).toInt()
+    }.getOrDefault(0) else 0
+    var delta by remember(match.id, observed, seconds, ticking) {
+        mutableIntStateOf(initialAge)
+    }
     LaunchedEffect(match.id, observed, seconds, ticking) {
-        delta = 0
+        delta = initialAge
         if (match.live && seconds != null && ticking) {
-            repeat(60) {
+            repeat(60 - initialAge) {
                 delay(1_000)
                 delta++
             }
