@@ -33,6 +33,8 @@ const failedSections = (...entries: [string, Settled<unknown>][]): string[] =>
 export interface MatchViewPayload {
   id: string; sportKey: string; leagueId: string | null; leagueName: string | null; leagueLogoUrl: string | null; countryCode: string | null;
   status: string; scheduledAt: string; minute: number | null; period: string | null;
+  /** Exact FI-to-Events linkage from the provider; never accepted from a browser. */
+  betsApiEventId?: string | null;
   /** Optional, server-authoritative Bet365 clock; absent on internal ledger fixtures. */
   clockSeconds?: number | null; clockRunning?: boolean; clockObservedAt?: string | null;
   homeScore: number | null; awayScore: number | null;
