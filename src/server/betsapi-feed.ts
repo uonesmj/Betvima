@@ -7,6 +7,7 @@ import { exploreBetsApi, type ExplorerFixture, type ExplorerList } from '@/provi
 import { BETSAPI_SPORTS, sportByKey, type BetsMode } from '@/lib/betsapi-sports-map';
 import type { MatchViewPayload } from '@/server/queries/public';
 import { attachBet365Logos } from '@/server/betsapi-logos';
+import { supplementBet365LiveMinutes } from '@/server/betsapi-fixture-clock';
 
 export function betsApiToken(): string | null {
   return process.env.BETSAPI_PUBLIC_PREVIEW_ENABLED === 'true'
@@ -104,6 +105,11 @@ export async function getBetsApiSport(mode: BetsMode, sportKey: string, page = 1
       // Only Events IDs explicitly bridged by Bet365 are eligible.
       const events = await liveFootballClocks().catch(() => null);
       if (events && !events.error) fixtures = fillBetsApiMissingMinutes(fixtures, events.fixtures);
+    }
+    // The Android Home carousel and full Live list both consume 'minute' from
+    // this SAME catalogue; there is no reason to change their card layout.
+    if (mode === 'live' && sport.id === 1 && fixtures.some(f => f.minute === null && f.fi)) {
+      fixtures = await supplementBet365LiveMinutes(fixtures);
     }
     const matches = await attachBet365Logos(fixtures.map(f => sourceMatch(f, sport.key, mode)), sport.key);
     return {
