@@ -145,5 +145,6 @@ internal fun withBet365MatchMinute(match: Match, facts: JSONObject?): Match {
         is String -> raw.toIntOrNull()
         else -> null
     }?.takeIf { it in 0..200 }
-    return if (minute != null) match.copy(minute = minute) else match
+    return if (minute != null) match.copy(minute = minute, bettingAvailable = false)
+    else match.copy(bettingAvailable = false)
 }
