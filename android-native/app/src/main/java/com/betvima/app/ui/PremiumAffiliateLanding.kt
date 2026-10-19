@@ -37,6 +37,7 @@ import com.betvima.app.data.SessionVault
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.launch
 
 // A genuinely native, illustrated and animated Partners landing.
 // Does not embed 1win content, third-party media, or an external website.
