@@ -11,7 +11,7 @@ type Listing = { matches: MatchView[]; total: number | null; pageCount: number |
   error: string | null; sportKey: string; page: number };
 type Envelope = { ok: boolean; data?: Listing };
 export function BetsApiFixtures({ mode, initialSport = 'football' }: { mode: BetsMode; initialSport?: string }) {
-  const { locale } = useApp();
+  const { locale, session } = useApp();
   const [sport, setSport] = useState(initialSport === 'hockey' ? 'ice-hockey' : initialSport);
   const [page, setPage] = useState(1);
   const [leagueId, setLeagueId] = useState<string | null>(null);
@@ -45,6 +45,11 @@ export function BetsApiFixtures({ mode, initialSport = 'football' }: { mode: Bet
     <div className="flex flex-wrap items-center justify-between gap-2">
       <h1 className="text-xl font-extrabold text-[#20242A]">{mode === 'live' ? (locale === 'fa' ? 'مسابقات زنده' : 'Live matches') : (locale === 'fa' ? 'مسابقات آینده' : 'Upcoming matches')}</h1>
       <span className="rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs text-slate-500">BetsAPI / Bet365</span>
+      {mode === 'live' && session?.user?.isAdmin && (
+        <Link href="/betsapi/test-single" className="rounded-lg border border-sky-300 bg-sky-50 px-3 py-1.5 text-xs font-extrabold text-sky-700">
+          {locale === 'fa' ? 'آزمایش یک شرط' : 'Test one bet'}
+        </Link>
+      )}
     </div>
     <div className="flex gap-2 overflow-x-auto pb-2">
       {BETSAPI_SPORTS.map(s => <button key={s.id} type="button" onClick={() => { setSport(s.key); setPage(1); setLeagueId(null); setListing(null); }}
