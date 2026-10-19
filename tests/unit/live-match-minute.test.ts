@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { matchMinuteLabel } from '@/lib/live-match-minute';
 
-describe('Odds API match minute display', () => {
+describe('BetsAPI canonical match minute display', () => {
   it('shows the exact provider minute, not a locally estimated timer', () => {
     expect(matchMinuteLabel(7, null)).toBe("7'");
     expect(matchMinuteLabel(44, 'first_half')).toBe("44'");
@@ -29,7 +29,7 @@ describe('Odds API match minute display', () => {
     expect(catalog).toContain('m.minute as display_minute');
     expect(oddsRoute).toContain('m.minute, m.period');
     expect(oddsRoute).not.toContain('fdclock');
-    expect(oddsRoute).toContain("m.provider = 'the_odds_api'");
+    expect(oddsRoute).toContain("m.provider = 'betsapi'");
     expect(hero).toContain('matchMinuteLabel(match.minute, match.period)');
     expect(hero).not.toContain('setLiveSeconds');
   });

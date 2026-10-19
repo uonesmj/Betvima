@@ -1,6 +1,8 @@
 import { withErrorHandling, jsonOk } from '@/lib/errors';
 import { readBetsApiMarkets } from '@/server/betsapi-market-cache';
 import { BETSAPI_SPORTS } from '@/lib/betsapi-sports-map';
+import { getBetsApiSport } from '@/server/betsapi-feed';
+import { attachCanonicalWagers } from '@/server/betsapi-wager-bridge';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -16,9 +18,17 @@ export const GET = withErrorHandling('betsapi.market.refresh', async (_ctx, requ
     return jsonOk({ source: 'betsapi_bet365', readOnly: true, markets: [], error: 'INVALID_FIXTURE' });
   }
   const result = await readBetsApiMarkets(mode, sportId, fi);
+  const listing = await getBetsApiSport(mode, BETSAPI_SPORTS.find(s => s.id === sportId)!.key);
+  const fixture = listing.matches.find(m => m.id === 'betsapi:' + mode + ':' + sportId + ':' + fi);
+  const home = fixture?.participants.find(p => p.role === 'HOME')?.name ?? '';
+  const away = fixture?.participants.find(p => p.role === 'AWAY')?.name ?? '';
+  const markets = await attachCanonicalWagers(result.markets, {
+    fi, sportId, mode, eventId: fixture?.betsApiEventId, home, away,
+  });
+  const wageringAvailable = markets.some(market => market.selections.some(selection => Boolean(selection.wager)));
   return jsonOk({
-    source: 'betsapi_bet365', readOnly: true, mode, fi,
-    markets: result.markets, marketCount: result.marketCount,
+    source: 'betsapi_bet365', readOnly: !wageringAvailable, wageringAvailable, mode, fi,
+    markets, marketCount: result.marketCount,
     refreshedAt: result.refreshedAt, error: result.error,
     pollAfterMs: mode === 'live' ? 10000 : 60000,
   });

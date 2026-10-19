@@ -150,9 +150,12 @@ export function serverEnv(): ServerEnv {
     supabaseConfigured,
     configurationProblems: problems,
     configurationComplete: problems.length === 0,
-    // The legacy odds worker may not ingest from retained The Odds API credentials.
-    // BetsAPI catalogue remains read-only until wager + settlement wiring is verified.
-    sportsProviderEnabled: false,
+    // Explicit opt-in: never restore a retired provider or allow preview data
+    // into the money ledger simply because an old key is still present.
+    sportsProviderEnabled: env.SPORTS_PROVIDER === 'betsapi' &&
+      process.env.BETSAPI_WAGER_INGEST_ENABLED === 'true' &&
+      process.env.BETSAPI_TRIAL_ENABLED === 'true' &&
+      Boolean(process.env.BETSAPI_TRIAL_TOKEN?.trim()),
     paymentProviderEnabled: env.PAYMENT_PROVIDER !== 'disabled' && Boolean(env.PAYMENT_PROVIDER_API_KEY),
     paymentProvider: env.PAYMENT_PROVIDER,
     paymentProviderBaseUrl: env.PAYMENT_PROVIDER_BASE_URL,

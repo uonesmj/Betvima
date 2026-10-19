@@ -7,14 +7,14 @@ function source(path: string): string {
 }
 
 describe('single source of truth for sports data', () => {
-  it('filters both the live and prematch odds JSON branches by the Odds API market AND selection', () => {
+  it('filters both the live and prematch odds JSON branches by the authorized BetsAPI market AND selection', () => {
     const code = source('src/app/api/v1/matches/[id]/odds/route.ts');
-    expect(code.match(/and mk\.provider = 'the_odds_api'/g)).toHaveLength(2);
-    expect(code.match(/and sel\.provider = 'the_odds_api'/g)).toHaveLength(2);
-    expect(code.match(/m\.provider = 'the_odds_api'/g)).toHaveLength(2);
+    expect(code.match(/and mk\.provider = 'betsapi'/g)).toHaveLength(2);
+    expect(code.match(/and sel\.provider = 'betsapi'/g)).toHaveLength(2);
+    expect(code.match(/m\.provider = 'betsapi'/g)).toHaveLength(2);
   });
 
-  it('rejects other sports sources from all background refresh/reconciliation paths', () => {
+  it('rejects retired sports sources from all background refresh/reconciliation paths', () => {
     const worker = source('src/workers/odds.worker.ts');
     // Non-Odds sources must never perform live discovery or settle results.
     expect(worker).toContain('provider.name === MATCH_SOURCE_ODDS && provider.configured');
@@ -23,17 +23,18 @@ describe('single source of truth for sports data', () => {
       .toContain('if (matchProvider !== MATCH_SOURCE_ODDS) return null');
   });
 
-  it('hides retired Odds API health rows from the active provider panel', () => {
+  it('hides retired provider health rows from the active provider panel', () => {
     for (const path of ['src/app/api/v1/admin/providers/route.ts', 'src/providers/null-providers.ts']) {
       expect(source(path)).toContain("where kind <> 'sports' or provider = 'disabled'");
     }
   });
 
-  it('detaches The Odds API runtime from all active providers and gates ingestion', () => {
+  it('detaches both retired providers from runtime and requires an explicit BetsAPI opt-in', () => {
     const code = source('src/providers/null-providers.ts');
-    expect(code).toContain('const sportsProviders: SportsDataProvider[] = [];');
+    expect(code).toContain('const sportsProviders: SportsDataProvider[] = betsapi?.configured ? [betsapi] : [];');
     expect(code).not.toContain('new TheOddsApiSportsProvider()');
-    expect(source('src/server/env.ts')).toContain('sportsProviderEnabled: false,');
+    expect(source('src/server/env.ts')).toContain("process.env.BETSAPI_WAGER_INGEST_ENABLED === 'true'");
+    expect(code).toContain('new BetsApiSportsProvider()');
     expect(source('src/app/api/v1/live/route.ts')).toContain("sportsSourceRevision: 'betsapi-bet365-only-v1'");
   });
 });

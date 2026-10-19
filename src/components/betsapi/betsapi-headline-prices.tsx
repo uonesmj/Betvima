@@ -3,8 +3,12 @@
 import { useEffect, useRef, useState } from 'react';
 import { useApp } from '@/components/layout/providers';
 import { formatBetsApiOdds } from '@/lib/betsapi-odds-display';
+import { useBetSlip, type SlipItem } from '@/lib/store/betslip';
+import type { MatchView } from '@/components/betting/match-card';
 
-type Price = { label: string; decimal: string };
+type Price = { label: string; decimal: string; wager?: {
+  matchId: string; marketId: string; selectionId: string; oddsScaled: string; oddsVersion: number;
+} };
 type Preview = { market: { name: string; selections: Price[] } | null; marketCount?: number; error: string | null };
 type Envelope = { ok: boolean; data?: Preview };
 
@@ -14,12 +18,14 @@ type Envelope = { ok: boolean; data?: Preview };
  * Lazy-load only cards actually seen by a visitor to protect trial quota.
  */
 export function BetsApiHeadlinePrices({
-  matchId, variant = 'list',
+  matchId, variant = 'list', match,
 }: {
   matchId: string;
   variant?: 'list' | 'home';
+  match?: MatchView;
 }) {
   const { locale } = useApp();
+  const toggleBet = useBetSlip(s => s.toggle);
   const ref = useRef<HTMLDivElement>(null);
   const [visible, setVisible] = useState(false);
   const [data, setData] = useState<Preview | null>(null);
@@ -71,6 +77,22 @@ export function BetsApiHeadlinePrices({
   const pending = !visible || !loaded;
   const available = !!market && market.selections.length > 0;
   const otherOffers = !available && (data?.marketCount ?? 0) > 0;
+  const canWager = !!match && !!market?.selections.some(s => s.wager);
+  const addBet = (selection: Price) => {
+    if (!selection.wager || !match || !market) return;
+    const home = match.participants.find(p => p.role === 'HOME')?.name ?? '';
+    const away = match.participants.find(p => p.role === 'AWAY')?.name ?? '';
+    const wager = selection.wager;
+    const item: SlipItem = {
+      matchId: wager.matchId, marketId: wager.marketId,
+      selectionId: wager.selectionId, oddsScaled: wager.oddsScaled,
+      oddsVersionSeen: wager.oddsVersion,
+      label: selection.label, marketLabel: market.name,
+      matchLabel: home + ' - ' + away, sportSlug: match.sportKey,
+      addedAt: Date.now(),
+    };
+    toggleBet(item);
+  };
   const status = pending
     ? (locale === 'fa' ? 'در حال دریافت ضرایب…' : 'Loading odds…')
     : data?.error === 'PREVIEW_BUDGET_EXHAUSTED' || data?.error === 'UPSTREAM_QUOTA'
@@ -94,18 +116,21 @@ export function BetsApiHeadlinePrices({
       <div className={`grid grid-cols-3 ${compact ? 'gap-1' : 'gap-1.5'}`}>
         {Array.from({ length: 3 }, (_, i) => {
           const selection = market?.selections[i];
-          return <div key={i} aria-disabled="true"
-            title={selection ? `${selection.label}: ${formatBetsApiOdds(selection.decimal)} (read-only)` : undefined}
+          return <button key={i} type="button" disabled={!selection?.wager || !match}
+            aria-disabled={!selection?.wager || !match} onClick={() => { if (selection?.wager) addBet(selection); }}
+            title={selection ? `${selection.label}: ${formatBetsApiOdds(selection.decimal)}` : undefined}
             className={`flex flex-col items-center justify-center rounded-lg border border-[#E4E9EF] bg-white text-center ${compact ? 'min-h-[45px] px-1 py-1.5' : 'min-h-[53px] px-1.5 py-2'}`}>
             {selection ? <>
               <span className="w-full truncate text-[9px] font-semibold text-[#768391]">{selection.label}</span>
               <strong className="mt-1 text-[12px] font-black tabular-nums text-[#1D2C3D]">{formatBetsApiOdds(selection.decimal)}</strong>
             </> : <span className="text-sm text-[#9AA5B2]">{pending ? '…' : '—'}</span>}
-          </div>;
+          </button>;
         })}
       </div>
       <p className={`text-[9px] leading-tight text-[#80909E] ${compact ? 'mt-1' : ''}`}>
-        {locale === 'fa' ? 'فقط نمایش · ثبت شرط غیرفعال' : 'Preview only · betting disabled'}{matchId.startsWith('betsapi:live:') ? (locale === 'fa' ? ' · بررسی هر ۱۰ ثانیه' : ' · checks every 10s') : ''}
+        {(canWager
+          ? (locale === 'fa' ? 'ضریب تأییدشده · تغییر ضریب نیازمند تأیید' : 'Verified odds · changes require acceptance')
+          : (locale === 'fa' ? 'فقط نمایش · ثبت شرط غیرفعال' : 'Preview only · betting disabled'))}{matchId.startsWith('betsapi:live:') ? (locale === 'fa' ? ' · بررسی هر ۱۰ ثانیه' : ' · checks every 10s') : ''}
       </p>
     </div>
   );

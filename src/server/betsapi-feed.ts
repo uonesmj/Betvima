@@ -85,6 +85,7 @@ export function sourceMatch(f: ExplorerFixture, sportKey: string, mode: BetsMode
   const [homeScore, awayScore] = parsedScore(f.score);
   return {
     id: `betsapi:${mode}:${f.sportId}:${f.fi ?? f.eventId ?? 'unlinked'}`,
+    betsApiEventId: f.eventId ?? null,
     // External Bet365 league IDs must never occupy local UUID slots.
     sportKey, leagueId: null, leagueName: f.league, leagueLogoUrl: f.leagueLogoUrl ?? null,
     countryCode: f.country, status: mode === 'live' ? 'live' : 'scheduled',

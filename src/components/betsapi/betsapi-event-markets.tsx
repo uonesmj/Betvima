@@ -8,8 +8,11 @@ import { useApp } from '@/components/layout/providers';
 import type { MatchView } from '@/components/betting/match-card';
 import { ChevronLeft, Search } from 'lucide-react';
 import { BetsApiMatchOverview } from '@/components/betsapi/betsapi-match-overview';
+import { useBetSlip, type SlipItem } from '@/lib/store/betslip';
 
-type Market = { key: string; title: string; selections: { id: string; label: string; decimal: string }[] };
+type Wager = { matchId: string; marketId: string; selectionId: string; oddsScaled: string; oddsVersion: number };
+type Option = { id: string; label: string; decimal: string; wager?: Wager };
+type Market = { key: string; title: string; selections: Option[] };
 type Group = 'all' | 'main' | 'goals' | 'corners' | 'cards' | 'players' | 'other';
 const GROUPS: { id: Group; en: string; fa: string }[] = [
   { id: 'all', en: 'All markets', fa: 'همه مارکت‌ها' },
@@ -32,7 +35,9 @@ function groupOf(title: string): Group {
 const usable = (label: string) => Boolean(label.trim()) && !/Unlabelled outcome/i.test(label);
 
 /** Long scorelines and player markets remain accessible without filling dozens of mobile screens. */
-function MarketSection({ market, isFa }: { market: Market; isFa: boolean }) {
+function MarketSection({ market, isFa, onSelect }: {
+  market: Market; isFa: boolean; onSelect: (market: Market, selection: Option) => void;
+}) {
   const [expanded, setExpanded] = useState(false);
   const shown = expanded ? market.selections : market.selections.slice(0, 9);
   const remaining = market.selections.length - shown.length;
@@ -41,11 +46,13 @@ function MarketSection({ market, isFa }: { market: Market; isFa: boolean }) {
       <h3 className="text-sm font-extrabold text-[#263345]">{market.title}</h3>
     </div>
     <div className={`grid gap-1.5 p-2.5 ${market.selections.length < 3 ? 'grid-cols-2' : 'grid-cols-3'}`}>
-      {shown.map((s, index) => <div key={s.id + ':' + index} aria-disabled="true" title={s.label}
+      {shown.map((s, index) => <button key={s.id + ':' + index} type="button" disabled={!s.wager}
+        aria-disabled={!s.wager} onClick={() => { if (s.wager) onSelect(market, s); }}
+        title={s.label}
         className="flex min-h-[62px] min-w-0 flex-col items-center justify-center gap-1 rounded-lg border border-[#E5EAF0] bg-[#F6F8FB] px-1.5 py-2 text-center">
         <span className="line-clamp-2 text-[10px] font-semibold leading-4 text-[#6D7B89]">{s.label}</span>
         <strong className="text-[13px] font-black tabular-nums text-[#243547]">{formatBetsApiOdds(s.decimal)}</strong>
-      </div>)}
+      </button>)}
     </div>
     {market.selections.length > 9 && <button type="button"
       aria-expanded={expanded}
@@ -81,6 +88,7 @@ export function BetsApiEventMarkets({
   reportedCount: number;
 }) {
   const { locale } = useApp();
+  const toggleBet = useBetSlip(state => state.toggle);
   const isFa = locale === 'fa';
   const [group, setGroup] = useState<Group>('all');
   const [search, setSearch] = useState('');
@@ -137,6 +145,20 @@ export function BetsApiEventMarkets({
   ), [validMarkets, group, search]);
   const categories = GROUPS.filter(g => g.id === 'all' ||
     validMarkets.some(m => groupOf(m.title) === g.id));
+  const wagerReady = validMarkets.some(m => m.selections.some(s => Boolean(s.wager)));
+  const chooseSelection = (market: Market, selection: Option) => {
+    const wager = selection.wager;
+    if (!wager || !fixture) return;
+    const home = fixture.participants.find(p => p.role === 'HOME')?.name ?? '';
+    const away = fixture.participants.find(p => p.role === 'AWAY')?.name ?? '';
+    const item: SlipItem = {
+      matchId: wager.matchId, marketId: wager.marketId, selectionId: wager.selectionId,
+      oddsScaled: wager.oddsScaled, oddsVersionSeen: wager.oddsVersion,
+      label: selection.label, marketLabel: market.title,
+      matchLabel: home + ' - ' + away, sportSlug: sportKey, addedAt: Date.now(),
+    };
+    toggleBet(item);
+  };
 
   return <main className="mx-auto w-full max-w-[1160px] space-y-4 px-3 pb-28 pt-4">
     <Link href={backHref} className="inline-flex items-center gap-1.5 text-sm font-semibold text-[#087FF5]">
@@ -145,8 +167,11 @@ export function BetsApiEventMarkets({
     <BetsApiMatchOverview fi={fi} mode={mode} sportKey={sportKey} fixture={fixture} initial={initial} />
 
     <div role="status" className="rounded-xl border border-[#F2E2B5] bg-[#FFF9E8] px-3 py-2.5 text-xs font-medium leading-5 text-[#86601F]">
-      {isFa ? 'ضرایب فقط برای بررسی نمایش داده می‌شوند. ثبت شرط تا زمان تأیید اتصال مالی و تسویه غیرفعال است.' :
-        'Prices are for viewing only. Wager placement is disabled until price acceptance and settlement are validated.'}
+      {wagerReady
+        ? (isFa ? 'فقط ضرایب تأییدشده و به‌روز قابل انتخاب هستند. تغییر ضریب در برگه شرط نیازمند تأیید شماست.' :
+          'Only verified current prices can be selected. Any price change requires your acceptance in the bet slip.')
+        : (isFa ? 'ضرایب فقط برای بررسی نمایش داده می‌شوند. ثبت شرط تا زمان تأیید اتصال مالی و تسویه غیرفعال است.' :
+          'Prices are for viewing only. Wager placement is disabled until price acceptance and settlement are validated.')}
     </div>
 
     {feedError && <p role="alert" className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900">{isFa ? 'مارکت‌های این مسابقه دریافت نشدند' : 'Markets could not be loaded'}: {feedError}</p>}
@@ -183,7 +208,7 @@ export function BetsApiEventMarkets({
       </div>
       {!filtered.length && <p className="rounded-xl bg-white p-5 text-sm text-[#738293]">{isFa ? 'مارکت قابل نمایشی در این دسته وجود ندارد.' : 'No labeled selections available in this category.'}</p>}
       <div className="grid gap-3 md:grid-cols-2">
-        {filtered.slice(0, limit).map(m => <MarketSection key={m.key} market={m} isFa={isFa} />)}
+        {filtered.slice(0, limit).map(m => <MarketSection key={m.key} market={m} isFa={isFa} onSelect={chooseSelection} />)}
       </div>
       {filtered.length > limit && <button type="button"
         onClick={() => setLimit(n => n + 40)}

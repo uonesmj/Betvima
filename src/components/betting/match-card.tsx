@@ -44,6 +44,7 @@ export interface MatchView {
   status: string;
   scheduledAt: string;
   minute: number | null;
+  betsApiEventId?: string | null;
   clockSeconds?: number | null;
   clockRunning?: boolean;
   clockObservedAt?: string | null;
@@ -138,7 +139,7 @@ export function MatchCard({
         </Link>
         <div className="h-px bg-[#E2E7EC]/70" />
         {match.id.startsWith('betsapi:') ? (
-          <BetsApiHeadlinePrices matchId={match.id} />
+          <BetsApiHeadlinePrices matchId={match.id} match={match} />
         ) : (
           <>
         <div className="flex min-w-0 items-center justify-between gap-2">

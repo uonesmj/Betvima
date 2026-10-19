@@ -136,7 +136,7 @@ export class BetsApiSportsProvider implements SportsDataProvider {
     const from = Date.parse(window.from), to = Date.parse(window.to);
     if (!Number.isFinite(from) || !Number.isFinite(to) || to <= from ||
       to - from > 31 * 86_400_000) return failed('BETSAPI_SCHEMA_INVALID');
-    const selected = BETSAPI_SPORTS.filter(s => !window.sport || s.slug === window.sport);
+    const selected = BETSAPI_SPORTS.filter(s => s.id === 1 && (!window.sport || s.slug === window.sport));
     const all = new Map<string, ProviderMatch>();
     let successes = 0;
     for (const sport of selected) {
@@ -172,7 +172,7 @@ export class BetsApiSportsProvider implements SportsDataProvider {
 
   async fetchLiveMatches(sport?: string): Promise<ProviderResult<ProviderMatch[]>> {
     if (!this.configured) return failed('NOT_CONFIGURED');
-    const selected = BETSAPI_SPORTS.filter(s => !sport || s.slug === sport);
+    const selected = BETSAPI_SPORTS.filter(s => s.id === 1 && (!sport || s.slug === sport));
     if (selected.length === 0) return ok([]);
     const all = new Map<string, ProviderMatch>();
     let successes = 0;

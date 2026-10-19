@@ -329,7 +329,8 @@ createWorker({
               : false
           )
           .map((row) => row.provider_id)
-          .filter((id): id is string => Boolean(id));
+          .filter((id): id is string => Boolean(id))
+          .slice(0, sourceProvider.name === 'betsapi' ? 2 : undefined);
 
         // Every genuinely fresh event gets a turn. Unpriced / 404 events must
         // not monopolize the tiny event-detail budget on successive cycles.
@@ -438,7 +439,7 @@ createWorker({
         // markets (score, corners, cards, etc.); do not repeat core h2h/totals.
         // It stays detached and lower priority than fresh base prices.
         // Bound its batch size to avoid starving the short prematch quote window.
-        if (extendedProviderIds.length > 0) {
+        if (extendedProviderIds.length > 0 && sourceProvider.name !== 'betsapi') {
           void runExtendedPrematchOddsDetached(
             ctx,
             extendedPending,
@@ -899,7 +900,7 @@ async function runDedicatedLiveTick(ctx: WorkerContext): Promise<void> {
                  join nova.selections sl on sl.market_id = mk.id
                 where mk.match_id = m.id) asc nulls first,
               m.scheduled_at asc
-            limit 200`,
+            limit (case when $1 = 'betsapi' then 1 else 200 end)`,
           [sourceProvider.name, pgArray(LIVE_MATCH_STATUSES)],
         );
 
