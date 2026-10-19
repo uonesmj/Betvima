@@ -3,6 +3,7 @@ import { BetsApiEventMarkets } from '@/components/betsapi/betsapi-event-markets'
 import { readBetsApiMarkets } from '@/server/betsapi-market-cache';
 import { getBetsApiSport } from '@/server/betsapi-feed';
 import { BETSAPI_SPORTS } from '@/lib/betsapi-sports-map';
+import { attachCanonicalWagers } from '@/server/betsapi-wager-bridge';
 
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Match markets | BetVima' };
@@ -33,9 +34,15 @@ export default async function EventPage({
     && q.home !== q.away && Number.isFinite(Date.parse(q.kickoff))
     ? { home: q.home, away: q.away, kickoff: q.kickoff } : undefined;
   const fixture = listing?.matches.find(match => match.id === `betsapi:${mode}:${sportId}:${fi}`) ?? null;
+  const home = fixture?.participants.find(p => p.role === 'HOME')?.name ?? '';
+  const away = fixture?.participants.find(p => p.role === 'AWAY')?.name ?? '';
+  const wagerMarkets = await attachCanonicalWagers(markets, {
+    fi, mode, sportId, eventId: fixture?.betsApiEventId,
+    home, away,
+  });
 
   return <PageShell>
     <BetsApiEventMarkets fi={fi} mode={mode} sportKey={sport?.key ?? 'football'}
-      fixture={fixture} initial={initial} markets={markets} error={error} reportedCount={marketCount} />
+      fixture={fixture} initial={initial} markets={wagerMarkets} error={error} reportedCount={marketCount} />
   </PageShell>;
 }
