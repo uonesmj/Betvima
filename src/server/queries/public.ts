@@ -32,7 +32,10 @@ const failedSections = (...entries: [string, Settled<unknown>][]): string[] =>
 
 export interface MatchViewPayload {
   id: string; sportKey: string; leagueId: string | null; leagueName: string | null; leagueLogoUrl: string | null; countryCode: string | null;
-  status: string; scheduledAt: string; minute: number | null; period: string | null; homeScore: number | null; awayScore: number | null;
+  status: string; scheduledAt: string; minute: number | null; period: string | null;
+  /** Optional, server-authoritative Bet365 clock; absent on internal ledger fixtures. */
+  clockSeconds?: number | null; clockRunning?: boolean; clockObservedAt?: string | null;
+  homeScore: number | null; awayScore: number | null;
   participants: { teamId: string; role: string; name: string; logoUrl: string | null }[];
   isLive: boolean; isBettingAvailable: boolean; marketsCount?: number;
   topMarkets: { id: string; key: string; name: string; status: string; selections: SelectionPayload[] }[];
