@@ -20,11 +20,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
-private val drawerNight = Color(0xFF111827)
-private val drawerMuted = Color(0xFF9CAFC9)
-private val drawerCyan = Color(0xFF80C9FF)
-private val drawerPink = Color(0xFFF17BC9)
-private val drawerRows = Color(0xFF1D2B40)
+private val drawerNight = Color(0xFF0C100E)
+private val drawerMuted = Color(0xFFB3C3B7)
+private val drawerCyan = Color(0xFF4DD68F)
+private val drawerPink = Color(0xFF79E3AB)
+private val drawerRows = Color(0xFF1B3025)
 
 /**
  * Presentation-only, native navigation over the existing affiliate API.
@@ -49,8 +49,8 @@ internal fun PremiumAffiliateDrawer117(
         ) {
             Box(
                 Modifier.fillMaxWidth().clip(RoundedCornerShape(bottomEnd = 26.dp))
-                    .background(Brush.linearGradient(listOf(Color(0xFF1B3156),
-                        Color(0xFF27234D), Color(0xFF151923))))
+                    .background(Brush.linearGradient(listOf(Color(0xFF123524),
+                        Color(0xFF183323), Color(0xFF0C120E))))
             ) {
                 Box(Modifier.align(Alignment.TopEnd).offset(x = 45.dp, y = (-42).dp)
                     .size(160.dp).clip(CircleShape)
@@ -81,7 +81,7 @@ internal fun PremiumAffiliateDrawer117(
                     Text(tr(lang,"Navigate performance, links and payouts.",
                         "مدیریت آمار، لینک‌ها و برداشت‌ها در یک مکان"),
                         fontSize = 12.sp, lineHeight = 19.sp,
-                        color = Color(0xFFC6D3E8),
+                        color = Color(0xFFD0E5D5),
                         modifier = Modifier.padding(top = 6.dp))
                 }
             }
