@@ -1025,6 +1025,56 @@ async function runDedicatedLiveTick(ctx: WorkerContext): Promise<void> {
           }));
         }
 
+        // BetsAPI validates each event against the provider-observed live set.
+        // A stale exploratory ID must not reject a different confirmed priced
+        // event in a combined request. Handle one event at a time; never forge
+        // source timestamps or silently replace rejected prices.
+        if (sourceProvider.name === 'betsapi') {
+          for (const row of pending) {
+            const providerId = row.provider_id;
+            if (!providerId) continue;
+            console.log("ODDS_LIVE_WORKER_FETCH_START", JSON.stringify({
+              at: new Date().toISOString(), provider: 'betsapi',
+              requestedMatches: 1, intervalMs: BETSAPI_LIVE_POLL_INTERVAL_MS,
+            }));
+            const result = await sourceProvider.fetchOdds([providerId]);
+            console.log("ODDS_LIVE_WORKER_PROVIDER_RESULT", JSON.stringify({
+              provider: 'betsapi', requestedMatches: 1, ok: result.ok,
+              bundles: result.value?.length ?? 0,
+              errorCode: result.errorCode ?? null,
+              errorMessage: result.errorMessage ?? null,
+            }));
+            if (!result.ok || !result.value) {
+              if (result.errorCode === 'BETSAPI_SCHEMA_INVALID') {
+                observeBetsapiLiveQuote(providerId, 0, true);
+              }
+              if (result.errorCode === 'BETSAPI_BUDGET_EXHAUSTED' ||
+                  result.errorCode === 'BETSAPI_RATE_LIMITED') return;
+              continue;
+            }
+            const bundle = result.value.find(item => item.matchProviderId === providerId);
+            if (!bundle) {
+              observeBetsapiLiveQuote(providerId, 0);
+              continue;
+            }
+            try {
+              const syncResult = await syncOdds(ctx, row.match_id, {
+                ok: true, value: [bundle],
+              });
+              console.log("ODDS_LIVE_WORKER_SYNC_DONE", JSON.stringify({
+                provider: 'betsapi', matchId: row.match_id, ...syncResult,
+              }));
+              observeBetsapiLiveQuote(providerId, syncResult.updated);
+            } catch (error) {
+              console.error("ODDS_LIVE_WORKER_SYNC_FAILED", JSON.stringify({
+                provider: 'betsapi', matchId: row.match_id,
+                error: error instanceof Error ? error.message : String(error),
+              }));
+            }
+          }
+          return;
+        }
+
         const providerIds = pending
           .map((row) => row.provider_id)
           .filter((id): id is string => Boolean(id));
