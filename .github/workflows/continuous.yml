@@ -4,6 +4,10 @@ on:
     branches: [main, 'codex/**']
   pull_request:
     paths:
+      - 'src/app/api/v1/betsapi/**'
+      - 'src/components/betsapi/**'
+      - 'src/server/betsapi-wager-bridge.ts'
+      - 'tests/unit/betsapi-wager-bridge.test.ts'
       - 'ops/continuous/**'
       - '.github/workflows/continuous.yml'
       - 'src/app/api/v1/account/change-password/**'
