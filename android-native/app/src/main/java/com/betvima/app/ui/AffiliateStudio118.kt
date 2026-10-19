@@ -359,7 +359,9 @@ internal fun AffiliateStudio118(
                                         minimumPayoutMinor=partner?.str("minPayoutMinor","0") ?: "0",
                                         requestedTab=current,
                                         navigationRevision=1,
-                                        showNavigation=false
+                                        showNavigation=false,
+                                        reportTimezone=partner?.str("settlementTimezone","Asia/Tehran")
+                                            ?: "Asia/Tehran"
                                     )
                                 }
                             }
