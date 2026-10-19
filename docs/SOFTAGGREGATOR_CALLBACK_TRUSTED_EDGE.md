@@ -1,10 +1,11 @@
 # SoftAggregator cash pilot — trusted callback ingress (not yet deployed)
 
-Source of truth: https://softaggregator.com/docs.html (wallet callbacks). The vendor
-documents a GET callback with `key=MD5(timestamp + salt)` and a 30-second tolerance.
-That signature authenticates only the timestamp, not the amount, round or user.
-The BetVima balance/debit/credit callback therefore needs an additional authenticated
-transport before real currency can move.
+Source of truth: https://softaggregator.com/docs.html (wallet callbacks). The vendor documents a GET callback with a 30-second
+`key=MD5(timestamp + salt)` check **and its own** `X-Signature` HMAC-SHA256
+over decoded query parameters, sorted by name, joined as `name=value&...`,
+using the vendor `salt_key`. The legacy MD5 authenticates only the timestamp.
+BetVima also requires a separate source-IP-authenticated Cloudflare ingress
+with a distinct secret. Neither supplier nor edge proof substitutes for the other.
 
 ## Staged solution: independent signed Cloudflare ingress
 
@@ -18,11 +19,14 @@ transport before real currency can move.
 - Create an independently generated 32+ byte `SOFTAGGREGATOR_EDGE_HMAC_SECRET`
   in Cloudflare Worker secrets and separately in the backend's protected runtime.
   This is **not** the vendor `salt_key` or its API password.
-- The Worker accepts only source-IP-admitted GET callbacks, strips any client
-  `X-Signature`, signs an unambiguous canonical representation of ALL query
-  parameters with HMAC-SHA256, and forwards to the backend.
-- The backend verifies both the supplier's MD5 timestamp key and independent
-  full-payload HMAC in constant time, rejecting everything else.
+- The Worker accepts only source-IP-admitted GET callbacks, **preserves**
+  SoftAggregator's `X-Signature`, strips any incoming
+  `X-BetVima-Edge-Signature`, signs an unambiguous percent-encoded canonical
+  representation of ALL query parameters with an independent HMAC-SHA256 and
+  stamps a new `X-BetVima-Edge-Signature` before forwarding.
+- The backend verifies the supplier's original full-query HMAC, legacy MD5
+  timestamp key, and independent edge HMAC in constant time. A missing or
+  changed signature refuses the callback without moving money.
 - Prevent clients from reaching the origin directly or bypassing the Cloudflare
   route, using authenticated origin pulls, Cloudflare Tunnel and/or firewall
   policy. Disable publicly exposed preview/secondary callback routes.
@@ -30,6 +34,17 @@ transport before real currency can move.
   Protect backend secrets and rotate any previously exposed vendor credentials.
 - Do not assume a passing local synthetic signature test is proof of an
   authenticated vendor-origin message.
+
+## Register the callback in SoftAggregator
+
+In the operator portal, set the site's callback URL to
+`https://betvima.com/api/webhooks/softaggregator` (HTTPS, GET). It is not
+the external `https://api.softaggregator.com/api/v1` API endpoint.
+SoftAggregator's site-specific API credentials and salt must match this site.
+The callback must be reachable through the configured Cloudflare route; a GitHub
+commit alone does **not** publish a Cloudflare Worker or set the vendor portal.
+After infrastructure verification, ask SoftAggregator to issue authentic signed
+balance/debit/credit/rollback callbacks against an isolated eligible test account.
 
 ## Runtime gates (never commit values)
 
