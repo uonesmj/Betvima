@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { HomeReference } from '@/components/home/home-reference';
+import { BetsApiCanonicalLivePrices } from '@/components/betsapi/betsapi-canonical-live-prices';
 import { BETSAPI_SPORTS } from '@/lib/betsapi-sports-map';
 import type { MatchView } from '@/components/betting/match-card';
 
@@ -46,6 +47,7 @@ export function BetsApiHomeReference() {
     {(failed || !feed.configured || feed.errors.length > 0) && <p role="alert" className="mx-3 my-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
       BetsAPI fixtures are temporarily unavailable for {failed || !feed.configured ? 'the selected feed' : 'some sports'}. No previous provider data is shown.
     </p>}
+    <BetsApiCanonicalLivePrices compact />
     <HomeReference sports={sports} live={feed.live} upcoming={feed.upcoming}
       topBets={[]} topBetsUnavailable liveEnabled={false}
       liveTotal={feed.liveTotal} upcomingTotal={feed.upcomingTotal} />
