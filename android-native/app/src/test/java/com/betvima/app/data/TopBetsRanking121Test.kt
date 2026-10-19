@@ -53,6 +53,18 @@ class TopBetsRanking121Test {
             listOf(empty), listOf(real, fake)).map { it.id })
     }
 
+    @Test fun previewSamplingPicksNearestAndRichestWithinTwelveRequests() {
+        val matches = (0 until 30).map { i ->
+            match("fixture-$i", if (i == 27) 97 else i, listOf("19000"))
+        }
+        val sample = TopBetsRanking121.headlinePreviewIndices(matches, 12)
+        assertEquals(12, sample.size)
+        assertEquals(12, sample.distinct().size)
+        assertTrue(sample.containsAll((0 until 6).toList()))
+        assertTrue(sample.contains(27))
+        assertTrue(sample.any { it >= 20 })
+    }
+
     @Test fun mergesLiveAndUpcomingWithoutRepeatingTheSameEvent() {
         val event = match("same", 15, listOf("15500"),live = true)
         val other = match("other", 8, listOf("21000"))
