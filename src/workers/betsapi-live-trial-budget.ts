@@ -13,6 +13,26 @@ export interface BetsapiLiveCandidate {
 }
 
 export const BETSAPI_EXPLORATION_INTERVAL_MS = 180_000;
+// A live match can have a historical 1X2 market and yet return no current
+// bookmaker prices. Never pin the entire trial on that match indefinitely.
+export const BETSAPI_EMPTY_PRICE_ROTATE_AFTER = 3;
+export const BETSAPI_EMPTY_PRICE_COOLDOWN_MS = 8 * 60_000;
+
+/** An unchanged/empty provider quote is not proof that a market is live.
+ * After several consecutive no-update polls, probe a different fixture. */
+export function betsapiNoQuoteProbe(
+  previousEmptyCount: number,
+  updated: number,
+  nowMs: number,
+): { emptyCount: number; cooldownUntil: number | null } {
+  if (updated > 0) return { emptyCount: 0, cooldownUntil: null };
+  const emptyCount = Math.max(0, previousEmptyCount) + 1;
+  return {
+    emptyCount,
+    cooldownUntil: emptyCount >= BETSAPI_EMPTY_PRICE_ROTATE_AFTER
+      ? nowMs + BETSAPI_EMPTY_PRICE_COOLDOWN_MS : null,
+  };
+}
 
 export function betsapiLivePollIntervalMs(
   rawBudget: string | undefined,
@@ -33,9 +53,12 @@ export function selectBetsapiLiveCandidates<T extends BetsapiLiveCandidate>(
   explorationIndex: number,
   explorationDue: boolean,
   preferredProviderId?: string | null,
+  excludedProviderIds: ReadonlySet<string> = new Set<string>(),
 ): { candidates: T[]; explored: boolean } {
-  const priced = ordered.filter(row => row.has_betsapi_market);
-  const unpriced = ordered.filter(row => !row.has_betsapi_market);
+  const available = ordered.filter(row =>
+    Boolean(row.provider_id) ? !excludedProviderIds.has(row.provider_id!) : true);
+  const priced = available.filter(row => row.has_betsapi_market);
+  const unpriced = available.filter(row => !row.has_betsapi_market);
   // Never skip repricing the known valid market when probing another event:
   // two upstream calls every three minutes still fit a 200/hr trial budget.
   // Stick to a live, already-priced event until it is no longer eligible.
