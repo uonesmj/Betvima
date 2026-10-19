@@ -74,6 +74,44 @@ export function fillBetsApiMissingMinutes(
   });
 }
 
+/** Link exactly identical Bet365 FI identifiers reported by the Events API.
+ * Never fuzzy-match teams; ambiguous FI mappings stay non-wagerable. */
+export function linkBetsApiEventsByFixtureId(
+  fixtures: ExplorerFixture[], eventFixtures: ExplorerFixture[],
+): ExplorerFixture[] {
+  const mapped = new Map<string, string | null>();
+  for (const event of eventFixtures) {
+    if (!event.fi || !event.eventId) continue;
+    const existing = mapped.get(event.fi);
+    if (existing === undefined) mapped.set(event.fi, event.eventId);
+    else if (existing !== event.eventId) mapped.set(event.fi, null);
+  }
+  return fixtures.map(fixture => {
+    if (!fixture.fi) return fixture;
+    const linked = mapped.get(fixture.fi);
+    // Conflicting identifiers from two provider feeds must fail closed.
+    if (!linked || (fixture.eventId && fixture.eventId !== linked)) {
+      return fixture.eventId && mapped.has(fixture.fi) && !linked
+        ? { ...fixture, eventId: null }
+        : fixture;
+    }
+    return fixture.eventId ? fixture : { ...fixture, eventId: linked };
+  });
+}
+
+let upcomingEventLinksCache: { expires: number; result: Promise<ExplorerList> } | null = null;
+async function upcomingFootballEventLinks(): Promise<ExplorerList> {
+  const now = Date.now();
+  if (upcomingEventLinksCache && now < upcomingEventLinksCache.expires) {
+    return upcomingEventLinksCache.result;
+  }
+  const result = exploreBetsApi(betsApiToken(), {
+    mode: 'upcoming', feed: 'events', sportId: 1, page: 1,
+  }) as Promise<ExplorerList>;
+  upcomingEventLinksCache = { expires: now + 90_000, result };
+  return result;
+}
+
 function parsedScore(score: string | null): [number | null, number | null] {
   if (!score || !/^\d{1,3}-\d{1,3}$/.test(score)) return [null, null];
   const [home, away] = score.split('-').map(Number);
@@ -108,10 +146,16 @@ export async function getBetsApiSport(mode: BetsMode, sportKey: string, page = 1
   try {
     const data = leagueId ? await exploreBetsApi(betsApiToken(), { mode, sportId: sport.id, feed: 'bet365', page: selectedPage, leagueId }) as ExplorerList : await read(mode, sport.id, selectedPage);
     let fixtures = data.fixtures;
-    if (mode === 'live' && sport.id === 1 && fixtures.some(f => f.minute === null && f.eventId)) {
-      // Only Events IDs explicitly bridged by Bet365 are eligible.
-      const events = await liveFootballClocks().catch(() => null);
-      if (events && !events.error) fixtures = fillBetsApiMissingMinutes(fixtures, events.fixtures);
+    if (sport.id === 1 && fixtures.some(f => !f.eventId ||
+      (mode === 'live' && f.minute === null && f.eventId))) {
+      // Use only the provider's exact FI linkage to Events IDs. This is also
+      // needed for wager-grade 1X2 on fixtures that omit our_event_id.
+      const events = await (mode === 'live'
+        ? liveFootballClocks() : upcomingFootballEventLinks()).catch(() => null);
+      if (events && !events.error) {
+        fixtures = linkBetsApiEventsByFixtureId(fixtures, events.fixtures);
+        if (mode === 'live') fixtures = fillBetsApiMissingMinutes(fixtures, events.fixtures);
+      }
     }
     // The Android Home carousel and full Live list both consume 'minute' from
     // this SAME catalogue; there is no reason to change their card layout.
