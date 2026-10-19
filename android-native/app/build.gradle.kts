@@ -43,7 +43,7 @@ android {
         versionName = "0.120.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         buildConfigField("String", "API_BASE_URL", "\"https://betvima.com/\"")
-        buildConfigField("String", "AFFILIATE_REFERRAL_CODE", "\\\"$embeddedPartnerCode\\\"")
+        buildConfigField("String", "AFFILIATE_REFERRAL_CODE", "\"$embeddedPartnerCode\"")
         // Server-owned wagering switches are read at runtime. No bundled
         // permanent real-money authorization flag can become stale.
     }
