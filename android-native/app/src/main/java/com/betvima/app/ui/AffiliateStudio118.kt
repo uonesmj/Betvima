@@ -220,7 +220,7 @@ internal fun AffiliateStudio118(
                             }
                             when(current) {
                                 "overview" -> {
-                                    StudioRevenue118(state.lang,rateText,partner)
+                                    StudioRevenue118(state.lang,rateText,partner,payable,currency)
                                     StudioLink118(state.lang,primaryUrl,
                                         onCopy={
                                             if(primaryUrl.isNotBlank()) {
@@ -324,7 +324,7 @@ internal fun AffiliateStudio118(
                                         partner?.str("minPayoutMinor")?.takeIf(String::isNotBlank)
                                             ?.let { money(it,currency) } ?: "—",
                                         partner?.str("settlementTimezone","Asia/Tehran")
-                                            ?: "Asia/Tehran", onPayouts={})
+                                            ?: "Asia/Tehran", onPayouts=null)
                                     AffiliateOperations(
                                         state=state,model=model,currency=currency,
                                         minimumPayoutMinor=partner?.str("minPayoutMinor","0") ?: "0",
@@ -398,7 +398,8 @@ private fun StudioSection118(title:String,subtitle:String) {
 }
 
 @Composable
-private fun StudioRevenue118(lang:Lang,rate:String,partner:JSONObject?) {
+private fun StudioRevenue118(lang:Lang,rate:String,partner:JSONObject?,
+    payable:JSONObject?,currency:String) {
     Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(23.dp))
         .background(Brush.horizontalGradient(listOf(sNight,Color(0xFF1B3E2B))))
         .padding(19.dp),verticalArrangement=Arrangement.spacedBy(11.dp)) {
@@ -413,6 +414,15 @@ private fun StudioRevenue118(lang:Lang,rate:String,partner:JSONObject?) {
             "Your referral attribution is retained. Earnings continue under your approved affiliate agreement; the rate may vary by account or campaign.",
             "انتساب زیرمجموعه به حساب شما حفظ می‌شود. درآمد طبق قرارداد تأییدشده همکاری ادامه می‌یابد و نرخ می‌تواند بر اساس حساب یا کمپین متفاوت باشد."),
             fontSize=11.sp,lineHeight=18.sp,color=Color(0xFFC0D2C5))
+        val available = payable?.str("payableMinor")?.takeIf(String::isNotBlank)
+            ?.let { money(it,currency) } ?: "—"
+        HorizontalDivider(color=Color.White.copy(alpha=.18f))
+        Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
+            Text(tr(lang,"Available to withdraw","موجودی قابل برداشت"),
+                modifier=Modifier.weight(1f),color=Color(0xFFBFD4C5),fontSize=11.sp)
+            Text(available,color=Color.White,fontSize=18.sp,
+                fontWeight=FontWeight.Black)
+        }
         if(partner != null) Text(
             tr(lang,"Status: ","وضعیت: ")+partner.str("status","—"),
             color=sGreen,fontSize=11.sp)
@@ -549,7 +559,7 @@ private fun StudioChart118(lang:Lang,days:List<SignupDay>,available:Boolean) {
 }
 
 @Composable
-private fun StudioTerms118(lang:Lang,minimum:String,timezone:String,onPayouts:()->Unit) {
+private fun StudioTerms118(lang:Lang,minimum:String,timezone:String,onPayouts:(()->Unit)?) {
     Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(22.dp))
         .background(Color(0xFFEAF3ED)).padding(18.dp),
         verticalArrangement=Arrangement.spacedBy(11.dp)) {
@@ -571,7 +581,7 @@ private fun StudioTerms118(lang:Lang,minimum:String,timezone:String,onPayouts:()
             "The attributable relationship may remain on record long-term, but lifetime earnings and a fixed rate are not guaranteed independently of account terms.",
             "انتساب زیرمجموعه در سوابق حفظ می‌شود؛ اما درآمد مادام‌العمر و نرخ ثابت، مستقل از شرایط قرارداد تضمین نمی‌شود."),
             fontSize=10.sp,lineHeight=17.sp,color=sGray)
-        TextButton(onClick=onPayouts,modifier=Modifier.align(Alignment.End)) {
+        if(onPayouts != null) TextButton(onClick=onPayouts,modifier=Modifier.align(Alignment.End)) {
             Text(tr(lang,"Payout details","جزئیات برداشت"),
                 color=sGreenDark,fontWeight=FontWeight.Bold)
             Icon(Icons.Default.ArrowForward,null,tint=sGreenDark)
