@@ -24,13 +24,47 @@ export const GET = withErrorHandling('affiliate.overview', async (ctx, request: 
     services.affiliate.listPayouts({ affiliateId: affiliate.id, page: 1, pageSize: 10 }),
     services.affiliate.hierarchy(affiliate.id),
     services.db.query<Record<string, unknown>>(
-      `select day, currency, clicks, registrations, first_deposits, active_users,
-              settled_bets, turnover_minor, user_wins_minor, user_losses_minor, commission_minor
-         from nova.affiliate_daily_stats
-        where affiliate_id = $1
-          and day between $2::date and $3::date
+      `with cached as (
+         select day, currency, first_deposits, active_users,
+                settled_bets, turnover_minor, user_wins_minor, user_losses_minor, commission_minor
+           from nova.affiliate_daily_stats
+          where affiliate_id = $1
+            and day between ($2::timestamptz at time zone $4)::date
+                        and (($3::timestamptz - interval '1 microsecond') at time zone $4)::date
+       ),
+       registered as (
+         select (created_at at time zone $4)::date as day,
+                count(distinct user_id)::int as registrations
+           from nova.affiliate_attributions
+          where affiliate_id = $1
+            and created_at >= $2::timestamptz
+            and created_at < $3::timestamptz
+          group by 1
+       ),
+       clicked as (
+         select (created_at at time zone $4)::date as day, count(*)::int as clicks
+           from nova.affiliate_clicks
+          where affiliate_id = $1
+            and created_at >= $2::timestamptz
+            and created_at < $3::timestamptz
+          group by 1
+       )
+       select coalesce(d.day, r.day, c.day) as day,
+              coalesce(d.currency, $5) as currency,
+              coalesce(c.clicks, 0) as clicks,
+              coalesce(r.registrations, 0) as registrations,
+              coalesce(d.first_deposits, 0) as first_deposits,
+              coalesce(d.active_users, 0) as active_users,
+              coalesce(d.settled_bets, 0) as settled_bets,
+              coalesce(d.turnover_minor, 0) as turnover_minor,
+              coalesce(d.user_wins_minor, 0) as user_wins_minor,
+              coalesce(d.user_losses_minor, 0) as user_losses_minor,
+              coalesce(d.commission_minor, 0) as commission_minor
+         from cached d
+         full outer join registered r on r.day = d.day
+         full outer join clicked c on c.day = coalesce(d.day, r.day)
         order by day asc`,
-      [affiliate.id, start, end],
+      [affiliate.id, start, end, affiliate.settlementTimezone || 'Asia/Tehran', affiliate.currency],
     ),
   ]);
   const dailyStats = dailyRows.map((r: Record<string, unknown>) => ({
