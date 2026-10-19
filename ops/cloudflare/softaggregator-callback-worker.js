@@ -54,6 +54,10 @@ export default {
 
     const names = [...url.searchParams.keys()];
     if (names.length !== new Set(names).size) return refuse();
+    // The supplier documents its own full-payload X-Signature. Do not
+    // overwrite it: backend verification requires both independent proofs.
+    const vendorSignature = request.headers.get('x-signature');
+    if (!/^[a-f0-9]{64}$/i.test(vendorSignature ?? '')) return refuse();
 
     // Sign a uniquely percent-encoded canonical query, not delimiter-ambiguous
     // name=value pairs. The backend uses EXACTLY the same canonicalization.
@@ -69,9 +73,10 @@ export default {
     ));
     const signature = [...bytes].map(b => b.toString(16).padStart(2, '0')).join('');
     const headers = new Headers(request.headers);
-    // The provider cannot nominate its own authenticated edge signature.
-    headers.delete('x-signature');
-    headers.set('x-signature', signature);
+    // Discard any client-supplied edge attestation and stamp our own.
+    // Preserve the original vendor X-Signature for independent verification.
+    headers.delete('x-betvima-edge-signature');
+    headers.set('x-betvima-edge-signature', signature);
     headers.set('cache-control', 'no-store');
     return fetch(new Request(request, { headers }));
   },

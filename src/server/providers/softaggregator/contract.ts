@@ -26,6 +26,32 @@ function equalHex(expected: string, actual: string): boolean {
   return a.length === b.length && timingSafeEqual(a, b);
 }
 
+/**
+ * SoftAggregator's own X-Signature is HMAC-SHA256(salt_key, decoded query
+ * fields sorted by name and joined as name=value with ampersands).
+ * This is DISTINCT from the trusted Cloudflare edge's percent-encoded HMAC.
+ * Both must pass for a monetary callback.
+ *
+ * The supplier's specified plain-text serialization is ambiguous when a
+ * field contains '&'; reject such inputs rather than risking a collision.
+ */
+export function verifySupplierCallbackSignature(
+  url: URL, signature: string | null, salt: string,
+): boolean {
+  if (!signature || salt.length < 12) return false;
+  const fields = [...url.searchParams.entries()];
+  if (fields.length === 0 || fields.length > 24) return false;
+  const names = fields.map(([name]) => name);
+  if (names.length !== new Set(names).size) return false;
+  if (fields.some(([name, value]) =>
+    !name || /[&=]/.test(name) || value.includes('&'))) return false;
+  const canonical = fields
+    .sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0)
+    .map(([name, value]) => name + '=' + value).join('&');
+  const expected = createHmac('sha256', salt).update(canonical).digest('hex');
+  return equalHex(expected, signature.trim());
+}
+
 export function playerUsername(userId: string): string {
   if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(userId)) {
     throw new Error('INVALID_PLAYER_ID');

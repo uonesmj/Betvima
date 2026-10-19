@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { validateCallback } from '@/server/providers/softaggregator/contract';
+import { validateCallback, verifySupplierCallbackSignature } from '@/server/providers/softaggregator/contract';
 import { casinoRealMoneyEnabled } from '@/server/providers/softaggregator/client';
 import { settleCasinoCallback } from '@/server/providers/softaggregator/wallet';
 
@@ -20,8 +20,15 @@ export async function GET(request: Request) {
   // edge HMAC authenticates all amount, player, round and rollback fields.
   const edgeSecret = process.env.SOFTAGGREGATOR_EDGE_HMAC_SECRET ?? '';
   if (Buffer.byteLength(edgeSecret, 'utf8') < 32) return reply(2);
+  const url = new URL(request.url);
+  // Require both independently authenticated signatures. SoftAggregator signs
+  // the decoded query with the supplier salt; the trusted Cloudflare ingress
+  // signs the percent-encoded query with an unrelated server-side secret.
+  // Never accept an edge-only callback that lacks supplier authentication.
+  if (!verifySupplierCallbackSignature(url, request.headers.get('x-signature'), salt))
+    return reply(2);
   const event = validateCallback(
-    new URL(request.url), request.headers.get('x-signature'), salt,
+    url, request.headers.get('x-betvima-edge-signature'), salt,
     Date.now(), edgeSecret,
   );
   if (!event) return reply(2);
