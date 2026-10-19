@@ -37,6 +37,7 @@ const nativeVersion = (gradle: string): { code: number; name: string } | null =>
 // '/usr/local/bin/gradle' is visible to PM2. Never search untrusted paths.
 const SDK_PATHS = [
   '/usr/local/lib/android/sdk', '/opt/android-sdk', '/usr/lib/android-sdk',
+  '/home/novaadmin/Android/Sdk',
 ];
 async function firstExecutable(candidates: string[]): Promise<string | null> {
   for (const candidate of candidates) {
