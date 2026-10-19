@@ -1,7 +1,7 @@
-import { createHash, webcrypto } from 'node:crypto';
+import { createHash, createHmac, webcrypto } from 'node:crypto';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import worker from '../../ops/cloudflare/softaggregator-callback-worker.js';
-import { validateCallback } from '../../src/server/providers/softaggregator/contract';
+import { validateCallback, verifySupplierCallbackSignature } from '../../src/server/providers/softaggregator/contract';
 
 const origin = 'https://betvima.com';
 const salt = 'vendor-time-only-salt-for-test-2026';
@@ -9,7 +9,7 @@ const edgeSecret = 'operator-independent-worker-HMAC-key-2026-SAFE-SYNTHETIC';
 const allowedIP = '203.0.113.10';
 const now = 1800000000000;
 
-function callback(fields = {}, ip = allowedIP, header = 'f'.repeat(64)) {
+function callback(fields = {}, ip = allowedIP, header = null) {
   const timestamp = String(now / 1000);
   const parameters = new URLSearchParams({
     username: 'bv_7aa50699cba14767b7b4dcd644399816',
@@ -24,8 +24,12 @@ function callback(fields = {}, ip = allowedIP, header = 'f'.repeat(64)) {
     key: createHash('md5').update(timestamp + salt).digest('hex'),
     ...fields,
   });
+  const supplierCanonical = [...parameters.entries()]
+    .sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0)
+    .map(([name, value]) => name + '=' + value).join('&');
+  const signature = createHmac('sha256', salt).update(supplierCanonical).digest('hex');
   return new Request(origin + '/api/webhooks/softaggregator?' + parameters, {
-    headers: { 'cf-connecting-ip': ip, 'x-signature': header },
+    headers: { 'cf-connecting-ip': ip, 'x-signature': header ?? signature },
   });
 }
 
@@ -53,21 +57,25 @@ describe('SoftAggregator trusted Cloudflare ingress interoperability', () => {
     const result = await worker.fetch(callback(), edgeEnv());
     expect(result.status).toBe(200);
     expect(forwarded).not.toBeNull();
-    const sig = forwarded.headers.get('x-signature');
-    expect(sig).toMatch(/^[a-f0-9]{64}$/);
-    expect(sig).not.toBe('f'.repeat(64));
-    const event = validateCallback(new URL(forwarded.url), sig, salt, now, edgeSecret);
+    const supplierSig = forwarded.headers.get('x-signature');
+    const edgeSig = forwarded.headers.get('x-betvima-edge-signature');
+    expect(supplierSig).toMatch(/^[a-f0-9]{64}$/);
+    expect(edgeSig).toMatch(/^[a-f0-9]{64}$/);
+    expect(edgeSig).not.toBe(supplierSig);
+    expect(verifySupplierCallbackSignature(new URL(forwarded.url), supplierSig, salt)).toBe(true);
+    const event = validateCallback(new URL(forwarded.url), edgeSig, salt, now, edgeSecret);
     expect(event?.action).toBe('debit');
     expect(event?.amountMinor).toBe(50n);
   });
 
   it('rejects tampering of amount, player and rollback after trusted ingress', async () => {
     await worker.fetch(callback(), edgeEnv());
-    const signed = forwarded.headers.get('x-signature');
+    const signed = forwarded.headers.get('x-betvima-edge-signature');
     for (const [key, value] of [['amount', '900'], ['username', 'bv_00000000000000000000000000000001'], ['rb', '1']]) {
       const changed = new URL(forwarded.url);
       changed.searchParams.set(key, value);
       expect(validateCallback(changed, signed, salt, now, edgeSecret)).toBeNull();
+      expect(verifySupplierCallbackSignature(changed, forwarded.headers.get('x-signature'), salt)).toBe(false);
     }
     expect(validateCallback(new URL(forwarded.url), 'f'.repeat(64), salt, now, edgeSecret)).toBeNull();
   });
@@ -78,6 +86,7 @@ describe('SoftAggregator trusted Cloudflare ingress interoperability', () => {
       [callback(), edgeEnv({SOFTAGGREGATOR_CALLBACK_ALLOWED_IPS: ''})],
       [callback(), edgeEnv({SOFTAGGREGATOR_CALLBACK_ALLOWED_IPS: '*'})],
       [callback(), edgeEnv({SOFTAGGREGATOR_EDGE_HMAC_SECRET: ''})],
+      [callback({}, allowedIP, 'invalid-provider-hmac'), edgeEnv()],
     ]) {
       forwarded = null;
       const response = await worker.fetch(req, env);
@@ -90,7 +99,7 @@ describe('SoftAggregator trusted Cloudflare ingress interoperability', () => {
   it('rejects an invalid vendor MD5 at the protected backend', async () => {
     const req = callback({key: '0'.repeat(32)});
     await worker.fetch(req, edgeEnv());
-    expect(validateCallback(new URL(forwarded.url), forwarded.headers.get('x-signature'),
+    expect(validateCallback(new URL(forwarded.url), forwarded.headers.get('x-betvima-edge-signature'),
       salt, now, edgeSecret)).toBeNull();
   });
 
