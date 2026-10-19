@@ -78,7 +78,8 @@ const BETSAPI_LIVE_POLL_INTERVAL_MS = betsapiLivePollIntervalMs(
 );
 let lastBetsapiExplorationAt = 0;
 let lastBetsapiPendingResultsAt = 0;
-const BETSAPI_PENDING_RESULTS_INTERVAL_MS = 30 * 60_000;
+// Keep trial result-poll requests well below the shared 200/hour allowance.
+const BETSAPI_PENDING_RESULTS_INTERVAL_MS = 60 * 60_000;
 let betsapiExplorationCursor = 0;
 let preferredBetsapiLiveProviderId: string | null = null;
 const EXTENDED_LIVE_ODDS_INTERVAL_MS = 5 * 60_000;
