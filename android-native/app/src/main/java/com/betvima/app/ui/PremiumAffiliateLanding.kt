@@ -41,11 +41,11 @@ import kotlinx.coroutines.launch
 
 // A genuinely native, illustrated and animated Partners landing.
 // Does not embed 1win content, third-party media, or an external website.
-private val partnerNight = Color(0xFF0B0C10)
-private val partnerBlue = Color(0xFF355CFA)
-private val partnerViolet = Color(0xFF8559E9)
-private val partnerMint = Color(0xFF92BFFF)
-private val partnerPaper = Color(0xFFF3F4F8)
+private val partnerNight = Color(0xFF080B0A)
+private val partnerBlue = Color(0xFF1FAD72)
+private val partnerViolet = Color(0xFF23543A)
+private val partnerMint = Color(0xFF56D995)
+private val partnerPaper = Color(0xFFF3F7F3)
 private val partnerMuted = Color(0xFF818A9D)
 private val partnerWhite = Color.White
 
@@ -146,9 +146,8 @@ fun PremiumAffiliateSheet(state: AppState, model: AppViewModel, onClose: () -> U
             HorizontalDivider(color=Color.White.copy(alpha=.10f))
             Box(Modifier.weight(1f)) {
                 if(showPortal) {
-                    AffiliateDashboard(state,model,
-                        navigationKey=partnerNav,
-                        navigationRevision=partnerNavRevision,
+                    AffiliateStudio118(
+                        state=state,model=model,destination=partnerNav,
                         onNavigate={ destination ->
                             partnerNav=destination
                             partnerNavRevision++
@@ -289,7 +288,7 @@ private fun PartnerHero(lang: Lang, active: Boolean, onGetStarted: () -> Unit, o
     )
     Column(
         Modifier.fillMaxWidth().background(
-            Brush.verticalGradient(listOf(partnerNight, Color(0xFF12152B), partnerNight))
+            Brush.verticalGradient(listOf(partnerNight, Color(0xFF122017), partnerNight))
         ).padding(horizontal = 23.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
@@ -324,7 +323,7 @@ private fun PartnerHero(lang: Lang, active: Boolean, onGetStarted: () -> Unit, o
                 Modifier.fillMaxSize().padding(top = 8.dp), active,
                 corner=23, showMark=false)
             Box(Modifier.size(310.dp).align(Alignment.Center).background(
-                Brush.radialGradient(listOf(Color(0xFF7A76B3).copy(alpha = .15f),
+                Brush.radialGradient(listOf(Color(0xFF3D875B).copy(alpha = .15f),
                     Color.Transparent)), CircleShape))
             Box(Modifier.align(Alignment.BottomCenter)
                 .graphicsLayer {
@@ -351,7 +350,7 @@ private fun PartnerHero(lang: Lang, active: Boolean, onGetStarted: () -> Unit, o
 private fun PartnerFloatLabel(title: String, sub: String, modifier: Modifier) {
     Surface(modifier = modifier.shadow(13.dp, RoundedCornerShape(19.dp)),
         color = Color.White, shape = RoundedCornerShape(19.dp),
-        border = BorderStroke(3.dp, Color(0xFFD2B8FF))) {
+        border = BorderStroke(3.dp, Color(0xFFBAE6C9))) {
         Column(Modifier.padding(horizontal = 13.dp, vertical = 10.dp)) {
             Text(title, fontSize = 20.sp, fontWeight = FontWeight.Black,
                 color = partnerNight)
@@ -387,8 +386,8 @@ private fun PartnerPhone() {
             }
             Spacer(Modifier.height(10.dp))
             Box(Modifier.fillMaxWidth().height(93.dp).clip(RoundedCornerShape(12.dp))
-                .background(Brush.linearGradient(listOf(Color(0xFF3D36B8),
-                    Color(0xFF802B9D), Color(0xFF142A57))))) {
+                .background(Brush.linearGradient(listOf(Color(0xFF134B31),
+                    Color(0xFF167443), Color(0xFF11291B))))) {
                 Column(Modifier.align(Alignment.CenterStart).padding(11.dp)) {
                     Text("BETVIMA", color = Color(0xFFB7C5FF), fontSize = 8.sp)
                     Text("Explore the game", color = Color.White, fontSize = 14.sp,
@@ -407,7 +406,7 @@ private fun PartnerPhone() {
                 ) {
                     Icon(if(idx==0) Icons.Default.SportsSoccer else
                         if(idx==1) Icons.Default.Casino else Icons.Default.BarChart,
-                        null, tint = if(idx==0)partnerMint else Color(0xFFB4A4FF),
+                        null, tint = if(idx==0)partnerMint else Color(0xFFB1DDC1),
                         modifier = Modifier.size(17.dp))
                     Spacer(Modifier.width(9.dp))
                     Text(listOf("Football", "Live Casino", "Insights")[idx],
@@ -529,7 +528,7 @@ private fun PartnerFeatures(lang: Lang, active: Boolean) {
                                         tint=partnerMint,modifier=Modifier.size(44.dp))
                                     Spacer(Modifier.width(20.dp))
                                     Icon(Icons.Default.Casino,null,
-                                        tint=Color(0xFFC8A1FF),modifier=Modifier.size(44.dp))
+                                        tint=Color(0xFFB6E9C2),modifier=Modifier.size(44.dp))
                                     Spacer(Modifier.width(20.dp))
                                     Icon(Icons.Default.Smartphone,null,
                                         tint=Color.White,modifier=Modifier.size(44.dp))
