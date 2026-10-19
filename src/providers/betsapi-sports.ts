@@ -211,7 +211,9 @@ export class BetsApiSportsProvider implements SportsDataProvider {
     for (const id of [...new Set(ids)]) {
       const identity = parseBetsapiIdentity(id)!;
       try {
-        const payload = await this.request('/v2/event/odds', { event_id: identity.eventId, source: 'bet365' });
+        const payload = await this.request('/v2/event/odds', {
+          event_id: identity.eventId, source: 'bet365', odds_market: '1',
+        });
         // Only the Events API ID is accepted. Bet365 FI must NEVER be reused.
         const normalized = normalizeBetsapiOdds(
           id, payload.results, new Date(), this.knownMatchLive.get(id)!,
@@ -261,28 +263,46 @@ export class BetsApiSportsProvider implements SportsDataProvider {
       const date = new Date(time);
       dates.push(`${date.getUTCFullYear()}${String(date.getUTCMonth() + 1).padStart(2, '0')}${String(date.getUTCDate()).padStart(2, '0')}`);
     }
+    let successfulPages = 0;
     for (const [sportId, wanted] of groups) {
       for (const day of dates) {
-        try {
-          const payload = await this.request('/v3/events/ended', {
-            sport_id: String(sportId), day, page: '1',
-          });
-          for (const row of events(payload.results)) {
-            const event = normalizeBetsapiEvent(row);
-            if (!event || !wanted.has(event.providerId) ||
-              event.status !== 'finished') continue;
-            const snapshot = normalizeBetsapiResult(
-              event.providerId, row, new Date(), true,
-            );
-            if (snapshot?.authoritative) results.set(event.providerId, snapshot);
-          }
-        } catch (e) {
-          if (['BETSAPI_RATE_LIMITED', 'BETSAPI_BUDGET_EXHAUSTED'].includes(errorCode(e))) {
-            return failed(errorCode(e), true);
+        // A single ended-events page can omit the requested event entirely.
+        // Walk a bounded number of official pages; anything not observed stays
+        // pending rather than being inferred from a live scoreboard.
+        for (let page = 1; page <= 4; page++) {
+          try {
+            const payload = await this.request('/v3/events/ended', {
+              sport_id: String(sportId), day, page: String(page),
+            });
+            successfulPages++;
+            const batch = events(payload.results);
+            for (const row of batch) {
+              const event = normalizeBetsapiEvent(row);
+              if (!event || !wanted.has(event.providerId) ||
+                event.status !== 'finished') continue;
+              const snapshot = normalizeBetsapiResult(
+                event.providerId, row, new Date(), true,
+              );
+              if (snapshot?.authoritative) results.set(event.providerId, snapshot);
+            }
+            // The requested IDs have all been positively verified.
+            if ([...wanted].every(id => results.has(id))) break;
+            const pager = object(payload.pager);
+            const totalPages = Number(pager.total_pages);
+            if (Number.isSafeInteger(totalPages) && totalPages >= 1 && page >= totalPages) break;
+            if (!Number.isSafeInteger(totalPages) && batch.length < 50) break;
+          } catch (e) {
+            if (['BETSAPI_RATE_LIMITED', 'BETSAPI_BUDGET_EXHAUSTED',
+              'BETSAPI_PERMISSION_DENIED'].includes(errorCode(e))) {
+              return failed(errorCode(e), true);
+            }
+            // A later page cannot be trusted if an earlier page failed.
+            break;
           }
         }
       }
     }
+    if (!successfulPages) return failed('BETSAPI_UNAVAILABLE', true);
     return ok([...results.values()]);
   }
 }
