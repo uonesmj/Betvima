@@ -121,6 +121,32 @@ fun MatchDetailPage(state: AppState, model: AppViewModel) {
     }
     LazyColumn(state = marketListState, contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp), flingBehavior = rememberPremiumFlingBehavior()) {
+        if (state.detailLoading) item(key="provider-loading") {
+            Row(Modifier.fillMaxWidth().padding(10.dp),
+                verticalAlignment = Alignment.CenterVertically) {
+                CircularProgressIndicator(
+                    modifier=Modifier.size(18.dp),color=Palette.green,strokeWidth=2.dp)
+                Spacer(Modifier.width(11.dp))
+                Text(tr(state.lang,"Loading verified match markets…",
+                    "در حال دریافت بازارهای واقعی مسابقه…"),
+                    color=Palette.muted,fontSize=12.sp)
+            }
+        }
+        if (state.detailError != null) item(key="provider-error") {
+            Surface(color=Color(0xFFFFF2DE),shape=RoundedCornerShape(14.dp),
+                border=BorderStroke(1.dp,Color(0xFFE5B975))) {
+                Column(Modifier.fillMaxWidth().padding(13.dp),
+                    verticalArrangement=Arrangement.spacedBy(8.dp)) {
+                    Text(state.detailError.orEmpty(),color=Color(0xFF764A16),
+                        fontSize=12.sp,lineHeight=18.sp)
+                    TextButton(onClick={model.openMatch(match.id)}) {
+                        Icon(Icons.Default.Refresh,null,modifier=Modifier.size(17.dp))
+                        Spacer(Modifier.width(6.dp))
+                        Text(tr(state.lang,"Retry markets","تلاش مجدد برای بازارها"))
+                    }
+                }
+            }
+        }
         item {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 IconButton(onClick = model::closeMatch) {
