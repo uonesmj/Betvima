@@ -23,7 +23,10 @@ const nativeVersion = (gradle: string): { code: number; name: string } | null =>
   const versionCode = gradle.match(/^\s*versionCode\s*=\s*(\d+)\s*$/m);
   const versionName = gradle.match(/^\s*versionName\s*=\s*"([0-9]+\.[0-9]+\.[0-9]+)"\s*$/m);
   if (!versionCode || !versionName) return null;
-  return { code: Number(versionCode[1]), name: versionName[1] };
+  const name = versionName[1];
+  const code = Number(versionCode[1]);
+  if (!name || !Number.isSafeInteger(code)) return null;
+  return { code, name };
 };
 
 async function signedApk(file: string): Promise<boolean> {
