@@ -38,7 +38,9 @@ data class AppState(
     val tournamentLeague: String = "",
     val live: List<Match> = emptyList(), val upcoming: List<Match> = emptyList(),
     val liveLoading: Boolean = false, val upcomingLoading: Boolean = false,
-    val detailLoading: Boolean = false,
+    // A provider outage is not equivalent to a verified empty fixture list.
+    val liveError: Boolean = false, val upcomingError: Boolean = false,
+    val detailLoading: Boolean = false, val detailError: Boolean = false,
     val liveEnabled: Boolean = false, val wageringEnabled: Boolean = false,
     val detail: Match? = null,
     val liveFacts: LiveMatchFacts? = null,
@@ -209,13 +211,14 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         try {
             val (matches, liveEnabled) = api.live()
             if (request == liveRequestNumber) mutable.update {
-                it.copy(live = matches, liveEnabled = liveEnabled, liveLoading = false)
+                it.copy(live = matches, liveEnabled = liveEnabled, liveLoading = false,
+                    liveError = false)
             }
         } catch (ex: Exception) {
             if (request == liveRequestNumber) mutable.update {
                 // Keep last known scores visible, but never leave live wagering shown as enabled
                 // after losing connection to the authoritative feed.
-                it.copy(liveEnabled = false, liveLoading = false,
+                it.copy(liveEnabled = false, liveLoading = false, liveError = true,
                     notice = if (silent) it.notice else tr(it.lang,
                         "Live data unavailable. Showing last received scores.",
                         "اتصال داده زنده قطع شد؛ آخرین نتایج دریافت‌شده نمایش داده می‌شود."))
@@ -232,11 +235,12 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             try {
                 val events = api.upcoming(requestedSport)
                 if (request == upcomingRequestNumber && state.value.sport == requestedSport)
-                    mutable.update { it.copy(upcoming = events, upcomingLoading = false) }
+                    mutable.update { it.copy(upcoming = events, upcomingLoading = false,
+                        upcomingError = false) }
             } catch (ex: Exception) {
                 if (request == upcomingRequestNumber && state.value.sport == requestedSport)
                     mutable.update {
-                        it.copy(upcomingLoading = false, notice = tr(it.lang,
+                        it.copy(upcomingLoading = false, upcomingError = true, notice = tr(it.lang,
                             "Unable to load the selected sport.", "بارگذاری مسابقات این رشته ناموفق بود."))
                     }
             }
@@ -287,16 +291,31 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     fun openMatch(id: String) = viewModelScope.launch {
         val request = ++detailRequestNumber
-        mutable.update { it.copy(detailLoading = true, detail = null, liveFacts = null) }
+        // Keep the actual fixture the user tapped visible, even when the
+        // additional market service times out. The old implementation erased
+        // detail first and returned to Home when a provider request failed.
+        val previous = state.value.detail?.takeIf { it.id == id }
+        val selected = previous
+            ?: state.value.live.firstOrNull { it.id == id }
+            ?: state.value.upcoming.firstOrNull { it.id == id }
+            ?: state.value.searchLive.firstOrNull { it.id == id }
+            ?: state.value.searchUpcoming.firstOrNull { it.id == id }
+        mutable.update {
+            it.copy(detail = selected, detailLoading = true,
+                detailError = false, liveFacts = null)
+        }
         try {
             val match = api.detail(id)
             if (request == detailRequestNumber) mutable.update {
-                it.copy(detail = match, detailLoading = false)
+                it.copy(detail = match, detailLoading = false, detailError = false)
             }
-        } catch (ex: Exception) {
+        } catch (_: Exception) {
             if (request == detailRequestNumber) mutable.update {
-                it.copy(detailLoading = false, notice = tr(it.lang,
-                    "Match details unavailable.", "جزئیات مسابقه در دسترس نیست."))
+                it.copy(detail = it.detail ?: selected, detailLoading = false,
+                    detailError = true,
+                    notice = if (selected == null) tr(it.lang,
+                        "Match details unavailable. Try again.",
+                        "جزئیات مسابقه در دسترس نیست؛ دوباره تلاش کنید.") else null)
             }
         }
     }
@@ -338,7 +357,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     fun closeMatch() {
         detailRequestNumber++
         mutable.update { it.copy(detail = null, liveFacts = null,
-            detailLoading = false, focusedMarketId = null) }
+            detailLoading = false, detailError = false, focusedMarketId = null) }
     }
     /** Purely informational odds polling. Never touches quotes or financial state. */
     suspend fun slipProbabilitySnapshots(matchIds: List<String>): Map<String, SlipOddsMatch> =
