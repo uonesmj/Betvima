@@ -49,7 +49,7 @@ fun AffiliateOperations(state: AppState, model: AppViewModel, currency: String,
         "links" to tr(state.lang, "Links", "لینک‌ها"),
         "wallets" to tr(state.lang, "Wallets", "کیف‌پول‌ها")
     )
-    var selected by rememberSaveable { mutableStateOf("referrals") }
+    var selected by rememberSaveable(requestedTab) { mutableStateOf(requestedTab) }
     var page by rememberSaveable { mutableIntStateOf(1) }
     var refresh by remember { mutableIntStateOf(0) }
     var busy by remember { mutableStateOf(false) }
