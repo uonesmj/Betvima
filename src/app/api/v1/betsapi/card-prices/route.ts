@@ -33,8 +33,9 @@ export const GET = withErrorHandling('betsapi.card.prices', async (_ctx, request
   });
   const headline = result.error ? null : pickHeadlineMarket(markets);
   const market = headline ? markets.find(item => item.key === headline.key) ?? null : null;
+  const wageringAvailable = Boolean(market?.selections.some(selection => selection.wager));
   return jsonOk({
-    source: 'betsapi_bet365', readOnly: true,
+    source: 'betsapi_bet365', readOnly: !wageringAvailable, wageringAvailable,
     market: market ? {
       name: market.title,
       selections: market.selections.slice(0, 3).map(s => ({ label: s.label, decimal: s.decimal, wager: s.wager })),
