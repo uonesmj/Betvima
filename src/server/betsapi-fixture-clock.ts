@@ -7,7 +7,7 @@
  * without an authoritative Bet365 TM/TS/TT/TU clock and update timestamp.
  */
 import { request } from '@/providers/betsapi-explorer';
-import { betsApiLiveMinute } from '@/providers/betsapi-match-clock';
+import { betsApiLiveClock } from '@/providers/betsapi-match-clock';
 import { object, string } from '@/providers/betsapi-normalization';
 
 type RawClock = Record<string, unknown> | null;
@@ -53,7 +53,8 @@ const providerRead: Read = async fi => {
 };
 
 /** Supply only clocks confirmed by the provider, not synthetic timers. */
-export async function supplementBet365LiveMinutes<T extends { fi: string | null; minute: number | null }>(
+export async function supplementBet365LiveMinutes<T extends { fi: string | null; minute: number | null;
+  clockSeconds?: number | null; clockRunning?: boolean; clockObservedAt?: string | null }>(
   fixtures: T[], reader: Read = providerRead,
   now = Date.now(),
 ): Promise<T[]> {
@@ -99,7 +100,9 @@ export async function supplementBet365LiveMinutes<T extends { fi: string | null;
     if (fixture.minute !== null || !fixture.fi) return fixture;
     const saved = cache.get(fixture.fi);
     if (!saved || saved.pending || !saved.clock || saved.expires < Date.now()) return fixture;
-    const minute = betsApiLiveMinute(saved.clock);
-    return minute === null ? fixture : { ...fixture, minute };
+    const clock = betsApiLiveClock(saved.clock);
+    return clock.minute === null ? fixture : { ...fixture, minute: clock.minute,
+      clockSeconds: clock.clockSeconds, clockRunning: clock.clockRunning,
+      clockObservedAt: new Date().toISOString() };
   });
 }
