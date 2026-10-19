@@ -53,6 +53,8 @@ jobs:
           APP_ENV: test
           NEXT_PUBLIC_SITE_URL: https://preview.betvima.com
           NEXT_TELEMETRY_DISABLED: '1'
+      - name: Verify native provisioning script syntax
+        run: bash -n ops/android/sync-affiliate-build-source.sh
       - name: Controller safety regressions
         run: |
           python3 -m pip install --disable-pip-version-check cryptography
