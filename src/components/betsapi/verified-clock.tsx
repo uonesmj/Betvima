@@ -23,7 +23,14 @@ export function useVerifiedClock(source: VerifiedClock | null | undefined): numb
     }, 1000);
     return () => window.clearInterval(timer);
   }, [observed, seconds, running]);
-  return seconds == null ? null : seconds + (running ? tick : 0);
+  // A card snapshot can be up to 45s old when its event is opened.
+  // Anchor both screens to the SAME provider observation rather than the
+  // mount time of each component. Never extrapolate stale observations.
+  const received = observed ? Date.parse(observed) : NaN;
+  const age = Number.isFinite(received)
+    ? Math.floor((Date.now() - received) / 1000) : tick;
+  const elapsed = running && age >= 0 && age <= 60 ? age : 0;
+  return seconds == null ? null : seconds + elapsed;
 }
 export function VerifiedClockText({ source, fallback = 'LIVE' }: {
   source: VerifiedClock | null | undefined; fallback?: string;
