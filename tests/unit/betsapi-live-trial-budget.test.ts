@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   betsapiLivePollIntervalMs,
-  selectBetsapiLiveCandidate,
+  selectBetsapiLiveCandidates,
   BETSAPI_EXPLORATION_INTERVAL_MS,
 } from '@/workers/betsapi-live-trial-budget';
 
@@ -20,17 +20,17 @@ describe('BetsAPI trial live polling', () => {
       { id: 'priced-a', has_betsapi_market: true },
       { id: 'empty-b', has_betsapi_market: false },
     ];
-    expect(selectBetsapiLiveCandidate(rows, 0, false)).toEqual({
-      candidate: rows[1], explored: false,
+    expect(selectBetsapiLiveCandidates(rows, 0, false)).toEqual({
+      candidates: [rows[1]], explored: false,
     });
-    expect(selectBetsapiLiveCandidate(rows, 0, true)).toEqual({
-      candidate: rows[0], explored: true,
+    expect(selectBetsapiLiveCandidates(rows, 0, true)).toEqual({
+      candidates: [rows[1], rows[0]], explored: true,
     });
-    expect(selectBetsapiLiveCandidate(rows, 1, true)).toEqual({
-      candidate: rows[2], explored: true,
+    expect(selectBetsapiLiveCandidates(rows, 1, true)).toEqual({
+      candidates: [rows[1], rows[2]], explored: true,
     });
-    expect(selectBetsapiLiveCandidate(rows, 2, true)).toEqual({
-      candidate: rows[0], explored: true,
+    expect(selectBetsapiLiveCandidates(rows, 2, true)).toEqual({
+      candidates: [rows[1], rows[0]], explored: true,
     });
     expect(BETSAPI_EXPLORATION_INTERVAL_MS).toBeGreaterThan(60_000);
   });
@@ -42,10 +42,10 @@ describe('BetsAPI trial live polling', () => {
       { id: 'c', has_betsapi_market: false },
     ];
     expect([0, 1, 2].map(i =>
-      selectBetsapiLiveCandidate(rows, i, false).candidate?.id
+      selectBetsapiLiveCandidates(rows, i, false).candidates[0]?.id
     )).toEqual(['a', 'b', 'c']);
-    expect(selectBetsapiLiveCandidate([], 0, true)).toEqual({
-      candidate: undefined, explored: false,
+    expect(selectBetsapiLiveCandidates([], 0, true)).toEqual({
+      candidates: [], explored: false,
     });
   });
 });
