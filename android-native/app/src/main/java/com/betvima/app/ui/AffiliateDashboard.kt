@@ -439,12 +439,85 @@ fun AffiliateDashboard(
 }
 @Composable
 private fun AffiliateMetric(modifier: Modifier, label: String, value: String, tint: Color) {
-    Surface(modifier = modifier, color = Color.White, shape = RoundedCornerShape(16.dp),
-        border = BorderStroke(1.dp, Palette.border)) {
-        Column(Modifier.padding(15.dp)) {
-            Text(label, color = Palette.muted, fontSize = 11.sp, maxLines = 1)
-            Spacer(Modifier.height(8.dp))
-            Text(value, color = tint, fontSize = 19.sp, fontWeight = FontWeight.Black, maxLines = 1)
+    Surface(modifier = modifier.heightIn(min=91.dp), color = Color.White,
+        shape = RoundedCornerShape(19.dp),
+        border = BorderStroke(1.dp, affiliateOutline.copy(alpha=.8f)),
+        shadowElevation = 1.dp) {
+        Column(Modifier.padding(horizontal=15.dp,vertical=13.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(verticalAlignment=Alignment.CenterVertically) {
+                Box(Modifier.size(7.dp).clip(CircleShape).background(tint))
+                Spacer(Modifier.width(7.dp))
+                Text(label, color = Palette.muted, fontSize = 11.sp,
+                    maxLines = 2, lineHeight = 14.sp)
+            }
+            Text(value, color = affiliateInk, fontSize = 19.sp,
+                fontWeight = FontWeight.Black, maxLines = 1,
+                overflow = TextOverflow.Ellipsis)
+        }
+    }
+}
+
+@Composable
+private fun AffiliateDashboardHero117(lang: Lang) {
+    Box(Modifier.fillMaxWidth().clip(RoundedCornerShape(26.dp))
+        .background(Brush.linearGradient(listOf(Color(0xFF141D30),
+            Color(0xFF233B6F),Color(0xFF3F316B))))) {
+        Box(Modifier.align(Alignment.TopEnd).offset(x=48.dp,y=(-55).dp)
+            .size(190.dp).clip(CircleShape)
+            .background(Color.White.copy(alpha=.06f)))
+        Box(Modifier.align(Alignment.BottomEnd).offset(x=(-7).dp,y=42.dp)
+            .size(110.dp).clip(CircleShape)
+            .background(Color(0xFFE76AC7).copy(alpha=.14f)))
+        Column(Modifier.fillMaxWidth().padding(21.dp),
+            verticalArrangement=Arrangement.spacedBy(9.dp)) {
+            Row(verticalAlignment=Alignment.CenterVertically) {
+                Surface(color=Color.White.copy(alpha=.12f),
+                    shape=RoundedCornerShape(11.dp)) {
+                    Icon(Icons.Default.Hub,null,tint=Color(0xFF8DD8FF),
+                        modifier=Modifier.padding(8.dp).size(21.dp))
+                }
+                Spacer(Modifier.width(10.dp))
+                Text("BETVIMA  /  PARTNERS",fontSize=11.sp,
+                    fontWeight=FontWeight.Black,color=Color(0xFFBBDFFF),
+                    letterSpacing=1.sp,modifier=Modifier.weight(1f))
+                Icon(Icons.Default.AutoAwesome,null,
+                    tint=Color(0xFFF3A0D8),modifier=Modifier.size(22.dp))
+            }
+            Spacer(Modifier.height(2.dp))
+            Text(tr(lang,"Your affiliate studio","استودیوی همکاری شما"),
+                color=Color.White,fontSize=24.sp,
+                lineHeight=30.sp,fontWeight=FontWeight.Black)
+            Text(tr(lang,
+                "Your referrals, earnings and payout tools — together in one secure workspace.",
+                "زیرمجموعه‌ها، درآمد و ابزارهای برداشت، یک‌جا و در محیطی امن."),
+                color=Color(0xFFCDD8EB),fontSize=12.sp,lineHeight=19.sp)
+            Row(verticalAlignment=Alignment.CenterVertically,
+                horizontalArrangement=Arrangement.spacedBy(7.dp)) {
+                Icon(Icons.Default.VerifiedUser,null,
+                    tint=Color(0xFF8DD8FF),modifier=Modifier.size(16.dp))
+                Text(tr(lang,"Server-verified reporting","گزارش‌های تأییدشده توسط سرور"),
+                    color=Color(0xFFBDCCE4),fontSize=10.sp)
+            }
+        }
+    }
+}
+
+@Composable
+private fun AffiliateShortcut117(
+    modifier: Modifier, icon: androidx.compose.ui.graphics.vector.ImageVector,
+    label: String, tint: Color, onClick: () -> Unit
+) {
+    Surface(modifier=modifier.clickable(onClick=onClick),
+        shape=RoundedCornerShape(17.dp),color=Color.White,
+        border=BorderStroke(1.dp,affiliateOutline),
+        shadowElevation=1.dp) {
+        Column(Modifier.fillMaxWidth().padding(vertical=13.dp,horizontal=8.dp),
+            horizontalAlignment=Alignment.CenterHorizontally,
+            verticalArrangement=Arrangement.spacedBy(6.dp)) {
+            Icon(icon,null,tint=tint,modifier=Modifier.size(22.dp))
+            Text(label,color=affiliateInk,fontSize=11.sp,
+                fontWeight=FontWeight.Bold,maxLines=1)
         }
     }
 }
