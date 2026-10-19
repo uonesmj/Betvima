@@ -1,6 +1,7 @@
 package com.betvima.app.ui
 
 import android.content.Intent
+import android.net.Uri
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.ExperimentalAnimationApi
 import androidx.compose.animation.core.animateFloatAsState
@@ -238,6 +239,19 @@ internal fun AffiliateStudio118(
                                             }
                                         },
                                         onManage={onNavigate("links")})
+                                    StudioAffiliateApp120(state.lang,
+                                        partner?.str("code").orEmpty(),
+                                        onDownload={ url ->
+                                            context.startActivity(Intent(Intent.ACTION_VIEW,Uri.parse(url))
+                                                .addCategory(Intent.CATEGORY_BROWSABLE))
+                                        },
+                                        onShare={ url ->
+                                            context.startActivity(Intent.createChooser(
+                                                Intent(Intent.ACTION_SEND).apply {
+                                                    type="text/plain"
+                                                    putExtra(Intent.EXTRA_TEXT,url)
+                                                },tr(state.lang,"Share your partner app","اشتراک برنامه اختصاصی")))
+                                        })
                                     val seven = days.takeLast(7)
                                     val previous = days.take(7)
                                     StudioStats118(state.lang,referralTotal,hasDailyReport,
@@ -304,6 +318,19 @@ internal fun AffiliateStudio118(
                                 }
                                 else -> {
                                     if(current=="links") {
+                                        StudioAffiliateApp120(state.lang,
+                                            partner?.str("code").orEmpty(),
+                                            onDownload={ url ->
+                                                context.startActivity(Intent(Intent.ACTION_VIEW,Uri.parse(url))
+                                                    .addCategory(Intent.CATEGORY_BROWSABLE))
+                                            },
+                                            onShare={ url ->
+                                                context.startActivity(Intent.createChooser(
+                                                    Intent(Intent.ACTION_SEND).apply {
+                                                        type="text/plain"
+                                                        putExtra(Intent.EXTRA_TEXT,url)
+                                                    },tr(state.lang,"Share your partner app","اشتراک برنامه اختصاصی")))
+                                            })
                                         StudioLink118(state.lang,primaryUrl,
                                             onCopy={
                                                 if(primaryUrl.isNotBlank()) {
@@ -618,5 +645,59 @@ private fun StudioEmpty118(lang: Lang) {
         Spacer(Modifier.width(9.dp))
         Text(tr(lang,"No verified data for this period","داده تأییدشده‌ای برای این بازه موجود نیست"),
             color=Color(0xFF426450),fontSize=12.sp)
+    }
+}
+
+/** Distribution link maps to a signed, versioned APK built for this affiliate. */
+@Composable
+private fun StudioAffiliateApp120(
+    lang: Lang,
+    partnerCode: String,
+    onDownload: (String) -> Unit,
+    onShare: (String) -> Unit
+) {
+    val code = partnerCode.trim().uppercase(java.util.Locale.ROOT)
+    val allowed = Regex("^[A-Z0-9_-]{3,64}$").matches(code)
+    val url = if(allowed) "https://betvima.com/app/affiliate/$code" else ""
+    Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp))
+        .background(Brush.horizontalGradient(listOf(sNight,Color(0xFF153C29))))
+        .padding(18.dp),verticalArrangement=Arrangement.spacedBy(11.dp)) {
+        Row(verticalAlignment=Alignment.CenterVertically) {
+            Icon(Icons.Default.Android,null,tint=sGreen,modifier=Modifier.size(29.dp))
+            Spacer(Modifier.width(11.dp))
+            Column(Modifier.weight(1f)) {
+                Text(tr(lang,"Your branded Android app","اپ اندروید اختصاصی شما"),
+                    color=Color.White,fontSize=16.sp,fontWeight=FontWeight.Black)
+                Text(tr(lang,"Latest available native BetVima build",
+                    "آخرین نسخه نیتیو موجود بت‌ویما"),
+                    color=Color(0xFFBAD2C3),fontSize=11.sp)
+            }
+        }
+        Text(tr(lang,
+            "Share this installation link. The approved partner attribution is embedded in the APK; new players are linked during account creation without entering a referral code in the gift field.",
+            "این لینک نصب را به زیرمجموعه‌ها بدهید. کد همکاری تأییدشده داخل APK قرار می‌گیرد و هنگام ثبت‌نام خودکار اعمال می‌شود، بدون نمایش در فیلد هدیه."),
+            color=Color(0xFFD3E1D7),fontSize=11.sp,lineHeight=19.sp)
+        Row(horizontalArrangement=Arrangement.spacedBy(9.dp)) {
+            Button(onClick={onDownload(url)},enabled=allowed,
+                modifier=Modifier.weight(1f),shape=RoundedCornerShape(12.dp),
+                colors=ButtonDefaults.buttonColors(containerColor=sGreen)) {
+                Icon(Icons.Default.Download,null,tint=sBlack,
+                    modifier=Modifier.size(16.dp))
+                Spacer(Modifier.width(7.dp))
+                Text(tr(lang,"Download APK","دانلود APK"),color=sBlack,
+                    fontSize=12.sp,fontWeight=FontWeight.Black)
+            }
+            OutlinedButton(onClick={onShare(url)},enabled=allowed,
+                modifier=Modifier.weight(1f),shape=RoundedCornerShape(12.dp),
+                border=BorderStroke(1.dp,sGreen.copy(alpha=.65f))) {
+                Icon(Icons.Default.Share,null,tint=sGreen,
+                    modifier=Modifier.size(16.dp))
+                Spacer(Modifier.width(6.dp))
+                Text(tr(lang,"Share link","اشتراک لینک"),color=sGreen,fontSize=12.sp)
+            }
+        }
+        if(!allowed) Text(tr(lang,"Your approved affiliate code is not available yet.",
+            "کد همکاری تأییدشده شما هنوز آماده نیست."),
+            color=Color(0xFFFFD68D),fontSize=11.sp)
     }
 }
