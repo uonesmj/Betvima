@@ -79,6 +79,12 @@ describe('BetsAPI bookmaker freshness and suspension policy', () => {
     expect(normalizeBetsapiOdds('1:4140581', forward, at, true).markets).toHaveLength(1);
   });
 
+  it('rejects incomplete 1X2 prices so a missing draw cannot be sold as a two-way football market', () => {
+    const result = normalizeBetsapiOdds('1:4140581', quote(now, now, {
+      home_od: '2.10', away_od: '3.60', draw_od: '-',
+    }), at, true);
+    expect(result.markets).toEqual([]);
+  });
   it('ignores suspended placeholders and protects the single-source market identity', () => {
     const result = normalizeBetsapiOdds('1:4140581', quote(now, now, {
       home_od: '-', draw_od: '-', away_od: '3.100',
