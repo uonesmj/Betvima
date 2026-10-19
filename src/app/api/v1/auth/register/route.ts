@@ -8,6 +8,7 @@ import { clientIpFromHeaders } from '@/server/utils/hash';
 import { verifyTurnstileToken } from '@/server/security/turnstile';
 import { createServices } from '@/server/services/container';
 import { publicRegistrationOutcome, registrationLogSummary } from '@/server/auth/registration-output';
+import { readReferralCookie } from '@/server/auth/referral-cookie';
 
 export const dynamic = 'force-dynamic';
 
@@ -84,14 +85,7 @@ export const POST = withErrorHandling(
     // Android's explicit embedded referralCode remains supported.
     const directReferral = input.referralCode?.trim().toUpperCase() ?? '';
     const giftCode = input.giftCode?.trim().toUpperCase() ?? '';
-    const referralCookie = (() => {
-      const match = /(?:^|;\\s*)nova_ref=([^;]+)/.exec(request.headers.get('cookie') ?? '');
-      if (!match) return '';
-      try {
-        const code = decodeURIComponent(match[1] ?? '').trim().toUpperCase();
-        return /^[A-Z0-9_-]{3,64}$/.test(code) ? code : '';
-      } catch { return ''; }
-    })();
+    const referralCookie = readReferralCookie(request.headers.get('cookie'));
     // Gift code is a separate optional input. Only when there is no partner
     // referral do we allow it to act as a legacy affiliate referral.
     const referralCode = directReferral || referralCookie || giftCode;
@@ -150,8 +144,7 @@ export const POST = withErrorHandling(
             userId: data.user.id,
             code: referralCode,
             ipHash: clientIpFromHeaders(request.headers) ?? undefined,
-            deviceFingerprint: request.headers.get('user-agent') ?? undefined,
-          });
+            });
           attributionFromCookie = Boolean(attribution.created);
         }
       } catch (failure) {
