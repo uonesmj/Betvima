@@ -22,10 +22,16 @@ id "${OWNER}" >/dev/null 2>&1 || fail 'native_build_account_missing'
 for cmd in git flock rsync install stat; do command -v "$cmd" >/dev/null || fail "missing_${cmd}"; done
 [[ -d /var/www/nova ]] || fail 'expected_web_directory_missing'
 mkdir -p "${BASE}" "${DOWNLOADS}"
+# The native build account must traverse this root-controlled release directory.
+chmod 0755 "${BASE}"
+# Only this leaf output directory is writable by the native build account.
+chown "${OWNER}:${OWNER}" "${DOWNLOADS}"
 # Use the same lock as the per-partner on-demand APK builder.
 if [[ ! -e "${DOWNLOADS}/.native-build.lock" ]]; then
   install -o "${OWNER}" -g "${OWNER}" -m 0640 /dev/null "${DOWNLOADS}/.native-build.lock"
 fi
+chown "${OWNER}:${OWNER}" "${DOWNLOADS}/.native-build.lock"
+chmod 0640 "${DOWNLOADS}/.native-build.lock"
 exec 9>>"${DOWNLOADS}/.native-build.lock"
 flock -w 180 9 || fail 'native_builder_is_busy'
 
