@@ -9,7 +9,7 @@ export function confirmedExistingLiveFixtureIds(
 ): string[] {
   return [...new Set(observed
     .filter(row => row.status === 'live' &&
-      /^1:\\d{1,16}$/.test(row.providerId) &&
+      /^1:[0-9]{1,16}$/.test(row.providerId) &&
       knownIds.has(row.providerId))
     .map(row => row.providerId))];
 }
