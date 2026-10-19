@@ -22,6 +22,7 @@ import {
 import { marketRuleFor, marketDisplayOrder } from '@/domain/market-rules';
 import { attachCachedLogo } from "@/server/services/logo-resolver";
 import { sportsTeamSlug } from './sports-team-slug';
+import { confirmedExistingLiveFixtureIds } from './betsapi-live-recency';
 import {
   betsapiLivePollIntervalMs,
   BETSAPI_EXPLORATION_INTERVAL_MS,
@@ -839,6 +840,7 @@ async function runDedicatedLiveDiscovery(ctx: WorkerContext): Promise<void> {
         existing.map((row) => row.provider_id).filter((id): id is string => Boolean(id)),
       );
       const newLiveMatches = liveMatches.filter((match) => !existingIds.has(match.providerId));
+      const confirmedExistingLiveIds = confirmedExistingLiveFixtureIds(liveMatches, existingIds);
 
       console.log("ODDS_LIVE_DISCOVERY_SUMMARY", JSON.stringify({
         provider: sourceProvider.name,
@@ -846,6 +848,26 @@ async function runDedicatedLiveDiscovery(ctx: WorkerContext): Promise<void> {
         alreadyKnown: liveMatches.length - newLiveMatches.length,
         newMatches: newLiveMatches.length,
       }));
+
+      // A previously discovered fixture can still be in the provider's current
+      // in-play response. Refresh only its fixture-recency evidence, never its
+      // score, market state, prices or settlement. Otherwise the 15-minute
+      // recency gate permanently excludes valid known fixtures.
+      if (confirmedExistingLiveIds.length > 0) {
+        const refreshed = await ctx.services.db.query<{ provider_id: string }>(
+          `update nova.matches
+              set provider_updated_at = now(), updated_at = now()
+            where provider = $1
+              and provider_id = any($2::text[])
+              and status::text = 'live'
+            returning provider_id`,
+          [sourceProvider.name, pgArray(confirmedExistingLiveIds)],
+        );
+        console.log("ODDS_LIVE_DISCOVERY_CONFIRMED_RECENCY", JSON.stringify({
+          provider: sourceProvider.name,
+          confirmed: refreshed.length,
+        }));
+      }
 
       if (newLiveMatches.length > 0) {
         const syncResult = await syncMatches(
