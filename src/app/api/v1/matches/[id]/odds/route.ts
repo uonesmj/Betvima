@@ -64,7 +64,7 @@ export const GET = withErrorHandling(
                        )
                        from nova.selections sel
                        where sel.market_id = mk.id
-                         and sel.provider = 'the_odds_api'
+                         and sel.provider = 'betsapi'
                      ),
                      '[]'::jsonb
                    )
@@ -73,13 +73,13 @@ export const GET = withErrorHandling(
                )
                from nova.markets mk
                where mk.match_id = m.id
-                 and mk.provider = 'the_odds_api'
+                 and mk.provider = 'betsapi'
                  and mk.status <> 'manual_review'
              ),
              '[]'::jsonb
            ) as markets
          from nova.matches m
-         where m.id = $1 and m.provider = 'the_odds_api'`,
+         where m.id = $1 and m.provider = 'betsapi'`,
         [id],
       );
 
@@ -202,7 +202,7 @@ export const GET = withErrorHandling(
                      )
                      from nova.selections sel
                      where sel.market_id = mk.id
-                         and sel.provider = 'the_odds_api'
+                         and sel.provider = 'betsapi'
                    ),
                    '[]'::jsonb
                  )
@@ -211,13 +211,13 @@ export const GET = withErrorHandling(
              )
              from nova.markets mk
              where mk.match_id = m.id
-                 and mk.provider = 'the_odds_api'
+                 and mk.provider = 'betsapi'
                and mk.status <> 'manual_review'
            ),
            '[]'::jsonb
          ) as markets
        from nova.matches m
-       where m.id = $1 and m.provider = 'the_odds_api'`,
+       where m.id = $1 and m.provider = 'betsapi'`,
       [id],
     );
 
