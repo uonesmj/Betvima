@@ -116,7 +116,9 @@ fun AffiliateOperations(state: AppState, model: AppViewModel, currency: String,
             }
             val source = if (selected == "links") "links" else "items"
             val next = response.arr(source).objects()
-            values = if (page == 1) next else (values + next).distinctBy { it.str("id", it.str("code")) }
+            values = if (page == 1) next else (values + next).distinctBy {
+                if(selected == "referrals") it.str("userId") else it.str("id",it.str("code"))
+            }
             more = selected in setOf("referrals", "ledger") &&
                 (response.optBoolean("hasMore", false) ||
                     (next.size == 20 && response.optInt("total", 0) > page * 20))
@@ -301,9 +303,9 @@ fun AffiliateOperations(state: AppState, model: AppViewModel, currency: String,
                                 summary.optInt("confirmed").toString(),
                             color=affiliateInk,fontSize=12.sp,fontWeight=FontWeight.Bold
                         )
-                    } else {
+                    } else if (data != null) {
                         Text(tr(state.lang,"All referrals: ","کل زیرمجموعه‌ها: ") +
-                            (data?.optInt("total") ?: values.size),
+                            data!!.optInt("total"),
                             color=affiliateInk,fontSize=13.sp,
                             fontWeight=FontWeight.Bold)
                     }
