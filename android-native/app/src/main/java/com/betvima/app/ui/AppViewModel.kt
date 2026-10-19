@@ -130,13 +130,18 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     fun homeMode(mode: HomeMode) {
         detailRequestNumber++
         mutable.update { it.copy(tab = Tab.HOME, homeMode = mode, feature = Feature.NONE,
+            sport = if (mode == HomeMode.TOP_BETS) "all" else it.sport,
             detail = null, detailLoading = false) }
-        if (mode == HomeMode.TOP_BETS && state.value.upcoming.isEmpty()) refreshUpcoming()
+        // Recheck provider previews when the user opens Top Bets, even if an
+        // earlier feed contained only unpriced fixtures. Both LIVE and upcoming
+        // contribute to the market-variety ranking.
+        if (mode == HomeMode.TOP_BETS) refreshAll()
     }
     fun tab(tab: Tab) {
         detailRequestNumber++
         mutable.update { it.copy(tab = tab, feature = Feature.NONE,
             homeMode = if (tab == Tab.HOME) HomeMode.TOP else it.homeMode,
+            sport = if (tab == Tab.HOME) "all" else it.sport,
             tournamentLeague = if (tab == Tab.SPORTS) "" else it.tournamentLeague,
             detail = null, detailLoading = false) }
         when (tab) {

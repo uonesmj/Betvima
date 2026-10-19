@@ -535,17 +535,22 @@ class ApiClient {
      */
     private suspend fun enrichBet365Cards(matches: List<Match>): List<Match> {
         if (matches.isEmpty()) return matches
-        val maxPreviews = 12
+        // Retain the existing 12-request upper bound. Prioritise a balanced
+        // sample: the six nearest fixtures and the highest provider-reported
+        // market counts. The old "first 12 only" approach could miss every
+        // high-variety fixture beyond page position 12, leaving Top Bets blank.
+        val previewIndices = TopBetsRanking121.headlinePreviewIndices(matches)
         val headlines = supervisorScope {
-            matches.take(maxPreviews).map { match -> async {
-                val ref = bet365Ref(match.id)
+            previewIndices.map { index -> async {
+                val ref = bet365Ref(matches[index].id)
                 if (ref == null) null else runCatching {
                     withContext(Dispatchers.IO) { bet365Prices(ref) }
                 }.getOrNull()
             } }.awaitAll()
         }
+        val headlinesByIndex = previewIndices.zip(headlines).toMap()
         val priced = matches.mapIndexed { index, match ->
-            headlines.getOrNull(index)?.let { withBet365Headline(match, it) } ?: match
+            headlinesByIndex[index]?.let { withBet365Headline(match, it) } ?: match
         }
         return remember(priced)
     }

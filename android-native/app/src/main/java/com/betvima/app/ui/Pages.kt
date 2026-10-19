@@ -92,13 +92,12 @@ fun SportsRibbon(selected: String, lang: Lang, showEsports: Boolean = true,
 fun HomePage(state: AppState, model: AppViewModel, onSearch: () -> Unit) {
     val footerListState = rememberLazyListState()
     val footerScope = rememberCoroutineScope()
-    // Featured games are real, bettable upcoming markets, never fabricated promotions.
-    // Avoid re-sorting cards on every wallet, slip, or live score state update.
-    val featured = remember(state.upcoming) {
-        state.upcoming.filter { match ->
-            match.bettingAvailable && match.featured?.available == true &&
-                match.featured?.selections?.any { it.available } == true
-        }.sortedWith(compareByDescending<Match> { it.marketsCount }.thenBy { it.starts })
+    // Quotes from BetsAPI are displayed as previews, but remain deliberately
+    // non-wagerable. Ranking must not require bettingAvailable/selection.available:
+    // these flags are false for *every* external bookmaker preview and previously
+    // forced Top Bets to be empty even when real prices were present.
+    val featured = remember(state.live, state.upcoming) {
+        TopBetsRanking121.ranked(state.live, state.upcoming)
     }
     LazyColumn(state = footerListState,
         contentPadding = PaddingValues(bottom = 0.dp),
@@ -112,15 +111,15 @@ fun HomePage(state: AppState, model: AppViewModel, onSearch: () -> Unit) {
                         Icons.Default.Whatshot, Palette.blue) { model.tab(Tab.SPORTS) }
                 }
             }
-            if (featured.isEmpty() && state.upcomingLoading) {
+            if (featured.isEmpty() && (state.upcomingLoading || state.liveLoading)) {
                 items(2) { FixtureSkeleton(Modifier.padding(horizontal = 15.dp)) }
             } else if (featured.isEmpty()) {
                 item {
                     Box(Modifier.padding(horizontal = 15.dp)) {
                         EmptyPanel(tr(state.lang, "Top markets are unavailable", "بازار برتری موجود نیست"),
-                            tr(state.lang, "Only verified upcoming odds are displayed.",
-                                "فقط ضرایب تأییدشده بازی‌های آینده نمایش داده می‌شوند.")) {
-                            model.refreshUpcoming()
+                            tr(state.lang, "Only matches with actual provider quotes are listed.",
+                                "فقط مسابقات دارای ضرایب واقعی منبع داده نمایش داده می‌شوند.")) {
+                            model.refreshAll()
                         }
                     }
                 }
@@ -149,11 +148,11 @@ fun HomePage(state: AppState, model: AppViewModel, onSearch: () -> Unit) {
                         model.homeMode(HomeMode.TOP_BETS)
                     }
                     if (featured.isNotEmpty()) ReferenceMatchCarousel(featured, state, model)
-                    else if (state.upcomingLoading) FixtureSkeleton(Modifier.fillMaxWidth())
+                    else if (state.upcomingLoading || state.liveLoading) FixtureSkeleton(Modifier.fillMaxWidth())
                     else EmptyPanel(tr(state.lang, "Top markets are unavailable", "بازار برتری موجود نیست"),
                         tr(state.lang, "Markets appear when confirmed by the provider.",
                             "بازارها پس از تأیید منبع داده نمایش داده می‌شوند.")) {
-                        model.refreshUpcoming()
+                        model.refreshAll()
                     }
                 }
             }
