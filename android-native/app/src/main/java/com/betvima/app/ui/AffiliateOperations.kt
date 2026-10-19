@@ -35,7 +35,8 @@ import java.util.UUID
 fun AffiliateOperations(state: AppState, model: AppViewModel, currency: String,
     minimumPayoutMinor: String = "0",
     requestedTab: String = "referrals",
-    navigationRevision: Int = 0) {
+    navigationRevision: Int = 0,
+    showNavigation: Boolean = true) {
     val context = LocalContext.current
     val api = remember { ApiClient() }
     val vault = remember { SessionVault(context, "affiliate") }
@@ -48,7 +49,7 @@ fun AffiliateOperations(state: AppState, model: AppViewModel, currency: String,
         "links" to tr(state.lang, "Links", "لینک‌ها"),
         "wallets" to tr(state.lang, "Wallets", "کیف‌پول‌ها")
     )
-    var selected by rememberSaveable { mutableStateOf("referrals") }
+    var selected by rememberSaveable(requestedTab) { mutableStateOf(requestedTab) }
     var page by rememberSaveable { mutableIntStateOf(1) }
     var refresh by remember { mutableIntStateOf(0) }
     var busy by remember { mutableStateOf(false) }
@@ -124,6 +125,7 @@ fun AffiliateOperations(state: AppState, model: AppViewModel, currency: String,
     }
 
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        if(showNavigation) {
         Row(verticalAlignment=Alignment.CenterVertically,
             modifier=Modifier.fillMaxWidth().padding(top=5.dp)) {
             Surface(color=affiliateBlue.copy(alpha=.12f),shape=RoundedCornerShape(13.dp)) {
@@ -168,6 +170,7 @@ fun AffiliateOperations(state: AppState, model: AppViewModel, currency: String,
                     }
                 }
             }
+        }
         }
         if (busy) LinearProgressIndicator(Modifier.fillMaxWidth(), color = Palette.green)
         if (error != null) BvInformationStrip(error.orEmpty(), Icons.Default.WarningAmber,

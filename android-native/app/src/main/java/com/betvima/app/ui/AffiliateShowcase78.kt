@@ -43,12 +43,12 @@ import kotlin.math.min
 
 // All values in the promotional chart are schematic. Financial amounts are never
 // taken from illustrative media; the signed-in server-backed dashboard is authoritative.
-private val a78Background = Color(0xFF0B0C10)
-private val a78Panel = Color(0xFF1C1D23)
-private val a78Green = Color(0xFF80BAFF)
-private val a78Blue = Color(0xFF3D94FF)
-private val a78Lilac = Color(0xFFC288FF)
-private val a78Muted = Color(0xFFB5C6DA)
+private val a78Background = Color(0xFF080B0A)
+private val a78Panel = Color(0xFF141A16)
+private val a78Green = Color(0xFF4DD68F)
+private val a78Blue = Color(0xFF2F9361)
+private val a78Lilac = Color(0xFF9CE7B9)
+private val a78Muted = Color(0xFFBDD3C4)
 
 @Composable
 internal fun AffiliateShowcase78(
@@ -205,7 +205,7 @@ private fun A78PartnerTerms83(lang: Lang) {
             color = Color.White, fontSize = 23.sp, lineHeight = 28.sp,
             fontWeight = FontWeight.Black)
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text("70%", color = Color(0xFFEAC584), fontSize = 37.sp,
+            Text("70%", color = Color(0xFF55D993), fontSize = 37.sp,
                 fontWeight = FontWeight.Black)
             Spacer(Modifier.width(13.dp))
             Column(Modifier.weight(1f)) {
@@ -221,7 +221,7 @@ private fun A78PartnerTerms83(lang: Lang) {
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(5.dp)) {
                 Icon(Icons.Default.CalendarMonth, null,
-                    tint = Color(0xFF7CC6FF), modifier = Modifier.size(21.dp))
+                    tint = Color(0xFF65D89A), modifier = Modifier.size(21.dp))
                 Text(tr(lang, "Weekly settlement", "تسویه هفتگی"),
                     color = Color.White, fontSize = 12.sp,
                     fontWeight = FontWeight.Black)
@@ -231,7 +231,7 @@ private fun A78PartnerTerms83(lang: Lang) {
             }
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(5.dp)) {
                 Icon(Icons.Default.Smartphone, null,
-                    tint = Color(0xFF7CC6FF), modifier = Modifier.size(21.dp))
+                    tint = Color(0xFF65D89A), modifier = Modifier.size(21.dp))
                 Text(tr(lang, "Android partner access", "دسترسی اختصاصی اندروید"),
                     color = Color.White, fontSize = 12.sp,
                     fontWeight = FontWeight.Black)
@@ -356,7 +356,7 @@ private fun A78Analytics(lang: Lang, active: Boolean) {
         Surface(
             shape=RoundedCornerShape(19.dp),
             color=Color(0xFF101116),
-            border=BorderStroke(1.dp,Color(0xFF244467))
+            border=BorderStroke(1.dp,Color(0xFF274F37))
         ) {
             Column(Modifier.padding(12.dp)) {
                 Row(verticalAlignment=Alignment.CenterVertically) {
@@ -377,7 +377,7 @@ private fun A78Analytics(lang: Lang, active: Boolean) {
                 Row(Modifier.fillMaxWidth(),
                     horizontalArrangement=Arrangement.SpaceBetween) {
                     listOf("JAN","FEB","MAR","APR","MAY","JUN").forEach {
-                        Text(it,color=Color(0xFF7C91AD),fontSize=9.sp)
+                        Text(it,color=Color(0xFFA6C7B0),fontSize=9.sp)
                     }
                 }
             }
@@ -422,7 +422,7 @@ private fun A78AnimatedChart(active:Boolean) {
         val bottom=height*.92f
         repeat(4){ i ->
             val y=height*(i+1)/5f
-            drawLine(Color(0xFF22344A),Offset(0f,y),
+            drawLine(Color(0xFF294A34),Offset(0f,y),
                 Offset(width,y),strokeWidth=1.dp.toPx())
         }
         val barWidth=width/17f
@@ -646,7 +646,7 @@ private fun A78Join(lang:Lang,active:Boolean,onRegister:()->Unit,
     // photograph, headline and two actions into the same fixed-height box.
     Column(Modifier.fillMaxWidth().padding(12.dp)
         .clip(RoundedCornerShape(24.dp))
-        .background(Color(0xFF1C1D23))) {
+        .background(Color(0xFF141A16))) {
         AffiliateCinematicPhoto(
             scene = AffiliateScene.JOIN,
             modifier = Modifier.fillMaxWidth().height(205.dp),

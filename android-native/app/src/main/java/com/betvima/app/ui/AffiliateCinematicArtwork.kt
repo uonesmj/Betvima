@@ -31,16 +31,16 @@ import androidx.compose.ui.unit.sp
  * Missing art gracefully renders a branded gradient while awaiting asset review.
  */
 internal enum class AffiliateScene(val photo:String,val accent:Color,val mark:ImageVector) {
-    HERO("hero_stadium",Color(0xFF415DA2),Icons.Default.SportsSoccer),
-    NUMBERS("partners",Color(0xFF087FF5),Icons.Default.Groups),
-    ECOSYSTEM("football_team",Color(0xFF9B7AA6),Icons.Default.SportsSoccer),
-    MOBILE("app_showcase",Color(0xFF087FF5),Icons.Default.Smartphone),
-    STATISTICS("analytics",Color(0xFF6B82C3),Icons.Default.Leaderboard),
-    GEOGRAPHY("global_stadium",Color(0xFF087FF5),Icons.Default.Public),
-    CASINO("casino",Color(0xFF925FEF),Icons.Default.Casino),
+    HERO("hero_stadium",Color(0xFF286548),Icons.Default.SportsSoccer),
+    NUMBERS("partners",Color(0xFF2AA36A),Icons.Default.Groups),
+    ECOSYSTEM("football_team",Color(0xFF517C5B),Icons.Default.SportsSoccer),
+    MOBILE("app_showcase",Color(0xFF2AA36A),Icons.Default.Smartphone),
+    STATISTICS("analytics",Color(0xFF387C59),Icons.Default.Leaderboard),
+    GEOGRAPHY("global_stadium",Color(0xFF2AA36A),Icons.Default.Public),
+    CASINO("casino",Color(0xFF289E62),Icons.Default.Casino),
     SPORTS("football_action",Color(0xFFB08D62),Icons.Default.SportsSoccer),
-    FAQ("players",Color(0xFF087FF5),Icons.Default.QuestionAnswer),
-    JOIN("winning_moment",Color(0xFF655AA8),Icons.Default.Stars)
+    FAQ("players",Color(0xFF2AA36A),Icons.Default.QuestionAnswer),
+    JOIN("winning_moment",Color(0xFF337951),Icons.Default.Stars)
 }
 
 @Composable
