@@ -1,6 +1,8 @@
 /**
  * SoftAggregator signed-ingress adapter for a dedicated Cloudflare route:
  *   betvima.com/api/webhooks/softaggregator*
+ * An exact allowlisted workers.dev hostname may be used for an isolated
+ * non-monetary connectivity rehearsal without changing the site's nameservers.
  *
  * Vendor public docs: GET callback with MD5(timestamp + salt) ONLY.
  * Edge admits traffic exclusively from exact, operator-confirmed vendor IPs;
@@ -78,6 +80,40 @@ export default {
     headers.delete('x-betvima-edge-signature');
     headers.set('x-betvima-edge-signature', signature);
     headers.set('cache-control', 'no-store');
+
+    // An unactivated Cloudflare DNS zone cannot receive this Route yet.
+    // Allow the explicitly approved workers.dev hostname ONLY for an
+    // isolated, non-monetary callback connectivity rehearsal. The workers.dev
+    // URL has no DNS origin: forwarding the incoming Request unchanged would
+    // try the workers.dev host again, not BetVima's HTTPS origin.
+    if (url.hostname.endsWith('.workers.dev')) {
+      if (url.hostname !== 'betvima-casino-callback.mimmim283228.workers.dev')
+        return refuse();
+      const origin = new URL('https://betvima.com' + WEBHOOK_PATH);
+      origin.search = url.search;
+      // Do not forward user cookies, authorization, client-supplied edge
+      // attestations or incoming Cloudflare headers to the actual wallet API.
+      const safeHeaders = new Headers({
+        'x-signature': vendorSignature,
+        'x-betvima-edge-signature': signature,
+        'cache-control': 'no-store',
+      });
+      try {
+        const response = await fetch(new Request(origin, {
+          method: 'GET', headers: safeHeaders, redirect: 'manual',
+        }));
+        // The provider expects HTTP 200 with a JSON body on business errors.
+        // Do not forward a redirect or upstream HTML error as a valid callback.
+        if (response.status !== 200 ||
+            !(response.headers.get('content-type') ?? '').includes('application/json'))
+          return refuse();
+        return response;
+      } catch {
+        return refuse();
+      }
+    }
+
+    // Existing active-zone route remains unchanged.
     return fetch(new Request(request, { headers }));
   },
 };
