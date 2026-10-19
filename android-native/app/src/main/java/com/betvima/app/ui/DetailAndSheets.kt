@@ -1,6 +1,7 @@
 package com.betvima.app.ui
 
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.delay
 
 import androidx.compose.animation.togetherWith
 import androidx.compose.animation.animateContentSize
@@ -46,6 +47,35 @@ fun MatchDetailPage(state: AppState, model: AppViewModel) {
     var selectedMarketGroup by rememberSaveable(match.id) { mutableStateOf("all") }
     var scoreMode by rememberSaveable(match.id) { mutableStateOf("score") }
     var marketSearch by rememberSaveable(match.id) { mutableStateOf("") }
+    LaunchedEffect(match.id) {
+        if (match.live && match.id.startsWith("betsapi:live:")) {
+            model.refreshMatchFacts(match.id)
+            while (true) {
+                delay(14_000)
+                model.refreshMatchFacts(match.id)
+            }
+        }
+    }
+    val facts = state.liveFacts?.takeIf {
+        match.id.startsWith("betsapi:live:") &&
+        match.id.substringAfterLast(':') == it.fi
+    }
+    var extraClockSeconds by remember(match.id, facts?.observedAt) { mutableIntStateOf(0) }
+    LaunchedEffect(match.id, facts?.observedAt, facts?.clockRunning) {
+        extraClockSeconds = 0
+        if (facts?.clockRunning == true) {
+            repeat(70) {
+                delay(1000)
+                extraClockSeconds++
+            }
+        }
+    }
+    val playingSeconds = facts?.clockSeconds?.plus(extraClockSeconds)
+    val clockLabel = if (playingSeconds != null) {
+        (playingSeconds / 60).toString() + ":" +
+            (playingSeconds % 60).toString().padStart(2, '0')
+    } else match.minute?.toString()?.plus("′") ?: "—"
+
     val marketListState = rememberLazyListState()
     val focusMarketId = state.focusedMarketId
     LaunchedEffect(match.id, focusMarketId) {
@@ -114,7 +144,7 @@ fun MatchDetailPage(state: AppState, model: AppViewModel) {
                     Text(match.league, fontWeight = FontWeight.ExtraBold, fontSize = 16.sp)
                     Text(match.country, color = Palette.muted, fontSize = 11.sp)
                 }
-                if (match.live) SmallPill("LIVE " + (match.minute ?: 0) + "′",
+                if (match.live) SmallPill("LIVE " + clockLabel,
                     Color(0xFFFFEEF0), Palette.red)
             }
         }
@@ -148,6 +178,13 @@ fun MatchDetailPage(state: AppState, model: AppViewModel) {
                 }
             }
             Spacer(Modifier.height(11.dp))
+            if (match.live && match.id.startsWith("betsapi:live:")) {
+                LiveMatchActivityPanel(
+                    match = match, facts = facts, fa = state.lang == Lang.FA,
+                    expanded = scoreMode == "live", clockLabel = clockLabel
+                )
+                Spacer(Modifier.height(9.dp))
+            }
             Row(Modifier.fillMaxWidth().padding(vertical = 15.dp),
                 verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f),
@@ -182,7 +219,7 @@ fun MatchDetailPage(state: AppState, model: AppViewModel) {
                     tint = Color(0xFFF50078), modifier = Modifier.size(17.dp))
                 Text(if (match.live)
                     tr(state.lang, "LIVE", "زنده") + " · " +
-                        (match.minute?.toString()?.plus("′") ?: "—")
+                        clockLabel
                     else match.starts.take(16).replace("T", " · "),
                     color = Palette.muted, fontSize = 12.sp)
                 Spacer(Modifier.weight(1f))
