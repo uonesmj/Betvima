@@ -595,15 +595,15 @@ BEGIN
   v_next_status := CASE
     WHEN p_suspend THEN 'suspended'::nova.selection_status
     WHEN v_sel.status::text = 'open' THEN 'open'::nova.selection_status
-    -- Only clean, current prematch Odds API quotes can release a stale selection.
+    -- Only clean, current source-owned prematch quotes can release a stale selection.
     -- Live locks, manual-review markets and other anomaly holds remain suspended.
     WHEN v_sel.status::text = 'suspended'
       AND v_market.status::text = 'open'
       AND v_market.is_live IS FALSE
       AND p_is_live IS FALSE
-      AND v_market.provider = p_provider AND p_provider = 'betsapi'
+      AND v_market.provider = p_provider AND p_provider IN ('the_odds_api', '5dollarfootballapi', 'betsapi')
       AND v_sel.provider = p_provider
-      AND p_provider = 'betsapi'
+      AND p_provider IN ('the_odds_api', '5dollarfootballapi', 'betsapi')
       AND p_provider_timestamp IS NOT NULL
       AND p_provider_timestamp >= now() - interval '300 seconds'
       AND p_provider_timestamp <= now() + interval '30 seconds'
@@ -626,9 +626,9 @@ BEGIN
       AND v_market.status::text = 'open'
       AND v_market.is_live IS TRUE
       AND p_is_live IS TRUE
-      AND v_market.provider = p_provider AND p_provider = 'betsapi'
+      AND v_market.provider = p_provider AND p_provider IN ('the_odds_api', '5dollarfootballapi', 'betsapi')
       AND v_sel.provider = p_provider
-      AND p_provider = 'betsapi'
+      AND p_provider IN ('the_odds_api', '5dollarfootballapi', 'betsapi')
       AND nova.operation_enabled('LIVE_BETTING')
       AND p_provider_timestamp IS NOT NULL
       AND p_provider_timestamp >= now() - interval '45 seconds'
