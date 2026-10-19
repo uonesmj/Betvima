@@ -134,6 +134,11 @@ export function normalizeBetsapiOdds(
   const result = object(raw);
   const odds = object(result.odds);
   const updateTimes = object(field(result.stats, 'odds_update'));
+  // A reversed fixture changes the meaning of HOME and AWAY, including
+  // financial grading. Do not wager until we have explicit side reconciliation.
+  if (integer(field(result.stats, 'matching_dir')) === -1) {
+    return { matchProviderId, markets: [], updatedAt: observedAt.toISOString() };
+  }
   const markets: ProviderOddsMarket[] = [];
   for (const [marketId, history] of Object.entries(odds)) {
     const [sport, market] = marketId.split('_');
@@ -150,9 +155,13 @@ export function normalizeBetsapiOdds(
     if (!latest) continue;
     const quoteTime = oddTimestamp(latest.add_time);
     const marketTime = oddTimestamp(updateTimes[marketId]);
-    // Market freshness AND actual bookmaker price freshness are both required.
-    const time = quoteTime && marketTime ? Math.min(quoteTime, marketTime) : null;
-    if (!time || time * 1000 > observedAt.getTime() + 15_000 ||
+    // add_time is the time the historical *price changed*, not a guarantee
+    // that a currently rechecked unchanged price is stale. The provider's
+    // odds_update is the latest bookmaker-market check. Never allow an old
+    // market check or an outcome added after that check.
+    const time = marketTime;
+    if (!quoteTime || !time || quoteTime > time + 15 ||
+      time * 1000 > observedAt.getTime() + 15_000 ||
       observedAt.getTime() - time * 1000 > maxAgeSeconds * 1000) continue;
     const items = selections(marketId, latest, mapped.key);
     if (items.length < 2) continue;
