@@ -230,11 +230,10 @@ def load_geo_hmac_secret(path=pathlib.Path('/var/www/nova/.env.production')):
 
 
 def load_callback_hmac_secret(path=pathlib.Path('/var/www/nova/.env.production')):
-    """Load only the independently generated casino callback edge HMAC secret.
+    """Load only the casino callback edge HMAC into new production web releases.
 
-    The protected source env file is not automatically loaded by isolated
-    /opt/nova-releases production builds. Do not import unrelated credentials.
-    This intentionally does not turn on any real-money feature flag.
+    The private file is not auto-loaded by /opt/nova-releases.
+    Neither provider keys nor cash enablement flags are loaded here.
     """
     try:
         fd=os.open(path,os.O_RDONLY|os.O_NOFOLLOW|os.O_CLOEXEC)
@@ -254,146 +253,7 @@ def load_callback_hmac_secret(path=pathlib.Path('/var/www/nova/.env.production')
             os.close(fd)
     if len(content)>256*1024:
         raise ValueError('runtime_configuration_incomplete')
-    matches=re.findall(r'(?m)^SOFTAGGREGATOR_EDGE_HMAC_SECRET=([^\r\n]*)\r?
-    global CURRENT_REVISION
-    CURRENT_REVISION = sha
-    os.umask(0o077)
-    if os.geteuid()!=0 or not re.fullmatch('[0-9a-f]{40}',sha):raise ValueError('invalid_invocation')
-    progress('preflight')
-    route=ROUTE.read_text();snippet=STATIC.read_text()
-    current=set(re.findall(r'proxy_pass http://127\.0\.0\.1:(\d+);',route))
-    if len(current)!=1:raise ValueError('ambiguous_current_upstream')
-    oldport=int(next(iter(current)))
-    apps=json.loads(pm2(['jlist']))
-    # Financial workers may inherit PORT from the web environment; identify
-    # the actual routed web process by its unique process name, never by port alone.
-    websites=[a for a in apps
-              if a.get('name','').startswith('nova-cd-')
-              and a.get('pm2_env',{}).get('status')=='online'
-              and int(a.get('pm2_env',{}).get('PORT',0) or 0)==oldport]
-    if len(websites)!=1:raise ValueError('active_web_not_identified')
-    old=websites[0]
-    olddir=pathlib.Path(old['pm2_env']['pm_cwd'])
-    if olddir.parent!=pathlib.Path('/opt/nova-releases'):raise ValueError('unexpected_active_release')
-    values={k:str(v) for k,v in old['pm2_env'].items() if re.fullmatch('[A-Z][A-Z0-9_]*',k) and isinstance(v,(str,int))}
-    for k in tuple(values):
-        if k in ('NODE_OPTIONS','LD_PRELOAD','LD_LIBRARY_PATH','BASH_ENV','ENV','NODE_TLS_REJECT_UNAUTHORIZED') or k.startswith(('DYLD_','LD_')):values.pop(k)
-    values.update(NODE_ENV='production',APP_ENV='production',NODE_EXTRA_CA_CERTS='/etc/betvima/certs/supabase-root-2021.crt',NEXT_TELEMETRY_DISABLED='1')
-    if not all(values.get(k) for k in ('SUPABASE_DB_URL','NEXT_PUBLIC_SUPABASE_URL','NEXT_PUBLIC_SUPABASE_ANON_KEY','SUPABASE_SERVICE_ROLE_KEY')):raise ValueError('runtime_configuration_incomplete')
-    geo_secret=load_geo_hmac_secret()
-    if geo_secret is not None:
-        values['CASINO_GEO_HMAC_SECRET']=geo_secret
-    # Load the callback edge secret separately from provider API keys, other
-    # runtime credentials and the production-cash enablement gates.
-    callback_secret=load_callback_hmac_secret()
-    if callback_secret is not None:
-        values['SOFTAGGREGATOR_EDGE_HMAC_SECRET']=callback_secret
-    progress('recover_previous')
-    directory=c.ROOT/'releases'/('production-'+sha)
-    # Every new GitHub run still needs the owner's OIDC approval. Only failed
-    # artifacts for that exact revision are archived, never deleted or reused.
-    quarantine_failed(directory,c.ROOT/'releases',apps)
-    progress('extract_source')
-    directory.mkdir(mode=0o755);directory.chmod(0o755)
-    c.unpack((c.STATE/'production-source.tar').read_bytes(),directory)
-    progress('migration_registry')
-    verify_applied_migrations(directory/'supabase/migrations',
-                              olddir/'supabase/migrations',values)
-    progress('backup')
-    backupdir=backup(values)
-    progress('registry_check')
-    # Registry check is SELECT only; no migration runner is invoked.
-    sql="BEGIN READ ONLY; SELECT EXISTS(SELECT 1 FROM nova.migrations WHERE filename='0195_live_betting_missing_switch_fails_closed.sql' AND checksum='55ec6c22d1a09b84423ec1c290212d9bc717ce2d9a96edac47a0a678164fd4b7' AND NOT baseline); ROLLBACK;"
-    if c.run(['/usr/bin/psql','-X','--no-password','-qAt','-v','ON_ERROR_STOP=1'],input=sql.encode(),env=connection(values)).strip()!=b't':raise ValueError('approved_0195_required')
-    progress('dependencies')
-    (directory/'node_modules').symlink_to(c.ensure_dependencies(directory),target_is_directory=True)
-    account=pwd.getpwnam('betvima_build')
-    for folder,dirs,files in os.walk(directory,followlinks=False):
-        os.chown(folder,account.pw_uid,account.pw_gid)
-        for name in files:os.chown(pathlib.Path(folder)/name,account.pw_uid,account.pw_gid,follow_symlinks=False)
-    for label,args in (
-        ('unit_tests',['/usr/bin/node','node_modules/vitest/vitest.mjs','run','tests/unit','--no-cache']),
-        ('typecheck',['/usr/bin/node','node_modules/typescript/bin/tsc','--noEmit']),
-        ('lint',['/usr/bin/node','node_modules/next/dist/bin/next','lint'])
-    ):
-        progress(label)
-        c.sandbox(directory,args,c.PREVIEW_ENV)
-    progress('build')
-    c.sandbox(directory,['/usr/bin/node','node_modules/next/dist/bin/next','build'],values)
-    progress('asset_security')
-    private=[v.encode() for k,v in values.items() if not k.startswith('NEXT_PUBLIC_') and len(v)>20 and any(w in k for w in ('KEY','TOKEN','PASSWORD','SECRET','DATABASE_URL','DB_URL'))]
-    for file in (directory/'.next/static').rglob('*'):
-        if file.is_file() and any(secret in file.read_bytes() for secret in private):raise ValueError('private_value_in_browser_assets')
-    progress('copy_release')
-    release=pathlib.Path('/opt/nova-releases')/sha
-    if release.exists():
-        if release==olddir: raise ValueError('previous_release_still_owned')
-        current_apps=json.loads(pm2(['jlist']))
-        by_cwd=[a for a in current_apps if a.get('pm2_env',{}).get('pm_cwd')==str(release)]
-        if any(a.get('name')!='nova-cd-'+sha[:12] or a.get('pm2_env',{}).get('status')=='online' for a in by_cwd):
-            raise ValueError('candidate_release_still_running')
-        # Only a STOPPED web candidate from this exact revision may be removed.
-        if by_cwd: pm2(['delete','nova-cd-'+sha[:12]])
-        quarantine_failed(release,release.parent,[],removable_stopped_process=None)
-    shutil.copytree(directory,release,symlinks=False)
-    for apk in (olddir/'public/downloads').glob('*.apk'):
-        target=release/'public/downloads'/apk.name;target.parent.mkdir(parents=True,exist_ok=True);shutil.copyfile(apk,target)
-    owner=pwd.getpwnam('novaadmin')
-    for folder,dirs,files in os.walk(release):
-        os.chown(folder,owner.pw_uid,owner.pw_gid)
-        for name in files:os.chown(pathlib.Path(folder)/name,owner.pw_uid,owner.pw_gid)
-    port=None
-    # Revisions remain online for safe rollback; search beyond the legacy 18 ports.
-    # Only bind localhost ports that the OS confirms are actually free.
-    for number in range(3002,3100):
-        with socket.socket() as listener:
-            try:listener.bind(('127.0.0.1',number));port=number;break
-            except OSError:pass
-    if port is None:raise ValueError('no_candidate_port')
-    values.update(PORT=str(port),HOSTNAME='127.0.0.1',PATH='/usr/bin:/bin',HOME='/home/novaadmin',PM2_HOME='/home/novaadmin/.pm2')
-    name='nova-cd-'+sha[:12];build=(release/'.next/BUILD_ID').read_text().strip();oldbuild=(olddir/'.next/BUILD_ID').read_text().strip()
-    state=pathlib.Path('/root/betvima-backups')/('auto-web-'+time.strftime('%Y%m%dT%H%M%SZ',time.gmtime()));state.mkdir(mode=0o700)
-    c.atomic(state/'nginx.before.conf',route.encode());c.atomic(state/'static.before.conf',snippet.encode());c.atomic(state/'pm2.before.json',json.dumps(apps).encode())
-    switched=False
-    try:
-        progress('start_candidate')
-        pm2(['start',str(release/'node_modules/next/dist/bin/next'),'--name',name,'--cwd',str(release),'--interpreter','/usr/bin/node','--','start','--hostname','127.0.0.1','-p',str(port)],values)
-        progress('candidate_health')
-        wait_health('http://127.0.0.1:'+str(port),build)
-        progress('switch_route')
-        changed=route.replace('proxy_pass http://127.0.0.1:'+str(oldport)+';','proxy_pass http://127.0.0.1:'+str(port)+';')
-        # Preserve previous-version immutable assets and the original APK aliases.
-        first=True
-        def ports(match):
-            nonlocal first
-            value=port if first else oldport;first=False;return 'proxy_pass http://127.0.0.1:'+str(value)+';'
-        updated=re.sub(r'proxy_pass http://127\.0\.0\.1:\d+;',ports,snippet)
-        if first:raise ValueError('static_fallback_missing')
-        c.atomic(ROUTE,changed.encode(),0o644);c.atomic(STATIC,updated.encode(),0o644)
-        c.run(['/usr/sbin/nginx','-t']);c.run(['systemctl','reload','nginx']);switched=True
-        progress('public_health')
-        wait_health('https://betvima.com',build)
-        progress('persist')
-        pm2(['save'])
-        c.atomic(c.STATE/'production-status.json',json.dumps({'revision':sha,'build':build,'state':'healthy','rollback_directory':str(state),'backup_directory':str(backupdir),'workers_changed':False,'migration_run':False}).encode(),0o644)
-        progress('complete','verified')
-    except Exception:
-        c.atomic(ROUTE,route.encode(),0o644);c.atomic(STATIC,snippet.encode(),0o644)
-        c.run(['/usr/sbin/nginx','-t']);c.run(['systemctl','reload','nginx']);wait_health('https://betvima.com',oldbuild)
-        try:pm2(['stop',name]);pm2(['save'])
-        except Exception:pass
-        raise
-
-if __name__=='__main__':
-    try:main(sys.argv[1])
-    except Exception as error:
-        # The reason is allowlisted; untrusted exception strings and financial
-        # logs remain root-private and never enter GitHub Actions output.
-        try:progress(CURRENT_STAGE,'failed',error)
-        except Exception:pass
-        print('production_deploy_blocked_or_rolled_back_details_suppressed')
-        sys.exit(1)
-,content)
+    matches=re.findall(r'(?m)^SOFTAGGREGATOR_EDGE_HMAC_SECRET=([^\r\n]*)\r?$',content)
     if not matches:
         return None
     if len(matches)!=1 or not re.fullmatch(r'[!-~]{32,256}',matches[0]):
@@ -430,6 +290,9 @@ def main(sha):
     geo_secret=load_geo_hmac_secret()
     if geo_secret is not None:
         values['CASINO_GEO_HMAC_SECRET']=geo_secret
+    callback_secret=load_callback_hmac_secret()
+    if callback_secret is not None:
+        values['SOFTAGGREGATOR_EDGE_HMAC_SECRET']=callback_secret
     progress('recover_previous')
     directory=c.ROOT/'releases'/('production-'+sha)
     # Every new GitHub run still needs the owner's OIDC approval. Only failed
