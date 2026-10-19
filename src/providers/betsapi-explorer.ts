@@ -8,7 +8,7 @@
  */
 import { createHash } from 'node:crypto';
 import { object, string } from './betsapi-normalization';
-import { betsApiLiveMinute } from './betsapi-match-clock';
+import { betsApiLiveClock } from './betsapi-match-clock';
 import {
   parseBet365LivePreview, parseBet365PrematchPreview,
   type Bet365PreviewMarket,
@@ -48,6 +48,9 @@ export interface ExplorerFixture {
   kickoff: string | null;
   score: string | null;
   minute: number | null;
+  clockSeconds?: number | null;
+  clockRunning?: boolean;
+  clockObservedAt?: string | null;
   marketStatus: 'not_requested';
 }
 
@@ -113,7 +116,7 @@ export function parseExplorerFixture(
   const fi = /^\d{1,16}$/.test(mappedFi) ? mappedFi : null;
   const home = sourceEvent(row, 'home'), away = sourceEvent(row, 'away');
   if (!home || !away) return null;
-  const minute = betsApiLiveMinute(row);
+  const clock = betsApiLiveClock(Object.keys(rec(row.timer)).length ? row.timer : row);
   const ss = val(row.ss);
   const country = val(rec(row.league).cc).toLowerCase();
   const eventId = feed === 'events' ? id : val(row.our_event_id);
@@ -127,7 +130,10 @@ export function parseExplorerFixture(
     country: /^[a-z]{2}$/.test(country) ? country : null,
     kickoff: safeIso(row.time),
     score: /^\d{1,3}-\d{1,3}$/.test(ss) ? ss : null,
-    minute,
+    minute: clock.minute,
+    clockSeconds: clock.clockSeconds,
+    clockRunning: clock.clockRunning,
+    clockObservedAt: clock.clockSeconds !== null ? new Date().toISOString() : null,
     marketStatus: 'not_requested',
   };
 }
