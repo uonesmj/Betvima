@@ -164,7 +164,10 @@ export function normalizeBetsapiOdds(
       time * 1000 > observedAt.getTime() + 15_000 ||
       observedAt.getTime() - time * 1000 > maxAgeSeconds * 1000) continue;
     const items = selections(marketId, latest, mapped.key);
-    if (items.length < 2) continue;
+    // A full-time three-way result without a priced Draw is not a valid
+    // complete 1X2 market and must not enter the wallet-authoritative ledger.
+    if (items.length !== 3 ||
+        !['HOME', 'DRAW', 'AWAY'].every(code => items.some(item => item.code === code))) continue;
     markets.push({
       providerId: `betsapi:${marketId}`,
       key: mapped.key,
