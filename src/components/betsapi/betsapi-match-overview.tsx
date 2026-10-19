@@ -139,9 +139,6 @@ export function BetsApiMatchOverview({fixture,fi,sportKey,mode,initial}:{
             <span className="text-[10px] text-slate-400">{fa?'مهمان':'Away'}</span>
           </div>
         </div>
-        {mode==='live'&&<div className="px-3 pb-3">
-          <LiveMatchPulseBoard facts={stats} home={home} away={away} fa={fa} compact/>
-        </div>}
       </div>}
       {tab===1&&<div role="tabpanel" className="p-3">
         {mode==='live'&&<div className="mb-3">
