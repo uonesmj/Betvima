@@ -318,7 +318,7 @@ internal fun AffiliateStudio118(
                                                             putExtra(Intent.EXTRA_TEXT,primaryUrl)
                                                         },tr(state.lang,"Share link","اشتراک لینک")))
                                                 }
-                                            },onManage={})
+                                            },onManage={},showManage=false)
                                     }
                                     if(current=="payouts") StudioTerms118(state.lang,
                                         partner?.str("minPayoutMinor")?.takeIf(String::isNotBlank)
@@ -421,7 +421,7 @@ private fun StudioRevenue118(lang:Lang,rate:String,partner:JSONObject?) {
 
 @Composable
 private fun StudioLink118(lang:Lang,link:String,onCopy:()->Unit,
-    onShare:()->Unit,onManage:()->Unit) {
+    onShare:()->Unit,onManage:()->Unit,showManage:Boolean=true) {
     Column(Modifier.fillMaxWidth(),verticalArrangement=Arrangement.spacedBy(9.dp)) {
         StudioSection118(tr(lang,"Your referral link","لینک اختصاصی شما"),
             tr(lang,"Share or create a tracked campaign","اشتراک لینک یا ساخت کمپین رهگیری‌شده"))
@@ -446,6 +446,14 @@ private fun StudioLink118(lang:Lang,link:String,onCopy:()->Unit,
             }
 
         }
+        if(showManage) {
+            TextButton(onClick=onManage,modifier=Modifier.fillMaxWidth()) {
+                Text(tr(lang,"Manage campaigns","مدیریت کمپین‌ها"),
+                    color=sGreenDark,fontWeight=FontWeight.Bold)
+                Icon(Icons.Default.ArrowForward,null,tint=sGreenDark,
+                    modifier=Modifier.size(16.dp))
+            }
+        }
     }
 }
 
@@ -461,7 +469,10 @@ private fun StudioStats118(lang:Lang,total:Int?,available:Boolean,
             tr(lang,"Yesterday","دیروز") to (if(available)yesterday?.toString() ?: "0" else "—"),
             tr(lang,"Previous 7 days","هفته قبل") to (if(available)lastWeek.toString() else "—"),
             tr(lang,"Last 7 days","۷ روز اخیر") to (if(available)seven.toString() else "—"),
-            tr(lang,"Active users","کاربران فعال") to (active?.toString() ?: "—")
+            tr(lang,"Active users","کاربران فعال") to (active?.toString() ?: "—"),
+            tr(lang,"First deposits","اولین واریز") to (first?.toString() ?: "—"),
+            tr(lang,"Data","وضعیت داده") to
+                (if(available) tr(lang,"Verified","تأیید شده") else "—")
         )
         Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(19.dp))
             .background(sLine)) {
@@ -477,7 +488,7 @@ private fun StudioStats118(lang:Lang,total:Int?,available:Boolean,
                         }
                     }
                 }
-                if(index<2) Spacer(Modifier.height(1.dp))
+                if(index<metrics.chunked(2).lastIndex) Spacer(Modifier.height(1.dp))
             }
         }
     }
