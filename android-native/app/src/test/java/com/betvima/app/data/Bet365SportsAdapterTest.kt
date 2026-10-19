@@ -115,6 +115,39 @@ class Bet365SportsAdapterTest {
         assertNull(withBet365MatchMinute(old, null).minute)
     }
 
+    @Test fun liveFactsMatchProviderFixtureAndOnlyPresentRealCounters() {
+        val source = JSONObject()
+            .put("fi", "202819155")
+            .put("minute", 60).put("clockSeconds", 3641)
+            .put("clockRunning", true).put("score", "3-2")
+            .put("updatedAt", "2026-10-19T00:00:00.000Z")
+            .put("stats", JSONArray()
+                .put(JSONObject().put("key", "corners")
+                    .put("en", "Corners").put("fa", "کرنر")
+                    .put("home", 5).put("away", 2))
+                .put(JSONObject().put("key", "fouls")
+                    .put("en", "Fouls").put("fa", "خطا")
+                    .put("home", 7).put("away", 9)))
+        val parsed = parseBet365LiveFacts(source)
+        assertEquals("202819155", parsed.fi)
+        assertEquals(3641, parsed.clockSeconds)
+        assertTrue(parsed.clockRunning)
+        assertEquals(60, parsed.minute)
+        assertEquals(5, parsed.stat("corners")?.home)
+        assertEquals(9, parsed.stat("fouls")?.away)
+        assertNull(parsed.stat("odds"))
+    }
+    @Test fun absentAndInvalidTimersNeverCreateRunningClocks() {
+        val f = JSONObject().put("fi", "202819155")
+            .put("minute", JSONObject.NULL).put("clockSeconds", JSONObject.NULL)
+            .put("clockRunning", true).put("stats", JSONArray())
+        val parsed = parseBet365LiveFacts(f)
+        assertNull(parsed.minute)
+        assertNull(parsed.clockSeconds)
+        assertFalse(parsed.clockRunning)
+        assertTrue(parsed.stats.isEmpty())
+    }
+
     @Test fun pathsContainOnlyValidatedProviderIds() {
         val ref = bet365Ref("betsapi:upcoming:17:203138143")!!
         assertEquals("/api/v1/betsapi/card-prices?mode=upcoming&sportId=17&fi=203138143",
