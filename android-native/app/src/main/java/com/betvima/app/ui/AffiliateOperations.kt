@@ -182,16 +182,30 @@ fun AffiliateOperations(state: AppState, model: AppViewModel, currency: String,
         if (!busy || values.isNotEmpty()) {
             when(selected) {
                 "referrals" -> {
-                    if (values.isEmpty()) PartnerEmpty(state.lang)
-                    values.forEach { row ->
-                        PartnerRow(
-                            title = row.str("code", row.str("userId").take(10)),
-                            subtitle = tr(state.lang, "Status", "وضعیت") + ": " +
-                                row.str("status", "—"),
-                            value = row.str("wageredMinor").takeIf { it.isNotBlank() }
-                                ?.let { money(it, currency) } ?: "—",
-                            icon = Icons.Default.Groups
+                    val summary = data?.optJSONObject("statusCounts")
+                    if (summary != null) {
+                        Row(horizontalArrangement=Arrangement.spacedBy(8.dp)) {
+                            BvStatCard(
+                                tr(state.lang,"Total referrals","کل زیرمجموعه‌ها"),
+                                summary.optInt("total").toString(),
+                                Icons.Default.Groups,Palette.green)
+                        }
+                        Text(
+                            tr(state.lang,"Under review: ","در انتظار بررسی: ") +
+                                summary.optInt("review").toString() + "  ·  " +
+                                tr(state.lang,"Confirmed: ","تأییدشده: ") +
+                                summary.optInt("confirmed").toString(),
+                            color=affiliateInk,fontSize=12.sp,fontWeight=FontWeight.Bold
                         )
+                    } else {
+                        Text(tr(state.lang,"All referrals: ","کل زیرمجموعه‌ها: ") +
+                            (data?.optInt("total") ?: values.size),
+                            color=affiliateInk,fontSize=13.sp,
+                            fontWeight=FontWeight.Bold)
+                    }
+                    if (values.isEmpty() && !busy) PartnerEmpty(state.lang)
+                    values.forEach { row ->
+                        AffiliateReferralCard122(row, state.lang)
                     }
                 }
                 "ledger" -> {
