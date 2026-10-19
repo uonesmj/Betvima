@@ -100,11 +100,12 @@ export async function GET(
       'set -e',
       `cd '${ANDROID_DIR}'`,
       `if [ -f '${output}' ]; then exit 0; fi`,
-      `./gradlew --no-daemon :app:assembleRelease -PaffiliateRef='${clean}'`,
+      'if [ -x ./gradlew ]; then GRADLE=./gradlew; else GRADLE=gradle; fi',
+      `"$GRADLE" --no-daemon :app:assembleRelease -PaffiliateRef='${clean}'`,
       `apksigner verify --print-certs '${RELEASE_APK}' > /dev/null`,
       `cp '${RELEASE_APK}' '${tmp}'`,
       `mv '${tmp}' '${output}'`,
-    ].join(' && ');
+    ].join('\n');
     try {
       await execFileAsync('flock', [
         '-w', '180', '-x', path.join(DOWNLOAD_DIR, '.native-build.lock'),
