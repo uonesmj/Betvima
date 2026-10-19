@@ -60,21 +60,7 @@ fun MatchDetailPage(state: AppState, model: AppViewModel) {
         match.id.startsWith("betsapi:live:") &&
         match.id.substringAfterLast(':') == it.fi
     }
-    var extraClockSeconds by remember(match.id, facts?.observedAt) { mutableIntStateOf(0) }
-    LaunchedEffect(match.id, facts?.observedAt, facts?.clockRunning) {
-        extraClockSeconds = 0
-        if (facts?.clockRunning == true) {
-            repeat(70) {
-                delay(1000)
-                extraClockSeconds++
-            }
-        }
-    }
-    val playingSeconds = facts?.clockSeconds?.plus(extraClockSeconds)
-    val clockLabel = if (playingSeconds != null) {
-        (playingSeconds / 60).toString() + ":" +
-            (playingSeconds % 60).toString().padStart(2, '0')
-    } else match.minute?.toString()?.plus("′") ?: "—"
+    val clockLabel = rememberVerifiedMatchClock(match, facts)
 
     val marketListState = rememberLazyListState()
     val focusMarketId = state.focusedMarketId
