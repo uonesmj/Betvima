@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
+import { supplementBet365LiveMinutes } from '@/server/betsapi-fixture-clock';
 import {
   exploreBetsApi, parseExplorerFixture, type ExplorerMarkets, type ExplorerList,
 } from '@/providers/betsapi-explorer';
@@ -203,5 +204,15 @@ describe('all Bet365 market groups', () => {
     expect(result.marketCount).toBe(3);
     expect(result.priceCount).toBe(6);
     expect(result.markets.some(m => m.title === 'Extra')).toBe(true);
+  });
+});
+
+describe('Home and Live minute passthrough', () => {
+  it('fills the unchanged Match.minute using an authoritative Bet365 EV clock', async () => {
+    const read = vi.fn(async () => ({ type: 'EV', TM: '58', TS: '14', TT: '0' }));
+    const source = [{ fi: '921030089', minute: null as number | null }];
+    const [result] = await supplementBet365LiveMinutes(source, read);
+    expect(result?.minute).toBe(58);
+    expect(read).toHaveBeenCalledTimes(1);
   });
 });
