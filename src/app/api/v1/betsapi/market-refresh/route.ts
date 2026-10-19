@@ -25,8 +25,9 @@ export const GET = withErrorHandling('betsapi.market.refresh', async (_ctx, requ
   const markets = await attachCanonicalWagers(result.markets, {
     fi, sportId, mode, eventId: fixture?.betsApiEventId, home, away,
   });
+  const wageringAvailable = markets.some(market => market.selections.some(selection => Boolean(selection.wager)));
   return jsonOk({
-    source: 'betsapi_bet365', readOnly: true, mode, fi,
+    source: 'betsapi_bet365', readOnly: !wageringAvailable, wageringAvailable, mode, fi,
     markets, marketCount: result.marketCount,
     refreshedAt: result.refreshedAt, error: result.error,
     pollAfterMs: mode === 'live' ? 10000 : 60000,
