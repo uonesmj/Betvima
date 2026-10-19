@@ -59,6 +59,17 @@ describe('Bet365-to-Events wallet bridge', () => {
     expect(state.query).not.toHaveBeenCalled();
   });
 
+  it('keeps the BetsAPI explicit wager switch independent of the web legacy provider', () => {
+    enable();
+    vi.stubEnv('SPORTS_PROVIDER', 'the_odds_api');
+    expect(wagerFeedEnabled()).toBe(true);
+    vi.stubEnv('BETSAPI_WAGER_INGEST_ENABLED', 'false');
+    expect(wagerFeedEnabled()).toBe(false);
+    vi.stubEnv('BETSAPI_WAGER_INGEST_ENABLED', 'true');
+    vi.stubEnv('BETSAPI_TRIAL_TOKEN', '');
+    expect(wagerFeedEnabled()).toBe(false);
+  });
+
   it('never confuses a Bet365 FI with its linked Events event ID', async () => {
     enable();
     state.query.mockResolvedValue([{
@@ -80,6 +91,7 @@ describe('Bet365-to-Events wallet bridge', () => {
     expect(params).toEqual(['betsapi', '1:4140581', true, 'live']);
     expect(sql).toContain("m.provider = $1");
     expect(sql).toContain("s.odds_updated_at > now()");
+    expect(sql).toContain("s.provider_timestamp between now()");
     expect(sql).toContain("s.status::text = 'open'");
     expect(sql).toContain("mk.type = '1X2'");
   });
