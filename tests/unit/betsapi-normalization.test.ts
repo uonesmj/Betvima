@@ -46,13 +46,39 @@ describe('BetsAPI bookmaker freshness and suspension policy', () => {
     odds: { '1_1': [{ id: 'quote', add_time: String(addTime), ...prices }] },
   });
   const price = { home_od: '2.100', draw_od: '3.100', away_od: '3.200' };
-  it('does not repeat a historical quote or treat an upstream check as a new price', () => {
-    expect(normalizeBetsapiOdds('1:4140581', quote(now - 120, now, price), at, true).markets).toEqual([]);
+  it('accepts rechecked unchanged quotes but rejects stale market checks', () => {
+    expect(normalizeBetsapiOdds('1:4140581', quote(now - 120, now, price), at, true).markets).toHaveLength(1);
     expect(normalizeBetsapiOdds('1:4140581', quote(now, now - 120, price), at, true).markets).toEqual([]);
     expect(normalizeBetsapiOdds('1:4140581', quote(now + 50, now + 50, price), at, true).markets).toEqual([]);
     expect(normalizeBetsapiOdds('1:4140581', quote(now - 20, now - 20, price), at, true).markets[0])
       .toMatchObject({ key: 'h2h', isLive: true, status: 'open' });
   });
+  it('accepts an unchanged bookmaker price only after a genuinely fresh market check', () => {
+    // Odds history add_time is not the provider's most recent market check.
+    const freshRecheck = normalizeBetsapiOdds('1:4140581',
+      quote(now - 180, now - 5, price), at, true);
+    expect(freshRecheck.markets[0]).toMatchObject({
+      key: 'h2h', sourceUpdatedAt: new Date((now - 5) * 1000).toISOString(),
+    });
+    expect(normalizeBetsapiOdds('1:4140581',
+      quote(now - 180, now - 60, price), at, true).markets).toEqual([]);
+    expect(normalizeBetsapiOdds('1:4140581',
+      quote(now + 50, now - 2, price), at, true).markets).toEqual([]);
+  });
+
+  it('rejects reversed home/away mapping rather than grading an inverted winner', () => {
+    const reversed = {
+      ...quote(now - 2, now - 1, price),
+      stats: { matching_dir: -1, odds_update: { '1_1': now - 1 } },
+    };
+    expect(normalizeBetsapiOdds('1:4140581', reversed, at, true).markets).toEqual([]);
+    const forward = {
+      ...reversed,
+      stats: { matching_dir: 1, odds_update: { '1_1': now - 1 } },
+    };
+    expect(normalizeBetsapiOdds('1:4140581', forward, at, true).markets).toHaveLength(1);
+  });
+
   it('ignores suspended placeholders and protects the single-source market identity', () => {
     const result = normalizeBetsapiOdds('1:4140581', quote(now, now, {
       home_od: '-', draw_od: '-', away_od: '3.100',

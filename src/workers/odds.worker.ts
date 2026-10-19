@@ -68,7 +68,8 @@ const MATCH_DISCOVERY_INTERVAL_MS = 5 * 60_000;
 const LIVE_ODDS_INTERVAL_MS = 5_000;
 const EXTENDED_LIVE_ODDS_INTERVAL_MS = 5 * 60_000;
 const EXTENDED_ODDS_MAX_MATCHES_PER_CYCLE = extendedRefreshBudget(process.env.ODDS_API_EXTENDED_MAX_MATCHES_PER_CYCLE);
-const LIVE_RESULT_INTERVAL_MS = 10_000;
+// Result pagination shares the trial request budget with live prices.
+const LIVE_RESULT_INTERVAL_MS = 90_000;
 
 if (WORKER_MODE !== 'live') {
 createWorker({
@@ -1035,9 +1036,13 @@ async function reconcileLiveResults(ctx: WorkerContext): Promise<{ checked: numb
             )
           )
         order by
+          case when $1 = 'betsapi' and exists (
+            select 1 from nova.bet_legs bl
+            where bl.match_id = nova.matches.id and bl.settled_at is null
+          ) then 0 else 1 end,
           case when status::text = any($2::text[]) then 0 else 1 end,
           scheduled_at desc
-        limit 200`,
+        limit (case when $1 = 'betsapi' then 12 else 200 end)`,
       [sourceProvider.name, pgArray(LIVE_MATCH_STATUSES)],
     );
     checked += rows.length;
@@ -1336,8 +1341,10 @@ async function syncMatchesUnlocked(
   if (sourceProvider.name !== MATCH_SOURCE_ODDS) return { synced: 0 };
   const horizonDays = ODDS_API_PREMATCH_HORIZON_DAYS;
   const lookbackDays = 1;
-  const from = new Date(Date.now() - lookbackDays * 864e5).toISOString();
-  const to = new Date(Date.now() + horizonDays * 864e5).toISOString();
+  // One instant avoids an accidental 31-day+milliseconds query interval.
+  const discoveryNow = Date.now();
+  const from = new Date(discoveryNow - lookbackDays * 864e5).toISOString();
+  const to = new Date(discoveryNow + horizonDays * 864e5).toISOString();
 
     console.log("SYNC_MATCHES_START", JSON.stringify({ from, to }));
   const result =

@@ -60,6 +60,8 @@ export function pricesAgree(previewDecimal: string, databaseScaled: string): boo
 interface CanonicalRow extends CanonicalWager {
   code: string;
   matchStatus: string;
+  homeName: string;
+  awayName: string;
 }
 
 export async function attachCanonicalWagers(
@@ -87,8 +89,11 @@ export async function attachCanonicalWagers(
       [
         'select m.id::text as "matchId", mk.id::text as "marketId",',
         's.id::text as "selectionId", s.code, s.odds_scaled::text as "oddsScaled",',
-        's.odds_version as "oddsVersion", m.status::text as "matchStatus"',
+        's.odds_version as "oddsVersion", m.status::text as "matchStatus",',
+        'ht.name as "homeName", at.name as "awayName"',
         'from nova.matches m',
+        'join nova.teams ht on ht.id = m.home_team_id',
+        'join nova.teams at on at.id = m.away_team_id',
         'join nova.markets mk on mk.match_id = m.id',
         'join nova.selections s on s.market_id = mk.id and s.match_id = m.id',
         'where m.provider = $1 and m.provider_id = $2',
@@ -98,7 +103,7 @@ export async function attachCanonicalWagers(
         'and mk.is_live = $3 and s.is_live = $3',
         "and m.status::text = $4",
         'and ($3::boolean or m.scheduled_at > now())',
-        "and s.odds_updated_at > now() - case when $3::boolean then interval '12 seconds' else interval '45 seconds' end",
+        "and s.odds_updated_at > now() - case when $3::boolean then interval '45 seconds' else interval '300 seconds' end",
         'and s.odds_version > 0 and s.odds_scaled >= 10100',
         'order by s.odds_updated_at desc',
       ].join(' '),
@@ -111,6 +116,10 @@ export async function attachCanonicalWagers(
   }
   const byCode = new Map<string, CanonicalRow>();
   for (const item of canonical) {
+    // The upstream FI link alone does not prove that the Events and Bet365
+    // feeds use the same home/away orientation. Reject mismatched names.
+    if (normalized(item.homeName) !== normalized(input.home) ||
+        normalized(item.awayName) !== normalized(input.away)) continue;
     if (['HOME', 'DRAW', 'AWAY'].includes(item.code) && !byCode.has(item.code)) {
       byCode.set(item.code, item);
     }

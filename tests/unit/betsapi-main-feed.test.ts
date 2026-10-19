@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { sourceMatch } from '@/server/betsapi-feed';
+import { sourceMatch, linkBetsApiEventsByFixtureId } from '@/server/betsapi-feed';
 import { sportsbookMatchHref } from '@/lib/betsapi-links';
 import { sportByKey } from '@/lib/betsapi-sports-map';
 
@@ -10,6 +10,20 @@ describe('BetsAPI sole public sports source', () => {
     kickoff: '2026-10-18T18:00:00.000Z', score: '3-1', minute: null,
     marketStatus: 'not_requested' as const,
   };
+  it('recovers missing event IDs only through an exact bookmaker FI bridge', () => {
+    const unlinked = { ...f, eventId: null };
+    expect(linkBetsApiEventsByFixtureId([unlinked], [f])[0]?.eventId).toBe('13275397');
+    expect(linkBetsApiEventsByFixtureId([unlinked], [
+      { ...f, fi: '999999999' },
+    ])[0]?.eventId).toBeNull();
+    expect(linkBetsApiEventsByFixtureId([f], [
+      { ...f, eventId: '7654321' },
+    ])[0]?.eventId).toBeNull();
+    expect(linkBetsApiEventsByFixtureId([unlinked], [
+      f, { ...f, eventId: '7654321' },
+    ])[0]?.eventId).toBeNull();
+  });
+
   it('namespaces external fixtures, prevents wager placement and keeps verified score', () => {
     const result = sourceMatch(f, 'football', 'live');
     expect(result.id).toBe('betsapi:live:1:202860705');

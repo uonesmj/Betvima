@@ -63,10 +63,10 @@ describe('Bet365-to-Events wallet bridge', () => {
     enable();
     state.query.mockResolvedValue([{
       matchId: 'm-uuid', marketId: 'mk-uuid', selectionId: 's-home-uuid',
-      code: 'HOME', oddsScaled: '21000', oddsVersion: 7, matchStatus: 'live',
+      code: 'HOME', oddsScaled: '21000', oddsVersion: 7, matchStatus: 'live', homeName: 'Home FC', awayName: 'Away United',
     }, {
       matchId: 'm-uuid', marketId: 'mk-uuid', selectionId: 's-draw-uuid',
-      code: 'DRAW', oddsScaled: '32500', oddsVersion: 7, matchStatus: 'live',
+      code: 'DRAW', oddsScaled: '32500', oddsVersion: 7, matchStatus: 'live', homeName: 'Home FC', awayName: 'Away United',
     }]);
     const result = await attachCanonicalWagers(markets, input);
     expect(result[0]?.selections[0]?.wager).toEqual({
@@ -88,13 +88,24 @@ describe('Bet365-to-Events wallet bridge', () => {
     enable();
     state.query.mockResolvedValue([{
       matchId: 'm-uuid', marketId: 'mk-uuid', selectionId: 's-home-uuid',
-      code: 'HOME', oddsScaled: '20500', oddsVersion: 8, matchStatus: 'live',
+      code: 'HOME', oddsScaled: '20500', oddsVersion: 8, matchStatus: 'live', homeName: 'Home FC', awayName: 'Away United',
     }]);
     const r = await attachCanonicalWagers(markets, input);
     expect(r[0]?.selections[0]?.wager).toBeUndefined();
     expect(await attachCanonicalWagers(markets, { ...input, eventId: null })).toEqual(markets);
     expect(await attachCanonicalWagers(markets, { ...input, sportId: 18 })).toEqual(markets);
     expect(state.query).toHaveBeenCalledTimes(1);
+  });
+
+  it('rejects linked fixture identities when the bookmaker and Events home/away are inverted', async () => {
+    enable();
+    state.query.mockResolvedValue([{
+      matchId: 'm-uuid', marketId: 'mk-uuid', selectionId: 's-home-uuid',
+      code: 'HOME', oddsScaled: '21000', oddsVersion: 7,
+      matchStatus: 'live', homeName: 'Away United', awayName: 'Home FC',
+    }]);
+    const result = await attachCanonicalWagers(markets, input);
+    expect(result[0]?.selections[0]?.wager).toBeUndefined();
   });
 
   it('fails closed when canonical odds database is unavailable', async () => {
