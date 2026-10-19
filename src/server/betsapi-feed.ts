@@ -66,7 +66,11 @@ export function fillBetsApiMissingMinutes(
         event.home.trim().toLowerCase() !== fixture.home.trim().toLowerCase() ||
         event.away.trim().toLowerCase() !== fixture.away.trim().toLowerCase()
     )) return fixture;
-    return { ...fixture, minute: event.minute };
+    return { ...fixture, minute: event.minute,
+      clockSeconds: event.clockSeconds ?? null,
+      clockRunning: event.clockRunning ?? false,
+      clockObservedAt: event.clockObservedAt ?? null };
+
   });
 }
 
@@ -85,6 +89,8 @@ export function sourceMatch(f: ExplorerFixture, sportKey: string, mode: BetsMode
     sportKey, leagueId: null, leagueName: f.league, leagueLogoUrl: f.leagueLogoUrl ?? null,
     countryCode: f.country, status: mode === 'live' ? 'live' : 'scheduled',
     scheduledAt: f.kickoff ?? '', minute: f.minute, period: null,
+    clockSeconds: f.clockSeconds ?? null, clockRunning: f.clockRunning ?? false,
+    clockObservedAt: f.clockObservedAt ?? null,
     homeScore, awayScore, isLive: mode === 'live', isBettingAvailable: false,
     participants: [
       { teamId: '', role: 'HOME', name: f.home, logoUrl: f.homeLogoUrl ?? null },

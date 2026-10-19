@@ -12,6 +12,7 @@ import { TeamLogo, LeagueLogo } from '@/components/ui/logo';
 import { primaryBettingMarket } from '@/lib/primary-betting-market';
 import { isDisplayBettableSelection } from '@/lib/odds/selection-eligibility';
 import { matchMinuteLabel } from '@/lib/live-match-minute';
+import { VerifiedClockText } from '@/components/betsapi/verified-clock';
 
 export interface SelectionView {
   id: string;
@@ -43,6 +44,9 @@ export interface MatchView {
   status: string;
   scheduledAt: string;
   minute: number | null;
+  clockSeconds?: number | null;
+  clockRunning?: boolean;
+  clockObservedAt?: string | null;
   period?: string | null;
   homeScore: number | null;
   awayScore: number | null;
@@ -113,7 +117,9 @@ export function MatchCard({
             {match.isLive ? <Radio size={15}/> : <CalendarDays size={15}/>}
           </span>
           <span className="rounded-lg bg-[#F3F6F9] px-2.5 py-[6px] text-[11px] font-bold text-[#202832]">
-            {match.isLive ? matchMinuteLabel(match.minute, match.period) : kickoff}
+            {match.isLive ? (match.id.startsWith('betsapi:') ?
+              <VerifiedClockText source={match} fallback={matchMinuteLabel(match.minute, match.period)}/> :
+              matchMinuteLabel(match.minute, match.period)) : kickoff}
           </span>
           {match.isLive && (match.homeScore !== null || match.awayScore !== null) &&
             <span className="ml-auto text-[9px] font-bold text-[#798592]">{locale === 'fa' ? 'نتیجه' : 'SCORE'}</span>}

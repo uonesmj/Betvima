@@ -23,7 +23,7 @@ describe('BetsAPI factual in-play clocks', () => {
   });
   it('never extrapolates a stale or invalid or missing TU', () => {
     expect(betsApiLiveMinute({TM:'13',TS:'20',TT:'1'},origin)).toBe(13);
-    expect(betsApiLiveMinute({TM:'13',TS:'20',TT:'1',TU:'20261019130000'},origin+3_600_000)).toBe(13);
+    expect(betsApiLiveMinute({TM:'13',TS:'20',TT:'1',TU:'20261019130000'},origin+4_800_000)).toBe(13);
     expect(betsApiLiveMinute({TM:'13',TS:'20',TT:'1',TU:'20261020130000'},origin)).toBe(13);
   });
   const base = {id:'12345',our_event_id:'909',time_status:'1',time:'1792400000',
@@ -60,6 +60,17 @@ describe('real-time match clock: stop on break and stale upstream TU', () => {
     expect(betsApiLiveClock({ TM:'60', TS:'21', TT:'1' },now).clockRunning).toBe(false);
     expect(betsApiLiveClock({ TM:'180', TS:'07', TT:'1', TU:'20261019130000' },now).clockRunning).toBe(true);
     expect(betsApiLiveClock({ TM:'201', TS:'07', TT:'1' },now).clockSeconds).toBeNull();
+  });
+  it('does not freeze mid-half just because TU is more than two minutes old', () => {
+    const at = origin + 30 * 60_000;
+    const ev = { TM:'45', TS:'05', TT:'1', TU:'20261019130000' };
+    expect(betsApiLiveClock(ev, at)).toEqual({
+      minute:75, clockSeconds:4505, clockRunning:true,
+    });
+    const halfTime = betsApiLiveClock({ ...ev, TT:'0' }, at);
+    expect(halfTime).toEqual({
+      minute:45, clockSeconds:2705, clockRunning:false,
+    });
   });
   it('preserves only real counters from the provider, not bookmaker prices', () => {
     const actual=parseBet365MatchStats('924411', [[

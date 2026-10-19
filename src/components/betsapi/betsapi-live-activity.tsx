@@ -1,6 +1,7 @@
 'use client';
 import {useEffect,useRef,useState} from 'react';
 import type {MatchLiveFacts} from '@/providers/betsapi-match-facts';
+import {useVerifiedClock} from '@/components/betsapi/verified-clock';
 
 type Pulse={id:string;side:'home'|'away';label:string;count:number};
 const eventKeys=new Set(['corners','throwins','fouls','offsides','yellowcards','redcards','attacks','dangerous_attacks','on_target','off_target']);
@@ -8,7 +9,7 @@ const eventKeys=new Set(['corners','throwins','fouls','offsides','yellowcards','
 export function LiveMatchPulseBoard({facts,home,away,fa,compact=false}:{
  facts:MatchLiveFacts|null;home:string;away:string;fa:boolean;compact?:boolean;
 }){
- const [tick,setTick]=useState(0),[pulse,setPulse]=useState<Pulse|null>(null);
+ const [pulse,setPulse]=useState<Pulse|null>(null);
  const previous=useRef<MatchLiveFacts|null>(null);
  useEffect(()=>{
   const old=previous.current;previous.current=facts;
@@ -31,16 +32,10 @@ export function LiveMatchPulseBoard({facts,home,away,fa,compact=false}:{
   const id=setTimeout(()=>setPulse(p=>p?.id===pulse.id?null:p),5800);
   return()=>clearTimeout(id);
  },[pulse]);
- useEffect(()=>{
-  if(!facts?.clockRunning||facts.clockSeconds==null)return;
-  const id=window.setInterval(()=>{if(document.visibilityState==='visible')setTick(v=>v+1);},1000);
-  return()=>window.clearInterval(id);
- },[facts?.clockRunning,facts?.clockSeconds]);
- void tick;
- const updated=facts?.updatedAt?Date.parse(facts.updatedAt):NaN;
- const elapsed=facts?.clockRunning&&Number.isFinite(updated)&&facts.clockSeconds!=null
-  ?Math.max(0,Math.min(70,Math.floor((Date.now()-updated)/1000))):0;
- const secs=facts?.clockSeconds!=null?facts.clockSeconds+elapsed:null;
+ const secs=useVerifiedClock(facts?.clockSeconds!=null?{
+  clockSeconds:facts.clockSeconds,clockRunning:facts.clockRunning,
+  clockObservedAt:facts.updatedAt,minute:facts.minute,
+ }:null);
  const time=secs!=null?String(Math.floor(secs/60))+':'+String(secs%60).padStart(2,'0')
   :facts?.minute!=null?String(facts.minute)+'′':'—';
  const stat=(key:string)=>facts?.stats.find(s=>s.key===key);
