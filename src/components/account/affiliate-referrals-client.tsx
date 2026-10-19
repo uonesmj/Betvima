@@ -128,12 +128,12 @@ export function AffiliateReferralsClient() {
                       <div key={money.currency} className="px-4 py-4">
                         <div className="mb-3 text-xs font-black text-[#155E3D]">{money.currency}</div>
                         <div className="grid grid-cols-2 gap-x-5 gap-y-4 sm:grid-cols-4">
-                          {[
+                          {([
                             [tr('Total deposits'), money.depositMinor],
                             [tr('Total withdrawals'), money.withdrawalMinor],
                             [tr('Player P/L'), money.playerNetMinor],
                             [tr('Recorded commission'), money.ledgerMinor],
-                          ].map(([label, value]) => (
+                          ] as Array<[string, string]>).map(([label, value]) => (
                             <div key={label}>
                               <div className="text-[10px] text-[#778B7C]">{label}</div>
                               <div className={`mt-1 break-all text-sm font-black tabular-nums ${label === tr('Recorded commission') || label === tr('Player P/L')
