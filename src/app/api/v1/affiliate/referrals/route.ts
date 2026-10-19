@@ -90,8 +90,24 @@ export const GET = withErrorHandling('affiliate.referrals', async (ctx, request:
     entry.push(row);
     byUser.set(userId, entry);
   }
+  const [statuses] = await services.db.query<{
+    total: string; confirmed: string; review: string; pending: string;
+  }>(
+    `select count(*)::text total,
+            count(*) filter(where status='confirmed')::text confirmed,
+            count(*) filter(where status='review')::text review,
+            count(*) filter(where status='pending')::text pending
+       from nova.affiliate_attributions where affiliate_id=$1`,
+    [affiliate.id],
+  );
   const fraud = await services.affiliate.fraudSignals(affiliate.id);
   return jsonOk({
+    statusCounts: {
+      total: Number(statuses?.total ?? page.total),
+      confirmed: Number(statuses?.confirmed ?? 0),
+      review: Number(statuses?.review ?? 0),
+      pending: Number(statuses?.pending ?? 0),
+    },
     ...page,
     items: page.items.map((entry) => ({
       ...entry,
@@ -103,6 +119,7 @@ export const GET = withErrorHandling('affiliate.referrals', async (ctx, request:
         wageredMinor: String(row.wagered_minor),
         playerNetMinor: String(row.player_net_minor),
         ledgerMinor: String(row.ledger_minor),
+        hasDeposited: BigInt(String(row.deposit_minor)) > 0n,
       })),
     })),
     fraud,

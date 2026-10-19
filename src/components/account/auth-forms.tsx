@@ -82,26 +82,9 @@ export function AuthForms({
       setForgotPassword(true);
     }
   }, []);
-  useEffect(() => {
-    try {
-      const params = new URLSearchParams(window.location.search);
-      const urlRef = params.get('app_ref')?.trim().toUpperCase() ?? '';
-      const storedRef = window.localStorage.getItem('betvima_affiliate_ref')?.trim().toUpperCase() ?? '';
-      const cookieRef = document.cookie
-        .split('; ')
-        .find((c) => c.startsWith('nova_ref='))
-        ?.split('=')[1] ?? '';
-
-      const candidate = urlRef || storedRef || cookieRef;
-      if (/^[A-Z0-9_-]{3,64}$/.test(candidate)) {
-        window.localStorage.setItem('betvima_affiliate_ref', candidate);
-        setForm((f) => ({
-          ...f,
-          referralCode: candidate,
-        }));
-      }
-    } catch {}
-  }, []);
+  // Affiliate referral is carried by the first-party, HttpOnly nova_ref cookie
+  // and resolved by the server. It must NOT be placed in the gift-code field
+  // or read from stale localStorage created by a previous campaign.
 
   const submitForgotPassword = async () => {
     setBusy(true);
@@ -165,7 +148,7 @@ export function AuthForms({
             ageConfirmed: true,
             acceptTerms: true,
             currency: form.currency,
-            referralCode: form.referralCode || undefined,
+            giftCode: form.referralCode || undefined,
             locale: 'en',
             turnstileToken,
           },
