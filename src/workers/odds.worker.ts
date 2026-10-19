@@ -21,6 +21,7 @@ import {
 } from '@/domain/odds';
 import { marketRuleFor, marketDisplayOrder } from '@/domain/market-rules';
 import { attachCachedLogo } from "@/server/services/logo-resolver";
+import { sportsTeamSlug } from './sports-team-slug';
 import { LIVE_MATCH_STATUSES } from '@/lib/match-state';
 import { CURRENT_LIVE_FIXTURE_SQL } from '@/lib/odds/live-fixture-recency';
 import {
@@ -1399,17 +1400,15 @@ async function syncMatchesUnlocked(
 
     if (!league) return;
 
-    const homeSlug = match.homeTeamName
-      .toLowerCase()
-      .trim()
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/^-|-$/g, "");
-
-    const awaySlug = match.awayTeamName
-      .toLowerCase()
-      .trim()
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/^-|-$/g, "");
+    const homeSlug = sportsTeamSlug(match.homeTeamName, sourceProvider.name, match.homeTeamProviderId);
+    const awaySlug = sportsTeamSlug(match.awayTeamName, sourceProvider.name, match.awayTeamProviderId);
+    // Never create an event with both sides linked to one canonical team.
+    if (homeSlug === awaySlug) {
+      console.warn('MATCH_PROVIDER_TEAM_IDENTITY_CONFLICT', JSON.stringify({
+        provider: sourceProvider.name, providerMatchId: match.providerId,
+      }));
+      return;
+    }
 
     const homeTeam = await ctx.services.db.queryOne<{ id: string; logo: string | null }>(
       `insert into nova.teams
