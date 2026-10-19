@@ -7,7 +7,7 @@ plugins {
 // This is a public attribution marker, not a secret. It is never displayed
 // in the optional gift field and is validated by the registration server.
 val embeddedPartnerCode = providers.gradleProperty("affiliateRef").orNull
-    ?.trim()?.uppercase(java.util.Locale.ROOT).orEmpty()
+    ?.trim()?.uppercase().orEmpty()
 require(embeddedPartnerCode.isBlank() ||
     Regex("^[A-Z0-9_-]{3,64}$").matches(embeddedPartnerCode)) {
     "Invalid affiliateRef build property"
