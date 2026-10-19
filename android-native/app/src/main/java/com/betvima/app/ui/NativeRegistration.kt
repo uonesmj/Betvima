@@ -24,6 +24,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
+import com.betvima.app.BuildConfig
 import com.betvima.app.data.ApiClient
 import com.betvima.app.data.ApiFailure
 import com.betvima.app.data.str
@@ -255,7 +256,15 @@ fun NativeRegistrationForm(
     var showPassword by rememberSaveable { mutableStateOf(false) }
     var currency by rememberSaveable { mutableStateOf("IRR") }
     var currencyMenuOpen by rememberSaveable { mutableStateOf(false) }
+    // Partner APKs carry referral identity in BuildConfig, never in the gift input.
+    val embeddedPartnerCode = remember {
+        NativeAffiliateAttribution120.embeddedCode(BuildConfig.AFFILIATE_REFERRAL_CODE)
+    }
+    val partnerInstall = embeddedPartnerCode.isNotBlank()
     var referral by rememberSaveable { mutableStateOf("") }
+    val effectiveReferral = NativeAffiliateAttribution120.registrationCode(
+        embeddedPartnerCode, referral)
+
     var referralCheck by remember { mutableStateOf("empty") }
     var referralApplied by rememberSaveable { mutableStateOf<Boolean?>(null) }
     var adult by rememberSaveable { mutableStateOf(false) }
@@ -296,11 +305,11 @@ fun NativeRegistrationForm(
         }
     }
 
-    LaunchedEffect(referral,registrationCompleted) {
-        referralCheck = if(referral.isBlank()) "empty" else "checking"
-        if(referral.isBlank() || registrationCompleted) return@LaunchedEffect
+    LaunchedEffect(effectiveReferral,registrationCompleted) {
+        referralCheck = if(effectiveReferral.isBlank()) "empty" else "checking"
+        if(effectiveReferral.isBlank() || registrationCompleted) return@LaunchedEffect
         delay(550)
-        val code=normalizeSignupReferral(referral)
+        val code=effectiveReferral
         referralCheck = if (!referralCodeWellFormed(code)) "invalid"
         else try {
             if(api.validateReferralCode(code)) "verified" else "invalid"
@@ -365,7 +374,7 @@ fun NativeRegistrationForm(
                     color = Palette.muted, fontSize = 12.sp,
                     textAlign = TextAlign.Center, lineHeight = 19.sp
                 )
-                if (referral.isNotBlank()) {
+                if (effectiveReferral.isNotBlank()) {
                     Surface(
                         color = if(referralApplied==true) Color(0xFFE8F8EF)
                             else Color(0xFFFFF5E7),
@@ -661,45 +670,75 @@ fun NativeRegistrationForm(
                     }
                 }
             }
-            OutlinedTextField(
-                value = referral,
-                onValueChange = { referral=normalizeSignupReferral(it) },
-                label = { Text(tr(lang, "Referral / gift code (optional)",
-                    "کد معرف یا هدیه (اختیاری)")) },
-                leadingIcon = { Icon(Icons.Default.CardGiftcard, null) },
-                colors = fieldColors, singleLine = true,
-                shape = RoundedCornerShape(15.dp), modifier = Modifier.fillMaxWidth()
-            )
-
-            if(referral.isNotBlank()) {
-                Row(Modifier.fillMaxWidth().padding(horizontal=5.dp),
-                    verticalAlignment=Alignment.CenterVertically) {
-                    Icon(
-                        when(referralCheck) {
-                            "verified" -> Icons.Default.Verified
-                            "invalid" -> Icons.Default.ErrorOutline
-                            else -> Icons.Default.Info
-                        },null,
-                        tint=when(referralCheck) {
+            if (partnerInstall) {
+                Surface(
+                    color = Color(0xFFE8F8EF),
+                    shape = RoundedCornerShape(14.dp),
+                    border = BorderStroke(1.dp, Palette.green.copy(alpha = .30f))
+                ) {
+                    Row(Modifier.fillMaxWidth().padding(13.dp),
+                        verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Default.VerifiedUser, null, tint = Palette.green,
+                            modifier = Modifier.size(20.dp))
+                        Spacer(Modifier.width(10.dp))
+                        Column(Modifier.weight(1f)) {
+                            Text(tr(lang,"Partner invitation linked automatically",
+                                "دعوت همکار به‌صورت خودکار متصل است"),
+                                color = Palette.text,fontSize=12.sp,fontWeight=FontWeight.Bold)
+                            Text(tr(lang,"No referral code is required in a gift field.",
+                                "نیازی به واردکردن کد معرف در قسمت هدیه نیست."),
+                                color=Palette.muted,fontSize=10.sp)
+                        }
+                    }
+                }
+                if(referralCheck == "invalid" || referralCheck == "unavailable") {
+                    Text(tr(lang,
+                        "Partner attribution cannot be verified. Check your connection and retry.",
+                        "تأیید معرف ممکن نیست؛ اتصال را بررسی و دوباره تلاش کنید."),
+                        color=Palette.red,fontSize=11.sp)
+                }
+            } else {
+                OutlinedTextField(
+                    value = referral,
+                    onValueChange = { referral=normalizeSignupReferral(it) },
+                    label = { Text(tr(lang, "Referral / gift code (optional)",
+                        "کد معرف یا هدیه (اختیاری)")) },
+                    leadingIcon = { Icon(Icons.Default.CardGiftcard, null) },
+                    colors = fieldColors, singleLine = true,
+                    shape = RoundedCornerShape(15.dp), modifier = Modifier.fillMaxWidth()
+                )
+    
+                if(referral.isNotBlank()) {
+                    Row(Modifier.fillMaxWidth().padding(horizontal=5.dp),
+                        verticalAlignment=Alignment.CenterVertically) {
+                        Icon(
+                            when(referralCheck) {
+                                "verified" -> Icons.Default.Verified
+                                "invalid" -> Icons.Default.ErrorOutline
+                                else -> Icons.Default.Info
+                            },null,
+                            tint=when(referralCheck) {
+                                "verified" -> Palette.green
+                                "invalid" -> Palette.red
+                                else -> Palette.muted
+                            },modifier=Modifier.size(16.dp))
+                        Spacer(Modifier.width(7.dp))
+                        Text(when(referralCheck) {
+                            "verified" -> tr(lang,"Referral code verified. Attribution is completed by the server.",
+                                "کد معرف معتبر است؛ ثبت نهایی معرفی توسط سرور انجام می‌شود.")
+                            "invalid" -> tr(lang,"Invalid or inactive referral code.",
+                                "کد معرف معتبر یا فعال نیست.")
+                            "unavailable" -> tr(lang,"Referral verification unavailable. Retry before registering.",
+                                "اعتبارسنجی کد در دسترس نیست؛ قبل از ثبت‌نام دوباره تلاش کنید.")
+                            else -> tr(lang,"Checking referral code…","در حال بررسی کد معرف…")
+                        },fontSize=11.sp,color=when(referralCheck){
                             "verified" -> Palette.green
                             "invalid" -> Palette.red
                             else -> Palette.muted
-                        },modifier=Modifier.size(16.dp))
-                    Spacer(Modifier.width(7.dp))
-                    Text(when(referralCheck) {
-                        "verified" -> tr(lang,"Referral code verified. Attribution is completed by the server.",
-                            "کد معرف معتبر است؛ ثبت نهایی معرفی توسط سرور انجام می‌شود.")
-                        "invalid" -> tr(lang,"Invalid or inactive referral code.",
-                            "کد معرف معتبر یا فعال نیست.")
-                        "unavailable" -> tr(lang,"Referral verification unavailable. Retry before registering.",
-                            "اعتبارسنجی کد در دسترس نیست؛ قبل از ثبت‌نام دوباره تلاش کنید.")
-                        else -> tr(lang,"Checking referral code…","در حال بررسی کد معرف…")
-                    },fontSize=11.sp,color=when(referralCheck){
-                        "verified" -> Palette.green
-                        "invalid" -> Palette.red
-                        else -> Palette.muted
-                    },modifier=Modifier.weight(1f))
+                        },modifier=Modifier.weight(1f))
+                    }
                 }
+    
             }
 
             Surface(color = Color(0xFFF4F6F9), shape = RoundedCornerShape(15.dp),
@@ -874,7 +913,7 @@ fun NativeRegistrationForm(
                     busy = true
                     error = null
                     try {
-                        val code=normalizeSignupReferral(referral)
+                        val code=effectiveReferral
                         if(code.isNotBlank() &&
                            (!referralCodeWellFormed(code) || !api.validateReferralCode(code))) {
                             referralCheck="invalid"
@@ -883,12 +922,12 @@ fun NativeRegistrationForm(
                             return@launch
                         }
                         val result = api.registerAccount(signupPayload(
-                            email, password, currency, referral,
+                            email, password, currency, effectiveReferral,
                             if (lang == Lang.FA) "fa" else "en", currentToken))
                         // Preserve the user-entered password only in volatile memory,
                         // so the explicit login button can use the same credentials.
                         emailConfirmationRequired = result.optBoolean("emailConfirmationRequired", false)
-                        referralApplied = if(referral.isBlank()) null
+                        referralApplied = if(effectiveReferral.isBlank()) null
                             else result.optBoolean("attributionFromCookie",false)
                         registrationCompleted = true
                         confirmation = ""

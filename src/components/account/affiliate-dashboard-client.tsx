@@ -164,6 +164,8 @@ export function AffiliateDashboardClient() {
     try { return BigInt(String(value)); } catch { return 0n; }
   };
   const referralUrl = `${typeof window !== 'undefined' ? window.location.origin : ''}/ref/${affiliate.code}`;
+  const partnerAppUrl = `${typeof window !== 'undefined' ? window.location.origin : ''}/app/affiliate/${encodeURIComponent(affiliate.code)}`;
+  const partnerReady = affiliate.status === 'approved';
   const totalClicks = dailyStats.reduce((n, x) => n + x.clicks, 0);
   const totalRegistrations = stats.registrations;
   const totalDeposits = stats.firstDeposits;
@@ -216,6 +218,32 @@ export function AffiliateDashboardClient() {
             <div className="min-w-0 flex-1 truncate rounded-xl bg-white/10 px-3 py-3 text-xs">{referralUrl}</div>
             <button onClick={copyReferral} className="rounded-xl bg-[#087FF5] px-4 text-xs font-black">{copied ? 'Copied' : 'Copy'}</button>
             <button onClick={shareReferral} className="hidden rounded-xl border border-white/15 bg-white/10 px-4 text-xs font-black sm:block">{tr("Share")}</button>
+          </div>
+        </div>
+      </section>
+
+      <section className="relative overflow-hidden rounded-[24px] bg-gradient-to-r from-[#081810] via-[#10432B] to-[#092016] p-5 text-white shadow-xl sm:p-6">
+        <div className="pointer-events-none absolute -right-10 -top-16 h-44 w-44 rounded-full bg-emerald-300/10" />
+        <div className="relative flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="max-w-xl">
+            <div className="text-[10px] font-black uppercase tracking-[.17em] text-[#76E9AA]">{tr('AFFILIATE ANDROID APP')}</div>
+            <h2 className="mt-2 text-xl font-black">{tr('Your referral-ready Android APK')}</h2>
+            <p className="mt-2 text-xs leading-6 text-[#D1E5D7]">
+              {tr('Download and share your latest partner-specific Android app. The approved referral is attached inside the app automatically during registration, without showing it in the gift code field.')}
+            </p>
+            {!partnerReady && <p className="mt-2 text-xs font-bold text-amber-200">{tr('The personalised APK is available when the affiliate account is approved.')}</p>}
+          </div>
+          <div className="flex shrink-0 flex-col gap-2 sm:min-w-44">
+            {partnerReady ? (
+              <a href={partnerAppUrl} className="rounded-xl bg-[#4CD58A] px-5 py-3 text-center text-sm font-black text-[#081910]">{tr('Download Android APK')}</a>
+            ) : (
+              <span className="rounded-xl bg-white/10 px-5 py-3 text-center text-sm font-black text-white/70">{tr('Awaiting approval')}</span>
+            )}
+            <button type="button" disabled={!partnerReady}
+              onClick={() => void navigator.clipboard.writeText(partnerAppUrl)}
+              className="rounded-xl border border-white/20 bg-white/10 px-5 py-3 text-sm font-bold text-white disabled:opacity-40">
+              {tr('Copy partner APK link')}
+            </button>
           </div>
         </div>
       </section>
