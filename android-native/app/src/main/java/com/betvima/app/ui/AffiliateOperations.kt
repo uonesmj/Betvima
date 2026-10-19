@@ -327,7 +327,7 @@ fun AffiliateOperations(state: AppState, model: AppViewModel, currency: String,
                     if (values.isEmpty() && !busy && error == null && data != null)
                         PartnerEmpty(state.lang)
                     values.forEach { row ->
-                        AffiliateReferralCard122(row, state.lang)
+                        AffiliateReferralCard122(row, state.lang,zone.id)
                     }
                 }
                 "ledger" -> {
