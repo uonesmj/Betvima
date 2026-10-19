@@ -133,6 +133,33 @@ fun MatchDetailPage(state: AppState, model: AppViewModel) {
                 if (match.live) SmallPill("LIVE " + clockLabel,
                     Color(0xFFFFEEF0), Palette.red)
             }
+            if (state.detailLoading && !state.detailError) {
+                LinearProgressIndicator(
+                    modifier = Modifier.fillMaxWidth().padding(top = 5.dp),
+                    color = Palette.green
+                )
+            }
+            if (state.detailError) {
+                Spacer(Modifier.height(8.dp))
+                Surface(shape = RoundedCornerShape(14.dp),
+                    color = Color(0xFFFFF7E7),
+                    border = BorderStroke(1.dp, Color(0xFFEBCB82))) {
+                    Row(Modifier.fillMaxWidth().padding(12.dp),
+                        verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Default.Info, null, tint = Color(0xFF9B6B16))
+                        Spacer(Modifier.width(8.dp))
+                        Text(tr(state.lang,
+                            "Fixture loaded. Current markets are unavailable; retry here.",
+                            "مسابقه باز شد اما ضرایب فعلی در دسترس نیست؛ همین‌جا دوباره تلاش کنید."),
+                            modifier = Modifier.weight(1f), fontSize = 11.sp,
+                            color = Color(0xFF745113))
+                        TextButton(onClick = { model.openMatch(match.id) }) {
+                            Text(tr(state.lang,"Retry","تلاش مجدد"),
+                                color = Color(0xFF116C43))
+                        }
+                    }
+                }
+            }
         }
         item {
             Surface(color = Color.White, shape = RoundedCornerShape(21.dp),
