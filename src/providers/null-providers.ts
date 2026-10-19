@@ -1,4 +1,5 @@
 import { NowPaymentsProvider } from "./nowpayments";
+import { BetsApiSportsProvider } from './betsapi-sports';
 import { ResendEmailProvider } from './resend-email';
 /**
  * NULL / DISABLED PROVIDERS (spec §7/§8 - "no provider configured is a first-class state").
@@ -132,11 +133,13 @@ let registry: ProviderRegistryLike | null = null;
 export function providers(): ProviderRegistryLike {
   if (registry) return registry;
   const env = serverEnv();
-  // Retire The Odds API from runtime completely, even if its historical env key remains.
-  // Bet365 public fixtures are delivered via the read-only catalogue module;
-  // never allow old sportsbook odds into wallets, wagers, or settlement.
-  const sportsProviders: SportsDataProvider[] = [];
-  const primarySportsProvider = new DisabledSportsProvider();
+  // The legacy providers are intentionally never registered. Wager-grade
+  // ingestion is a separate, explicit opt-in and still requires a verified
+  // upstream fixture/price/settlement source; previews remain read-only.
+  const betsapi = env.sportsProviderEnabled ? new BetsApiSportsProvider() : null;
+  const primarySportsProvider: SportsDataProvider = betsapi?.configured
+    ? betsapi : new DisabledSportsProvider();
+  const sportsProviders: SportsDataProvider[] = betsapi?.configured ? [betsapi] : [];
 
   registry = {
     sports: primarySportsProvider,
