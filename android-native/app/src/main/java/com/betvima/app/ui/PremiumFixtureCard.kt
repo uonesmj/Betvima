@@ -53,6 +53,7 @@ fun PremiumFixtureCard(
     val fa = state.lang == Lang.FA
     val market = match.featured
     val accent = if (match.live) fixtureRose else fixtureGreen
+    val liveClock = if (match.live) rememberVerifiedMatchClock(match) else ""
     Surface(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(21.dp),
@@ -129,7 +130,7 @@ fun PremiumFixtureCard(
                     Surface(color = fixtureCanvas, shape = RoundedCornerShape(8.dp)) {
                         Text(
                             if (match.live) tr(state.lang, "In play", "در حال بازی") +
-                                (match.minute?.let { " · ${it}′" } ?: "")
+                                (if (liveClock == "—") "" else " · " + liveClock)
                             else searchKickoff(match.starts),
                             modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
                             color = fixtureInk, fontSize = 11.sp,
