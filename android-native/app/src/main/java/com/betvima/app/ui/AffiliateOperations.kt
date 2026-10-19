@@ -33,7 +33,9 @@ import java.util.UUID
 /** Mirrors the native site's authenticated partner reporting, without invented financial figures. */
 @Composable
 fun AffiliateOperations(state: AppState, model: AppViewModel, currency: String,
-    minimumPayoutMinor: String = "0") {
+    minimumPayoutMinor: String = "0",
+    requestedTab: String = "referrals",
+    navigationRevision: Int = 0) {
     val context = LocalContext.current
     val api = remember { ApiClient() }
     val vault = remember { SessionVault(context, "affiliate") }
@@ -102,6 +104,11 @@ fun AffiliateOperations(state: AppState, model: AppViewModel, currency: String,
             actionError = null; actionMessage = null
         }
     }
+    LaunchedEffect(requestedTab, navigationRevision) {
+        if (navigationRevision > 0 && tabs.any { it.first == requestedTab }) {
+            switch(requestedTab)
+        }
+    }
     fun runAction(block: suspend (String) -> Unit) {
         scope.launch {
             actionBusy = true
@@ -117,8 +124,20 @@ fun AffiliateOperations(state: AppState, model: AppViewModel, currency: String,
     }
 
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        SectionHeading(tr(state.lang, "Partner workspace", "فضای کاری افیلیت"),
-            tr(state.lang, "Secure referrals, statements and payout actions", "زیرمجموعه‌ها، صورتحساب و درخواست برداشت امن"))
+        Row(verticalAlignment=Alignment.CenterVertically,
+            modifier=Modifier.fillMaxWidth().padding(top=5.dp)) {
+            Surface(color=affiliateBlue.copy(alpha=.12f),shape=RoundedCornerShape(13.dp)) {
+                Icon(Icons.Default.GridView,null,tint=affiliateBlue,
+                    modifier=Modifier.padding(11.dp).size(22.dp))
+            }
+            Spacer(Modifier.width(11.dp))
+            Column(Modifier.weight(1f)) {
+                Text(tr(state.lang,"Partner workspace","فضای کاری افیلیت"),
+                    color=affiliateInk,fontSize=18.sp,fontWeight=FontWeight.Black)
+                Text(tr(state.lang,"Your operational tools","ابزارهای مدیریت حساب"),
+                    color=Palette.muted,fontSize=11.sp)
+            }
+        }
         LazyRow(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             contentPadding=PaddingValues(vertical=3.dp)
