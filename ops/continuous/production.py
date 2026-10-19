@@ -229,6 +229,38 @@ def load_geo_hmac_secret(path=pathlib.Path('/var/www/nova/.env.production')):
     return matches[0]
 
 
+def load_callback_hmac_secret(path=pathlib.Path('/var/www/nova/.env.production')):
+    """Load only the casino callback edge HMAC into new production web releases.
+
+    The private file is not auto-loaded by /opt/nova-releases.
+    Neither provider keys nor cash enablement flags are loaded here.
+    """
+    try:
+        fd=os.open(path,os.O_RDONLY|os.O_NOFOLLOW|os.O_CLOEXEC)
+    except FileNotFoundError:
+        return None
+    try:
+        info=os.fstat(fd)
+        if (not stat.S_ISREG(info.st_mode)
+                or info.st_uid not in (0,pwd.getpwnam('novaadmin').pw_uid)
+                or info.st_mode & 0o077):
+            raise ValueError('runtime_configuration_incomplete')
+        with os.fdopen(fd,'r',encoding='utf-8') as stream:
+            fd=-1
+            content=stream.read(256*1024+1)
+    finally:
+        if fd != -1:
+            os.close(fd)
+    if len(content)>256*1024:
+        raise ValueError('runtime_configuration_incomplete')
+    matches=re.findall(r'(?m)^SOFTAGGREGATOR_EDGE_HMAC_SECRET=([^\r\n]*)\r?$',content)
+    if not matches:
+        return None
+    if len(matches)!=1 or not re.fullmatch(r'[!-~]{32,256}',matches[0]):
+        raise ValueError('runtime_configuration_incomplete')
+    return matches[0]
+
+
 def main(sha):
     global CURRENT_REVISION
     CURRENT_REVISION = sha
@@ -258,6 +290,9 @@ def main(sha):
     geo_secret=load_geo_hmac_secret()
     if geo_secret is not None:
         values['CASINO_GEO_HMAC_SECRET']=geo_secret
+    callback_secret=load_callback_hmac_secret()
+    if callback_secret is not None:
+        values['SOFTAGGREGATOR_EDGE_HMAC_SECRET']=callback_secret
     progress('recover_previous')
     directory=c.ROOT/'releases'/('production-'+sha)
     # Every new GitHub run still needs the owner's OIDC approval. Only failed
