@@ -38,3 +38,9 @@ jobs:
           name: betvima-native-debug-apk
           path: android-native/app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
+      - name: Verify branded APK referral is compiled into BuildConfig
+        working-directory: android-native
+        run: |
+          gradle --no-daemon :app:generateDebugBuildConfig -PaffiliateRef=CI_PARTNER_123 --rerun-tasks
+          grep -R -F 'CI_PARTNER_123' app/build/generated/source/buildConfig/debug/com/betvima/app/BuildConfig.java
+
