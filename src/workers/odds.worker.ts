@@ -80,6 +80,7 @@ let lastBetsapiExplorationAt = 0;
 let lastBetsapiPendingResultsAt = 0;
 const BETSAPI_PENDING_RESULTS_INTERVAL_MS = 30 * 60_000;
 let betsapiExplorationCursor = 0;
+let preferredBetsapiLiveProviderId: string | null = null;
 const EXTENDED_LIVE_ODDS_INTERVAL_MS = 5 * 60_000;
 const EXTENDED_ODDS_MAX_MATCHES_PER_CYCLE = extendedRefreshBudget(process.env.ODDS_API_EXTENDED_MAX_MATCHES_PER_CYCLE);
 // Result pagination shares the trial request budget with live prices.
@@ -973,7 +974,10 @@ async function runDedicatedLiveTick(ctx: WorkerContext): Promise<void> {
             pending,
             betsapiExplorationCursor,
             now - lastBetsapiExplorationAt >= BETSAPI_EXPLORATION_INTERVAL_MS,
+            preferredBetsapiLiveProviderId,
           );
+          const activePriced = selection.candidates.find(row => row.has_betsapi_market);
+          preferredBetsapiLiveProviderId = activePriced?.provider_id ?? null;
           if (selection.explored) {
             betsapiExplorationCursor++;
             lastBetsapiExplorationAt = now;
