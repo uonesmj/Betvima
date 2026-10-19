@@ -294,12 +294,9 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         // Keep the actual fixture the user tapped visible, even when the
         // additional market service times out. The old implementation erased
         // detail first and returned to Home when a provider request failed.
-        val previous = state.value.detail?.takeIf { it.id == id }
-        val selected = previous
-            ?: state.value.live.firstOrNull { it.id == id }
-            ?: state.value.upcoming.firstOrNull { it.id == id }
-            ?: state.value.searchLive.firstOrNull { it.id == id }
-            ?: state.value.searchUpcoming.firstOrNull { it.id == id }
+        val snapshot = state.value
+        val selected = selectedMatch123(id, snapshot.detail, snapshot.live,
+            snapshot.upcoming, snapshot.searchLive, snapshot.searchUpcoming)
         mutable.update {
             it.copy(detail = selected, detailLoading = true,
                 detailError = false, liveFacts = null)
