@@ -29,16 +29,17 @@ internal fun rememberVerifiedMatchClock(match: Match, facts: LiveMatchFacts? = n
     val observed = activeFacts?.observedAt ?: match.clockObservedAt
     // When the user opens a match from a card, that card snapshot may already
     // be ~45 seconds old. Account for its timestamp so both pages stay aligned.
-    val initialAge = if (ticking && !observed.isNullOrBlank()) runCatching {
-        ((System.currentTimeMillis() - Instant.parse(observed).toEpochMilli()) / 1000)
-            .coerceIn(0L, 60L).toInt()
-    }.getOrDefault(0) else 0
+    val age = observed?.let { stamp -> runCatching {
+        (System.currentTimeMillis() - Instant.parse(stamp).toEpochMilli()) / 1000
+    }.getOrNull() }
+    val fresh = age == null || age in 0L..60L
+    val initialAge = if (ticking && age != null && age in 0L..60L) age.toInt() else 0
     var delta by remember(match.id, observed, seconds, ticking) {
         mutableIntStateOf(initialAge)
     }
     LaunchedEffect(match.id, observed, seconds, ticking) {
         delta = initialAge
-        if (match.live && seconds != null && ticking) {
+        if (match.live && seconds != null && ticking && fresh) {
             repeat(60 - initialAge) {
                 delay(1_000)
                 delta++
