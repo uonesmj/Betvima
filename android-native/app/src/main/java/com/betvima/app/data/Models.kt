@@ -27,7 +27,9 @@ data class Match(
     val id: String, val league: String, val leagueLogo: String?, val sport: String,
     val country: String, val starts: String, val live: Boolean, val bettingAvailable: Boolean,
     val minute: Int?, val homeScore: Int?, val awayScore: Int?,
-    val teams: List<Team>, val markets: List<Market>, val marketsCount: Int
+    val teams: List<Team>, val markets: List<Market>, val marketsCount: Int,
+    val clockSeconds: Int? = null, val clockRunning: Boolean = false,
+    val clockObservedAt: String? = null
 ) {
     val home get() = teams.firstOrNull { it.role == "HOME" } ?: teams.firstOrNull() ?: Team("TBD", "HOME", null)
     val away get() = teams.firstOrNull { it.role == "AWAY" } ?: teams.getOrNull(1) ?: Team("TBD", "AWAY", null)
@@ -104,7 +106,11 @@ fun parseMatch(o: JSONObject, overrideMarkets: JSONArray? = null): Match = Match
     },
     markets = (overrideMarkets ?: o.optJSONArray("topMarkets") ?: o.optJSONArray("markets") ?: JSONArray())
         .objects().map(::parseMarket),
-    marketsCount = o.optInt("marketsCount", 0)
+    marketsCount = o.optInt("marketsCount", 0),
+    clockSeconds = o.numberOrNull("clockSeconds")?.takeIf { it in 0..12_600 },
+    clockRunning = o.optBoolean("clockRunning", false) &&
+        o.numberOrNull("clockSeconds")?.let { it in 0..12_600 } == true,
+    clockObservedAt = o.str("clockObservedAt").takeIf(String::isNotBlank)
 )
 fun odds(scaled: String): String = runCatching {
     BigDecimal(scaled).movePointLeft(4).setScale(2, RoundingMode.HALF_UP).toPlainString()
