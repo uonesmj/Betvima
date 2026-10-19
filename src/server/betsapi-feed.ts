@@ -90,10 +90,9 @@ export function linkBetsApiEventsByFixtureId(
     if (!fixture.fi) return fixture;
     const linked = mapped.get(fixture.fi);
     // Conflicting identifiers from two provider feeds must fail closed.
+    if (!mapped.has(fixture.fi)) return fixture;
     if (!linked || (fixture.eventId && fixture.eventId !== linked)) {
-      return fixture.eventId && mapped.has(fixture.fi) && !linked
-        ? { ...fixture, eventId: null }
-        : fixture;
+      return { ...fixture, eventId: null };
     }
     return fixture.eventId ? fixture : { ...fixture, eventId: linked };
   });
