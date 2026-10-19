@@ -25,7 +25,7 @@ import { sportsTeamSlug } from './sports-team-slug';
 import {
   betsapiLivePollIntervalMs,
   BETSAPI_EXPLORATION_INTERVAL_MS,
-  selectBetsapiLiveCandidate,
+  selectBetsapiLiveCandidates,
 } from './betsapi-live-trial-budget';
 import { LIVE_MATCH_STATUSES } from '@/lib/match-state';
 import { CURRENT_LIVE_FIXTURE_SQL } from '@/lib/odds/live-fixture-recency';
@@ -929,7 +929,7 @@ async function runDedicatedLiveTick(ctx: WorkerContext): Promise<void> {
 
         if (sourceProvider.name === 'betsapi') {
           const now = Date.now();
-          const selection = selectBetsapiLiveCandidate(
+          const selection = selectBetsapiLiveCandidates(
             pending,
             betsapiExplorationCursor,
             now - lastBetsapiExplorationAt >= BETSAPI_EXPLORATION_INTERVAL_MS,
@@ -938,9 +938,9 @@ async function runDedicatedLiveTick(ctx: WorkerContext): Promise<void> {
             betsapiExplorationCursor++;
             lastBetsapiExplorationAt = now;
           }
-          pending = selection.candidate ? [selection.candidate] : [];
+          pending = selection.candidates;
           console.log('ODDS_LIVE_BETSAPI_SELECTION', JSON.stringify({
-            providerId: selection.candidate?.provider_id ?? null,
+            providerIds: selection.candidates.map(item => item.provider_id),
             explored: selection.explored,
             intervalMs: BETSAPI_LIVE_POLL_INTERVAL_MS,
           }));
