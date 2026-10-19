@@ -22,6 +22,11 @@ import {
 import { marketRuleFor, marketDisplayOrder } from '@/domain/market-rules';
 import { attachCachedLogo } from "@/server/services/logo-resolver";
 import { sportsTeamSlug } from './sports-team-slug';
+import {
+  betsapiLivePollIntervalMs,
+  BETSAPI_EXPLORATION_INTERVAL_MS,
+  selectBetsapiLiveCandidates,
+} from './betsapi-live-trial-budget';
 import { LIVE_MATCH_STATUSES } from '@/lib/match-state';
 import { CURRENT_LIVE_FIXTURE_SQL } from '@/lib/odds/live-fixture-recency';
 import {
@@ -67,6 +72,11 @@ let lastExtendedLiveOddsAt = 0;
 let lastMatchDiscoveryAt = 0;
 const MATCH_DISCOVERY_INTERVAL_MS = 5 * 60_000;
 const LIVE_ODDS_INTERVAL_MS = 5_000;
+const BETSAPI_LIVE_POLL_INTERVAL_MS = betsapiLivePollIntervalMs(
+  process.env.BETSAPI_HOURLY_REQUEST_BUDGET,
+);
+let lastBetsapiExplorationAt = 0;
+let betsapiExplorationCursor = 0;
 const EXTENDED_LIVE_ODDS_INTERVAL_MS = 5 * 60_000;
 const EXTENDED_ODDS_MAX_MATCHES_PER_CYCLE = extendedRefreshBudget(process.env.ODDS_API_EXTENDED_MAX_MATCHES_PER_CYCLE);
 // Result pagination shares the trial request budget with live prices.
@@ -889,22 +899,52 @@ async function runDedicatedLiveTick(ctx: WorkerContext): Promise<void> {
         let pending = await ctx.services.db.query<{
           match_id: string;
           provider_id: string | null;
+          has_betsapi_market: boolean;
         }>(
-          `select m.id as match_id, m.provider_id
+          `select m.id as match_id, m.provider_id,
+                  case when $1 = 'betsapi' then exists (
+                    select 1 from nova.markets mk
+                    where mk.match_id = m.id and mk.provider = 'betsapi'
+                      and mk.key = 'h2h' and mk.type = '1X2'
+                  ) else false end as has_betsapi_market
              from nova.matches m
             where m.provider = $1
               and m.provider_id is not null
               and m.status::text = any($2::text[])
               and ${CURRENT_LIVE_FIXTURE_SQL}
             order by
+              case when $1 = 'betsapi' and exists (
+                select 1 from nova.markets mk
+                where mk.match_id = m.id and mk.provider = 'betsapi'
+                  and mk.key = 'h2h' and mk.type = '1X2'
+              ) then 0 else 1 end,
               (select max(sl.odds_updated_at)
                  from nova.markets mk
                  join nova.selections sl on sl.market_id = mk.id
                 where mk.match_id = m.id) asc nulls first,
               m.scheduled_at asc
-            limit (case when $1 = 'betsapi' then 1 else 200 end)`,
+            limit (case when $1 = 'betsapi' then 50 else 200 end)`,
           [sourceProvider.name, pgArray(LIVE_MATCH_STATUSES)],
         );
+
+        if (sourceProvider.name === 'betsapi') {
+          const now = Date.now();
+          const selection = selectBetsapiLiveCandidates(
+            pending,
+            betsapiExplorationCursor,
+            now - lastBetsapiExplorationAt >= BETSAPI_EXPLORATION_INTERVAL_MS,
+          );
+          if (selection.explored) {
+            betsapiExplorationCursor++;
+            lastBetsapiExplorationAt = now;
+          }
+          pending = selection.candidates;
+          console.log('ODDS_LIVE_BETSAPI_SELECTION', JSON.stringify({
+            providerIds: selection.candidates.map(item => item.provider_id),
+            explored: selection.explored,
+            intervalMs: BETSAPI_LIVE_POLL_INTERVAL_MS,
+          }));
+        }
 
         const providerIds = pending
           .map((row) => row.provider_id)
@@ -914,7 +954,8 @@ async function runDedicatedLiveTick(ctx: WorkerContext): Promise<void> {
           at: new Date().toISOString(),
           provider: sourceProvider.name,
           requestedMatches: providerIds.length,
-          intervalMs: LIVE_ODDS_INTERVAL_MS,
+          intervalMs: sourceProvider.name === 'betsapi'
+            ? BETSAPI_LIVE_POLL_INTERVAL_MS : LIVE_ODDS_INTERVAL_MS,
         }));
 
         if (providerIds.length === 0) return;
@@ -980,7 +1021,8 @@ if (WORKER_MODE === 'live') {
 createWorker({
   queue: 'odds-live',
   handlers: [],
-  tickIntervalMs: LIVE_ODDS_INTERVAL_MS,
+  tickIntervalMs: env.sportsProviderEnabled && env.SPORTS_PROVIDER === 'betsapi'
+    ? BETSAPI_LIVE_POLL_INTERVAL_MS : LIVE_ODDS_INTERVAL_MS,
   pollIntervalMs: 1_000,
   batchSize: 1,
   async tick(ctx) {
