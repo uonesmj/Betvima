@@ -37,6 +37,14 @@ function amountSign(value: string): 'positive' | 'negative' | 'zero' {
   const amount = BigInt(value);
   return amount > 0n ? 'positive' : amount < 0n ? 'negative' : 'zero';
 }
+function financialAmount(value: string, currency: string, locale: Parameters<typeof formatMinor>[2]): string {
+  if (!/^-?\\d+$/.test(value)) return '—';
+  const amount = BigInt(value);
+  return amount < 0n
+    ? '-' + formatMinor(-amount, currency, locale)
+    : formatMinor(amount, currency, locale);
+}
+
 function balanceTone(value: string): string {
   const sign = amountSign(value);
   return sign === 'positive' ? 'text-emerald-600' :
@@ -138,7 +146,7 @@ export function AffiliateReferralsClient() {
                               <div className="text-[10px] text-[#778B7C]">{label}</div>
                               <div className={`mt-1 break-all text-sm font-black tabular-nums ${label === tr('Recorded commission') || label === tr('Player P/L')
                                 ? balanceTone(value) : 'text-[#142C1D]'}`}>
-                                {formatMinor(value, money.currency, locale)}
+                                {financialAmount(value, money.currency, locale)}
                               </div>
                             </div>
                           ))}
