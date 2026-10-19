@@ -1,121 +1,176 @@
 'use client';
 
-import { translateVisibleText } from '@/lib/i18n/ui-phrases';
+import { useState } from 'react';
 import { useApp } from '@/components/layout/providers';
-import { Card, DataTable, EmptyState, ErrorNote, Skeleton, Stat, StatusPill } from '@/components/ui/primitives';
+import { translateVisibleText } from '@/lib/i18n/ui-phrases';
 import { useApiQuery } from '@/lib/hooks/useApi';
 import { formatDateTime, formatMinor } from '@/lib/i18n';
+import { ErrorNote, Skeleton } from '@/components/ui/primitives';
 
-interface Referral {
-  userId: string; code: string; status: string; confirmedAt: string | null;
-  wageredMinor: string; netRevenueMinor: string; commissionMinor: string; depositMinor: string; withdrawalMinor: string; panelShareMinor: string;
+type Money = {
+  currency: string;
+  depositMinor: string;
+  withdrawalMinor: string;
+  wageredMinor: string;
+  playerNetMinor: string;
+  ledgerMinor: string;
+  hasDeposited: boolean;
+};
+type Referral = {
+  userId: string;
+  code: string;
+  status: string;
+  registeredAt: string | null;
+  confirmedAt: string | null;
+  financialByCurrency: Money[];
+};
+type ReferralsResponse = {
+  items: Referral[];
+  total: number;
+  page: number;
+  hasMore: boolean;
+  statusCounts?: { total: number; confirmed: number; review: number; pending: number };
+};
+
+function amountSign(value: string): 'positive' | 'negative' | 'zero' {
+  if (!/^-?\d+$/.test(value)) return 'zero';
+  const amount = BigInt(value);
+  return amount > 0n ? 'positive' : amount < 0n ? 'negative' : 'zero';
+}
+function balanceTone(value: string): string {
+  const sign = amountSign(value);
+  return sign === 'positive' ? 'text-emerald-600' :
+    sign === 'negative' ? 'text-rose-600' : 'text-slate-500';
 }
 
 export function AffiliateReferralsClient() {
   const { t, locale, session } = useApp();
-  const tr = (value: string | undefined) => { const copy = value ?? ''; return locale === 'fa' ? translateVisibleText(copy) : copy; };
-  const { data, loading, error, reload } = useApiQuery<{ items: Referral[]; total: number; fraud: { riskScore: number; signals: { kind: string; detail: string; severity: string }[] } }>(
-    session?.authenticated ? '/api/v1/affiliate/referrals' : null,
-  );
+  const [page, setPage] = useState(1);
+  const tr = (label: string) => locale === 'fa' ? translateVisibleText(label) : label;
+  const endpoint = session?.authenticated
+    ? `/api/v1/affiliate/referrals?page=${page}&pageSize=20`
+    : null;
+  const { data, loading, error, reload } = useApiQuery<ReferralsResponse>(endpoint);
 
-  if (!session?.authenticated) return <EmptyState title={t('nav.login')} />;
+  if (!session?.authenticated) return <div className="p-6">{t('nav.login')}</div>;
   if (loading) return <Skeleton className="h-48 w-full" />;
   if (error) return <ErrorNote message={error} onRetry={() => void reload()} retryLabel={t('common.retry')} />;
 
+  const counts = data?.statusCounts;
   return (
-    <div className="affiliate-referrals-v2 space-y-5">
-      <div className="grid gap-3 sm:grid-cols-3">
-        <Stat label="Referrals" value={data?.total ?? 0} />
-        <Stat label="Risk score" value={data?.fraud.riskScore ?? 0} tone={(data?.fraud.riskScore ?? 0) >= 80 ? 'danger' : (data?.fraud.riskScore ?? 0) >= 50 ? 'warning' : undefined} />
-        <Stat label="Signals" value={data?.fraud.signals.length ?? 0} />
-      </div>
+    <section className="affiliate-referrals-v3 space-y-4">
+      <header className="relative overflow-hidden rounded-[26px] bg-[#07150F] p-5 text-white sm:p-7">
+        <div className="pointer-events-none absolute -right-20 -top-20 h-60 w-60 rounded-full bg-emerald-400/10" />
+        <div className="relative">
+          <span className="text-[10px] font-black uppercase tracking-[0.16em] text-[#71E8A8]">
+            {tr('BETVIMA PARTNERS · REFERRALS')}
+          </span>
+          <h2 className="mt-2 text-2xl font-black">{tr('Your referred players')}</h2>
+          <p className="mt-2 max-w-lg text-xs leading-5 text-[#B7CEBE]">
+            {tr('Registrations under review are visible here too. Deposit, withdrawal and commission figures are recorded amounts by currency, not estimates.')}
+          </p>
+          <div className="mt-5 grid grid-cols-3 overflow-hidden rounded-2xl border border-white/10 bg-white/5">
+            {[
+              [tr('All users'), counts?.total ?? data?.total ?? 0],
+              [tr('Confirmed'), counts?.confirmed ?? 0],
+              [tr('Under review'), counts?.review ?? 0],
+            ].map(([label, value]) => (
+              <div key={String(label)} className="border-r border-white/10 px-3 py-4 last:border-r-0">
+                <div className="text-[10px] font-medium text-[#BAD0C0]">{label}</div>
+                <div className="mt-1 text-2xl font-black">{value}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </header>
 
       {(data?.items.length ?? 0) === 0 ? (
-        <Card className="referral-empty-card overflow-hidden !p-0">
-          <div className="referral-empty-hero relative overflow-hidden bg-[#071A31] px-5 py-7 text-white sm:px-7">
-            <div className="absolute -right-10 -top-10 h-32 w-32 rounded-full bg-[#087FF5]/20 blur-2xl" />
-            <div className="relative">
-              <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl border border-white/10 bg-white/10 text-xl font-black">↗</div>
-              <div className="text-[10px] font-black uppercase tracking-[.18em] text-[#8FA7C2]">{tr("Referral network")}</div>
-              <h2 className="mt-1 text-xl font-black">{tr("Start building your network")}</h2>
-              <p className="mt-2 max-w-xl text-sm leading-6 text-[#B9C9DA]">
-                {tr("Share your referral link and bring new players to NOVA. Your commission is calculated from the referred players’ settled profit and loss.")}
-              </p>
-              <div className="mt-5 grid gap-2 sm:grid-cols-3">
-                <div className="rounded-xl border border-white/10 bg-white/5 px-3 py-3">
-                  <div className="text-[10px] font-bold uppercase tracking-wide text-[#8FA7C2]">{tr("Commission")}</div>
-                  <div className="mt-1 text-lg font-black">70%</div>
-                </div>
-                <div className="rounded-xl border border-white/10 bg-white/5 px-3 py-3">
-                  <div className="text-[10px] font-bold uppercase tracking-wide text-[#8FA7C2]">{tr("Settlement")}</div>
-                  <div className="mt-1 text-lg font-black">{tr("USD")}</div>
-                </div>
-                <div className="rounded-xl border border-white/10 bg-white/5 px-3 py-3">
-                  <div className="text-[10px] font-bold uppercase tracking-wide text-[#8FA7C2]">{tr("Minimum payout")}</div>
-                  <div className="mt-1 text-lg font-black">$40</div>
-                </div>
-              </div>
-            </div>
-          </div>
-          <div className="referral-empty-bottom flex flex-col gap-3 px-5 py-5 sm:flex-row sm:items-center sm:justify-between sm:px-7">
-            <div>
-              <div className="text-sm font-bold text-[#172033]">{tr("No referred players yet")}</div>
-              <p className="mt-1 text-xs text-[#718096]">{tr("Create a campaign link and start sharing it with your audience.")}</p>
-            </div>
-            <div className="flex flex-col gap-2 sm:flex-row">
-              <a href="/affiliate/links" className="nova-btn-primary text-center">{tr("Create referral link")}</a>
-              <a href="/affiliate/dashboard" className="nova-btn-ghost text-center">{tr("Back to dashboard")}</a>
-            </div>
-          </div>
-        </Card>
+        <div className="rounded-[25px] bg-[#F1F7F2] p-6 text-center">
+          <div className="text-lg font-black text-[#123522]">{tr('No attributed registrations on this page')}</div>
+          <p className="mt-2 text-sm text-[#587565]">
+            {tr('New registrations appear here, including those awaiting review.')}
+          </p>
+          <a href="/affiliate/links" className="mt-4 inline-flex rounded-xl bg-emerald-500 px-5 py-3 text-sm font-bold text-[#06170D]">
+            {tr('View referral links')}
+          </a>
+        </div>
       ) : (
-        <Card className="!p-0 overflow-hidden">
-          <DataTable<Referral>
-            rows={data!.items}
-            rowKey={(row) => row.userId}
-            empty={t('affiliate.noReferrals')}
-            columns={[
-              { key: 'user', header: 'User', render: (row) => <span className="font-mono text-xs">{row.userId.slice(0, 8)}</span> },
-              { key: 'code', header: 'Code', render: (row) => row.code },
-              { key: 'status', header: t('common.status'), render: (row) => <StatusPill status={row.status} /> },
-              { key: 'confirmed', header: 'Confirmed', render: (row) => <span className="text-xs nova-muted">{formatDateTime(row.confirmedAt, locale)}</span> },
-              { key: 'deposit', header: 'Deposit', render: (row) => formatMinor(row.depositMinor, 'USD', locale) },
-              { key: 'withdrawal', header: 'Withdrawal', render: (row) => formatMinor(row.withdrawalMinor, 'USD', locale) },
-              { key: 'wagered', header: 'Turnover', render: (row) => formatMinor(row.wageredMinor, 'USD', locale) },
-              { key: 'net', header: 'Player P/L', render: (row) => {
-                const value = formatMinor(row.netRevenueMinor, 'USD', locale);
-                const positive = BigInt(row.netRevenueMinor || '0') > 0n;
-                const negative = BigInt(row.netRevenueMinor || '0') < 0n;
-                return <span className={positive ? 'text-red-600' : negative ? 'text-emerald-600' : 'text-[#111827]'}>{value}</span>;
-              } },
-              { key: 'panel', header: 'Your 70%', render: (row) => {
-                const value = formatMinor(row.panelShareMinor, 'USD', locale);
-                const positive = BigInt(row.panelShareMinor || '0') > 0n;
-                const negative = BigInt(row.panelShareMinor || '0') < 0n;
-                return <span className={positive ? 'text-emerald-600' : negative ? 'text-red-600' : 'text-[#111827]'}>{value}</span>;
-              } },
-              { key: 'commission', header: 'Commission', render: (row) => <span className="text-nova-primary">{formatMinor(row.commissionMinor, 'USD', locale)}</span> },
-            ]}
-          />
-        </Card>
+        <div className="space-y-3">
+          {data?.items.map((user) => {
+            const review = user.status === 'review' || user.status === 'pending';
+            const deposited = user.financialByCurrency.some((c) => c.hasDeposited || amountSign(c.depositMinor) === 'positive');
+            return (
+              <article key={user.userId} className="overflow-hidden rounded-[23px] border border-[#DCE8DF] bg-white shadow-sm">
+                <div className="flex flex-wrap items-start justify-between gap-3 bg-[#F1F7F2] px-4 py-4">
+                  <div>
+                    <p className="text-[10px] font-semibold uppercase text-[#738A79]">{tr('Referred player')}</p>
+                    <p className="mt-1 font-mono text-sm font-black text-[#173D28]">{user.userId.slice(0, 10)}…</p>
+                    <p className="mt-1 text-[11px] text-[#708472]">
+                      {tr('Registered')}: {formatDateTime(user.registeredAt ?? user.confirmedAt, locale)}
+                    </p>
+                  </div>
+                  <div className="flex flex-col items-end gap-1">
+                    <span className={`rounded-full px-3 py-1 text-[11px] font-bold ${review
+                      ? 'bg-amber-100 text-amber-800'
+                      : user.status === 'confirmed'
+                        ? 'bg-emerald-100 text-emerald-700'
+                        : 'bg-slate-200 text-slate-700'}`}>
+                      {review ? tr('Under review') : user.status === 'confirmed' ? tr('Confirmed') : tr(user.status)}
+                    </span>
+                    <span className={`text-xs font-bold ${deposited ? 'text-emerald-700' : 'text-slate-500'}`}>
+                      {deposited ? tr('Deposited') : tr('No recorded deposit')}
+                    </span>
+                  </div>
+                </div>
+                {user.financialByCurrency?.length ? (
+                  <div className="divide-y divide-[#E1EAE3]">
+                    {user.financialByCurrency.map((money) => (
+                      <div key={money.currency} className="px-4 py-4">
+                        <div className="mb-3 text-xs font-black text-[#155E3D]">{money.currency}</div>
+                        <div className="grid grid-cols-2 gap-x-5 gap-y-4 sm:grid-cols-4">
+                          {[
+                            [tr('Total deposits'), money.depositMinor],
+                            [tr('Total withdrawals'), money.withdrawalMinor],
+                            [tr('Player P/L'), money.playerNetMinor],
+                            [tr('Recorded commission'), money.ledgerMinor],
+                          ].map(([label, value]) => (
+                            <div key={label}>
+                              <div className="text-[10px] text-[#778B7C]">{label}</div>
+                              <div className={`mt-1 break-all text-sm font-black tabular-nums ${label === tr('Recorded commission') || label === tr('Player P/L')
+                                ? balanceTone(value) : 'text-[#142C1D]'}`}>
+                                {formatMinor(value, money.currency, locale)}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                        <div className="mt-3 text-[10px] text-[#708574]">
+                          {tr('Recorded commission can be positive, negative or zero. Pending settlement is not shown as earned commission.')}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="px-4 py-4 text-xs text-[#779080]">{tr('No recorded payments or commission yet')}</p>
+                )}
+              </article>
+            );
+          })}
+        </div>
       )}
 
-      {(data?.fraud.signals.length ?? 0) > 0 ? (
-        <Card className="fraud-panel">
-          <h3 className="mb-2 text-sm font-semibold">{tr("Fraud signals")}</h3>
-          <ul className="space-y-1 text-xs">
-            {data!.fraud.signals.map((signal) => (
-              <li key={`${signal.kind}-${signal.detail}`} className="flex items-center justify-between gap-2 border-b border-nova-line/50 pb-1">
-                <span>{signal.kind} — <span className="nova-muted">{signal.detail}</span></span>
-                <StatusPill status={signal.severity} />
-              </li>
-            ))}
-          </ul>
-          <p className="mt-2 text-[11px] nova-muted">
-            {tr("Flags are reviewed by the affiliate team. Commission is never confiscated automatically.")}
-          </p>
-        </Card>
-      ) : null}
-    </div>
+      <div className="flex items-center justify-between gap-3 py-2">
+        <button type="button" disabled={page <= 1}
+          onClick={() => setPage((v) => Math.max(1, v - 1))}
+          className="rounded-xl border border-[#D5E3D8] px-4 py-2 text-sm font-bold text-[#165F3C] disabled:opacity-40">
+          {tr('Previous')}
+        </button>
+        <span className="text-xs font-bold text-[#4D6C58]">{tr('Page')} {page}</span>
+        <button type="button" disabled={!data?.hasMore}
+          onClick={() => setPage((v) => v + 1)}
+          className="rounded-xl bg-[#0F8F59] px-4 py-2 text-sm font-bold text-white disabled:opacity-40">
+          {tr('Next')}
+        </button>
+      </div>
+    </section>
   );
 }
