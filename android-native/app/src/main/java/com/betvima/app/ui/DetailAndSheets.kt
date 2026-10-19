@@ -178,7 +178,7 @@ fun MatchDetailPage(state: AppState, model: AppViewModel) {
                 }
             }
             Spacer(Modifier.height(11.dp))
-            if (match.live && match.id.startsWith("betsapi:live:")) {
+            if (scoreMode == "live" && match.live && match.id.startsWith("betsapi:live:")) {
                 LiveMatchActivityPanel(
                     match = match, facts = facts, fa = state.lang == Lang.FA,
                     expanded = scoreMode == "live", clockLabel = clockLabel
