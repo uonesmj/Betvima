@@ -28,27 +28,27 @@ import com.betvima.app.data.*
 import kotlinx.coroutines.launch
 import org.json.JSONObject
 
-internal val affiliateBlue = Color(0xFF117DF2)
-internal val affiliatePink = Color(0xFFF3439B)
-internal val affiliateInk = Color(0xFF151C2A)
-internal val affiliateMute = Color(0xFF64738B)
-internal val affiliateCanvas = Color(0xFFF5F7FB)
-internal val affiliateOutline = Color(0xFFE5EAF3)
+internal val affiliateBlue = Color(0xFF198957)
+internal val affiliatePink = Color(0xFF45C98A)
+internal val affiliateInk = Color(0xFF0B1610)
+internal val affiliateMute = Color(0xFF667C6E)
+internal val affiliateCanvas = Color(0xFFF3F7F3)
+internal val affiliateOutline = Color(0xFFE1E9E2)
 
 @Composable
 fun AffiliateHeroBanner(lang: Lang, authenticated: Boolean = false) {
     val shape = RoundedCornerShape(25.dp)
     Surface(shape = shape, color = Color.White,
-        border = BorderStroke(1.dp, Color(0xFFD9E8FB)),
+        border = BorderStroke(1.dp, Color(0xFFD9EBDE)),
         shadowElevation = 2.dp) {
         Column(Modifier.fillMaxWidth()
-            .background(Brush.linearGradient(listOf(Color.White, Color(0xFFF0F7FF),
-                Color(0xFFFFF2F9))),shape)
+            .background(Brush.linearGradient(listOf(Color.White, Color(0xFFEDF7EE),
+                Color(0xFFF2FFF4))),shape)
             .padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Surface(shape = RoundedCornerShape(9.dp),
                     color = Color.White,
-                    border = BorderStroke(1.dp, Color(0xFFD9E6FF))) {
+                    border = BorderStroke(1.dp, Color(0xFFD9EADF))) {
                     Row(Modifier.padding(horizontal = 10.dp, vertical = 7.dp),
                         verticalAlignment = Alignment.CenterVertically) {
                         Icon(Icons.Default.AutoAwesome,null,tint=affiliatePink,
@@ -77,10 +77,10 @@ fun AffiliateHeroBanner(lang: Lang, authenticated: Boolean = false) {
                 }
                 Box(Modifier.size(94.dp),contentAlignment=Alignment.Center) {
                     Box(Modifier.size(90.dp).background(
-                        Brush.linearGradient(listOf(Color(0xFFE0F0FF),Color(0xFFFFE1F0))),
+                        Brush.linearGradient(listOf(Color(0xFFDEF6E4),Color(0xFFCCF5DA))),
                         CircleShape))
                     Box(Modifier.size(66.dp).background(
-                        Brush.linearGradient(listOf(affiliateBlue,Color(0xFF8863E8),affiliatePink)),
+                        Brush.linearGradient(listOf(affiliateBlue,Color(0xFF16472A),affiliatePink)),
                         RoundedCornerShape(21.dp)),contentAlignment=Alignment.Center) {
                         Icon(Icons.Default.Hub,null,tint=Color.White,
                             modifier=Modifier.size(43.dp))
