@@ -89,6 +89,58 @@ describe('BetsAPI staged sports contract', () => {
     expect(JSON.stringify(ended)).not.toContain('MOCK_TEST_ONLY');
   });
 
+  it('walks official ended-event pages until the requested match is confirmed', async () => {
+    const requested: string[] = [];
+    const fetcher = vi.fn(async (url: RequestInfo | URL) => {
+      const parsed = new URL(String(url));
+      requested.push(parsed.pathname + '?page=' + parsed.searchParams.get('page'));
+      const page = parsed.searchParams.get('page');
+      // Page one has 50 unrelated completed fixtures; page two contains ours.
+      const rows = page === '1'
+        ? Array.from({ length: 50 }, (_, n) => ({
+            ...event, id: String(6000000 + n), time_status: '3',
+          }))
+        : [{ ...event, time_status: '3', ss: '2-1' }];
+      return new Response(JSON.stringify({
+        success: 1, results: rows, pager: { total_pages: 2 },
+      }));
+    });
+    const provider = new BetsApiSportsProvider({
+      token: 'MOCK_TEST_ONLY', fetcher: fetcher as typeof fetch,
+    });
+    const result = await provider.fetchResults(
+      '2026-10-17T00:00:00Z',
+      '2026-10-17T23:59:59Z',
+      ['1:4140581'],
+    );
+    expect(result.ok).toBe(true);
+    expect(result.value?.[0]).toMatchObject({
+      matchProviderId: '1:4140581', authoritative: true,
+      homeScore: 2, awayScore: 1,
+    });
+    expect(requested).toEqual([
+      '/v3/events/ended?page=1', '/v3/events/ended?page=2',
+    ]);
+  });
+
+  it('accepts the exact thirty-one-day discovery horizon used by the worker', async () => {
+    const start = Date.parse('2026-10-17T00:00:00Z');
+    const end = start + 31 * 86400_000;
+    const fetcher = vi.fn(async () => new Response(JSON.stringify({
+      success: 1, results: [{ ...event, time_status: '0' }],
+    })));
+    const provider = new BetsApiSportsProvider({
+      token: 'MOCK_TEST_ONLY', fetcher: fetcher as typeof fetch,
+    });
+    const result = await provider.fetchMatches({
+      from: new Date(start).toISOString(),
+      to: new Date(end).toISOString(),
+      sport: 'football',
+    });
+    expect(result.ok).toBe(true);
+    expect(fetcher).toHaveBeenCalled();
+  });
+
   it('never initializes without explicit enabled flag even if a key exists', async () => {
     vi.stubEnv('BETSAPI_TRIAL_ENABLED', 'false');
     const f = vi.fn();
