@@ -44,6 +44,7 @@ export interface MatchView {
   status: string;
   scheduledAt: string;
   minute: number | null;
+  betsApiEventId?: string | null;
   clockSeconds?: number | null;
   clockRunning?: boolean;
   clockObservedAt?: string | null;
