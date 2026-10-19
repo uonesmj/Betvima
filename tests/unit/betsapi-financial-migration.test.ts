@@ -22,4 +22,18 @@ describe('BetsAPI financial migration source freshness', () => {
     expect(sql).toContain("RAISE EXCEPTION 'ODDS_CHANGED'");
     expect(sql).toContain('IF jsonb_array_length(v_changes) > 0 AND NOT p_accept_odds_change THEN');
   });
+
+  it('preserves legacy source-owned market reopening in both prematch and live ticks', () => {
+    const publish = sql.slice(sql.indexOf('CREATE OR REPLACE FUNCTION nova.publish_odds_tick('));
+    const expected = "p_provider IN ('the_odds_api', '5dollarfootballapi', 'betsapi')";
+    // Each branch checks both market/provider identity and selection/provider identity.
+    expect(publish.split(expected).length - 1).toBe(4);
+    expect(publish).toContain('v_market.provider = p_provider');
+    expect(publish).toContain('v_sel.provider = p_provider');
+    expect(publish).toContain("p_provider_timestamp >= now() - interval '300 seconds'");
+    expect(publish).toContain("p_provider_timestamp >= now() - interval '45 seconds'");
+    expect(publish).toContain("nova.operation_enabled('LIVE_BETTING')");
+    expect(publish).toContain("v_market.status::text = 'open'");
+    expect(publish).toContain("v_sel.status::text = 'suspended'");
+  });
 });
