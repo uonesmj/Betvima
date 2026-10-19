@@ -27,16 +27,20 @@ export function betsapiLivePollIntervalMs(
   return Math.max(30_000, Math.ceil(3_600_000 / priceCalls));
 }
 
-export function selectBetsapiLiveCandidate<T extends BetsapiLiveCandidate>(
+export function selectBetsapiLiveCandidates<T extends BetsapiLiveCandidate>(
   ordered: readonly T[],
   explorationIndex: number,
   explorationDue: boolean,
-): { candidate: T | undefined; explored: boolean } {
+): { candidates: T[]; explored: boolean } {
   const priced = ordered.filter(row => row.has_betsapi_market);
   const unpriced = ordered.filter(row => !row.has_betsapi_market);
+  // Never skip repricing the known valid market when probing another event:
+  // two upstream calls every three minutes still fit a 200/hr trial budget.
+  const candidates: T[] = priced.length ? [priced[0]!] : [];
   if (unpriced.length && (explorationDue || priced.length === 0)) {
     const index = ((explorationIndex % unpriced.length) + unpriced.length) % unpriced.length;
-    return { candidate: unpriced[index], explored: true };
+    candidates.push(unpriced[index]!);
+    return { candidates, explored: true };
   }
-  return { candidate: priced[0], explored: false };
+  return { candidates, explored: false };
 }
