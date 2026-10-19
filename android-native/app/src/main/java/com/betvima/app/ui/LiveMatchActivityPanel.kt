@@ -156,6 +156,9 @@ internal fun LiveMatchActivityPanel(
                 )
             }
         }
+        // Keep the score view compact: detailed metric cards are visible only
+        // after the user selects the Live statistics tab.
+        if (expanded) {
         val metrics = listOf(
             Triple("corners", "Corners", "کرنر"),
             Triple("attacks", "Attacks", "حمله"),
@@ -167,7 +170,7 @@ internal fun LiveMatchActivityPanel(
             Triple("on_target", "Shots on target", "شوت در چارچوب"),
             Triple("dangerous_attacks", "Dangerous attacks", "حملات خطرناک")
         )
-        val shown = if (expanded) metrics else metrics.take(4)
+        val shown = metrics
         shown.chunked(2).forEach { line ->
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 line.forEach { (key, english, persian) ->
@@ -181,7 +184,8 @@ internal fun LiveMatchActivityPanel(
                 }
             }
         }
-        if (facts?.stats.isNullOrEmpty()) Text(
+        }
+        if (expanded && facts?.stats.isNullOrEmpty()) Text(
             if (fa) "آمار تأییدشده‌ای از API برای این بازی دریافت نشده است."
             else "No verified match statistics received for this fixture.",
             fontSize = 11.sp, color = Palette.muted
