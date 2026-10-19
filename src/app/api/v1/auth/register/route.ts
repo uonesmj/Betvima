@@ -18,6 +18,7 @@ const schema = z.object({
   ageConfirmed: z.literal(true),
   acceptTerms: z.literal(true),
   referralCode: z.string().trim().max(64).optional(),
+  giftCode: z.string().trim().max(64).optional(),
   locale: z.string().trim().max(16).optional(),
   currency: z.enum(['IRR', 'USD', 'EUR', 'GBP']).default('IRR'),
 });
@@ -78,15 +79,23 @@ export const POST = withErrorHandling(
     );
 
     let attributionFromCookie: boolean | null = null;
-    const referralCode = (() => {
-      const fromBody = input.referralCode?.trim().toUpperCase();
-      if (fromBody) return fromBody;
-      const cookies = request.headers.get('cookie') ?? '';
-      const match = /(?:^|;\s*)nova_ref=([^;]+)/.exec(cookies);
-      if (!match) return null;
-      const value = decodeURIComponent(match[1] ?? '').trim().toUpperCase();
-      return /^[A-Z0-9_-]{3,64}$/.test(value) ? value : null;
+    // The newest first-party referral is captured by the server through a
+    // HttpOnly cookie. Never use old browser localStorage to override it.
+    // Android's explicit embedded referralCode remains supported.
+    const directReferral = input.referralCode?.trim().toUpperCase() ?? '';
+    const giftCode = input.giftCode?.trim().toUpperCase() ?? '';
+    const referralCookie = (() => {
+      const match = /(?:^|;\\s*)nova_ref=([^;]+)/.exec(request.headers.get('cookie') ?? '');
+      if (!match) return '';
+      try {
+        const code = decodeURIComponent(match[1] ?? '').trim().toUpperCase();
+        return /^[A-Z0-9_-]{3,64}$/.test(code) ? code : '';
+      } catch { return ''; }
     })();
+    // Gift code is a separate optional input. Only when there is no partner
+    // referral do we allow it to act as a legacy affiliate referral.
+    const referralCode = directReferral || referralCookie || giftCode;
+    const attributionViaGift = !directReferral && !referralCookie && Boolean(giftCode);
 
 
     const { data, error } = await client.auth.signUp({
@@ -118,19 +127,25 @@ export const POST = withErrorHandling(
     if (data.user?.id && referralCode) {
       try {
         const services = createServices();
-        const giftAttribution = await services.db.rpc<Record<string, unknown>>(
-          'attach_gift_registration_code',
-          {
-            p_user_id: data.user.id,
-            p_code: referralCode,
-            p_ip_hash: clientIpFromHeaders(request.headers) ?? null,
-            p_device: request.headers.get('user-agent') ?? null,
-          },
-        );
-        const giftFound = Boolean(giftAttribution?.gift_code_found);
-        if (giftFound) {
-          attributionFromCookie = Boolean(giftAttribution?.attributed);
-        } else {
+        // Native older versions send gift codes as referralCode, so the gift
+        // lookup stays as backward compatibility ONLY when not cookie-bound.
+        const canBeGift = attributionViaGift ||
+          (Boolean(directReferral) && !referralCookie);
+        let giftFound = false;
+        if (canBeGift) {
+          const result = await services.db.rpc<Record<string, unknown>>(
+            'attach_gift_registration_code',
+            {
+              p_user_id: data.user.id,
+              p_code: referralCode,
+              p_ip_hash: clientIpFromHeaders(request.headers) ?? null,
+              p_device: request.headers.get('user-agent') ?? null,
+            },
+          );
+          giftFound = Boolean(result?.gift_code_found);
+          if (giftFound) attributionFromCookie = Boolean(result?.attributed);
+        }
+        if (!giftFound) {
           const attribution = await services.affiliate.attachAttribution({
             userId: data.user.id,
             code: referralCode,
@@ -139,9 +154,12 @@ export const POST = withErrorHandling(
           });
           attributionFromCookie = Boolean(attribution.created);
         }
-    } catch {
+      } catch (failure) {
         attributionFromCookie = false;
-        console.warn('[auth.register.attribution_failed]');
+        // No secrets or user identifiers in logs. Failures are observable;
+        // registration remains successful rather than orphaning an account.
+        console.warn('[auth.register.attribution_failed]',
+          failure instanceof Error ? failure.name : 'unknown');
       }
     }
     console.log(
