@@ -17,14 +17,14 @@ describe('catalog live availability', () => {
     expect(selection?.isLive).toBe(false);
   });
 
-  it('only lists events from The Odds API', async () => {
+  it('only lists events from BetsAPI', async () => {
     const query = vi.fn().mockResolvedValue([]);
     const catalog = new PostgresCatalogRepository({ query } as unknown as Db);
     await catalog.listLiveMatches({ userId: null, role: 'anon' }, 100);
     await catalog.listLiveSportCounts({ userId: null, role: 'anon' });
     expect(query).toHaveBeenCalledTimes(2);
     for (const call of query.mock.calls) {
-      expect(call[0]).toContain("m.provider = 'the_odds_api'");
+      expect(call[0]).toContain("m.provider = 'betsapi'");
       expect(call[0]).not.toContain("5dollarfootballapi");
     }
   });
@@ -52,7 +52,7 @@ describe('catalog live availability', () => {
       expect(sql).toContain("$5::boolean is distinct from true");
       expect(sql).toContain("m.provider_updated_at >= now() - interval '15 minutes'");
       expect(sql).toContain("fresh_selection.provider_timestamp between");
-      expect(sql).toContain("m.provider = 'the_odds_api'");
+      expect(sql).toContain("m.provider = 'betsapi'");
     }
   });
 
@@ -70,7 +70,7 @@ describe('catalog live availability', () => {
     const catalog = new PostgresCatalogRepository({ query } as unknown as Db);
     const current = await catalog.listMarkets({ userId: null, role: 'anon' }, 'm');
     expect(current.map((market) => market.key)).toEqual(['totals']);
-    expect(query.mock.calls[0]![0]).toContain("provider = 'the_odds_api'");
+    expect(query.mock.calls[0]![0]).toContain("provider = 'betsapi'");
   });
 
   it('does not expose an empty top market after freshness filtering', async () => {
@@ -84,7 +84,7 @@ describe('catalog live availability', () => {
     expect(query.mock.calls[1]![0]).toContain('fixture.status::text = any($2::text[])');
     expect(query.mock.calls[1]![0]).toContain("interval '45 seconds'");
     expect(query.mock.calls[1]![0]).toContain("interval '300 seconds'");
-    expect(query.mock.calls[1]![0]).toContain("sel.provider = 'the_odds_api'");
+    expect(query.mock.calls[1]![0]).toContain("sel.provider = 'betsapi'");
 
   });
   it('selects Top Bets from fresh open prematch odds, not stale high-ranked fixtures', async () => {
@@ -104,7 +104,7 @@ describe('catalog live availability', () => {
     expect(result).toHaveLength(1);
     expect(result[0]?.topMarkets?.[0]?.selections[0]?.id).toBe('selection-test');
     const [sql, args] = query.mock.calls[0]!;
-    expect(sql).toContain("m.provider = 'the_odds_api'");
+    expect(sql).toContain("m.provider = 'betsapi'");
     expect(sql).toContain("s.slug <> 'esports'");
     expect(sql).toContain("mk.status = 'open'");
     expect(sql).toContain("sel.status = 'open'");
