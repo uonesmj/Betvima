@@ -41,6 +41,7 @@ data class AppState(
     val detailLoading: Boolean = false,
     val liveEnabled: Boolean = false, val wageringEnabled: Boolean = false,
     val detail: Match? = null,
+    val liveFacts: LiveMatchFacts? = null,
     val focusedMarketId: String? = null,
     val betDetail: BetDetail? = null, val betDetailLoading: Boolean = false,
     val betDetailVisible: Boolean = false,
@@ -88,6 +89,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     private var liveRequestNumber = 0
     private var upcomingRequestNumber = 0
     private var detailRequestNumber = 0
+    private var factsInFlight = false
     private var accountRequestNumber = 0
     private var quoteGeneration = 0
     private var mainBetSubmitting = false
@@ -280,7 +282,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     fun openMatch(id: String) = viewModelScope.launch {
         val request = ++detailRequestNumber
-        mutable.update { it.copy(detailLoading = true, detail = null) }
+        mutable.update { it.copy(detailLoading = true, detail = null, liveFacts = null) }
         try {
             val match = api.detail(id)
             if (request == detailRequestNumber) mutable.update {
@@ -293,9 +295,40 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             }
         }
     }
+    /** Refresh factual scoreboard/stats without mutating markets, bets or UI routing. */
+    fun refreshMatchFacts(id: String) = viewModelScope.launch {
+        if (factsInFlight || state.value.detail?.id != id) return@launch
+        factsInFlight = true
+        val generation = detailRequestNumber
+        try {
+            val facts = api.matchFacts(id)
+            if (facts != null && generation == detailRequestNumber &&
+                state.value.detail?.id == id) {
+                mutable.update { current ->
+                    val old = current.detail
+                    current.copy(
+                        liveFacts = facts,
+                        detail = old?.copy(
+                            minute = facts.minute ?: old.minute,
+                            homeScore = facts.score?.substringBefore('-')?.toIntOrNull()
+                                ?: old.homeScore,
+                            awayScore = facts.score?.substringAfter('-')?.toIntOrNull()
+                                ?: old.awayScore
+                        )
+                    )
+                }
+            }
+        } catch (_: Exception) {
+            // Retain last confirmed data on transient provider/network failures.
+        } finally {
+            factsInFlight = false
+        }
+    }
+
     fun closeMatch() {
         detailRequestNumber++
-        mutable.update { it.copy(detail = null, detailLoading = false, focusedMarketId = null) }
+        mutable.update { it.copy(detail = null, liveFacts = null,
+            detailLoading = false, focusedMarketId = null) }
     }
     /** Purely informational odds polling. Never touches quotes or financial state. */
     suspend fun slipProbabilitySnapshots(matchIds: List<String>): Map<String, SlipOddsMatch> =
