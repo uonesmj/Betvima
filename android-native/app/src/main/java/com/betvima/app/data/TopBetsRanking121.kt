@@ -17,6 +17,17 @@ internal object TopBetsRanking121 {
                 scaled > minimumDecimalScaled && scaled <= BigDecimal("1000000000")
             } == true }
 
+    /** Sample near-term and market-rich fixtures within the same quote budget. */
+    fun headlinePreviewIndices(matches: List<Match>, limit: Int = 12): List<Int> {
+        require(limit > 0)
+        val indices = matches.indices.toList()
+        val earliest = indices.take(limit / 2)
+        val richest = indices.sortedWith(
+            compareByDescending<Int> { matches[it].marketsCount }.thenBy { it }
+        ).take(limit)
+        return (earliest + richest + indices).distinct().take(limit)
+    }
+
     fun ranked(live: List<Match>, upcoming: List<Match>): List<Match> =
         (live + upcoming)
             // Some provider pages can repeat the same event within a fetch.
