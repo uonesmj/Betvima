@@ -99,6 +99,17 @@ fun HomePage(state: AppState, model: AppViewModel, onSearch: () -> Unit) {
     val featured = remember(state.live, state.upcoming) {
         TopBetsRanking121.ranked(state.live, state.upcoming)
     }
+    // If all provider headline prices are unavailable, do not pretend there
+    // are zero fixtures. Offer actual fixtures with locked odds, clearly
+    // labelled as unpriced previews, never as confirmed Top Bets.
+    val unpricedPreviews = remember(state.live, state.upcoming, featured) {
+        if (featured.isNotEmpty()) emptyList() else
+            (state.live + state.upcoming).distinctBy { it.id }
+                .sortedWith(compareByDescending<Match> { it.marketsCount }
+                    .thenBy { it.starts }.thenBy { it.id })
+                .take(12)
+    }
+    val topCards = if (featured.isNotEmpty()) featured else unpricedPreviews
     LazyColumn(state = footerListState,
         contentPadding = PaddingValues(bottom = 0.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp), flingBehavior = rememberPremiumFlingBehavior()) {
@@ -111,21 +122,35 @@ fun HomePage(state: AppState, model: AppViewModel, onSearch: () -> Unit) {
                         Icons.Default.Whatshot, Palette.blue) { model.tab(Tab.SPORTS) }
                 }
             }
-            if (featured.isEmpty() && (state.upcomingLoading || state.liveLoading)) {
+            if (topCards.isEmpty() && (state.upcomingLoading || state.liveLoading)) {
                 items(2) { FixtureSkeleton(Modifier.padding(horizontal = 15.dp)) }
-            } else if (featured.isEmpty()) {
+            } else if (topCards.isEmpty()) {
                 item {
                     Box(Modifier.padding(horizontal = 15.dp)) {
                         EmptyPanel(tr(state.lang, "Top markets are unavailable", "بازار برتری موجود نیست"),
-                            tr(state.lang, "Only matches with actual provider quotes are listed.",
-                                "فقط مسابقات دارای ضرایب واقعی منبع داده نمایش داده می‌شوند.")) {
+                            tr(state.lang, if (state.liveError || state.upcomingError)
+                                "Provider connection failed. Refresh when service resumes."
+                                else "No verified odds were returned by the provider.",
+                                if (state.liveError || state.upcomingError)
+                                "اتصال منبع مسابقات ناموفق بود؛ بعداً دوباره تلاش کنید."
+                                else "منبع داده فعلاً هیچ ضریب تأییدشده‌ای برنگردانده است.")) {
                             model.refreshAll()
                         }
                     }
                 }
-            } else items(featured.take(25), key = { "top-" + it.id }, contentType = { "match" }) { match ->
-                Box(Modifier.padding(horizontal = 15.dp, vertical = 3.dp)) {
-                    ReferenceTopBetCard(match, state, model)
+            } else {
+                if (featured.isEmpty()) item {
+                    Box(Modifier.padding(horizontal = 15.dp, vertical = 3.dp)) {
+                        BvInformationStrip(tr(state.lang,
+                            "Current match listings only — market odds are not available from the provider.",
+                            "فقط فهرست مسابقات موجود است؛ ضرایب فعلی از منبع داده دریافت نشده‌اند."),
+                            Icons.Default.Info, accent = Palette.blue)
+                    }
+                }
+                items(topCards.take(25), key = { "top-" + it.id }, contentType = { "match" }) { match ->
+                    Box(Modifier.padding(horizontal = 15.dp, vertical = 3.dp)) {
+                        ReferenceTopBetCard(match, state, model)
+                    }
                 }
             }
         } else {
@@ -136,9 +161,17 @@ fun HomePage(state: AppState, model: AppViewModel, onSearch: () -> Unit) {
                         Icons.Default.Sensors, Color(0xFFE82465)) { model.tab(Tab.LIVE) }
                     if (state.live.isNotEmpty()) ReferenceMatchCarousel(state.live, state, model)
                     else if (state.liveLoading) FixtureSkeleton(Modifier.fillMaxWidth())
-                    else EmptyPanel(tr(state.lang, "No live matches", "مسابقه زنده‌ای موجود نیست"),
-                        tr(state.lang, "Check again as events begin.",
-                            "با شروع مسابقات دوباره بررسی کنید.")) { model.refreshLive() }
+                    else EmptyPanel(
+                        tr(state.lang, if (state.liveError) "Live feed unavailable"
+                            else "No live matches",
+                            if (state.liveError) "داده زنده در دسترس نیست"
+                            else "مسابقه زنده‌ای موجود نیست"),
+                        tr(state.lang, if (state.liveError)
+                            "The BetsAPI provider did not return a usable live feed."
+                            else "Check again as events begin.",
+                            if (state.liveError)
+                            "منبع BetsAPI فهرست زنده قابل استفاده‌ای برنگردانده است."
+                            else "با شروع مسابقات دوباره بررسی کنید.")) { model.refreshLive() }
                 }
             }
             item {
@@ -147,11 +180,22 @@ fun HomePage(state: AppState, model: AppViewModel, onSearch: () -> Unit) {
                         Icons.Default.Whatshot, Palette.blue) {
                         model.homeMode(HomeMode.TOP_BETS)
                     }
-                    if (featured.isNotEmpty()) ReferenceMatchCarousel(featured, state, model)
+                    if (topCards.isNotEmpty()) {
+                        if (featured.isEmpty()) Text(tr(state.lang,
+                            "Market quotes temporarily unavailable — showing real fixtures only.",
+                            "ضرایب فعلاً موجود نیستند؛ فقط مسابقات واقعی نمایش داده می‌شوند."),
+                            color = Palette.muted, fontSize = 11.sp,
+                            modifier = Modifier.padding(bottom = 6.dp))
+                        ReferenceMatchCarousel(topCards, state, model)
+                    }
                     else if (state.upcomingLoading || state.liveLoading) FixtureSkeleton(Modifier.fillMaxWidth())
                     else EmptyPanel(tr(state.lang, "Top markets are unavailable", "بازار برتری موجود نیست"),
-                        tr(state.lang, "Markets appear when confirmed by the provider.",
-                            "بازارها پس از تأیید منبع داده نمایش داده می‌شوند.")) {
+                        tr(state.lang, if (state.liveError || state.upcomingError)
+                            "Provider feed is unavailable; please retry."
+                            else "Markets appear when confirmed by the provider.",
+                            if (state.liveError || state.upcomingError)
+                            "منبع مسابقات در دسترس نیست؛ مجدداً تلاش کنید."
+                            else "بازارها پس از تأیید منبع داده نمایش داده می‌شوند.")) {
                         model.refreshAll()
                     }
                 }
@@ -163,9 +207,17 @@ fun HomePage(state: AppState, model: AppViewModel, onSearch: () -> Unit) {
                     if (state.upcoming.isNotEmpty())
                         ReferenceMatchCarousel(state.upcoming, state, model)
                     else if (state.upcomingLoading) FixtureSkeleton(Modifier.fillMaxWidth())
-                    else EmptyPanel(tr(state.lang, "No upcoming fixtures", "مسابقه آینده‌ای موجود نیست"),
-                        tr(state.lang, "Upcoming fixtures load from the live catalogue.",
-                            "مسابقات آینده از فهرست واقعی دریافت می‌شوند.")) {
+                    else EmptyPanel(tr(state.lang,
+                        if (state.upcomingError) "Upcoming feed unavailable"
+                            else "No upcoming fixtures",
+                        if (state.upcomingError) "فهرست آینده در دسترس نیست"
+                            else "مسابقه آینده‌ای موجود نیست"),
+                        tr(state.lang, if (state.upcomingError)
+                            "Provider feed is unavailable; please retry."
+                            else "Upcoming fixtures load from the live catalogue.",
+                            if (state.upcomingError)
+                            "منبع مسابقات در دسترس نیست؛ دوباره تلاش کنید."
+                            else "مسابقات آینده از فهرست واقعی دریافت می‌شوند.")) {
                         model.refreshUpcoming()
                     }
                 }
