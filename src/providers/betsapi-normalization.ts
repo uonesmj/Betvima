@@ -139,7 +139,10 @@ export function normalizeBetsapiOdds(
     const [sport, market] = marketId.split('_');
     if (sport !== String(identity.sportId) || !market) continue;
     const mapped = BASIC_KEYS[market];
-    if (!mapped || !Array.isArray(history)) continue;
+    // Only football full-time 1X2 is accepted into the money ledger in this
+    // rollout. Other sports and markets stay visible in the Bet365 explorer,
+    // but cannot be graded reliably with football-specific settlement rules.
+    if (identity.sportId !== 1 || marketId !== '1_1' || !mapped || !Array.isArray(history)) continue;
     // Newest first is documented but never trust array insertion ordering.
     const rows = history.filter(x => x && typeof x === 'object')
       .map(x => object(x)).sort((a, b) => (oddTimestamp(b.add_time) || 0) - (oddTimestamp(a.add_time) || 0));
