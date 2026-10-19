@@ -2,6 +2,7 @@ import { withErrorHandling, jsonOk, ApiError } from '@/lib/errors';
 import { withAffiliate } from '@/server/http/guard';
 import { intParam, searchParams } from '@/server/http/request';
 import { referralDateRange } from '@/lib/affiliate/referral-date-range';
+import { pgArray } from '@/server/db';
 
 export const dynamic = 'force-dynamic';
 
@@ -155,7 +156,7 @@ export const GET = withErrorHandling('affiliate.referrals', async (ctx, request:
 
   const ids = pageRows.map(row => row.user_id);
   const [lifetimeMoney, registeredPageCount] = await Promise.all([
-    ids.length ? services.db.query<MoneyRow>(moneySql,[affiliate.id,null,null,timezone,ids]) : Promise.resolve([]),
+    ids.length ? services.db.query<MoneyRow>(moneySql,[affiliate.id,null,null,timezone,pgArray(ids)]) : Promise.resolve([]),
     registeredOnly ? services.db.queryOne<{total:string}>(`
       select count(*)::text total from nova.affiliate_attributions
       where affiliate_id=$1 and (created_at at time zone $2)::date between $3::date and $4::date
