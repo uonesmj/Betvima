@@ -106,7 +106,10 @@ export async function attachCanonicalWagers(
         'and mk.is_live = $3 and s.is_live = $3',
         "and m.status::text = $4",
         'and ($3::boolean or m.scheduled_at > now())',
+        // Source observation age is independently verified from ingestion age.
+        "and m.provider_updated_at > now() - interval '4 minutes'",
         "and s.odds_updated_at > now() - case when $3::boolean then interval '45 seconds' else interval '300 seconds' end",
+        "and s.provider_timestamp between now() - case when $3::boolean then interval '45 seconds' else interval '300 seconds' end and now() + interval '15 seconds'",
         'and s.odds_version > 0 and s.odds_scaled >= 10100',
         'order by s.odds_updated_at desc',
       ].join(' '),
