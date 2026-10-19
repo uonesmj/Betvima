@@ -153,7 +153,7 @@ fun PremiumAffiliateSheet(state: AppState, model: AppViewModel, onClose: () -> U
                             partnerNavRevision++
                         })
                 } else {
-                    AffiliateShowcase78(lang,onRegister=openRegister,onLogin=openLogin)
+                    AffiliateShowcase119(lang,onRegister=openRegister,onLogin=openLogin)
                 }
             }
         }
