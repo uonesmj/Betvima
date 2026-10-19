@@ -46,8 +46,8 @@ describe('BetsAPI bookmaker freshness and suspension policy', () => {
     odds: { '1_1': [{ id: 'quote', add_time: String(addTime), ...prices }] },
   });
   const price = { home_od: '2.100', draw_od: '3.100', away_od: '3.200' };
-  it('does not repeat a historical quote or treat an upstream check as a new price', () => {
-    expect(normalizeBetsapiOdds('1:4140581', quote(now - 120, now, price), at, true).markets).toEqual([]);
+  it('accepts rechecked unchanged quotes but rejects stale market checks', () => {
+    expect(normalizeBetsapiOdds('1:4140581', quote(now - 120, now, price), at, true).markets).toHaveLength(1);
     expect(normalizeBetsapiOdds('1:4140581', quote(now, now - 120, price), at, true).markets).toEqual([]);
     expect(normalizeBetsapiOdds('1:4140581', quote(now + 50, now + 50, price), at, true).markets).toEqual([]);
     expect(normalizeBetsapiOdds('1:4140581', quote(now - 20, now - 20, price), at, true).markets[0])
