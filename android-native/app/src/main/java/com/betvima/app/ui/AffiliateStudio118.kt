@@ -241,6 +241,7 @@ internal fun AffiliateStudio118(
                                         onManage={onNavigate("links")})
                                     StudioAffiliateApp120(state.lang,
                                         partner?.str("code").orEmpty(),
+                                        approved=partner?.str("status")=="approved",
                                         onDownload={ url ->
                                             context.startActivity(Intent(Intent.ACTION_VIEW,Uri.parse(url))
                                                 .addCategory(Intent.CATEGORY_BROWSABLE))
@@ -320,6 +321,7 @@ internal fun AffiliateStudio118(
                                     if(current=="links") {
                                         StudioAffiliateApp120(state.lang,
                                             partner?.str("code").orEmpty(),
+                                        approved=partner?.str("status")=="approved",
                                             onDownload={ url ->
                                                 context.startActivity(Intent(Intent.ACTION_VIEW,Uri.parse(url))
                                                     .addCategory(Intent.CATEGORY_BROWSABLE))
@@ -653,11 +655,12 @@ private fun StudioEmpty118(lang: Lang) {
 private fun StudioAffiliateApp120(
     lang: Lang,
     partnerCode: String,
+    approved: Boolean,
     onDownload: (String) -> Unit,
     onShare: (String) -> Unit
 ) {
     val code = partnerCode.trim().uppercase(java.util.Locale.ROOT)
-    val allowed = Regex("^[A-Z0-9_-]{3,64}$").matches(code)
+    val allowed = approved && Regex("^[A-Z0-9_-]{3,64}$").matches(code)
     val url = if(allowed) "https://betvima.com/app/affiliate/$code" else ""
     Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp))
         .background(Brush.horizontalGradient(listOf(sNight,Color(0xFF153C29))))
@@ -696,8 +699,8 @@ private fun StudioAffiliateApp120(
                 Text(tr(lang,"Share link","اشتراک لینک"),color=sGreen,fontSize=12.sp)
             }
         }
-        if(!allowed) Text(tr(lang,"Your approved affiliate code is not available yet.",
-            "کد همکاری تأییدشده شما هنوز آماده نیست."),
+        if(!allowed) Text(tr(lang,"Your affiliate account must be approved before a partner APK can be downloaded.",
+            "برای دریافت APK اختصاصی باید حساب همکاری شما تأیید شده باشد."),
             color=Color(0xFFFFD68D),fontSize=11.sp)
     }
 }
