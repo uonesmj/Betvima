@@ -10,8 +10,8 @@ android {
         applicationId = "com.betvima.app"
         minSdk = 26
         targetSdk = 35
-        versionCode = 117
-        versionName = "0.117.0"
+        versionCode = 118
+        versionName = "0.118.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         buildConfigField("String", "API_BASE_URL", "\"https://betvima.com/\"")
         // Server-owned wagering switches are read at runtime. No bundled
