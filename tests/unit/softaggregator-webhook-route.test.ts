@@ -25,9 +25,16 @@ function signedCallback(params: Record<string, string>, mutateSignature = false)
   });
   const canonical = new URLSearchParams([...fields.entries()]
     .sort(([nameA], [nameB]) => nameA < nameB ? -1 : nameA > nameB ? 1 : 0)).toString();
-  const signature = createHmac('sha256', EDGE_SECRET).update(canonical).digest('hex');
+  const edgeSignature = createHmac('sha256', EDGE_SECRET).update(canonical).digest('hex');
+  const vendorCanonical = [...fields.entries()]
+    .sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0)
+    .map(([name, value]) => name + '=' + value).join('&');
+  const supplierSignature = createHmac('sha256', SALT).update(vendorCanonical).digest('hex');
   return new Request('https://betvima.com/api/webhooks/softaggregator?' + fields.toString(), {
-    method: 'GET', headers: { 'x-signature': mutateSignature ? '0'.repeat(64) : signature },
+    method: 'GET', headers: {
+      'x-signature': mutateSignature ? '0'.repeat(64) : supplierSignature,
+      'x-betvima-edge-signature': edgeSignature,
+    },
   });
 }
 
@@ -58,6 +65,30 @@ describe('SoftAggregator signed HTTP wallet webhook — no actual funds', () => 
       round_id: 'round-1', game_id: 'provider/game',
     }, true);
     const response = await GET(request);
+    expect(await response.json()).toEqual({ error: 2, balance: 0 });
+    expect(settleCasinoCallback).not.toHaveBeenCalled();
+  });
+
+  it('rejects missing native provider signature even with a valid edge HMAC', async () => {
+    const req = signedCallback({
+      action: 'debit', call_id: 'no-provider-proof', amount: '250',
+      round_id: 'round-1', game_id: 'provider/game',
+    });
+    const headers = new Headers(req.headers);
+    headers.delete('x-signature');
+    const response = await GET(new Request(req, { headers }));
+    expect(await response.json()).toEqual({ error: 2, balance: 0 });
+    expect(settleCasinoCallback).not.toHaveBeenCalled();
+  });
+
+  it('rejects an invalid edge signature even when the supplier HMAC is valid', async () => {
+    const req = signedCallback({
+      action: 'debit', call_id: 'no-edge-proof', amount: '250',
+      round_id: 'round-1', game_id: 'provider/game',
+    });
+    const headers = new Headers(req.headers);
+    headers.set('x-betvima-edge-signature', '0'.repeat(64));
+    const response = await GET(new Request(req, { headers }));
     expect(await response.json()).toEqual({ error: 2, balance: 0 });
     expect(settleCasinoCallback).not.toHaveBeenCalled();
   });
