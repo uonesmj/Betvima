@@ -6,6 +6,7 @@ import { useApp } from '@/components/layout/providers';
 import { LeagueLogo, TeamLogo } from '@/components/ui/logo';
 import { sportByKey } from '@/lib/betsapi-sports-map';
 import { LiveMatchPulseBoard } from '@/components/betsapi/betsapi-live-activity';
+import { VerifiedClockText } from '@/components/betsapi/verified-clock';
 import type { MatchView } from '@/components/betting/match-card';
 import type { MatchLiveFacts, MatchBackground, MatchEventItem } from '@/providers/betsapi-match-facts';
 
@@ -118,7 +119,10 @@ export function BetsApiMatchOverview({fixture,fi,sportKey,mode,initial}:{
           </div>
           <span className={'rounded-lg px-2 py-1 text-xs font-bold '+(mode==='live'?'bg-pink-50 text-pink-700':'bg-emerald-50 text-emerald-700')}>
             {mode==='live'?(fa?'زنده':'LIVE'):(fa?'آینده':'UPCOMING')}
-            {mode==='live'&&minute!=null?' '+minute+'′':''}
+            {mode==='live'&&<> <VerifiedClockText source={stats?.clockSeconds != null ?
+              {clockSeconds:stats.clockSeconds,clockRunning:stats.clockRunning,
+               clockObservedAt:stats.updatedAt,minute:stats.minute} : fixture}
+              fallback={minute!=null?minute+'′':'—'}/></>}
           </span>
         </div>
         <div className="grid grid-cols-[minmax(0,1fr)_88px_minmax(0,1fr)] items-center gap-1 px-3 py-5">
