@@ -15,7 +15,7 @@ export async function GET() {
   // Fail closed on database/configuration errors. This does not grant a user
   // permission to bet: the authenticated placement endpoint validates that.
   let wageringEnabled = false;
-  if (env.supabaseConfigured && env.configurationComplete) {
+  if (env.supabaseConfigured && env.configurationComplete && env.sportsProviderEnabled) {
     try {
       wageringEnabled = isMobileWageringAvailable(await createServices().admin.operations());
     } catch {
