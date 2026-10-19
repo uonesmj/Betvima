@@ -22,7 +22,7 @@ export const GET = withErrorHandling('ref.landing', async (ctx, request: Request
   const affiliate = await services.affiliate.getByCode(code.toUpperCase());
   const url = new URL(request.url);
   const redirectTo = url.searchParams.get('to') ?? '/';
-  if (!affiliate) {
+  if (!affiliate || affiliate.status !== 'approved') {
     return NextResponse.json({ ok: false, error: { code: 'INVALID_REFERRAL_CODE', message: 'Referral code not found', messageKey: 'errors.INVALID_REFERRAL_CODE' } }, { status: 404 });
   }
   const ipHash = hashSignal(clientIpFromHeaders(request.headers) ?? 'unknown');
