@@ -49,7 +49,7 @@ export function betsApiLiveMinute(value: unknown, nowMs = Date.now()): number | 
     if (updated !== null) {
       const elapsed = Math.floor((nowMs-updated)/1000);
       // Ignore stale or future update stamps instead of fabricating a clock.
-      if (elapsed >= 0 && elapsed <= 600) extraSeconds = elapsed;
+      if (elapsed >= 0 && elapsed <= 70 * 60) extraSeconds = elapsed;
     }
   }
   const result = Math.floor((minute*60+(seconds??0)+extraSeconds)/60);
@@ -59,7 +59,9 @@ export function betsApiLiveMinute(value: unknown, nowMs = Date.now()): number | 
 
 /**
  * A client may run its own short-lived clock ONLY when Bet365 confirms TT=1
- * and a recent TU. A provider pause or absent TU means a frozen display.
+ * and a plausible TU for the current playing period. TU can mark the start
+ * of a half and can legitimately be over 45 minutes old. Never freeze at 120s.
+ * A provider pause or absent TU means a frozen display.
  * This never converts fixture kickoff time to an invented playing minute.
  */
 export function betsApiLiveClock(value: unknown, nowMs = Date.now()): {
@@ -74,7 +76,7 @@ export function betsApiLiveClock(value: unknown, nowMs = Date.now()): {
   const timestamp = londonTimestamp(timer.tu ?? timer.TU);
   const age = timestamp === null ? null : Math.floor((nowMs - timestamp) / 1000);
   const clockRunning = string(timer.tt ?? timer.TT) === '1' &&
-    age !== null && age >= 0 && age <= 120;
+    age !== null && age >= 0 && age <= 70 * 60;
   const clockSeconds = tm * 60 + ts + (clockRunning ? age! : 0);
   return {
     minute: Math.floor(clockSeconds / 60),
