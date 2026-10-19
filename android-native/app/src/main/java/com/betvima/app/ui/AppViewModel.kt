@@ -310,6 +310,11 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                         liveFacts = facts,
                         detail = old?.copy(
                             minute = facts.minute ?: old.minute,
+                            clockSeconds = facts.clockSeconds ?: old.clockSeconds,
+                            clockRunning = if (facts.clockSeconds != null) facts.clockRunning
+                                else old.clockRunning,
+                            clockObservedAt = if (facts.clockSeconds != null)
+                                facts.observedAt else old.clockObservedAt,
                             homeScore = facts.score?.substringBefore('-')?.toIntOrNull()
                                 ?: old.homeScore,
                             awayScore = facts.score?.substringAfter('-')?.toIntOrNull()
