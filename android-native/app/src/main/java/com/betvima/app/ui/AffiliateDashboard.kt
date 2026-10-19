@@ -3,6 +3,7 @@ package com.betvima.app.ui
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -12,6 +13,9 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import android.content.Intent
@@ -37,13 +41,19 @@ data class GiftCode(val code: String, val uses: Int, val active: Boolean)
  * Commissions and financial state are never computed on-device.
  */
 @Composable
-fun AffiliateDashboard(state: AppState, model: AppViewModel) {
+fun AffiliateDashboard(
+    state: AppState, model: AppViewModel,
+    navigationKey: String = "overview",
+    navigationRevision: Int = 0,
+    onNavigate: (String) -> Unit = {}
+) {
     val context = LocalContext.current
     val api = remember { ApiClient() }
     val vault = remember { SessionVault(context, "affiliate") }
     val scope = rememberCoroutineScope()
     val clipboard = LocalClipboardManager.current
     val uri = LocalUriHandler.current
+    val listState = rememberLazyListState()
 
     var affiliateAuthenticated by remember { mutableStateOf(vault.signedIn()) }
     var selectedDays by remember { mutableIntStateOf(7) }
@@ -101,14 +111,27 @@ fun AffiliateDashboard(state: AppState, model: AppViewModel) {
             link = ""; gifts = emptyList(); error = null
         }
     }
+    LaunchedEffect(navigationRevision, partner) {
+        if (navigationRevision > 0 && partner != null) {
+            val extras = (if (busy) 1 else 0) + (if (error != null) 1 else 0)
+            val target = when(navigationKey) {
+                "overview" -> 1 + extras
+                "gifts" -> 11 + extras
+                else -> 10 + extras
+            }
+            listState.animateScrollToItem(target)
+        }
+    }
     LazyColumn(
+        state = listState,
         modifier = Modifier.fillMaxSize().background(affiliateCanvas),
         contentPadding = PaddingValues(start = 14.dp,end = 14.dp,top = 14.dp,bottom = 28.dp),
         verticalArrangement = Arrangement.spacedBy(13.dp),
         flingBehavior = rememberPremiumFlingBehavior()
     ) {
         item(key = "affiliate-hero") {
-            AffiliateHeroBanner(state.lang, authenticated = affiliateAuthenticated)
+            if (affiliateAuthenticated) AffiliateDashboardHero117(state.lang)
+            else AffiliateHeroBanner(state.lang, authenticated = false)
         }
         if (!affiliateAuthenticated) item(key="affiliate-authentication") {
             AffiliateAccessPanel(state.lang, api, vault) {
@@ -176,10 +199,10 @@ fun AffiliateDashboard(state: AppState, model: AppViewModel) {
                             Surface(modifier=Modifier.weight(1f)
                                 .clickable { selectedDays=days },
                                 shape=RoundedCornerShape(12.dp),
-                                color=if(on)affiliateBlue else Color.White,
+                                color=if(on)affiliateInk else Color.White,
                                 border=BorderStroke(1.dp,
-                                    if(on)affiliateBlue else affiliateOutline)) {
-                                Box(Modifier.padding(vertical=11.dp),
+                                    if(on)affiliateInk else affiliateOutline)) {
+                                Box(Modifier.padding(vertical=13.dp),
                                     contentAlignment=Alignment.Center) {
                                     Text(if(days==1)tr(state.lang,"Today","امروز")
                                         else tr(state.lang,"$days days","$days روز"),
@@ -190,8 +213,22 @@ fun AffiliateDashboard(state: AppState, model: AppViewModel) {
                         }
                     }
                 }
+                item(key="affiliate-shortcuts") {
+                    Row(Modifier.fillMaxWidth(),
+                        horizontalArrangement=Arrangement.spacedBy(8.dp)) {
+                        AffiliateShortcut117(Modifier.weight(1f),Icons.Default.Groups,
+                            tr(state.lang,"Referrals","زیرمجموعه‌ها"),affiliateBlue
+                        ) { onNavigate("referrals") }
+                        AffiliateShortcut117(Modifier.weight(1f),Icons.Default.Payments,
+                            tr(state.lang,"Payouts","برداشت‌ها"),affiliatePink
+                        ) { onNavigate("payouts") }
+                        AffiliateShortcut117(Modifier.weight(1f),Icons.Default.Link,
+                            tr(state.lang,"Links","لینک‌ها"),Color(0xFF6558D9)
+                        ) { onNavigate("links") }
+                    }
+                }
                 item(key="affiliate-primary") {
-                    Surface(color = affiliateInk, shape = RoundedCornerShape(23.dp)) {
+                    Surface(color = affiliateInk, shape = RoundedCornerShape(22.dp),shadowElevation=4.dp) {
                         Column(Modifier.padding(21.dp)) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Icon(Icons.Default.Hub, null, tint = Color(0xFF95D6FF))
@@ -322,7 +359,10 @@ fun AffiliateDashboard(state: AppState, model: AppViewModel) {
                 item(key = "native-affiliate-operations") {
                     AffiliateOperations(state, model,
                         partner?.str("currency", "USD") ?: "USD",
-                        partner?.str("minPayoutMinor", "0") ?: "0")
+                        partner?.str("minPayoutMinor", "0") ?: "0",
+                        requestedTab=if(navigationKey in listOf("referrals","ledger","payouts","links","wallets"))
+                            navigationKey else "referrals",
+                        navigationRevision=navigationRevision)
                 }
                 item {
                     SectionHeading(tr(state.lang, "Registration gift codes", "کدهای هدیه ثبت‌نام"),
