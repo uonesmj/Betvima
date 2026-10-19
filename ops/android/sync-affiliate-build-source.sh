@@ -55,12 +55,47 @@ grep -Fq 'AFFILIATE_REFERRAL_CODE' "${src}/app/build.gradle.kts" \
 grep -Fq 'BETVIMA_ANDROID_KEYSTORE_PATH' "${src}/app/build.gradle.kts" \
   || fail 'signed_release_configuration_missing'
 
+# Use Gradle 8.10.2, the same version tested by Android CI.
+# If absent, install only after verifying the official binary SHA-256.
+if [[ ! -x /opt/gradle/bin/gradle && ! -x /opt/gradle-8.10.2/bin/gradle ]]; then
+  for tool in curl unzip sha256sum; do command -v "${tool}" >/dev/null || fail "missing_${tool}"; done
+  zip="${stage}/gradle-8.10.2-bin.zip"
+  curl --fail --location --silent --show-error --retry 2 \
+    --output "${zip}" 'https://services.gradle.org/distributions/gradle-8.10.2-bin.zip' \
+    || fail 'gradle_download_failed'
+  printf '%s  %s\n' \
+    '31c55713e40233a8303827ceb42ca48a47267a0ad4bab9177123121e71524c26' "${zip}" \
+    | sha256sum -c --status || fail 'gradle_checksum_mismatch'
+  mkdir -p /opt/betvima-gradle-distributions
+  unzip -q "${zip}" -d /opt/betvima-gradle-distributions || fail 'gradle_unpack_failed'
+  [[ -x /opt/betvima-gradle-distributions/gradle-8.10.2/bin/gradle ]] \
+    || fail 'gradle_distribution_incomplete'
+  if [[ ! -e /opt/gradle ]]; then
+    ln -s /opt/betvima-gradle-distributions/gradle-8.10.2 /opt/gradle
+  fi
+fi
+
+sdk=''
+for candidate in /usr/local/lib/android/sdk /opt/android-sdk /usr/lib/android-sdk /home/novaadmin/Android/Sdk; do
+  if [[ -d "${candidate}/platforms/android-35" && -x "${candidate}/build-tools/35.0.0/apksigner" ]]; then
+    sdk="${candidate}"; break
+  fi
+done
+[[ -n "${sdk}" ]] || fail 'android_sdk_35_and_apksigner_required'
+
 dest="${BASE}/${SHA}"
+if [[ -d "${dest}" && ! -f "${dest}/local.properties" ]]; then
+  printf 'sdk.dir=%s\n' "${sdk}" > "${dest}/local.properties"
+  chown "${OWNER}:${OWNER}" "${dest}/local.properties"
+  chmod 0600 "${dest}/local.properties"
+fi
+
 if [[ ! -d "${dest}" ]]; then
   mkdir -p "${stage}/source"
   rsync -a --exclude='.git' --exclude='.gradle' --exclude='build' \
     "${src}/" "${stage}/source/" || fail 'source_copy_failed'
   printf '%s\n' "${SHA}" > "${stage}/source/.betvima-native-commit"
+  printf 'sdk.dir=%s\n' "${sdk}" > "${stage}/source/local.properties"
   # The build account must be able to generate outputs without writing into
   # the web checkout or touching the existing signing keystore.
   chown -R "${OWNER}:${OWNER}" "${stage}/source"
