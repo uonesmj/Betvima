@@ -131,7 +131,10 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         detailRequestNumber++
         mutable.update { it.copy(tab = Tab.HOME, homeMode = mode, feature = Feature.NONE,
             detail = null, detailLoading = false) }
-        if (mode == HomeMode.TOP_BETS && state.value.upcoming.isEmpty()) refreshUpcoming()
+        // Recheck provider previews when the user opens Top Bets, even if an
+        // earlier feed contained only unpriced fixtures. Both LIVE and upcoming
+        // contribute to the market-variety ranking.
+        if (mode == HomeMode.TOP_BETS) refreshAll()
     }
     fun tab(tab: Tab) {
         detailRequestNumber++
