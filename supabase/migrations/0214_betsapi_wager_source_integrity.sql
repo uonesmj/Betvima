@@ -1,6 +1,6 @@
 -- Financial migration generated from the deployed function signatures on 2026-10-19.
 
--- Safe-by-default: changes provider timestamp validation and stale-odds reopening only.
+-- Safe-by-default: adds BetsAPI provider timestamp validation without removing the existing legacy live-source freshness gates; stale-odds reopening remains guarded.
 
 -- Does not toggle betting operations or debit any wallet. Legacy wager records remain untouched.
 
@@ -239,7 +239,13 @@ BEGIN
     IF v_sel.odds_updated_at IS NULL
        OR v_sel.odds_updated_at < v_now - make_interval(secs => v_max_age)
        OR (
-         v_sel.provider = 'betsapi'
+         (
+           v_sel.provider = 'betsapi'
+           OR (
+             (v_is_live OR v_sel.provider = '5dollarfootballapi')
+             AND v_sel.provider IN ('the_odds_api', '5dollarfootballapi')
+           )
+         )
          AND (
            v_sel.provider_timestamp IS NULL
            OR v_sel.provider_timestamp < v_now - make_interval(secs => v_max_age)
