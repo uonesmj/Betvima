@@ -539,14 +539,7 @@ class ApiClient {
         // sample: the six nearest fixtures and the highest provider-reported
         // market counts. The old "first 12 only" approach could miss every
         // high-variety fixture beyond page position 12, leaving Top Bets blank.
-        val maxPreviews = 12
-        val allIndices = matches.indices.toList()
-        val first = allIndices.take(6)
-        val mostMarkets = allIndices.sortedWith(
-            compareByDescending<Int> { matches[it].marketsCount }.thenBy { it }
-        ).take(maxPreviews)
-        val previewIndices = (first + mostMarkets + allIndices)
-            .distinct().take(maxPreviews)
+        val previewIndices = TopBetsRanking121.headlinePreviewIndices(matches)
         val headlines = supervisorScope {
             previewIndices.map { index -> async {
                 val ref = bet365Ref(matches[index].id)
