@@ -35,6 +35,23 @@ describe('BetsAPI trial live polling', () => {
     expect(BETSAPI_EXPLORATION_INTERVAL_MS).toBeGreaterThan(60_000);
   });
 
+  it('keeps a previously priced fixture fresh even as older price rows reorder', () => {
+    const ordered = [
+      { provider_id: '1:a', has_betsapi_market: true },
+      { provider_id: '1:b', has_betsapi_market: true },
+      { provider_id: '1:c', has_betsapi_market: false },
+    ];
+    expect(selectBetsapiLiveCandidates(ordered, 0, false, '1:b')).toEqual({
+      candidates: [ordered[1]], explored: false,
+    });
+    expect(selectBetsapiLiveCandidates(ordered, 0, true, '1:b')).toEqual({
+      candidates: [ordered[1], ordered[2]], explored: true,
+    });
+    expect(selectBetsapiLiveCandidates(ordered, 0, false, '1:gone')).toEqual({
+      candidates: [ordered[0]], explored: false,
+    });
+  });
+
   it('round-robins unpriced fixtures when nothing is priceable', () => {
     const rows = [
       { id: 'a', has_betsapi_market: false },

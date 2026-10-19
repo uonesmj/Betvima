@@ -9,6 +9,7 @@
  */
 export interface BetsapiLiveCandidate {
   has_betsapi_market: boolean;
+  provider_id?: string | null;
 }
 
 export const BETSAPI_EXPLORATION_INTERVAL_MS = 180_000;
@@ -31,12 +32,19 @@ export function selectBetsapiLiveCandidates<T extends BetsapiLiveCandidate>(
   ordered: readonly T[],
   explorationIndex: number,
   explorationDue: boolean,
+  preferredProviderId?: string | null,
 ): { candidates: T[]; explored: boolean } {
   const priced = ordered.filter(row => row.has_betsapi_market);
   const unpriced = ordered.filter(row => !row.has_betsapi_market);
   // Never skip repricing the known valid market when probing another event:
   // two upstream calls every three minutes still fit a 200/hr trial budget.
-  const candidates: T[] = priced.length ? [priced[0]!] : [];
+  // Stick to a live, already-priced event until it is no longer eligible.
+  // Sorting by oldest update otherwise rotates across all priced fixtures,
+  // guaranteeing that *none* remains fresh under a 200 calls/hour trial.
+  const preferred = preferredProviderId
+    ? priced.find(row => row.provider_id === preferredProviderId)
+    : undefined;
+  const candidates: T[] = priced.length ? [preferred ?? priced[0]!] : [];
   if (unpriced.length && (explorationDue || priced.length === 0)) {
     const index = ((explorationIndex % unpriced.length) + unpriced.length) % unpriced.length;
     candidates.push(unpriced[index]!);

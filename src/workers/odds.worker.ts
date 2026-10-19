@@ -77,7 +77,11 @@ const BETSAPI_LIVE_POLL_INTERVAL_MS = betsapiLivePollIntervalMs(
   process.env.BETSAPI_HOURLY_REQUEST_BUDGET,
 );
 let lastBetsapiExplorationAt = 0;
+let lastBetsapiPendingResultsAt = 0;
+// Keep trial result-poll requests well below the shared 200/hour allowance.
+const BETSAPI_PENDING_RESULTS_INTERVAL_MS = 60 * 60_000;
 let betsapiExplorationCursor = 0;
+let preferredBetsapiLiveProviderId: string | null = null;
 const EXTENDED_LIVE_ODDS_INTERVAL_MS = 5 * 60_000;
 const EXTENDED_ODDS_MAX_MATCHES_PER_CYCLE = extendedRefreshBudget(process.env.ODDS_API_EXTENDED_MAX_MATCHES_PER_CYCLE);
 // Result pagination shares the trial request budget with live prices.
@@ -897,6 +901,22 @@ async function runDedicatedLiveDiscovery(ctx: WorkerContext): Promise<void> {
 async function runDedicatedLiveTick(ctx: WorkerContext): Promise<void> {
   if (!env.sportsProviderEnabled) return;
 
+  // The legacy bulk worker owns a different provider and cannot settle BetsAPI.
+  // Only check authoritative ended snapshots for pending BetsAPI wagers.
+  // Never infer a match result from a missing in-play fixture.
+  if (env.SPORTS_PROVIDER === 'betsapi' &&
+      Date.now() - lastBetsapiPendingResultsAt >= BETSAPI_PENDING_RESULTS_INTERVAL_MS) {
+    lastBetsapiPendingResultsAt = Date.now();
+    void ctx.withLock('odds:betsapi-pending-results', 180, async () => {
+      const result = await reconcileLiveResults(ctx, true);
+      console.log('ODDS_BETSAPI_PENDING_RESULTS', JSON.stringify(result));
+    }).catch(error => {
+      console.error('ODDS_BETSAPI_PENDING_RESULTS_FAILED', JSON.stringify({
+        error: error instanceof Error ? error.message : String(error),
+      }));
+    });
+  }
+
   // The bulk worker already owns the full sports catalog. A separate live
   // price-only process must not queue hundreds of cross-sport discovery API
   // requests ahead of its 5-second priority odds requests.
@@ -955,7 +975,10 @@ async function runDedicatedLiveTick(ctx: WorkerContext): Promise<void> {
             pending,
             betsapiExplorationCursor,
             now - lastBetsapiExplorationAt >= BETSAPI_EXPLORATION_INTERVAL_MS,
+            preferredBetsapiLiveProviderId,
           );
+          const activePriced = selection.candidates.find(row => row.has_betsapi_market);
+          preferredBetsapiLiveProviderId = activePriced?.provider_id ?? null;
           if (selection.explored) {
             betsapiExplorationCursor++;
             lastBetsapiExplorationAt = now;
@@ -1065,13 +1088,14 @@ function normalizeLiveTeamName(value: string): string {
     .replace(/\s+/g, ' ');
 }
 
-async function reconcileLiveResults(ctx: WorkerContext): Promise<{ checked: number; finished: number; liveUpdated: number; failed: number }> {
+async function reconcileLiveResults(ctx: WorkerContext, onlyPendingBetsapi = false): Promise<{ checked: number; finished: number; liveUpdated: number; failed: number }> {
   const providers = (
     ctx.services.providers.sportsProviders?.length
       ? ctx.services.providers.sportsProviders
       : [ctx.services.providers.sports]
   ).filter((provider, index, all) =>
     provider.name === MATCH_SOURCE_ODDS && provider.configured &&
+    (!onlyPendingBetsapi || provider.name === 'betsapi') &&
     all.findIndex((item) => item.name === provider.name) === index
   );
 
@@ -1100,6 +1124,16 @@ async function reconcileLiveResults(ctx: WorkerContext): Promise<{ checked: numb
               and scheduled_at >= now() - interval '24 hours'
             )
           )
+          and (not $3::boolean or (
+            (scheduled_at <= now() - interval '75 minutes'
+              or provider_updated_at < now() - interval '10 minutes')
+            and exists (
+              select 1 from nova.bet_legs bl
+              join nova.bets b on b.id = bl.bet_id
+              where bl.match_id = nova.matches.id and bl.settled_at is null
+                and b.status::text in ('accepted', 'partially_settled', 'manual_review')
+            )
+          ))
         order by
           case when $1 = 'betsapi' and exists (
             select 1 from nova.bet_legs bl
@@ -1108,7 +1142,7 @@ async function reconcileLiveResults(ctx: WorkerContext): Promise<{ checked: numb
           case when status::text = any($2::text[]) then 0 else 1 end,
           scheduled_at desc
         limit (case when $1 = 'betsapi' then 12 else 200 end)`,
-      [sourceProvider.name, pgArray(LIVE_MATCH_STATUSES)],
+      [sourceProvider.name, pgArray(LIVE_MATCH_STATUSES), onlyPendingBetsapi],
     );
     checked += rows.length;
     if (rows.length === 0) continue;

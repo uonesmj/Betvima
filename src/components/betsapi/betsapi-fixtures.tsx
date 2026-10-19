@@ -6,6 +6,7 @@ import { useApp } from '@/components/layout/providers';
 import { BETSAPI_SPORTS, type BetsMode } from '@/lib/betsapi-sports-map';
 import Link from 'next/link';
 import { BetsApiLeaguePicker } from '@/components/betsapi/betsapi-league-picker';
+import { BetsApiCanonicalLivePrices } from '@/components/betsapi/betsapi-canonical-live-prices';
 
 type Listing = { matches: MatchView[]; total: number | null; pageCount: number | null;
   error: string | null; sportKey: string; page: number };
@@ -56,6 +57,7 @@ export function BetsApiFixtures({ mode, initialSport = 'football' }: { mode: Bet
       {locale === 'fa' ? 'مسابقات هر ۱۰ ثانیه بررسی می‌شوند؛ تغییر ضریب بسته به محدودیت API است.' :
         'Fixtures checked every 10s · prices refresh according to provider quota.'}
     </p>}
+    {mode === 'live' && sport === 'football' && <BetsApiCanonicalLivePrices />}
     {loading && !listing && <p className="py-8 text-center text-sm text-slate-500">{locale === 'fa' ? 'در حال بارگذاری مسابقات…' : 'Loading fixtures…'}</p>}
     {message && <p role="alert" className="rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">{message}</p>}
     {listing?.error && <p role="alert" className="rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">{locale === 'fa' ? 'خطا در منبع مسابقات' : 'Sports feed unavailable'}: {listing.error}</p>}
@@ -71,7 +73,7 @@ export function BetsApiFixtures({ mode, initialSport = 'football' }: { mode: Bet
         <button type="button" disabled={loading || items.length === 0 || !!listing.pageCount && page >= listing.pageCount} onClick={() => setPage(p => p+1)} className="rounded-lg border bg-white px-4 py-2 disabled:opacity-40">Next</button>
       </div>}
     </>}
-    <p className="text-xs text-slate-500">{locale === 'fa' ? 'مسابقات BetsAPI در حال بررسی هستند؛ ثبت شرط با این منبع تا زمان تأیید اتصال مالی غیرفعال است.' : 'BetsAPI matches are displayed for verification. Wagers are disabled until their financial settlement integration is validated.'}</p>
+    <p className="text-xs text-slate-500">{locale === 'fa' ? 'فقط ضرایب تازه و تأییدشده در بخش «ضرایب زنده قابل انتخاب» یا جزئیات مسابقه قابل شرط هستند؛ سایر ضرایب صرفاً نمایشی‌اند.' : 'Only current, verified odds can be selected in the live betting section or match details. Other offers are for viewing only.'}</p>
     <Link href="/" className="text-xs font-semibold text-[#087FF5]">{locale === 'fa' ? 'صفحه اصلی' : 'Home'}</Link>
   </section>;
 }

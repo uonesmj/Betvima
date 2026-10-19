@@ -24,7 +24,10 @@ export type WagerableMarket = Omit<Bet365PreviewMarket, 'selections'> & {
 export const wagerFeedEnabled = (): boolean =>
   process.env.BETSAPI_WAGER_INGEST_ENABLED === 'true' &&
   process.env.BETSAPI_TRIAL_ENABLED === 'true' &&
-  process.env.SPORTS_PROVIDER === 'betsapi' &&
+  // The public web process may continue to use the legacy provider for
+  // unrelated services, while the independently supervised BetsAPI worker
+  // ingests canonical wager-grade quotes. Do not tie this explicit sportsbook
+  // feature switch to the unrelated web SPORTS_PROVIDER default.
   Boolean(process.env.BETSAPI_TRIAL_TOKEN?.trim());
 
 function normalized(value: string): string {
@@ -103,7 +106,10 @@ export async function attachCanonicalWagers(
         'and mk.is_live = $3 and s.is_live = $3',
         "and m.status::text = $4",
         'and ($3::boolean or m.scheduled_at > now())',
+        // Source observation age is independently verified from ingestion age.
+        "and m.provider_updated_at > now() - interval '4 minutes'",
         "and s.odds_updated_at > now() - case when $3::boolean then interval '45 seconds' else interval '300 seconds' end",
+        "and s.provider_timestamp between now() - case when $3::boolean then interval '45 seconds' else interval '300 seconds' end and now() + interval '15 seconds'",
         'and s.odds_version > 0 and s.odds_scaled >= 10100',
         'order by s.odds_updated_at desc',
       ].join(' '),
