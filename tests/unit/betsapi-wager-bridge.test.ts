@@ -75,8 +75,8 @@ describe('Bet365-to-Events wallet bridge', () => {
     });
     expect(result[0]?.selections[1]?.wager?.selectionId).toBe('s-draw-uuid');
     expect(result[0]?.selections[2]?.wager).toBeUndefined();
-    const sql = state.query.mock.calls[0][0] as string;
-    const params = state.query.mock.calls[0][1] as unknown[];
+    const sql = state.query.mock.calls[0]![0] as string;
+    const params = state.query.mock.calls[0]![1] as unknown[];
     expect(params).toEqual(['betsapi', '1:4140581', true, 'live']);
     expect(sql).toContain("m.provider = $1");
     expect(sql).toContain("s.odds_updated_at > now()");
