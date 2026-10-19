@@ -11,7 +11,7 @@ import { CURRENT_LIVE_FIXTURE_SQL } from '@/lib/odds/live-fixture-recency';
 
 // Never expose discontinued external fixtures in live discovery.
 // Historical rows and financial settlement records remain unchanged.
-const ODDS_ONLY_MATCH_SQL = "m.provider = 'the_odds_api'";
+const ODDS_ONLY_MATCH_SQL = "m.provider = 'betsapi'";
 
 const SPORT_KEYS: SportKey[] = [
   'football',
@@ -166,7 +166,7 @@ export class PostgresCatalogRepository implements CatalogRepository {
                 select count(*)
                   from nova.matches mc
                  where mc.league_id = l.id
-                   and mc.provider = 'the_odds_api'
+                   and mc.provider = 'betsapi'
                    and mc.status::text = 'scheduled'
                    and mc.scheduled_at >= now()
               ) as match_count
@@ -271,7 +271,7 @@ export class PostgresCatalogRepository implements CatalogRepository {
     const rows = await this.db.query<Row>(
       `select * from nova.markets
         where match_id = $1
-          and provider = 'the_odds_api'
+          and provider = 'betsapi'
           and ($2::boolean is null or is_live = $2)
           and status <> 'manual_review'
           and ($3::boolean or status <> 'closed')
@@ -286,7 +286,7 @@ export class PostgresCatalogRepository implements CatalogRepository {
          join nova.markets mk on mk.id = sel.market_id
          join nova.matches fixture on fixture.id = mk.match_id
         where sel.market_id = any($1::uuid[])
-          and sel.provider = 'the_odds_api'
+          and sel.provider = 'betsapi'
           and sel.odds_updated_at is not null
           and sel.odds_updated_at >= now() - case
             when coalesce(mk.is_live, false) or fixture.status::text = any($2::text[])
@@ -342,9 +342,9 @@ export class PostgresCatalogRepository implements CatalogRepository {
          left join nova.teams ht on ht.id = m.home_team_id
          left join nova.teams at on at.id = m.away_team_id
         where sel.match_id = $1 and sel.id = any($2::uuid[])
-          and sel.provider = 'the_odds_api'
-          and mk.provider = 'the_odds_api'
-          and m.provider = 'the_odds_api'`,
+          and sel.provider = 'betsapi'
+          and mk.provider = 'betsapi'
+          and m.provider = 'betsapi'`,
       [matchId, pgArray(selectionIds)],
     );
     return rows.map((r) => ({
@@ -371,7 +371,7 @@ export class PostgresCatalogRepository implements CatalogRepository {
     const row = await this.db.queryOne<Row>(
       `select provider, updated_at, payload
          from nova.match_stats
-        where match_id = $1 and provider = 'the_odds_api'
+        where match_id = $1 and provider = 'betsapi'
         order by updated_at desc
         limit 1`,
       [matchId],
@@ -461,7 +461,7 @@ export class PostgresCatalogRepository implements CatalogRepository {
              where mk.match_id = m.id
                and mk.status = 'open'
                and sel.status = 'open'
-               and sel.provider = 'the_odds_api'
+               and sel.provider = 'betsapi'
                and sel.odds_updated_at >= now() - interval '300 seconds'
           )
         order by m.scheduled_at asc
@@ -547,7 +547,7 @@ export class PostgresCatalogRepository implements CatalogRepository {
         left join nova.selections sel
           on sel.market_id = mk.id
          and sel.status = 'open'
-         and sel.provider = 'the_odds_api'
+         and sel.provider = 'betsapi'
          and sel.odds_updated_at is not null
          and sel.odds_updated_at >= now() - mk.maximum_quote_age
          and (
