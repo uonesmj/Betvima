@@ -55,8 +55,12 @@ internal fun bet365PricesPath(ref: Bet365Ref, headline: Boolean = false): String
  * This prevents restoring retired Odds API games from legacy endpoints.
  */
 internal fun parseBet365Catalogue(data: JSONObject): List<Match> {
-    if (data.str("source") != BET365_SOURCE || data.str("error").isNotBlank())
-        throw ApiFailure(503, "Bet365 fixture feed unavailable")
+    val source = data.str("source")
+    val error = data.str("error").takeIf { it.matches(Regex("[A-Z_]{3,40}")) }
+    if (source != BET365_SOURCE || error != null)
+        throw ApiFailure(503,
+            if (error != null) "BetsAPI feed: $error"
+            else "Bet365 fixture feed unavailable")
     return data.arr("matches").objects().mapNotNull { json ->
         val id = json.str("id")
         if (bet365Ref(id) == null) return@mapNotNull null
