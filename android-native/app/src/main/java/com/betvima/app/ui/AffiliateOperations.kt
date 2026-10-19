@@ -29,6 +29,9 @@ import org.json.JSONObject
 import java.math.BigDecimal
 import java.math.RoundingMode
 import java.util.UUID
+import java.time.LocalDate
+import java.time.ZoneId
+import java.net.URLEncoder
 
 /** Mirrors the native site's authenticated partner reporting, without invented financial figures. */
 @Composable
@@ -36,7 +39,8 @@ fun AffiliateOperations(state: AppState, model: AppViewModel, currency: String,
     minimumPayoutMinor: String = "0",
     requestedTab: String = "referrals",
     navigationRevision: Int = 0,
-    showNavigation: Boolean = true) {
+    showNavigation: Boolean = true,
+    reportTimezone: String = "Asia/Tehran") {
     val context = LocalContext.current
     val api = remember { ApiClient() }
     val vault = remember { SessionVault(context, "affiliate") }
@@ -68,13 +72,35 @@ fun AffiliateOperations(state: AppState, model: AppViewModel, currency: String,
     var payoutConfirm by remember { mutableStateOf(false) }
     var availableWalletAssets by remember { mutableStateOf<Set<String>>(emptySet()) }
     var payoutKey by remember { mutableStateOf(UUID.randomUUID().toString()) }
+    var referralRange by rememberSaveable { mutableStateOf("7D") }
+    var customFrom by rememberSaveable { mutableStateOf("") }
+    var customTo by rememberSaveable { mutableStateOf("") }
+    var registeredOnly by rememberSaveable { mutableStateOf(false) }
+    val zone = remember(reportTimezone) {
+        runCatching { ZoneId.of(reportTimezone) }.getOrDefault(ZoneId.of("Asia/Tehran"))
+    }
+    val reportToday = LocalDate.now(zone)
+    val reportStart = when (referralRange) {
+        "TODAY" -> reportToday.toString()
+        "30D" -> reportToday.minusDays(29).toString()
+        "90D" -> reportToday.minusDays(89).toString()
+        "CUSTOM" -> customFrom.ifBlank { reportToday.minusDays(6).toString() }
+        else -> reportToday.minusDays(6).toString()
+    }
+    val reportEnd = if (referralRange == "CUSTOM") customTo.ifBlank {
+        reportToday.toString()
+    } else reportToday.toString()
+    val referralDateParams = "&from=" + URLEncoder.encode(reportStart, "UTF-8") +
+        "&to=" + URLEncoder.encode(reportEnd, "UTF-8") +
+        (if (registeredOnly) "&registeredOnly=true" else "")
 
-    LaunchedEffect(selected, page, refresh) {
+    LaunchedEffect(selected, page, refresh, referralDateParams) {
         busy = true; error = null
         try {
             val token = vault.accessToken(api) ?: throw IllegalStateException("Sign in required")
             val path = when (selected) {
-                "referrals" -> "/api/v1/affiliate/referrals?pageSize=20&page=" + page
+                "referrals" -> "/api/v1/affiliate/referrals?pageSize=20&page=" +
+                    page + referralDateParams
                 "ledger" -> "/api/v1/affiliate/ledger?pageSize=20&page=" + page
                 "payouts" -> "/api/v1/affiliate/payouts"
                 "links" -> "/api/v1/affiliate/links"
@@ -90,7 +116,9 @@ fun AffiliateOperations(state: AppState, model: AppViewModel, currency: String,
             }
             val source = if (selected == "links") "links" else "items"
             val next = response.arr(source).objects()
-            values = if (page == 1) next else (values + next).distinctBy { it.str("id", it.str("code")) }
+            values = if (page == 1) next else (values + next).distinctBy {
+                if(selected == "referrals") it.str("userId") else it.str("id",it.str("code"))
+            }
             more = selected in setOf("referrals", "ledger") &&
                 (response.optBoolean("hasMore", false) ||
                     (next.size == 20 && response.optInt("total", 0) > page * 20))
@@ -175,6 +203,14 @@ fun AffiliateOperations(state: AppState, model: AppViewModel, currency: String,
         if (busy) LinearProgressIndicator(Modifier.fillMaxWidth(), color = Palette.green)
         if (error != null) BvInformationStrip(error.orEmpty(), Icons.Default.WarningAmber,
             accent = Palette.red)
+        if (selected == "referrals" && error != null) {
+            OutlinedButton(onClick={refresh++},modifier=Modifier.fillMaxWidth(),
+                border=BorderStroke(1.dp,Palette.green)) {
+                Icon(Icons.Default.Refresh,null,modifier=Modifier.size(17.dp))
+                Spacer(Modifier.width(7.dp))
+                Text(tr(state.lang,"Retry loading referrals","تلاش دوباره برای دریافت زیرمجموعه‌ها"))
+            }
+        }
         if (actionError != null) BvInformationStrip(actionError.orEmpty(),
             Icons.Default.WarningAmber, accent = Palette.red)
         if (actionMessage != null) BvInformationStrip(actionMessage.orEmpty(),
@@ -182,6 +218,76 @@ fun AffiliateOperations(state: AppState, model: AppViewModel, currency: String,
         if (!busy || values.isNotEmpty()) {
             when(selected) {
                 "referrals" -> {
+                    Text(tr(state.lang,"Referral reporting","گزارش زیرمجموعه‌ها"),
+                        fontSize=19.sp,fontWeight=FontWeight.Black,color=affiliateInk)
+                    Text(tr(state.lang,
+                        "Real registration, deposit, withdrawal and commission records.",
+                        "آمار واقعی ثبت‌نام، واریز، برداشت و کمیسیون"),
+                        fontSize=11.sp,color=Palette.muted)
+                    Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                        horizontalArrangement=Arrangement.spacedBy(7.dp)) {
+                        listOf(
+                            "TODAY" to tr(state.lang,"Today","امروز"),
+                            "7D" to tr(state.lang,"7 days","۷ روز"),
+                            "30D" to tr(state.lang,"30 days","۳۰ روز"),
+                            "90D" to tr(state.lang,"90 days","۹۰ روز")
+                        ).forEach { (key,label) ->
+                            FilterChip(
+                                selected=referralRange==key,
+                                onClick={referralRange=key;page=1;values=emptyList();data=null},
+                                label={Text(label,fontSize=11.sp)},
+                                colors=FilterChipDefaults.filterChipColors(
+                                    selectedContainerColor=Color(0xFFC9F4DD),
+                                    selectedLabelColor=Color(0xFF08683D))
+                            )
+                        }
+                    }
+                    Row(horizontalArrangement=Arrangement.spacedBy(9.dp),
+                        verticalAlignment=Alignment.CenterVertically) {
+                        OutlinedButton(
+                            modifier=Modifier.weight(1f),
+                            onClick={
+                                val chosen=runCatching { LocalDate.parse(reportStart) }
+                                    .getOrDefault(reportToday)
+                                android.app.DatePickerDialog(context,
+                                    { _,year,month,day ->
+                                        customFrom=LocalDate.of(year,month+1,day).toString()
+                                        if(customTo.isBlank()||customTo<customFrom) customTo=customFrom
+                                        referralRange="CUSTOM";page=1;values=emptyList();data=null
+                                    },chosen.year,chosen.monthValue-1,chosen.dayOfMonth).show()
+                            },contentPadding=PaddingValues(horizontal=8.dp,vertical=10.dp)
+                        ) {
+                            Text(tr(state.lang,"From ","از ") + reportStart,
+                                fontSize=10.sp,maxLines=1)
+                        }
+                        OutlinedButton(
+                            modifier=Modifier.weight(1f),
+                            onClick={
+                                val chosen=runCatching { LocalDate.parse(reportEnd) }
+                                    .getOrDefault(reportToday)
+                                android.app.DatePickerDialog(context,
+                                    { _,year,month,day ->
+                                        customTo=LocalDate.of(year,month+1,day).toString()
+                                        if(customFrom.isBlank()||customFrom>customTo) customFrom=customTo
+                                        referralRange="CUSTOM";page=1;values=emptyList();data=null
+                                    },chosen.year,chosen.monthValue-1,chosen.dayOfMonth).show()
+                            },contentPadding=PaddingValues(horizontal=8.dp,vertical=10.dp)
+                        ) {
+                            Text(tr(state.lang,"To ","تا ") + reportEnd,
+                                fontSize=10.sp,maxLines=1)
+                        }
+                    }
+                    Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
+                        Text(tr(state.lang,"Registered in selected period only",
+                            "فقط ثبت‌نام‌های بازه انتخاب‌شده"),
+                            fontSize=11.sp,modifier=Modifier.weight(1f),
+                            color=affiliateInk)
+                        Switch(checked=registeredOnly,onCheckedChange={
+                            registeredOnly=it;page=1;values=emptyList();data=null
+                        },modifier=Modifier.height(28.dp))
+                    }
+                    Text(tr(state.lang,"Reporting time zone: ","منطقه زمانی گزارش: ") +
+                        zone.id,color=Palette.muted,fontSize=10.sp)
                     val summary = data?.optJSONObject("statusCounts")
                     if (summary != null) {
                         Row(horizontalArrangement=Arrangement.spacedBy(8.dp)) {
@@ -197,15 +303,33 @@ fun AffiliateOperations(state: AppState, model: AppViewModel, currency: String,
                                 summary.optInt("confirmed").toString(),
                             color=affiliateInk,fontSize=12.sp,fontWeight=FontWeight.Bold
                         )
-                    } else {
+                    } else if (data != null) {
                         Text(tr(state.lang,"All referrals: ","کل زیرمجموعه‌ها: ") +
-                            (data?.optInt("total") ?: values.size),
+                            data!!.optInt("total"),
                             color=affiliateInk,fontSize=13.sp,
                             fontWeight=FontWeight.Bold)
                     }
-                    if (values.isEmpty() && !busy) PartnerEmpty(state.lang)
+                    if(data != null) {
+                        val period = data?.optJSONObject("periodSummary")
+                        BvStatCard(
+                            tr(state.lang,"Registrations in selected period",
+                                "ثبت‌نام در بازه انتخاب‌شده"),
+                            period?.optInt("registrations",0)?.toString() ?: "0",
+                            Icons.Default.PersonAdd,Palette.green)
+                        val periodCurrencies = period?.arr("byCurrency")?.objects() ?: emptyList()
+                        if(periodCurrencies.isEmpty()) {
+                            Text(tr(state.lang,"No recorded deposits, withdrawals or settlements in this period.",
+                                "در این دوره واریز، برداشت یا تسویه‌ای ثبت نشده است."),
+                                color=Palette.muted,fontSize=11.sp)
+                        }
+                        periodCurrencies.forEach { c ->
+                            AffiliateReferralPeriodSummary124(c,state.lang)
+                        }
+                    }
+                    if (values.isEmpty() && !busy && error == null && data != null)
+                        PartnerEmpty(state.lang)
                     values.forEach { row ->
-                        AffiliateReferralCard122(row, state.lang)
+                        AffiliateReferralCard122(row, state.lang,zone.id)
                     }
                 }
                 "ledger" -> {
