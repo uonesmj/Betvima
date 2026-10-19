@@ -26,6 +26,8 @@ import { confirmedExistingLiveFixtureIds } from './betsapi-live-recency';
 import {
   betsapiLivePollIntervalMs,
   BETSAPI_EXPLORATION_INTERVAL_MS,
+  BETSAPI_EMPTY_PRICE_ROTATE_AFTER,
+  betsapiNoQuoteProbe,
   selectBetsapiLiveCandidates,
 } from './betsapi-live-trial-budget';
 import { LIVE_MATCH_STATUSES } from '@/lib/match-state';
@@ -82,6 +84,33 @@ let lastBetsapiPendingResultsAt = 0;
 const BETSAPI_PENDING_RESULTS_INTERVAL_MS = 60 * 60_000;
 let betsapiExplorationCursor = 0;
 let preferredBetsapiLiveProviderId: string | null = null;
+const betsapiEmptyQuoteStreak = new Map<string, number>();
+const betsapiNoQuoteCooldown = new Map<string, number>();
+
+function observeBetsapiLiveQuote(providerId: string, updated: number, schemaInvalid = false): void {
+  const previous = schemaInvalid
+    ? BETSAPI_EMPTY_PRICE_ROTATE_AFTER - 1
+    : betsapiEmptyQuoteStreak.get(providerId) ?? 0;
+  const next = betsapiNoQuoteProbe(previous, updated, Date.now());
+  if (updated > 0) {
+    betsapiEmptyQuoteStreak.delete(providerId);
+    betsapiNoQuoteCooldown.delete(providerId);
+    preferredBetsapiLiveProviderId = providerId;
+    return;
+  }
+  betsapiEmptyQuoteStreak.set(providerId, next.emptyCount);
+  if (next.cooldownUntil !== null) {
+    betsapiEmptyQuoteStreak.delete(providerId);
+    betsapiNoQuoteCooldown.set(providerId, next.cooldownUntil);
+    if (preferredBetsapiLiveProviderId === providerId) {
+      preferredBetsapiLiveProviderId = null;
+    }
+    console.log('ODDS_LIVE_BETSAPI_ROTATED', JSON.stringify({
+      providerId, reason: schemaInvalid ? 'SCHEMA_INVALID' : 'NO_FRESH_QUOTE',
+      cooldownUntil: new Date(next.cooldownUntil).toISOString(),
+    }));
+  }
+}
 const EXTENDED_LIVE_ODDS_INTERVAL_MS = 5 * 60_000;
 const EXTENDED_ODDS_MAX_MATCHES_PER_CYCLE = extendedRefreshBudget(process.env.ODDS_API_EXTENDED_MAX_MATCHES_PER_CYCLE);
 // Result pagination shares the trial request budget with live prices.
@@ -953,6 +982,7 @@ async function runDedicatedLiveTick(ctx: WorkerContext): Promise<void> {
             where m.provider = $1
               and m.provider_id is not null
               and m.status::text = any($2::text[])
+              and ($1 <> 'betsapi' or m.provider_updated_at >= now() - interval '4 minutes')
               and ${CURRENT_LIVE_FIXTURE_SQL}
             order by
               case when $1 = 'betsapi' and exists (
@@ -971,11 +1001,15 @@ async function runDedicatedLiveTick(ctx: WorkerContext): Promise<void> {
 
         if (sourceProvider.name === 'betsapi') {
           const now = Date.now();
+          for (const [id, until] of betsapiNoQuoteCooldown) {
+            if (until <= now) betsapiNoQuoteCooldown.delete(id);
+          }
           const selection = selectBetsapiLiveCandidates(
             pending,
             betsapiExplorationCursor,
             now - lastBetsapiExplorationAt >= BETSAPI_EXPLORATION_INTERVAL_MS,
             preferredBetsapiLiveProviderId,
+            new Set(betsapiNoQuoteCooldown.keys()),
           );
           const activePriced = selection.candidates.find(row => row.has_betsapi_market);
           preferredBetsapiLiveProviderId = activePriced?.provider_id ?? null;
@@ -989,6 +1023,56 @@ async function runDedicatedLiveTick(ctx: WorkerContext): Promise<void> {
             explored: selection.explored,
             intervalMs: BETSAPI_LIVE_POLL_INTERVAL_MS,
           }));
+        }
+
+        // BetsAPI validates each event against the provider-observed live set.
+        // A stale exploratory ID must not reject a different confirmed priced
+        // event in a combined request. Handle one event at a time; never forge
+        // source timestamps or silently replace rejected prices.
+        if (sourceProvider.name === 'betsapi') {
+          for (const row of pending) {
+            const providerId = row.provider_id;
+            if (!providerId) continue;
+            console.log("ODDS_LIVE_WORKER_FETCH_START", JSON.stringify({
+              at: new Date().toISOString(), provider: 'betsapi',
+              requestedMatches: 1, intervalMs: BETSAPI_LIVE_POLL_INTERVAL_MS,
+            }));
+            const result = await sourceProvider.fetchOdds([providerId]);
+            console.log("ODDS_LIVE_WORKER_PROVIDER_RESULT", JSON.stringify({
+              provider: 'betsapi', requestedMatches: 1, ok: result.ok,
+              bundles: result.value?.length ?? 0,
+              errorCode: result.errorCode ?? null,
+              errorMessage: result.errorMessage ?? null,
+            }));
+            if (!result.ok || !result.value) {
+              if (result.errorCode === 'BETSAPI_SCHEMA_INVALID') {
+                observeBetsapiLiveQuote(providerId, 0, true);
+              }
+              if (result.errorCode === 'BETSAPI_BUDGET_EXHAUSTED' ||
+                  result.errorCode === 'BETSAPI_RATE_LIMITED') return;
+              continue;
+            }
+            const bundle = result.value.find(item => item.matchProviderId === providerId);
+            if (!bundle) {
+              observeBetsapiLiveQuote(providerId, 0);
+              continue;
+            }
+            try {
+              const syncResult = await syncOdds(ctx, row.match_id, {
+                ok: true, value: [bundle],
+              });
+              console.log("ODDS_LIVE_WORKER_SYNC_DONE", JSON.stringify({
+                provider: 'betsapi', matchId: row.match_id, ...syncResult,
+              }));
+              observeBetsapiLiveQuote(providerId, syncResult.updated);
+            } catch (error) {
+              console.error("ODDS_LIVE_WORKER_SYNC_FAILED", JSON.stringify({
+                provider: 'betsapi', matchId: row.match_id,
+                error: error instanceof Error ? error.message : String(error),
+              }));
+            }
+          }
+          return;
         }
 
         const providerIds = pending

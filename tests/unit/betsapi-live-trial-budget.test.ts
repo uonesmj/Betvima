@@ -3,6 +3,9 @@ import {
   betsapiLivePollIntervalMs,
   selectBetsapiLiveCandidates,
   BETSAPI_EXPLORATION_INTERVAL_MS,
+  BETSAPI_EMPTY_PRICE_ROTATE_AFTER,
+  BETSAPI_EMPTY_PRICE_COOLDOWN_MS,
+  betsapiNoQuoteProbe,
 } from '@/workers/betsapi-live-trial-budget';
 
 describe('BetsAPI trial live polling', () => {
@@ -49,6 +52,37 @@ describe('BetsAPI trial live polling', () => {
     });
     expect(selectBetsapiLiveCandidates(ordered, 0, false, '1:gone')).toEqual({
       candidates: [ordered[0]], explored: false,
+    });
+  });
+
+  it('excludes a repeatedly empty priced match and probes other valid fixtures', () => {
+    const rows = [
+      { provider_id: '1:111', has_betsapi_market: true },
+      { provider_id: '1:222', has_betsapi_market: true },
+      { provider_id: '1:333', has_betsapi_market: false },
+    ];
+    const excluded = new Set(['1:111']);
+    expect(selectBetsapiLiveCandidates(rows, 0, false, '1:111', excluded)).toEqual({
+      candidates: [rows[1]], explored: false,
+    });
+    expect(selectBetsapiLiveCandidates(rows, 0, true, '1:111', excluded)).toEqual({
+      candidates: [rows[1], rows[2]], explored: true,
+    });
+    expect(selectBetsapiLiveCandidates(rows, 0, false, '1:111', new Set())).toEqual({
+      candidates: [rows[0]], explored: false,
+    });
+  });
+
+  it('never fabricates a fresh quote after empty provider bundles', () => {
+    const before = betsapiNoQuoteProbe(0, 0, 100_000);
+    expect(before).toEqual({ emptyCount: 1, cooldownUntil: null });
+    const second = betsapiNoQuoteProbe(1, 0, 100_000);
+    expect(second.cooldownUntil).toBeNull();
+    const last = betsapiNoQuoteProbe(2, 0, 100_000);
+    expect(BETSAPI_EMPTY_PRICE_ROTATE_AFTER).toBe(3);
+    expect(last.cooldownUntil).toBe(100_000 + BETSAPI_EMPTY_PRICE_COOLDOWN_MS);
+    expect(betsapiNoQuoteProbe(2, 3, 100_000)).toEqual({
+      emptyCount: 0, cooldownUntil: null,
     });
   });
 
