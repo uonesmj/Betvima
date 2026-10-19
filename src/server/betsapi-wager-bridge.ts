@@ -24,7 +24,10 @@ export type WagerableMarket = Omit<Bet365PreviewMarket, 'selections'> & {
 export const wagerFeedEnabled = (): boolean =>
   process.env.BETSAPI_WAGER_INGEST_ENABLED === 'true' &&
   process.env.BETSAPI_TRIAL_ENABLED === 'true' &&
-  process.env.SPORTS_PROVIDER === 'betsapi' &&
+  // The public web process may continue to use the legacy provider for
+  // unrelated services, while the independently supervised BetsAPI worker
+  // ingests canonical wager-grade quotes. Do not tie this explicit sportsbook
+  // feature switch to the unrelated web SPORTS_PROVIDER default.
   Boolean(process.env.BETSAPI_TRIAL_TOKEN?.trim());
 
 function normalized(value: string): string {
