@@ -57,6 +57,10 @@ fun PremiumAffiliateSheet(state: AppState, model: AppViewModel, onClose: () -> U
     val affiliateVault = remember(context) { SessionVault(context, "affiliate") }
     var showPortal by rememberSaveable { mutableStateOf(affiliateVault.signedIn()) }
     var authMode by rememberSaveable { mutableStateOf<String?>(null) }
+    val partnerDrawerState = rememberDrawerState(DrawerValue.Closed)
+    val partnerDrawerScope = rememberCoroutineScope()
+    var partnerNav by rememberSaveable { mutableStateOf("overview") }
+    var partnerNavRevision by rememberSaveable { mutableIntStateOf(0) }
     val openRegister = {
         if (affiliateVault.signedIn()) showPortal = true
         else authMode = "register"
@@ -76,6 +80,21 @@ fun PremiumAffiliateSheet(state: AppState, model: AppViewModel, onClose: () -> U
             decorFitsSystemWindows = false
         )
     ) { motion, closeWith ->
+        ModalNavigationDrawer(
+            drawerState = partnerDrawerState,
+            gesturesEnabled = showPortal,
+            drawerContent = {
+                if (showPortal) PremiumAffiliateDrawer117(
+                    lang = lang, selected = partnerNav,
+                    onNavigate = { destination ->
+                        partnerNav = destination
+                        partnerNavRevision++
+                        partnerDrawerScope.launch { partnerDrawerState.close() }
+                    },
+                    onClose = { partnerDrawerScope.launch { partnerDrawerState.close() } }
+                )
+            }
+        ) {
         Column(
             Modifier.fillMaxSize()
                 .then(motion)
@@ -105,6 +124,10 @@ fun PremiumAffiliateSheet(state: AppState, model: AppViewModel, onClose: () -> U
                 }
                 Spacer(Modifier.weight(1f))
                 if(showPortal) {
+                    IconButton(onClick={ partnerDrawerScope.launch { partnerDrawerState.open() } }) {
+                        Icon(Icons.Default.Menu, tr(lang,"Open partner menu","باز کردن منوی افیلیت"),
+                            tint=partnerMint,modifier=Modifier.size(25.dp))
+                    }
                     TextButton(onClick={showPortal=false}) {
                         Text(tr(lang,"Explore","معرفی"),color=Color.White)
                     }
@@ -122,11 +145,18 @@ fun PremiumAffiliateSheet(state: AppState, model: AppViewModel, onClose: () -> U
             HorizontalDivider(color=Color.White.copy(alpha=.10f))
             Box(Modifier.weight(1f)) {
                 if(showPortal) {
-                    AffiliateDashboard(state,model)
+                    AffiliateDashboard(state,model,
+                        navigationKey=partnerNav,
+                        navigationRevision=partnerNavRevision,
+                        onNavigate={ destination ->
+                            partnerNav=destination
+                            partnerNavRevision++
+                        })
                 } else {
                     AffiliateShowcase78(lang,onRegister=openRegister,onLogin=openLogin)
                 }
             }
+        }
         }
         if (authMode != null) {
             // An independently scrollable credential dialog over the current Affiliate sheet.
