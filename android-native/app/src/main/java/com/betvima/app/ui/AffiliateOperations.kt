@@ -216,10 +216,12 @@ fun AffiliateOperations(state: AppState, model: AppViewModel, currency: String,
         if (!busy || values.isNotEmpty()) {
             when(selected) {
                 "referrals" -> {
-                    StudioSection118(tr(state.lang,"Referral reporting","گزارش زیرمجموعه‌ها"),
-                        tr(state.lang,
-                            "Real registration, deposit, withdrawal and commission records.",
-                            "آمار واقعی ثبت‌نام، واریز، برداشت و کمیسیون"))
+                    Text(tr(state.lang,"Referral reporting","گزارش زیرمجموعه‌ها"),
+                        fontSize=19.sp,fontWeight=FontWeight.Black,color=affiliateInk)
+                    Text(tr(state.lang,
+                        "Real registration, deposit, withdrawal and commission records.",
+                        "آمار واقعی ثبت‌نام، واریز، برداشت و کمیسیون"),
+                        fontSize=11.sp,color=Palette.muted)
                     Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
                         horizontalArrangement=Arrangement.spacedBy(7.dp)) {
                         listOf(
