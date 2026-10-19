@@ -31,7 +31,8 @@ export const GET = withErrorHandling('betsapi.card.prices', async (_ctx, request
   const markets = await attachCanonicalWagers(result.markets, {
     fi, sportId, mode, home, away, eventId: fixture?.betsApiEventId,
   });
-  const market = result.error ? null : pickHeadlineMarket(markets);
+  const headline = result.error ? null : pickHeadlineMarket(markets);
+  const market = headline ? markets.find(item => item.key === headline.key) ?? null : null;
   return jsonOk({
     source: 'betsapi_bet365', readOnly: true,
     market: market ? {
