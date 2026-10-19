@@ -507,7 +507,9 @@ class ApiClient {
             } }.awaitAll()
         }
         if (lists.all { it.isFailure })
-            throw ApiFailure(503, "BetsAPI live fixtures unavailable")
+            throw lists.firstNotNullOfOrNull { it.exceptionOrNull() }
+                ?.let { if (it is ApiFailure) it else ApiFailure(503, "BetsAPI live fixtures unavailable") }
+                ?: ApiFailure(503, "BetsAPI live fixtures unavailable")
         val distinct = lists.flatMap { it.getOrDefault(emptyList()) }.distinctBy { it.id }
         // Preview prices can never become bets: all imported markets are suspended,
         // every fixture has bettingAvailable=false and liveEnabled is false.
@@ -524,7 +526,9 @@ class ApiClient {
             } }.awaitAll()
         }
         if (lists.all { it.isFailure })
-            throw ApiFailure(503, "BetsAPI upcoming fixtures unavailable")
+            throw lists.firstNotNullOfOrNull { it.exceptionOrNull() }
+                ?.let { if (it is ApiFailure) it else ApiFailure(503, "BetsAPI upcoming fixtures unavailable") }
+                ?: ApiFailure(503, "BetsAPI upcoming fixtures unavailable")
         val matches = lists.flatMap { it.getOrDefault(emptyList()) }
             .distinctBy { it.id }.sortedBy { it.starts }
         return enrichBet365Cards(matches)

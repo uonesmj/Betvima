@@ -38,7 +38,8 @@ data class AppState(
     val tournamentLeague: String = "",
     val live: List<Match> = emptyList(), val upcoming: List<Match> = emptyList(),
     val liveLoading: Boolean = false, val upcomingLoading: Boolean = false,
-    val detailLoading: Boolean = false,
+    val liveLoadError: String? = null, val upcomingLoadError: String? = null,
+    val detailLoading: Boolean = false, val detailError: String? = null,
     val liveEnabled: Boolean = false, val wageringEnabled: Boolean = false,
     val detail: Match? = null,
     val liveFacts: LiveMatchFacts? = null,
@@ -75,6 +76,38 @@ data class AppState(
     val searchUpcoming: List<Match> = emptyList(),
     val searchError: String? = null
 )
+
+/** Provider error text is safe for the UI: never expose URLs or tokens. */
+internal fun sportsFeedError123(error: Exception, lang: Lang): String {
+    val code = (error as? ApiFailure)?.message.orEmpty()
+    return if (code.contains("NOT_CONFIGURED", ignoreCase = true)) {
+        tr(lang,
+            "Sports provider is not configured on the server. Check BetsAPI access.",
+            "سرویس داده ورزشی روی سرور پیکربندی نشده است؛ اتصال BetsAPI را بررسی کنید.")
+    } else if (code.contains("QUOTA", ignoreCase = true) ||
+        code.contains("DENIED", ignoreCase = true)) {
+        tr(lang,
+            "Sports provider access or quota is unavailable. Retry after service restoration.",
+            "دسترسی یا اعتبار سرویس ورزشی در دسترس نیست؛ پس از رفع مشکل دوباره تلاش کنید.")
+    } else {
+        tr(lang, "Sports feed could not be refreshed. Retry or check provider health.",
+            "داده‌های ورزشی به‌روزرسانی نشد؛ دوباره تلاش کنید یا وضعیت منبع داده را بررسی کنید.")
+    }
+}
+
+/** Pure navigation transition. A temporary provider market error must retain
+ * the verified fixture card instead of returning the user to the home list.
+ */
+internal fun beginMatchNavigation123(state: AppState, id: String): AppState {
+    val preview = state.detail?.takeIf { it.id == id }
+        ?: (state.live + state.upcoming + state.searchLive + state.searchUpcoming)
+            .firstOrNull { it.id == id }
+    return state.copy(detail = preview, detailLoading = true,
+        detailError = null, liveFacts = null,
+        focusedMarketId = state.focusedMarketId?.takeIf { preview != null })
+}
+internal fun failedMatchNavigation123(state: AppState, message: String): AppState =
+    state.copy(detailLoading = false, detailError = message)
 
 /** Screen state lives outside composables; every value comes from BetVima API. */
 class AppViewModel(app: Application) : AndroidViewModel(app) {
@@ -209,13 +242,15 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         try {
             val (matches, liveEnabled) = api.live()
             if (request == liveRequestNumber) mutable.update {
-                it.copy(live = matches, liveEnabled = liveEnabled, liveLoading = false)
+                it.copy(live = matches, liveEnabled = liveEnabled, liveLoading = false,
+                    liveLoadError = null)
             }
         } catch (ex: Exception) {
             if (request == liveRequestNumber) mutable.update {
                 // Keep last known scores visible, but never leave live wagering shown as enabled
                 // after losing connection to the authoritative feed.
                 it.copy(liveEnabled = false, liveLoading = false,
+                    liveLoadError = sportsFeedError123(ex, it.lang),
                     notice = if (silent) it.notice else tr(it.lang,
                         "Live data unavailable. Showing last received scores.",
                         "اتصال داده زنده قطع شد؛ آخرین نتایج دریافت‌شده نمایش داده می‌شود."))
@@ -232,11 +267,13 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             try {
                 val events = api.upcoming(requestedSport)
                 if (request == upcomingRequestNumber && state.value.sport == requestedSport)
-                    mutable.update { it.copy(upcoming = events, upcomingLoading = false) }
+                    mutable.update { it.copy(upcoming = events, upcomingLoading = false, upcomingLoadError = null) }
             } catch (ex: Exception) {
                 if (request == upcomingRequestNumber && state.value.sport == requestedSport)
                     mutable.update {
-                        it.copy(upcomingLoading = false, notice = tr(it.lang,
+                        it.copy(upcomingLoading = false,
+                            upcomingLoadError = sportsFeedError123(ex, it.lang),
+                            notice = tr(it.lang,
                             "Unable to load the selected sport.", "بارگذاری مسابقات این رشته ناموفق بود."))
                     }
             }
@@ -285,21 +322,32 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         openMatch(pick.matchId)
     }
 
+    /**
+     * Open a fixture immediately from the already verified catalogue.
+     * Detail-market errors must never navigate the user back to Home.
+     */
     fun openMatch(id: String) = viewModelScope.launch {
         val request = ++detailRequestNumber
-        mutable.update { it.copy(detailLoading = true, detail = null, liveFacts = null) }
+        val preview = beginMatchNavigation123(state.value, id).detail
+        mutable.update { beginMatchNavigation123(it, id) }
         try {
             val match = api.detail(id)
             if (request == detailRequestNumber) mutable.update {
-                it.copy(detail = match, detailLoading = false)
+                it.copy(detail = match, detailLoading = false, detailError = null)
             }
         } catch (ex: Exception) {
             if (request == detailRequestNumber) mutable.update {
-                it.copy(detailLoading = false, notice = tr(it.lang,
-                    "Match details unavailable.", "جزئیات مسابقه در دسترس نیست."))
+                it.copy(detailLoading = false,
+                    detailError = tr(it.lang,
+                        "Provider markets are temporarily unavailable. Match information remains visible; retry to reload odds.",
+                        "بازارهای مسابقه موقتاً از منبع داده دریافت نشدند. اطلاعات بازی همچنان نمایش داده می‌شود؛ برای بارگذاری مجدد ضرایب تلاش کنید."),
+                    notice = if (preview == null)
+                        tr(it.lang,"Match details unavailable.","جزئیات مسابقه در دسترس نیست.")
+                        else null)
             }
         }
     }
+
     /** Refresh factual scoreboard/stats without mutating markets, bets or UI routing. */
     fun refreshMatchFacts(id: String) = viewModelScope.launch {
         if (factsInFlight || state.value.detail?.id != id) return@launch
@@ -338,7 +386,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     fun closeMatch() {
         detailRequestNumber++
         mutable.update { it.copy(detail = null, liveFacts = null,
-            detailLoading = false, focusedMarketId = null) }
+            detailLoading = false, detailError = null, focusedMarketId = null) }
     }
     /** Purely informational odds polling. Never touches quotes or financial state. */
     suspend fun slipProbabilitySnapshots(matchIds: List<String>): Map<String, SlipOddsMatch> =

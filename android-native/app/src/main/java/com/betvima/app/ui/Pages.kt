@@ -117,8 +117,9 @@ fun HomePage(state: AppState, model: AppViewModel, onSearch: () -> Unit) {
                 item {
                     Box(Modifier.padding(horizontal = 15.dp)) {
                         EmptyPanel(tr(state.lang, "Top markets are unavailable", "بازار برتری موجود نیست"),
-                            tr(state.lang, "Only matches with actual provider quotes are listed.",
-                                "فقط مسابقات دارای ضرایب واقعی منبع داده نمایش داده می‌شوند.")) {
+                            state.liveLoadError ?: state.upcomingLoadError ?:
+                            tr(state.lang, "No verified quoted markets are available from the current sports feed.",
+                                "در حال حاضر بازار دارای ضرایب تأییدشده از منبع ورزشی دریافت نشده است.")) {
                             model.refreshAll()
                         }
                     }
@@ -136,9 +137,13 @@ fun HomePage(state: AppState, model: AppViewModel, onSearch: () -> Unit) {
                         Icons.Default.Sensors, Color(0xFFE82465)) { model.tab(Tab.LIVE) }
                     if (state.live.isNotEmpty()) ReferenceMatchCarousel(state.live, state, model)
                     else if (state.liveLoading) FixtureSkeleton(Modifier.fillMaxWidth())
-                    else EmptyPanel(tr(state.lang, "No live matches", "مسابقه زنده‌ای موجود نیست"),
-                        tr(state.lang, "Check again as events begin.",
-                            "با شروع مسابقات دوباره بررسی کنید.")) { model.refreshLive() }
+                    else EmptyPanel(
+                        if(state.liveLoadError!=null)
+                            tr(state.lang,"Live provider unavailable","منبع مسابقات زنده در دسترس نیست")
+                        else tr(state.lang,"No live matches","مسابقه زنده‌ای موجود نیست"),
+                        state.liveLoadError ?: tr(state.lang,
+                            "Check again as events begin.", "با شروع مسابقات دوباره بررسی کنید.")
+                    ) { model.refreshLive() }
                 }
             }
             item {
@@ -150,8 +155,9 @@ fun HomePage(state: AppState, model: AppViewModel, onSearch: () -> Unit) {
                     if (featured.isNotEmpty()) ReferenceMatchCarousel(featured, state, model)
                     else if (state.upcomingLoading || state.liveLoading) FixtureSkeleton(Modifier.fillMaxWidth())
                     else EmptyPanel(tr(state.lang, "Top markets are unavailable", "بازار برتری موجود نیست"),
-                        tr(state.lang, "Markets appear when confirmed by the provider.",
-                            "بازارها پس از تأیید منبع داده نمایش داده می‌شوند.")) {
+                        state.liveLoadError ?: state.upcomingLoadError ?:
+                        tr(state.lang,"No current fixture has confirmed decimal odds from the sports feed.",
+                            "هیچ مسابقه‌ای با ضرایب معتبر از منبع ورزشی فعلی دریافت نشده است.")) {
                         model.refreshAll()
                     }
                 }
@@ -163,11 +169,14 @@ fun HomePage(state: AppState, model: AppViewModel, onSearch: () -> Unit) {
                     if (state.upcoming.isNotEmpty())
                         ReferenceMatchCarousel(state.upcoming, state, model)
                     else if (state.upcomingLoading) FixtureSkeleton(Modifier.fillMaxWidth())
-                    else EmptyPanel(tr(state.lang, "No upcoming fixtures", "مسابقه آینده‌ای موجود نیست"),
-                        tr(state.lang, "Upcoming fixtures load from the live catalogue.",
-                            "مسابقات آینده از فهرست واقعی دریافت می‌شوند.")) {
-                        model.refreshUpcoming()
-                    }
+                    else EmptyPanel(
+                        if (state.upcomingLoadError != null)
+                            tr(state.lang,"Upcoming feed unavailable","منبع مسابقات آینده در دسترس نیست")
+                        else tr(state.lang,"No upcoming fixtures","مسابقه آینده‌ای موجود نیست"),
+                        state.upcomingLoadError ?:
+                        tr(state.lang,"No scheduled fixtures were returned by the provider.",
+                            "مسابقه‌ای برای آینده از منبع ورزشی دریافت نشد.")
+                    ) { model.refreshUpcoming() }
                 }
             }
             item(key = "home-casino95", contentType = "casino") {
