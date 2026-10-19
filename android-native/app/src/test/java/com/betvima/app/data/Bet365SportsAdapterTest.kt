@@ -148,6 +148,32 @@ class Bet365SportsAdapterTest {
         assertTrue(parsed.stats.isEmpty())
     }
 
+    @Test fun fixtureCardsAndDetailKeepAuthoritativeClockState() {
+        val incoming = JSONObject(fixture.toString())
+            .put("clockSeconds", 2705)
+            .put("clockRunning", true)
+            .put("clockObservedAt", "2026-10-19T00:53:40.000Z")
+        val parsed = parseBet365Catalogue(JSONObject()
+            .put("source", BET365_SOURCE)
+            .put("matches", JSONArray().put(incoming))).single()
+        assertEquals(2705, parsed.clockSeconds)
+        assertTrue(parsed.clockRunning)
+        assertEquals("2026-10-19T00:53:40.000Z", parsed.clockObservedAt)
+        assertFalse(parsed.bettingAvailable)
+    }
+    @Test fun stoppedProviderClockNeverTicksByDefault() {
+        val incoming = JSONObject(fixture.toString())
+            .put("minute", 45)
+            .put("clockSeconds", 2700)
+            .put("clockRunning", false)
+        val parsed = parseMatch(incoming)
+        assertEquals(45, parsed.minute)
+        assertEquals(2700, parsed.clockSeconds)
+        assertFalse(parsed.clockRunning)
+        assertFalse(withBet365MatchMinute(parsed, JSONObject().put("minute", 45))
+            .bettingAvailable)
+    }
+
     @Test fun pathsContainOnlyValidatedProviderIds() {
         val ref = bet365Ref("betsapi:upcoming:17:203138143")!!
         assertEquals("/api/v1/betsapi/card-prices?mode=upcoming&sportId=17&fi=203138143",
