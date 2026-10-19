@@ -566,6 +566,15 @@ class ApiClient {
         ) })
     }
 
+    /** Dedicated match statistics, deliberately separate from sportsbook odds. */
+    suspend fun matchFacts(id: String): LiveMatchFacts? {
+        val fixture = bet365Ref(id) ?: return null
+        if (fixture.mode != "live") return null
+        val response = get("/api/v1/betsapi/match-facts?section=stats&mode=live&sportId=" +
+            fixture.sportId + "&fi=" + fixture.fi)
+        return parseBet365LiveFacts(response).takeIf { it.fi == fixture.fi }
+    }
+
     /** Bet365 FI has its own namespace. Read-only market details are obtained
      * through the site's provider proxy, NEVER the legacy local UUID endpoint.
      */
