@@ -289,17 +289,17 @@ private fun WalletReceipt(
             color = wMuted, fontSize = 12.sp)
         if (address.isNotBlank()) {
             if (receipt.providerCurrency.isNotBlank()) {
-                Surface(color = Color(0xFFEAF8F3), shape = RoundedCornerShape(11.dp)) {
+                Surface(color = Color(0xFF19382D), shape = RoundedCornerShape(11.dp)) {
                     Text(wTr(lang,"Provider payment currency: ","ارز پرداخت درگاه: ") +
                         receipt.providerCurrency.uppercase(),
                         modifier = Modifier.padding(horizontal = 13.dp, vertical = 8.dp),
-                        color = Color(0xFF0A8154), fontWeight = FontWeight.Bold,
+                        color = Color(0xFF68D8AA), fontWeight = FontWeight.Bold,
                         fontSize = 11.sp)
                 }
             }
             Text(wTr(lang,"Send only the selected asset on the matching network.",
                 "فقط ارز انتخاب‌شده را روی شبکه صحیح ارسال کنید."),
-                color = Color(0xFF9F6319), fontSize = 11.sp)
+                color = Color(0xFFFFD488), fontSize = 11.sp)
             if (bitmap != null) {
                 Surface(color = Color.White, shape = RoundedCornerShape(16.dp),
                     border = BorderStroke(1.dp, wBorder)) {
@@ -584,7 +584,7 @@ fun WalletTransferSheet(
                             Column(Modifier.padding(vertical = 8.dp),
                                 horizontalAlignment = Alignment.CenterHorizontally) {
                                 Surface(
-                                    color = if (selected) wBlue else Color.White,
+                                    color = if (selected) wBlue else Color(0xFF36363C),
                                     shape = CircleShape
                                 ) {
                                     Text(if (option == "crypto") "₿" else if (option == "voucher_uvoucher")
@@ -627,6 +627,7 @@ fun WalletTransferSheet(
                     }
                 }
                 OutlinedTextField(
+                        colors = walletFieldColors(),
                     value = if (voucherFiat)
                         normalizedWalletNumber(amount).toBigIntegerOrNull()
                             ?.let { formatVoucherRials(it, lang) } ?: amount
@@ -644,7 +645,6 @@ fun WalletTransferSheet(
                     keyboardOptions = KeyboardOptions(keyboardType =
                         if (voucherFiat) KeyboardType.Number else KeyboardType.Decimal),
                     singleLine = true, shape = RoundedCornerShape(14.dp),
-                    colors = walletFieldColors(),
                     modifier = Modifier.fillMaxWidth(),
                     trailingIcon = {
                         if (!isDeposit) TextButton(onClick = {
@@ -743,6 +743,7 @@ fun WalletTransferSheet(
                 }
                 if (voucher && isDeposit) {
                     OutlinedTextField(
+                        colors = walletFieldColors(),
                         value = voucherCode,
                         onValueChange = { voucherCode = it.take(128); error = null },
                         label = { Text(wTr(lang,"Voucher code","کد ووچر")) },
@@ -753,6 +754,7 @@ fun WalletTransferSheet(
                 }
                 if (!isDeposit) {
                     OutlinedTextField(
+                        colors = walletFieldColors(),
                         value = destination,
                         onValueChange = { destination = it.take(254); error = null },
                         label = { Text(if (voucher)
@@ -784,7 +786,7 @@ fun WalletTransferSheet(
                     Text(wTr(lang,
                         "Verify recipient and network. Blockchain withdrawals cannot be reversed.",
                         "ایمیل یا آدرس و شبکه را بررسی کنید؛ برداشت رمزارز برگشت‌پذیر نیست."),
-                        color = Color(0xFF936018), fontSize = 11.sp)
+                        color = Color(0xFFFFD488), fontSize = 11.sp)
                 }
                 if (loading) LinearProgressIndicator(Modifier.fillMaxWidth(), color = wBlue)
                 if (!loading && !methodEnabled) {
@@ -810,7 +812,7 @@ fun WalletTransferSheet(
                                 Spacer(Modifier.width(7.dp))
                                 Text(wTr(lang, "Request needs reconciliation",
                                     "وضعیت درخواست نیازمند بررسی است"),
-                                    color = Color(0xFF855913), fontSize = 12.sp,
+                                    color = Color(0xFFFFD488), fontSize = 12.sp,
                                     fontWeight = FontWeight.Black)
                             }
                             Text(wTr(lang,
@@ -822,20 +824,20 @@ fun WalletTransferSheet(
                                 Icon(Icons.Default.History, null,
                                     modifier = Modifier.size(17.dp))
                                 Spacer(Modifier.width(6.dp))
-                                Text(wTr(lang, "Review payment history", "بررسی تاریخچه پرداخت"))
+                                Text(wTr(lang, "Review payment history", "بررسی تاریخچه پرداخت"), color = Color(0xFF77BFFF))
                             }
                         }
                     }
                 }
                 if (error != null) {
                     Surface(color = Color(0xFF392428), shape = RoundedCornerShape(12.dp)) {
-                        Text(error.orEmpty(), color = Color(0xFFBC344A),
+                        Text(error.orEmpty(), color = Color(0xFFFF98A4),
                             fontSize = 11.sp, modifier = Modifier.padding(11.dp))
                     }
                 }
                 if (!loading && issue != null && amount.isNotBlank() && methodEnabled && !uncertainResult) {
                     Text(voucherIssueText(issue,lang,voucherFiat),
-                        color = Color(0xFFB5472F), fontSize = 11.sp)
+                        color = Color(0xFFFFAD97), fontSize = 11.sp)
                 }
                 OutlinedButton(onClick = { refreshKey++ },
                     modifier = Modifier.fillMaxWidth(),
@@ -922,11 +924,12 @@ fun WalletTransferSheet(
                             fontSize = 10.sp, color = wMuted)
                     }
                     IconButton(onClick = { picker = ""; coinSearch = "" }) {
-                        Icon(Icons.Default.Close, wTr(lang,"Close","بستن"))
+                        Icon(Icons.Default.Close, wTr(lang,"Close","بستن"), tint = wMuted)
                     }
                 }
                 if (picker == "coin") {
                     OutlinedTextField(
+                        colors = walletFieldColors(),
                         value = coinSearch,
                         onValueChange = { coinSearch = it.take(30) },
                         modifier = Modifier.fillMaxWidth(),
@@ -952,8 +955,8 @@ fun WalletTransferSheet(
                                     picker = ""
                                     coinSearch = ""
                                 },
-                                color = if (coin == item.code) Color(0xFFE9F4FF)
-                                    else Color.White,
+                                color = if (coin == item.code) Color(0xFF173550)
+                                    else wPanel,
                                 border = BorderStroke(if (coin == item.code) 1.5.dp else 1.dp,
                                     if (coin == item.code) wBlue else wBorder),
                                 shape = RoundedCornerShape(16.dp)
@@ -982,8 +985,8 @@ fun WalletTransferSheet(
                                 network = option
                                 picker = ""
                             },
-                            color = if (network == option) Color(0xFFE9F4FF)
-                                else Color.White,
+                            color = if (network == option) Color(0xFF173550)
+                                else wPanel,
                             border = BorderStroke(if (network == option) 1.5.dp else 1.dp,
                                 if (network == option) wBlue else wBorder),
                             shape = RoundedCornerShape(16.dp)
@@ -1015,7 +1018,7 @@ fun WalletTransferSheet(
                         Text(wTr(lang,
                             "Transfers on the wrong blockchain may be permanently lost.",
                             "انتقال روی شبکه اشتباه ممکن است موجب از دست رفتن دائمی وجه شود."),
-                            color = Color(0xFF845716), fontSize = 11.sp)
+                            color = Color(0xFFFFD488), fontSize = 11.sp)
                     }
                 }
             }
@@ -1024,11 +1027,12 @@ fun WalletTransferSheet(
     if (confirm) {
         AlertDialog(
             onDismissRequest = { if (!busy) confirm = false },
+            containerColor = wPanel,
             icon = { Icon(Icons.Default.Security, null, tint = wBlue) },
             title = {
                 Text(if (isDeposit)
                     wTr(lang,"Confirm deposit details","تأیید مشخصات واریز")
-                else wTr(lang,"Confirm withdrawal","تأیید نهایی برداشت"))
+                else wTr(lang,"Confirm withdrawal","تأیید نهایی برداشت"), color = wText)
             },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
