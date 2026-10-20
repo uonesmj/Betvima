@@ -34,6 +34,11 @@ import com.betvima.app.data.money
 import com.betvima.app.data.odds
 import kotlinx.coroutines.delay
 
+// Match the casino/header canvas; ticket financial surfaces retain their own colors.
+private val myBetsCanvas = Color(0xFF141414)
+private val myBetsClosedPanel = Color(0xFF222224)
+private val myBetsClosedOutline = Color(0xFF39393D)
+
 /**
  * Server-owned history, not a local filter over the initial 30 records.
  * One query and stable pagination per selected filter, with session isolation.
@@ -50,7 +55,7 @@ fun PremiumMyBetsPage(state: AppState, model: AppViewModel) {
         }
     }
     LazyColumn(
-        modifier = Modifier.fillMaxSize().background(Color(0xFF081322)),
+        modifier = Modifier.fillMaxSize().background(myBetsCanvas),
         contentPadding = PaddingValues(horizontal = 14.dp, vertical = 16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     , flingBehavior = rememberPremiumFlingBehavior()) {
@@ -75,62 +80,56 @@ fun PremiumMyBetsPage(state: AppState, model: AppViewModel) {
             }
         } else {
             item(key = "history-filters") {
-                Surface(
-                    modifier = Modifier.fillMaxWidth().animateContentSize(),
-                    shape = RoundedCornerShape(15.dp),
-                    color = Color(0xFF13243B),
-                    border = BorderStroke(1.dp, Color(0xFF324760))
+                // Deliberately no enclosing card: filters sit directly on the dark canvas.
+                Row(
+                    modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState())
+                        .padding(vertical = 4.dp),
+                    horizontalArrangement = Arrangement.spacedBy(5.dp),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Row(
-                        Modifier.fillMaxWidth().horizontalScroll(rememberScrollState())
-                            .padding(6.dp),
-                        horizontalArrangement = Arrangement.spacedBy(6.dp),
-                        verticalAlignment = Alignment.CenterVertically
+                    HistoryFilterTrigger(
+                        title = tr(state.lang, "Status", "وضعیت"),
+                        selected = when (filter.status) {
+                            "open" -> tr(state.lang, "Open", "باز")
+                            "settled" -> tr(state.lang, "Finished", "نهایی")
+                            else -> tr(state.lang, "All", "همه")
+                        },
+                        active = filter.status != "all",
+                        modifier = Modifier.width(98.dp)
+                    ) { activeFilter = "status" }
+                    HistoryFilterTrigger(
+                        title = tr(state.lang, "Bet type", "نوع شرط"),
+                        selected = when (filter.type) {
+                            "single" -> tr(state.lang, "Single", "تکی")
+                            "multiple" -> tr(state.lang, "Multiple", "میکس")
+                            else -> tr(state.lang, "All", "همه")
+                        },
+                        active = filter.type != "all",
+                        modifier = Modifier.width(98.dp)
+                    ) { activeFilter = "type" }
+                    HistoryFilterTrigger(
+                        title = tr(state.lang, "Date", "تاریخ"),
+                        selected = if (filter.days == 0) tr(state.lang, "Any time", "همه")
+                            else filter.days.toString() + " " + tr(state.lang, "days", "روز"),
+                        active = filter.days != 0,
+                        modifier = Modifier.width(110.dp)
+                    ) { activeFilter = "days" }
+                    IconButton(
+                        onClick = { model.refreshBetHistory() },
+                        modifier = Modifier.size(34.dp)
                     ) {
-                        HistoryFilterTrigger(
-                            title = tr(state.lang, "Status", "وضعیت"),
-                            selected = when(filter.status) {
-                                "open" -> tr(state.lang, "Open", "باز")
-                                "settled" -> tr(state.lang, "Finished", "نهایی")
-                                else -> tr(state.lang, "All", "همه")
-                            },
-                            active = filter.status != "all",
-                            modifier = Modifier.width(130.dp)
-                        ) { activeFilter = "status" }
-                        HistoryFilterTrigger(
-                            title = tr(state.lang, "Bet type", "نوع شرط"),
-                            selected = when(filter.type) {
-                                "single" -> tr(state.lang, "Single", "تکی")
-                                "multiple" -> tr(state.lang, "Multiple", "میکس")
-                                else -> tr(state.lang, "All", "همه")
-                            },
-                            active = filter.type != "all",
-                            modifier = Modifier.width(130.dp)
-                        ) { activeFilter = "type" }
-                        HistoryFilterTrigger(
-                            title = tr(state.lang, "Date", "تاریخ"),
-                            selected = if (filter.days == 0) tr(state.lang, "Any time", "همه")
-                                else filter.days.toString() + " " + tr(state.lang, "days", "روز"),
-                            active = filter.days != 0,
-                            modifier = Modifier.width(130.dp)
-                        ) { activeFilter = "days" }
-                        IconButton(
-                            onClick = { model.refreshBetHistory() },
-                            modifier = Modifier.size(38.dp)
-                        ) {
-                            Icon(Icons.Default.Refresh,
-                                tr(state.lang, "Refresh tickets", "تازه‌سازی شرط‌ها"),
-                                tint = Color(0xFF81C5FF))
-                        }
-                        if (filter.status != "all" || filter.type != "all" ||
-                            filter.days != 0 || filter.search.isNotBlank()) {
-                            IconButton(onClick = {
-                                model.setBetHistoryQuery(BetHistoryQuery())
-                            }, modifier = Modifier.size(38.dp)) {
-                                Icon(Icons.Default.RestartAlt,
-                                    tr(state.lang, "Clear all filters", "پاک‌کردن همه فیلترها"),
-                                    tint = Color(0xFF95B0CB))
-                            }
+                        Icon(Icons.Default.Refresh,
+                            tr(state.lang, "Refresh tickets", "تازه‌سازی شرط‌ها"),
+                            tint = Color(0xFFB7B9C0))
+                    }
+                    if (filter.status != "all" || filter.type != "all" ||
+                        filter.days != 0 || filter.search.isNotBlank()) {
+                        IconButton(onClick = {
+                            model.setBetHistoryQuery(BetHistoryQuery())
+                        }, modifier = Modifier.size(34.dp)) {
+                            Icon(Icons.Default.RestartAlt,
+                                tr(state.lang, "Clear all filters", "پاک‌کردن همه فیلترها"),
+                                tint = Color(0xFFB7B9C0))
                         }
                     }
                 }
@@ -214,26 +213,30 @@ private fun HistoryFilterTrigger(
     title: String, selected: String, active: Boolean,
     modifier: Modifier = Modifier, onClick: () -> Unit
 ) {
-    Surface(
-        modifier = modifier.clickable(onClick = onClick),
-        shape = RoundedCornerShape(15.dp),
-        color = if (active) Color(0xFF173B53) else Color(0xFF15263C),
-        border = BorderStroke(1.dp, if (active) Palette.blue else Color(0xFF2C4361))
+    // No button fill or outline. A fine underline signals focus/selection.
+    Column(
+        modifier = modifier.heightIn(min = 62.dp)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 7.dp, vertical = 3.dp)
     ) {
-        Column(Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 8.dp),
-            verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text(title, fontSize = 10.sp, color = Color(0xFF9CB0C5),
+        Text(title, fontSize = 10.sp, color = Color(0xFFA1A2AA),
+            maxLines = 1, overflow = TextOverflow.Ellipsis)
+        Spacer(Modifier.height(6.dp))
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Text(selected, modifier = Modifier.weight(1f),
+                color = if (active) Color(0xFF89BEFF) else Color.White,
+                fontSize = 12.sp, fontWeight = FontWeight.Bold,
                 maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(selected, modifier = Modifier.weight(1f),
-                    color = if (active) Color(0xFF86C4FF) else Color.White,
-                    fontSize = 12.sp, fontWeight = FontWeight.Black,
-                    maxLines = 1, overflow = TextOverflow.Ellipsis)
-                Icon(Icons.Default.KeyboardArrowDown, null,
-                    modifier = Modifier.size(17.dp),
-                    tint = if (active) Color(0xFF86C4FF) else Color(0xFF9CB0C5))
-            }
+            Icon(Icons.Default.KeyboardArrowDown, null,
+                modifier = Modifier.size(17.dp),
+                tint = if (active) Color(0xFF89BEFF) else Color(0xFFB7B9C0))
         }
+        Spacer(Modifier.height(9.dp))
+        Box(
+            Modifier.fillMaxWidth()
+                .height(if (active) 2.dp else 1.dp)
+                .background(if (active) Palette.blue else Color(0xFF38383C))
+        )
     }
 }
 
@@ -359,10 +362,10 @@ private fun PremiumTicket(
     Surface(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 3.dp),
         shape = RoundedCornerShape(18.dp),
-        color = if (expanded) Color.White else Color(0xFF102035),
+        color = if (expanded) Color.White else myBetsClosedPanel,
         border = BorderStroke(1.dp,
-            if (expanded) green else Color(0xFF2A4260)),
-        shadowElevation = if (expanded) 6.dp else 1.dp
+            if (expanded) green else myBetsClosedOutline),
+        shadowElevation = if (expanded) 6.dp else 0.dp
     ) {
         Column {
             Row(
@@ -370,7 +373,7 @@ private fun PremiumTicket(
                     .background(
                         Brush.linearGradient(
                             if (expanded) listOf(Color(0xFF006B53), Color(0xFF00A77B))
-                            else listOf(Color(0xFF123152), Color(0xFF091629))
+                            else listOf(myBetsClosedPanel, myBetsClosedPanel)
                         )
                     ).clickable(onClick = onToggle)
                     .padding(horizontal = 11.dp, vertical = 9.dp),
@@ -519,22 +522,22 @@ private fun PremiumTicket(
     // Dark edge cutouts produce a ticket silhouette; they never change the data.
     Surface(
         modifier = Modifier.align(Alignment.CenterStart).offset(x = (-5).dp).size(17.dp),
-        color = Color(0xFF081322), shape = CircleShape
+        color = myBetsCanvas, shape = CircleShape
     ) {}
     Surface(
         modifier = Modifier.align(Alignment.CenterEnd).offset(x = 5.dp).size(17.dp),
-        color = Color(0xFF081322), shape = CircleShape
+        color = myBetsCanvas, shape = CircleShape
     ) {}
     Surface(
         modifier = Modifier.align(Alignment.TopCenter).offset(y = (-5).dp)
             .width(29.dp).height(11.dp),
-        color = Color(0xFF081322),
+        color = myBetsCanvas,
         shape = RoundedCornerShape(bottomStart = 9.dp, bottomEnd = 9.dp)
     ) {}
     Surface(
         modifier = Modifier.align(Alignment.BottomCenter).offset(y = 5.dp)
             .width(29.dp).height(11.dp),
-        color = Color(0xFF081322),
+        color = myBetsCanvas,
         shape = RoundedCornerShape(topStart = 9.dp, topEnd = 9.dp)
     ) {}
     }
