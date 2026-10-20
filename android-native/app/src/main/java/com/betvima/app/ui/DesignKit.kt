@@ -115,13 +115,16 @@ fun BvInformationStrip(
     modifier: Modifier = Modifier,
     accent: Color = Palette.blue
 ) {
-    Surface(modifier.fillMaxWidth(), color = accent.copy(alpha = .065f),
+    val darkHome = LocalDarkHome.current
+    Surface(modifier.fillMaxWidth(),
+        color = if (darkHome) DarkHomePalette.panel else accent.copy(alpha = .065f),
         shape = RoundedCornerShape(14.dp),
         border = BorderStroke(1.dp, accent.copy(alpha = .14f))) {
         Row(Modifier.padding(13.dp), verticalAlignment = Alignment.CenterVertically) {
             Icon(icon, null, tint = accent, modifier = Modifier.size(19.dp))
             Spacer(Modifier.width(10.dp))
-            Text(text, color = Palette.text, fontSize = 11.sp, lineHeight = 18.sp)
+            Text(text, color = if (darkHome) DarkHomePalette.ink else Palette.text,
+                fontSize = 11.sp, lineHeight = 18.sp)
         }
     }
 }
