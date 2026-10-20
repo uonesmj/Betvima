@@ -6,7 +6,7 @@ export const metadata = { title: 'My bets' };
 
 export default function BetsPage() {
   return (
-    <PageShell titleKey="page.myBets" subtitleKey="page.myBetsSubtitle">
+    <PageShell>
       <MyBetsClient />
     </PageShell>
   );
