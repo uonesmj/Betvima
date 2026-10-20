@@ -979,7 +979,7 @@ export function PageShell({ children, title, subtitle, titleKey, subtitleKey, ac
 
   return (
     <>
-    <div className={`min-h-dvh pb-0 ${pathname === "/bonuses" ? "bg-[#030A12]" : ""}`}>
+    <div className={`min-h-dvh pb-0 ${pathname === "/bonuses" ? "bg-[#030A12]" : pathname === "/bets" ? "bg-[#07101E] text-white" : ""}`}>
       {isHome ? (
         <>
           <HomeHeader onMenu={() => setHomeMenuOpen(true)} />
