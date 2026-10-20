@@ -321,8 +321,16 @@ fun PremiumSupportPage(state: AppState, model: AppViewModel) {
                     },
                     singleLine = true, shape = RoundedCornerShape(15.dp),
                     colors = OutlinedTextFieldDefaults.colors(
-                        focusedContainerColor = Color.White,
-                        unfocusedContainerColor = Color.White)
+                        focusedContainerColor = supportPanel,
+                        unfocusedContainerColor = supportPanel,
+                        focusedTextColor = supportInk,
+                        unfocusedTextColor = supportInk,
+                        focusedLabelColor = Color(0xFF85C5FF),
+                        unfocusedLabelColor = supportMuted,
+                        focusedTrailingIconColor = supportMuted,
+                        unfocusedTrailingIconColor = supportMuted,
+                        focusedBorderColor = supportBlue,
+                        unfocusedBorderColor = supportBorder)
                 )
             }
             item {
@@ -494,11 +502,13 @@ private fun SupportNewTicketSheet(
                     }
                 }
                 DropdownMenu(expanded = categoryMenu,
-                    onDismissRequest = { categoryMenu = false }) {
+                    onDismissRequest = { categoryMenu = false },
+                    containerColor = supportPanel) {
                     supportCategories.forEach { key ->
                         DropdownMenuItem(
                             text = { Text(supportCategoryName(key, lang),
-                                fontSize = 12.sp, fontWeight = FontWeight.Bold) },
+                                color = supportInk, fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold) },
                             onClick = { category = key; categoryMenu = false },
                             trailingIcon = {
                                 if (category == key)
