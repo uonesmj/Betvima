@@ -7,6 +7,7 @@ export const runtime = 'nodejs';
 
 interface CanonicalRow {
   matchId: string;
+  providerId: string;
   marketId: string;
   selectionId: string;
   home: string;
@@ -54,7 +55,7 @@ export const GET = withErrorHandling('betsapi.canonical.wagers', async () => {
         order by max(s.odds_updated_at) desc
         limit 20
      )
-     select e.match_id::text as "matchId", e.market_id::text as "marketId",
+     select e.match_id::text as "matchId", m.provider_id::text as "providerId", e.market_id::text as "marketId",
             s.id::text as "selectionId", s.code, s.odds_scaled::text as "oddsScaled",
             s.odds_version as "oddsVersion",
             ht.name as home, at.name as away,
@@ -74,14 +75,14 @@ export const GET = withErrorHandling('betsapi.canonical.wagers', async () => {
   );
 
   const byMatch = new Map<string, {
-    matchId: string; marketId: string; home: string; away: string;
+    matchId: string; providerId: string; marketId: string; home: string; away: string;
     expiresAt: string;
     selections: Array<{ selectionId: string; code: string; oddsScaled: string; oddsVersion: number }>;
   }>();
   for (const row of rows) {
     const key = row.matchId + ':' + row.marketId;
     const candidate = byMatch.get(key) ?? {
-      matchId: row.matchId, marketId: row.marketId,
+      matchId: row.matchId, providerId: row.providerId, marketId: row.marketId,
       home: row.home, away: row.away, expiresAt: row.validUntil,
       selections: [],
     };

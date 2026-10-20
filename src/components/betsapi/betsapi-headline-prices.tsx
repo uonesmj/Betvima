@@ -5,6 +5,7 @@ import { useApp } from '@/components/layout/providers';
 import { formatBetsApiOdds } from '@/lib/betsapi-odds-display';
 import { useBetSlip, type SlipItem } from '@/lib/store/betslip';
 import type { MatchView } from '@/components/betting/match-card';
+import { canonicalBetsApiMarketForEvent, readCanonicalBetsApiMarkets } from '@/lib/betsapi-canonical-card-odds';
 
 type Price = { label: string; decimal: string; wager?: {
   matchId: string; marketId: string; selectionId: string; oddsScaled: string; oddsVersion: number;
@@ -13,9 +14,9 @@ type Preview = { market: { name: string; selections: Price[] } | null; marketCou
 type Envelope = { ok: boolean; data?: Preview };
 
 /**
- * Inline odds are purely informational, never SlipItems. Bet365 fixture IDs
- * are not local market/selection UUIDs, so prices must not be bettable here.
- * Lazy-load only cards actually seen by a visitor to protect trial quota.
+ * Prefer confirmed live 1X2 offers identified by Events API event IDs and
+ * wallet-authoritative selection UUIDs. Unmatched Bet365 FI preview prices
+ * remain display-only. Lazy-load only cards actually seen by a visitor.
  */
 export function BetsApiHeadlinePrices({
   matchId, variant = 'list', match,
@@ -44,16 +45,47 @@ export function BetsApiHeadlinePrices({
 
   useEffect(() => {
     if (!visible) return;
-    const match = /^betsapi:(live|upcoming):(\d{1,4}):(\d{1,16})$/.exec(matchId);
-    if (!match) { setLoaded(true); return; }
+    const matchParts = /^betsapi:(live|upcoming):(\d{1,4}):(\d{1,16})$/.exec(matchId);
+    if (!matchParts) { setLoaded(true); return; }
     const controller = new AbortController();
     let working = false;
     setLoaded(false);
-    const query = new URLSearchParams({ mode: match[1]!, sportId: match[2]!, fi: match[3]! });
+    const query = new URLSearchParams({ mode: matchParts[1]!, sportId: matchParts[2]!, fi: matchParts[3]! });
     const read = async () => {
       if (working || controller.signal.aborted || document.visibilityState !== 'visible' || !navigator.onLine) return;
       working = true;
       try {
+        // These are the same canonical, versioned prices displayed in the
+        // live bet panel. Prefer them over Bet365 FI preview prices in the
+        // actual match card, otherwise users see odds they cannot select.
+        // Never resolve an FI or team name into a wager ID by guessing.
+        if (match?.isLive && match.betsApiEventId) {
+          const offers = await readCanonicalBetsApiMarkets();
+          const canonical = canonicalBetsApiMarketForEvent(match.betsApiEventId, offers);
+          if (controller.signal.aborted) return;
+          if (canonical) {
+            const labels = {
+              HOME: canonical.home, DRAW: 'Draw', AWAY: canonical.away,
+            } as const;
+            const selections = (['HOME', 'DRAW', 'AWAY'] as const).map(code => {
+              const selection = canonical.selections.find(s => s.code === code)!;
+              return {
+                label: labels[code],
+                decimal: (Number(selection.oddsScaled) / 10_000).toFixed(4),
+                wager: {
+                  matchId: canonical.matchId, marketId: canonical.marketId,
+                  selectionId: selection.selectionId,
+                  oddsScaled: selection.oddsScaled, oddsVersion: selection.oddsVersion,
+                },
+              };
+            });
+            setData({
+              market: { name: 'Full-time result (1X2)', selections },
+              marketCount: 1, error: null,
+            });
+            return;
+          }
+        }
         const r = await fetch('/api/v1/betsapi/card-prices?' + query, { cache: 'no-store', signal: controller.signal });
         if (!r.ok) throw new Error('NETWORK');
         const response = await r.json() as Envelope;
@@ -66,11 +98,11 @@ export function BetsApiHeadlinePrices({
       }
     };
     void read();
-    const interval = window.setInterval(() => { void read(); }, match[1] === 'live' ? 10_000 : 60_000);
+    const interval = window.setInterval(() => { void read(); }, matchParts[1] === 'live' ? 10_000 : 60_000);
     const resume = () => { if (document.visibilityState === 'visible') void read(); };
     document.addEventListener('visibilitychange', resume);
     return () => { controller.abort(); window.clearInterval(interval); document.removeEventListener('visibilitychange', resume); };
-  }, [visible, matchId]);
+  }, [visible, matchId, match?.betsApiEventId, match?.isLive]);
 
   const compact = variant === 'home';
   const market = data?.market;
@@ -116,10 +148,14 @@ export function BetsApiHeadlinePrices({
       <div className={`grid grid-cols-3 ${compact ? 'gap-1' : 'gap-1.5'}`}>
         {Array.from({ length: 3 }, (_, i) => {
           const selection = market?.selections[i];
-          return <button key={i} type="button" disabled={!selection?.wager || !match}
-            aria-disabled={!selection?.wager || !match} onClick={() => { if (selection?.wager) addBet(selection); }}
-            title={selection ? `${selection.label}: ${formatBetsApiOdds(selection.decimal)}` : undefined}
-            className={`flex flex-col items-center justify-center rounded-lg border border-[#E4E9EF] bg-white text-center ${compact ? 'min-h-[45px] px-1 py-1.5' : 'min-h-[53px] px-1.5 py-2'}`}>
+          const selectable = Boolean(selection?.wager && match);
+          return <button key={i} type="button" disabled={!selectable}
+            aria-disabled={!selectable} onClick={() => { if (selectable && selection) addBet(selection); }}
+            title={selectable ? (locale === 'fa' ? 'افزودن به بت‌اسلیپ' : 'Add to bet slip')
+              : (locale === 'fa' ? 'ضریب صرفاً نمایشی است' : 'Preview only - no current canonical price')}
+            className={`flex flex-col items-center justify-center rounded-lg border text-center ${compact ? 'min-h-[45px] px-1 py-1.5' : 'min-h-[53px] px-1.5 py-2'} ${selectable
+              ? 'cursor-pointer border-[#CBE5D9] bg-[#F1FCF5] hover:border-[#22B276]'
+              : 'cursor-not-allowed border-[#E4E9EF] bg-[#F1F3F5] opacity-55'}`}>
             {selection ? <>
               <span className="w-full truncate text-[9px] font-semibold text-[#768391]">{selection.label}</span>
               <strong className="mt-1 text-[12px] font-black tabular-nums text-[#1D2C3D]">{formatBetsApiOdds(selection.decimal)}</strong>
