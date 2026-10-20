@@ -45,7 +45,7 @@ fun MatchDetailPage(state: AppState, model: AppViewModel) {
         return
     }
     var selectedMarketGroup by rememberSaveable(match.id) { mutableStateOf("all") }
-    var scoreMode by rememberSaveable(match.id) { mutableStateOf("score") }
+    var tvOpen by rememberSaveable(match.id) { mutableStateOf(false) }
     var marketSearch by rememberSaveable(match.id) { mutableStateOf("") }
     LaunchedEffect(match.id) {
         if (match.live && match.id.startsWith("betsapi:live:")) {
@@ -119,6 +119,11 @@ fun MatchDetailPage(state: AppState, model: AppViewModel) {
             }
         }
     }
+    if (tvOpen) PremiumMatchTvModal126(
+        match = match, facts = facts, fa = state.lang == Lang.FA,
+        clockLabel = clockLabel, onClose = { tvOpen = false },
+        onRefresh = { model.refreshMatchFacts(match.id) }
+    )
     LazyColumn(state = marketListState, contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp), flingBehavior = rememberPremiumFlingBehavior()) {
         item {
@@ -162,82 +167,47 @@ fun MatchDetailPage(state: AppState, model: AppViewModel) {
             }
         }
         item {
-            Surface(color = Color.White, shape = RoundedCornerShape(21.dp),
-                border = BorderStroke(1.dp, Palette.border), shadowElevation = 3.dp) {
-                Row(Modifier.fillMaxWidth().padding(3.dp),
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+            PremiumMatchScoreHeader126(
+                match = match, facts = facts, fa = state.lang == Lang.FA,
+                clockLabel = clockLabel, onOpenStudio = { tvOpen = true }
+            )
+            Spacer(Modifier.height(12.dp))
+            Surface(
+                color = Palette.ink, shape = RoundedCornerShape(18.dp),
+                border = BorderStroke(1.dp, Color(0xFF2C4653)),
+                shadowElevation = 4.dp
+            ) {
+                Row(Modifier.fillMaxWidth().padding(5.dp),
+                    horizontalArrangement = Arrangement.spacedBy(5.dp)) {
                     listOf(
                         Triple("score", tr(state.lang, "Score", "نتیجه"), Icons.Default.Scoreboard),
-                        Triple("tv", tr(state.lang, "TV", "پخش"), Icons.Default.Tv),
-                        Triple("live", tr(state.lang, "Live", "زنده"), Icons.Default.Sensors)
+                        Triple("tv", "TV", Icons.Default.Tv),
+                        Triple("live", tr(state.lang, "Live tracker", "نمایش زنده"), Icons.Default.Sensors)
                     ).forEach { (mode, text, icon) ->
-                        val enabled = mode == "score" || (mode == "live" && match.live)
-                        Surface(Modifier.weight(1f).heightIn(min = 47.dp)
-                            .clickable(enabled = enabled) { scoreMode = mode },
-                            color = if (scoreMode == mode) Color.White else Color.Transparent,
-                            shape = RoundedCornerShape(13.dp)) {
+                        val enabled = mode == "score" || match.live
+                        val selected = mode == "score"
+                        Surface(
+                            modifier = Modifier.weight(1f).heightIn(min = 48.dp)
+                                .clickable(enabled = enabled) { if (mode != "score") tvOpen = true },
+                            shape = RoundedCornerShape(14.dp),
+                            color = if (selected) Color(0xFF255746) else Color(0xFF152831),
+                            border = BorderStroke(1.dp,
+                                if (selected) Color(0xFF3BCA8D) else Color(0xFF35515C))
+                        ) {
                             Row(Modifier.fillMaxSize(),
                                 horizontalArrangement = Arrangement.Center,
                                 verticalAlignment = Alignment.CenterVertically) {
-                                Icon(icon, null, tint = if (enabled) Palette.text else Palette.muted,
+                                Icon(icon, contentDescription = null,
+                                    tint = if (enabled) Color(0xFF4FE5A8) else Color(0xFF66828B),
                                     modifier = Modifier.size(17.dp))
                                 Spacer(Modifier.width(5.dp))
-                                Text(text, fontSize = 11.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = if (enabled) Palette.text else Palette.muted)
+                                Text(text, fontSize = 10.sp, fontWeight = FontWeight.Black,
+                                    color = if (enabled) Color.White else Color(0xFF66828B),
+                                    maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
                             }
                         }
                     }
                 }
-            }
-            Spacer(Modifier.height(11.dp))
-            if (scoreMode == "live" && match.live && match.id.startsWith("betsapi:live:")) {
-                LiveMatchActivityPanel(
-                    match = match, facts = facts, fa = state.lang == Lang.FA,
-                    expanded = scoreMode == "live", clockLabel = clockLabel
-                )
-                Spacer(Modifier.height(9.dp))
-            }
-            Row(Modifier.fillMaxWidth().padding(vertical = 15.dp),
-                verticalAlignment = Alignment.CenterVertically) {
-                Column(Modifier.weight(1f),
-                    horizontalAlignment = Alignment.CenterHorizontally) {
-                    TeamBadge(match.home, 54)
-                    Spacer(Modifier.height(7.dp))
-                    Text(match.home.name, textAlign = TextAlign.Center,
-                        fontWeight = FontWeight.ExtraBold, fontSize = 12.sp,
-                        color = Palette.text, maxLines = 2)
-                }
-                Surface(color = Palette.ink,
-                    border = BorderStroke(1.dp, Palette.green.copy(alpha = .5f)),
-                    shadowElevation = 5.dp,
-                    shape = RoundedCornerShape(15.dp)) {
-                    Text(if (match.homeScore != null && match.awayScore != null)
-                        "${match.homeScore}:${match.awayScore}" else "VS",
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-                        color = Color.White, fontWeight = FontWeight.Black, fontSize = 26.sp)
-                }
-                Column(Modifier.weight(1f),
-                    horizontalAlignment = Alignment.CenterHorizontally) {
-                    TeamBadge(match.away, 54)
-                    Spacer(Modifier.height(7.dp))
-                    Text(match.away.name, textAlign = TextAlign.Center,
-                        fontWeight = FontWeight.ExtraBold, fontSize = 12.sp,
-                        color = Palette.text, maxLines = 2)
-                }
-            }
-            Row(Modifier.fillMaxWidth().padding(vertical = 9.dp),
-                verticalAlignment = Alignment.CenterVertically) {
-                if (match.live) Icon(Icons.Default.Sensors, null,
-                    tint = Color(0xFFF50078), modifier = Modifier.size(17.dp))
-                Text(if (match.live)
-                    tr(state.lang, "LIVE", "زنده") + " · " +
-                        clockLabel
-                    else match.starts.take(16).replace("T", " · "),
-                    color = Palette.muted, fontSize = 12.sp)
-                Spacer(Modifier.weight(1f))
-                Text(tr(state.lang, "Server-confirmed score", "نتیجه تأییدشده سرور"),
-                    color = Palette.muted, fontSize = 10.sp)
             }
         }
         item {
