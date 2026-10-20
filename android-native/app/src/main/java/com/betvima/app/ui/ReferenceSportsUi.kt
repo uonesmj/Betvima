@@ -168,6 +168,7 @@ private val sportChips = listOf(
 fun ReferenceSportRibbon(state: AppState, model: AppViewModel, live: Boolean = false,
     all: Boolean = false, selectedKey: String? = null,
     onSelect: ((String) -> Unit)? = null) {
+    val darkHome = LocalDarkHome.current
     val current = (selectedKey ?: if (all) "top" else state.sport)
         .let { if (it == "all") "top" else it }
     val events = if (live) state.live else state.upcoming
@@ -192,7 +193,8 @@ fun ReferenceSportRibbon(state: AppState, model: AppViewModel, live: Boolean = f
             val loadedCount = if (sport.key == "top") events.size else
                 (totals[sport.key] ?: 0)
             Surface(shape = RoundedCornerShape(14.dp),
-                color = if (active) Palette.blue else Color(0xFFE0E3E9),
+                color = if (active) Palette.blue else if (darkHome)
+                    DarkHomePalette.panel else Color(0xFFE0E3E9),
                 modifier = Modifier.width(124.dp).height(71.dp).clickable {
                     if (onSelect != null) onSelect(sport.key)
                     else if (sport.key == "top") {
@@ -207,12 +209,14 @@ fun ReferenceSportRibbon(state: AppState, model: AppViewModel, live: Boolean = f
                         tr(state.lang, "All Live", "همه زنده‌ها")
                         else tr(state.lang, sport.en, sport.fa),
                         modifier = Modifier.align(Alignment.TopStart),
-                        color = if (active) Color.White else Palette.text,
+                        color = if (active) Color.White else if (darkHome)
+                            DarkHomePalette.ink else Palette.text,
                         maxLines = 1, overflow = TextOverflow.Ellipsis,
                         fontWeight = FontWeight.ExtraBold, fontSize = 12.sp)
                     if (loadedCount > 0) Text(loadedCount.toString(),
                         modifier = Modifier.align(Alignment.BottomStart),
-                        fontSize = 11.sp, color = if (active) Color.White else Palette.muted)
+                        fontSize = 11.sp, color = if (active) Color.White else if (darkHome)
+                    DarkHomePalette.muted else Palette.muted)
                     Icon(sport.icon, contentDescription = null,
                         modifier = Modifier.align(Alignment.BottomEnd).size(25.dp),
                         tint = if (active) Color.White else Palette.blue)
