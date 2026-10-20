@@ -275,7 +275,9 @@ fun CatalogPage(state: AppState, model: AppViewModel, live: Boolean,
     val displayedCount = visibleFixtureCount88(visibleGroups, collapsedLeagues)
     val totalCount = visibleGroups.values.sumOf { it.size }
 
+    CompositionLocalProvider(LocalDarkHome provides true) {
     LazyColumn(state = footerListState,
+        modifier = Modifier.fillMaxSize().background(DarkHomePalette.canvas),
         contentPadding = PaddingValues(bottom = 0.dp),
         verticalArrangement = Arrangement.spacedBy(9.dp), flingBehavior = rememberPremiumFlingBehavior()) {
         item { SportsbookTopTabs(state, model, onSearch) }
@@ -294,10 +296,10 @@ fun CatalogPage(state: AppState, model: AppViewModel, live: Boolean,
                 Column(Modifier.weight(1f)) {
                     Text(totalCount.toString() + " " +
                         tr(state.lang, "live fixtures loaded", "مسابقه زنده دریافت شده"),
-                        color = Palette.text, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                        color = DarkHomePalette.ink, fontSize = 12.sp, fontWeight = FontWeight.Bold)
                     Text(displayedCount.toString() + " / " + totalCount.toString() + " " +
                         tr(state.lang, "fixtures expanded", "مسابقه باز و قابل مشاهده"),
-                        color = Palette.muted, fontSize = 10.sp)
+                        color = DarkHomePalette.muted, fontSize = 10.sp)
                 }
                 TextButton(onClick = {
                     collapsedLeagues = if (displayedCount == totalCount)
@@ -314,16 +316,16 @@ fun CatalogPage(state: AppState, model: AppViewModel, live: Boolean,
             Row(Modifier.fillMaxWidth().padding(horizontal = 15.dp, vertical = 3.dp),
                 verticalAlignment = Alignment.CenterVertically) {
                 Surface(
-                    color = Color.White,
+                    color = DarkHomePalette.panel,
                     shape = RoundedCornerShape(17.dp),
-                    border = BorderStroke(1.dp, Palette.border),
-                    shadowElevation = 2.dp,
+                    border = BorderStroke(1.dp, DarkHomePalette.outline),
+                    shadowElevation = 0.dp,
                     modifier = Modifier.weight(1f).clickable { tournamentOpen = true }
                 ) {
                     Row(Modifier.heightIn(min = 54.dp)
                         .padding(horizontal = 13.dp, vertical = 10.dp),
                         verticalAlignment = Alignment.CenterVertically) {
-                        Surface(color = Palette.greenLight, shape = RoundedCornerShape(11.dp)) {
+                        Surface(color = DarkHomePalette.soft, shape = RoundedCornerShape(11.dp)) {
                             Icon(Icons.Default.EmojiEvents, null, tint = Palette.blue,
                                 modifier = Modifier.padding(9.dp).size(20.dp))
                         }
@@ -331,20 +333,20 @@ fun CatalogPage(state: AppState, model: AppViewModel, live: Boolean,
                         Column(Modifier.weight(1f)) {
                             Text(tr(state.lang, "TOURNAMENTS", "رقابت‌ها"),
                                 fontSize = 9.sp, fontWeight = FontWeight.Black,
-                                color = Palette.muted)
+                                color = DarkHomePalette.muted)
                             Text(if (selectedLeague.isBlank())
                                 tr(state.lang, "Choose a tournament", "انتخاب لیگ")
                                 else groups[selectedLeague]?.firstOrNull()?.league.orEmpty(),
                                 fontSize = 13.sp, fontWeight = FontWeight.ExtraBold,
-                                color = Palette.text, maxLines = 1,
+                                color = DarkHomePalette.ink, maxLines = 1,
                                 overflow = TextOverflow.Ellipsis)
                         }
                         Icon(Icons.Default.KeyboardArrowDown, null, tint = Palette.blue)
                     }
                 }
                 Spacer(Modifier.width(8.dp))
-                Surface(color = Color.White, shape = RoundedCornerShape(15.dp),
-                    border = BorderStroke(1.dp, Palette.border),
+                Surface(color = DarkHomePalette.panel, shape = RoundedCornerShape(15.dp),
+                    border = BorderStroke(1.dp, DarkHomePalette.outline),
                     modifier = Modifier.size(54.dp).clickable {
                         if (live) model.refreshLive() else model.refreshUpcoming()
                     }) {
@@ -415,14 +417,15 @@ fun CatalogPage(state: AppState, model: AppViewModel, live: Boolean,
         onSelect = { selectedLeague = it },
         onDismiss = { tournamentOpen = false }
     )
+    }
 }
 
 @Composable
 private fun LeagueSection(key: String, matches: List<Match>, expanded: Boolean,
     onToggle: () -> Unit, state: AppState, model: AppViewModel) {
-    Surface(shape = RoundedCornerShape(23.dp), color = Color.White,
-        border = BorderStroke(1.dp, Palette.border),
-        shadowElevation = 4.dp,
+    Surface(shape = RoundedCornerShape(23.dp), color = DarkHomePalette.panel,
+        border = BorderStroke(1.dp, DarkHomePalette.outline),
+        shadowElevation = 0.dp,
         modifier = Modifier.fillMaxWidth()) {
         Column {
             Row(Modifier.fillMaxWidth().clickable(onClick = onToggle)
@@ -431,7 +434,7 @@ private fun LeagueSection(key: String, matches: List<Match>, expanded: Boolean,
                 LeagueIdentityBadge(matches.first(), size = 43)
                 Spacer(Modifier.width(9.dp))
                 Column(Modifier.weight(1f)) {
-                    Text(matches.first().league, color = Palette.text,
+                    Text(matches.first().league, color = DarkHomePalette.ink,
                         fontWeight = FontWeight.ExtraBold, fontSize = 13.sp,
                         maxLines = 2)
                     Row(verticalAlignment = Alignment.CenterVertically,
@@ -443,22 +446,22 @@ private fun LeagueSection(key: String, matches: List<Match>, expanded: Boolean,
                             country.takeIf { it.isNotBlank() }
                                 ?.let(::countryDisplayName)
                                 ?: tr(state.lang, "International", "بین‌المللی"),
-                            color = Palette.muted, fontSize = 10.sp, maxLines = 1,
+                            color = DarkHomePalette.muted, fontSize = 10.sp, maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )
-                        Text("•", color = Palette.border)
+                        Text("•", color = DarkHomePalette.outline)
                         Text(sportName(matches.first().sport),
-                            color = Palette.muted, fontSize = 10.sp)
+                            color = DarkHomePalette.muted, fontSize = 10.sp)
                     }
                 }
-                SmallPill(matches.size.toString(), Palette.paper, Palette.text)
+                SmallPill(matches.size.toString(), DarkHomePalette.soft, DarkHomePalette.ink)
                 SmoothExpandChevron(expanded,
                     tr(state.lang, "Toggle league", "نمایش یا بستن لیگ"),
-                    tint = Palette.muted)
+                    tint = DarkHomePalette.muted)
             }
             SmoothExpandedContent(expanded) {
                 Column(
-                    Modifier.fillMaxWidth().background(Color(0xFFF4F6F9))
+                    Modifier.fillMaxWidth().background(DarkHomePalette.canvas)
                         .padding(10.dp),
                     verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
