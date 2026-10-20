@@ -30,10 +30,11 @@ import kotlinx.coroutines.launch
 private val supportNavy = Color(0xFF0A182B)
 private val supportBlue = Color(0xFF087FF5)
 private val supportMint = Color(0xFF00D47A)
-private val supportInk = Color(0xFF192437)
-private val supportMuted = Color(0xFF7D8B9F)
-private val supportBorder = Color(0xFFE2E8F1)
-private val supportBg = Color(0xFFF6F8FC)
+private val supportInk = Color(0xFFF5F6F8)
+private val supportMuted = Color(0xFFA7ABB6)
+private val supportBorder = Color(0xFF39393D)
+private val supportBg = Color(0xFF111113)
+private val supportPanel = Color(0xFF222224)
 
 internal val supportCategories = listOf(
     "general", "deposit", "withdrawal", "bet", "login", "bonus", "technical", "other"
@@ -174,7 +175,7 @@ private fun SupportTicketCard(ticket: SupportTicket, lang: Lang, onClick: () -> 
     val status = supportStatusTint(ticket.status)
     Surface(
         modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
-        color = Color.White, shape = RoundedCornerShape(19.dp),
+        color = supportPanel, shape = RoundedCornerShape(19.dp),
         border = BorderStroke(1.dp, supportBorder), shadowElevation = 1.dp
     ) {
         Row(Modifier.fillMaxWidth().padding(14.dp), verticalAlignment = Alignment.Top) {
@@ -262,12 +263,12 @@ fun PremiumSupportPage(state: AppState, model: AppViewModel) {
         verticalArrangement = Arrangement.spacedBy(14.dp), flingBehavior = rememberPremiumFlingBehavior()) {
         item { SupportHero(lang, total, needsReply) }
         item {
-            Surface(color = Color.White, shape = RoundedCornerShape(18.dp),
+            Surface(color = supportPanel, shape = RoundedCornerShape(18.dp),
                 border = BorderStroke(1.dp, supportBorder)) {
                 Row(Modifier.fillMaxWidth().padding(14.dp),
                     verticalAlignment = Alignment.CenterVertically) {
-                    Surface(color = Color(0xFFEAF6EF), shape = RoundedCornerShape(12.dp)) {
-                        Icon(Icons.Default.AddComment, null, tint = Color(0xFF0D915A),
+                    Surface(color = Color(0xFF1B382D), shape = RoundedCornerShape(12.dp)) {
+                        Icon(Icons.Default.AddComment, null, tint = Color(0xFF67D8AA),
                             modifier = Modifier.padding(10.dp).size(22.dp))
                     }
                     Spacer(Modifier.width(11.dp))
@@ -339,8 +340,8 @@ fun PremiumSupportPage(state: AppState, model: AppViewModel) {
                                 Icon(Icons.Default.Check, null, modifier = Modifier.size(16.dp))
                             }) else null,
                             colors = FilterChipDefaults.filterChipColors(
-                                selectedContainerColor = Color(0xFFE4F7ED),
-                                selectedLabelColor = Color(0xFF087D50)),
+                                selectedContainerColor = Color(0xFF173550),
+                                selectedLabelColor = Color.White),
                             shape = RoundedCornerShape(13.dp)
                         )
                     }
@@ -350,9 +351,9 @@ fun PremiumSupportPage(state: AppState, model: AppViewModel) {
                 item { LinearProgressIndicator(Modifier.fillMaxWidth(), color = supportMint) }
             }
             if (error != null) item {
-                Surface(color = Color(0xFFFFF0EF), shape = RoundedCornerShape(15.dp)) {
+                Surface(color = Color(0xFF3B252B), shape = RoundedCornerShape(15.dp)) {
                     Column(Modifier.padding(13.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
-                        Text(error.orEmpty(), fontSize = 11.sp, color = Color(0xFFAA3544))
+                        Text(error.orEmpty(), fontSize = 11.sp, color = Color(0xFFFFA3AD))
                         TextButton(onClick = { scope.launch { refresh() } }) {
                             Text(tr(lang, "Try again", "تلاش دوباره"))
                         }
@@ -360,12 +361,12 @@ fun PremiumSupportPage(state: AppState, model: AppViewModel) {
                 }
             }
             if (!loading && shown.isEmpty()) item {
-                Surface(color = Color.White, shape = RoundedCornerShape(20.dp),
+                Surface(color = supportPanel, shape = RoundedCornerShape(20.dp),
                     border = BorderStroke(1.dp, supportBorder)) {
                     Column(Modifier.fillMaxWidth().padding(28.dp),
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                        Surface(color = Color(0xFFF0F5FD), shape = CircleShape) {
+                        Surface(color = Color(0xFF19344C), shape = CircleShape) {
                             Icon(Icons.Default.Forum, null, tint = supportBlue,
                                 modifier = Modifier.padding(17.dp).size(29.dp))
                         }
@@ -441,7 +442,9 @@ private fun SupportNewTicketSheet(
         }
     }
     ModalBottomSheet(onDismissRequest = closeSheet,
-        containerColor = Color.White,
+        containerColor = supportBg,
+        contentColor = supportInk,
+        scrimColor = Color.Black.copy(alpha = .72f),
         sheetState = sheet) {
         Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState(), flingBehavior = rememberPremiumFlingBehavior())
             .padding(horizontal = 17.dp).padding(bottom = 26.dp),
@@ -506,6 +509,14 @@ private fun SupportNewTicketSheet(
                 }
             }
             OutlinedTextField(subject,
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedTextColor = supportInk, unfocusedTextColor = supportInk,
+                    focusedContainerColor = supportPanel,
+                    unfocusedContainerColor = supportPanel,
+                    focusedBorderColor = supportBlue, unfocusedBorderColor = supportBorder,
+                    focusedLabelColor = Color(0xFF85C5FF), unfocusedLabelColor = supportMuted,
+                    focusedPlaceholderColor = supportMuted, unfocusedPlaceholderColor = supportMuted,
+                    cursorColor = supportBlue),
                 onValueChange = { subject = it.take(160); error = null },
                 label = { Text(tr(lang,"Subject","عنوان درخواست")) },
                 placeholder = { Text(tr(lang,"A short description","موضوع را کوتاه توضیح دهید")) },
@@ -514,6 +525,14 @@ private fun SupportNewTicketSheet(
                 keyboardOptions = KeyboardOptions(
                     capitalization = KeyboardCapitalization.Sentences))
             OutlinedTextField(text,
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedTextColor = supportInk, unfocusedTextColor = supportInk,
+                    focusedContainerColor = supportPanel,
+                    unfocusedContainerColor = supportPanel,
+                    focusedBorderColor = supportBlue, unfocusedBorderColor = supportBorder,
+                    focusedLabelColor = Color(0xFF85C5FF), unfocusedLabelColor = supportMuted,
+                    focusedPlaceholderColor = supportMuted, unfocusedPlaceholderColor = supportMuted,
+                    cursorColor = supportBlue),
                 onValueChange = { text = it.take(5000); error = null },
                 label = { Text(tr(lang,"Describe your issue","شرح مشکل")) },
                 placeholder = {
@@ -532,10 +551,10 @@ private fun SupportNewTicketSheet(
                 Text("${text.length}/5000", color = supportMuted, fontSize = 10.sp)
             }
             if (error != null || uncertain) {
-                Surface(color = Color(0xFFFFF4E8), shape = RoundedCornerShape(12.dp)) {
+                Surface(color = Color(0xFF383020), shape = RoundedCornerShape(12.dp)) {
                     Text(error ?: tr(lang,"Confirm ticket status before submitting again.",
                         "پیش از ثبت دوباره، فهرست تیکت‌ها را بررسی کنید."),
-                        color = Color(0xFF985D16),
+                        color = Color(0xFFFFD489),
                         modifier = Modifier.padding(11.dp), fontSize = 11.sp)
                 }
             }
