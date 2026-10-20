@@ -20,7 +20,8 @@ describe('secure automatic affiliate APK build', () => {
     const worker = read('ops/android/affiliate_apk_worker.py');
     expect(worker).toContain('pwd.getpwnam("betvimaapk")');
     expect(worker).toContain('"/usr/bin/setpriv"');
-    expect(worker).toContain('"--clear-groups", "--"');
+    expect(worker).toContain('"--clear-groups",');
+    expect(worker).toContain('"--no-new-privs", "--"');
     expect(worker).not.toContain('preexec_fn=drop_privileges');
     expect(worker).toContain('"--max-workers=1"');
     expect(worker).toContain('CERT_SHA256');
@@ -33,6 +34,7 @@ describe('secure automatic affiliate APK build', () => {
   it('rate limits build memory separately from web and persists scheduled builds', () => {
     const install = read('ops/android/install-affiliate-apk-worker.sh');
     expect(install).toContain('MemoryMax=3G');
+    expect(install).toContain('NoNewPrivileges=false');
     expect(install).toContain('MemorySwapMax=3G');
     expect(install).toContain('OnUnitInactiveSec=30s');
     expect(install).toContain('native_sha_unapproved');

@@ -122,7 +122,8 @@ def build(code: str, version: str) -> None:
                 "/usr/bin/setpriv",
                 f"--reuid={builder.pw_uid}",
                 f"--regid={builder.pw_gid}",
-                "--clear-groups", "--",
+                "--clear-groups",
+                "--no-new-privs", "--",
                 *args,
             ]
             proc = subprocess.run(command, cwd=WORK, env=env,
