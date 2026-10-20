@@ -45,12 +45,12 @@ export function BetsApiHeadlinePrices({
 
   useEffect(() => {
     if (!visible) return;
-    const match = /^betsapi:(live|upcoming):(\d{1,4}):(\d{1,16})$/.exec(matchId);
-    if (!match) { setLoaded(true); return; }
+    const matchParts = /^betsapi:(live|upcoming):(\d{1,4}):(\d{1,16})$/.exec(matchId);
+    if (!matchParts) { setLoaded(true); return; }
     const controller = new AbortController();
     let working = false;
     setLoaded(false);
-    const query = new URLSearchParams({ mode: match[1]!, sportId: match[2]!, fi: match[3]! });
+    const query = new URLSearchParams({ mode: matchParts[1]!, sportId: matchParts[2]!, fi: matchParts[3]! });
     const read = async () => {
       if (working || controller.signal.aborted || document.visibilityState !== 'visible' || !navigator.onLine) return;
       working = true;
@@ -98,7 +98,7 @@ export function BetsApiHeadlinePrices({
       }
     };
     void read();
-    const interval = window.setInterval(() => { void read(); }, match[1] === 'live' ? 10_000 : 60_000);
+    const interval = window.setInterval(() => { void read(); }, matchParts[1] === 'live' ? 10_000 : 60_000);
     const resume = () => { if (document.visibilityState === 'visible') void read(); };
     document.addEventListener('visibilitychange', resume);
     return () => { controller.abort(); window.clearInterval(interval); document.removeEventListener('visibilitychange', resume); };
