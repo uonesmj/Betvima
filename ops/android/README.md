@@ -74,3 +74,50 @@ a **new** account via it (never reuse an existing user to test immutable
 referral attribution). Check the database and the affiliate's dashboard
 before distributing it. A valid signature alone is not sufficient proof
 of correct attribution or Play Store signing compatibility.
+
+
+## Automatic signing queue (0.125.0+)
+
+The web download endpoint serves a cached, certificate-pinned APK immediately.
+For any other approved affiliate, it writes only a zero-length <CODE>.request file
+under /var/lib/betvima-affiliate-build/queue, then shows a self-refreshing
+"preparing Android" page. The web service does not hold keystore secrets and
+never runs Gradle. A separate systemd timer builds one request at a time
+as the isolated betvimaapk user; systemd caps memory and CPU. The private
+root-only signing key is copied temporarily into a private RAM directory
+accessible only to that build user, then destroyed automatically.
+
+After the reviewed production deployment, use this exact order on the VPS:
+
+1. As root, invoke the new release's ops/android/sync-affiliate-build-source.sh.
+   This validates the pinned native Git commit and installs Android 0.125.0
+   without altering the website, wallets, or keystore.
+2. As root, invoke the same release's ops/android/install-affiliate-apk-worker.sh.
+   This installs the isolated worker and enables its systemd timer; it
+   DOES NOT restart the Next.js service. The installer can be rerun to sync
+   a later reviewed source revision, preserving the old workspace.
+3. Verify: systemctl is-active betvima-affiliate-apk.timer
+4. Test a separate APPROVED affiliate code with:
+   https://betvima.com/app/affiliate/<CODE>
+   The initial response may be a waiting page. It refreshes until the
+   certificate-pinned APK is available for download.
+5. Inspect without exposing passwords:
+   journalctl -u betvima-affiliate-apk.service --no-pager -n 35
+
+A failed build becomes a non-retrying failure marker at
+/var/lib/betvima-affiliate-build/failed/<CODE>. Do not repeatedly trigger a
+build that exhausted server resources. Diagnose the private root-owned
+/var/lib/betvima-affiliate-build/last-build.log, fix the cause, and have an
+administrator clear ONLY that affected affiliate code's failure marker.
+
+Only reviewed source SHA 909b223b477c01d08f1561a1c3d6c17e7bec605c is installed.
+The 0.124.0 APK already installed on test phones continues working; a
+different APK with version 0.125.0 must be signed with the same release key
+to install as an update. The public API never exposes the internal
+attributionFromCookie field, while the server still persists audit
+and affiliate registration records.
+
+Do not copy signing passwords to PM2, website environment files, GitHub
+repository, GitHub logs, frontend JavaScript or an APK. Keep an encrypted
+off-VPS backup of the JKS and its password, and never replace the signing
+identity without carefully planning device updates.
