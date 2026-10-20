@@ -125,7 +125,8 @@ internal fun BetSelectionOverview(
     leg: BetLegDetail,
     lang: Lang,
     modifier: Modifier = Modifier,
-    resolvedMatch: Match? = null
+    resolvedMatch: Match? = null,
+    compact: Boolean = false
 ) {
     val result = leg.result.ifBlank { leg.status }
     val terminalPhase = leg.matchStatus.lowercase() in finalPhases
@@ -147,9 +148,9 @@ internal fun BetSelectionOverview(
         shape = RoundedCornerShape(16.dp),
         border = BorderStroke(1.dp, ticketBorder)
     ) {
-        Column(Modifier.fillMaxWidth().padding(13.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            TicketSelectionSpotlight(leg, lang, result, outcomeColor)
+        Column(Modifier.fillMaxWidth().padding(if (compact) 8.dp else 13.dp),
+            verticalArrangement = Arrangement.spacedBy(if (compact) 6.dp else 10.dp)) {
+            TicketSelectionSpotlight(leg, lang, result, outcomeColor, compact)
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Default.SportsSoccer, null,
                     tint = Palette.blue, modifier = Modifier.size(17.dp))
@@ -173,7 +174,7 @@ internal fun BetSelectionOverview(
             val awayName = leg.awayTeamName.ifBlank { resolvedMatch?.away?.name.orEmpty() }
             if (validPublicMatchLabel(homeName) && validPublicMatchLabel(awayName) &&
                 homeName != "TBD" && awayName != "TBD") {
-                Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(7.dp)) {
+                Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(if (compact) 4.dp else 7.dp)) {
                     TicketTeamScoreRow(
                         homeName, leg.homeTeamLogoUrl.ifBlank { resolvedMatch?.home?.logo.orEmpty() },
                         scoreHome
@@ -192,7 +193,7 @@ internal fun BetSelectionOverview(
                 Row(
                     Modifier.fillMaxWidth()
                         .background(ticketSurface, RoundedCornerShape(11.dp))
-                        .padding(horizontal = 11.dp, vertical = 9.dp),
+                        .padding(horizontal = 9.dp, vertical = if (compact) 5.dp else 9.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Icon(Icons.Default.Scoreboard, null, tint = Palette.blue,
@@ -203,7 +204,7 @@ internal fun BetSelectionOverview(
                         color = ticketMuted, fontSize = 10.sp,
                         modifier = Modifier.weight(1f))
                     Text("${scoreHome} : ${scoreAway}", color = ticketInk,
-                        fontSize = 16.sp, fontWeight = FontWeight.Black)
+                        fontSize = if (compact) 14.sp else 16.sp, fontWeight = FontWeight.Black)
                 }
             } else if (leg.scheduledAt.isNotBlank()) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -226,20 +227,21 @@ internal fun BetSelectionOverview(
  */
 @Composable
 private fun TicketSelectionSpotlight(
-    leg: BetLegDetail, lang: Lang, result: String, outcomeColor: Color
+    leg: BetLegDetail, lang: Lang, result: String, outcomeColor: Color,
+    compact: Boolean = false
 ) {
     Surface(
         shape = RoundedCornerShape(15.dp),
         color = Color(0xFFEDFBF4),
         border = BorderStroke(1.dp, Color(0xFF9DDFC1))
     ) {
-        Row(Modifier.fillMaxWidth().padding(13.dp), verticalAlignment = Alignment.Top) {
+        Row(Modifier.fillMaxWidth().padding(if (compact) 8.dp else 13.dp), verticalAlignment = Alignment.Top) {
             Surface(color = Color(0xFF00A86B), shape = RoundedCornerShape(11.dp)) {
                 Icon(Icons.Default.GpsFixed, null, tint = Color.White,
-                    modifier = Modifier.padding(10.dp).size(20.dp))
+                    modifier = Modifier.padding(if (compact) 6.dp else 10.dp).size(if (compact) 16.dp else 20.dp))
             }
-            Spacer(Modifier.width(10.dp))
-            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Spacer(Modifier.width(if (compact) 7.dp else 10.dp))
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(if (compact) 4.dp else 6.dp)) {
                 Text(tr(lang, "YOUR BET · EXACT SELECTION", "شرط شما · انتخاب ثبت‌شده"),
                     color = Color(0xFF16704B), fontSize = 10.sp,
                     fontWeight = FontWeight.Black)
@@ -247,15 +249,16 @@ private fun TicketSelectionSpotlight(
                 Text(leg.selectionLabel.ifBlank {
                     tr(lang, "Selection unavailable", "انتخاب نامشخص")
                 }, fontWeight = FontWeight.Black,
-                    fontSize = 18.sp, lineHeight = 23.sp, color = Color(0xFF122E23))
+                    fontSize = if (compact) 14.sp else 18.sp,
+                    lineHeight = if (compact) 18.sp else 23.sp, color = Color(0xFF122E23))
                 HorizontalDivider(color = Color(0xFFBBE8D2))
                 Text(tr(lang, "MARKET", "نوع بازار"),
                     color = Color(0xFF547C69), fontSize = 10.sp,
                     fontWeight = FontWeight.Bold)
                 Text(leg.marketLabel.ifBlank {
                     tr(lang, "Market unavailable", "مارکت نامشخص")
-                }, color = Color(0xFF244A38), fontSize = 13.sp,
-                    lineHeight = 19.sp, fontWeight = FontWeight.SemiBold)
+                }, color = Color(0xFF244A38), fontSize = if (compact) 11.sp else 13.sp,
+                    lineHeight = if (compact) 15.sp else 19.sp, fontWeight = FontWeight.SemiBold)
                 val validOdds = leg.oddsScaled.toBigDecimalOrNull()?.signum() == 1
                 Row(
                     Modifier.fillMaxWidth().padding(top = 3.dp),
@@ -268,13 +271,13 @@ private fun TicketSelectionSpotlight(
                             if (validOdds) odds(leg.oddsScaled) else "—",
                             color = Color(0xFF176E4B), fontSize = 11.sp,
                             fontWeight = FontWeight.Black,
-                            modifier = Modifier.padding(horizontal = 9.dp, vertical = 7.dp))
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = if (compact) 4.dp else 7.dp))
                     }
                     Surface(color = outcomeColor.copy(alpha = .10f),
                         shape = RoundedCornerShape(9.dp)) {
                         Text(legResultLabel(result, lang), color = outcomeColor,
                             fontSize = 10.sp, fontWeight = FontWeight.Bold,
-                            modifier = Modifier.padding(horizontal = 9.dp, vertical = 7.dp))
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = if (compact) 4.dp else 7.dp))
                     }
                 }
             }
