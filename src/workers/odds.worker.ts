@@ -24,7 +24,7 @@ import { attachCachedLogo } from "@/server/services/logo-resolver";
 import { sportsTeamSlug } from './sports-team-slug';
 import { confirmedExistingLiveFixtureIds } from './betsapi-live-recency';
 import {
-  betsapiLivePollIntervalMs,
+  betsapiLiveCoveragePlan,
   BETSAPI_EXPLORATION_INTERVAL_MS,
   BETSAPI_EMPTY_PRICE_ROTATE_AFTER,
   betsapiNoQuoteProbe,
@@ -75,15 +75,17 @@ let lastExtendedLiveOddsAt = 0;
 let lastMatchDiscoveryAt = 0;
 const MATCH_DISCOVERY_INTERVAL_MS = 5 * 60_000;
 const LIVE_ODDS_INTERVAL_MS = 5_000;
-const BETSAPI_LIVE_POLL_INTERVAL_MS = betsapiLivePollIntervalMs(
+const BETSAPI_COVERAGE_PLAN = betsapiLiveCoveragePlan(
   process.env.BETSAPI_HOURLY_REQUEST_BUDGET,
 );
+const BETSAPI_LIVE_POLL_INTERVAL_MS = BETSAPI_COVERAGE_PLAN.intervalMs;
 let lastBetsapiExplorationAt = 0;
 let lastBetsapiPendingResultsAt = 0;
 // Keep trial result-poll requests well below the shared 200/hour allowance.
 const BETSAPI_PENDING_RESULTS_INTERVAL_MS = 60 * 60_000;
 let betsapiExplorationCursor = 0;
 let preferredBetsapiLiveProviderId: string | null = null;
+let preferredBetsapiLiveCohort: string[] = [];
 const betsapiEmptyQuoteStreak = new Map<string, number>();
 const betsapiNoQuoteCooldown = new Map<string, number>();
 
@@ -102,6 +104,7 @@ function observeBetsapiLiveQuote(providerId: string, updated: number, schemaInva
   if (next.cooldownUntil !== null) {
     betsapiEmptyQuoteStreak.delete(providerId);
     betsapiNoQuoteCooldown.set(providerId, next.cooldownUntil);
+    preferredBetsapiLiveCohort = preferredBetsapiLiveCohort.filter(id => id !== providerId);
     if (preferredBetsapiLiveProviderId === providerId) {
       preferredBetsapiLiveProviderId = null;
     }
@@ -1007,12 +1010,16 @@ async function runDedicatedLiveTick(ctx: WorkerContext): Promise<void> {
           const selection = selectBetsapiLiveCandidates(
             pending,
             betsapiExplorationCursor,
-            now - lastBetsapiExplorationAt >= BETSAPI_EXPLORATION_INTERVAL_MS,
+            now - lastBetsapiExplorationAt >= BETSAPI_COVERAGE_PLAN.explorationIntervalMs,
             preferredBetsapiLiveProviderId,
             new Set(betsapiNoQuoteCooldown.keys()),
+            preferredBetsapiLiveCohort,
+            BETSAPI_COVERAGE_PLAN.pricedSlots,
           );
-          const activePriced = selection.candidates.find(row => row.has_betsapi_market);
-          preferredBetsapiLiveProviderId = activePriced?.provider_id ?? null;
+          preferredBetsapiLiveCohort = selection.candidates
+            .filter(row => row.has_betsapi_market && Boolean(row.provider_id))
+            .map(row => row.provider_id!);
+          preferredBetsapiLiveProviderId = preferredBetsapiLiveCohort[0] ?? null;
           if (selection.explored) {
             betsapiExplorationCursor++;
             lastBetsapiExplorationAt = now;
@@ -1022,6 +1029,8 @@ async function runDedicatedLiveTick(ctx: WorkerContext): Promise<void> {
             providerIds: selection.candidates.map(item => item.provider_id),
             explored: selection.explored,
             intervalMs: BETSAPI_LIVE_POLL_INTERVAL_MS,
+            pricedSlots: BETSAPI_COVERAGE_PLAN.pricedSlots,
+            hourlyBudget: BETSAPI_COVERAGE_PLAN.hourlyBudget,
           }));
         }
 
@@ -1030,9 +1039,12 @@ async function runDedicatedLiveTick(ctx: WorkerContext): Promise<void> {
         // event in a combined request. Handle one event at a time; never forge
         // source timestamps or silently replace rejected prices.
         if (sourceProvider.name === 'betsapi') {
-          for (const row of pending) {
+          // Bounded parallelism is enabled only after an operator raises the
+          // verified hourly budget. The 200/h trial remains strictly serial.
+          const concurrency = BETSAPI_COVERAGE_PLAN.pricedSlots > 1 ? 8 : 1;
+          const sample = async (row: typeof pending[number]) => {
             const providerId = row.provider_id;
-            if (!providerId) continue;
+            if (!providerId) return;
             console.log("ODDS_LIVE_WORKER_FETCH_START", JSON.stringify({
               at: new Date().toISOString(), provider: 'betsapi',
               requestedMatches: 1, intervalMs: BETSAPI_LIVE_POLL_INTERVAL_MS,
@@ -1050,12 +1062,12 @@ async function runDedicatedLiveTick(ctx: WorkerContext): Promise<void> {
               }
               if (result.errorCode === 'BETSAPI_BUDGET_EXHAUSTED' ||
                   result.errorCode === 'BETSAPI_RATE_LIMITED') return;
-              continue;
+              return;
             }
             const bundle = result.value.find(item => item.matchProviderId === providerId);
             if (!bundle) {
               observeBetsapiLiveQuote(providerId, 0);
-              continue;
+              return;
             }
             try {
               const syncResult = await syncOdds(ctx, row.match_id, {
@@ -1071,6 +1083,9 @@ async function runDedicatedLiveTick(ctx: WorkerContext): Promise<void> {
                 error: error instanceof Error ? error.message : String(error),
               }));
             }
+          };
+          for (let i = 0; i < pending.length; i += concurrency) {
+            await Promise.allSettled(pending.slice(i, i + concurrency).map(sample));
           }
           return;
         }
