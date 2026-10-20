@@ -14,6 +14,15 @@ describe('secure automatic affiliate APK build', () => {
     expect(route).not.toContain('BETVIMA_ANDROID_KEYSTORE_PASSWORD');
     expect(route).toContain('RELEASE_CERT_SHA256');
     expect(route).toContain('ANDROID_BUILD_FAILED_CONTACT_SUPPORT');
+    // Auto-refresh and already-queued builds cannot consume the 12/15m quota.
+    expect(route).toContain("throttleDownload(request, 'request')");
+    expect(route).toContain("throttleDownload(request, 'new-build')");
+    expect(route).toContain('alreadyQueued');
+    expect(route).toContain("status: 429");
+    expect(route).toContain("error.code !== 'RATE_LIMITED'");
+    expect(route).toContain("hashSignal(clientIpFromHeaders(request.headers)");
+    expect(route).toContain("kind === 'request' ? 120 : 12");
+    expect(route).not.toContain("partner-apk:${clientIpFromHeaders(request.headers)");
   });
 
   it('signs within an isolated dedicated builder and validates referral attribution', () => {

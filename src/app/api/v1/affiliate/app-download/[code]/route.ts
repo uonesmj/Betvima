@@ -6,7 +6,8 @@ import { promisify } from 'node:util';
 import path from 'node:path';
 import { createServices } from '@/server/services/container';
 import { enforceRateLimit } from '@/server/http/request';
-import { clientIpFromHeaders } from '@/server/utils/hash';
+import { clientIpFromHeaders, hashSignal } from '@/server/utils/hash';
+import { ApiError } from '@/lib/errors';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -64,6 +65,27 @@ async function signedApk(file: string, signer: string): Promise<boolean> {
   }
 }
 
+/**
+ * Refreshing preparation pages must not consume the quota for new APK builds.
+ * Respond with HTTP 429 (never an unhandled 500) if an actual rate limit is hit.
+ * Per-IP bucketing stores a keyed hash instead of a raw visitor IP.
+ */
+async function throttleDownload(request: Request, kind: 'request' | 'new-build'): Promise<NextResponse | null> {
+  const ip = hashSignal(clientIpFromHeaders(request.headers) ?? 'unknown');
+  const limit = kind === 'request' ? 120 : 12;
+  const windowSeconds = 900;
+  try {
+    await enforceRateLimit(`partner-apk:${kind}:${ip}`, limit, windowSeconds);
+    return null;
+  } catch (error) {
+    if (!(error instanceof ApiError) || error.code !== 'RATE_LIMITED') throw error;
+    return NextResponse.json(
+      { ok: false, error: 'RATE_LIMITED', retryAfterSeconds: windowSeconds },
+      { status: 429, headers: { 'Retry-After': String(windowSeconds), 'Cache-Control': 'no-store' } },
+    );
+  }
+}
+
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ code: string }> },
@@ -74,11 +96,9 @@ export async function GET(
     return NextResponse.json({ ok: false, error: 'INVALID_REFERRAL_CODE' }, { status: 400 });
   }
 
-  // Public player downloads are expected, but unbounded builds per code are not.
-  await enforceRateLimit(
-    `partner-apk:${clientIpFromHeaders(request.headers) ?? 'unknown'}`,
-    12, 900,
-  );
+  // Two browser tabs refreshing every 45 seconds must not block a ready APK.
+  const tooManyRequests = await throttleDownload(request, 'request');
+  if (tooManyRequests) return tooManyRequests;
 
   const services = createServices();
   const affiliate = await services.affiliate.getByCode(clean).catch(() => null);
@@ -129,15 +149,26 @@ export async function GET(
     } catch { /* still queued or new */ }
     if (!inProgress) {
       const queuePath = path.join(QUEUE_DIR, clean + '.request');
+      // A queued request is idempotent: page refresh must not use the
+      // tighter new-build rate limit while Gradle works in the background.
+      let alreadyQueued = false;
       try {
-        const handle = await open(queuePath, 'wx', 0o600);
-        await handle.close();
-      } catch (error) {
-        if (!(error instanceof Error && 'code' in error && error.code === 'EEXIST')) {
-          return NextResponse.json(
-            { ok: false, error: 'ANDROID_BUILD_QUEUE_UNAVAILABLE' },
-            { status: 503, headers: { 'Cache-Control': 'no-store' } },
-          );
+        await access(queuePath, fsConstants.F_OK);
+        alreadyQueued = true;
+      } catch { /* not in the queue yet */ }
+      if (!alreadyQueued) {
+        const tooManyBuilds = await throttleDownload(request, 'new-build');
+        if (tooManyBuilds) return tooManyBuilds;
+        try {
+          const handle = await open(queuePath, 'wx', 0o600);
+          await handle.close();
+        } catch (error) {
+          if (!(error instanceof Error && 'code' in error && error.code === 'EEXIST')) {
+            return NextResponse.json(
+              { ok: false, error: 'ANDROID_BUILD_QUEUE_UNAVAILABLE' },
+              { status: 503, headers: { 'Cache-Control': 'no-store' } },
+            );
+          }
         }
       }
     }
