@@ -13,6 +13,7 @@ interface Selection {
 }
 interface Market {
   matchId: string;
+  providerId: string;
   marketId: string;
   home: string;
   away: string;
@@ -30,7 +31,7 @@ const outcomeLabels: Record<OutcomeCode, { en: string; fa: string }> = {
   AWAY: { en: '2', fa: '۲' },
 };
 
-export function BetsApiCanonicalLivePrices({ compact = false }: { compact?: boolean }) {
+export function BetsApiCanonicalLivePrices({ compact = false, eventId }: { compact?: boolean; eventId?: string | null }) {
   const { locale } = useApp();
   const fa = locale === 'fa';
   const toggle = useBetSlip(s => s.toggle);
@@ -73,7 +74,8 @@ export function BetsApiCanonicalLivePrices({ compact = false }: { compact?: bool
     };
   }, []);
 
-  const active = markets.filter(m => Date.parse(m.expiresAt) > now + 1000);
+  const active = markets.filter(m => Date.parse(m.expiresAt) > now + 1000 &&
+    (!eventId || (/^[0-9]{1,16}$/.test(eventId) && m.providerId === '1:' + eventId)));
   const choose = (market: Market, selection: Selection) => {
     if (Date.parse(market.expiresAt) <= Date.now() + 1000) return;
     const item: SlipItem = {
