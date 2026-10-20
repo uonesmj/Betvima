@@ -6,9 +6,10 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.border
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -27,7 +28,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -53,35 +53,33 @@ internal fun PremiumMatchTvModal126(
         onDismissRequest = onClose,
         properties = DialogProperties(
             dismissOnBackPress = true, dismissOnClickOutside = true,
-            usePlatformDefaultWidth = false, decorFitsSystemWindows = false
+            usePlatformDefaultWidth = false, decorFitsSystemWindows = true
         )
     ) {
-        Box(Modifier.fillMaxSize().background(Color(0xEF030A10)), contentAlignment = Alignment.Center) {
+        // Keep the fixture and odds visibly behind a compact floating dialog.
+        // The full-screen layer is only a translucent dismissible scrim.
+        BoxWithConstraints(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center
+        ) {
+            val floatingWidth = minOf(maxWidth * .90f, 410.dp)
+            val floatingHeight = minOf(maxHeight * .73f, 570.dp)
+            Box(
+                Modifier.matchParentSize()
+                    .background(Color(0xA1020A0F))
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null,
+                        onClick = onClose
+                    )
+            )
             Column(
-                Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing)
-                    .widthIn(max = 780.dp).padding(horizontal = 5.dp, vertical = 6.dp)
-                    .clip(RoundedCornerShape(24.dp)).background(deep126)
+                Modifier.width(floatingWidth).height(floatingHeight)
+                    .clip(RoundedCornerShape(22.dp))
+                    .background(deep126)
+                    .border(1.dp, Color(0xFF386956), RoundedCornerShape(22.dp))
             ) {
-                // Swipe-to-dismiss only on the handle, not the scrollable stats.
-                var dragged by remember { mutableFloatStateOf(0f) }
-                Box(
-                    Modifier.fillMaxWidth()
-                        .pointerInput(Unit) {
-                            detectVerticalDragGestures(
-                                onDragStart = { dragged = 0f },
-                                onVerticalDrag = { change, amount -> dragged += amount; change.consume() },
-                                onDragEnd = {
-                                    if (dragged > 105f) onClose()
-                                    dragged = 0f
-                                },
-                                onDragCancel = { dragged = 0f }
-                            )
-                        }.padding(top = 9.dp, bottom = 5.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Box(Modifier.width(46.dp).height(5.dp).clip(RoundedCornerShape(9.dp))
-                        .background(Color.White.copy(alpha = .26f)))
-                }
+                Spacer(Modifier.height(9.dp))
                 Row(Modifier.fillMaxWidth().padding(start = 16.dp, end = 12.dp, bottom = 11.dp),
                     verticalAlignment = Alignment.CenterVertically) {
                     Surface(color = Color(0xFF1B463C), shape = RoundedCornerShape(13.dp),
@@ -96,14 +94,14 @@ internal fun PremiumMatchTvModal126(
                         Text(if (fa) "آمار و جریان زنده از Best API" else "Live match data · Best API",
                             color = quiet126, fontSize = 10.sp)
                     }
-                    IconButton(onClick = onRefresh, modifier = Modifier.size(43.dp)) {
+                    IconButton(onClick = onRefresh, modifier = Modifier.size(35.dp)) {
                         Icon(Icons.Default.Refresh,
                             contentDescription = if (fa) "به‌روزرسانی آمار" else "Refresh statistics",
                             tint = quiet126)
                     }
                     Surface(shape = CircleShape, color = Color(0xFF263E48),
                         border = BorderStroke(1.dp, Color.White.copy(alpha = .18f))) {
-                        IconButton(onClick = onClose, modifier = Modifier.size(40.dp)) {
+                        IconButton(onClick = onClose, modifier = Modifier.size(36.dp)) {
                             Icon(Icons.Default.Close,
                                 contentDescription = if (fa) "بستن" else "Close",
                                 tint = Color.White)
@@ -117,7 +115,7 @@ internal fun PremiumMatchTvModal126(
                         Modifier.fillMaxWidth().background(
                             Brush.verticalGradient(listOf(Color(0xFF163D40),
                                 Color(0xFF102B34), deep126))
-                        ).padding(horizontal = 15.dp, vertical = 16.dp)
+                        ).padding(horizontal = 12.dp, vertical = 11.dp)
                     ) {
                         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                             Surface(color = Color(0xFF174F40), shape = RoundedCornerShape(20.dp),
@@ -136,17 +134,17 @@ internal fun PremiumMatchTvModal126(
                             Text(clockLabel, color = pale126, fontSize = 15.sp,
                                 fontWeight = FontWeight.ExtraBold)
                         }
-                        Spacer(Modifier.height(15.dp))
+                        Spacer(Modifier.height(10.dp))
                         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                             Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
-                                TeamBadge(match.home, 56)
+                                TeamBadge(match.home, 43)
                                 Spacer(Modifier.height(7.dp))
                                 Text(match.home.name, color = Color.White,
                                     fontSize = 12.sp, fontWeight = FontWeight.Bold, maxLines = 2,
                                     textAlign = TextAlign.Center, overflow = TextOverflow.Ellipsis)
                                 Text(if (fa) "میزبان" else "HOME", color = quiet126, fontSize = 9.sp)
                             }
-                            Column(Modifier.width(108.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                            Column(Modifier.width(84.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                                 val official = facts?.score?.split("-")?.takeIf { it.size == 2 }
                                 val score = official?.joinToString(" : ")
                                     ?: ((match.homeScore?.toString() ?: "–") + " : " +
@@ -154,13 +152,13 @@ internal fun PremiumMatchTvModal126(
                                 AnimatedContent(targetState = score,
                                     transitionSpec = { (fadeIn(tween(200)) togetherWith fadeOut(tween(200))) },
                                     label = "officialScore") { value ->
-                                    Text(value, color = pale126, fontSize = 26.sp,
+                                    Text(value, color = pale126, fontSize = 22.sp,
                                         fontWeight = FontWeight.Black, maxLines = 1)
                                 }
                                 Text(if (fa) "نتیجه بازی" else "MATCH SCORE", fontSize = 9.sp, color = quiet126)
                             }
                             Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
-                                TeamBadge(match.away, 56)
+                                TeamBadge(match.away, 43)
                                 Spacer(Modifier.height(7.dp))
                                 Text(match.away.name, color = Color.White,
                                     fontSize = 12.sp, fontWeight = FontWeight.Bold, maxLines = 2,
