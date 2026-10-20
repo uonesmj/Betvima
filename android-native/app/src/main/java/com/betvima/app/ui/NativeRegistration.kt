@@ -374,34 +374,6 @@ fun NativeRegistrationForm(
                     color = Palette.muted, fontSize = 12.sp,
                     textAlign = TextAlign.Center, lineHeight = 19.sp
                 )
-                if (effectiveReferral.isNotBlank()) {
-                    Surface(
-                        color = if(referralApplied==true) Color(0xFFE8F8EF)
-                            else Color(0xFFFFF5E7),
-                        border = BorderStroke(1.dp,
-                            if(referralApplied==true) Palette.green else Color(0xFFDBAB59)),
-                        shape = RoundedCornerShape(15.dp)
-                    ) {
-                        Row(Modifier.fillMaxWidth().padding(13.dp),
-                            verticalAlignment = Alignment.CenterVertically) {
-                            Icon(
-                                if(referralApplied==true) Icons.Default.Verified
-                                else Icons.Default.Info,
-                                null,tint=if(referralApplied==true) Palette.green
-                                else Color(0xFFAA7830))
-                            Spacer(Modifier.width(9.dp))
-                            Text(
-                                if(referralApplied==true)
-                                    tr(lang,"Referral attribution recorded by the server.",
-                                        "کد معرف توسط سرور ثبت و تأیید شد.")
-                                else tr(lang,"Account created, but the referral was not confirmed. Contact support if needed.",
-                                    "حساب ایجاد شد، اما انتساب معرف تأیید نشد. در صورت نیاز با پشتیبانی تماس بگیرید."),
-                                fontSize=12.sp,color=Palette.text,
-                                modifier=Modifier.weight(1f)
-                            )
-                        }
-                    }
-                }
                 Surface(
                     color = Color(0xFFF5F7FA),
                     border = BorderStroke(1.dp, Palette.border),
