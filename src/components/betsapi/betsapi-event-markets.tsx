@@ -9,6 +9,7 @@ import type { MatchView } from '@/components/betting/match-card';
 import { ChevronLeft, Search } from 'lucide-react';
 import { BetsApiMatchOverview } from '@/components/betsapi/betsapi-match-overview';
 import { useBetSlip, type SlipItem } from '@/lib/store/betslip';
+import { BetsApiCanonicalLivePrices } from '@/components/betsapi/betsapi-canonical-live-prices';
 
 type Wager = { matchId: string; marketId: string; selectionId: string; oddsScaled: string; oddsVersion: number };
 type Option = { id: string; label: string; decimal: string; wager?: Wager };
@@ -165,6 +166,9 @@ export function BetsApiEventMarkets({
       <ChevronLeft size={17} /> {isFa ? 'بازگشت به مسابقات' : 'Back to matches'}
     </Link>
     <BetsApiMatchOverview fi={fi} mode={mode} sportKey={sportKey} fixture={fixture} initial={initial} />
+    {mode === 'live' && sportKey === 'football' && fixture?.betsApiEventId && (
+      <BetsApiCanonicalLivePrices eventId={fixture.betsApiEventId} />
+    )}
 
     <div role="status" className="rounded-xl border border-[#F2E2B5] bg-[#FFF9E8] px-3 py-2.5 text-xs font-medium leading-5 text-[#86601F]">
       {wagerReady
