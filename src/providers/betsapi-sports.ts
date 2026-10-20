@@ -13,13 +13,12 @@ import {
   BETSAPI_SPORTS, normalizeBetsapiEvent, normalizeBetsapiOdds,
   normalizeBetsapiResult, object, parseBetsapiIdentity, string,
 } from './betsapi-normalization';
+import { resolveBetsapiHourlyBudget } from './betsapi-hourly-budget';
 
 const BASE = 'https://api.b365api.com';
 const SPARE_BASE = 'https://api.betsapi.com';
 const MAX_PER_CALL = 12;
 const MAX_DISCOVERY_PAGES = 3;
-const DEFAULT_HOURLY_BUDGET = 1500;
-const MAX_OPERATOR_APPROVED_HOURLY_BUDGET = 199_999;
 const supportedId = (id: string) => /^\d{1,16}$/.test(id);
 type Json = Record<string, unknown>;
 const failed = <T>(code: string, retryable = false): ProviderResult<T> => ({
@@ -40,11 +39,32 @@ const events = (payload: unknown): unknown[] =>
 let hourWindow = 0;
 let consumed = 0;
 let lastRemaining: number | null = null;
+let lastQuotaObservationAt = 0;
+
+/** Inspect only numeric provider headers; never print the URL or API token.
+ * A provider may omit these headers, so absent numbers are reported as null.
+ */
+function observeUpstreamQuota(response: Response): void {
+  const rawLimit = response.headers.get('X-RateLimit-Limit');
+  const rawRemaining = response.headers.get('X-RateLimit-Remaining');
+  if (rawLimit === null && rawRemaining === null && response.status !== 429) return;
+  const now = Date.now();
+  if (now - lastQuotaObservationAt < 5 * 60_000) return;
+  lastQuotaObservationAt = now;
+  const numericHeader = (raw: string | null): number | null =>
+    raw !== null && /^\d{1,9}$/.test(raw) ? Number(raw) : null;
+  console.info('BETSAPI_UPSTREAM_QUOTA', JSON.stringify({
+    at: new Date(now).toISOString(),
+    httpStatus: response.status,
+    upstreamReportedLimit: numericHeader(rawLimit),
+    upstreamReportedRemaining: numericHeader(rawRemaining),
+    configuredHourlyBudget: resolveBetsapiHourlyBudget(process.env.BETSAPI_HOURLY_REQUEST_BUDGET),
+  }));
+}
 const quota = () => {
   const now = Math.floor(Date.now() / 3_600_000);
   if (hourWindow !== now) { hourWindow = now; consumed = 0; lastRemaining = null; }
-  const cap = Number(process.env.BETSAPI_HOURLY_REQUEST_BUDGET || DEFAULT_HOURLY_BUDGET);
-  const limit = Number.isSafeInteger(cap) ? Math.max(50, Math.min(cap, MAX_OPERATOR_APPROVED_HOURLY_BUDGET)) : DEFAULT_HOURLY_BUDGET;
+  const limit = resolveBetsapiHourlyBudget(process.env.BETSAPI_HOURLY_REQUEST_BUDGET);
   if (consumed >= limit || (lastRemaining !== null && lastRemaining < 50)) {
     throw new Error('BETSAPI_BUDGET_EXHAUSTED');
   }
@@ -80,6 +100,7 @@ export class BetsApiSportsProvider implements SportsDataProvider {
         headers: { Accept: 'application/json' }, method: 'GET', cache: 'no-store',
         redirect: 'error', signal: AbortSignal.timeout(7000),
       });
+      observeUpstreamQuota(response);
       // Preserve the upstream quota fail-closed until its window resets;
       // otherwise a high-concurrency worker keeps hammering 429 responses.
       if (response.status === 429) {
