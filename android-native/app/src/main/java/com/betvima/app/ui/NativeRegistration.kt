@@ -319,8 +319,8 @@ fun NativeRegistrationForm(
     val issue = signupValidation(email, password, confirmation, adult, terms)
     val dark = DarkHomePalette.panel
     val edge = DarkHomePalette.outline
-    val hint = DarkHomeDarkHomePalette.muted
-    val pale = DarkHomeDarkHomePalette.muted
+    val hint = DarkHomePalette.muted
+    val pale = DarkHomePalette.muted
     val bright = DarkHomePalette.ink
     val green = Palette.green
     val fieldColors = OutlinedTextFieldDefaults.colors(
