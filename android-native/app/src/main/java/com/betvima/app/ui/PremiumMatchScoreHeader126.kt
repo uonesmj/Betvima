@@ -45,15 +45,13 @@ internal fun PremiumMatchScoreHeader126(
         ?: if (match.homeScore != null && match.awayScore != null)
             match.homeScore.toString() + " : " + match.awayScore.toString() else "VS"
     Surface(
-        color = Color(0xFF091921),
+        color = Color.Black,
         shape = RoundedCornerShape(24.dp),
-        border = BorderStroke(1.dp, Color(0xFF254C49)),
+        border = BorderStroke(1.dp, Color(0xFF333333)),
         shadowElevation = 7.dp,
         modifier = Modifier.fillMaxWidth()
     ) {
-        Column(Modifier.background(Brush.verticalGradient(
-            listOf(Color(0xFF123C34), Color(0xFF102731), Color(0xFF0B1724))
-        ))) {
+        Column(Modifier.background(Color.Black)) {
             Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 15.dp),
                 verticalAlignment = Alignment.CenterVertically) {
                 Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
@@ -92,8 +90,8 @@ internal fun PremiumMatchScoreHeader126(
                             fontSize = 26.sp, maxLines = 1)
                     }
                     Surface(shape = RoundedCornerShape(10.dp),
-                        color = Color(0xFF1B5041),
-                        border = BorderStroke(1.dp, Color(0xFF38896B))) {
+                        color = Color(0xFF151515),
+                        border = BorderStroke(1.dp, Color(0xFF404040))) {
                         Text(if (match.live) clockLabel else "PRE",
                             modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
                             color = Color(0xFFB7FFE0), fontSize = 10.sp,

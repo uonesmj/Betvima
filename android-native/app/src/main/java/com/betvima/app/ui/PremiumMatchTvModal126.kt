@@ -40,7 +40,7 @@ import com.betvima.app.data.Match
 import kotlinx.coroutines.delay
 import kotlin.math.roundToInt
 
-private val pipBackground = premiumBackground130
+private val pipBackground = Color.Black
 private val pipGreen = premiumMint130
 private val pipGold = premiumAmber130
 private val pipMuted = premiumMuted130
@@ -132,7 +132,7 @@ internal fun PremiumMatchTvModal126(
     ) {
         Surface(
             modifier = Modifier.width(width).height(height)
-                .border(1.dp, Color(0xFF438B7A), RoundedCornerShape(18.dp)),
+                .border(1.dp, Color(0xFF363636), RoundedCornerShape(18.dp)),
             shape = RoundedCornerShape(18.dp),
             shadowElevation = 22.dp,
             color = pipBackground
@@ -140,7 +140,7 @@ internal fun PremiumMatchTvModal126(
             Column(Modifier.fillMaxSize()) {
                 Row(
                     modifier = Modifier.fillMaxWidth().height(37.dp)
-                        .background(Brush.horizontalGradient(listOf(Color(0xFF133D38), Color(0xFF10252F)))),
+                        .background(Color.Black),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     // Drag is captured only in the top title bar; buttons
@@ -166,9 +166,9 @@ internal fun PremiumMatchTvModal126(
                         Text(if (fa) "زنده" else "LIVE",
                             color = pipGreen, fontSize = 10.sp, fontWeight = FontWeight.Black)
                         Spacer(Modifier.width(5.dp))
-                        Surface(color = Color(0xFF245247),
+                        Surface(color = Color(0xFF151515),
                             shape = RoundedCornerShape(7.dp),
-                            border = BorderStroke(.5.dp, Color(0xFF498875))) {
+                            border = BorderStroke(.5.dp, Color(0xFF444444))) {
                             Text(clockLabel, color = Color.White, fontSize = 10.sp,
                                 fontWeight = FontWeight.Black,
                                 modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.dp))
@@ -187,7 +187,7 @@ internal fun PremiumMatchTvModal126(
                 }
                 Row(
                     Modifier.fillMaxWidth().height(32.dp)
-                        .background(Color(0xFF0C202A)).padding(horizontal = 5.dp, vertical = 3.dp)
+                        .background(Color.Black).padding(horizontal = 5.dp, vertical = 3.dp)
                 ) {
                     listOf(
                         if (fa) "زمین" else "Pitch",
@@ -197,7 +197,7 @@ internal fun PremiumMatchTvModal126(
                     ).forEachIndexed { i, label ->
                         Box(
                             modifier = Modifier.weight(1f).fillMaxHeight()
-                                .background(if (selected == i) Color(0xFF236A56) else Color.Transparent,
+                                .background(if (selected == i) Color(0xFF202020) else Color.Transparent,
                                     RoundedCornerShape(8.dp)),
                             contentAlignment = Alignment.Center
                         ) {
