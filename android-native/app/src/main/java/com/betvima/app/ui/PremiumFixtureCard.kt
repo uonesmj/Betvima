@@ -74,7 +74,7 @@ fun PremiumFixtureCard(
                 LeagueIdentityBadge(match, size = 34)
                 Spacer(Modifier.width(9.dp))
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                    Text(match.league, color = fixtureInk, fontSize = 13.sp,
+                    Text(match.league, color = fixtureInk, fontSize = 14.sp,
                         fontWeight = FontWeight.ExtraBold, maxLines = 1,
                         overflow = TextOverflow.Ellipsis)
                     Row(verticalAlignment = Alignment.CenterVertically,
@@ -82,11 +82,12 @@ fun PremiumFixtureCard(
                         CountryIdentity(match.country)
                         Text(match.country.takeIf { it.isNotBlank() }?.let(::countryDisplayName)
                             ?: tr(state.lang, "International", "بین‌المللی"),
-                            color = fixtureSubtle, fontSize = 9.sp, maxLines = 1,
-                            overflow = TextOverflow.Ellipsis)
+                            color = fixtureSubtle, fontSize = 11.sp, fontWeight = FontWeight.SemiBold,
+                            maxLines = 1, overflow = TextOverflow.Ellipsis)
                         Text("•", color = fixtureStroke, fontSize = 10.sp)
                         Text(match.sport.replace("-", " ").replaceFirstChar { it.uppercase() },
-                            color = fixtureSubtle, fontSize = 10.sp, maxLines = 1,
+                            color = fixtureSubtle, fontSize = 11.sp,
+                            fontWeight = FontWeight.SemiBold, maxLines = 1,
                             overflow = TextOverflow.Ellipsis)
                     }
                 }
@@ -108,7 +109,7 @@ fun PremiumFixtureCard(
                             if (match.live) tr(state.lang, "LIVE", "زنده")
                             else tr(state.lang, "PRE", "آینده"),
                             color = if (match.live) Color(0xFFC71961) else Color(0xFF008957),
-                            fontWeight = FontWeight.Black, fontSize = 10.sp
+                            fontWeight = FontWeight.Black, fontSize = 11.sp
                         )
                     }
                 }
@@ -133,14 +134,14 @@ fun PremiumFixtureCard(
                                 (if (liveClock == "—") "" else " · " + liveClock)
                             else searchKickoff(match.starts),
                             modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                            color = fixtureInk, fontSize = 11.sp,
-                            fontWeight = FontWeight.Bold, maxLines = 1
+                            color = fixtureInk, fontSize = 12.sp,
+                            fontWeight = FontWeight.ExtraBold, maxLines = 1
                         )
                     }
                     Spacer(Modifier.weight(1f))
                     if (match.live && (match.homeScore != null || match.awayScore != null)) {
                         Text(tr(state.lang, "SCORE", "نتیجه"),
-                            color = fixtureSubtle, fontWeight = FontWeight.Bold, fontSize = 9.sp)
+                            color = fixtureSubtle, fontWeight = FontWeight.ExtraBold, fontSize = 10.sp)
                     }
                 }
                 Column(
@@ -154,12 +155,13 @@ fun PremiumFixtureCard(
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                     Text(
                         market?.label(fa) ?: tr(state.lang, "Odds unavailable", "ضریب موجود نیست"),
-                        color = fixtureSubtle, fontSize = 11.sp,
+                        color = fixtureSubtle, fontSize = 12.sp,
+                        fontWeight = FontWeight.SemiBold,
                         modifier = Modifier.weight(1f), maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
-                    Text(tr(state.lang, "ODDS", "ضرایب"), fontSize = 9.sp,
-                        fontWeight = FontWeight.Bold, color = fixtureSubtle)
+                    Text(tr(state.lang, "ODDS", "ضرایب"), fontSize = 10.sp,
+                        fontWeight = FontWeight.ExtraBold, color = fixtureSubtle)
                 }
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     repeat(3) { index ->
@@ -187,7 +189,7 @@ fun PremiumFixtureCard(
                         Box(contentAlignment = Alignment.Center) {
                             Text(if (match.marketsCount > 0) "+${match.marketsCount}" else "›",
                                 color = fixtureBlue, fontWeight = FontWeight.Black,
-                                fontSize = 12.sp, maxLines = 1)
+                                fontSize = 13.sp, maxLines = 1)
                         }
                     }
                 }
@@ -204,13 +206,13 @@ private fun FixtureTeamLine(team: Team, score: Int?) {
         Text(
             team.name, color = fixtureInk,
             modifier = Modifier.weight(1f),
-            fontSize = 13.sp, fontWeight = FontWeight.ExtraBold,
+            fontSize = 14.sp, fontWeight = FontWeight.Black,
             maxLines = 1, overflow = TextOverflow.Ellipsis
         )
         if (score != null) {
             Surface(color = Color(0xFFEDF1F5), shape = RoundedCornerShape(7.dp)) {
                 Text(score.toString(), color = fixtureInk, fontWeight = FontWeight.Black,
-                    fontSize = 13.sp,
+                    fontSize = 14.sp,
                     modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp))
             }
         }
@@ -256,7 +258,7 @@ private fun PremiumFixtureOdd(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(name, color = if (selected) fixtureBlue else fixtureSubtle,
-                fontWeight = FontWeight.Medium, fontSize = 9.sp,
+                fontWeight = FontWeight.SemiBold, fontSize = 10.sp,
                 maxLines = 1, overflow = TextOverflow.Ellipsis,
                 textAlign = TextAlign.Center)
             Spacer(Modifier.height(2.dp))
@@ -267,7 +269,7 @@ private fun PremiumFixtureOdd(
                     if (selected) Icon(Icons.Default.Check, null,
                         modifier = Modifier.size(12.dp), tint = fixtureBlue)
                     Text(odds(selection.oddsScaled),
-                        fontWeight = FontWeight.Black, fontSize = 14.sp,
+                        fontWeight = FontWeight.Black, fontSize = 15.sp,
                         color = if (selected) fixtureBlue else fixtureInk,
                         maxLines = 1)
                 }
