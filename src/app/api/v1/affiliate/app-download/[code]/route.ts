@@ -14,11 +14,10 @@ export const runtime = 'nodejs';
 const execFileAsync = promisify(execFile);
 const ANDROID_DIR = '/var/www/betvima-android';
 const DOWNLOAD_DIR = '/var/www/nova/public/downloads/affiliate-app';
-const RELEASE_APK = path.join(ANDROID_DIR, 'app/build/outputs/apk/release/app-release.apk');
 const VERSION_FILE = path.join(ANDROID_DIR, 'app/build.gradle.kts');
 // A deployment must update the installed native sources before enabling downloads.
-// The approved native 0.124.0 source includes the corrected affiliate reporting UX.
-// Older pre-124 sources must not be shipped to newly referred users.
+// Native 0.125.0 removes user-facing referral diagnostics while preserving attribution.
+// Older releases must not be shipped to newly referred users.
 const MINIMUM_NATIVE_VERSION = 125;
 const QUEUE_DIR = '/var/lib/betvima-affiliate-build/queue';
 const FAILED_DIR = '/var/lib/betvima-affiliate-build/failed';
@@ -48,10 +47,6 @@ async function firstExecutable(candidates: string[]): Promise<string | null> {
   }
   return null;
 }
-const gradleCandidates = [
-  '/opt/gradle/bin/gradle', '/opt/gradle-8.10.2/bin/gradle',
-  '/usr/local/gradle/bin/gradle', '/usr/local/bin/gradle', '/usr/bin/gradle',
-];
 const signerCandidates = [
   '/usr/bin/apksigner', '/usr/local/bin/apksigner',
   ...SDK_PATHS.map(dir => path.join(dir, 'build-tools/35.0.0/apksigner')),
