@@ -124,6 +124,38 @@ describe('SoftAggregator trusted Cloudflare ingress interoperability', () => {
     expect(await (await worker.fetch(req, edgeEnv())).json()).toEqual({error:2,balance:0});
   });
 
+  it('logs only fixed diagnostic stages for trusted provider ingress and origin HTTP responses', async () => {
+    const traceLog = vi.spyOn(console, 'info').mockImplementation(() => {});
+    try {
+      const original = callback();
+      const req = new Request(original.url.replace(origin, edgeHost), {headers: original.headers});
+      const result = await worker.fetch(req, edgeEnv());
+      expect(await result.json()).toEqual({error:0,balance:250});
+      expect(traceLog.mock.calls).toEqual([
+        ['softaggregator.callback.edge', 'supplier_signature_format_accepted'],
+        ['softaggregator.callback.edge', 'origin_http_200_json'],
+      ]);
+      expect(JSON.stringify(traceLog.mock.calls)).not.toContain('bv_');
+      expect(JSON.stringify(traceLog.mock.calls)).not.toContain(salt);
+      traceLog.mockClear();
+
+      const invalidHeader = new Headers(original.headers);
+      invalidHeader.set('x-signature', 'invalid');
+      await worker.fetch(new Request(req.url, {headers:invalidHeader}), edgeEnv());
+      expect(traceLog.mock.calls).toEqual([
+        ['softaggregator.callback.edge', 'refused_supplier_signature_format'],
+      ]);
+      traceLog.mockClear();
+
+      const wrongIpHeaders = new Headers(original.headers);
+      wrongIpHeaders.set('cf-connecting-ip', '203.0.113.99');
+      await worker.fetch(new Request(req.url, {headers:wrongIpHeaders}), edgeEnv());
+      expect(traceLog).not.toHaveBeenCalled();
+    } finally {
+      traceLog.mockRestore();
+    }
+  });
+
   it('rejects tampering of amount, player and rollback after trusted ingress', async () => {
     await worker.fetch(callback(), edgeEnv());
     const signed = forwarded.headers.get('x-betvima-edge-signature');

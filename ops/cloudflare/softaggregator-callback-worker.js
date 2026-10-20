@@ -18,7 +18,7 @@
  *    Origin Pulls / firewall / Tunnel). Avoid exposing another unsigned route.
  *  - Run live provider-origin pilot conformance before enabling cash flags.
  *
- * No vendor credentials, wallet values, keys or callback data are logged.
+ * Diagnostic events contain fixed stage names only; no vendor credentials,\n * wallet values, URLs, query parameters, IPs, keys or signatures are logged.
  */
 const WEBHOOK_PATH = '/api/webhooks/softaggregator';
 const DENIED = { error: 2, balance: 0 };
@@ -30,6 +30,12 @@ function refuse() {
       'x-content-type-options': 'nosniff',
     },
   });
+}
+
+// Stages are intentionally low-information. They must never include a request,
+ // query string, source address, account identifier, signature or secret.
+function trace(stage) {
+  console.info('softaggregator.callback.edge', stage);
 }
 
 function exactIpAllowed(ip, configured) {
@@ -48,18 +54,32 @@ export default {
       return refuse();
 
     const ip = request.headers.get('cf-connecting-ip');
+    // Unknown sources are refused without producing application log noise.
+    if (!exactIpAllowed(ip, env.SOFTAGGREGATOR_CALLBACK_ALLOWED_IPS))
+      return refuse();
     const secret = env.SOFTAGGREGATOR_EDGE_HMAC_SECRET;
-    if (!exactIpAllowed(ip, env.SOFTAGGREGATOR_CALLBACK_ALLOWED_IPS) ||
-        typeof secret !== 'string' ||
+    if (typeof secret !== 'string' ||
         new TextEncoder().encode(secret).length < 32 ||
-        url.searchParams.size > 24) return refuse();
+        url.searchParams.size > 24) {
+      trace('refused_configuration_or_query_limit');
+      return refuse();
+    }
 
     const names = [...url.searchParams.keys()];
-    if (names.length !== new Set(names).size) return refuse();
+    if (names.length !== new Set(names).size) {
+      trace('refused_duplicate_query_fields');
+      return refuse();
+    }
     // The supplier documents its own full-payload X-Signature. Do not
     // overwrite it: backend verification requires both independent proofs.
     const vendorSignature = request.headers.get('x-signature');
-    if (!/^[a-f0-9]{64}$/i.test(vendorSignature ?? '')) return refuse();
+    if (!/^[a-f0-9]{64}$/i.test(vendorSignature ?? '')) {
+      trace('refused_supplier_signature_format');
+      return refuse();
+    }
+    // This confirms only the 64-hex shape, NOT HMAC verification.
+    // Cryptographic validation remains the protected backend's responsibility.
+    trace('supplier_signature_format_accepted');
 
     // Sign a uniquely percent-encoded canonical query, not delimiter-ambiguous
     // name=value pairs. The backend uses EXACTLY the same canonicalization.
@@ -87,8 +107,10 @@ export default {
     // URL has no DNS origin: forwarding the incoming Request unchanged would
     // try the workers.dev host again, not BetVima's HTTPS origin.
     if (url.hostname.endsWith('.workers.dev')) {
-      if (url.hostname !== 'betvima-casino-callback.mimmim283228.workers.dev')
+      if (url.hostname !== 'betvima-casino-callback.mimmim283228.workers.dev') {
+        trace('refused_unapproved_worker_hostname');
         return refuse();
+      }
       const origin = new URL('https://betvima.com' + WEBHOOK_PATH);
       origin.search = url.search;
       // Do not forward user cookies, authorization, client-supplied edge
@@ -105,15 +127,22 @@ export default {
         // The provider expects HTTP 200 with a JSON body on business errors.
         // Do not forward a redirect or upstream HTML error as a valid callback.
         if (response.status !== 200 ||
-            !(response.headers.get('content-type') ?? '').includes('application/json'))
+            !(response.headers.get('content-type') ?? '').includes('application/json')) {
+          trace('origin_invalid_http_or_content_type');
           return refuse();
+        }
+        // Origin responded with HTTP 200 JSON. It can still contain error:2
+        // while real-money processing is deliberately disabled.
+        trace('origin_http_200_json');
         return response;
       } catch {
+        trace('origin_fetch_exception');
         return refuse();
       }
     }
 
     // Existing active-zone route remains unchanged.
+    trace('active_zone_forwarded');
     return fetch(new Request(request, { headers }));
   },
 };
