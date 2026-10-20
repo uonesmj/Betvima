@@ -176,7 +176,7 @@ internal fun PremiumMatchTvModal126(
                     }
                     if (match.live && match.sport == "football") {
                         PremiumNativeLiveTracker(match = match, facts = facts, fa = fa,
-                            clockLabel = clockLabel)
+                            clockLabel = clockLabel, embedded = true)
                     } else {
                         Surface(color = middle126, shape = RoundedCornerShape(18.dp),
                             modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
