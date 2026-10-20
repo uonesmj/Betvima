@@ -351,7 +351,7 @@ fun TicketThreadSheet(
                         }
                         chosenFile?.let { file ->
                             Surface(
-                                color = Color(0xFFEAF4FF),
+                                color = DarkHomePalette.blueSoft,
                                 shape = RoundedCornerShape(13.dp),
                                 border = BorderStroke(1.dp, chatLine)
                             ) {
@@ -410,7 +410,17 @@ fun TicketThreadSheet(
                                 minLines = 1, maxLines = 4,
                                 placeholder = { Text(tr(lang,"Write your reply…","پاسخ خود را بنویسید…"),
                                     fontSize = 12.sp) },
-                                shape = RoundedCornerShape(17.dp)
+                                shape = RoundedCornerShape(17.dp),
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    focusedContainerColor = DarkHomePalette.panel,
+                                    unfocusedContainerColor = DarkHomePalette.panel,
+                                    focusedTextColor = chatInk,
+                                    unfocusedTextColor = chatInk,
+                                    focusedPlaceholderColor = chatMuted,
+                                    unfocusedPlaceholderColor = chatMuted,
+                                    focusedBorderColor = chatBlue,
+                                    unfocusedBorderColor = chatLine,
+                                    cursorColor = chatBlue)
                             )
                             FilledIconButton(
                                 onClick = {
