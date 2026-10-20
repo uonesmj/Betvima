@@ -6,6 +6,7 @@ import { useApp } from '@/components/layout/providers';
 import { LeagueLogo, TeamLogo } from '@/components/ui/logo';
 import { sportByKey } from '@/lib/betsapi-sports-map';
 import { LiveMatchPulseBoard } from '@/components/betsapi/betsapi-live-activity';
+import { BetsApiLiveTracker } from '@/components/betsapi/betsapi-live-tracker';
 import { VerifiedClockText } from '@/components/betsapi/verified-clock';
 import type { MatchView } from '@/components/betting/match-card';
 import type { MatchLiveFacts, MatchBackground, MatchEventItem } from '@/providers/betsapi-match-facts';
@@ -125,6 +126,13 @@ export function BetsApiMatchOverview({fixture,fi,sportKey,mode,initial}:{
               fallback={minute!=null?minute+'′':'—'}/></>}
           </span>
         </div>
+        {mode==='live' && sportKey==='football' ? (
+          <div className="p-2 sm:p-3">
+            <BetsApiLiveTracker facts={stats} home={home} away={away}
+              homeLogo={ht?.logoUrl??null} awayLogo={at?.logoUrl??null} fa={fa}
+              fallbackScore={score} fallbackMinute={minute??null} />
+          </div>
+        ) : (<>
         <div className="grid grid-cols-[minmax(0,1fr)_88px_minmax(0,1fr)] items-center gap-1 px-3 py-5">
           <div className="flex min-w-0 flex-col items-center gap-2 text-center">
             <TeamLogo url={ht?.logoUrl??null} name={home} size={46}/>
@@ -143,6 +151,7 @@ export function BetsApiMatchOverview({fixture,fi,sportKey,mode,initial}:{
             <span className="text-[10px] text-slate-400">{fa?'مهمان':'Away'}</span>
           </div>
         </div>
+        </>)}
       </div>}
       {tab===1&&<div role="tabpanel" className="p-3">
         {mode==='live'&&<div className="mb-3">
