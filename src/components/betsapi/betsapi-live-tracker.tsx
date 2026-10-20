@@ -86,18 +86,18 @@ export function BetsApiLiveTracker({ facts, home, away, homeLogo, awayLogo, fa, 
     const afterScore = parseScore(facts.score);
     if (beforeScore && afterScore) {
       for (let i = 0; i < 2; i++) {
-        if (afterScore[i] > beforeScore[i] && afterScore[i] - beforeScore[i] <= 2)
+        if (afterScore[i]! > beforeScore[i]! && afterScore[i]! - beforeScore[i]! <= 2)
           fresh.unshift({
             id: facts.fi + ':' + facts.updatedAt + ':score:' + i,
             side: i === 0 ? 'home' : 'away', key: 'score',
             labelEn: 'Score updated', labelFa: 'به‌روزرسانی نتیجه',
-            change: afterScore[i] - beforeScore[i], at: facts.updatedAt, minute: facts.minute,
+            change: afterScore[i]! - beforeScore[i]!, at: facts.updatedAt, minute: facts.minute,
           });
       }
     }
     if (fresh.length) {
       setObservations(items => [...fresh, ...items].slice(0, 60));
-      setPulse(fresh[0]);
+      setPulse(fresh[0]!);
     }
     const currentAttacks = facts.stats.find(s => s.key === 'dangerous_attacks')
       ?? facts.stats.find(s => s.key === 'attacks');
