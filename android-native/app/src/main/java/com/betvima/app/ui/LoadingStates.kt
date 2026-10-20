@@ -25,8 +25,10 @@ fun FixtureSkeleton(modifier: Modifier = Modifier) {
         animationSpec = infiniteRepeatable(
             animation = tween(1000, easing = FastOutSlowInEasing),
             repeatMode = RepeatMode.Reverse), label = "placeholderOpacity")
-    val pale = Color(0xFFCFD5DE).copy(alpha = opacity)
-    Surface(color = Color.White,
+    val darkHome = LocalDarkHome.current
+    val pale = (if (darkHome) Color(0xFF4D4E55) else Color(0xFFCFD5DE))
+        .copy(alpha = opacity)
+    Surface(color = if (darkHome) DarkHomePalette.panel else Color.White,
         modifier = modifier,
         shape = RoundedCornerShape(18.dp),
         shadowElevation = 1.dp) {
