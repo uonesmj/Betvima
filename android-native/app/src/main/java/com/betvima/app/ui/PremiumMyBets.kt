@@ -149,15 +149,20 @@ fun PremiumMyBetsPage(state: AppState, model: AppViewModel) {
                         onClick = { model.refreshBetHistory() },
                         modifier = Modifier.size(34.dp)
                     ) {
-                        Icon(Icons.Default.Refresh,
-                            tr(state.lang, "Refresh tickets", "تازه‌سازی شرط‌ها"),
-                            tint = Color(0xFFB7B9C0),
-                            modifier = Modifier.size(21.dp))
+                        Box(contentAlignment = Alignment.Center) {
+                            MyBetsRefreshGlyph(
+                                loading = state.historyLoading &&
+                                    state.historyBets.isNotEmpty(),
+                                modifier = Modifier.size(21.dp)
+                            )
+                        }
                     }
                 }
             }
-            if (state.historyLoading) {
-                items(2) { FixtureSkeleton(Modifier.fillMaxWidth()) }
+            if (needsMyBetsSkeleton(state.historyLoading, state.historyBets.isNotEmpty())) {
+                items(3, key = { "history-skeleton-\$it" }) {
+                    MyBetsTicketSkeleton(Modifier.fillMaxWidth())
+                }
             }
             if (state.historyError != null && !state.historyLoading) {
                 item {
