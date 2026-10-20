@@ -114,6 +114,14 @@ internal fun LiveIncidentPitch129(
                 start = Offset(w * (scan - .20f), 0f),
                 end = Offset(w * (scan + .20f), h)
             ))
+            // The narrow scan beam visibly traverses the entire pitch even
+            // when an upstream match counter has not changed.
+            drawLine(
+                color = Color(0xFFB1FFE0).copy(alpha = .14f + breathing * .16f),
+                start = Offset(w * scan, h * .07f),
+                end = Offset(w * scan, h * .93f),
+                strokeWidth = 2.dp.toPx()
+            )
             drawLine(
                 color = Color(0xFFB1FFE0).copy(alpha = .10f + breathing * .09f),
                 start = Offset(w * .5f, h * .06f),
