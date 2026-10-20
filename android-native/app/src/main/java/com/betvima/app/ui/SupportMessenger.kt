@@ -53,11 +53,11 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
 private val messengerBlue = Color(0xFF087FF5)
-private val messengerButton = Color(0xFF7FB7F8)
-private val messengerPaper = Color(0xFFFAFAFB)
-private val messengerGray = Color(0xFFF0F0F1)
-private val messengerInk = Color(0xFF1D2026)
-private val messengerMuted = Color(0xFF8A9099)
+private val messengerButton = Color(0xFF087FF5)
+private val messengerPaper = Color(0xFF111113)
+private val messengerGray = Color(0xFF29292C)
+private val messengerInk = Color(0xFFF5F6F8)
+private val messengerMuted = Color(0xFFA6A9B3)
 
 private fun chatTime(date: String): String = try {
     DateTimeFormatter.ofPattern("HH:mm").withZone(ZoneId.systemDefault())
@@ -114,7 +114,7 @@ internal fun supportChatBottomClearanceDp(keyboardVisible: Boolean): Int =
 private fun MessengerIcon(
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     label: String, onClick: () -> Unit, enabled: Boolean = true,
-    tint: Color = Color(0xFF747984)
+    tint: Color = Color(0xFFA6A9B3)
 ) {
     IconButton(onClick = onClick, enabled = enabled) {
         Icon(icon, label, tint = tint, modifier = Modifier.size(23.dp))
@@ -468,7 +468,7 @@ fun SupportMessenger(
                     Box {
                         MessengerIcon(Icons.Default.MoreVert, tr(lang,"Options","گزینه‌ها"),{menuOpen=true})
                         DropdownMenu(expanded=menuOpen,onDismissRequest={menuOpen=false},
-                            modifier=Modifier.background(Color.White)) {
+                            modifier=Modifier.background(messengerGray)) {
                             DropdownMenuItem(
                                 text={Text(tr(lang,
                                     if (muted) "Switch on sound" else "Switch off sound",
@@ -495,7 +495,7 @@ fun SupportMessenger(
                     }
                     MessengerIcon(Icons.Default.Close,tr(lang,"Close window","بستن پنجره"),onDismiss,tint=messengerInk)
                 }
-                HorizontalDivider(color=Color(0xFFEEEEF0))
+                HorizontalDivider(color=Color(0xFF39393D))
                 LazyColumn(
                     modifier=Modifier.weight(1f).fillMaxWidth(),
                     state=listState,
@@ -505,7 +505,7 @@ fun SupportMessenger(
                     item {
                         Box(Modifier.fillMaxWidth(),contentAlignment=Alignment.Center) {
                             Text(ticket.createdAt.take(10),fontSize=12.sp,color=messengerMuted,
-                                modifier=Modifier.clip(CircleShape).background(Color(0xFFEEF0F3))
+                                modifier=Modifier.clip(CircleShape).background(messengerGray)
                                     .padding(horizontal=14.dp,vertical=7.dp))
                         }
                     }
@@ -525,7 +525,7 @@ fun SupportMessenger(
                                         bottomEnd=if(mine) 5.dp else 21.dp,
                                         bottomStart=if(mine) 21.dp else 5.dp
                                     ))
-                                    .background(if(mine) messengerBlue else Color(0xFFEEEEEF))
+                                    .background(if(mine) messengerBlue else messengerGray)
                                     .padding(horizontal=18.dp,vertical=11.dp)
                             ) {
                                 if (message.body.isNotBlank()) Text(message.body,
@@ -587,8 +587,9 @@ fun SupportMessenger(
             }
         }
         if (historyOpen) AlertDialog(
+            containerColor = messengerGray,
             onDismissRequest={historyOpen=false},
-            title={Text(tr(lang,"Previous conversations","گفت‌وگوهای قبلی"))},
+            title={Text(tr(lang,"Previous conversations","گفت‌وگوهای قبلی"),color=messengerInk)},
             text={
                 Column(Modifier.heightIn(max=400.dp)) {
                     tickets.forEach { ticket ->
@@ -607,11 +608,12 @@ fun SupportMessenger(
             confirmButton={TextButton(onClick={historyOpen=false}){Text(tr(lang,"Close","بستن"))}}
         )
         if (confirmEnd) AlertDialog(
+            containerColor = messengerGray,
             onDismissRequest={confirmEnd=false},
-            title={Text(tr(lang,"End this conversation?","پایان این گفت‌وگو؟"))},
+            title={Text(tr(lang,"End this conversation?","پایان این گفت‌وگو؟"),color=messengerInk)},
             text={Text(tr(lang,
                 "The X button only hides the chat. End the ticket only if your issue is resolved.",
-                "دکمه × فقط پنجره را می‌بندد. فقط در صورت رفع مشکل، گفت‌وگو را پایان دهید."))},
+                "دکمه × فقط پنجره را می‌بندد. فقط در صورت رفع مشکل، گفت‌وگو را پایان دهید."),color=messengerInk)},
             confirmButton={
                 TextButton(onClick={
                     scope.launch {
@@ -626,8 +628,9 @@ fun SupportMessenger(
             dismissButton={TextButton(onClick={confirmEnd=false}){Text(tr(lang,"Keep chatting","ادامه چت"))}}
         )
         if (ratingOpen) AlertDialog(
+            containerColor = messengerGray,
             onDismissRequest={ratingOpen=false},
-            title={Text(tr(lang,"Rate the manager","امتیاز به پشتیبان"))},
+            title={Text(tr(lang,"Rate the manager","امتیاز به پشتیبان"),color=messengerInk)},
             text={
                 Column {
                     Row {
@@ -639,6 +642,13 @@ fun SupportMessenger(
                         }
                     }
                     OutlinedTextField(value=feedback,onValueChange={feedback=it.take(400)},
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedTextColor = messengerInk, unfocusedTextColor = messengerInk,
+                            focusedContainerColor = messengerPaper, unfocusedContainerColor = messengerPaper,
+                            focusedBorderColor = messengerBlue,
+                            unfocusedBorderColor = Color(0xFF39393D),
+                            focusedPlaceholderColor = messengerMuted,
+                            unfocusedPlaceholderColor = messengerMuted),
                         placeholder={Text(tr(lang,"Feedback (optional)","نظر شما (اختیاری)"))})
                 }
             },
@@ -673,7 +683,7 @@ private fun MessengerInput(value: String,onValueChange:(String)->Unit,hint:Strin
         singleLine=true,
         decorationBox={inner->
             Box {
-                if(value.isEmpty()) Text(hint,color=Color(0xFF6E727B),fontSize=17.sp)
+                if(value.isEmpty()) Text(hint,color=messengerMuted,fontSize=17.sp)
                 inner()
             }
         }
@@ -683,7 +693,7 @@ private fun MessengerInput(value: String,onValueChange:(String)->Unit,hint:Strin
 @Composable
 private fun MessengerEmojiPicker(onSelect:(String)->Unit) {
     val options=listOf("😊","🙂","❤️","👍","🙏","✅","😢","🤝","🎉","💙")
-    Row(Modifier.fillMaxWidth().background(Color.White).padding(8.dp),
+    Row(Modifier.fillMaxWidth().background(messengerPaper).padding(8.dp),
         horizontalArrangement=Arrangement.spacedBy(6.dp)) {
         options.forEach { emoji ->
             Text(emoji,modifier=Modifier.weight(1f).clickable{onSelect(emoji)},fontSize=19.sp)
@@ -723,7 +733,7 @@ private fun MessengerComposer(
                         decorationBox = { inner ->
                             Box {
                                 if (draft.isEmpty()) Text(tr(lang, "Text...", "پیام..."),
-                                    color = Color(0xFF707782), fontSize = 16.sp)
+                                    color = messengerMuted, fontSize = 16.sp)
                                 inner()
                             }
                         }
