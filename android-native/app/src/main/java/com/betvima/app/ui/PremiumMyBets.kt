@@ -2,6 +2,7 @@ package com.betvima.app.ui
 
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
@@ -10,6 +11,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -39,14 +41,12 @@ import kotlinx.coroutines.delay
 @Composable
 fun PremiumMyBetsPage(state: AppState, model: AppViewModel) {
     val filter = state.historyQuery
-    var search by rememberSaveable { mutableStateOf(filter.search) }
     var activeFilter by rememberSaveable { mutableStateOf<String?>(null) }
     var openedTicket by rememberSaveable { mutableStateOf<String?>(null) }
     LaunchedEffect(filter) { openedTicket = null }
-    LaunchedEffect(search) {
-        delay(380)
-        if (search.trim() != state.historyQuery.search) {
-            model.setBetHistoryQuery(state.historyQuery.copy(search = search.trim()))
+    LaunchedEffect(filter.search) {
+        if (filter.search.isNotBlank()) {
+            model.setBetHistoryQuery(filter.copy(search = ""))
         }
     }
     LazyColumn(
@@ -54,43 +54,6 @@ fun PremiumMyBetsPage(state: AppState, model: AppViewModel) {
         contentPadding = PaddingValues(horizontal = 14.dp, vertical = 16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     , flingBehavior = rememberPremiumFlingBehavior()) {
-        item(key = "bets-heading") {
-            Surface(
-                color = Color(0xFF11223A), shape = RoundedCornerShape(20.dp),
-                border = BorderStroke(1.dp, Color(0xFF263D59))
-            ) {
-                Row(Modifier.fillMaxWidth().padding(15.dp),
-                    verticalAlignment = Alignment.CenterVertically) {
-                    Surface(color = Color(0xFFE5F2FF),
-                        shape = RoundedCornerShape(13.dp)) {
-                        Icon(Icons.Default.ReceiptLong, null,
-                            tint = Palette.blue,
-                            modifier = Modifier.padding(12.dp).size(23.dp))
-                    }
-                    Spacer(Modifier.width(12.dp))
-                    Column(Modifier.weight(1f)) {
-                        Text(tr(state.lang, "My Bets", "شرط‌های من"),
-                            color = Color.White, fontSize = 21.sp,
-                            fontWeight = FontWeight.Black)
-                        Spacer(Modifier.height(3.dp))
-                        Text(tr(state.lang,
-                            "Every selection, score and settlement in one place",
-                            "انتخاب‌ها، نتایج و تسویه هر بلیت در یک نگاه"),
-                            color = Color(0xFF9DACC1), fontSize = 11.sp,
-                            lineHeight = 16.sp)
-                    }
-                    if (state.signedIn) Surface(
-                        color = Color(0xFF1B3451),
-                        shape = RoundedCornerShape(10.dp)
-                    ) {
-                        Text(state.historyBets.size.toString(),
-                            color = Color.White, fontSize = 15.sp,
-                            fontWeight = FontWeight.Black,
-                            modifier = Modifier.padding(horizontal = 11.dp, vertical = 8.dp))
-                    }
-                }
-            }
-        }
         if (!state.signedIn) {
             item {
                 LockedFeature(state.lang, tr(state.lang,
@@ -111,53 +74,19 @@ fun PremiumMyBetsPage(state: AppState, model: AppViewModel) {
                 }
             }
         } else {
-            item {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(tr(state.lang, "Ticket explorer", "جست‌وجوی بلیت‌ها"),
-                        modifier = Modifier.weight(1f),
-                        color = Color.White, fontSize = 17.sp,
-                        fontWeight = FontWeight.Black)
-                    IconButton(onClick = { model.refreshBetHistory() },
-                        modifier = Modifier.size(43.dp)) {
-                        Icon(Icons.Default.Refresh,
-                            tr(state.lang, "Refresh tickets", "تازه‌سازی شرط‌ها"),
-                            tint = Palette.blue)
-                    }
-                }
-            }
-            item {
-                OutlinedTextField(
-                    value = search, onValueChange = { search = it.take(70) },
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true,
-                    shape = RoundedCornerShape(15.dp),
-                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedTextColor = Color.White,
-                        unfocusedTextColor = Color.White,
-                        focusedContainerColor = Color(0xFF15263C),
-                        unfocusedContainerColor = Color(0xFF15263C),
-                        focusedBorderColor = Color(0xFF1D9BEB),
-                        unfocusedBorderColor = Color(0xFF2B415F),
-                        focusedPlaceholderColor = Color(0xFF9BAEC3),
-                        unfocusedPlaceholderColor = Color(0xFF9BAEC3)
-                    ),
-                    leadingIcon = { Icon(Icons.Default.Search, null, tint = Palette.blue) },
-                    placeholder = { Text(tr(state.lang,
-                        "Search ticket, match or reference", "جست‌وجوی بلیت، مسابقه یا شناسه"),
-                        fontSize = 12.sp) },
-                    trailingIcon = {
-                        if (search.isNotBlank()) IconButton(onClick = { search = "" }) {
-                            Icon(Icons.Default.Close,
-                                tr(state.lang, "Clear search", "پاک‌کردن جست‌وجو"),
-                                tint = Palette.muted)
-                        }
-                    }
-                )
-            }
             item(key = "history-filters") {
-                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Surface(
+                    modifier = Modifier.fillMaxWidth().animateContentSize(),
+                    shape = RoundedCornerShape(15.dp),
+                    color = Color(0xFF13243B),
+                    border = BorderStroke(1.dp, Color(0xFF324760))
+                ) {
+                    Row(
+                        Modifier.fillMaxWidth().horizontalScroll(rememberScrollState())
+                            .padding(6.dp),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
                         HistoryFilterTrigger(
                             title = tr(state.lang, "Status", "وضعیت"),
                             selected = when(filter.status) {
@@ -166,7 +95,7 @@ fun PremiumMyBetsPage(state: AppState, model: AppViewModel) {
                                 else -> tr(state.lang, "All", "همه")
                             },
                             active = filter.status != "all",
-                            modifier = Modifier.weight(1f)
+                            modifier = Modifier.width(130.dp)
                         ) { activeFilter = "status" }
                         HistoryFilterTrigger(
                             title = tr(state.lang, "Bet type", "نوع شرط"),
@@ -176,26 +105,32 @@ fun PremiumMyBetsPage(state: AppState, model: AppViewModel) {
                                 else -> tr(state.lang, "All", "همه")
                             },
                             active = filter.type != "all",
-                            modifier = Modifier.weight(1f)
+                            modifier = Modifier.width(130.dp)
                         ) { activeFilter = "type" }
                         HistoryFilterTrigger(
                             title = tr(state.lang, "Date", "تاریخ"),
                             selected = if (filter.days == 0) tr(state.lang, "Any time", "همه")
-                                else tr(state.lang, "${filter.days} days", "${filter.days} روز"),
+                                else filter.days.toString() + " " + tr(state.lang, "days", "روز"),
                             active = filter.days != 0,
-                            modifier = Modifier.weight(1f)
+                            modifier = Modifier.width(130.dp)
                         ) { activeFilter = "days" }
-                    }
-                    if (filter.status != "all" || filter.type != "all" || filter.days != 0 ||
-                        filter.search.isNotBlank()) {
-                        TextButton(onClick = {
-                            search = ""
-                            model.setBetHistoryQuery(BetHistoryQuery())
-                        }, modifier = Modifier.align(Alignment.End)) {
-                            Icon(Icons.Default.RestartAlt, null, modifier = Modifier.size(16.dp))
-                            Spacer(Modifier.width(6.dp))
-                            Text(tr(state.lang, "Clear all filters", "پاک‌کردن همه فیلترها"),
-                                fontWeight = FontWeight.Bold, fontSize = 11.sp)
+                        IconButton(
+                            onClick = { model.refreshBetHistory() },
+                            modifier = Modifier.size(38.dp)
+                        ) {
+                            Icon(Icons.Default.Refresh,
+                                tr(state.lang, "Refresh tickets", "تازه‌سازی شرط‌ها"),
+                                tint = Color(0xFF81C5FF))
+                        }
+                        if (filter.status != "all" || filter.type != "all" ||
+                            filter.days != 0 || filter.search.isNotBlank()) {
+                            IconButton(onClick = {
+                                model.setBetHistoryQuery(BetHistoryQuery())
+                            }, modifier = Modifier.size(38.dp)) {
+                                Icon(Icons.Default.RestartAlt,
+                                    tr(state.lang, "Clear all filters", "پاک‌کردن همه فیلترها"),
+                                    tint = Color(0xFF95B0CB))
+                            }
                         }
                     }
                 }
@@ -220,7 +155,6 @@ fun PremiumMyBetsPage(state: AppState, model: AppViewModel) {
                             "Change the filters to explore your history.",
                             "برای مشاهده بلیت‌های دیگر، فیلترها را تغییر دهید.")) {
                         model.setBetHistoryQuery(BetHistoryQuery())
-                        search = ""
                     }
                 }
             }
@@ -229,8 +163,7 @@ fun PremiumMyBetsPage(state: AppState, model: AppViewModel) {
                     (openedTicket == null && state.historyBets.firstOrNull()?.id == bet.id)
                 PremiumTicket(
                     bet = bet, state = state, expanded = isOpen,
-                    onToggle = { openedTicket = if (isOpen) "" else bet.id },
-                    onOpen = { model.openBet(bet.id) }
+                    onToggle = { openedTicket = if (isOpen) "" else bet.id }
                 )
             }
             if (state.historyHasMore) {
@@ -287,8 +220,8 @@ private fun HistoryFilterTrigger(
         color = if (active) Color(0xFF173B53) else Color(0xFF15263C),
         border = BorderStroke(1.dp, if (active) Palette.blue else Color(0xFF2C4361))
     ) {
-        Column(Modifier.fillMaxWidth().padding(horizontal = 11.dp, vertical = 12.dp),
-            verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Column(Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Text(title, fontSize = 10.sp, color = Color(0xFF9CB0C5),
                 maxLines = 1, overflow = TextOverflow.Ellipsis)
             Row(verticalAlignment = Alignment.CenterVertically) {
