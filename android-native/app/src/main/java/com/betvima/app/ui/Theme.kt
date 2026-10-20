@@ -8,6 +8,8 @@ import androidx.compose.ui.unit.dp
 
 object Palette {
     val ink = Color(0xFF09131C)
+    // Shared canvas for the standard header, My Bets, and its bottom navigation.
+    val headerDark = Color(0xFF111113)
     val dark = Color(0xFF14242D)
     val darkElevated = Color(0xFF1D3039)
     val subtle = Color(0xFFEDEEF2)
