@@ -62,8 +62,8 @@ internal fun PremiumMatchTvModal126(
             modifier = Modifier.fillMaxSize(),
             contentAlignment = Alignment.Center
         ) {
-            val floatingWidth = minOf(maxWidth * .90f, 410.dp)
-            val floatingHeight = minOf(maxHeight * .73f, 570.dp)
+            val floatingWidth = minOf(maxWidth * .88f, 390.dp)
+            val floatingHeight = minOf(maxHeight * .65f, 510.dp)
             Box(
                 Modifier.matchParentSize()
                     .background(Color(0xA1020A0F))
