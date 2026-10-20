@@ -52,7 +52,8 @@ fun PremiumTournamentSheet(
     ModalBottomSheet(
         onDismissRequest = animatedDismiss,
         sheetState = sheetState,
-        containerColor = Palette.paper,
+        containerColor = DarkHomePalette.canvas,
+        scrimColor = Color.Black.copy(alpha = .70f),
         shape = RoundedCornerShape(topStart = 30.dp, topEnd = 30.dp),
         dragHandle = {
             Box(Modifier.padding(top = 11.dp, bottom = 8.dp)
@@ -108,7 +109,7 @@ fun PremiumTournamentSheet(
                 }
             }
             Text(tr(lang, "AVAILABLE COMPETITIONS", "رقابت‌های موجود"),
-                color = Palette.muted, fontSize = 10.sp,
+                color = DarkHomePalette.muted, fontSize = 10.sp,
                 fontWeight = FontWeight.Black,
                 modifier = Modifier.padding(start = 21.dp, end = 21.dp,
                     top = 18.dp, bottom = 8.dp))
@@ -138,7 +139,7 @@ fun PremiumTournamentSheet(
                     Text(tr(lang, "No competition matches your search.",
                         "رقابتی مطابق جست‌وجو پیدا نشد."),
                         modifier = Modifier.fillMaxWidth().padding(24.dp),
-                        color = Palette.muted)
+                        color = DarkHomePalette.muted)
                 }
             }
         }
@@ -151,10 +152,10 @@ private fun PremiumLeagueChoice(name: String, subtitle: String, count: Int,
     Surface(
         modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
         shape = RoundedCornerShape(17.dp),
-        color = if (checked) Color(0xFFE3FFF2) else Color.White,
+        color = if (checked) DarkHomePalette.blueSoft else DarkHomePalette.panel,
         border = BorderStroke(if (checked) 1.5.dp else 1.dp,
-            if (checked) Palette.green else Palette.border),
-        shadowElevation = if (checked) 3.dp else 1.dp
+            if (checked) Palette.blue else DarkHomePalette.outline),
+        shadowElevation = 0.dp
     ) {
         Row(Modifier.padding(13.dp), verticalAlignment = Alignment.CenterVertically) {
             if (match != null) {
@@ -167,13 +168,13 @@ private fun PremiumLeagueChoice(name: String, subtitle: String, count: Int,
             }
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
-                Text(name, color = Palette.text, fontWeight = FontWeight.ExtraBold,
+                Text(name, color = DarkHomePalette.ink, fontWeight = FontWeight.ExtraBold,
                     fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                if (subtitle.isNotBlank()) Text(subtitle, color = Palette.muted,
+                if (subtitle.isNotBlank()) Text(subtitle, color = DarkHomePalette.muted,
                     fontSize = 11.sp, maxLines = 1)
             }
             Text(count.toString(), fontSize = 11.sp,
-                color = Palette.muted, fontWeight = FontWeight.Bold)
+                color = DarkHomePalette.muted, fontWeight = FontWeight.Bold)
             Spacer(Modifier.width(8.dp))
             Icon(Icons.Default.ChevronRight, null, tint = Palette.blue,
                 modifier = Modifier.size(18.dp))
