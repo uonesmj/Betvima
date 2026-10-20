@@ -34,9 +34,9 @@ import kotlinx.coroutines.withContext
 private val chatNavy = Color(0xFF0C1C34)
 private val chatBlue = Color(0xFF087FF5)
 private val chatMint = Color(0xFF00D47A)
-private val chatMuted = Color(0xFF7B8899)
-private val chatInk = Color(0xFF192438)
-private val chatLine = Color(0xFFE0E7F0)
+private val chatMuted = Color(0xFFA9ACB5)
+private val chatInk = Color(0xFFF5F6F8)
+private val chatLine = Color(0xFF39393D)
 
 private fun formatSupportTime(value: String) =
     value.take(16).replace('T', ' ').ifBlank { "—" }
@@ -61,7 +61,7 @@ private fun ConversationMessage(message: SupportThreadMessage, lang: Lang) {
             verticalArrangement = Arrangement.spacedBy(5.dp)
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Surface(color = if (own) Color(0xFFE7F0FF) else Color(0xFFE1F7EB),
+                Surface(color = if (own) Color(0xFF173550) else Color(0xFF1E382F),
                     shape = CircleShape) {
                     Icon(
                         if (own) Icons.Default.Person else Icons.Default.SupportAgent,
@@ -76,7 +76,7 @@ private fun ConversationMessage(message: SupportThreadMessage, lang: Lang) {
                     color = chatMuted, fontWeight = FontWeight.Black, fontSize = 10.sp)
             }
             Surface(
-                color = if (own) Color(0xFFEBF2FF) else Color.White,
+                color = if (own) Color(0xFF173550) else Color(0xFF222224),
                 shape = RoundedCornerShape(
                     topStart = 17.dp, topEnd = 17.dp,
                     bottomStart = if (own) 17.dp else 5.dp,
@@ -216,7 +216,9 @@ fun TicketThreadSheet(
 
     ModalBottomSheet(
         onDismissRequest = { if (!sending && !closing) onDismiss() },
-        containerColor = Color(0xFFF6F8FC),
+        containerColor = DarkHomePalette.canvas,
+        contentColor = chatInk,
+        scrimColor = Color.Black.copy(alpha = .72f),
         contentWindowInsets = { WindowInsets(0, 0, 0, 0) },
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     ) {
@@ -288,11 +290,11 @@ fun TicketThreadSheet(
             }
             if (loading) LinearProgressIndicator(Modifier.fillMaxWidth(), color = chatMint)
             if (error != null) {
-                Surface(color = Color(0xFFFFF0EB),
+                Surface(color = Color(0xFF38272A),
                     modifier = Modifier.fillMaxWidth().padding(11.dp),
                     shape = RoundedCornerShape(12.dp)) {
                     Column(Modifier.padding(11.dp)) {
-                        Text(error.orEmpty(), color = Color(0xFFB2463B), fontSize = 11.sp)
+                        Text(error.orEmpty(), color = Color(0xFFFF9FA7), fontSize = 11.sp)
                         TextButton(onClick = { scope.launch { refresh() } }) {
                             Text(tr(lang,"Retry","تلاش مجدد"))
                         }
@@ -307,7 +309,7 @@ fun TicketThreadSheet(
             ) {
                 if (messages.isEmpty() && !loading) {
                     item {
-                        Surface(color = Color.White,
+                        Surface(color = DarkHomePalette.panel,
                             shape = RoundedCornerShape(17.dp),
                             border = BorderStroke(1.dp, chatLine)) {
                             Column(Modifier.fillMaxWidth().padding(22.dp),
@@ -329,7 +331,7 @@ fun TicketThreadSheet(
                     ConversationMessage(message, lang)
                 }
             }
-            Surface(color = Color.White, shadowElevation = 9.dp,
+            Surface(color = DarkHomePalette.panel, shadowElevation = 0.dp,
                 modifier = Modifier.fillMaxWidth()) {
                 Column(
                     Modifier.fillMaxWidth().navigationBarsPadding()
@@ -338,12 +340,12 @@ fun TicketThreadSheet(
                 ) {
                     if (supportActive(activeTicket.status)) {
                         if (uncertain) {
-                            Surface(color = Color(0xFFFFF5E6),
+                            Surface(color = Color(0xFF362E22),
                                 shape = RoundedCornerShape(12.dp)) {
                                 Text(tr(lang,
                                     "Delivery is uncertain. Refresh the conversation before sending again.",
                                     "وضعیت ارسال نامشخص است؛ پیش از ارسال دوباره گفت‌وگو را تازه‌سازی کنید."),
-                                    color = Color(0xFF95621F), fontSize = 11.sp,
+                                    color = Color(0xFFFFD489), fontSize = 11.sp,
                                     modifier = Modifier.padding(11.dp))
                             }
                         }
@@ -351,7 +353,7 @@ fun TicketThreadSheet(
                             Surface(
                                 color = Color(0xFFEAF4FF),
                                 shape = RoundedCornerShape(13.dp),
-                                border = BorderStroke(1.dp, Color(0xFFD4E6FC))
+                                border = BorderStroke(1.dp, chatLine)
                             ) {
                                 Row(
                                     Modifier.fillMaxWidth().padding(
