@@ -65,7 +65,7 @@ fun ReferenceAnimatedBottomNav(
     CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
         Row(
             Modifier.fillMaxWidth()
-                .background(Color(0xFF101114))
+                .background(if (selected == "bets") Palette.headerDark else Color(0xFF101114))
                 // Activity fits system windows; don't pad the nav a second time.
                 .padding(horizontal = 4.dp, vertical = 5.dp)
                 .heightIn(min = 67.dp),
