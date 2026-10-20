@@ -24,7 +24,8 @@ describe('secure automatic affiliate APK build', () => {
     expect(worker).toContain('CERT_SHA256');
     expect(worker).toContain('AFFILIATE_REFERRAL_CODE');
     expect(worker).toContain('os.replace(temp_path, output)');
-    expect(worker).toContain('os.replace(job, FAILED / code)');
+    expect(worker).toContain('os.replace(job, working)');
+    expect(worker).toContain('os.replace(working, FAILED / code)');
   });
 
   it('rate limits build memory separately from web and persists scheduled builds', () => {
