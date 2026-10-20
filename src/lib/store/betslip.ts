@@ -74,7 +74,13 @@ export const useBetSlip = create<BetSlipState>()(
         }
         const sameMarket = items.find((i) => i.marketId === item.marketId);
         if (sameMarket) {
-          set({ items: [...items.filter((i) => i.marketId !== item.marketId), item] });
+          // Replacing an outcome is also an explicit odds click. Reopen the
+          // sheet if the user previously dismissed it; otherwise the new
+          // selection silently changes behind a closed bet slip.
+          set({
+            items: [...items.filter((i) => i.marketId !== item.marketId), item],
+            isOpen: true, userClosed: false, lastError: null,
+          });
           return { action: 'REPLACED' };
         }
         if (items.length >= MAX_SLIP_ITEMS) {
