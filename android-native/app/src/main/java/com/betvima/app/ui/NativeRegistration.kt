@@ -317,11 +317,11 @@ fun NativeRegistrationForm(
     }
 
     val issue = signupValidation(email, password, confirmation, adult, terms)
-    val dark = Color.White
-    val edge = Palette.border
-    val hint = Palette.muted
-    val pale = Palette.muted
-    val bright = Palette.text
+    val dark = DarkHomePalette.panel
+    val edge = DarkHomePalette.outline
+    val hint = DarkHomeDarkHomePalette.muted
+    val pale = DarkHomeDarkHomePalette.muted
+    val bright = DarkHomePalette.ink
     val green = Palette.green
     val fieldColors = OutlinedTextFieldDefaults.colors(
         focusedTextColor = bright,
@@ -336,15 +336,17 @@ fun NativeRegistrationForm(
         focusedLeadingIconColor = Palette.blue,
         unfocusedLeadingIconColor = hint,
         focusedTrailingIconColor = hint,
-        unfocusedTrailingIconColor = hint
+        unfocusedTrailingIconColor = hint,
+        focusedPlaceholderColor = hint,
+        unfocusedPlaceholderColor = hint
     )
 
     if (registrationCompleted) {
         Surface(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(22.dp),
-            color = Color.White,
-            border = BorderStroke(1.dp, Palette.border),
+            color = DarkHomePalette.panel,
+            border = BorderStroke(1.dp, DarkHomePalette.outline),
             shadowElevation = 2.dp
         ) {
             Column(
@@ -353,7 +355,7 @@ fun NativeRegistrationForm(
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Surface(
-                    color = Color(0xFFE8F8EF),
+                    color = Color(0xFF1D362E),
                     shape = RoundedCornerShape(23.dp),
                     border = BorderStroke(1.dp, Palette.green.copy(alpha = .24f))
                 ) {
@@ -364,19 +366,19 @@ fun NativeRegistrationForm(
                 }
                 Text(
                     tr(lang, "Account created successfully!", "حساب کاربری شما با موفقیت ساخته شد!"),
-                    color = Palette.text, fontSize = 19.sp, fontWeight = FontWeight.Black,
+                    color = DarkHomePalette.ink, fontSize = 19.sp, fontWeight = FontWeight.Black,
                     textAlign = TextAlign.Center
                 )
                 Text(
                     tr(lang,
                         "Your BetVima sign-in information is below. Use the same account on Android and the website.",
                         "مشخصات ورود به حساب بت‌ویما در ادامه نمایش داده شده است. همین حساب در اپلیکیشن و سایت قابل استفاده است."),
-                    color = Palette.muted, fontSize = 12.sp,
+                    color = DarkHomePalette.muted, fontSize = 12.sp,
                     textAlign = TextAlign.Center, lineHeight = 19.sp
                 )
                 Surface(
-                    color = Color(0xFFF5F7FA),
-                    border = BorderStroke(1.dp, Palette.border),
+                    color = DarkHomePalette.soft,
+                    border = BorderStroke(1.dp, DarkHomePalette.outline),
                     shape = RoundedCornerShape(17.dp),
                     modifier = Modifier.fillMaxWidth()
                 ) {
@@ -386,7 +388,7 @@ fun NativeRegistrationForm(
                     ) {
                         Text(
                             tr(lang, "YOUR SIGN-IN DETAILS", "مشخصات ورود شما"),
-                            color = Palette.muted, fontSize = 10.sp,
+                            color = DarkHomePalette.muted, fontSize = 10.sp,
                             letterSpacing = 1.sp, fontWeight = FontWeight.Black
                         )
                         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -394,23 +396,23 @@ fun NativeRegistrationForm(
                                 modifier = Modifier.size(19.dp))
                             Spacer(Modifier.width(9.dp))
                             Column(Modifier.weight(1f)) {
-                                Text(tr(lang, "Email", "ایمیل"), color = Palette.muted, fontSize = 11.sp)
-                                Text(email.trim(), color = Palette.text,
+                                Text(tr(lang, "Email", "ایمیل"), color = DarkHomePalette.muted, fontSize = 11.sp)
+                                Text(email.trim(), color = DarkHomePalette.ink,
                                     fontSize = 13.sp, fontWeight = FontWeight.Bold)
                             }
                         }
-                        HorizontalDivider(color = Palette.border)
+                        HorizontalDivider(color = DarkHomePalette.outline)
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Icon(Icons.Default.Lock, null, tint = Palette.blue,
                                 modifier = Modifier.size(19.dp))
                             Spacer(Modifier.width(9.dp))
                             Column(Modifier.weight(1f)) {
                                 Text(tr(lang, "Password", "رمز عبور"),
-                                    color = Palette.muted, fontSize = 11.sp)
+                                    color = DarkHomePalette.muted, fontSize = 11.sp)
                                 Text(
                                     if (password.isBlank()) tr(lang, "Re-enter at login", "در صفحه ورود دوباره وارد کنید")
                                     else if (revealNewPassword) password else "••••••••••",
-                                    color = Palette.text, fontSize = 13.sp,
+                                    color = DarkHomePalette.ink, fontSize = 13.sp,
                                     fontWeight = FontWeight.Bold
                                 )
                             }
@@ -425,21 +427,21 @@ fun NativeRegistrationForm(
                                 }
                             }
                         }
-                        HorizontalDivider(color = Palette.border)
+                        HorizontalDivider(color = DarkHomePalette.outline)
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Icon(Icons.Default.AccountBalanceWallet, null,
                                 tint = Palette.blue, modifier = Modifier.size(19.dp))
                             Spacer(Modifier.width(9.dp))
                             Text(tr(lang, "Account currency", "ارز حساب"),
-                                color = Palette.muted, fontSize = 12.sp)
+                                color = DarkHomePalette.muted, fontSize = 12.sp)
                             Spacer(Modifier.weight(1f))
-                            Text(currency, color = Palette.text, fontSize = 13.sp,
+                            Text(currency, color = DarkHomePalette.ink, fontSize = 13.sp,
                                 fontWeight = FontWeight.Black)
                         }
                     }
                 }
                 Surface(
-                    color = if (emailConfirmationRequired) Color(0xFFFFF8E8)
+                    color = if (emailConfirmationRequired) Color(0xFF393023)
                         else Color(0xFFEAF8F1),
                     shape = RoundedCornerShape(13.dp),
                     modifier = Modifier.fillMaxWidth()
@@ -459,7 +461,7 @@ fun NativeRegistrationForm(
                                     "ابتدا لینک تأیید ارسال‌شده به ایمیل را باز کنید، سپس برای ورود روی دکمه زیر بزنید.")
                             else tr(lang, "Ready! Tap Log in to enter your account and open the home page.",
                                 "حساب آماده است! برای ورود و رفتن به صفحه اصلی، دکمه زیر را بزنید."),
-                            color = Palette.text, fontSize = 12.sp, lineHeight = 18.sp
+                            color = DarkHomePalette.ink, fontSize = 12.sp, lineHeight = 18.sp
                         )
                     }
                 }
@@ -493,7 +495,7 @@ fun NativeRegistrationForm(
                     tr(lang,
                         "Your password is not saved by this page. Keep it private.",
                         "رمز عبور در این صفحه ذخیره دائمی نمی‌شود؛ آن را محرمانه نگه دارید."),
-                    color = Palette.muted, fontSize = 10.sp, textAlign = TextAlign.Center
+                    color = DarkHomePalette.muted, fontSize = 10.sp, textAlign = TextAlign.Center
                 )
             }
         }
@@ -501,15 +503,15 @@ fun NativeRegistrationForm(
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(22.dp),
-        color = Color.White,
-        border = BorderStroke(1.dp, Palette.border),
+        color = DarkHomePalette.panel,
+        border = BorderStroke(1.dp, DarkHomePalette.outline),
         shadowElevation = 1.dp
     ) {
         Column(Modifier.fillMaxWidth().padding(12.dp),
             verticalArrangement = Arrangement.spacedBy(9.dp)) {
 
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Surface(color = Color(0xFFEAF7F1),
+                Surface(color = Color(0xFF1D362E),
                     border = BorderStroke(1.dp, green.copy(alpha = .22f)),
                     shape = RoundedCornerShape(13.dp)) {
                     Icon(Icons.Default.PersonAdd, null, tint = Palette.blue,
@@ -523,7 +525,7 @@ fun NativeRegistrationForm(
                         "یک حساب برای سایت و اپلیکیشن بت‌ویما"),
                         color = pale, fontSize = 11.sp)
                 }
-                Surface(color = Color(0xFFEAF7F1),
+                Surface(color = Color(0xFF1D362E),
                     shape = RoundedCornerShape(9.dp)) {
                     Text("18+", color = green, fontWeight = FontWeight.Black,
                         fontSize = 12.sp,
@@ -585,7 +587,7 @@ fun NativeRegistrationForm(
             // the native sign-up experience. Never show EUR/GBP here.
             Box(Modifier.fillMaxWidth()) {
                 Surface(
-                    color = Color(0xFFF7F9FB),
+                    color = DarkHomePalette.soft,
                     shape = RoundedCornerShape(13.dp),
                     border = BorderStroke(1.dp, edge),
                     modifier = Modifier.fillMaxWidth().height(51.dp)
@@ -600,12 +602,12 @@ fun NativeRegistrationForm(
                         Spacer(Modifier.width(10.dp))
                         Column(Modifier.weight(1f)) {
                             Text(tr(lang, "Account currency", "ارز حساب"),
-                                color = Palette.muted, fontSize = 10.sp)
+                                color = DarkHomePalette.muted, fontSize = 10.sp)
                             Text(
                                 if (currency == "USD")
                                     tr(lang, "US Dollar (USD)", "دلار آمریکا (USD)")
                                 else tr(lang, "Iranian Rial (IRR)", "ریال ایران (IRR)"),
-                                color = Palette.text, fontSize = 13.sp,
+                                color = DarkHomePalette.ink, fontSize = 13.sp,
                                 fontWeight = FontWeight.Bold
                             )
                         }
@@ -615,7 +617,7 @@ fun NativeRegistrationForm(
                 DropdownMenu(
                     expanded = currencyMenuOpen,
                     onDismissRequest = { currencyMenuOpen = false },
-                    modifier = Modifier.background(Color.White)
+                    modifier = Modifier.background(DarkHomePalette.panel)
                 ) {
                     registrationCurrencies.forEach { value ->
                         DropdownMenuItem(
@@ -624,9 +626,9 @@ fun NativeRegistrationForm(
                                     Text(
                                         if (value == "USD") tr(lang, "US Dollar", "دلار آمریکا")
                                         else tr(lang, "Iranian Rial", "ریال ایران"),
-                                        fontWeight = FontWeight.Bold, color = Palette.text
+                                        fontWeight = FontWeight.Bold, color = DarkHomePalette.ink
                                     )
-                                    Text(value, fontSize = 11.sp, color = Palette.muted)
+                                    Text(value, fontSize = 11.sp, color = DarkHomePalette.muted)
                                 }
                             },
                             leadingIcon = {
@@ -644,7 +646,7 @@ fun NativeRegistrationForm(
             }
             if (partnerInstall) {
                 Surface(
-                    color = Color(0xFFE8F8EF),
+                    color = Color(0xFF1D362E),
                     shape = RoundedCornerShape(14.dp),
                     border = BorderStroke(1.dp, Palette.green.copy(alpha = .30f))
                 ) {
@@ -656,10 +658,10 @@ fun NativeRegistrationForm(
                         Column(Modifier.weight(1f)) {
                             Text(tr(lang,"Partner invitation linked automatically",
                                 "دعوت همکار به‌صورت خودکار متصل است"),
-                                color = Palette.text,fontSize=12.sp,fontWeight=FontWeight.Bold)
+                                color = DarkHomePalette.ink,fontSize=12.sp,fontWeight=FontWeight.Bold)
                             Text(tr(lang,"No referral code is required in a gift field.",
                                 "نیازی به واردکردن کد معرف در قسمت هدیه نیست."),
-                                color=Palette.muted,fontSize=10.sp)
+                                color=DarkHomePalette.muted,fontSize=10.sp)
                         }
                     }
                 }
@@ -692,7 +694,7 @@ fun NativeRegistrationForm(
                             tint=when(referralCheck) {
                                 "verified" -> Palette.green
                                 "invalid" -> Palette.red
-                                else -> Palette.muted
+                                else -> DarkHomePalette.muted
                             },modifier=Modifier.size(16.dp))
                         Spacer(Modifier.width(7.dp))
                         Text(when(referralCheck) {
@@ -706,14 +708,14 @@ fun NativeRegistrationForm(
                         },fontSize=11.sp,color=when(referralCheck){
                             "verified" -> Palette.green
                             "invalid" -> Palette.red
-                            else -> Palette.muted
+                            else -> DarkHomePalette.muted
                         },modifier=Modifier.weight(1f))
                     }
                 }
     
             }
 
-            Surface(color = Color(0xFFF4F6F9), shape = RoundedCornerShape(15.dp),
+            Surface(color = DarkHomePalette.soft, shape = RoundedCornerShape(15.dp),
                 border = BorderStroke(1.dp, edge)) {
                 Column(Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
                     verticalArrangement = Arrangement.spacedBy(0.dp)) {
@@ -788,7 +790,7 @@ fun NativeRegistrationForm(
                             Spacer(Modifier.height(8.dp))
                             Text(tr(lang, "Loading security challenge…",
                                 "در حال دریافت تأیید امنیتی…"),
-                                color = Color(0xFF61758A), fontSize = 11.sp)
+                                color = DarkHomePalette.muted, fontSize = 11.sp)
                         }
                     }
                     siteKey.isNullOrBlank() -> {
@@ -799,7 +801,7 @@ fun NativeRegistrationForm(
                                 Spacer(Modifier.width(7.dp))
                                 Text(configError ?: tr(lang, "Verification unavailable",
                                     "تأیید امنیتی در دسترس نیست"),
-                                    fontSize = 11.sp, color = Palette.text,
+                                    fontSize = 11.sp, color = DarkHomePalette.ink,
                                     modifier = Modifier.weight(1f))
                             }
                             OutlinedButton(onClick = { configRevision++ }) {
@@ -823,7 +825,7 @@ fun NativeRegistrationForm(
                                     color = Palette.blue, strokeWidth = 1.5.dp)
                                 Spacer(Modifier.width(6.dp))
                                 Text(tr(lang, "Connecting securely…", "در حال اتصال امن…"),
-                                    color = Palette.muted, fontSize = 10.sp)
+                                    color = DarkHomePalette.muted, fontSize = 10.sp)
                             }
                         }
                         RealTurnstileWidget(
@@ -864,7 +866,7 @@ fun NativeRegistrationForm(
             }
 
             if (error != null) {
-                Surface(color = Color(0xFFFFECEF), shape = RoundedCornerShape(12.dp)) {
+                Surface(color = Color(0xFF3B252C), shape = RoundedCornerShape(12.dp)) {
                     Row(Modifier.padding(11.dp), verticalAlignment = Alignment.CenterVertically) {
                         Icon(Icons.Default.ErrorOutline, null,
                             tint = Palette.red, modifier = Modifier.size(19.dp))
