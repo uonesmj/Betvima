@@ -32,6 +32,8 @@ if [[ ! -e "$DOWNLOADS/.native-build.lock" ]]; then
   install -o root -g root -m 0640 /dev/null "$DOWNLOADS/.native-build.lock"
 fi
 [[ -f "$DOWNLOADS/.native-build.lock" && ! -L "$DOWNLOADS/.native-build.lock" ]] || fail unsafe_lockfile
+chown root:root "$DOWNLOADS/.native-build.lock"
+chmod 0640 "$DOWNLOADS/.native-build.lock"
 exec 9>>"$DOWNLOADS/.native-build.lock"
 flock -w 180 -x 9 || fail build_running
 
