@@ -423,8 +423,10 @@ fun PremiumWalletPage(state: AppState, model: AppViewModel) {
     detail?.let { payment ->
         AlertDialog(
             onDismissRequest = { detail = null },
+            containerColor = walletPanel,
             icon = { Icon(Icons.Default.ReceiptLong, null, tint = walletBlue) },
-            title = { Text(tr(lang, "Payment details", "جزئیات پرداخت")) },
+            title = { Text(tr(lang, "Payment details", "جزئیات پرداخت"),
+                color = walletInk) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(9.dp)) {
                     Text(walletStatusText(payment.status, lang), color = walletBlue,
@@ -441,14 +443,15 @@ fun PremiumWalletPage(state: AppState, model: AppViewModel) {
                 TextButton(onClick = {
                     clipboard.setText(AnnotatedString(payment.publicId))
                 }) {
-                    Icon(Icons.Default.ContentCopy, null, modifier = Modifier.size(16.dp))
+                    Icon(Icons.Default.ContentCopy, null, tint = Color(0xFF77BFFF),
+                        modifier = Modifier.size(16.dp))
                     Spacer(Modifier.width(4.dp))
-                    Text(tr(lang, "Copy receipt ID", "کپی شناسه رسید"))
+                    Text(tr(lang, "Copy receipt ID", "کپی شناسه رسید"), color = Color(0xFF77BFFF))
                 }
             },
             dismissButton = {
                 TextButton(onClick = { detail = null }) {
-                    Text(tr(lang, "Close", "بستن"))
+                    Text(tr(lang, "Close", "بستن"), color = walletMute)
                 }
             }
         )
