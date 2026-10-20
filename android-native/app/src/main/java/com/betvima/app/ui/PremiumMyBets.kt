@@ -160,7 +160,7 @@ fun PremiumMyBetsPage(state: AppState, model: AppViewModel) {
                 }
             }
             if (needsMyBetsSkeleton(state.historyLoading, state.historyBets.isNotEmpty())) {
-                items(3, key = { "history-skeleton-\$it" }) {
+                items(3, key = { "history-skeleton-" + it }) {
                     MyBetsTicketSkeleton(Modifier.fillMaxWidth())
                 }
             }
