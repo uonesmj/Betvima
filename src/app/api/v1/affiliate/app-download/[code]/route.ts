@@ -20,6 +20,7 @@ const VERSION_FILE = path.join(ANDROID_DIR, 'app/build.gradle.kts');
 // Older releases must not be shipped to newly referred users.
 const MINIMUM_NATIVE_VERSION = 125;
 const QUEUE_DIR = '/var/lib/betvima-affiliate-build/queue';
+const RUNNING_DIR = '/var/lib/betvima-affiliate-build/running';
 const FAILED_DIR = '/var/lib/betvima-affiliate-build/failed';
 const RELEASE_CERT_SHA256 = 'b87c0c775b630fbfb4773c2f508fc54fce2e09387443430cd041c95af9a66f90';
 
@@ -107,6 +108,7 @@ export async function GET(
     try {
       await access(QUEUE_DIR, fsConstants.W_OK);
       await access(FAILED_DIR, fsConstants.X_OK);
+      await access(RUNNING_DIR, fsConstants.X_OK);
     } catch {
       return NextResponse.json(
         { ok: false, error: 'ANDROID_BUILD_WORKER_NOT_CONFIGURED' },
@@ -121,16 +123,23 @@ export async function GET(
       );
     } catch { /* first attempt */ }
 
-    const queuePath = path.join(QUEUE_DIR, clean + '.request');
+    let inProgress = false;
     try {
-      const handle = await open(queuePath, 'wx', 0o600);
-      await handle.close();
-    } catch (error) {
-      if (!(error instanceof Error && 'code' in error && error.code === 'EEXIST')) {
-        return NextResponse.json(
-          { ok: false, error: 'ANDROID_BUILD_QUEUE_UNAVAILABLE' },
-          { status: 503, headers: { 'Cache-Control': 'no-store' } },
-        );
+      await access(path.join(RUNNING_DIR, clean), fsConstants.F_OK);
+      inProgress = true;
+    } catch { /* still queued or new */ }
+    if (!inProgress) {
+      const queuePath = path.join(QUEUE_DIR, clean + '.request');
+      try {
+        const handle = await open(queuePath, 'wx', 0o600);
+        await handle.close();
+      } catch (error) {
+        if (!(error instanceof Error && 'code' in error && error.code === 'EEXIST')) {
+          return NextResponse.json(
+            { ok: false, error: 'ANDROID_BUILD_QUEUE_UNAVAILABLE' },
+            { status: 503, headers: { 'Cache-Control': 'no-store' } },
+          );
+        }
       }
     }
     const headers = { 'Cache-Control': 'private, no-store, max-age=0', 'Retry-After': '45' };
