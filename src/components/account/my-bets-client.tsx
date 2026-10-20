@@ -146,10 +146,12 @@ function legStateIcon(value: string | null | undefined) {
 export function MyBetsClient() {
   const { t, locale, session, sessionLoading } = useApp();
   const searchParams = useSearchParams();
-  const [tab, setTab] = useState<'open' | 'settled' | 'all'>('open');
+  const [tab, setTab] = useState<'open' | 'settled' | 'all'>('all');
   const [type, setType] = useState<'ALL' | 'SINGLE' | 'MULTIPLE'>('ALL');
   const [search, setSearch] = useState('');
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+  const [openTicketId, setOpenTicketId] = useState<string | null>(null);
+  const [days, setDays] = useState(0);
   const [copied, setCopied] = useState<string | null>(null);
   const [cashout, setCashout] = useState<{
     betId: string;
@@ -171,6 +173,17 @@ export function MyBetsClient() {
   }>(path);
 
   const rows = useMemo(() => data?.items ?? [], [data]);
+  const displayRows = useMemo(() => rows.filter((bet) => {
+    if (tab === 'open' && !['accepted', 'pending', 'open'].includes(bet.status)) return false;
+    if (tab === 'settled' && ['accepted', 'pending', 'open'].includes(bet.status)) return false;
+    if (type !== 'ALL' && bet.type.toUpperCase() !== type) return false;
+    if (days > 0 && Date.parse(bet.placedAt) < Date.now() - days * 86400000) return false;
+    const term = search.trim().toLocaleLowerCase();
+    return !term || [bet.publicId, bet.id, ...bet.legs.flatMap((leg) => [
+      leg.matchLabel, leg.selectionLabel, leg.marketLabel,
+      leg.match.homeTeamName ?? '', leg.match.awayTeamName ?? ''
+    ])].some((value) => value.toLocaleLowerCase().includes(term));
+  }), [rows, tab, type, days, search]);
 
   if (sessionLoading) {
     return (
@@ -323,7 +336,7 @@ export function MyBetsClient() {
     try {
       if (navigator.share) {
         await navigator.share({
-          title: `NOVA ${bet.publicId}`,
+          title: `BetVima ${bet.publicId}`,
           text: `${bet.type} · ${bet.publicId}`,
           url: shareUrl,
         });
@@ -477,323 +490,195 @@ export function MyBetsClient() {
           </div>
         </section>
       ) : (
-        <div className="space-y-2">
-          {rows.map((bet) => {
-            const first = bet.legs[0]?.match;
+        <div className="space-y-3 rounded-[22px] bg-[#060E1C] p-2.5 sm:p-5" data-testid="bet-ticket-ledger">
+          <div className="space-y-3 pb-1">
+            <div className="flex items-center justify-end px-1">
+              <span className="rounded-xl border border-[#213750] bg-[#101D30] px-3 py-2 text-xs font-bold text-[#B7C8D9]">
+                {displayRows.length} tickets
+              </span>
+            </div>
+            <label className="flex min-h-[45px] items-center gap-2 rounded-[15px] border border-[#26364B] bg-[#152033] px-3 text-[#55A9FF]">
+              <span aria-hidden="true" className="text-xl">⌕</span>
+              <input type="search" value={search} onChange={(event) => setSearch(event.target.value)}
+                placeholder="Search ticket, match or reference"
+                aria-label="Search bets" className="w-full min-w-0 bg-transparent text-sm text-white placeholder:text-[#96A5B9] outline-none" />
+            </label>
+            <div className="grid grid-cols-3 gap-2">
+              <label className="min-w-0 rounded-xl border border-[#26364B] bg-[#152033] px-2.5 py-2 text-[10px] text-[#9DAEC5]">
+                Status
+                <select aria-label="Filter by status" value={tab} onChange={(event) => setTab(event.target.value as 'open' | 'settled' | 'all')}
+                  className="mt-1 block w-full bg-transparent text-xs font-bold text-white outline-none">
+                  <option value="all">All</option><option value="open">Open</option><option value="settled">Finished</option>
+                </select>
+              </label>
+              <label className="min-w-0 rounded-xl border border-[#26364B] bg-[#152033] px-2.5 py-2 text-[10px] text-[#9DAEC5]">
+                Bet type
+                <select aria-label="Filter by bet type" value={type} onChange={(event) => setType(event.target.value as 'ALL' | 'SINGLE' | 'MULTIPLE')}
+                  className="mt-1 block w-full bg-transparent text-xs font-bold text-white outline-none">
+                  <option value="ALL">All</option><option value="SINGLE">Single</option><option value="MULTIPLE">Mix</option>
+                </select>
+              </label>
+              <label className="min-w-0 rounded-xl border border-[#26364B] bg-[#152033] px-2.5 py-2 text-[10px] text-[#9DAEC5]">
+                Date
+                <select aria-label="Filter by date" value={days} onChange={(event) => setDays(Number(event.target.value))}
+                  className="mt-1 block w-full bg-transparent text-xs font-bold text-white outline-none">
+                  <option value={0}>Any time</option><option value={7}>7 days</option><option value={30}>30 days</option><option value={90}>90 days</option>
+                </select>
+              </label>
+            </div>
+          </div>
+          {displayRows.map((bet, index) => {
             const result = betResult(bet);
-            const isExpanded = Boolean(expanded[bet.id]);
-            const settledCount = bet.legs.filter((leg) => ['WON','LOST','VOID','REFUNDED','HALF_WON','HALF_LOST'].includes(normalize(leg.grade))).length;
+            const isOpen = openTicketId === null ? index === 0 : openTicketId === bet.id;
+            const receiptOpen = Boolean(expanded[bet.id]);
+            const isWin = result === 'WIN';
+            const isLoss = result === 'LOSS';
+            const headerTone = isOpen
+              ? 'border-[#00CA86] bg-[linear-gradient(115deg,#006D55,#04AC7C)] text-white'
+              : 'border-[#27435F] bg-[linear-gradient(110deg,#102746,#08172C)] text-white';
+            const statusTone = isWin
+              ? 'bg-[#D7F8E9] text-[#05845C]' : isLoss
+              ? 'bg-[#FFE4EA] text-[#C22D4F]' : 'bg-[#DCEAFE] text-[#185AB2]';
+            const headerText = bet.type.toUpperCase() === 'MULTIPLE' || bet.legs.length > 1
+              ? 'Mix bet (' + bet.legs.length + ' picks)' : 'Single bet';
 
             return (
-              <article
-                key={bet.id}
-                data-testid="bet-row"
-                className={`nova-card overflow-hidden bg-[#0D1422] text-white shadow-[0_8px_24px_rgba(7,12,22,.10)] ${highlight === bet.publicId ? 'border-nova-primary ring-2 ring-nova-primary/20' : 'border-white/10'}`}
-              >
-                <div className="border-b border-white/10 bg-[#101827] px-2.5 py-2 sm:px-3 sm:py-2.5">
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className={`inline-flex items-center rounded-full border border-white/10 bg-white/[0.06] px-2 py-1 text-[11px] font-black text-white`}>{betStatusLabel(result, bet.status, locale)}</span>
-                      <span className="nova-chip">{bet.type}</span>
-                      <span className="text-xs text-slate-400">{formatDateTime(bet.placedAt, locale)}</span>
-                    </div>
-                    <strong className={`text-sm ${resultClass(result)}`}>
-                      {result ?? (bet.status === 'accepted' ? 'OPEN' : bet.status.replaceAll('_', ' ').toUpperCase())}
-                    </strong>
-                  </div>
+              <article key={bet.id} data-testid="bet-row"
+                className={'overflow-hidden rounded-[20px] border shadow-[0_10px_30px_rgba(0,0,0,.18)] ' +
+                  (highlight === bet.publicId ? 'ring-2 ring-[#00D47A] ' : '') +
+                  (isOpen ? 'border-[#00C388] bg-white' : 'border-[#25405F] bg-[#0F1C30]')}>
+                <button type="button" aria-expanded={isOpen} aria-controls={'ticket-' + bet.id}
+                  onClick={() => setOpenTicketId(isOpen ? '' : bet.id)}
+                  className={'flex w-full items-center gap-3 border-b px-3.5 py-3.5 text-left transition-colors sm:px-5 ' + headerTone}>
+                  <span aria-hidden="true" className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-white/90 text-xl font-black text-[#058B72]">▣</span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-[15px] font-black">{headerText}</span>
+                    <span className="block truncate text-[10px] text-white/80">
+                      ID {bet.publicId} · {formatDateTime(bet.placedAt, locale)}
+                    </span>
+                  </span>
+                  <span className={'shrink-0 rounded-xl px-2.5 py-2 text-[11px] font-black ' + statusTone}>
+                    {betStatusLabel(result, bet.status, locale)}
+                  </span>
+                  <span aria-hidden="true" className="ml-0.5 shrink-0 text-xl text-white">{isOpen ? '⌃' : '⌄'}</span>
+                </button>
 
-                  <div className="mt-1.5 flex flex-wrap items-center justify-between gap-1.5">
-                    <div className="flex min-w-0 items-center gap-2">
-                      <div className="grid h-9 w-9 shrink-0 place-items-center rounded-lg border border-white/10 bg-white/[0.06]">
-                        {first?.leagueLogoUrl
-                          ? <img src={first.leagueLogoUrl} alt="" loading="lazy" className="h-7 w-7 object-contain" />
-                          : <span className="text-[10px] font-black nova-muted">SP</span>}
-                      </div>
-                      <div className="min-w-0">
-                        <div className="truncate text-xs font-bold">{first?.leagueName ?? 'Sports'}</div>
-                        <div className="truncate text-[11px] text-slate-400">{first?.venue ?? ('Match')}</div>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-2 text-xs nova-muted">
-                      <span>{bet.legs.length} {bet.legs.length === 1 ? 'Selection' : 'Selections'}</span>
-                      {bet.type === 'MULTIPLE' ? <span>{settledCount}/{bet.legs.length} {'settled'}</span> : null}
-                      <button
-                        type="button"
-                        className="nova-btn-ghost !px-2 !py-1 text-[11px]"
-                        onClick={() => void copyBetId(bet.publicId)}
-                      >
-                        {copied === bet.publicId ? ('Copied') : bet.publicId}
-                      </button>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="divide-y divide-white/10">
-                  {bet.legs.map((leg) => {
-                    const match = leg.match;
-                    const live = matchState(match);
-      const isLive = ["LIVE", "IN_PLAY"].includes(normalize(match.status));
-
-                    return (
-                      <div key={leg.id} className="p-2.5 sm:p-3">
-                        <div className="mb-2 flex items-center justify-between gap-2 text-[11px] text-slate-400">
-                          <span className="truncate">{match.leagueName ?? ('Match')}</span>
-                          <span className="shrink-0">
-                            {live
-                              ? <strong className="text-red-400">{live}</strong>
-                              : match.scheduledAt
-                                ? formatDateTime(match.scheduledAt, locale)
-                                : '—'}
-                          </span>
-                        </div>
-
-                        <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-1.5 sm:gap-4">
-                          <div className="flex min-w-0 items-center gap-2">
-                            <TeamLogo url={match.homeTeamLogoUrl} name={match.homeTeamName ?? 'H'} size={40} theme="dark" />
-                            <div className="min-w-0">
-                              <div className="truncate text-sm font-extrabold text-white">{match.homeTeamName ?? 'Home'}</div>
-                              {match.homeScore != null ? <div className="text-base font-black">{match.homeScore}</div> : null}
-                            </div>
-                          </div>
-
-                          <div className="text-center">
-                            <div className="text-[10px] font-black nova-muted">{isLive ? <span className="text-red-400">LIVE{match.minute != null ? ` · ${match.minute}'` : live ? ` · ${live}` : ''}</span> : (live ?? 'VS')}</div>
-                            {match.period ? <div className="text-[10px] nova-muted">{match.period}</div> : null}
-                          </div>
-
-                          <div className="flex min-w-0 items-center justify-end gap-2 text-right">
-                            <div className="min-w-0">
-                              <div className="truncate text-sm font-extrabold text-white">{match.awayTeamName ?? 'Away'}</div>
-                              {match.awayScore != null ? <div className="text-base font-black">{match.awayScore}</div> : null}
-                            </div>
-                            <TeamLogo url={match.awayTeamLogoUrl} name={match.awayTeamName ?? 'A'} size={40} theme="dark" />
-                          </div>
-                        </div>
-
-                        <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-white/10 bg-[#151E2D] p-1.5">
-                          <div className="flex min-w-0 items-center gap-2">
-                            <span className={`grid h-6 w-6 shrink-0 place-items-center rounded-full border text-xs font-black ${legStateClass(leg.grade ?? leg.status)}`}>
-                              {legStateIcon(leg.grade ?? leg.status)}
-                            </span>
-                            <div className="min-w-0">
-                              <div className="truncate text-sm font-extrabold text-white">{leg.selectionLabel}</div>
-                              <div className="truncate text-[11px] text-slate-400">
-                                {leg.marketLabel} · {gradeLabel(leg.grade ?? leg.status)}
-                              </div>
-                            </div>
-                          </div>
-                          <strong className="rounded-lg border border-nova-primary/25 bg-nova-primary/10 px-2 py-1 text-sm font-black text-nova-primary shadow-sm">
-                            @ {formatOddsScaled(leg.acceptedOddsScaled ?? leg.oddsAtPlacementScaled)}
-                          </strong>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-
-                <div className="grid grid-cols-2 gap-px border-t border-white/10 bg-white/10 sm:grid-cols-4">
-                  <div className="bg-[#0B111C] p-2">
-                    <div className="text-[10px] font-bold uppercase tracking-wide text-slate-500">{'Stake'}</div>
-                    <strong className="text-sm font-black text-white">{formatMinor(bet.stakeMinor, bet.currency, locale)}</strong>
-                  </div>
-                  <div className="bg-[#0B111C] p-2">
-                    <div className="text-[10px] font-bold uppercase tracking-wide text-slate-500">{'Total odds'}</div>
-                    <strong className="text-sm font-black text-white">{formatOddsScaled(bet.combinedOddsScaled)}</strong>
-                  </div>
-                  <div className="bg-[#0B111C] p-2">
-                    <div className="text-[10px] font-bold uppercase tracking-wide text-slate-500">
-                      {bet.settledPayoutMinor !== null ? 'Payout' : 'Potential payout'}
-                    </div>
-                    <strong className={`text-sm font-black ${bet.settledPayoutMinor !== null ? 'text-nova-primary' : 'text-white'}`}>
-                      {formatMinor(bet.settledPayoutMinor ?? bet.potentialPayoutMinor, bet.currency, locale)}
-                    </strong>
-                  </div>
-                  <div className="bg-[#0B111C] p-2">
-                    <div className="text-[10px] font-bold uppercase tracking-wide text-slate-500">{'Net result'}</div>
-                    <strong className={`text-sm ${bet.netResultMinor !== null && BigInt(bet.netResultMinor) > 0n ? 'text-nova-primary' : ''}`}>
-                      {bet.netResultMinor === null ? '—' : formatMinor(bet.netResultMinor, bet.currency, locale)}
-                    </strong>
-                  </div>
-                </div>
-
-                <div className="flex flex-wrap items-center justify-between gap-2 border-t border-white/10 bg-[#0B111C] p-2">
-                  <button
-                    type="button"
-                    className="nova-btn-ghost !py-1 text-xs"
-                    onClick={() => setExpanded((value) => ({ ...value, [bet.id]: !isExpanded }))}
-                  >
-                    {isExpanded ? ('Hide details') : ('View details')}
-                  </button>
-
-                  <div className="flex flex-wrap justify-end gap-2">
-                    <button
-                      type="button"
-                      className="nova-btn-ghost !py-1 text-xs"
-                      onClick={() => void shareBet(bet)}
-                    >
-                      {copied === `${bet.publicId}:share`
-                        ? ('Link copied')
-                        : ('Share')}
-                    </button>
-                    {bet.isCashoutAvailable && bet.status === 'accepted' ? (
-                      <button type="button" className="nova-btn-primary !py-1 text-xs" onClick={() => void requestCashout(bet)}>
-                        {t('bets.cashout')}
-                      </button>
-                    ) : null}
-
-                    {bet.legs[0]?.matchId ? (
-                      <a className="nova-btn-ghost !py-1 text-xs" href={`/match/${bet.legs[0].matchId}`}>
-                        {'Match'}
-                      </a>
-                    ) : null}
-                  </div>
-                </div>
-
-                {isExpanded ? (
-                  <div className="border-t border-white/10 bg-[#0A101B] p-2.5 sm:p-3">
-                    <div className="mb-3 flex items-center justify-between gap-2">
-                      <div>
-                        <div className="text-sm font-extrabold text-white">
-                          {'Bet details'}
-                        </div>
-                        <div className="mt-0.5 text-[11px] text-slate-500">
-                          {'Complete placement and settlement information'}
-                        </div>
-                      </div>
-                      <span className="rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-1 text-[10px] font-black text-slate-400">
-                        {bet.type}
-                      </span>
-                    </div>
-
-                    <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
-                      <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
-                        <div className="text-[10px] font-bold uppercase tracking-wide text-slate-500">{'Bet ID'}</div>
-                        <div className="mt-1 break-all text-xs font-extrabold text-white">{bet.publicId}</div>
-                      </div>
-                      <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
-                        <div className="text-[10px] font-bold uppercase tracking-wide text-slate-500">{'Status'}</div>
-                        <div className={`mt-1 text-xs font-extrabold ${resultClass(result)}`}>
-                          {result ?? (bet.status === 'accepted' ? ('OPEN') : bet.status.replaceAll('_', ' ').toUpperCase())}
-                        </div>
-                      </div>
-                      <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
-                        <div className="text-[10px] font-bold uppercase tracking-wide text-slate-500">{'Revision'}</div>
-                        <div className="mt-1 text-xs font-extrabold text-white">{bet.revision}</div>
-                      </div>
-                      <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
-                        <div className="text-[10px] font-bold uppercase tracking-wide text-slate-500">{'Placed'}</div>
-                        <div className="mt-1 text-xs font-extrabold text-white">{formatDateTime(bet.placedAt, locale)}</div>
-                      </div>
-                      <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3 sm:col-span-2">
-                        <div className="text-[10px] font-bold uppercase tracking-wide text-slate-500">{'Settled'}</div>
-                        <div className="mt-1 text-xs font-extrabold text-white">
-                          {bet.settledAt ? formatDateTime(bet.settledAt, locale) : ('Pending')}
-                        </div>
-                      </div>
-                      <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
-                        <div className="text-[10px] font-bold uppercase tracking-wide text-slate-500">{'Stake'}</div>
-                        <div className="mt-1 text-xs font-extrabold text-white">{formatMinor(bet.stakeMinor, bet.currency, locale)}</div>
-                      </div>
-                      <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
-                        <div className="text-[10px] font-bold uppercase tracking-wide text-slate-500">{'Total odds'}</div>
-                        <div className="mt-1 text-xs font-extrabold text-nova-primary">{formatOddsScaled(bet.combinedOddsScaled)}</div>
-                      </div>
-                      <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
-                        <div className="text-[10px] font-bold uppercase tracking-wide text-slate-500">
-                          {bet.settledPayoutMinor !== null ? ('Payout') : ('Potential payout')}
-                        </div>
-                        <div className="mt-1 text-xs font-extrabold text-white">
+                {isOpen ? (
+                  <div id={'ticket-' + bet.id} className="text-[#132039]">
+                    <div className="grid grid-cols-2 gap-3 px-4 py-4 sm:grid-cols-4 sm:px-5">
+                      <div><p className="text-[10px] font-medium text-[#75859C]">Stake</p>
+                        <strong className="text-[15px] font-black">{formatMinor(bet.stakeMinor, bet.currency, locale)}</strong></div>
+                      <div><p className="text-[10px] font-medium text-[#75859C]">Total odds</p>
+                        <strong className="text-[15px] font-black">{formatOddsScaled(bet.combinedOddsScaled)}</strong></div>
+                      <div><p className="text-[10px] font-medium text-[#75859C]">{bet.settledPayoutMinor !== null ? 'Confirmed return' : 'Potential return'}</p>
+                        <strong className={'text-[15px] font-black ' + (isWin ? 'text-[#05AE71]' : '')}>
                           {formatMinor(bet.settledPayoutMinor ?? bet.potentialPayoutMinor, bet.currency, locale)}
-                        </div>
-                      </div>
-                      <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
-                        <div className="text-[10px] font-bold uppercase tracking-wide text-slate-500">{'Net result'}</div>
-                        <div className={`mt-1 text-xs font-extrabold ${bet.netResultMinor !== null && BigInt(bet.netResultMinor) > 0n ? 'text-nova-primary' : bet.netResultMinor !== null && BigInt(bet.netResultMinor) < 0n ? 'text-red-400' : 'text-white'}`}>
+                        </strong></div>
+                      <div><p className="text-[10px] font-medium text-[#75859C]">Net result</p>
+                        <strong className={'text-[15px] font-black ' + (isWin ? 'text-[#05AE71]' : isLoss ? 'text-red-600' : '')}>
                           {bet.netResultMinor === null ? '—' : formatMinor(bet.netResultMinor, bet.currency, locale)}
-                        </div>
-                      </div>
+                        </strong></div>
                     </div>
-
-                    <div className="mt-4">
-                      <div className="mb-2 text-[10px] font-bold uppercase tracking-wide text-slate-500">
-                        {'Selections & results'}
-                      </div>
-                      <div className="space-y-2">
-                        {bet.legs.map((leg) => {
-                          const match = leg.match;
-                          const grade = normalize(leg.grade ?? leg.status);
-                          const gradeTone =
-                            grade === 'WON'
-                              ? 'border-nova-primary/20 bg-nova-primary/10 text-nova-primary'
-                              : grade === 'LOST'
-                                ? 'border-red-500/20 bg-red-500/10 text-red-400'
-                                : grade === 'VOID' || grade === 'REFUNDED'
-                                  ? 'border-amber-500/20 bg-amber-500/10 text-amber-400'
-                                  : 'border-white/10 bg-white/[0.04] text-slate-300';
-
-                          return (
-                            <div key={leg.id} className="rounded-2xl border border-white/10 bg-white/[0.025] p-3">
-                              <div className="flex flex-wrap items-center justify-between gap-2">
-                                <div className="flex min-w-0 items-center gap-2">
-                                  <TeamLogo url={match.homeTeamLogoUrl} name={match.homeTeamName ?? 'H'} size={40} theme="dark" />
-                                  <div className="min-w-0">
-                                    <div className="truncate text-xs font-extrabold text-white">
-                                      {match.homeTeamName ?? 'Home'} <span className="px-1 text-slate-600">vs</span> {match.awayTeamName ?? 'Away'}
-                                    </div>
-                                    <div className="mt-0.5 truncate text-[10px] text-slate-500">
-                                      {match.leagueName ?? 'Sports'} · {leg.marketLabel}
-                                    </div>
-                                  </div>
-                                  <TeamLogo url={match.awayTeamLogoUrl} name={match.awayTeamName ?? 'A'} size={40} theme="dark" />
+                    <div className="mx-3.5 space-y-3 rounded-[15px] border border-[#DDE7E9] bg-white px-3 py-3 sm:mx-5 sm:px-4">
+                      {bet.legs.map((leg, legIndex) => {
+                        const match = leg.match;
+                        const live = matchState(match);
+                        const isLive = ['LIVE', 'IN_PLAY'].includes(normalize(match.status));
+                        return (
+                          <div key={leg.id} className={legIndex ? 'border-t border-dashed border-[#D7E1EC] pt-3' : ''}>
+                            <div className="relative isolate overflow-hidden rounded-[13px] border border-[#B9EAD5] bg-[#EAF8F1] p-3.5">
+                              <span aria-hidden="true" className="pointer-events-none absolute -right-3 bottom-0 -z-10 select-none text-[clamp(34px,9vw,82px)] font-black tracking-tighter text-[#0C9E74]/[0.065]">BETVIMA</span>
+                              <div className="flex items-start justify-between gap-2">
+                                <div className="min-w-0">
+                                  <p className="text-[9px] font-black tracking-wide text-[#17795B]">YOUR BET · EXACT SELECTION</p>
+                                  <p className="mt-1 break-words text-lg font-black text-[#173D2E]">{leg.selectionLabel}</p>
                                 </div>
-                                <span className={`rounded-full border px-2.5 py-1 text-[10px] font-black ${gradeTone}`}>
-                                  {legStateIcon(leg.grade ?? leg.status)} {gradeLabel(leg.grade ?? leg.status)}
+                                <span className="rounded-xl bg-[#B8F4D9] px-3 py-2 text-base font-black text-[#075741]">
+                                  {formatOddsScaled(leg.acceptedOddsScaled ?? leg.oddsAtPlacementScaled)}
                                 </span>
                               </div>
-
-                              <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
-                                <div className="rounded-lg bg-black/10 p-2">
-                                  <div className="text-[9px] uppercase tracking-wide text-slate-500">{'Selection'}</div>
-                                  <div className="mt-0.5 truncate text-[11px] font-bold text-white">{leg.selectionLabel}</div>
-                                </div>
-                                <div className="rounded-lg bg-black/10 p-2">
-                                  <div className="text-[9px] uppercase tracking-wide text-slate-500">{'Placed odds'}</div>
-                                  <div className="mt-0.5 text-[11px] font-bold text-white">@ {formatOddsScaled(leg.oddsAtPlacementScaled)}</div>
-                                </div>
-                                <div className="rounded-lg bg-black/10 p-2">
-                                  <div className="text-[9px] uppercase tracking-wide text-slate-500">{'Accepted odds'}</div>
-                                  <div className="mt-0.5 text-[11px] font-bold text-nova-primary">
-                                    {leg.acceptedOddsScaled ? `@ ${formatOddsScaled(leg.acceptedOddsScaled)}` : '—'}
-                                  </div>
-                                </div>
-                                <div className="rounded-lg bg-black/10 p-2">
-                                  <div className="text-[9px] uppercase tracking-wide text-slate-500">{'Match time'}</div>
-                                  <div className="mt-0.5 text-[11px] font-bold text-white">
-                                    {match.scheduledAt ? formatDateTime(match.scheduledAt, locale) : '—'}
-                                  </div>
-                                </div>
+                              <div className="mt-2 border-t border-[#BAE6D0] pt-2">
+                                <p className="text-[9px] font-semibold uppercase text-[#617F73]">Market</p>
+                                <p className="text-xs font-bold text-[#244637]">{leg.marketLabel}</p>
                               </div>
-
-                              {(match.homeScore != null || match.awayScore != null) ? (
-                                <div className="mt-2 flex items-center justify-center gap-2 text-[11px] font-bold text-slate-400">
-                                  <span>{match.homeTeamName ?? 'Home'}</span>
-                                  <strong className="rounded-md bg-white/[0.06] px-2 py-1 text-white">
-                                    {match.homeScore ?? 0} - {match.awayScore ?? 0}
-                                  </strong>
-                                  <span>{match.awayTeamName ?? 'Away'}</span>
+                            </div>
+                            <div className="mt-3 flex items-center justify-between gap-2 text-[11px]">
+                              <span className="min-w-0 truncate font-medium text-[#65788F]">{match.leagueName ?? 'Sports'}</span>
+                              <span className={'shrink-0 rounded-lg px-2 py-1 font-bold ' +
+                                (isLive ? 'bg-red-50 text-red-600' : 'bg-[#E7F8EF] text-[#08A777]')}>
+                                {isLive ? live ?? 'LIVE' : normalize(match.status) === 'FINISHED' ? 'FINISHED' : live ?? 'SCHEDULED'}
+                              </span>
+                            </div>
+                            <div className="mt-2 space-y-2.5">
+                              <div className="flex items-center gap-2">
+                                <TeamLogo url={match.homeTeamLogoUrl} name={match.homeTeamName ?? 'H'} size={28} theme="light" />
+                                <span className="min-w-0 flex-1 truncate text-xs font-bold">{match.homeTeamName ?? 'Home'}</span>
+                                <span className="rounded-md bg-[#EBF1F7] px-2 py-1 text-xs font-black">{match.homeScore ?? '—'}</span>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <TeamLogo url={match.awayTeamLogoUrl} name={match.awayTeamName ?? 'A'} size={28} theme="light" />
+                                <span className="min-w-0 flex-1 truncate text-xs font-bold">{match.awayTeamName ?? 'Away'}</span>
+                                <span className="rounded-md bg-[#EBF1F7] px-2 py-1 text-xs font-black">{match.awayScore ?? '—'}</span>
+                              </div>
+                              {match.homeScore !== null && match.awayScore !== null ? (
+                                <div className="flex items-center justify-between rounded-xl bg-[#F1F5F9] px-3 py-2 text-xs">
+                                  <span className="text-[#748399]">Reported score</span>
+                                  <strong>{match.homeScore} : {match.awayScore}</strong>
                                 </div>
                               ) : null}
                             </div>
-                          );
-                        })}
+                            <div className="mt-2 flex items-center justify-between text-[10px] text-[#66778F]">
+                              <span>{gradeLabel(leg.grade ?? leg.status)}</span>
+                              <span>{match.scheduledAt ? formatDateTime(match.scheduledAt, locale) : ''}</span>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    <div className="mx-3.5 my-3 flex flex-wrap items-center justify-between gap-2 border-t border-dashed border-[#CCDAE5] px-1 pt-3 sm:mx-5">
+                      <span className="text-[11px] font-bold text-[#6F8197]">{bet.legs.length} picks · Odds {formatOddsScaled(bet.combinedOddsScaled)}</span>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <button type="button" className="text-xs font-bold text-[#1475CB]" onClick={() => void copyBetId(bet.publicId)}>
+                          {copied === bet.publicId ? 'Copied' : 'Copy ID'}
+                        </button>
+                        <button type="button" className="text-xs font-bold text-[#1475CB]" onClick={() => void shareBet(bet)}>
+                          {copied === bet.publicId + ':share' ? 'Copied' : 'Share'}
+                        </button>
+                        {bet.isCashoutAvailable && bet.status === 'accepted' ? (
+                          <button type="button" className="rounded-lg bg-[#06C783] px-3 py-2 text-xs font-black text-white"
+                            onClick={() => void requestCashout(bet)}>{t('bets.cashout')}</button>
+                        ) : null}
+                        <button type="button" aria-expanded={receiptOpen}
+                          className="flex items-center gap-1 text-xs font-black text-[#1475CB]"
+                          onClick={() => setExpanded((value) => ({ ...value, [bet.id]: !receiptOpen }))}>
+                          ▤ {receiptOpen ? 'Hide receipt' : 'Full receipt'} ›
+                        </button>
                       </div>
                     </div>
+                    {receiptOpen ? (
+                      <div className="border-t border-[#DCE6EF] bg-[#F2F6FA] px-4 py-4 text-xs text-[#1D314A] sm:px-5">
+                        <h3 className="mb-3 font-black">Ticket receipt · {bet.publicId}</h3>
+                        <dl className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                          <div><dt className="text-[#7B8DA5]">Placed</dt><dd className="font-bold">{formatDateTime(bet.placedAt, locale)}</dd></div>
+                          <div><dt className="text-[#7B8DA5]">Settled</dt><dd className="font-bold">{bet.settledAt ? formatDateTime(bet.settledAt, locale) : 'Pending'}</dd></div>
+                          <div><dt className="text-[#7B8DA5]">Revision</dt><dd className="font-bold">{bet.revision}</dd></div>
+                          <div><dt className="text-[#7B8DA5]">Status</dt><dd className="font-bold">{betStatusLabel(result, bet.status, locale)}</dd></div>
+                        </dl>
+                        {bet.legs[0]?.matchId ? (
+                          <a className="mt-3 inline-block font-bold text-[#1475CB]" href={'/match/' + bet.legs[0].matchId}>View match ›</a>
+                        ) : null}
+                      </div>
+                    ) : null}
                   </div>
                 ) : null}
               </article>
             );
           })}
+          {displayRows.length === 0 ? (
+            <div className="rounded-2xl border border-[#233D56] bg-[#132238] p-6 text-center text-sm text-[#C0D0E0]">
+              No tickets match these filters.
+            </div>
+          ) : null}
         </div>
       )}
 

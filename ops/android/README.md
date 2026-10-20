@@ -14,15 +14,15 @@ A GitHub Android build, GitHub merge or production web deployment **does not**
 update the native source or APK signing worker on the VPS. Native deployment is
 an independently controlled root operation.
 
-## Approved Android 0.133.0 source
+## Approved Android 0.134.0 source
 
-- Native ref: `fix/android-133-fixture-card-legibility-20261020`.
-- Pinned, reviewed source SHA: `c4a160723471a94213e3c11b633585d6615714e3`.
-- Version: `versionCode=133`, `versionName=0.133.0`.
+- Native ref: `feat/android-134-my-bets-tickets-20261020`.
+- Pinned, reviewed source SHA: `0ea6675bedbc79a18258a1cc4c4452903e23032d`.
+- Version: `versionCode=134`, `versionName=0.134.0`.
 - On-demand APKs contain `BuildConfig.AFFILIATE_REFERRAL_CODE` for the
   specific approved partner, with no secrets embedded into `BuildConfig`.
 - The public download endpoint, native source installer, isolated worker
-  installer and worker guard now all agree on **133**.
+  installer and worker guard now all agree on **134**.
 
 Do not change this SHA to a moving branch head, accept an older unreviewed
 version, or disable the signing certificate checks to make the endpoint return
@@ -67,7 +67,7 @@ sudo systemctl is-active betvima-affiliate-apk.timer
 sudo journalctl -u betvima-affiliate-apk.service --no-pager -n 35
 ```
 
-Expected: version `133 / 0.133.0`, pinned commit `c4a16072...`, and an
+Expected: version `134 / 0.134.0`, pinned commit `0ea6675b...`, and an
 active worker timer. Do not paste secret values or unredacted private build logs
 into support conversations.
 
@@ -79,7 +79,7 @@ an HTML preparation page, automatically refreshed at most every 45 seconds.
 The separate root-owned timer performs one queued build. When ready, the
 endpoint returns HTTP 200 with
 `Content-Type: application/vnd.android.package-archive` and a
-`BetVima-<CODE>-v0.133.0.apk` attachment.
+`BetVima-<CODE>-v0.134.0.apk` attachment.
 
 Verify the APK certificate with `apksigner verify --print-certs` and confirm
 that the correct affiliate code was compiled into the build. On a test device,
