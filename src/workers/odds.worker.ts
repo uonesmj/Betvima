@@ -25,7 +25,6 @@ import { sportsTeamSlug } from './sports-team-slug';
 import { confirmedExistingLiveFixtureIds } from './betsapi-live-recency';
 import {
   betsapiLiveCoveragePlan,
-  BETSAPI_EXPLORATION_INTERVAL_MS,
   BETSAPI_EMPTY_PRICE_ROTATE_AFTER,
   betsapiNoQuoteProbe,
   selectBetsapiLiveCandidates,
