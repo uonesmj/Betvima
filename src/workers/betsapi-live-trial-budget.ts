@@ -7,6 +7,8 @@
  * minutes to inspect a fixture that does not yet have a wager-grade market.
  * The financial SQL still independently checks the bookmaker timestamps.
  */
+import { resolveBetsapiHourlyBudget } from '@/providers/betsapi-hourly-budget';
+
 export interface BetsapiLiveCandidate {
   has_betsapi_market: boolean;
   provider_id?: string | null;
@@ -51,9 +53,7 @@ export interface BetsapiLiveCoveragePlan {
  * wagerable; source timestamps and settlement eligibility remain authoritative.
  */
 export function betsapiLiveCoveragePlan(rawBudget: string | undefined): BetsapiLiveCoveragePlan {
-  const parsed = Number(rawBudget);
-  const hourlyBudget = Number.isSafeInteger(parsed) && parsed >= 50
-    ? Math.min(parsed, 199_999) : 200;
+  const hourlyBudget = resolveBetsapiHourlyBudget(rawBudget);
   if (hourlyBudget < 600) {
     const pricedCalls = Math.max(1, Math.min(120, hourlyBudget - 50));
     return {

@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { resolveBetsapiHourlyBudget } from '@/providers/betsapi-hourly-budget';
 import {
   betsapiLivePollIntervalMs,
   betsapiLiveCoveragePlan,
@@ -156,5 +157,20 @@ describe('BetsAPI trial live polling', () => {
     expect(selectBetsapiLiveCandidates([], 0, true)).toEqual({
       candidates: [], explored: false,
     });
+  });
+});
+
+describe('BetsAPI shared per-process request cap', () => {
+  it('matches the worker planner and defaults to the conservative trial budget', () => {
+    const cases: Array<[string | undefined, number]> = [
+      [undefined, 200], ['', 200], ['200', 200], ['50', 50],
+      ['600', 600], ['1800', 1800], ['199999', 199999],
+      ['999999999', 199999], ['invalid', 200], ['-5', 200],
+      ['125.5', 200],
+    ];
+    for (const [raw, expected] of cases) {
+      expect(resolveBetsapiHourlyBudget(raw)).toBe(expected);
+      expect(betsapiLiveCoveragePlan(raw).hourlyBudget).toBe(expected);
+    }
   });
 });
