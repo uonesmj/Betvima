@@ -108,7 +108,7 @@ def build(code: str, version: str) -> None:
             fail("setpriv_not_installed")
 
         args = [
-            str(GRADLE), "--no-daemon", "--no-configuration-cache",
+            str(GRADLE), "--no-daemon", "--no-configuration-cache", "--stacktrace",
             "--max-workers=1",
             "-Dorg.gradle.jvmargs=-Xmx1800m -XX:MaxMetaspaceSize=512m -Dfile.encoding=UTF-8",
             "-Pkotlin.compiler.execution.strategy=in-process",
