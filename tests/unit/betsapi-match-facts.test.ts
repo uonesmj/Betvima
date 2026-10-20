@@ -29,6 +29,26 @@ describe('Bet365 match statistics are factual, not odds-derived', () => {
     expect(actual.stats.some(s=>s.key==='fouls')).toBe(false);
   });
 
+  it('only exposes provider-supplied penalty counters, never an odds market', () => {
+    const actual = parseBet365MatchStats('92667833', [[
+      { type: 'EV', SS: '0-0' },
+      { type: 'TE', ID: '1', NA: 'Home' },
+      { type: 'TE', ID: '2', NA: 'Away' },
+      { type: 'SC', NA: 'IPenalty' },
+      { type: 'SL', ID: '0', D1: '1' },
+      { type: 'SL', ID: '1', D1: '0' },
+      { type: 'MG', NA: 'Penalty awarded' },
+      { type: 'PA', NA: 'Yes', OD: '1/2' },
+    ]]);
+    expect(actual.stats.find(s=>s.key === 'penalties'))
+      .toMatchObject({ home: 1, away: 0 });
+    const onlyOdds = parseBet365MatchStats('92667833', [[
+      { type: 'EV', SS: '0-0' }, { type:'MG', NA:'Penalty' },
+      { type:'PA', NA:'Yes', OD:'1/2' },
+    ]]);
+    expect(onlyOdds.stats.some(s=>s.key==='penalties')).toBe(false);
+  });
+
   const kickoff='2026-10-18T17:00:00.000Z';
   const valid = {
     id:'678', bet365_id:'202819155',
