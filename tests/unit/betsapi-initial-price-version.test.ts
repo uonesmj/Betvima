@@ -26,7 +26,7 @@ describe('BetsAPI first live price version migration', () => {
   });
 
   it('does not backfill old odds or touch bets or wallets', () => {
-    expect(migration).not.toMatch(/UPDATE\\s+nova\\.(bets|wallets|bet_legs)\\b/i);
-    expect(migration).not.toMatch(/UPDATE\\s+nova\\.selections\\s+SET\\s+odds_version\\s*=\\s*1\\b/i);
+    expect(migration).not.toMatch(/UPDATE\s+nova\.(bets|wallets|bet_legs)\b/i);
+    expect(migration).not.toMatch(/UPDATE\s+nova\.selections\s+SET\s+odds_version\s*=\s*1\b/i);
   });
 });
