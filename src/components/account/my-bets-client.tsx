@@ -492,11 +492,7 @@ export function MyBetsClient() {
       ) : (
         <div className="space-y-3 rounded-[22px] bg-[#060E1C] p-2.5 sm:p-5" data-testid="bet-ticket-ledger">
           <div className="space-y-3 pb-1">
-            <div className="flex flex-wrap items-center justify-between gap-2 px-1">
-              <div>
-                <h2 className="text-xl font-black tracking-tight text-white">My Bets</h2>
-                <p className="text-xs text-[#97A7BF]">Your tickets, selections and settlements</p>
-              </div>
+            <div className="flex items-center justify-end px-1">
               <span className="rounded-xl border border-[#213750] bg-[#101D30] px-3 py-2 text-xs font-bold text-[#B7C8D9]">
                 {displayRows.length} tickets
               </span>
