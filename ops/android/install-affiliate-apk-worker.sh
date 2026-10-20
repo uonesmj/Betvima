@@ -17,7 +17,7 @@ for cmd in rsync systemctl useradd python3 flock; do command -v "$cmd" >/dev/nul
 [[ -f "$SOURCE/app/build.gradle.kts" ]] || fail native_source_missing
 grep -Eq '^[[:space:]]*versionCode[[:space:]]*=[[:space:]]*125[[:space:]]*$' "$SOURCE/app/build.gradle.kts" || fail expected_version_code_125_missing
 grep -Eq '^[[:space:]]*versionName[[:space:]]*=[[:space:]]*"0\.125\.0"[[:space:]]*$' "$SOURCE/app/build.gradle.kts" || fail expected_version_125_missing
-[[ "$(cat "$SOURCE/.betvima-native-commit")" == "@PINNED_SHA@" ]] || fail native_sha_unapproved
+[[ "$(cat "$SOURCE/.betvima-native-commit")" == "909b223b477c01d08f1561a1c3d6c17e7bec605c" ]] || fail native_sha_unapproved
 [[ "$(stat -c '%u' /etc/betvima/android-signing)" == 0 ]] || fail signing_path_owner_invalid
 
 id betvimaapk >/dev/null 2>&1 || useradd --system --home-dir "$ROOT/home" --shell /usr/sbin/nologin --no-create-home betvimaapk
@@ -38,7 +38,7 @@ stage="$(mktemp -d "$ROOT/.workspace.XXXXXXXX")"
 cleanup() { if [[ -n "$stage" && -d "$stage" ]]; then rm -rf -- "$stage"; fi; }
 trap cleanup EXIT
 rsync -a --exclude='.git' --exclude='.gradle' --exclude='build' "$SOURCE/" "$stage/" || fail source_copy_failed
-[[ "$(cat "$stage/.betvima-native-commit")" == "@PINNED_SHA@" ]] || fail invalid_stage_revision
+[[ "$(cat "$stage/.betvima-native-commit")" == "909b223b477c01d08f1561a1c3d6c17e7bec605c" ]] || fail invalid_stage_revision
 chown -R betvimaapk:betvimaapk "$stage"
 chmod 0700 "$stage"
 if [[ -d "$ROOT/workspace" ]]; then
