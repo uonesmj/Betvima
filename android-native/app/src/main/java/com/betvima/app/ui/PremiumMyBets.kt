@@ -342,10 +342,10 @@ private fun PremiumTicket(
     bet: Bet,
     state: AppState,
     expanded: Boolean,
-    onToggle: () -> Unit,
-    onOpen: () -> Unit
+    onToggle: () -> Unit
 ) {
     val lang = state.lang
+    var showAllPicks by rememberSaveable(bet.id) { mutableStateOf(false) }
     val accent = ticketResultColor(bet)
     val isMix = bet.type.equals("MULTIPLE", ignoreCase = true) || bet.legs > 1
     val title = if (isMix)
@@ -355,9 +355,10 @@ private fun PremiumTicket(
     val green = Color(0xFF00BB81)
     val ink = Color(0xFF14243A)
     val muted = Color(0xFF77889A)
+    Box(Modifier.fillMaxWidth()) {
     Surface(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(20.dp),
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 3.dp),
+        shape = RoundedCornerShape(18.dp),
         color = if (expanded) Color.White else Color(0xFF102035),
         border = BorderStroke(1.dp,
             if (expanded) green else Color(0xFF2A4260)),
@@ -372,19 +373,19 @@ private fun PremiumTicket(
                             else listOf(Color(0xFF123152), Color(0xFF091629))
                         )
                     ).clickable(onClick = onToggle)
-                    .padding(horizontal = 14.dp, vertical = 14.dp),
+                    .padding(horizontal = 11.dp, vertical = 9.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Surface(color = if (expanded) Color(0xFFE9FFF4) else Color(0xFFE5F2FF),
                     shape = RoundedCornerShape(13.dp)) {
                     Icon(Icons.Default.ConfirmationNumber, null,
                         tint = if (expanded) Color(0xFF029A71) else Palette.blue,
-                        modifier = Modifier.padding(11.dp).size(23.dp))
+                        modifier = Modifier.padding(8.dp).size(19.dp))
                 }
-                Spacer(Modifier.width(11.dp))
+                Spacer(Modifier.width(8.dp))
                 Column(Modifier.weight(1f)) {
                     Text(title, fontWeight = FontWeight.Black,
-                        fontSize = 15.sp, color = Color.White,
+                        fontSize = 14.sp, color = Color.White,
                         maxLines = 1, overflow = TextOverflow.Ellipsis)
                     Text("ID " + bet.id.take(8).uppercase() +
                             " · " + bet.placedAt.take(16).replace("T", " "),
@@ -401,7 +402,7 @@ private fun PremiumTicket(
                     Text(ticketResult(bet, lang),
                         color = accent, fontWeight = FontWeight.Black,
                         fontSize = 11.sp, maxLines = 1,
-                        modifier = Modifier.padding(horizontal = 9.dp, vertical = 8.dp))
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp))
                 }
                 Icon(
                     if (expanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
@@ -414,8 +415,8 @@ private fun PremiumTicket(
             AnimatedVisibility(visible = expanded) {
                 Column {
                     Row(
-                        Modifier.fillMaxWidth().padding(start = 14.dp, end = 14.dp,
-                            top = 16.dp, bottom = 12.dp),
+                        Modifier.fillMaxWidth().padding(start = 11.dp, end = 11.dp,
+                            top = 9.dp, bottom = 8.dp),
                         horizontalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
                         TicketMoneyColumn(
@@ -439,8 +440,8 @@ private fun PremiumTicket(
                     }
                     if (bet.isSettled && bet.netResultMinor != null) {
                         Row(
-                            Modifier.fillMaxWidth().padding(start = 14.dp, end = 14.dp,
-                                bottom = 12.dp),
+                            Modifier.fillMaxWidth().padding(start = 11.dp, end = 11.dp,
+                                bottom = 7.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text(tr(lang, "Net result", "سود / زیان خالص"),
@@ -452,18 +453,17 @@ private fun PremiumTicket(
                         }
                     }
                     Column(
-                        Modifier.fillMaxWidth().padding(horizontal = 12.dp),
-                        verticalArrangement = Arrangement.spacedBy(9.dp)
+                        Modifier.fillMaxWidth().padding(horizontal = 9.dp),
+                        verticalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
-                        bet.selections.forEach { leg ->
+                        bet.selections.take(if (showAllPicks) bet.selections.size else 2).forEach { leg ->
                             Box(Modifier.fillMaxWidth()) {
                                 BetSelectionOverview(leg, lang,
-                                    Modifier.fillMaxWidth(), state.matchForLeg(leg))
+                                    Modifier.fillMaxWidth(), state.matchForLeg(leg), compact = true)
                                 Text(
                                     "BETVIMA",
-                                    modifier = Modifier.align(Alignment.BottomEnd)
-                                        .padding(end = 13.dp, bottom = 43.dp).alpha(.065f),
-                                    fontSize = 42.sp, fontWeight = FontWeight.Black,
+                                    modifier = Modifier.align(Alignment.Center).alpha(.055f),
+                                    fontSize = 30.sp, fontWeight = FontWeight.Black,
                                     color = Color(0xFF008965), maxLines = 1
                                 )
                             }
@@ -477,11 +477,29 @@ private fun PremiumTicket(
                             )
                         }
                     }
-                    Spacer(Modifier.height(12.dp))
+                    if (bet.selections.size > 2) {
+                        TextButton(
+                            onClick = { showAllPicks = !showAllPicks },
+                            modifier = Modifier.fillMaxWidth().heightIn(min = 34.dp)
+                        ) {
+                            Icon(
+                                if (showAllPicks) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                                null, modifier = Modifier.size(16.dp), tint = Palette.green
+                            )
+                            Spacer(Modifier.width(5.dp))
+                            Text(
+                                if (showAllPicks) tr(lang, "Show fewer picks", "نمایش کمتر")
+                                else tr(lang, "Show remaining picks", "نمایش انتخاب‌های دیگر"),
+                                color = Color(0xFF06835F), fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+                    Spacer(Modifier.height(5.dp))
                     Row(
                         Modifier.fillMaxWidth()
                             .background(Color(0xFFF0F5F9))
-                            .padding(start = 13.dp, end = 8.dp, top = 9.dp, bottom = 9.dp),
+                            .padding(start = 11.dp, end = 11.dp, top = 6.dp, bottom = 6.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Icon(Icons.Default.Layers, null, tint = muted,
@@ -492,22 +510,36 @@ private fun PremiumTicket(
                         Spacer(Modifier.width(9.dp))
                         Text(tr(lang, "Odds", "ضریب") + " " + odds(bet.combinedOddsScaled),
                             color = ink, fontSize = 11.sp, fontWeight = FontWeight.Black)
-                        Spacer(Modifier.weight(1f))
-                        TextButton(onClick = onOpen) {
-                            Icon(Icons.Default.ReceiptLong, null, tint = Palette.blue,
-                                modifier = Modifier.size(17.dp))
-                            Spacer(Modifier.width(4.dp))
-                            Text(tr(lang, "Full receipt", "رسید کامل"),
-                                color = Palette.blue, fontSize = 11.sp,
-                                fontWeight = FontWeight.Black)
-                            Icon(Icons.Default.ChevronRight, null,
-                                tint = Palette.blue, modifier = Modifier.size(18.dp))
-                        }
+
                     }
                 }
             }
         }
     }
+    // Dark edge cutouts produce a ticket silhouette; they never change the data.
+    Surface(
+        modifier = Modifier.align(Alignment.CenterStart).offset(x = (-5).dp).size(17.dp),
+        color = Color(0xFF081322), shape = CircleShape
+    ) {}
+    Surface(
+        modifier = Modifier.align(Alignment.CenterEnd).offset(x = 5.dp).size(17.dp),
+        color = Color(0xFF081322), shape = CircleShape
+    ) {}
+    Surface(
+        modifier = Modifier.align(Alignment.TopCenter).offset(y = (-5).dp)
+            .width(29.dp).height(11.dp),
+        color = Color(0xFF081322),
+        shape = RoundedCornerShape(bottomStart = 9.dp, bottomEnd = 9.dp)
+    ) {}
+    Surface(
+        modifier = Modifier.align(Alignment.BottomCenter).offset(y = 5.dp)
+            .width(29.dp).height(11.dp),
+        color = Color(0xFF081322),
+        shape = RoundedCornerShape(topStart = 9.dp, topEnd = 9.dp)
+    ) {}
+    }
+}
+
 }
 
 @Composable
