@@ -3,6 +3,11 @@ package com.betvima.app.ui
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
@@ -51,6 +56,19 @@ internal fun LiveIncidentPitch129(
     cue: LiveIncidentCue129?,
     fa: Boolean
 ) {
+    // Visible activity even between provider observations is a decorative
+    // pitch scan; it does NOT pretend to be actual ball/player movement.
+    val ambient = rememberInfiniteTransition(label = "pitchAmbient131")
+    val scan by ambient.animateFloat(
+        initialValue = -.15f, targetValue = 1.15f,
+        animationSpec = infiniteRepeatable(tween(5000, easing = LinearEasing)),
+        label = "ambientFieldScan131"
+    )
+    val breathing by ambient.animateFloat(
+        initialValue = .16f, targetValue = .6f,
+        animationSpec = infiniteRepeatable(tween(1750), repeatMode = RepeatMode.Reverse),
+        label = "stadiumPulse131"
+    )
     val progress = remember { Animatable(0f) }
     LaunchedEffect(cue?.key) {
         progress.snapTo(0f)
@@ -87,6 +105,29 @@ internal fun LiveIncidentPitch129(
             drawRect(Brush.horizontalGradient(listOf(
                 Color(0x55091F1C), Color.Transparent, Color(0x44091F1C)
             )))
+            // Continuous soft moving light, intentionally distinct from the
+            // event-triggered attack direction. No fake ball marker.
+            drawRect(brush = Brush.linearGradient(
+                colors = listOf(Color.Transparent,
+                    Color(0xFF93FBC9).copy(alpha = .105f * breathing),
+                    Color.Transparent),
+                start = Offset(w * (scan - .20f), 0f),
+                end = Offset(w * (scan + .20f), h)
+            ))
+            // The narrow scan beam visibly traverses the entire pitch even
+            // when an upstream match counter has not changed.
+            drawLine(
+                color = Color(0xFFB1FFE0).copy(alpha = .14f + breathing * .16f),
+                start = Offset(w * scan, h * .07f),
+                end = Offset(w * scan, h * .93f),
+                strokeWidth = 2.dp.toPx()
+            )
+            drawLine(
+                color = Color(0xFFB1FFE0).copy(alpha = .10f + breathing * .09f),
+                start = Offset(w * .5f, h * .06f),
+                end = Offset(w * .5f, h * .94f),
+                strokeWidth = 2.dp.toPx()
+            )
             val line = Color(0xFFF1FFF5).copy(alpha = .74f)
             drawRect(line, Offset(w * .035f, h * .06f),
                 Size(w * .93f, h * .88f), style = Stroke(stroke))
@@ -153,7 +194,8 @@ internal fun LiveIncidentPitch129(
             visible = cue != null,
             enter = fadeIn(tween(220)) + scaleIn(initialScale = .82f),
             exit = fadeOut(tween(260)) + scaleOut(targetScale = .92f),
-            modifier = Modifier.fillMaxWidth(.79f)
+            modifier = Modifier.align(Alignment.TopCenter)
+                .fillMaxWidth(.67f).padding(top = 7.dp)
         ) {
             if (cue != null) {
                 val title = incidentCaption129(cue.kind, fa)
@@ -162,17 +204,17 @@ internal fun LiveIncidentPitch129(
                 val serious = cue.kind == IncidentKind129.GOAL
                 Surface(
                     color = Color(0xED061E25),
-                    shape = RoundedCornerShape(17.dp),
-                    shadowElevation = 17.dp,
+                    shape = RoundedCornerShape(12.dp),
+                    shadowElevation = 12.dp,
                     border = androidx.compose.foundation.BorderStroke(
                         1.dp, tint.copy(alpha = .75f))
                 ) {
                     Column(Modifier
                         .background(Brush.verticalGradient(
                             listOf(tint.copy(alpha = .14f), Color.Transparent)))
-                        .padding(horizontal = 10.dp, vertical = 10.dp),
+                        .padding(horizontal = 8.dp, vertical = 7.dp),
                         horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                        verticalArrangement = Arrangement.spacedBy(1.dp)) {
                         val graphic = when(cue.kind) {
                             IncidentKind129.CORNER -> Icons.Default.Flag
                             IncidentKind129.RED_CARD, IncidentKind129.YELLOW_CARD,
@@ -182,13 +224,13 @@ internal fun LiveIncidentPitch129(
                             else -> Icons.Default.SportsSoccer
                         }
                         Icon(graphic, contentDescription = null, tint = tint,
-                            modifier = Modifier.size(if (serious) 28.dp else 23.dp))
+                            modifier = Modifier.size(if (serious) 19.dp else 16.dp))
                         Text(title, color = cueWhite129, fontWeight = FontWeight.Black,
-                            fontSize = if (serious) 15.sp else 13.sp,
+                            fontSize = if (serious) 12.sp else 11.sp,
                             textAlign = TextAlign.Center)
                         Text(team, color = tint, fontWeight = FontWeight.Bold,
                             maxLines = 1, overflow = TextOverflow.Ellipsis,
-                            fontSize = 10.sp)
+                            fontSize = 9.sp)
                         Text(
                             (if (cue.confirmedScore) {
                                 if (fa) "نتیجهٔ تأییدشده" else "Verified score change"
@@ -196,7 +238,7 @@ internal fun LiveIncidentPitch129(
                                 if (fa) "تغییر آمار +" else "Stat update +"
                             }) + (if (cue.confirmedScore) "" else cue.amount.toString()) +
                                 "  ·  " + (cue.minute?.toString()?.plus("′") ?: "LIVE"),
-                            color = Color(0xFFD1DFE0), fontSize = 8.sp,
+                            color = Color(0xFFD1DFE0), fontSize = 7.sp,
                             textAlign = TextAlign.Center
                         )
                     }
