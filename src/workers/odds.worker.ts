@@ -966,7 +966,10 @@ async function runDedicatedLiveTick(ctx: WorkerContext): Promise<void> {
     all.findIndex((item) => item.name === provider.name) === index
   );
 
-  await ctx.withLock("odds:live-priority", 15, async () => {
+  await ctx.withLock("odds:live-priority",
+    env.SPORTS_PROVIDER === 'betsapi'
+      ? Math.max(15, Math.ceil(BETSAPI_LIVE_POLL_INTERVAL_MS / 1000) + 15) : 15,
+    async () => {
     // Only The Odds API is registered for live quote sampling.
     await Promise.allSettled(providers.map(async (sourceProvider) => {
       try {
