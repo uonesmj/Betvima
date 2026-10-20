@@ -148,7 +148,6 @@ export function MyBetsClient() {
   const searchParams = useSearchParams();
   const [tab, setTab] = useState<'open' | 'settled' | 'all'>('all');
   const [type, setType] = useState<'ALL' | 'SINGLE' | 'MULTIPLE'>('ALL');
-  const [search, setSearch] = useState('');
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [openTicketId, setOpenTicketId] = useState<string | null>(null);
   const [days, setDays] = useState(0);
@@ -178,12 +177,8 @@ export function MyBetsClient() {
     if (tab === 'settled' && ['accepted', 'pending', 'open'].includes(bet.status)) return false;
     if (type !== 'ALL' && bet.type.toUpperCase() !== type) return false;
     if (days > 0 && Date.parse(bet.placedAt) < Date.now() - days * 86400000) return false;
-    const term = search.trim().toLocaleLowerCase();
-    return !term || [bet.publicId, bet.id, ...bet.legs.flatMap((leg) => [
-      leg.matchLabel, leg.selectionLabel, leg.marketLabel,
-      leg.match.homeTeamName ?? '', leg.match.awayTeamName ?? ''
-    ])].some((value) => value.toLocaleLowerCase().includes(term));
-  }), [rows, tab, type, days, search]);
+    return true;
+  }), [rows, tab, type, days]);
 
   if (sessionLoading) {
     return (
@@ -491,37 +486,26 @@ export function MyBetsClient() {
         </section>
       ) : (
         <div className="space-y-3 rounded-[22px] bg-[#060E1C] p-2.5 sm:p-5" data-testid="bet-ticket-ledger">
-          <div className="space-y-3 pb-1">
-            <div className="flex items-center justify-end px-1">
-              <span className="rounded-xl border border-[#213750] bg-[#101D30] px-3 py-2 text-xs font-bold text-[#B7C8D9]">
-                {displayRows.length} tickets
-              </span>
-            </div>
-            <label className="flex min-h-[45px] items-center gap-2 rounded-[15px] border border-[#26364B] bg-[#152033] px-3 text-[#55A9FF]">
-              <span aria-hidden="true" className="text-xl">⌕</span>
-              <input type="search" value={search} onChange={(event) => setSearch(event.target.value)}
-                placeholder="Search ticket, match or reference"
-                aria-label="Search bets" className="w-full min-w-0 bg-transparent text-sm text-white placeholder:text-[#96A5B9] outline-none" />
-            </label>
-            <div className="grid grid-cols-3 gap-2">
-              <label className="min-w-0 rounded-xl border border-[#26364B] bg-[#152033] px-2.5 py-2 text-[10px] text-[#9DAEC5]">
+          <div className="mb-2 rounded-[15px] border border-[#30435E] bg-[#14233A] p-1.5 shadow-[inset_0_1px_0_rgba(255,255,255,.04)]">
+            <div className="flex snap-x snap-mandatory gap-1.5 overflow-x-auto overscroll-x-contain scroll-smooth pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden motion-reduce:scroll-auto" role="group" aria-label="Bet history filters">
+              <label className="min-w-[132px] flex-1 shrink-0 snap-start rounded-[11px] border border-[#2B425E] bg-[#1A304B] px-2.5 py-2 text-[10px] text-[#9DAEC5] transition-all duration-300 focus-within:border-[#00D47A] focus-within:bg-[#173F48]">
                 Status
                 <select aria-label="Filter by status" value={tab} onChange={(event) => setTab(event.target.value as 'open' | 'settled' | 'all')}
-                  className="mt-1 block w-full bg-transparent text-xs font-bold text-white outline-none">
+                  className="mt-0.5 block w-full bg-transparent text-xs font-bold text-white outline-none">
                   <option value="all">All</option><option value="open">Open</option><option value="settled">Finished</option>
                 </select>
               </label>
-              <label className="min-w-0 rounded-xl border border-[#26364B] bg-[#152033] px-2.5 py-2 text-[10px] text-[#9DAEC5]">
+              <label className="min-w-[132px] flex-1 shrink-0 snap-start rounded-[11px] border border-[#2B425E] bg-[#1A304B] px-2.5 py-2 text-[10px] text-[#9DAEC5] transition-all duration-300 focus-within:border-[#00D47A] focus-within:bg-[#173F48]">
                 Bet type
                 <select aria-label="Filter by bet type" value={type} onChange={(event) => setType(event.target.value as 'ALL' | 'SINGLE' | 'MULTIPLE')}
-                  className="mt-1 block w-full bg-transparent text-xs font-bold text-white outline-none">
+                  className="mt-0.5 block w-full bg-transparent text-xs font-bold text-white outline-none">
                   <option value="ALL">All</option><option value="SINGLE">Single</option><option value="MULTIPLE">Mix</option>
                 </select>
               </label>
-              <label className="min-w-0 rounded-xl border border-[#26364B] bg-[#152033] px-2.5 py-2 text-[10px] text-[#9DAEC5]">
+              <label className="min-w-[132px] flex-1 shrink-0 snap-start rounded-[11px] border border-[#2B425E] bg-[#1A304B] px-2.5 py-2 text-[10px] text-[#9DAEC5] transition-all duration-300 focus-within:border-[#00D47A] focus-within:bg-[#173F48]">
                 Date
                 <select aria-label="Filter by date" value={days} onChange={(event) => setDays(Number(event.target.value))}
-                  className="mt-1 block w-full bg-transparent text-xs font-bold text-white outline-none">
+                  className="mt-0.5 block w-full bg-transparent text-xs font-bold text-white outline-none">
                   <option value={0}>Any time</option><option value={7}>7 days</option><option value={30}>30 days</option><option value={90}>90 days</option>
                 </select>
               </label>
@@ -530,7 +514,7 @@ export function MyBetsClient() {
           {displayRows.map((bet, index) => {
             const result = betResult(bet);
             const isOpen = openTicketId === null ? index === 0 : openTicketId === bet.id;
-            const receiptOpen = Boolean(expanded[bet.id]);
+            const showAllSelections = Boolean(expanded[bet.id]);
             const isWin = result === 'WIN';
             const isLoss = result === 'LOSS';
             const headerTone = isOpen
@@ -544,28 +528,32 @@ export function MyBetsClient() {
 
             return (
               <article key={bet.id} data-testid="bet-row"
-                className={'overflow-hidden rounded-[20px] border shadow-[0_10px_30px_rgba(0,0,0,.18)] ' +
+                className={'relative rounded-[18px] border shadow-[0_8px_20px_rgba(0,0,0,.16)] ' +
                   (highlight === bet.publicId ? 'ring-2 ring-[#00D47A] ' : '') +
                   (isOpen ? 'border-[#00C388] bg-white' : 'border-[#25405F] bg-[#0F1C30]')}>
                 <button type="button" aria-expanded={isOpen} aria-controls={'ticket-' + bet.id}
                   onClick={() => setOpenTicketId(isOpen ? '' : bet.id)}
-                  className={'flex w-full items-center gap-3 border-b px-3.5 py-3.5 text-left transition-colors sm:px-5 ' + headerTone}>
-                  <span aria-hidden="true" className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-white/90 text-xl font-black text-[#058B72]">▣</span>
+                  className={'flex w-full items-center gap-2.5 rounded-t-[18px] border-b px-3 py-2.5 text-left transition-colors duration-300 sm:px-4 ' + headerTone}>
+                  <span aria-hidden="true" className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-white/90 text-base font-black text-[#058B72]">▣</span>
                   <span className="min-w-0 flex-1">
-                    <span className="block truncate text-[15px] font-black">{headerText}</span>
+                    <span className="block truncate text-[13px] font-black">{headerText}</span>
                     <span className="block truncate text-[10px] text-white/80">
                       ID {bet.publicId} · {formatDateTime(bet.placedAt, locale)}
                     </span>
                   </span>
-                  <span className={'shrink-0 rounded-xl px-2.5 py-2 text-[11px] font-black ' + statusTone}>
+                  <span className={'shrink-0 rounded-lg px-2 py-1.5 text-[10px] font-black ' + statusTone}>
                     {betStatusLabel(result, bet.status, locale)}
                   </span>
                   <span aria-hidden="true" className="ml-0.5 shrink-0 text-xl text-white">{isOpen ? '⌃' : '⌄'}</span>
                 </button>
+                <span aria-hidden="true" className="pointer-events-none absolute -top-[8px] left-1/2 z-20 h-4 w-9 -translate-x-1/2 rounded-b-full border-x border-b border-[#23405B] bg-[#060E1C]" />
+                <span aria-hidden="true" className="pointer-events-none absolute left-[-9px] top-[51px] z-20 h-[18px] w-[18px] rounded-full border border-[#30435E] bg-[#060E1C]" />
+                <span aria-hidden="true" className="pointer-events-none absolute right-[-9px] top-[51px] z-20 h-[18px] w-[18px] rounded-full border border-[#30435E] bg-[#060E1C]" />
+                <span aria-hidden="true" className="pointer-events-none absolute -bottom-[8px] left-1/2 z-20 h-4 w-9 -translate-x-1/2 rounded-t-full border-x border-t border-[#23405B] bg-[#060E1C]" />
 
                 {isOpen ? (
                   <div id={'ticket-' + bet.id} className="text-[#132039]">
-                    <div className="grid grid-cols-2 gap-3 px-4 py-4 sm:grid-cols-4 sm:px-5">
+                    <div className="grid grid-cols-2 gap-2 px-3 py-2.5 sm:grid-cols-4 sm:px-4">
                       <div><p className="text-[10px] font-medium text-[#75859C]">Stake</p>
                         <strong className="text-[15px] font-black">{formatMinor(bet.stakeMinor, bet.currency, locale)}</strong></div>
                       <div><p className="text-[10px] font-medium text-[#75859C]">Total odds</p>
@@ -579,49 +567,49 @@ export function MyBetsClient() {
                           {bet.netResultMinor === null ? '—' : formatMinor(bet.netResultMinor, bet.currency, locale)}
                         </strong></div>
                     </div>
-                    <div className="mx-3.5 space-y-3 rounded-[15px] border border-[#DDE7E9] bg-white px-3 py-3 sm:mx-5 sm:px-4">
-                      {bet.legs.map((leg, legIndex) => {
+                    <div className="mx-2.5 space-y-2 rounded-[13px] border border-[#DDE7E9] bg-white px-2.5 py-2 sm:mx-4 sm:px-3">
+                      {(showAllSelections ? bet.legs : bet.legs.slice(0, 2)).map((leg, legIndex) => {
                         const match = leg.match;
                         const live = matchState(match);
                         const isLive = ['LIVE', 'IN_PLAY'].includes(normalize(match.status));
                         return (
-                          <div key={leg.id} className={legIndex ? 'border-t border-dashed border-[#D7E1EC] pt-3' : ''}>
-                            <div className="relative isolate overflow-hidden rounded-[13px] border border-[#B9EAD5] bg-[#EAF8F1] p-3.5">
-                              <span aria-hidden="true" className="pointer-events-none absolute -right-3 bottom-0 -z-10 select-none text-[clamp(34px,9vw,82px)] font-black tracking-tighter text-[#0C9E74]/[0.065]">BETVIMA</span>
-                              <div className="flex items-start justify-between gap-2">
+                          <div key={leg.id} className={legIndex ? 'border-t border-dashed border-[#D7E1EC] pt-2' : ''}>
+                            <div className="relative isolate overflow-hidden rounded-[11px] border border-[#B9EAD5] bg-[#EAF8F1] p-2.5">
+                              <span aria-hidden="true" className="pointer-events-none absolute inset-0 z-0 flex items-center justify-center select-none text-center text-[clamp(30px,7vw,62px)] font-black tracking-tighter text-[#0C9E74]/[0.075]">BETVIMA</span>
+                              <div className="relative z-10 flex items-start justify-between gap-2">
                                 <div className="min-w-0">
                                   <p className="text-[9px] font-black tracking-wide text-[#17795B]">YOUR BET · EXACT SELECTION</p>
-                                  <p className="mt-1 break-words text-lg font-black text-[#173D2E]">{leg.selectionLabel}</p>
+                                  <p className="mt-0.5 break-words text-[15px] font-black text-[#173D2E]">{leg.selectionLabel}</p>
                                 </div>
-                                <span className="rounded-xl bg-[#B8F4D9] px-3 py-2 text-base font-black text-[#075741]">
+                                <span className="rounded-lg bg-[#B8F4D9] px-2.5 py-1.5 text-sm font-black text-[#075741]">
                                   {formatOddsScaled(leg.acceptedOddsScaled ?? leg.oddsAtPlacementScaled)}
                                 </span>
                               </div>
-                              <div className="mt-2 border-t border-[#BAE6D0] pt-2">
+                              <div className="relative z-10 mt-1.5 border-t border-[#BAE6D0] pt-1.5">
                                 <p className="text-[9px] font-semibold uppercase text-[#617F73]">Market</p>
                                 <p className="text-xs font-bold text-[#244637]">{leg.marketLabel}</p>
                               </div>
                             </div>
-                            <div className="mt-3 flex items-center justify-between gap-2 text-[11px]">
+                            <div className="mt-2 flex items-center justify-between gap-2 text-[10px]">
                               <span className="min-w-0 truncate font-medium text-[#65788F]">{match.leagueName ?? 'Sports'}</span>
                               <span className={'shrink-0 rounded-lg px-2 py-1 font-bold ' +
                                 (isLive ? 'bg-red-50 text-red-600' : 'bg-[#E7F8EF] text-[#08A777]')}>
                                 {isLive ? live ?? 'LIVE' : normalize(match.status) === 'FINISHED' ? 'FINISHED' : live ?? 'SCHEDULED'}
                               </span>
                             </div>
-                            <div className="mt-2 space-y-2.5">
+                            <div className="mt-1.5 space-y-1.5">
                               <div className="flex items-center gap-2">
-                                <TeamLogo url={match.homeTeamLogoUrl} name={match.homeTeamName ?? 'H'} size={28} theme="light" />
+                                <TeamLogo url={match.homeTeamLogoUrl} name={match.homeTeamName ?? 'H'} size={23} theme="light" />
                                 <span className="min-w-0 flex-1 truncate text-xs font-bold">{match.homeTeamName ?? 'Home'}</span>
                                 <span className="rounded-md bg-[#EBF1F7] px-2 py-1 text-xs font-black">{match.homeScore ?? '—'}</span>
                               </div>
                               <div className="flex items-center gap-2">
-                                <TeamLogo url={match.awayTeamLogoUrl} name={match.awayTeamName ?? 'A'} size={28} theme="light" />
+                                <TeamLogo url={match.awayTeamLogoUrl} name={match.awayTeamName ?? 'A'} size={23} theme="light" />
                                 <span className="min-w-0 flex-1 truncate text-xs font-bold">{match.awayTeamName ?? 'Away'}</span>
                                 <span className="rounded-md bg-[#EBF1F7] px-2 py-1 text-xs font-black">{match.awayScore ?? '—'}</span>
                               </div>
                               {match.homeScore !== null && match.awayScore !== null ? (
-                                <div className="flex items-center justify-between rounded-xl bg-[#F1F5F9] px-3 py-2 text-xs">
+                                <div className="flex items-center justify-between rounded-lg bg-[#F1F5F9] px-2 py-1.5 text-[11px]">
                                   <span className="text-[#748399]">Reported score</span>
                                   <strong>{match.homeScore} : {match.awayScore}</strong>
                                 </div>
@@ -635,40 +623,28 @@ export function MyBetsClient() {
                         );
                       })}
                     </div>
-                    <div className="mx-3.5 my-3 flex flex-wrap items-center justify-between gap-2 border-t border-dashed border-[#CCDAE5] px-1 pt-3 sm:mx-5">
-                      <span className="text-[11px] font-bold text-[#6F8197]">{bet.legs.length} picks · Odds {formatOddsScaled(bet.combinedOddsScaled)}</span>
-                      <div className="flex flex-wrap items-center gap-2">
-                        <button type="button" className="text-xs font-bold text-[#1475CB]" onClick={() => void copyBetId(bet.publicId)}>
+                    {bet.legs.length > 2 ? (
+                      <button type="button" aria-expanded={showAllSelections}
+                        onClick={() => setExpanded((prev) => ({ ...prev, [bet.id]: !showAllSelections }))}
+                        className="mx-3 my-2 flex items-center justify-center rounded-lg border border-[#D4E5E2] bg-[#F0F9F6] px-3 py-1.5 text-[11px] font-bold text-[#14785A] transition-colors hover:bg-[#E3F6EB]">
+                        {showAllSelections ? 'Show fewer picks' : 'Show remaining picks'} ⌄
+                      </button>
+                    ) : null}
+                    <div className="mx-3 mt-2 flex flex-wrap items-center justify-between gap-2 border-t border-dashed border-[#CCDAE5] px-1 py-2 sm:mx-4">
+                      <span className="text-[10px] font-bold text-[#6F8197]">{bet.legs.length} picks · Odds {formatOddsScaled(bet.combinedOddsScaled)}</span>
+                      <div className="flex items-center gap-2.5">
+                        <button type="button" className="text-[11px] font-bold text-[#1475CB]" onClick={() => void copyBetId(bet.publicId)}>
                           {copied === bet.publicId ? 'Copied' : 'Copy ID'}
                         </button>
-                        <button type="button" className="text-xs font-bold text-[#1475CB]" onClick={() => void shareBet(bet)}>
+                        <button type="button" className="text-[11px] font-bold text-[#1475CB]" onClick={() => void shareBet(bet)}>
                           {copied === bet.publicId + ':share' ? 'Copied' : 'Share'}
                         </button>
                         {bet.isCashoutAvailable && bet.status === 'accepted' ? (
-                          <button type="button" className="rounded-lg bg-[#06C783] px-3 py-2 text-xs font-black text-white"
+                          <button type="button" className="rounded-lg bg-[#06C783] px-2.5 py-1.5 text-[11px] font-black text-white"
                             onClick={() => void requestCashout(bet)}>{t('bets.cashout')}</button>
                         ) : null}
-                        <button type="button" aria-expanded={receiptOpen}
-                          className="flex items-center gap-1 text-xs font-black text-[#1475CB]"
-                          onClick={() => setExpanded((value) => ({ ...value, [bet.id]: !receiptOpen }))}>
-                          ▤ {receiptOpen ? 'Hide receipt' : 'Full receipt'} ›
-                        </button>
                       </div>
                     </div>
-                    {receiptOpen ? (
-                      <div className="border-t border-[#DCE6EF] bg-[#F2F6FA] px-4 py-4 text-xs text-[#1D314A] sm:px-5">
-                        <h3 className="mb-3 font-black">Ticket receipt · {bet.publicId}</h3>
-                        <dl className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-                          <div><dt className="text-[#7B8DA5]">Placed</dt><dd className="font-bold">{formatDateTime(bet.placedAt, locale)}</dd></div>
-                          <div><dt className="text-[#7B8DA5]">Settled</dt><dd className="font-bold">{bet.settledAt ? formatDateTime(bet.settledAt, locale) : 'Pending'}</dd></div>
-                          <div><dt className="text-[#7B8DA5]">Revision</dt><dd className="font-bold">{bet.revision}</dd></div>
-                          <div><dt className="text-[#7B8DA5]">Status</dt><dd className="font-bold">{betStatusLabel(result, bet.status, locale)}</dd></div>
-                        </dl>
-                        {bet.legs[0]?.matchId ? (
-                          <a className="mt-3 inline-block font-bold text-[#1475CB]" href={'/match/' + bet.legs[0].matchId}>View match ›</a>
-                        ) : null}
-                      </div>
-                    ) : null}
                   </div>
                 ) : null}
               </article>
