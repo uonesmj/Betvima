@@ -24,6 +24,7 @@ describe('secure automatic affiliate APK build', () => {
     expect(worker).toContain('"--no-new-privs", "--"');
     expect(worker).not.toContain('preexec_fn=drop_privileges');
     expect(worker).toContain('"--max-workers=1"');
+    expect(worker).toContain('"--stacktrace"');
     expect(worker).toContain('CERT_SHA256');
     expect(worker).toContain('AFFILIATE_REFERRAL_CODE');
     expect(worker).toContain('os.replace(temp_path, output)');
@@ -34,6 +35,8 @@ describe('secure automatic affiliate APK build', () => {
   it('rate limits build memory separately from web and persists scheduled builds', () => {
     const install = read('ops/android/install-affiliate-apk-worker.sh');
     expect(install).toContain('MemoryMax=3G');
+    expect(install).toContain('TasksMax=256');
+    expect(install).not.toContain('TasksMax=96');
     expect(install).toContain('NoNewPrivileges=false');
     expect(install).toContain('MemorySwapMax=3G');
     expect(install).toContain('OnUnitInactiveSec=30s');
