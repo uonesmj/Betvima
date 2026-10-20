@@ -68,7 +68,8 @@ private fun trackerScore(match: Match, facts: LiveMatchFacts?): String {
  */
 @Composable
 internal fun PremiumNativeLiveTracker(
-    match: Match, facts: LiveMatchFacts?, fa: Boolean, clockLabel: String
+    match: Match, facts: LiveMatchFacts?, fa: Boolean, clockLabel: String,
+    embedded: Boolean = false
 ) {
     var page by remember(match.id) { mutableStateOf(0) }
     var previous by remember(match.id) { mutableStateOf<LiveMatchFacts?>(null) }
@@ -134,6 +135,7 @@ internal fun PremiumNativeLiveTracker(
         border = BorderStroke(1.dp, Color(0xFF32505A))
     ) {
         Column {
+            if (!embedded) {
             Row(
                 modifier = Modifier.fillMaxWidth().background(Color(0xFF183541))
                     .padding(horizontal = 13.dp, vertical = 12.dp),
@@ -161,6 +163,7 @@ internal fun PremiumNativeLiveTracker(
                     textAlign = TextAlign.End, maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.weight(1f), fontSize = 12.sp)
+            }
             }
             val possession = facts?.stat("possession")
             Row(Modifier.fillMaxWidth().background(Color(0xFF112B36))
