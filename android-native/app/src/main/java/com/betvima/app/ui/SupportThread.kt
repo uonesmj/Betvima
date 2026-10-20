@@ -503,12 +503,15 @@ fun TicketThreadSheet(
     }
     if (askClose) {
         AlertDialog(
+            containerColor = DarkHomePalette.panel,
             onDismissRequest = { if (!closing) askClose = false },
             icon = { Icon(Icons.Default.TaskAlt, null, tint = chatBlue) },
-            title = { Text(tr(lang,"Close support ticket?","بستن درخواست پشتیبانی؟")) },
+            title = { Text(tr(lang,"Close support ticket?","بستن درخواست پشتیبانی؟"),
+                color = chatInk) },
             text = { Text(tr(lang,
                 "You will not be able to reply to this ticket after closing it.",
-                "پس از بستن این درخواست، دیگر نمی‌توانید در همین گفت‌وگو پاسخ ارسال کنید.")) },
+                "پس از بستن این درخواست، دیگر نمی‌توانید در همین گفت‌وگو پاسخ ارسال کنید."),
+                color = chatInk) },
             confirmButton = {
                 Button(
                     onClick = {
