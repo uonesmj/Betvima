@@ -24,6 +24,7 @@ id betvimaapk >/dev/null 2>&1 || useradd --system --home-dir "$ROOT/home" --shel
 id novaadmin >/dev/null 2>&1 || fail web_user_missing
 install -d -o root -g root -m 0755 "$ROOT"
 install -d -o root -g root -m 0755 "$ROOT/failed"
+install -d -o root -g root -m 0755 "$ROOT/running"
 install -d -o novaadmin -g novaadmin -m 0700 "$ROOT/queue"
 install -d -o betvimaapk -g betvimaapk -m 0700 "$ROOT/home" "$ROOT/home/.gradle"
 install -d -o novaadmin -g novaadmin -m 0750 "$DOWNLOADS"
