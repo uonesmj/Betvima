@@ -110,7 +110,9 @@ fun HomePage(state: AppState, model: AppViewModel, onSearch: () -> Unit) {
                 .take(12)
     }
     val topCards = if (featured.isNotEmpty()) featured else unpricedPreviews
+    CompositionLocalProvider(LocalDarkHome provides true) {
     LazyColumn(state = footerListState,
+        modifier = Modifier.fillMaxSize().background(DarkHomePalette.canvas),
         contentPadding = PaddingValues(bottom = 0.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp), flingBehavior = rememberPremiumFlingBehavior()) {
         item(key = "sportsbook-tabs", contentType = "tabs") { SportsbookTopTabs(state, model, onSearch) }
@@ -184,7 +186,7 @@ fun HomePage(state: AppState, model: AppViewModel, onSearch: () -> Unit) {
                         if (featured.isEmpty()) Text(tr(state.lang,
                             "Market quotes temporarily unavailable — showing real fixtures only.",
                             "ضرایب فعلاً موجود نیستند؛ فقط مسابقات واقعی نمایش داده می‌شوند."),
-                            color = Palette.muted, fontSize = 11.sp,
+                            color = DarkHomePalette.muted, fontSize = 11.sp,
                             modifier = Modifier.padding(bottom = 6.dp))
                         ReferenceMatchCarousel(topCards, state, model)
                     }
@@ -239,6 +241,7 @@ fun HomePage(state: AppState, model: AppViewModel, onSearch: () -> Unit) {
                 footerScope.launch { footerListState.smoothBackToTop() }
             }
         }
+    }
     }
 }
 
