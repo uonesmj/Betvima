@@ -15,8 +15,8 @@ for cmd in rsync systemctl useradd python3 flock setpriv; do command -v "$cmd" >
 [[ -x /opt/android-sdk/build-tools/35.0.0/apksigner ]] || fail apksigner_missing
 [[ -f "$SOURCE/.betvima-native-commit" ]] || fail native_revision_unverified
 [[ -f "$SOURCE/app/build.gradle.kts" ]] || fail native_source_missing
-grep -Eq '^[[:space:]]*versionCode[[:space:]]*=[[:space:]]*130[[:space:]]*$' "$SOURCE/app/build.gradle.kts" || fail expected_version_code_125_missing
-grep -Eq '^[[:space:]]*versionName[[:space:]]*=[[:space:]]*"0\.125\.0"[[:space:]]*$' "$SOURCE/app/build.gradle.kts" || fail expected_version_125_missing
+grep -Eq '^[[:space:]]*versionCode[[:space:]]*=[[:space:]]*130[[:space:]]*$' "$SOURCE/app/build.gradle.kts" || fail expected_version_code_130_missing
+grep -Eq '^[[:space:]]*versionName[[:space:]]*=[[:space:]]*"0\.130\.0"[[:space:]]*$' "$SOURCE/app/build.gradle.kts" || fail expected_version_130_missing
 [[ "$(cat "$SOURCE/.betvima-native-commit")" == "e32bb3fc280a60e01e6d6736a8cb111b1d613a36" ]] || fail native_sha_unapproved
 [[ "$(stat -c '%u' /etc/betvima/android-signing)" == 0 ]] || fail signing_path_owner_invalid
 
