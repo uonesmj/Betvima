@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { readFile, mkdir, access, open } from 'node:fs/promises';
+import { readFile, access, open } from 'node:fs/promises';
 import { constants as fsConstants } from 'node:fs';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
@@ -98,7 +98,6 @@ export async function GET(
   // A different filename per native release prevents returning an old partner APK.
   const filename = `${clean}-v${version.name}.apk`;
   const output = path.join(DOWNLOAD_DIR, filename);
-  await mkdir(DOWNLOAD_DIR, { recursive: true });
 
   try {
     await access(output, fsConstants.R_OK);
