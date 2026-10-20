@@ -49,7 +49,7 @@ function observeUpstreamQuota(response: Response): void {
   const rawRemaining = response.headers.get('X-RateLimit-Remaining');
   if (rawLimit === null && rawRemaining === null && response.status !== 429) return;
   const now = Date.now();
-  if (now - lastQuotaObservationAt < 5 * 60_000) return;
+  if (response.status !== 429 && now - lastQuotaObservationAt < 5 * 60_000) return;
   lastQuotaObservationAt = now;
   const numericHeader = (raw: string | null): number | null =>
     raw !== null && /^\d{1,9}$/.test(raw) ? Number(raw) : null;
