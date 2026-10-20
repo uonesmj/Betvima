@@ -121,3 +121,40 @@ Do not copy signing passwords to PM2, website environment files, GitHub
 repository, GitHub logs, frontend JavaScript or an APK. Keep an encrypted
 off-VPS backup of the JKS and its password, and never replace the signing
 identity without carefully planning device updates.
+
+
+## Current approved affiliate Android release (0.130.0)
+
+The affiliate build source is deliberately pinned to the GitHub-reviewed native
+commit `e32bb3fc280a60e01e6d6736a8cb111b1d613a36` on
+`codex/native-live-detail-recovery-123-20261019`. Its Android
+`versionCode=130` and `versionName=0.130.0` include the recent native
+UI improvements and still embed `BuildConfig.AFFILIATE_REFERRAL_CODE`.
+Earlier 0.125.0 APKs continue to work but the download endpoint must issue
+0.130.0 after the **web production deployment AND the two VPS operations**.
+
+VPS operator upgrade order (using the exact approved web release SHA):
+
+```sh
+sudo bash /opt/nova-releases/<APPROVED_MAIN_SHA>/ops/android/sync-affiliate-build-source.sh
+sudo bash /opt/nova-releases/<APPROVED_MAIN_SHA>/ops/android/install-affiliate-apk-worker.sh
+```
+
+The first script installs the pinned native source revision, retaining the
+old source directory. The second refreshes the isolated workspace, preserving
+the previous one, and installs the matching worker. **Do not run the original
+0.125.0 installer after upgrading**, because it would restore old build
+source. Previously generated partner APKs remain on the disk as versioned
+artifacts; the download route selects the new `-v0.130.0.apk` filename,
+queues a partner-specific build on the first request and verifies its
+release-signing certificate before serving it.
+
+After a future native release, update *all four* sources of version truth
+together: `sync-affiliate-build-source.sh` (source SHA, version and branch),
+`install-affiliate-apk-worker.sh` (SHA and version), the Worker source version
+guard, and `MINIMUM_NATIVE_VERSION` in the web download route. Update
+`tests/unit/affiliate-apk-build-isolation.test.ts` accordingly. Review and
+deploy through the approved production workflow, then sync the native source
+and refresh the isolated worker. Do not accept arbitrary unaudited branch
+HEADs or bypass signature checks. This prevents a native-only UI update from
+silently producing an older personalized partner APK.
