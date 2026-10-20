@@ -34,18 +34,50 @@ export function betsapiNoQuoteProbe(
   };
 }
 
+export interface BetsapiLiveCoveragePlan {
+  intervalMs: number;
+  pricedSlots: number;
+  explorationIntervalMs: number;
+  hourlyBudget: number;
+}
+
+/**
+ * Raise coverage only after an operator has verified and explicitly configured
+ * the new provider hourly quota. A 200/h trial stays on its original isolated
+ * single-fixture schedule. Premium mode reserves ample headroom for discovery,
+ * pending-result checks, exploration and upstream request retries.
+ *
+ * No amount of request budget can make a missing/suspended bookmaker market
+ * wagerable; source timestamps and settlement eligibility remain authoritative.
+ */
+export function betsapiLiveCoveragePlan(rawBudget: string | undefined): BetsapiLiveCoveragePlan {
+  const parsed = Number(rawBudget);
+  const hourlyBudget = Number.isSafeInteger(parsed) && parsed >= 50
+    ? Math.min(parsed, 199_999) : 200;
+  if (hourlyBudget < 600) {
+    const pricedCalls = Math.max(1, Math.min(120, hourlyBudget - 50));
+    return {
+      intervalMs: Math.max(30_000, Math.ceil(3_600_000 / pricedCalls)),
+      pricedSlots: 1,
+      explorationIntervalMs: BETSAPI_EXPLORATION_INTERVAL_MS,
+      hourlyBudget,
+    };
+  }
+  const intervalMs = 25_000;
+  // 200 calls/hour are withheld before allocating only 75% of the rest to
+  // sustained markets. The extra per-tick exploration call fits the margin.
+  const perFixtureHourly = Math.ceil(3_600_000 / intervalMs);
+  const pricedSlots = Math.max(1, Math.min(16,
+    Math.floor((hourlyBudget - 200) * 0.75 / perFixtureHourly)));
+  return {
+    intervalMs, pricedSlots, explorationIntervalMs: 60_000, hourlyBudget,
+  };
+}
+
 export function betsapiLivePollIntervalMs(
   rawBudget: string | undefined,
 ): number {
-  const budget = Number(rawBudget);
-  const hourly = Number.isSafeInteger(budget) && budget >= 50
-    ? Math.min(budget, 3000)
-    : 200;
-  // Reserve >=30 calls/hour for live discovery and >=20 for error/health
-  // headroom. Never exceed 120 price requests/hour even on a paid plan:
-  // greater concurrency/coverage requires a separately reviewed scheduler.
-  const priceCalls = Math.max(1, Math.min(120, hourly - 50));
-  return Math.max(30_000, Math.ceil(3_600_000 / priceCalls));
+  return betsapiLiveCoveragePlan(rawBudget).intervalMs;
 }
 
 export function selectBetsapiLiveCandidates<T extends BetsapiLiveCandidate>(
@@ -54,6 +86,8 @@ export function selectBetsapiLiveCandidates<T extends BetsapiLiveCandidate>(
   explorationDue: boolean,
   preferredProviderId?: string | null,
   excludedProviderIds: ReadonlySet<string> = new Set<string>(),
+  preferredProviderIds: readonly string[] = [],
+  pricedSlots = 1,
 ): { candidates: T[]; explored: boolean } {
   const available = ordered.filter(row =>
     Boolean(row.provider_id) ? !excludedProviderIds.has(row.provider_id!) : true);
@@ -64,11 +98,21 @@ export function selectBetsapiLiveCandidates<T extends BetsapiLiveCandidate>(
   // Stick to a live, already-priced event until it is no longer eligible.
   // Sorting by oldest update otherwise rotates across all priced fixtures,
   // guaranteeing that *none* remains fresh under a 200 calls/hour trial.
-  const preferred = preferredProviderId
-    ? priced.find(row => row.provider_id === preferredProviderId)
-    : undefined;
-  const candidates: T[] = priced.length ? [preferred ?? priced[0]!] : [];
-  if (unpriced.length && (explorationDue || priced.length === 0)) {
+  const slots = Math.max(1, Math.min(16, Math.trunc(pricedSlots) || 1));
+  const candidates: T[] = [];
+  const addPriced = (row: T | undefined) => {
+    if (row && candidates.length < slots && !candidates.includes(row)) candidates.push(row);
+  };
+  for (const id of preferredProviderIds) addPriced(priced.find(row => row.provider_id === id));
+  if (preferredProviderId) addPriced(priced.find(row => row.provider_id === preferredProviderId));
+  for (const row of priced) addPriced(row);
+
+  // On paid plans, probe one new event each tick until the priced cohort fills;
+  // once it is full, probe only at the bounded exploration interval. The
+  // single-fixture trial retains its historical exploration behavior.
+  const canExplore = explorationDue ||
+    (slots > 1 ? candidates.length < slots : priced.length === 0);
+  if (unpriced.length && canExplore) {
     const index = ((explorationIndex % unpriced.length) + unpriced.length) % unpriced.length;
     candidates.push(unpriced[index]!);
     return { candidates, explored: true };

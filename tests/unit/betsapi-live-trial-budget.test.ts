@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   betsapiLivePollIntervalMs,
+  betsapiLiveCoveragePlan,
   selectBetsapiLiveCandidates,
   BETSAPI_EXPLORATION_INTERVAL_MS,
   BETSAPI_EMPTY_PRICE_ROTATE_AFTER,
@@ -14,7 +15,64 @@ describe('BetsAPI trial live polling', () => {
     expect(betsapiLivePollIntervalMs('120')).toBe(Math.ceil(3_600_000 / 70));
     expect(betsapiLivePollIntervalMs('80')).toBe(120_000);
     expect(betsapiLivePollIntervalMs(undefined)).toBe(30_000);
-    expect(betsapiLivePollIntervalMs('3000')).toBe(30_000);
+    expect(betsapiLivePollIntervalMs('3000')).toBe(25_000);
+  });
+
+  it('never raises trial coverage without explicit verified quota configuration', () => {
+    expect(betsapiLiveCoveragePlan(undefined)).toMatchObject({
+      pricedSlots: 1, intervalMs: 30_000, hourlyBudget: 200,
+    });
+    expect(betsapiLiveCoveragePlan('200')).toMatchObject({
+      pricedSlots: 1, intervalMs: 30_000, explorationIntervalMs: 180_000,
+    });
+    expect(betsapiLiveCoveragePlan('599').pricedSlots).toBe(1);
+    expect(betsapiLiveCoveragePlan('600')).toMatchObject({
+      pricedSlots: 2, intervalMs: 25_000,
+    });
+    expect(betsapiLiveCoveragePlan('1800')).toMatchObject({
+      pricedSlots: 8, intervalMs: 25_000, explorationIntervalMs: 60_000,
+    });
+    expect(betsapiLiveCoveragePlan('199999').pricedSlots).toBe(16);
+    expect(betsapiLiveCoveragePlan('999999999').hourlyBudget).toBe(199_999);
+  });
+
+  it('keeps an already priced cohort sticky across DB recency reordering', () => {
+    const priced = [
+      { provider_id: '1:oldest', has_betsapi_market: true },
+      { provider_id: '1:current-2', has_betsapi_market: true },
+      { provider_id: '1:current-1', has_betsapi_market: true },
+      { provider_id: '1:next', has_betsapi_market: true },
+      { provider_id: '1:unpriced', has_betsapi_market: false },
+    ];
+    const sticky = ['1:current-1', '1:current-2'];
+    expect(selectBetsapiLiveCandidates(
+      priced, 0, false, '1:current-1', new Set(), sticky, 2,
+    )).toEqual({
+      candidates: [priced[2], priced[1]], explored: false,
+    });
+    expect(selectBetsapiLiveCandidates(
+      priced, 0, false, '1:current-1', new Set(['1:current-1']), sticky, 2,
+    )).toEqual({
+      candidates: [priced[1], priced[0]], explored: false,
+    });
+    expect(selectBetsapiLiveCandidates(
+      priced, 0, true, '1:current-1', new Set(), sticky, 2,
+    )).toEqual({
+      candidates: [priced[2], priced[1], priced[4]], explored: true,
+    });
+  });
+
+  it('explores until a higher-tier cohort fills without exceeding one new event per tick', () => {
+    const fixtures = [
+      { provider_id: '1:priced', has_betsapi_market: true },
+      { provider_id: '1:unpriced-a', has_betsapi_market: false },
+      { provider_id: '1:unpriced-b', has_betsapi_market: false },
+    ];
+    expect(selectBetsapiLiveCandidates(
+      fixtures, 1, false, null, new Set(), [], 8,
+    )).toEqual({
+      candidates: [fixtures[0], fixtures[2]], explored: true,
+    });
   });
 
   it('refreshes priced fixtures before repeatedly querying unpriced fixtures', () => {

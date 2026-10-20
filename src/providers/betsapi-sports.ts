@@ -19,6 +19,7 @@ const SPARE_BASE = 'https://api.betsapi.com';
 const MAX_PER_CALL = 12;
 const MAX_DISCOVERY_PAGES = 3;
 const DEFAULT_HOURLY_BUDGET = 1500;
+const MAX_OPERATOR_APPROVED_HOURLY_BUDGET = 199_999;
 const supportedId = (id: string) => /^\d{1,16}$/.test(id);
 type Json = Record<string, unknown>;
 const failed = <T>(code: string, retryable = false): ProviderResult<T> => ({
@@ -43,7 +44,7 @@ const quota = () => {
   const now = Math.floor(Date.now() / 3_600_000);
   if (hourWindow !== now) { hourWindow = now; consumed = 0; lastRemaining = null; }
   const cap = Number(process.env.BETSAPI_HOURLY_REQUEST_BUDGET || DEFAULT_HOURLY_BUDGET);
-  const limit = Number.isSafeInteger(cap) ? Math.max(50, Math.min(cap, 3000)) : DEFAULT_HOURLY_BUDGET;
+  const limit = Number.isSafeInteger(cap) ? Math.max(50, Math.min(cap, MAX_OPERATOR_APPROVED_HOURLY_BUDGET)) : DEFAULT_HOURLY_BUDGET;
   if (consumed >= limit || (lastRemaining !== null && lastRemaining < 50)) {
     throw new Error('BETSAPI_BUDGET_EXHAUSTED');
   }
@@ -79,7 +80,12 @@ export class BetsApiSportsProvider implements SportsDataProvider {
         headers: { Accept: 'application/json' }, method: 'GET', cache: 'no-store',
         redirect: 'error', signal: AbortSignal.timeout(7000),
       });
-      if (response.status === 429) throw new Error('BETSAPI_RATE_LIMITED');
+      // Preserve the upstream quota fail-closed until its window resets;
+      // otherwise a high-concurrency worker keeps hammering 429 responses.
+      if (response.status === 429) {
+        lastRemaining = 0;
+        throw new Error('BETSAPI_RATE_LIMITED');
+      }
       if (response.status === 401 || response.status === 403) throw new Error('BETSAPI_PERMISSION_DENIED');
       if (!response.ok) throw new Error('BETSAPI_UNAVAILABLE');
       const left = Number(response.headers.get('X-RateLimit-Remaining'));
@@ -219,7 +225,14 @@ export class BetsApiSportsProvider implements SportsDataProvider {
           id, payload.results, new Date(), this.knownMatchLive.get(id)!,
         );
         result.push(normalized);
-      } catch { failures++; }
+      } catch (error) {
+        failures++;
+        const code = errorCode(error);
+        // Stop immediately when the provider explicitly denies access or
+        // runs out of requests. Do not disguise those as an empty quote bundle.
+        if (['BETSAPI_RATE_LIMITED', 'BETSAPI_BUDGET_EXHAUSTED',
+          'BETSAPI_PERMISSION_DENIED'].includes(code)) return failed(code, true);
+      }
     }
     return result.length > 0 || !ids.length ? ok(result) : failed('BETSAPI_UNAVAILABLE', true);
   }
