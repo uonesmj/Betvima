@@ -192,10 +192,17 @@ fun MatchDetailPage(state: AppState, model: AppViewModel) {
             }
             Spacer(Modifier.height(11.dp))
             if (scoreMode == "live" && match.live && match.id.startsWith("betsapi:live:")) {
-                LiveMatchActivityPanel(
-                    match = match, facts = facts, fa = state.lang == Lang.FA,
-                    expanded = scoreMode == "live", clockLabel = clockLabel
-                )
+                if (match.sport == "football") {
+                    PremiumNativeLiveTracker(
+                        match = match, facts = facts, fa = state.lang == Lang.FA,
+                        clockLabel = clockLabel
+                    )
+                } else {
+                    LiveMatchActivityPanel(
+                        match = match, facts = facts, fa = state.lang == Lang.FA,
+                        expanded = true, clockLabel = clockLabel
+                    )
+                }
                 Spacer(Modifier.height(9.dp))
             }
             Row(Modifier.fillMaxWidth().padding(vertical = 15.dp),
