@@ -25,6 +25,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
@@ -69,14 +70,24 @@ internal fun LiveIncidentPitch129(
             val w = size.width
             val h = size.height
             val stroke = 1.5.dp.toPx()
-            drawRect(Color(0xFF125E40))
-            repeat(10) { i ->
+            drawRect(Brush.verticalGradient(listOf(
+                Color(0xFF247954), Color(0xFF14583E), Color(0xFF103E36)
+            )))
+            repeat(12) { i ->
                 if (i % 2 == 0) drawRect(
-                    Color.White.copy(alpha = .045f),
-                    Offset(w * i / 10f, 0f), Size(w / 10f, h)
+                    Color.White.copy(alpha = .042f),
+                    Offset(w * i / 12f, 0f), Size(w / 12f, h)
                 )
             }
-            val line = Color(0xFFF1FFF5).copy(alpha = .67f)
+            for (row in 1..7) {
+                drawLine(Color.White.copy(alpha = .022f),
+                    Offset(0f, h * row / 8f), Offset(w, h * row / 8f),
+                    strokeWidth = .6.dp.toPx())
+            }
+            drawRect(Brush.horizontalGradient(listOf(
+                Color(0x55091F1C), Color.Transparent, Color(0x44091F1C)
+            )))
+            val line = Color(0xFFF1FFF5).copy(alpha = .74f)
             drawRect(line, Offset(w * .035f, h * .06f),
                 Size(w * .93f, h * .88f), style = Stroke(stroke))
             drawLine(line, Offset(w * .5f, h * .06f),
@@ -92,17 +103,35 @@ internal fun LiveIncidentPitch129(
                 Size(w * .07f, h * .24f), style = Stroke(stroke))
             drawRect(line, Offset(w * .895f, h * .38f),
                 Size(w * .07f, h * .24f), style = Stroke(stroke))
+            // Penalty spots and goal mouths add clarity without depicting players.
+            drawCircle(line, stroke * 1.2f, Offset(w * .13f, h * .5f))
+            drawCircle(line, stroke * 1.2f, Offset(w * .87f, h * .5f))
+            drawLine(line.copy(alpha = .8f), Offset(w * .035f, h * .41f),
+                Offset(w * .005f, h * .41f), stroke)
+            drawLine(line.copy(alpha = .8f), Offset(w * .035f, h * .59f),
+                Offset(w * .005f, h * .59f), stroke)
+            drawLine(line.copy(alpha = .8f), Offset(w * .965f, h * .41f),
+                Offset(w * .995f, h * .41f), stroke)
+            drawLine(line.copy(alpha = .8f), Offset(w * .965f, h * .59f),
+                Offset(w * .995f, h * .59f), stroke)
             if (cue != null) {
                 val p = progress.value
                 val direction = if (home) 1f else -1f
                 val x = w * (if (home) .16f + p * .65f else .84f - p * .65f)
                 val y = h * .5f
                 val visibleAlpha = (1f - p * .35f).coerceIn(0f, 1f)
-                // Attack direction is illustrative. No dot is drawn as "ball".
-                for (trail in 0..3) {
+                // These are illustrative attack-lane streaks, NOT a moving football.
+                drawCircle(
+                    brush = Brush.radialGradient(
+                        listOf(tint.copy(alpha = .22f * visibleAlpha), Color.Transparent),
+                        center = Offset(x, y), radius = h * .36f
+                    ),
+                    radius = h * .36f, center = Offset(x, y)
+                )
+                for (trail in 0..4) {
                     val trailX = x - direction * w * trail * .058f
                     if (trailX in w * .03f..w * .97f) {
-                        drawLine(tint.copy(alpha = (0.40f - trail * .07f) * visibleAlpha),
+                        drawLine(tint.copy(alpha = (0.43f - trail * .07f) * visibleAlpha),
                             Offset(trailX - direction * w * .035f, y),
                             Offset(trailX + direction * w * .015f, y),
                             strokeWidth = (4 - trail).dp.toPx())
@@ -122,9 +151,9 @@ internal fun LiveIncidentPitch129(
         }
         AnimatedVisibility(
             visible = cue != null,
-            enter = fadeIn(tween(180)) + scaleIn(initialScale = .85f),
+            enter = fadeIn(tween(220)) + scaleIn(initialScale = .82f),
             exit = fadeOut(tween(260)) + scaleOut(targetScale = .92f),
-            modifier = Modifier.fillMaxWidth(.85f)
+            modifier = Modifier.fillMaxWidth(.79f)
         ) {
             if (cue != null) {
                 val title = incidentCaption129(cue.kind, fa)
@@ -132,13 +161,16 @@ internal fun LiveIncidentPitch129(
                     match.home.name else match.away.name
                 val serious = cue.kind == IncidentKind129.GOAL
                 Surface(
-                    color = Color(0xED071E24),
-                    shape = RoundedCornerShape(15.dp),
-                    shadowElevation = 10.dp,
+                    color = Color(0xED061E25),
+                    shape = RoundedCornerShape(17.dp),
+                    shadowElevation = 17.dp,
                     border = androidx.compose.foundation.BorderStroke(
-                        1.dp, tint.copy(alpha = .7f))
+                        1.dp, tint.copy(alpha = .75f))
                 ) {
-                    Column(Modifier.padding(horizontal = 9.dp, vertical = 11.dp),
+                    Column(Modifier
+                        .background(Brush.verticalGradient(
+                            listOf(tint.copy(alpha = .14f), Color.Transparent)))
+                        .padding(horizontal = 10.dp, vertical = 10.dp),
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.spacedBy(3.dp)) {
                         val graphic = when(cue.kind) {
@@ -164,7 +196,7 @@ internal fun LiveIncidentPitch129(
                                 if (fa) "تغییر آمار +" else "Stat update +"
                             }) + (if (cue.confirmedScore) "" else cue.amount.toString()) +
                                 "  ·  " + (cue.minute?.toString()?.plus("′") ?: "LIVE"),
-                            color = Color(0xFFD1DFE0), fontSize = 9.sp,
+                            color = Color(0xFFD1DFE0), fontSize = 8.sp,
                             textAlign = TextAlign.Center
                         )
                     }
