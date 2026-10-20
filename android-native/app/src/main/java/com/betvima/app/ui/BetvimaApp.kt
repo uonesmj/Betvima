@@ -231,7 +231,7 @@ fun BetvimaApp(model: AppViewModel) {
             containerColor = when {
                 state.feature == Feature.CASINO -> Color(0xFF141414)
                 state.feature == Feature.NONE &&
-                    state.tab in setOf(Tab.BETS, Tab.WALLET) -> Palette.headerDark
+                    state.tab in setOf(Tab.BETS, Tab.WALLET, Tab.HOME) -> Palette.headerDark
                 else -> Palette.paper
             },
             topBar = {
