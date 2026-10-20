@@ -362,7 +362,8 @@ fun AffiliateDashboard(
                         partner?.str("minPayoutMinor", "0") ?: "0",
                         requestedTab=if(navigationKey in listOf("referrals","ledger","payouts","links","wallets"))
                             navigationKey else "referrals",
-                        navigationRevision=navigationRevision)
+                        navigationRevision=navigationRevision,
+                         reportTimezone=partner?.str("settlementTimezone","Asia/Tehran") ?: "Asia/Tehran")
                 }
                 item {
                     SectionHeading(tr(state.lang, "Registration gift codes", "کدهای هدیه ثبت‌نام"),

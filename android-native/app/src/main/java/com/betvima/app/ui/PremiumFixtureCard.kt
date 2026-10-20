@@ -166,9 +166,12 @@ fun PremiumFixtureCard(
                         val selection = market?.selections?.getOrNull(index)
                         Box(Modifier.weight(1f)) {
                             if (market != null && selection != null)
-                                PremiumFixtureOdd(match, market, selection, index, state, model)
+                                PremiumFixtureOdd(match, market, selection, index, state, model) {
+                                    onOpen(match.id)
+                                }
                             else Box(Modifier.fillMaxWidth().height(45.dp)
-                                .background(fixtureCanvas, RoundedCornerShape(10.dp)),
+                                .background(fixtureCanvas, RoundedCornerShape(10.dp))
+                                .clickable { onOpen(match.id) },
                                 contentAlignment = Alignment.Center) {
                                 Text("—", color = fixtureSubtle, fontSize = 13.sp)
                             }
@@ -217,7 +220,7 @@ private fun FixtureTeamLine(team: Team, score: Int?) {
 @Composable
 private fun PremiumFixtureOdd(
     match: Match, market: Market, selection: Selection, index: Int,
-    state: AppState, model: AppViewModel
+    state: AppState, model: AppViewModel, onOpen: () -> Unit
 ) {
     val enabled = match.bettingAvailable && market.available &&
         selection.available && (!match.live || state.liveEnabled)
@@ -229,8 +232,12 @@ private fun PremiumFixtureOdd(
     Surface(
         modifier = Modifier.fillMaxWidth().height(45.dp)
             .onGloballyPositioned { oddCenter = it.boundsInWindow().center }
-            .clickable(enabled = enabled) {
-                model.togglePick(match, market, selection, oddCenter.x, oddCenter.y)
+            .clickable {
+                // Suspended/display-only odds are never wagerable, but tapping
+                // them must still navigate to this fixture's detail page.
+                if (enabled) model.togglePick(match, market, selection,
+                    oddCenter.x, oddCenter.y)
+                else onOpen()
             },
         shape = RoundedCornerShape(10.dp),
         color = when {

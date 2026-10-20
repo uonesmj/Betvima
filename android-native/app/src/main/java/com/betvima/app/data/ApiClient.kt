@@ -509,6 +509,11 @@ class ApiClient {
         if (lists.all { it.isFailure })
             throw ApiFailure(503, "BetsAPI live fixtures unavailable")
         val distinct = lists.flatMap { it.getOrDefault(emptyList()) }.distinctBy { it.id }
+        // A partial upstream failure plus zero fixtures is not proof that there
+        // are zero live events. Surface it as a feed outage instead of a
+        // misleading "No live matches" empty state.
+        if (distinct.isEmpty() && lists.any { it.isFailure })
+            throw ApiFailure(503, "BetsAPI live catalogue only returned failures/empty partials")
         // Preview prices can never become bets: all imported markets are suspended,
         // every fixture has bettingAvailable=false and liveEnabled is false.
         return enrichBet365Cards(distinct) to false
@@ -527,6 +532,8 @@ class ApiClient {
             throw ApiFailure(503, "BetsAPI upcoming fixtures unavailable")
         val matches = lists.flatMap { it.getOrDefault(emptyList()) }
             .distinctBy { it.id }.sortedBy { it.starts }
+        if (matches.isEmpty() && lists.any { it.isFailure })
+            throw ApiFailure(503, "BetsAPI upcoming catalogue only returned failures/empty partials")
         return enrichBet365Cards(matches)
     }
 
