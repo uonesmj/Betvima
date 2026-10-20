@@ -472,17 +472,17 @@ fun SupportMessenger(
                             DropdownMenuItem(
                                 text={Text(tr(lang,
                                     if (muted) "Switch on sound" else "Switch off sound",
-                                    if (muted) "فعال کردن صدا" else "خاموش کردن صدا"))},
+                                    if (muted) "فعال کردن صدا" else "خاموش کردن صدا"),color=messengerInk)},
                                 onClick={muted=!muted;prefs.edit().putBoolean("muted",muted).apply();menuOpen=false},
                                 leadingIcon={Icon(if(muted) Icons.Default.VolumeOff else Icons.Default.VolumeUp,null)}
                             )
                             DropdownMenuItem(
-                                text={Text(tr(lang,"Rate the manager","امتیاز به پشتیبان"))},
+                                text={Text(tr(lang,"Rate the manager","امتیاز به پشتیبان"),color=messengerInk)},
                                 onClick={ratingOpen=true;menuOpen=false}, enabled=messengerActive(ticket),
                                 leadingIcon={Icon(Icons.Default.Star,null)}
                             )
                             DropdownMenuItem(
-                                text={Text(tr(lang,"Chat history","تاریخچه گفت‌وگو"))},
+                                text={Text(tr(lang,"Chat history","تاریخچه گفت‌وگو"),color=messengerInk)},
                                 onClick={historyOpen=true;menuOpen=false},
                                 leadingIcon={Icon(Icons.Default.History,null)}
                             )
