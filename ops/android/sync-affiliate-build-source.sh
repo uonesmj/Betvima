@@ -48,7 +48,7 @@ src="${stage}/repo/android-native"
 [[ -f "${src}/app/build.gradle.kts" ]] || fail 'android_project_not_found'
 grep -Eq '^[[:space:]]*versionCode[[:space:]]*=[[:space:]]*130[[:space:]]*$' "${src}/app/build.gradle.kts" \
   || fail 'expected_android_version_code_missing'
-grep -Eq '^[[:space:]]*versionName[[:space:]]*=[[:space:]]*"0\.125\.0"[[:space:]]*$' "${src}/app/build.gradle.kts" \
+grep -Eq '^[[:space:]]*versionName[[:space:]]*=[[:space:]]*"0\.130\.0"[[:space:]]*$' "${src}/app/build.gradle.kts" \
   || fail 'expected_android_version_name_missing'
 grep -Fq 'AFFILIATE_REFERRAL_CODE' "${src}/app/build.gradle.kts" \
   || fail 'affiliate_attribution_build_config_missing'
