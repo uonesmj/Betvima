@@ -17,6 +17,7 @@ import tempfile
 
 BASE = Path("/var/lib/betvima-affiliate-build")
 QUEUE = BASE / "queue"
+RUNNING = BASE / "running"
 FAILED = BASE / "failed"
 SOURCE = Path("/var/www/betvima-android")
 WORK = BASE / "workspace"
@@ -151,7 +152,7 @@ def build(code: str, version: str) -> None:
 def main() -> None:
     if os.geteuid() != 0:
         fail("root_service_required")
-    if not QUEUE.is_dir() or not FAILED.is_dir():
+    if not QUEUE.is_dir() or not RUNNING.is_dir() or not FAILED.is_dir():
         fail("not_installed")
     lockfile = DOWNLOADS / ".native-build.lock"
     fd = os.open(lockfile, os.O_WRONLY | os.O_APPEND | os.O_NOFOLLOW)
@@ -161,6 +162,11 @@ def main() -> None:
         print("affiliate_apk_worker: another_build_running")
         return
     try:
+        # A prior cgroup OOM/timeout may have killed the entire service before
+        # it could record failure. Never rebuild those jobs in an endless loop.
+        for interrupted in RUNNING.iterdir():
+            if interrupted.is_file() and CODE.fullmatch(interrupted.name):
+                os.replace(interrupted, FAILED / interrupted.name)
         # No shell, executable, JSON or path supplied by any player is evaluated.
         jobs = sorted(QUEUE.iterdir(), key=lambda p: p.stat().st_mtime)
         for job in jobs:
@@ -171,14 +177,16 @@ def main() -> None:
             code = job.name[:-8]
             if not CODE.fullmatch(code):
                 continue
+            working = RUNNING / code
+            os.replace(job, working)
             try:
                 build(code, source_version())
-                job.unlink(missing_ok=True)
+                working.unlink(missing_ok=True)
                 (FAILED / code).unlink(missing_ok=True)
                 print(f"affiliate_apk_ready={code}")
             except Exception as error:
-                # Never retry an OOM/build failure forever on a live web host.
-                os.replace(job, FAILED / code)
+                # Never retry a failed build endlessly on the production VPS.
+                os.replace(working, FAILED / code)
                 print(f"affiliate_apk_failed={code} reason={type(error).__name__}", file=sys.stderr)
             return
         print("affiliate_apk_queue_empty")
