@@ -31,9 +31,9 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
-private val searchBg = Color(0xFFE9EAEF)
-private val searchText = Color(0xFF23252A)
-private val searchGray = Color(0xFF747985)
+private val searchBg = Color(0xFF111113)
+private val searchText = Color(0xFFF5F6F8)
+private val searchGray = Color(0xFFA6A9B3)
 
 internal fun searchKickoff(value: String, zone: ZoneId = ZoneId.systemDefault()): String =
     runCatching {
@@ -77,6 +77,7 @@ fun NativeSearchSheet(state: AppState, model: AppViewModel, onDismiss: () -> Uni
         model.openMatch(id)
     }
 
+    CompositionLocalProvider(LocalDarkHome provides true) {
     Column(Modifier.fillMaxSize().background(searchBg).imePadding()) {
         Box(
             Modifier.fillMaxWidth().height(66.dp).padding(horizontal = 17.dp),
@@ -103,7 +104,7 @@ fun NativeSearchSheet(state: AppState, model: AppViewModel, onDismiss: () -> Uni
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
             keyboardActions = KeyboardActions(onSearch = { keyboard?.hide() }),
             leadingIcon = {
-                Icon(Icons.Default.Search, null, tint = Color(0xFF89919F))
+                Icon(Icons.Default.Search, null, tint = searchGray)
             },
             trailingIcon = {
                 if (query.isNotBlank()) IconButton(onClick = { query = "" }) {
@@ -116,13 +117,17 @@ fun NativeSearchSheet(state: AppState, model: AppViewModel, onDismiss: () -> Uni
                     color = searchGray, fontSize = 14.sp)
             },
             colors = OutlinedTextFieldDefaults.colors(
-                focusedContainerColor = Color(0xFFDFE2E9),
-                unfocusedContainerColor = Color(0xFFDFE2E9),
+                focusedContainerColor = DarkHomePalette.panel,
+                unfocusedContainerColor = DarkHomePalette.panel,
                 focusedBorderColor = Color(0xFF248CFA),
-                unfocusedBorderColor = Color(0xFFB8C0CC),
+                unfocusedBorderColor = DarkHomePalette.outline,
                 focusedTextColor = searchText,
                 unfocusedTextColor = searchText,
-                cursorColor = Color(0xFF248CFA)
+                cursorColor = Color(0xFF248CFA),
+                focusedPlaceholderColor = searchGray,
+                unfocusedPlaceholderColor = searchGray,
+                focusedLeadingIconColor = searchGray,
+                unfocusedLeadingIconColor = searchGray
             )
         )
         Spacer(Modifier.height(15.dp))
@@ -180,6 +185,7 @@ fun NativeSearchSheet(state: AppState, model: AppViewModel, onDismiss: () -> Uni
                 }
             }
         }
+    }
     }
 }
 
