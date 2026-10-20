@@ -44,9 +44,33 @@ import java.util.UUID
 
 private val wBlue = Color(0xFF087FF5)
 private val wGreen = Color(0xFF00D47A)
-private val wText = Color(0xFF172033)
-private val wMuted = Color(0xFF758195)
-private val wBorder = Color(0xFFE1E7EF)
+private val wText = Color(0xFFF4F5F8)
+private val wMuted = Color(0xFFA5A8B2)
+private val wBorder = Color(0xFF39393D)
+private val wCanvas = Palette.headerDark
+private val wPanel = Color(0xFF222224)
+private val wInput = Color(0xFF1D1D20)
+
+/** Match Casino and My Bets, including Material3 text-field contrast. */
+@Composable
+private fun walletFieldColors() = OutlinedTextFieldDefaults.colors(
+    focusedTextColor = Color.White,
+    unfocusedTextColor = Color.White,
+    disabledTextColor = wMuted,
+    cursorColor = wGreen,
+    focusedLabelColor = Color(0xFFB2DAFF),
+    unfocusedLabelColor = wMuted,
+    focusedPlaceholderColor = wMuted,
+    unfocusedPlaceholderColor = wMuted,
+    focusedLeadingIconColor = Color(0xFF83BCFF),
+    unfocusedLeadingIconColor = wMuted,
+    focusedTrailingIconColor = Color(0xFF83BCFF),
+    unfocusedTrailingIconColor = wMuted,
+    focusedBorderColor = Color(0xFF348DDD),
+    unfocusedBorderColor = wBorder,
+    focusedContainerColor = wInput,
+    unfocusedContainerColor = wInput
+)
 
 private fun wTr(lang: Lang, english: String, farsi: String): String = tr(lang, english, farsi)
 
@@ -196,7 +220,7 @@ private fun CryptoLogo(coin: CryptoCoin, modifier: Modifier = Modifier.size(37.d
     val iconUrl = "https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/128/color/" +
         coin.code.lowercase() + ".png"
     Surface(
-        color = Color(0xFFF0F3F8), shape = RoundedCornerShape(50),
+        color = Color(0xFF2A2B30), shape = RoundedCornerShape(50),
         modifier = modifier
     ) {
         Box(contentAlignment = Alignment.Center) {
@@ -213,10 +237,10 @@ private fun WalletMenuRow(
     title: String, subtitle: String, leading: @Composable () -> Unit,
     onClick: () -> Unit, modifier: Modifier = Modifier
 ) {
-    Surface(color = Color(0xFFF8FAFD), shape = RoundedCornerShape(15.dp),
+    Surface(color = wPanel, shape = RoundedCornerShape(15.dp),
         border = BorderStroke(1.dp, wBorder),
         modifier = modifier.fillMaxWidth().clickable(onClick = onClick)) {
-        Row(Modifier.padding(11.dp), verticalAlignment = Alignment.CenterVertically) {
+        Row(Modifier.padding(horizontal = 12.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
             leading()
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
@@ -493,7 +517,8 @@ fun WalletTransferSheet(
 
     ModalBottomSheet(
         onDismissRequest = { if (!busy) onDismiss() },
-        containerColor = Color.White,
+        containerColor = wCanvas,
+        scrimColor = Color.Black.copy(alpha = .7f),
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     ) {
         Column(
@@ -503,60 +528,43 @@ fun WalletTransferSheet(
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             if (receipt == null) {
-                Surface(
-                    shape = RoundedCornerShape(23.dp),
-                    color = Color(0xFF102953),
-                    modifier = Modifier.fillMaxWidth()
+                // Compact dark header: no oversized gradient hero or wasted space.
+                Row(
+                    Modifier.fillMaxWidth().padding(vertical = 3.dp),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Box(Modifier.fillMaxWidth().background(
-                        Brush.linearGradient(listOf(
-                            Color(0xFF10284D),
-                            if (isDeposit) Color(0xFF0F5A65) else Color(0xFF133F93),
-                            Color(0xFF087FF5)
-                        )))) {
-                        Box(Modifier.align(Alignment.TopEnd)
-                            .offset(x = 40.dp, y = (-58).dp).size(154.dp)
-                            .clip(CircleShape).background(Color.White.copy(alpha = .07f)))
-                        Row(Modifier.fillMaxWidth().padding(
-                            start = 15.dp, end = 6.dp, top = 15.dp, bottom = 15.dp),
-                            verticalAlignment = Alignment.CenterVertically) {
-                            Surface(
-                                color = Color.White.copy(alpha = .13f),
-                                shape = RoundedCornerShape(14.dp),
-                                border = BorderStroke(1.dp, Color.White.copy(alpha = .19f))
-                            ) {
-                                Icon(
-                                    if (isDeposit) Icons.Default.SouthWest else Icons.Default.NorthEast,
-                                    null, tint = Color.White,
-                                    modifier = Modifier.padding(11.dp).size(22.dp))
-                            }
-                            Spacer(Modifier.width(11.dp))
-                            Column(Modifier.weight(1f)) {
-                                Text(
-                                    if (isDeposit) wTr(lang,"Add funds","واریز وجه")
-                                    else wTr(lang,"Withdraw funds","برداشت وجه"),
-                                    color = Color.White,
-                                    fontSize = 20.sp, fontWeight = FontWeight.Black)
-                                Text(wTr(lang,"BETVIMA · VERIFIED PAYMENT FLOW",
-                                    "بت‌ویما · عملیات مالی امن"),
-                                    color = Color.White.copy(alpha = .77f),
-                                    fontSize = 10.sp, fontWeight = FontWeight.Bold)
-                            }
-                            IconButton(onClick = onDismiss, enabled = !busy) {
-                                Icon(Icons.Default.Close, wTr(lang,"Close","بستن"),
-                                    tint = Color.White)
-                            }
-                        }
+                    Surface(
+                        color = Color(0xFF193B5B),
+                        shape = RoundedCornerShape(13.dp),
+                        border = BorderStroke(1.dp, Color(0xFF32649A))
+                    ) {
+                        Icon(if (isDeposit) Icons.Default.SouthWest else Icons.Default.NorthEast,
+                            null, tint = Color(0xFFB2DAFF),
+                            modifier = Modifier.padding(10.dp).size(21.dp))
+                    }
+                    Spacer(Modifier.width(11.dp))
+                    Column(Modifier.weight(1f)) {
+                        Text(if (isDeposit) wTr(lang, "Add funds", "واریز وجه")
+                            else wTr(lang, "Withdraw funds", "برداشت وجه"),
+                            color = Color.White, fontSize = 19.sp,
+                            fontWeight = FontWeight.Black)
+                        Text(wTr(lang, "Secure wallet transfer", "انتقال امن کیف پول"),
+                            color = wMuted, fontSize = 10.sp)
+                    }
+                    IconButton(onClick = onDismiss, enabled = !busy) {
+                        Icon(Icons.Default.Close, wTr(lang, "Close", "بستن"),
+                            tint = Color(0xFFD6D9DF))
                     }
                 }
+                // Security status is concise; all balances and provider rules remain server-owned.
                 Row(verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier.fillMaxWidth()) {
-                    Icon(Icons.Default.VerifiedUser, null, tint = Color(0xFF0C9363),
-                        modifier = Modifier.size(17.dp))
+                    Icon(Icons.Default.VerifiedUser, null, tint = Color(0xFF68D8AA),
+                        modifier = Modifier.size(15.dp))
                     Spacer(Modifier.width(7.dp))
-                    Text(wTr(lang, "Payments use the same secure account as the website",
-                        "پرداخت‌ها با همان حساب امن سایت انجام می‌شوند"),
-                        color = wMuted, fontSize = 11.sp)
+                    Text(wTr(lang, "Payments use your secured BetVima account",
+                        "پرداخت‌ها از حساب امن بت‌ویما انجام می‌شوند"),
+                        color = wMuted, fontSize = 10.sp)
                 }
                 Text(wTr(lang,"PAYMENT METHOD","روش پرداخت"),
                     color = wMuted, fontSize = 10.sp,
@@ -565,30 +573,30 @@ fun WalletTransferSheet(
                     listOf("crypto","voucher_uvoucher","voucher_hotvoucher").forEach { option ->
                         val selected = method == option
                         Surface(
-                            color = if (selected) Color(0xFFEAF3FF) else Color(0xFFF7F9FC),
+                            color = if (selected) Color(0xFF173550) else wPanel,
                             border = BorderStroke(if (selected) 1.6.dp else 1.dp,
                                 if (selected) wBlue else wBorder),
-                            shape = RoundedCornerShape(15.dp),
-                            modifier = Modifier.weight(1f).clickable {
+                            shape = RoundedCornerShape(14.dp),
+                            modifier = Modifier.weight(1f).height(76.dp).clickable {
                                 if (!busy) { method = option; amount = ""; error = null }
                             }
                         ) {
-                            Column(Modifier.padding(vertical = 10.dp),
+                            Column(Modifier.padding(vertical = 8.dp),
                                 horizontalAlignment = Alignment.CenterHorizontally) {
                                 Surface(
                                     color = if (selected) wBlue else Color.White,
                                     shape = CircleShape
                                 ) {
                                     Text(if (option == "crypto") "₿" else if (option == "voucher_uvoucher")
-                                        "🎟" else "🎫", fontSize = 19.sp,
-                                        modifier = Modifier.padding(horizontal = 9.dp, vertical = 5.dp))
+                                        "🎟" else "🎫", fontSize = 16.sp,
+                                        modifier = Modifier.padding(horizontal = 7.dp, vertical = 4.dp))
                                 }
                                 Spacer(Modifier.height(4.dp))
                                 Text(when (option) {
                                     "crypto" -> "Crypto"
                                     "voucher_uvoucher" -> "U-Voucher"
                                     else -> "HotVoucher"
-                                }, color = if (selected) wBlue else wText,
+                                }, color = if (selected) Color(0xFF76BBFF) else wText,
                                     fontSize = 10.sp, fontWeight = FontWeight.Black)
                             }
                         }
@@ -609,7 +617,7 @@ fun WalletTransferSheet(
                         onClick = { picker = "network" }
                     )
                 } else {
-                    Surface(color = Color(0xFFF5F3FF), shape = RoundedCornerShape(12.dp)) {
+                    Surface(color = wPanel, shape = RoundedCornerShape(12.dp)) {
                         Row(Modifier.padding(11.dp), verticalAlignment = Alignment.CenterVertically) {
                             Icon(Icons.Default.LocalOffer, null, tint = Color(0xFF6D28D9))
                             Spacer(Modifier.width(8.dp))
@@ -636,6 +644,7 @@ fun WalletTransferSheet(
                     keyboardOptions = KeyboardOptions(keyboardType =
                         if (voucherFiat) KeyboardType.Number else KeyboardType.Decimal),
                     singleLine = true, shape = RoundedCornerShape(14.dp),
+                    colors = walletFieldColors(),
                     modifier = Modifier.fillMaxWidth(),
                     trailingIcon = {
                         if (!isDeposit) TextButton(onClick = {
@@ -657,7 +666,7 @@ fun WalletTransferSheet(
                 if (voucherFiat) {
                     Row(Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(9.dp)) {
-                        Surface(Modifier.weight(1f), color = Color(0xFFF5F8FC),
+                        Surface(Modifier.weight(1f), color = wPanel,
                             border = BorderStroke(1.dp, wBorder),
                             shape = RoundedCornerShape(13.dp)) {
                             Column(Modifier.padding(11.dp)) {
@@ -668,7 +677,7 @@ fun WalletTransferSheet(
                                     fontWeight = FontWeight.Black)
                             }
                         }
-                        Surface(Modifier.weight(1f), color = Color(0xFFF5F8FC),
+                        Surface(Modifier.weight(1f), color = wPanel,
                             border = BorderStroke(1.dp, wBorder),
                             shape = RoundedCornerShape(13.dp)) {
                             Column(Modifier.padding(11.dp)) {
@@ -722,7 +731,7 @@ fun WalletTransferSheet(
                     }
                 }
                 if (voucher && currency != "USD") {
-                    Surface(color = Color(0xFFEEF4FF), shape = RoundedCornerShape(13.dp)) {
+                    Surface(color = wPanel, shape = RoundedCornerShape(13.dp)) {
                         Column(Modifier.padding(11.dp)) {
                             Text(rateVoucherText(quote, lang), color = wText, fontSize = 10.sp)
                             Text(wTr(lang,
@@ -779,7 +788,7 @@ fun WalletTransferSheet(
                 }
                 if (loading) LinearProgressIndicator(Modifier.fillMaxWidth(), color = wBlue)
                 if (!loading && !methodEnabled) {
-                    Surface(color = Color(0xFFFFF2EF), shape = RoundedCornerShape(12.dp)) {
+                    Surface(color = Color(0xFF352527), shape = RoundedCornerShape(12.dp)) {
                         Text(
                             wTr(lang,"Payment method is disabled by the server.",
                                 "این روش پرداخت توسط سرور غیرفعال است.") +
@@ -791,8 +800,8 @@ fun WalletTransferSheet(
                     }
                 }
                 if (uncertainResult) {
-                    Surface(color = Color(0xFFFFF7E9), shape = RoundedCornerShape(15.dp),
-                        border = BorderStroke(1.dp, Color(0xFFF1D3A5))) {
+                    Surface(color = Color(0xFF312A22), shape = RoundedCornerShape(15.dp),
+                        border = BorderStroke(1.dp, Color(0xFF5D4830))) {
                         Column(Modifier.fillMaxWidth().padding(13.dp),
                             verticalArrangement = Arrangement.spacedBy(9.dp)) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -819,7 +828,7 @@ fun WalletTransferSheet(
                     }
                 }
                 if (error != null) {
-                    Surface(color = Color(0xFFFFF1F1), shape = RoundedCornerShape(12.dp)) {
+                    Surface(color = Color(0xFF392428), shape = RoundedCornerShape(12.dp)) {
                         Text(error.orEmpty(), color = Color(0xFFBC344A),
                             fontSize = 11.sp, modifier = Modifier.padding(11.dp))
                     }
@@ -839,8 +848,8 @@ fun WalletTransferSheet(
                 }
                 Button(onClick = { confirm = true },
                     enabled = !busy && !loading && !uncertainResult && issue == null,
-                    modifier = Modifier.fillMaxWidth().height(53.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = wBlue),
+                    modifier = Modifier.fillMaxWidth().height(50.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF08BE83)),
                     shape = RoundedCornerShape(15.dp)) {
                     if (busy) CircularProgressIndicator(Modifier.size(18.dp),
                         color = Color.White, strokeWidth = 2.dp)
@@ -884,7 +893,8 @@ fun WalletTransferSheet(
     if (picker.isNotBlank()) {
         ModalBottomSheet(
             onDismissRequest = { picker = ""; coinSearch = "" },
-            containerColor = Color(0xFFF9FBFD),
+            containerColor = wCanvas,
+            scrimColor = Color.Black.copy(alpha = .72f),
             sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
         ) {
             Column(
@@ -892,7 +902,7 @@ fun WalletTransferSheet(
                 verticalArrangement = Arrangement.spacedBy(13.dp)
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Surface(color = Color(0xFFE9F2FF),
+                    Surface(color = Color(0xFF203651),
                         shape = RoundedCornerShape(13.dp)) {
                         Icon(
                             if (picker == "coin") Icons.Default.CurrencyBitcoin
@@ -995,7 +1005,7 @@ fun WalletTransferSheet(
                         }
                     }
                 }
-                Surface(color = Color(0xFFFFF7E8),
+                Surface(color = Color(0xFF302A20),
                     shape = RoundedCornerShape(13.dp)) {
                     Row(Modifier.fillMaxWidth().padding(12.dp),
                         verticalAlignment = Alignment.CenterVertically) {
