@@ -138,9 +138,8 @@ def build(code: str, version: str) -> None:
             os.fsync(f.fileno())
         if not cert_valid(Path(temp_path)):
             fail("copied_apk_invalid")
-        web = pwd.getpwnam("novaadmin")
-        os.chown(temp_path, web.pw_uid, web.pw_gid)
-        os.chmod(temp_path, 0o640)
+        os.chown(temp_path, 0, 0)
+        os.chmod(temp_path, 0o644)
         if output.exists():
             fail("destination_appeared_during_build")
         os.replace(temp_path, output)
