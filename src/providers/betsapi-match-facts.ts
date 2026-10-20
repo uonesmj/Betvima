@@ -81,6 +81,7 @@ export interface MatchBackground {
 type Metric = { key: string; en: string; fa: string; codes: string[] };
 const METRICS: Metric[] = [
   { key: 'corners', en: 'Corners', fa: 'کرنر', codes: ['corners', 'corner', 'icorner'] },
+  { key: 'penalties', en: 'Penalties', fa: 'پنالتی‌ها', codes: ['penalties', 'penalty', 'ipenalty', 'penaltiesawarded'] },
   { key: 'throwins', en: 'Throw-ins', fa: 'اوت دستی', codes: ['throwins', 'throwin', 'ithrowin'] },
   { key: 'fouls', en: 'Fouls', fa: 'خطا', codes: ['fouls', 'foul', 'ifoul'] },
   { key: 'offsides', en: 'Offsides', fa: 'آفساید', codes: ['offsides', 'offside', 'ioffside'] },
