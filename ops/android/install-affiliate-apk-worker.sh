@@ -27,9 +27,9 @@ install -d -o root -g root -m 0755 "$ROOT/failed"
 install -d -o root -g root -m 0755 "$ROOT/running"
 install -d -o novaadmin -g novaadmin -m 0700 "$ROOT/queue"
 install -d -o betvimaapk -g betvimaapk -m 0700 "$ROOT/home" "$ROOT/home/.gradle"
-install -d -o novaadmin -g novaadmin -m 0750 "$DOWNLOADS"
+install -d -o root -g root -m 0755 "$DOWNLOADS"
 if [[ ! -e "$DOWNLOADS/.native-build.lock" ]]; then
-  install -o novaadmin -g novaadmin -m 0640 /dev/null "$DOWNLOADS/.native-build.lock"
+  install -o root -g root -m 0640 /dev/null "$DOWNLOADS/.native-build.lock"
 fi
 [[ -f "$DOWNLOADS/.native-build.lock" && ! -L "$DOWNLOADS/.native-build.lock" ]] || fail unsafe_lockfile
 exec 9>>"$DOWNLOADS/.native-build.lock"
