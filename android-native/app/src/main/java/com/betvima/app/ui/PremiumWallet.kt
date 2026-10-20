@@ -31,9 +31,11 @@ import java.time.Instant
 
 private val walletBlue = Color(0xFF087FF5)
 private val walletGreen = Color(0xFF00D47A)
-private val walletInk = Color(0xFF172033)
-private val walletMute = Color(0xFF748195)
-private val walletEdge = Color(0xFFE1E7EF)
+private val walletInk = Color(0xFFF3F4F7)
+private val walletMute = Color(0xFFA5A8B2)
+private val walletEdge = Color(0xFF39393D)
+private val walletCanvas = Palette.headerDark
+private val walletPanel = Color(0xFF222224)
 
 @Composable
 private fun WalletAction(
@@ -41,21 +43,19 @@ private fun WalletAction(
     dark: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier
 ) {
     Surface(
-        modifier = modifier.clickable(onClick = onClick),
-        color = if (dark) walletBlue else Color.White,
-        shape = RoundedCornerShape(17.dp),
-        border = BorderStroke(1.dp, if (dark) walletBlue else walletEdge),
-        shadowElevation = if (dark) 3.dp else 1.dp
+        modifier = modifier.height(68.dp).clickable(onClick = onClick),
+        color = walletPanel,
+        shape = RoundedCornerShape(16.dp),
+        border = BorderStroke(1.dp,
+            if (dark) walletBlue.copy(alpha = .65f) else walletEdge)
     ) {
-        Column(Modifier.fillMaxWidth().padding(vertical = 13.dp, horizontal = 9.dp),
+        Column(Modifier.fillMaxSize().padding(vertical = 9.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(5.dp)) {
-            Icon(icon, null, tint = if (dark) Color.White else walletBlue,
-                modifier = Modifier.size(22.dp))
-            Text(name, color = if (dark) Color.White else walletInk,
-                fontSize = 12.sp, fontWeight = FontWeight.Black)
-            Text(detail, color = if (dark) Color.White.copy(alpha = .72f) else walletMute,
-                fontSize = 10.sp, maxLines = 1)
+            verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Icon(icon, null, tint = if (dark) Color(0xFF70B9FF) else Color(0xFFE0E2E7),
+                modifier = Modifier.size(20.dp))
+            Text(name, color = Color.White, fontSize = 11.sp,
+                fontWeight = FontWeight.SemiBold, maxLines = 1)
         }
     }
 }
@@ -64,29 +64,29 @@ private fun WalletAction(
 private fun WalletSummary(state: AppState, wallet: Wallet) {
     val lang = state.lang
     Surface(
-        shape = RoundedCornerShape(27.dp),
+        shape = RoundedCornerShape(21.dp),
         modifier = Modifier.fillMaxWidth(),
-        shadowElevation = 6.dp,
+        shadowElevation = 1.dp,
         color = Color(0xFF0C2346)
     ) {
         Box {
             Box(
                 Modifier.matchParentSize().background(
                     Brush.linearGradient(
-                        listOf(Color(0xFF081E3D), Color(0xFF123D7A), Color(0xFF087FF5))
+                        listOf(Color(0xFF0B2345), Color(0xFF103E79), Color(0xFF0B63B9))
                     )
                 )
             )
             // Subtle glass-like circles provide depth without a static bitmap.
             Box(Modifier.align(Alignment.TopEnd).offset(x = 72.dp, y = (-74).dp)
-                .size(218.dp).clip(CircleShape)
-                .background(Color.White.copy(alpha = .055f)))
+                .size(150.dp).clip(CircleShape)
+                .background(Color.White.copy(alpha = .03f)))
             Box(Modifier.align(Alignment.BottomStart).offset(x = (-82).dp, y = 89.dp)
-                .size(180.dp).clip(CircleShape)
-                .background(walletGreen.copy(alpha = .075f)))
+                .size(120.dp).clip(CircleShape)
+                .background(walletGreen.copy(alpha = .04f)))
             Column(
-                Modifier.fillMaxWidth().padding(19.dp),
-                verticalArrangement = Arrangement.spacedBy(17.dp)
+                Modifier.fillMaxWidth().padding(15.dp),
+                verticalArrangement = Arrangement.spacedBy(11.dp)
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Surface(color = walletGreen.copy(alpha = .14f),
@@ -94,7 +94,7 @@ private fun WalletSummary(state: AppState, wallet: Wallet) {
                         border = BorderStroke(1.dp, walletGreen.copy(alpha = .35f))) {
                         Icon(Icons.Default.AccountBalanceWallet, null,
                             tint = walletGreen,
-                            modifier = Modifier.padding(10.dp).size(21.dp))
+                            modifier = Modifier.padding(7.dp).size(19.dp))
                     }
                     Spacer(Modifier.width(10.dp))
                     Column(Modifier.weight(1f)) {
@@ -139,7 +139,7 @@ private fun WalletSummary(state: AppState, wallet: Wallet) {
                         )
                     }
                     Text(money(wallet.availableMinor, wallet.currency),
-                        color = Color.White, fontSize = 30.sp,
+                        color = Color.White, fontSize = 27.sp,
                         fontWeight = FontWeight.Black, maxLines = 1,
                         overflow = TextOverflow.Ellipsis)
                 }
@@ -152,12 +152,12 @@ private fun WalletSummary(state: AppState, wallet: Wallet) {
                     ).forEach { (icon, label, minor) ->
                         Surface(
                             color = Color.White.copy(alpha = .105f),
-                            shape = RoundedCornerShape(15.dp),
-                            border = BorderStroke(1.dp, Color.White.copy(alpha = .105f)),
+                            shape = RoundedCornerShape(12.dp),
+                            border = BorderStroke(1.dp, Color.White.copy(alpha = .10f)),
                             modifier = Modifier.weight(1f)
                         ) {
-                            Column(Modifier.padding(11.dp),
-                                verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                            Column(Modifier.padding(9.dp),
+                                verticalArrangement = Arrangement.spacedBy(4.dp)) {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
                                     Icon(icon, null, tint = Color(0xFFBBD9F5),
                                         modifier = Modifier.size(14.dp))
@@ -213,13 +213,13 @@ private fun WalletPaymentRow(
     val incoming = payment.direction == "deposit"
     Surface(
         modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
-        color = Color.White, shape = RoundedCornerShape(16.dp),
+        color = walletPanel, shape = RoundedCornerShape(15.dp),
         border = BorderStroke(1.dp, walletEdge)
     ) {
-        Row(Modifier.fillMaxWidth().padding(12.dp),
+        Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically) {
             Surface(
-                color = if (incoming) Color(0xFFEAF9F1) else Color(0xFFEEF4FF),
+                color = if (incoming) Color(0xFF183B31) else Color(0xFF202E43),
                 shape = RoundedCornerShape(13.dp)
             ) {
                 Icon(if (incoming) Icons.Default.SouthWest else Icons.Default.NorthEast,
@@ -238,13 +238,13 @@ private fun WalletPaymentRow(
             Column(horizontalAlignment = Alignment.End) {
                 Text((if (incoming) "+" else "−") +
                     money(payment.amountMinor, payment.currency),
-                    color = if (incoming) Color(0xFF087D4D) else walletInk,
+                    color = if (incoming) Color(0xFF54D7A4) else walletInk,
                     fontSize = 12.sp, fontWeight = FontWeight.Black)
                 Text(walletStatusText(payment.status, lang),
                     color = when (payment.status.lowercase()) {
-                        "succeeded" -> Color(0xFF087D4D)
-                        "failed", "cancelled" -> Color(0xFFCA3655)
-                        else -> Color(0xFF8A6400)
+                        "succeeded" -> Color(0xFF54D7A4)
+                        "failed", "cancelled" -> Color(0xFFFF879A)
+                        else -> Color(0xFFFFD488)
                     }, fontSize = 10.sp)
             }
         }
@@ -263,9 +263,9 @@ fun PremiumWalletPage(state: AppState, model: AppViewModel) {
     val wallet = state.wallet
 
     LazyColumn(
-        modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(horizontal = 15.dp, vertical = 13.dp),
-        verticalArrangement = Arrangement.spacedBy(13.dp)
+        modifier = Modifier.fillMaxSize().background(walletCanvas),
+        contentPadding = PaddingValues(horizontal = 15.dp, vertical = 15.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
     , flingBehavior = rememberPremiumFlingBehavior()) {
         item {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -301,20 +301,6 @@ fun PremiumWalletPage(state: AppState, model: AppViewModel) {
             } else {
                 item { WalletSummary(state, wallet) }
                 item {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(tr(lang, "QUICK ACTIONS", "دسترسی سریع"),
-                            color = walletMute, fontSize = 10.sp,
-                            fontWeight = FontWeight.Black, letterSpacing = .7.sp)
-                        Spacer(Modifier.weight(1f))
-                        Icon(Icons.Default.Shield, null, tint = Color(0xFF0A9760),
-                            modifier = Modifier.size(14.dp))
-                        Spacer(Modifier.width(4.dp))
-                        Text(tr(lang,"Secure payments","پرداخت امن"),
-                            color = Color(0xFF087D4D), fontSize = 10.sp,
-                            fontWeight = FontWeight.Bold)
-                    }
-                }
-                item {
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         WalletAction(tr(lang,"Deposit","واریز"),
                             tr(lang,"Add funds","شارژ حساب"),
@@ -331,8 +317,8 @@ fun PremiumWalletPage(state: AppState, model: AppViewModel) {
                     }
                 }
                 if (wallet.integrity != "ok") item {
-                    Surface(color = Color(0xFFFFF1ED), shape = RoundedCornerShape(14.dp),
-                        border = BorderStroke(1.dp, Color(0xFFFFD2C5))) {
+                    Surface(color = Color(0xFF352527), shape = RoundedCornerShape(14.dp),
+                        border = BorderStroke(1.dp, Color(0xFF68464B))) {
                         Row(Modifier.padding(13.dp), verticalAlignment = Alignment.CenterVertically) {
                             Icon(Icons.Default.WarningAmber, null, tint = Color(0xFFB5472F))
                             Spacer(Modifier.width(9.dp))
@@ -376,7 +362,7 @@ fun PremiumWalletPage(state: AppState, model: AppViewModel) {
                 }
                 val payments = wallet.payments.filter { filter == "all" || it.direction == filter }
                 if (payments.isEmpty()) item {
-                    Surface(color = Color.White, shape = RoundedCornerShape(17.dp),
+                    Surface(color = walletPanel, shape = RoundedCornerShape(17.dp),
                         border = BorderStroke(1.dp, walletEdge)) {
                         Column(
                             Modifier.fillMaxWidth().padding(20.dp),
@@ -397,14 +383,13 @@ fun PremiumWalletPage(state: AppState, model: AppViewModel) {
                     WalletPaymentRow(payment, lang) { detail = payment }
                 }
                 item {
-                    OutlinedButton(
-                        onClick = { activeSheet = "history" },
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(14.dp)
-                    ) {
-                        Icon(Icons.Default.ReceiptLong, null, modifier = Modifier.size(18.dp))
-                        Spacer(Modifier.width(7.dp))
-                        Text(tr(lang, "View all activity", "مشاهده کل گردش حساب"))
+                    TextButton(onClick = { activeSheet = "history" },
+                        modifier = Modifier.fillMaxWidth()) {
+                        Text(tr(lang, "View all activity", "مشاهده کل گردش حساب"),
+                            color = Color(0xFF70B9FF), fontSize = 12.sp)
+                        Spacer(Modifier.width(6.dp))
+                        Icon(Icons.Default.ArrowForward, null, tint = Color(0xFF70B9FF),
+                            modifier = Modifier.size(15.dp))
                     }
                 }
             }
@@ -429,7 +414,7 @@ fun PremiumWalletPage(state: AppState, model: AppViewModel) {
         }
         ModalBottomSheet(
             onDismissRequest = hideHistory,
-            containerColor = Color(0xFFF8FAFD),
+            containerColor = walletCanvas,
             sheetState = historySheet
         ) {
             WalletHistorySheet(state, model, onDetail = { detail = it })
@@ -484,28 +469,42 @@ private fun WalletHistorySheet(
         verticalArrangement = Arrangement.spacedBy(11.dp)) {
         Text(tr(lang, "Transaction history", "تاریخچه تراکنش‌ها"),
             color = walletInk, fontSize = 19.sp, fontWeight = FontWeight.Black)
-        SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
-            listOf("ledger", "payments").forEachIndexed { index, v ->
-                SegmentedButton(
-                    selected = mode == v, onClick = { mode = v },
-                    shape = SegmentedButtonDefaults.itemShape(index, 2),
-                    label = { Text(if (v == "ledger")
-                        tr(lang, "Account ledger", "گردش حساب")
-                    else tr(lang, "Payments", "پرداخت‌ها")) }
-                )
+        Row(
+            Modifier.fillMaxWidth().background(walletPanel, RoundedCornerShape(13.dp))
+                .padding(3.dp), horizontalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            listOf("ledger", "payments").forEach { choice ->
+                Surface(
+                    modifier = Modifier.weight(1f).height(39.dp)
+                        .clickable { mode = choice },
+                    color = if (mode == choice) walletBlue else Color.Transparent,
+                    shape = RoundedCornerShape(10.dp)
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Text(if (choice == "ledger") tr(lang, "Account ledger", "گردش حساب")
+                            else tr(lang, "Payments", "پرداخت‌ها"),
+                            color = if (mode == choice) Color.White else walletMute,
+                            fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                    }
+                }
             }
         }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            listOf("all", "credit", "debit").forEach { option ->
-                FilterChip(
-                    selected = filter == option,
-                    onClick = { filter = option },
-                    label = { Text(when(option) {
-                        "credit" -> tr(lang,"Incoming","ورودی")
-                        "debit" -> tr(lang,"Outgoing","خروجی")
-                        else -> tr(lang,"All","همه")
-                    }, fontSize = 11.sp) }
-                )
+            listOf("all", "credit", "debit").forEach { choice ->
+                Surface(
+                    modifier = Modifier.clickable { filter = choice },
+                    shape = RoundedCornerShape(10.dp),
+                    color = if (filter == choice) Color(0xFF163B63) else walletPanel,
+                    border = BorderStroke(1.dp,
+                        if (filter == choice) walletBlue else walletEdge)
+                ) {
+                    Text(when(choice) {
+                        "credit" -> tr(lang, "Incoming", "ورودی")
+                        "debit" -> tr(lang, "Outgoing", "خروجی")
+                        else -> tr(lang, "All", "همه")
+                    }, modifier = Modifier.padding(horizontal = 11.dp, vertical = 9.dp),
+                        color = Color.White, fontSize = 11.sp)
+                }
             }
         }
         LazyColumn(Modifier.fillMaxWidth().heightIn(max = 430.dp),
@@ -519,7 +518,7 @@ private fun WalletHistorySheet(
                         color = walletMute)
                 }
                 items(entries, key = { it.id }) { entry ->
-                    Surface(color = Color.White, shape = RoundedCornerShape(13.dp),
+                    Surface(color = walletPanel, shape = RoundedCornerShape(13.dp),
                         modifier = Modifier.fillMaxWidth(),
                         border = BorderStroke(1.dp, walletEdge)) {
                         Row(Modifier.fillMaxWidth().padding(12.dp),
@@ -530,12 +529,12 @@ private fun WalletHistorySheet(
                                 else walletBlue, modifier = Modifier.size(20.dp))
                             Spacer(Modifier.width(10.dp))
                             Column(Modifier.weight(1f)) {
-                                Text(entry.type.replace("_", " "),
+                                Text(entry.type.replace("_", " "), color = walletInk,
                                     fontSize = 12.sp, fontWeight = FontWeight.Bold)
                                 Text(walletDate(entry.time), fontSize = 10.sp, color = walletMute)
                             }
                             Column(horizontalAlignment = Alignment.End) {
-                                Text(money(entry.amountMinor, wallet.currency),
+                                Text(money(entry.amountMinor, wallet.currency), color = walletInk,
                                     fontWeight = FontWeight.Black, fontSize = 12.sp)
                                 IconButton(onClick = {
                                     clipboard.setText(AnnotatedString(entry.id))
