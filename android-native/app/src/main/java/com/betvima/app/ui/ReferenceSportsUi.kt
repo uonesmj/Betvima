@@ -55,6 +55,7 @@ import kotlin.math.min
  */
 @Composable
 fun SportsbookTopTabs(state: AppState, model: AppViewModel, onSearch: () -> Unit) {
+    val darkHome = LocalDarkHome.current
     val tabs = listOf(
         "top" to tr(state.lang, "Top", "برتر"),
         "live" to tr(state.lang, "Live", "زنده"),
@@ -79,7 +80,8 @@ fun SportsbookTopTabs(state: AppState, model: AppViewModel, onSearch: () -> Unit
             tabListState.animateScrollToItem(index)
         }
     }
-    Row(Modifier.fillMaxWidth().background(Palette.paper)
+    Row(Modifier.fillMaxWidth().background(
+        if (darkHome) DarkHomePalette.canvas else Palette.paper)
         .padding(start = 6.dp, end = 6.dp, top = 10.dp, bottom = 4.dp),
         verticalAlignment = Alignment.CenterVertically) {
         LazyRow(Modifier.weight(1f), state = tabListState,
@@ -89,7 +91,7 @@ fun SportsbookTopTabs(state: AppState, model: AppViewModel, onSearch: () -> Unit
             items(tabs, key = { it.first }) { (id, title) ->
                 val isActive = active == id
                 val pillColor by animateColorAsState(
-                    if (isActive) Color.White else Color.Transparent,
+                    if (isActive && darkHome) Palette.blue else if (isActive) Color.White else Color.Transparent,
                     animationSpec = tween(250), label = "topPillColor")
                 val pillScale by animateFloatAsState(
                     if (isActive) 1f else .96f,
@@ -123,7 +125,7 @@ fun SportsbookTopTabs(state: AppState, model: AppViewModel, onSearch: () -> Unit
                             }
                             Spacer(Modifier.width(5.dp))
                         }
-                        Text(title, color = Palette.text, fontWeight =
+                        Text(title, color = if (darkHome) DarkHomePalette.ink else Palette.text, fontWeight =
                             if (active == id) FontWeight.Black else FontWeight.ExtraBold,
                             fontSize = 14.sp, maxLines = 1, softWrap = false)
                     }
@@ -136,7 +138,7 @@ fun SportsbookTopTabs(state: AppState, model: AppViewModel, onSearch: () -> Unit
         }
         IconButton(onClick = onSearch, modifier = Modifier.size(46.dp)) {
             Icon(Icons.Default.Search, tr(state.lang, "Search fixtures", "جست‌وجوی مسابقات"),
-                tint = Palette.text, modifier = Modifier.size(24.dp))
+                tint = if (darkHome) DarkHomePalette.ink else Palette.text, modifier = Modifier.size(24.dp))
         }
     }
 }
@@ -237,6 +239,7 @@ internal fun homeSectionIdentity(titleEn: String): HomeSectionIdentity = when (t
 private fun PremiumHomeSectionEmblem(
     identity: HomeSectionIdentity, fallbackIcon: ImageVector, fallbackTint: Color
 ) {
+    val darkHome = LocalDarkHome.current
     val startColor: Color
     val endColor: Color
     val emblem: ImageVector
@@ -276,7 +279,7 @@ private fun PremiumHomeSectionEmblem(
         Surface(
             modifier = Modifier.size(46.dp),
             shape = RoundedCornerShape(16.dp),
-            color = Color.White,
+            color = if (darkHome) DarkHomePalette.panel else Color.White,
             border = BorderStroke(1.dp, endColor.copy(alpha = .30f)),
             shadowElevation = 4.dp
         ) {
@@ -317,7 +320,7 @@ private fun PremiumHomeSectionEmblem(
             modifier = Modifier.align(Alignment.BottomEnd).size(17.dp),
             shape = CircleShape,
             color = cornerColor,
-            border = BorderStroke(2.dp, Color.White),
+            border = BorderStroke(2.dp, if (darkHome) DarkHomePalette.canvas else Color.White),
             shadowElevation = 2.dp
         ) {
             Box(contentAlignment = Alignment.Center) {
@@ -337,13 +340,14 @@ private fun PremiumHomeSectionEmblem(
 fun ReferenceSectionHeader(lang: Lang, titleEn: String, titleFa: String,
     icon: ImageVector, tint: Color, onAll: () -> Unit
 ) {
+    val darkHome = LocalDarkHome.current
     Row(Modifier.fillMaxWidth().padding(top = 12.dp, bottom = 9.dp),
         verticalAlignment = Alignment.CenterVertically) {
         PremiumHomeSectionEmblem(homeSectionIdentity(titleEn), icon, tint)
         Spacer(Modifier.width(11.dp))
         Column(Modifier.weight(1f)) {
             Text(tr(lang, titleEn, titleFa), fontWeight = FontWeight.Black,
-                fontSize = 20.sp, color = Palette.text,
+                fontSize = 20.sp, color = if (darkHome) DarkHomePalette.ink else Palette.text,
                 maxLines = 1, overflow = TextOverflow.Ellipsis)
             Spacer(Modifier.height(5.dp))
             Box(Modifier.width(43.dp).height(3.dp)
@@ -464,6 +468,7 @@ internal fun competitionRibbonReveal(
 
 @Composable
 fun ReferenceTournamentRibbon(state: AppState, model: AppViewModel) {
+    val darkHome = LocalDarkHome.current
     val context = LocalContext.current
     val ribbonState = rememberLazyListState()
     val edgeIntensity by animateFloatAsState(
@@ -537,7 +542,8 @@ fun ReferenceTournamentRibbon(state: AppState, model: AppViewModel) {
                     .graphicsLayer { alpha = edgeIntensity }
                     .background(
                         Brush.horizontalGradient(
-                            listOf(Color(0xFFDCEBFF), Palette.paper.copy(alpha = 0f))
+                            listOf(if (darkHome) DarkHomePalette.canvas else Color(0xFFDCEBFF),
+                                 if (darkHome) DarkHomePalette.canvas.copy(alpha = 0f) else Palette.paper.copy(alpha = 0f))
                         ),
                         RoundedCornerShape(topEnd = 18.dp, bottomEnd = 18.dp)
                     )
@@ -550,7 +556,8 @@ fun ReferenceTournamentRibbon(state: AppState, model: AppViewModel) {
                     .graphicsLayer { alpha = edgeIntensity }
                     .background(
                         Brush.horizontalGradient(
-                            listOf(Palette.paper.copy(alpha = 0f), Color(0xFFFFE3F1))
+                            listOf(if (darkHome) DarkHomePalette.canvas.copy(alpha = 0f) else Palette.paper.copy(alpha = 0f),
+                                 if (darkHome) DarkHomePalette.canvas else Color(0xFFFFE3F1))
                         ),
                         RoundedCornerShape(topStart = 18.dp, bottomStart = 18.dp)
                     )
