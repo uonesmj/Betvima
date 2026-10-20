@@ -33,11 +33,11 @@ describe('secure automatic affiliate APK build', () => {
     const approvedSha = 'c7d5cf6cb0ff8b3dd588236a94cb7db5243bbc1d';
     expect(sync).toContain(`SHA='${approvedSha}'`);
     expect(sync).toContain('versionCode[[:space:]]*=[[:space:]]*135');
-    expect(sync).toContain('0\\.134\\.0');
+    expect(sync).toContain('0\\.135\\.0');
     expect(sync).toContain('android_source_installed=v0.135.0');
     expect(install).toContain(approvedSha);
     expect(install).toContain('versionCode[[:space:]]*=[[:space:]]*135');
-    expect(install).toContain('0\\.134\\.0');
+    expect(install).toContain('0\\.135\\.0');
     expect(install).toContain('native_version=0.135.0');
     expect(worker).toContain('int(code.group(1)) < 135');
     expect(route).toContain('const MINIMUM_NATIVE_VERSION = 133');
