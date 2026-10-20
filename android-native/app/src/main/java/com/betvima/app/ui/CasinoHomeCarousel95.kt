@@ -40,6 +40,11 @@ private val casinoCardBlue95 = Color(0xFF087FF5)
  */
 @Composable
 fun CasinoHomeCarousel95(lang: Lang, model: AppViewModel, onViewAll: () -> Unit) {
+    val darkHome = LocalDarkHome.current
+    val cardBackground = if (darkHome) DarkHomePalette.panel else Color.White
+    val cardBorder = if (darkHome) DarkHomePalette.outline else casinoCardBorder95
+    val cardInk = if (darkHome) DarkHomePalette.ink else casinoCardInk95
+    val cardMuted = if (darkHome) DarkHomePalette.muted else casinoCardMuted95
     var games by remember { mutableStateOf<List<CasinoGame>>(emptyList()) }
     var loading by remember { mutableStateOf(true) }
     var refreshSerial by remember { mutableIntStateOf(0) }
@@ -73,22 +78,23 @@ fun CasinoHomeCarousel95(lang: Lang, model: AppViewModel, onViewAll: () -> Unit)
             items(2) {
                 Surface(
                     modifier = Modifier.width(315.dp).height(250.dp),
-                    color = Color.White,
+                    color = cardBackground,
                     shape = RoundedCornerShape(21.dp),
-                    border = BorderStroke(1.dp, casinoCardBorder95)
+                    border = BorderStroke(1.dp, cardBorder)
                 ) {
-                    Box(Modifier.fillMaxSize().background(Color(0xFFF3F6F9)))
+                    Box(Modifier.fillMaxSize().background(
+                        if (darkHome) DarkHomePalette.soft else Color(0xFFF3F6F9)))
                 }
             }
         }
     } else if (games.isEmpty()) {
-        Surface(color = Color.White, shape = RoundedCornerShape(21.dp),
-            border = BorderStroke(1.dp, casinoCardBorder95),
+        Surface(color = cardBackground, shape = RoundedCornerShape(21.dp),
+            border = BorderStroke(1.dp, cardBorder),
             modifier = Modifier.clickable { refreshSerial++ }) {
             Text(tr(lang, "Casino games are unavailable. Tap to retry.",
                 "بازی‌های کازینو در دسترس نیستند. برای تلاش مجدد لمس کنید."),
                 modifier = Modifier.fillMaxWidth().padding(22.dp),
-                color = casinoCardMuted95, fontSize = 12.sp)
+                color = cardMuted, fontSize = 12.sp)
         }
     } else {
         LazyRow(Modifier.fillMaxWidth(),
@@ -104,6 +110,11 @@ fun CasinoHomeCarousel95(lang: Lang, model: AppViewModel, onViewAll: () -> Unit)
 
 @Composable
 private fun CasinoHomeGameCard95(game: CasinoGame, lang: Lang, onOpen: () -> Unit) {
+    val darkHome = LocalDarkHome.current
+    val cardBackground = if (darkHome) DarkHomePalette.panel else Color.White
+    val cardBorder = if (darkHome) DarkHomePalette.outline else casinoCardBorder95
+    val cardInk = if (darkHome) DarkHomePalette.ink else casinoCardInk95
+    val cardMuted = if (darkHome) DarkHomePalette.muted else casinoCardMuted95
     val fa = lang == Lang.FA
     val isLive = game.category.contains("live", ignoreCase = true)
     val categoryName = casinoCategoryLabel(game.category, fa)
@@ -112,16 +123,16 @@ private fun CasinoHomeGameCard95(game: CasinoGame, lang: Lang, onOpen: () -> Uni
     Surface(
         modifier = Modifier.width(315.dp).clickable(onClick = onOpen),
         shape = RoundedCornerShape(21.dp),
-        border = BorderStroke(1.dp, casinoCardBorder95),
-        color = Color.White,
-        shadowElevation = 2.dp
+        border = BorderStroke(1.dp, cardBorder),
+        color = cardBackground,
+        shadowElevation = if (darkHome) 0.dp else 2.dp
     ) {
         Column {
             // The supplied artwork fills the entire upper card, edge to edge.
             // Category badges overlay the image rather than stealing artwork space.
             Box(
                 modifier = Modifier.fillMaxWidth().height(246.dp)
-                    .background(Color(0xFFF3F6F9)),
+                    .background(if (darkHome) DarkHomePalette.soft else Color(0xFFF3F6F9)),
                 contentAlignment = Alignment.Center
             ) {
                 if (game.imageUrl != null && !imageFailed) {
@@ -167,16 +178,16 @@ private fun CasinoHomeGameCard95(game: CasinoGame, lang: Lang, onOpen: () -> Uni
                     }
                 }
             }
-            HorizontalDivider(color = casinoCardBorder95, thickness = .7.dp)
+            HorizontalDivider(color = cardBorder, thickness = .7.dp)
             Column(
                 Modifier.fillMaxWidth().padding(horizontal = 13.dp, vertical = 11.dp),
                 verticalArrangement = Arrangement.spacedBy(6.dp)
             ) {
-                Text(game.name, color = casinoCardInk95,
+                Text(game.name, color = cardInk,
                     fontWeight = FontWeight.ExtraBold, fontSize = 13.sp,
                     maxLines = 1, overflow = TextOverflow.Ellipsis)
                 Text(categoryName + "  ·  " + game.providerName.ifBlank { game.provider },
-                    color = casinoCardMuted95, fontSize = 10.sp,
+                    color = cardMuted, fontSize = 10.sp,
                     maxLines = 1, overflow = TextOverflow.Ellipsis)
                 Spacer(Modifier.height(2.dp))
                 Surface(
