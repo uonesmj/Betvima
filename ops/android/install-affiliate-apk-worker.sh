@@ -16,7 +16,7 @@ for cmd in rsync systemctl useradd python3 flock setpriv; do command -v "$cmd" >
 [[ -f "$SOURCE/.betvima-native-commit" ]] || fail native_revision_unverified
 [[ -f "$SOURCE/app/build.gradle.kts" ]] || fail native_source_missing
 grep -Eq '^[[:space:]]*versionCode[[:space:]]*=[[:space:]]*134[[:space:]]*$' "$SOURCE/app/build.gradle.kts" || fail expected_version_code_134_missing
-grep -Eq '^[[:space:]]*versionName[[:space:]]*=[[:space:]]*"0\.133\.0"[[:space:]]*$' "$SOURCE/app/build.gradle.kts" || fail expected_version_133_missing
+grep -Eq '^[[:space:]]*versionName[[:space:]]*=[[:space:]]*"0\.134\.0"[[:space:]]*$' "$SOURCE/app/build.gradle.kts" || fail expected_version_134_missing
 [[ "$(cat "$SOURCE/.betvima-native-commit")" == "0ea6675bedbc79a18258a1cc4c4452903e23032d" ]] || fail native_sha_unapproved
 [[ "$(stat -c '%u' /etc/betvima/android-signing)" == 0 ]] || fail signing_path_owner_invalid
 
