@@ -106,6 +106,7 @@ internal object HomeLeagueBadgeLayout {
 
 @Composable
 fun LeagueBadgeShortcut(label: String, index: Int, onClick: () -> Unit) {
+    val darkHome = LocalDarkHome.current
     require(index in 0..15) { "Unknown competition artwork index: $index" }
     val context = LocalContext.current
     val strip = index / 4
@@ -151,7 +152,7 @@ fun LeagueBadgeShortcut(label: String, index: Int, onClick: () -> Unit) {
         Spacer(Modifier.height(8.dp))
         Text(
             label, textAlign = TextAlign.Center,
-            color = Palette.text,
+            color = if (darkHome) DarkHomePalette.ink else Palette.text,
             fontWeight = FontWeight.ExtraBold,
             fontSize = 11.sp,
             lineHeight = 15.sp,
