@@ -13,7 +13,7 @@ describe('secure automatic affiliate APK build', () => {
     expect(route).not.toContain('assembleRelease');
     expect(route).not.toContain('BETVIMA_ANDROID_KEYSTORE_PASSWORD');
     expect(route).toContain('RELEASE_CERT_SHA256');
-    expect(route).toContain('APP_BUILD_FAILED_CONTACT_SUPPORT');
+    expect(route).toContain('ANDROID_BUILD_FAILED_CONTACT_SUPPORT');
   });
 
   it('signs within an isolated dedicated builder and validates referral attribution', () => {
