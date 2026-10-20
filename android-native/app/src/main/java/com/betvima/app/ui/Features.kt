@@ -45,22 +45,27 @@ fun FeaturePage(state: AppState, model: AppViewModel) {
         Feature.NOTIFICATIONS -> tr(state.lang, "Notifications", "اعلان‌ها")
         else -> "BetVima"
     }
-    Column {
-        Surface(color = Color.White, shadowElevation = 1.dp) {
+    val darkSupport = state.feature == Feature.SUPPORT
+    Column(Modifier.fillMaxSize().background(
+        if (darkSupport) DarkHomePalette.canvas else Palette.paper)) {
+        Surface(color = if (darkSupport) DarkHomePalette.canvas else Color.White,
+            shadowElevation = if (darkSupport) 0.dp else 1.dp) {
             Row(Modifier.fillMaxWidth().heightIn(min = 54.dp)
                 .padding(horizontal = 10.dp),
                 verticalAlignment = Alignment.CenterVertically) {
                 IconButton(onClick = { model.feature(Feature.NONE) }) {
                     Icon(Icons.Default.ArrowBack,
-                        tr(state.lang, "Back", "بازگشت"), tint = Palette.text)
+                        tr(state.lang, "Back", "بازگشت"), tint = if (darkSupport) DarkHomePalette.ink else Palette.text)
                 }
                 Text(title, fontSize = 17.sp, fontWeight = FontWeight.Black,
-                    color = Palette.text, modifier = Modifier.weight(1f))
+                    color = if (darkSupport) DarkHomePalette.ink else Palette.text,
+                    modifier = Modifier.weight(1f))
                 Surface(color = if (state.feature == Feature.VIP) Color(0xFFEAF4FF)
-                    else Palette.greenLight, shape = RoundedCornerShape(10.dp)) {
+                    else if (darkSupport) DarkHomePalette.panel else Palette.greenLight,
+                    shape = RoundedCornerShape(10.dp)) {
                     Icon(if (state.feature == Feature.VIP) Icons.Default.WorkspacePremium
                         else Icons.Default.VerifiedUser, null,
-                        tint = if (state.feature == Feature.VIP) Palette.blue else Palette.ink,
+                        tint = if (state.feature == Feature.VIP || darkSupport) Palette.blue else Palette.ink,
                         modifier = Modifier.padding(8.dp).size(19.dp))
                 }
             }
