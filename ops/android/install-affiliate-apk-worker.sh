@@ -8,7 +8,7 @@ DOWNLOADS=/var/www/nova/public/downloads/affiliate-app
 WORKER="$(dirname "$0")/affiliate_apk_worker.py"
 fail() { echo "affiliate_worker_install_failed=$1" >&2; exit 1; }
 [[ "$(id -u)" == 0 ]] || fail root_required
-for cmd in rsync systemctl useradd python3 flock; do command -v "$cmd" >/dev/null || fail "missing_$cmd"; done
+for cmd in rsync systemctl useradd python3 flock setpriv; do command -v "$cmd" >/dev/null || fail "missing_$cmd"; done
 [[ -s /etc/betvima/android-signing/betvima-release.jks ]] || fail signing_key_missing
 [[ -s /etc/betvima/android-signing/release.pass ]] || fail signing_password_missing
 [[ -x /opt/gradle/bin/gradle ]] || fail gradle_missing
