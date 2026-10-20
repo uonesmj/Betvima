@@ -464,18 +464,24 @@ fun MatchTile(match: Match, lang: Lang, liveEnabled: Boolean, picks: List<Pick>,
 
 @Composable
 fun EmptyPanel(title: String, detail: String, onRetry: (() -> Unit)? = null) {
-    Surface(color = Color.White, shape = RoundedCornerShape(21.dp),
-        border = BorderStroke(1.dp, Palette.border), modifier = Modifier.fillMaxWidth()) {
+    val darkHome = LocalDarkHome.current
+    Surface(color = if (darkHome) DarkHomePalette.panel else Color.White,
+        shape = RoundedCornerShape(21.dp),
+        border = BorderStroke(1.dp,
+            if (darkHome) DarkHomePalette.outline else Palette.border), modifier = Modifier.fillMaxWidth()) {
         Column(Modifier.padding(horizontal = 24.dp, vertical = 28.dp),
             horizontalAlignment = Alignment.CenterHorizontally) {
-            Surface(color = Palette.paper, shape = CircleShape) {
+            Surface(color = if (darkHome) DarkHomePalette.soft else Palette.paper,
+                shape = CircleShape) {
                 Icon(Icons.Default.TravelExplore, null, tint = Palette.blue,
                     modifier = Modifier.padding(14.dp).size(30.dp))
             }
             Spacer(Modifier.height(12.dp))
-            Text(title, fontWeight = FontWeight.Black, color = Palette.text,
+            Text(title, fontWeight = FontWeight.Black,
+                color = if (darkHome) DarkHomePalette.ink else Palette.text,
                 textAlign = TextAlign.Center, fontSize = 15.sp)
-            Text(detail, textAlign = TextAlign.Center, color = Palette.muted,
+            Text(detail, textAlign = TextAlign.Center,
+                color = if (darkHome) DarkHomePalette.muted else Palette.muted,
                 fontSize = 12.sp, lineHeight = 19.sp,
                 modifier = Modifier.padding(top = 7.dp))
             if (onRetry != null) {
