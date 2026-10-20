@@ -43,6 +43,16 @@ stage="$(mktemp -d "${BASE}/.stage-XXXXXXXX")"
 git clone --quiet --depth 1 --single-branch --branch "${BRANCH}" "${REPO}" "${stage}/repo" \
   || fail 'source_clone_failed'
 actual="$(git -C "${stage}/repo" rev-parse HEAD)"
+if [[ "${actual}" != "${SHA}" ]]; then
+  # Native development can move ahead while an approved web release is
+  # deployed. Fetch the exact reviewed commit instead of rejecting its
+  # pinned revision or silently installing a newer, unreviewed HEAD.
+  git -C "${stage}/repo" fetch --quiet --depth 1 origin "${SHA}" \
+    || fail 'approved_source_commit_fetch_failed'
+  git -C "${stage}/repo" checkout --quiet --detach "${SHA}" \
+    || fail 'approved_source_commit_checkout_failed'
+  actual="$(git -C "${stage}/repo" rev-parse HEAD)"
+fi
 [[ "${actual}" == "${SHA}" ]] || fail 'source_revision_mismatch'
 src="${stage}/repo/android-native"
 [[ -f "${src}/app/build.gradle.kts" ]] || fail 'android_project_not_found'
