@@ -10,7 +10,6 @@ describe('registration output privacy', () => {
     })).toEqual({
       authenticated: false,
       emailConfirmationRequired: true,
-      attributionFromCookie: false,
     });
   });
 

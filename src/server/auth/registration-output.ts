@@ -8,7 +8,6 @@ export function publicRegistrationOutcome(outcome: RegistrationOutcome) {
   return {
     authenticated: outcome.authenticated,
     emailConfirmationRequired: outcome.emailConfirmationRequired,
-    attributionFromCookie: outcome.attributionFromCookie,
   };
 }
 

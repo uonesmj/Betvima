@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { readFile, mkdir, access } from 'node:fs/promises';
+import { readFile, access, open } from 'node:fs/promises';
 import { constants as fsConstants } from 'node:fs';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
@@ -14,12 +14,15 @@ export const runtime = 'nodejs';
 const execFileAsync = promisify(execFile);
 const ANDROID_DIR = '/var/www/betvima-android';
 const DOWNLOAD_DIR = '/var/www/nova/public/downloads/affiliate-app';
-const RELEASE_APK = path.join(ANDROID_DIR, 'app/build/outputs/apk/release/app-release.apk');
 const VERSION_FILE = path.join(ANDROID_DIR, 'app/build.gradle.kts');
 // A deployment must update the installed native sources before enabling downloads.
-// The approved native 0.124.0 source includes the corrected affiliate reporting UX.
-// Older pre-124 sources must not be shipped to newly referred users.
-const MINIMUM_NATIVE_VERSION = 124;
+// Native 0.125.0 removes user-facing referral diagnostics while preserving attribution.
+// Older releases must not be shipped to newly referred users.
+const MINIMUM_NATIVE_VERSION = 125;
+const QUEUE_DIR = '/var/lib/betvima-affiliate-build/queue';
+const RUNNING_DIR = '/var/lib/betvima-affiliate-build/running';
+const FAILED_DIR = '/var/lib/betvima-affiliate-build/failed';
+const RELEASE_CERT_SHA256 = 'b87c0c775b630fbfb4773c2f508fc54fce2e09387443430cd041c95af9a66f90';
 
 const validCode = (code: string): boolean => /^[A-Z0-9_-]{3,64}$/.test(code);
 const nativeVersion = (gradle: string): { code: number; name: string } | null => {
@@ -45,20 +48,17 @@ async function firstExecutable(candidates: string[]): Promise<string | null> {
   }
   return null;
 }
-const gradleCandidates = [
-  '/opt/gradle/bin/gradle', '/opt/gradle-8.10.2/bin/gradle',
-  '/usr/local/gradle/bin/gradle', '/usr/local/bin/gradle', '/usr/bin/gradle',
-];
 const signerCandidates = [
   '/usr/bin/apksigner', '/usr/local/bin/apksigner',
   ...SDK_PATHS.map(dir => path.join(dir, 'build-tools/35.0.0/apksigner')),
 ];
 async function signedApk(file: string, signer: string): Promise<boolean> {
   try {
-    await execFileAsync(signer, ['verify', '--print-certs', file], {
+    const { stdout } = await execFileAsync(signer, ['verify', '--print-certs', file], {
       timeout: 20_000, maxBuffer: 128_000,
     });
-    return true;
+    const fingerprint = stdout.match(/^Signer #1 certificate SHA-256 digest: ([a-f0-9]+)\s*$/im);
+    return fingerprint?.[1]?.toLowerCase() === RELEASE_CERT_SHA256;
   } catch {
     return false;
   }
@@ -98,64 +98,76 @@ export async function GET(
   // A different filename per native release prevents returning an old partner APK.
   const filename = `${clean}-v${version.name}.apk`;
   const output = path.join(DOWNLOAD_DIR, filename);
-  await mkdir(DOWNLOAD_DIR, { recursive: true });
 
   try {
-    await access(output);
+    await access(output, fsConstants.R_OK);
   } catch {
-    const signerVars = [
-      'BETVIMA_ANDROID_KEYSTORE_PATH',
-      'BETVIMA_ANDROID_KEYSTORE_PASSWORD',
-      'BETVIMA_ANDROID_KEY_ALIAS',
-      'BETVIMA_ANDROID_KEY_PASSWORD',
-    ] as const;
-    if (signerVars.some((key) => !process.env[key]?.trim())) {
-      // Do not publish a release APK without the real deployment signing key.
-      return NextResponse.json(
-        { ok: false, error: 'ANDROID_SIGNING_NOT_CONFIGURED' },
-        { status: 503, headers: { 'Cache-Control': 'no-store' } },
-      );
-    }
-
-    const gradle = await firstExecutable(gradleCandidates);
-    const signer = await firstExecutable(signerCandidates);
-    if (!gradle || !signer) {
-      return NextResponse.json(
-        { ok: false, error: 'ANDROID_BUILD_TOOLS_NOT_CONFIGURED' },
-        { status: 503, headers: { 'Cache-Control': 'no-store' } },
-      );
-    }
-    const tmp = `${output}.tmp`;
-    // Inputs are validated before passing to a shell command. The global lock
-    // avoids racing Gradle's shared output directory across different affiliates.
-    const script = [
-      'set -e',
-      `cd '${ANDROID_DIR}'`,
-      `if [ -f '${output}' ]; then exit 0; fi`,
-      `'${gradle}' --no-daemon --no-configuration-cache :app:assembleRelease -PaffiliateRef='${clean}'`,
-      // Fail closed rather than accidentally publishing a release with a
-      // different partner ID left in a shared Gradle build directory.
-      `grep -F 'AFFILIATE_REFERRAL_CODE = "${clean}"' 'app/build/generated/source/buildConfig/release/com/betvima/app/BuildConfig.java' > /dev/null`,
-      `'${signer}' verify --print-certs '${RELEASE_APK}' > /dev/null`,
-      `cp '${RELEASE_APK}' '${tmp}'`,
-      `mv '${tmp}' '${output}'`,
-    ].join('\n');
+    // Only the separate systemd worker can use the signing key.
+    // The public web process never receives signing credentials.
     try {
-      await execFileAsync('flock', [
-        '-w', '180', '-x', path.join(DOWNLOAD_DIR, '.native-build.lock'),
-        '-c', script,
-      ], { cwd: ANDROID_DIR, timeout: 480_000, maxBuffer: 4 * 1024 * 1024 });
-    } catch (error) {
-      console.error('[affiliate-app-build]', {
-        code: clean,
-        kind: error instanceof Error ? error.name : 'unknown',
-        // No secrets, keystore passwords or raw command output in logs.
-      });
+      await access(QUEUE_DIR, fsConstants.W_OK);
+      await access(FAILED_DIR, fsConstants.X_OK);
+      await access(RUNNING_DIR, fsConstants.X_OK);
+    } catch {
       return NextResponse.json(
-        { ok: false, error: 'APP_BUILD_FAILED' },
+        { ok: false, error: 'ANDROID_BUILD_WORKER_NOT_CONFIGURED' },
         { status: 503, headers: { 'Cache-Control': 'no-store' } },
       );
     }
+    try {
+      await access(path.join(FAILED_DIR, clean), fsConstants.F_OK);
+      return NextResponse.json(
+        { ok: false, error: 'ANDROID_BUILD_FAILED_CONTACT_SUPPORT' },
+        { status: 503, headers: { 'Cache-Control': 'no-store' } },
+      );
+    } catch { /* first attempt */ }
+
+    let inProgress = false;
+    try {
+      await access(path.join(RUNNING_DIR, clean), fsConstants.F_OK);
+      inProgress = true;
+    } catch { /* still queued or new */ }
+    if (!inProgress) {
+      const queuePath = path.join(QUEUE_DIR, clean + '.request');
+      try {
+        const handle = await open(queuePath, 'wx', 0o600);
+        await handle.close();
+      } catch (error) {
+        if (!(error instanceof Error && 'code' in error && error.code === 'EEXIST')) {
+          return NextResponse.json(
+            { ok: false, error: 'ANDROID_BUILD_QUEUE_UNAVAILABLE' },
+            { status: 503, headers: { 'Cache-Control': 'no-store' } },
+          );
+        }
+      }
+    }
+    const headers = { 'Cache-Control': 'private, no-store, max-age=0', 'Retry-After': '45' };
+    // /app/affiliate/<CODE> redirects here. Do not show raw JSON in Chrome.
+    if (request.headers.get('accept')?.includes('text/html')) {
+      return new NextResponse(
+        '<!doctype html><html lang="en"><head><meta charset="utf-8">' +
+        '<meta name="viewport" content="width=device-width,initial-scale=1">' +
+        '<meta http-equiv="refresh" content="45"><title>Preparing BetVima Android</title>' +
+        '<style>body{font-family:system-ui,sans-serif;background:#071621;color:#fff;' +
+        'min-height:100vh;display:grid;place-items:center;margin:0;text-align:center}' +
+        'main{max-width:520px;padding:32px}h1{color:#12cc86}p{line-height:1.8}' +
+        '</style></head><body><main><h1>BetVima Android</h1>' +
+        '<p>Your personalized Android app is being prepared securely.' +
+        ' This page will refresh automatically to start the download.</p>' +
+        '<p lang="fa" dir="rtl">نسخه اختصاصی اندروید شما در حال آماده‌سازی است.' +
+        ' دانلود پس از تکمیل به‌صورت خودکار آغاز می‌شود.</p>' +
+        '<small>Affiliate: ' + clean + '</small></main></body></html>',
+        { status: 202, headers: {
+          ...headers, 'Content-Type': 'text/html; charset=utf-8',
+          'Content-Security-Policy': "default-src 'none'; style-src 'unsafe-inline'",
+          'X-Content-Type-Options': 'nosniff',
+        } },
+      );
+    }
+    return NextResponse.json(
+      { ok: true, status: 'building', code: clean, retryAfterSeconds: 45 },
+      { status: 202, headers },
+    );
   }
 
   const verifier = await firstExecutable(signerCandidates);
