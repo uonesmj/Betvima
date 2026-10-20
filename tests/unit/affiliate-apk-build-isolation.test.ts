@@ -19,7 +19,9 @@ describe('secure automatic affiliate APK build', () => {
   it('signs within an isolated dedicated builder and validates referral attribution', () => {
     const worker = read('ops/android/affiliate_apk_worker.py');
     expect(worker).toContain('pwd.getpwnam("betvimaapk")');
-    expect(worker).toContain('os.setuid(builder.pw_uid)');
+    expect(worker).toContain('"/usr/bin/setpriv"');
+    expect(worker).toContain('"--clear-groups", "--"');
+    expect(worker).not.toContain('preexec_fn=drop_privileges');
     expect(worker).toContain('"--max-workers=1"');
     expect(worker).toContain('CERT_SHA256');
     expect(worker).toContain('AFFILIATE_REFERRAL_CODE');

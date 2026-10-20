@@ -100,11 +100,12 @@ def build(code: str, version: str) -> None:
             "BETVIMA_ANDROID_KEY_PASSWORD": secret,
         }
 
-        def drop_privileges() -> None:
-            os.setgroups([])
-            os.setgid(builder.pw_gid)
-            os.setuid(builder.pw_uid)
-            os.umask(0o077)
+        # Python's preexec_fn can fail under systemd's execution sandbox,
+        # giving only "SubprocessError: Exception occurred in preexec_fn".
+        # setpriv drops supplementary groups and uid/gid in a small,
+        # auditable external process. Gradle never runs as root.
+        if not Path("/usr/bin/setpriv").is_file():
+            fail("setpriv_not_installed")
 
         args = [
             str(GRADLE), "--no-daemon", "--no-configuration-cache",
@@ -117,7 +118,14 @@ def build(code: str, version: str) -> None:
         log_path = BASE / "last-build.log"
         with log_path.open("wb") as log:
             os.chmod(log_path, 0o600)
-            proc = subprocess.run(args, cwd=WORK, env=env, preexec_fn=drop_privileges,
+            command = [
+                "/usr/bin/setpriv",
+                f"--reuid={builder.pw_uid}",
+                f"--regid={builder.pw_gid}",
+                "--clear-groups", "--",
+                *args,
+            ]
+            proc = subprocess.run(command, cwd=WORK, env=env,
                                   stdout=log, stderr=subprocess.STDOUT, timeout=840,
                                   check=False)
         if proc.returncode != 0:
