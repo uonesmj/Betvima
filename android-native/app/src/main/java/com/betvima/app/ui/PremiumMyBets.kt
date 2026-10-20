@@ -35,7 +35,7 @@ import com.betvima.app.data.odds
 import kotlinx.coroutines.delay
 
 // Match the casino/header canvas; ticket financial surfaces retain their own colors.
-private val myBetsCanvas = Color(0xFF141414)
+private val myBetsCanvas = Palette.headerDark
 private val myBetsClosedPanel = Color(0xFF222224)
 private val myBetsClosedOutline = Color(0xFF39393D)
 
@@ -349,7 +349,9 @@ private fun PremiumTicket(
 ) {
     val lang = state.lang
     var showAllPicks by rememberSaveable(bet.id) { mutableStateOf(false) }
+    var winReplay by rememberSaveable(bet.id) { mutableIntStateOf(0) }
     val accent = ticketResultColor(bet)
+    val confirmedWin = bet.isSettled && accent == Palette.green
     val isMix = bet.type.equals("MULTIPLE", ignoreCase = true) || bet.legs > 1
     val title = if (isMix)
         tr(lang, "Mix bet", "شرط میکس") + " (" + bet.legs + " " +
@@ -375,7 +377,10 @@ private fun PremiumTicket(
                             if (expanded) listOf(Color(0xFF006B53), Color(0xFF00A77B))
                             else listOf(myBetsClosedPanel, myBetsClosedPanel)
                         )
-                    ).clickable(onClick = onToggle)
+                    ).clickable {
+                        if (!expanded && confirmedWin) winReplay++
+                        onToggle()
+                    }
                     .padding(horizontal = 11.dp, vertical = 9.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -540,6 +545,13 @@ private fun PremiumTicket(
         color = myBetsCanvas,
         shape = RoundedCornerShape(topStart = 9.dp, topEnd = 9.dp)
     ) {}
+    // Overlay does not intercept taps; it only paints above the ticket for ~1s.
+    if (expanded && confirmedWin) {
+        WinTicketSparklers(
+            replay = winReplay,
+            modifier = Modifier.align(Alignment.TopCenter).fillMaxWidth().height(115.dp)
+        )
+    }
     }
 }
 
