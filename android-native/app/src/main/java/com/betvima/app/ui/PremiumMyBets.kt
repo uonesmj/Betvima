@@ -18,6 +18,8 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -39,6 +41,8 @@ fun PremiumMyBetsPage(state: AppState, model: AppViewModel) {
     val filter = state.historyQuery
     var search by rememberSaveable { mutableStateOf(filter.search) }
     var activeFilter by rememberSaveable { mutableStateOf<String?>(null) }
+    var openedTicket by rememberSaveable { mutableStateOf<String?>(null) }
+    LaunchedEffect(filter) { openedTicket = null }
     LaunchedEffect(search) {
         delay(380)
         if (search.trim() != state.historyQuery.search) {
@@ -46,7 +50,7 @@ fun PremiumMyBetsPage(state: AppState, model: AppViewModel) {
         }
     }
     LazyColumn(
-        modifier = Modifier.fillMaxSize(),
+        modifier = Modifier.fillMaxSize().background(Color(0xFF081322)),
         contentPadding = PaddingValues(horizontal = 14.dp, vertical = 16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     , flingBehavior = rememberPremiumFlingBehavior()) {
@@ -211,7 +215,13 @@ fun PremiumMyBetsPage(state: AppState, model: AppViewModel) {
                 }
             }
             items(state.historyBets, key = { "ticket-"+it.id }) { bet ->
-                PremiumTicket(bet, state) { model.openBet(bet.id) }
+                val isOpen = openedTicket == bet.id ||
+                    (openedTicket == null && state.historyBets.firstOrNull()?.id == bet.id)
+                PremiumTicket(
+                    bet = bet, state = state, expanded = isOpen,
+                    onToggle = { openedTicket = if (isOpen) "" else bet.id },
+                    onOpen = { model.openBet(bet.id) }
+                )
             }
             if (state.historyHasMore) {
                 item {
@@ -385,144 +395,172 @@ private fun HistoryFilterPopup(
  * remain separate from any live score, so no ungraded leg is shown as won.
  */
 @Composable
-private fun PremiumTicket(bet: Bet, state: AppState, onOpen: () -> Unit) {
+private fun PremiumTicket(
+    bet: Bet,
+    state: AppState,
+    expanded: Boolean,
+    onToggle: () -> Unit,
+    onOpen: () -> Unit
+) {
     val lang = state.lang
     val accent = ticketResultColor(bet)
-    val final = bet.isSettled
-    var expanded by rememberSaveable(bet.id) { mutableStateOf(false) }
-    val count = bet.selections.size
-    val hasExtra = count > 2
-    val title = if (bet.type.uppercase() == "MULTIPLE" || bet.legs > 1)
-        tr(lang, "Multiple bet", "شرط میکس") else tr(lang, "Single bet", "شرط تکی")
+    val isMix = bet.type.equals("MULTIPLE", ignoreCase = true) || bet.legs > 1
+    val title = if (isMix)
+        tr(lang, "Mix bet", "شرط میکس") + " (" + bet.legs + " " +
+            tr(lang, "picks", "انتخاب") + ")"
+        else tr(lang, "Single bet", "شرط تکی")
+    val green = Color(0xFF00BB81)
+    val ink = Color(0xFF14243A)
+    val muted = Color(0xFF77889A)
     Surface(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(21.dp),
-        color = Color.White,
-        border = BorderStroke(1.dp, Color(0xFFDFE6EE)),
-        shadowElevation = 2.dp
+        shape = RoundedCornerShape(20.dp),
+        color = if (expanded) Color.White else Color(0xFF102035),
+        border = BorderStroke(1.dp,
+            if (expanded) green else Color(0xFF2A4260)),
+        shadowElevation = if (expanded) 6.dp else 1.dp
     ) {
         Column {
             Row(
                 modifier = Modifier.fillMaxWidth()
-                    .background(Color(0xFFF6F9FC))
-                    .padding(horizontal = 14.dp, vertical = 13.dp),
+                    .background(
+                        Brush.linearGradient(
+                            if (expanded) listOf(Color(0xFF006B53), Color(0xFF00A77B))
+                            else listOf(Color(0xFF123152), Color(0xFF091629))
+                        )
+                    ).clickable(onClick = onToggle)
+                    .padding(horizontal = 14.dp, vertical = 14.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Surface(color = Color(0xFFE7F3FF), shape = RoundedCornerShape(12.dp)) {
+                Surface(color = if (expanded) Color(0xFFE9FFF4) else Color(0xFFE5F2FF),
+                    shape = RoundedCornerShape(13.dp)) {
                     Icon(Icons.Default.ConfirmationNumber, null,
-                        tint = Palette.blue, modifier = Modifier.padding(11.dp).size(21.dp))
+                        tint = if (expanded) Color(0xFF029A71) else Palette.blue,
+                        modifier = Modifier.padding(11.dp).size(23.dp))
                 }
-                Spacer(Modifier.width(10.dp))
+                Spacer(Modifier.width(11.dp))
                 Column(Modifier.weight(1f)) {
                     Text(title, fontWeight = FontWeight.Black,
-                        fontSize = 15.sp, color = Palette.text)
-                    Text("№ " + bet.id.take(8).uppercase() +
-                        "  ·  " + bet.placedAt.take(16).replace("T", " "),
-                        fontSize = 10.sp, color = Palette.muted,
+                        fontSize = 15.sp, color = Color.White,
+                        maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text("ID " + bet.id.take(8).uppercase() +
+                            " · " + bet.placedAt.take(16).replace("T", " "),
+                        fontSize = 10.sp, color = Color.White.copy(alpha = .72f),
                         maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
                 Spacer(Modifier.width(6.dp))
                 Surface(
                     shape = RoundedCornerShape(10.dp),
-                    color = accent.copy(alpha = .12f)
+                    color = if (accent == Palette.green)
+                        Color(0xFFD8FAEA) else if (accent == Palette.red)
+                        Color(0xFFFFE0E6) else Color(0xFFE5F0FF)
                 ) {
                     Text(ticketResult(bet, lang),
                         color = accent, fontWeight = FontWeight.Black,
                         fontSize = 11.sp, maxLines = 1,
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp))
+                        modifier = Modifier.padding(horizontal = 9.dp, vertical = 8.dp))
                 }
-            }
-            HorizontalDivider(color = Color(0xFFE4EAF0))
-            Row(
-                Modifier.fillMaxWidth().padding(horizontal = 15.dp, vertical = 13.dp),
-                horizontalArrangement = Arrangement.spacedBy(7.dp)
-            ) {
-                TicketMoneyColumn(
-                    title = tr(lang, "Stake", "مبلغ شرط"),
-                    amount = money(bet.stakeMinor, bet.currency),
-                    modifier = Modifier.weight(1f),
-                    color = Palette.text
-                )
-                TicketMoneyColumn(
-                    title = if (bet.settledPayoutMinor != null)
-                        tr(lang, "Confirmed return", "بازگشت قطعی")
-                    else tr(lang, "Potential return", "بازگشت احتمالی"),
-                    amount = money(bet.settledPayoutMinor ?: bet.payoutMinor, bet.currency),
-                    modifier = Modifier.weight(1f),
-                    color = if (bet.settledPayoutMinor != null) accent else Palette.text
+                Icon(
+                    if (expanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
+                    tr(lang, if (expanded) "Collapse ticket" else "Expand ticket",
+                        if (expanded) "بستن بلیت" else "بازکردن بلیت"),
+                    modifier = Modifier.padding(start = 4.dp).size(20.dp),
+                    tint = Color.White
                 )
             }
-            if (final && bet.netResultMinor != null) {
-                Row(
-                    Modifier.fillMaxWidth().padding(start = 15.dp, end = 15.dp, bottom = 10.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(tr(lang, "Net result", "سود / زیان خالص"),
-                        modifier = Modifier.weight(1f),
-                        color = Palette.muted, fontSize = 11.sp)
-                    Text(money(bet.netResultMinor, bet.currency),
-                        color = accent, fontWeight = FontWeight.Black,
-                        fontSize = 13.sp)
-                }
-            }
-            if (count > 0) {
-                Column(
-                    Modifier.fillMaxWidth().padding(horizontal = 12.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    bet.selections.take(2).forEach { leg ->
-                        BetSelectionOverview(leg, lang,
-                            Modifier.fillMaxWidth(), state.matchForLeg(leg))
+            AnimatedVisibility(visible = expanded) {
+                Column {
+                    Row(
+                        Modifier.fillMaxWidth().padding(start = 14.dp, end = 14.dp,
+                            top = 16.dp, bottom = 12.dp),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        TicketMoneyColumn(
+                            tr(lang, "Stake", "مبلغ شرط"),
+                            money(bet.stakeMinor, bet.currency),
+                            Modifier.weight(1f), ink
+                        )
+                        TicketMoneyColumn(
+                            tr(lang, "Total odds", "ضریب کل"),
+                            odds(bet.combinedOddsScaled),
+                            Modifier.weight(0.85f), ink
+                        )
+                        TicketMoneyColumn(
+                            if (bet.settledPayoutMinor != null)
+                                tr(lang, "Confirmed return", "بازگشت قطعی")
+                            else tr(lang, "Potential return", "بازگشت احتمالی"),
+                            money(bet.settledPayoutMinor ?: bet.payoutMinor, bet.currency),
+                            Modifier.weight(1.25f),
+                            if (bet.settledPayoutMinor != null) accent else ink
+                        )
                     }
-                    if (hasExtra) {
-                        SmoothExpandedContent(expanded) {
-                            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                                bet.selections.drop(2).forEach { leg ->
-                                    BetSelectionOverview(leg, lang,
-                                        Modifier.fillMaxWidth(), state.matchForLeg(leg))
-                                }
+                    if (bet.isSettled && bet.netResultMinor != null) {
+                        Row(
+                            Modifier.fillMaxWidth().padding(start = 14.dp, end = 14.dp,
+                                bottom = 12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(tr(lang, "Net result", "سود / زیان خالص"),
+                                color = muted, fontSize = 11.sp,
+                                modifier = Modifier.weight(1f))
+                            Text(money(bet.netResultMinor, bet.currency),
+                                color = accent, fontSize = 14.sp,
+                                fontWeight = FontWeight.Black)
+                        }
+                    }
+                    Column(
+                        Modifier.fillMaxWidth().padding(horizontal = 12.dp),
+                        verticalArrangement = Arrangement.spacedBy(9.dp)
+                    ) {
+                        bet.selections.forEach { leg ->
+                            Box(Modifier.fillMaxWidth()) {
+                                BetSelectionOverview(leg, lang,
+                                    Modifier.fillMaxWidth(), state.matchForLeg(leg))
+                                Text(
+                                    "BETVIMA",
+                                    modifier = Modifier.align(Alignment.BottomEnd)
+                                        .padding(end = 13.dp, bottom = 43.dp).alpha(.065f),
+                                    fontSize = 42.sp, fontWeight = FontWeight.Black,
+                                    color = Color(0xFF008965), maxLines = 1
+                                )
                             }
                         }
-                        TextButton(onClick = { expanded = !expanded },
-                            modifier = Modifier.fillMaxWidth()) {
-                            SmoothExpandChevron(expanded, tint = Palette.blue)
-                            Spacer(Modifier.width(5.dp))
-                            Text(if (expanded) tr(lang, "Show less", "نمایش کمتر")
-                                else tr(lang, "View all selections", "نمایش تمام انتخاب‌ها"),
-                                color = Palette.blue,
-                                fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                        if (bet.selections.isEmpty()) {
+                            Text(
+                                tr(lang, "Selection details are not available",
+                                    "اطلاعات انتخاب‌ها در دسترس نیست"),
+                                fontSize = 12.sp, color = muted,
+                                modifier = Modifier.padding(12.dp)
+                            )
                         }
                     }
-                }
-                Spacer(Modifier.height(10.dp))
-            }
-            Row(
-                Modifier.fillMaxWidth()
-                    .background(Color(0xFFF4F7FA))
-                    .padding(start = 14.dp, end = 8.dp, top = 8.dp, bottom = 8.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Icon(Icons.Default.Layers, null, tint = Palette.muted,
-                    modifier = Modifier.size(15.dp))
-                Spacer(Modifier.width(5.dp))
-                Text(bet.legs.toString() + " " + tr(lang, "picks", "انتخاب"),
-                    color = Palette.muted, fontSize = 11.sp)
-                Spacer(Modifier.width(9.dp))
-                if (bet.combinedOddsScaled != "0") {
-                    Text(tr(lang, "Odds", "ضریب") + " " + odds(bet.combinedOddsScaled),
-                        fontSize = 11.sp, fontWeight = FontWeight.ExtraBold,
-                        color = Palette.text)
-                }
-                Spacer(Modifier.weight(1f))
-                TextButton(onClick = onOpen) {
-                    Icon(Icons.Default.ReceiptLong, null, tint = Palette.blue,
-                        modifier = Modifier.size(17.dp))
-                    Spacer(Modifier.width(5.dp))
-                    Text(tr(lang, "Full receipt", "رسید کامل"),
-                        color = Palette.blue, fontSize = 11.sp,
-                        fontWeight = FontWeight.Black)
-                    Icon(Icons.Default.ChevronRight, null, tint = Palette.blue,
-                        modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.height(12.dp))
+                    Row(
+                        Modifier.fillMaxWidth()
+                            .background(Color(0xFFF0F5F9))
+                            .padding(start = 13.dp, end = 8.dp, top = 9.dp, bottom = 9.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(Icons.Default.Layers, null, tint = muted,
+                            modifier = Modifier.size(16.dp))
+                        Spacer(Modifier.width(5.dp))
+                        Text(bet.legs.toString() + " " + tr(lang, "picks", "انتخاب"),
+                            color = muted, fontSize = 11.sp)
+                        Spacer(Modifier.width(9.dp))
+                        Text(tr(lang, "Odds", "ضریب") + " " + odds(bet.combinedOddsScaled),
+                            color = ink, fontSize = 11.sp, fontWeight = FontWeight.Black)
+                        Spacer(Modifier.weight(1f))
+                        TextButton(onClick = onOpen) {
+                            Icon(Icons.Default.ReceiptLong, null, tint = Palette.blue,
+                                modifier = Modifier.size(17.dp))
+                            Spacer(Modifier.width(4.dp))
+                            Text(tr(lang, "Full receipt", "رسید کامل"),
+                                color = Palette.blue, fontSize = 11.sp,
+                                fontWeight = FontWeight.Black)
+                            Icon(Icons.Default.ChevronRight, null,
+                                tint = Palette.blue, modifier = Modifier.size(18.dp))
+                        }
+                    }
                 }
             }
         }
