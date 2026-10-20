@@ -39,10 +39,10 @@ import androidx.compose.ui.window.DialogProperties
 import com.betvima.app.data.UserNotification
 
 private val notificationBlue = Color(0xFF087FF5)
-private val notificationPaper = Color.White
-private val notificationMuted = Color(0xFF666A73)
-private val notificationCardGray = Color(0xFFE9EAEE)
-private val notificationTabGray = Color(0xFFF3F3F4)
+private val notificationPaper = Color(0xFF111113)
+private val notificationMuted = Color(0xFFA6A9B3)
+private val notificationCardGray = Color(0xFF222224)
+private val notificationTabGray = Color(0xFF29292C)
 
 /**
  * Reference-style notification bottom sheet. It reads only authenticated API
@@ -79,7 +79,7 @@ fun NotificationsPopup(
                 Box(Modifier.fillMaxWidth().padding(top = 10.dp, bottom = 5.dp),
                     contentAlignment = Alignment.Center) {
                     Box(Modifier.size(width = 43.dp, height = 4.dp)
-                        .clip(CircleShape).background(Color(0xFFD9DADD)))
+                        .clip(CircleShape).background(Color(0xFF696970)))
                 }
                 Row(
                     Modifier.fillMaxWidth().padding(start = 22.dp, end = 18.dp,
@@ -91,7 +91,7 @@ fun NotificationsPopup(
                         Text(tr(lang, "Notifications", "اعلان‌ها"),
                             fontSize = 27.sp, fontWeight = FontWeight.Black,
                             letterSpacing = (-0.6f).sp,
-                            color = Color(0xFF151517),
+                            color = Color(0xFFF5F6F8),
                             maxLines = 1, overflow = TextOverflow.Ellipsis)
                         if (state.signedIn && state.notificationUnreadCount > 0) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -101,7 +101,7 @@ fun NotificationsPopup(
                                 Text(
                                     tr(lang, "Unread notifications", "اعلان‌های خوانده‌نشده")
                                         + " · " + state.notificationUnreadCount,
-                                    color = Color(0xFF858993), fontSize = 11.sp,
+                                    color = notificationMuted, fontSize = 11.sp,
                                     fontWeight = FontWeight.Medium
                                 )
                             }
@@ -110,11 +110,11 @@ fun NotificationsPopup(
                     IconButton(
                         onClick = onDismiss,
                         modifier = Modifier.size(42.dp)
-                            .clip(CircleShape).background(Color(0xFFF2F3F5))
+                            .clip(CircleShape).background(Color(0xFF29292C))
                     ) {
                         Icon(Icons.Default.Close,
                             contentDescription = tr(lang, "Close", "بستن"),
-                            tint = Color(0xFF737883),
+                            tint = notificationMuted,
                             modifier = Modifier.size(25.dp))
                     }
                 }
@@ -172,7 +172,7 @@ fun NotificationsPopup(
                                         onClick = { model.refreshNotifications(more = true) },
                                         modifier = Modifier.fillMaxWidth().heightIn(min = 47.dp),
                                         shape = RoundedCornerShape(15.dp),
-                                        border = BorderStroke(1.dp, Color(0xFFDEE2E8))
+                                        border = BorderStroke(1.dp, Color(0xFF39393D))
                                     ) {
                                         Text(tr(lang, "Show older notifications", "اعلان‌های قدیمی‌تر"),
                                             color = notificationBlue, fontWeight = FontWeight.SemiBold)
@@ -200,7 +200,7 @@ fun NotificationsPopup(
                     }
                 }
                 if (state.signedIn && state.notificationUnreadCount > 0) {
-                    HorizontalDivider(color = Color(0xFFE8E8EB))
+                    HorizontalDivider(color = Color(0xFF39393D))
                     Row(Modifier.fillMaxWidth().padding(horizontal = 19.dp, vertical = 8.dp),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.End) {
@@ -232,7 +232,7 @@ private fun NotificationCategoryTabs(
         Modifier.fillMaxWidth().padding(horizontal = 16.dp)
             .clip(RoundedCornerShape(17.dp))
             .background(notificationTabGray)
-            .border(1.dp, Color(0xFFF0F0F2), RoundedCornerShape(17.dp))
+            .border(1.dp, Color(0xFF39393D), RoundedCornerShape(17.dp))
             .padding(3.dp)
     ) {
         val cellWidth = maxWidth / 3
@@ -253,7 +253,7 @@ private fun NotificationCategoryTabs(
                     contentAlignment = Alignment.Center
                 ) {
                     val color by animateColorAsState(
-                        if (tab == selected) Color.White else Color(0xFF1B1B1C),
+                        if (tab == selected) Color.White else Color(0xFFE1E2E7),
                         label = "notificationTabText"
                     )
                     Text(
@@ -285,8 +285,8 @@ private fun NotificationReferenceCard(
         Modifier.fillMaxWidth()
             .shadow(2.dp, RoundedCornerShape(23.dp))
             .clip(RoundedCornerShape(23.dp))
-            .background(Brush.verticalGradient(listOf(Color(0xFFEDEEF1), notificationCardGray)))
-            .border(1.dp, Color(0xFFF4F4F6), RoundedCornerShape(23.dp))
+            .background(notificationCardGray)
+            .border(1.dp, Color(0xFF39393D), RoundedCornerShape(23.dp))
             .clickable(enabled = note.readAt == null) { onMarkRead() }
             .padding(horizontal = 18.dp, vertical = 19.dp)
     ) {
@@ -308,14 +308,14 @@ private fun NotificationReferenceCard(
             } else {
                 Icon(Icons.Default.CheckCircleOutline,
                     contentDescription = tr(lang, "Read", "خوانده‌شده"),
-                    tint = Color(0xFF8A8D95), modifier = Modifier.size(17.dp))
+                    tint = notificationMuted, modifier = Modifier.size(17.dp))
             }
         }
         Spacer(Modifier.height(5.dp))
-        Text(note.title, color = Color(0xFF161616), fontSize = 18.sp,
+        Text(note.title, color = Color(0xFFF5F6F8), fontSize = 18.sp,
             fontWeight = FontWeight.Black, lineHeight = 25.sp)
         Spacer(Modifier.height(6.dp))
-        Text(note.body, color = Color(0xFF61636D), fontSize = 14.sp,
+        Text(note.body, color = notificationMuted, fontSize = 14.sp,
             lineHeight = 22.sp)
         if (hasAction && destination != null) {
             Spacer(Modifier.height(14.dp))
@@ -356,16 +356,16 @@ private fun NotificationEmpty(
     ) {
         Box(Modifier.size(102.dp)
             .clip(CircleShape)
-            .background(Color(0xFFF3F4F6)),
+            .background(Color(0xFF29292C)),
             contentAlignment = Alignment.Center) {
             Icon(Icons.Default.Notifications,
                 contentDescription = null,
-                tint = Color(0xFF626873),
+                tint = Color(0xFFA6A9B3),
                 modifier = Modifier.size(58.dp))
         }
         Spacer(Modifier.height(22.dp))
         Text(title, fontWeight = FontWeight.Bold,
-            color = Color(0xFF151515), fontSize = 22.sp,
+            color = Color(0xFFF5F6F8), fontSize = 22.sp,
             textAlign = TextAlign.Center)
         Spacer(Modifier.height(8.dp))
         Text(message, fontSize = 14.sp,
