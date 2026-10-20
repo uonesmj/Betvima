@@ -52,7 +52,7 @@ def source_version() -> str:
     src = (SOURCE / "app/build.gradle.kts").read_text()
     work = (WORK / "app/build.gradle.kts").read_text()
     version, code = VERSION.search(src), VERSION_CODE.search(src)
-    if not version or not code or int(code.group(1)) < 125:
+    if not version or not code or int(code.group(1)) < 130:
         fail("source_version_incorrect")
     if src != work:
         fail("builder_source_not_synchronized")
