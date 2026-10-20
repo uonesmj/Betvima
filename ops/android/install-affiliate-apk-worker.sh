@@ -15,9 +15,9 @@ for cmd in rsync systemctl useradd python3 flock setpriv; do command -v "$cmd" >
 [[ -x /opt/android-sdk/build-tools/35.0.0/apksigner ]] || fail apksigner_missing
 [[ -f "$SOURCE/.betvima-native-commit" ]] || fail native_revision_unverified
 [[ -f "$SOURCE/app/build.gradle.kts" ]] || fail native_source_missing
-grep -Eq '^[[:space:]]*versionCode[[:space:]]*=[[:space:]]*125[[:space:]]*$' "$SOURCE/app/build.gradle.kts" || fail expected_version_code_125_missing
-grep -Eq '^[[:space:]]*versionName[[:space:]]*=[[:space:]]*"0\.125\.0"[[:space:]]*$' "$SOURCE/app/build.gradle.kts" || fail expected_version_125_missing
-[[ "$(cat "$SOURCE/.betvima-native-commit")" == "909b223b477c01d08f1561a1c3d6c17e7bec605c" ]] || fail native_sha_unapproved
+grep -Eq '^[[:space:]]*versionCode[[:space:]]*=[[:space:]]*130[[:space:]]*$' "$SOURCE/app/build.gradle.kts" || fail expected_version_code_130_missing
+grep -Eq '^[[:space:]]*versionName[[:space:]]*=[[:space:]]*"0\.130\.0"[[:space:]]*$' "$SOURCE/app/build.gradle.kts" || fail expected_version_130_missing
+[[ "$(cat "$SOURCE/.betvima-native-commit")" == "e32bb3fc280a60e01e6d6736a8cb111b1d613a36" ]] || fail native_sha_unapproved
 [[ "$(stat -c '%u' /etc/betvima/android-signing)" == 0 ]] || fail signing_path_owner_invalid
 
 id betvimaapk >/dev/null 2>&1 || useradd --system --home-dir "$ROOT/home" --shell /usr/sbin/nologin --no-create-home betvimaapk
@@ -41,11 +41,11 @@ stage="$(mktemp -d "$ROOT/.workspace.XXXXXXXX")"
 cleanup() { if [[ -n "$stage" && -d "$stage" ]]; then rm -rf -- "$stage"; fi; }
 trap cleanup EXIT
 rsync -a --exclude='.git' --exclude='.gradle' --exclude='build' "$SOURCE/" "$stage/" || fail source_copy_failed
-[[ "$(cat "$stage/.betvima-native-commit")" == "909b223b477c01d08f1561a1c3d6c17e7bec605c" ]] || fail invalid_stage_revision
+[[ "$(cat "$stage/.betvima-native-commit")" == "e32bb3fc280a60e01e6d6736a8cb111b1d613a36" ]] || fail invalid_stage_revision
 chown -R betvimaapk:betvimaapk "$stage"
 chmod 0700 "$stage"
 if [[ -d "$ROOT/workspace" ]]; then
-  backup="$ROOT/workspace.before-125-$(date -u +%Y%m%dT%H%M%SZ)"
+  backup="$ROOT/workspace.before-130-$(date -u +%Y%m%dT%H%M%SZ)"
   mv "$ROOT/workspace" "$backup"
   echo "previous_android_workspace=$backup"
 fi
@@ -97,6 +97,6 @@ chmod 0644 /etc/systemd/system/betvima-affiliate-apk.service /etc/systemd/system
 systemctl daemon-reload
 systemctl enable --now betvima-affiliate-apk.timer
 echo AFFILIATE_AUTO_APK_WORKER_INSTALLED
-echo native_version=0.125.0
+echo native_version=0.130.0
 echo web_pm2_untouched=true
 echo "timer_status=$(systemctl is-active betvima-affiliate-apk.timer)"

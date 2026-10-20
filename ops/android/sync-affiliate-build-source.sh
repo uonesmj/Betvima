@@ -6,7 +6,7 @@ umask 027
 
 REPO='git@github.com:uonesmj/Betvima.git'
 BRANCH='codex/native-live-detail-recovery-123-20261019'
-SHA='909b223b477c01d08f1561a1c3d6c17e7bec605c'
+SHA='e32bb3fc280a60e01e6d6736a8cb111b1d613a36'
 BASE='/var/www/betvima-android-releases'
 INSTALL='/var/www/betvima-android'
 DOWNLOADS='/var/www/nova/public/downloads/affiliate-app'
@@ -43,12 +43,22 @@ stage="$(mktemp -d "${BASE}/.stage-XXXXXXXX")"
 git clone --quiet --depth 1 --single-branch --branch "${BRANCH}" "${REPO}" "${stage}/repo" \
   || fail 'source_clone_failed'
 actual="$(git -C "${stage}/repo" rev-parse HEAD)"
+if [[ "${actual}" != "${SHA}" ]]; then
+  # Native development can move ahead while an approved web release is
+  # deployed. Fetch the exact reviewed commit instead of rejecting its
+  # pinned revision or silently installing a newer, unreviewed HEAD.
+  git -C "${stage}/repo" fetch --quiet --depth 1 origin "${SHA}" \
+    || fail 'approved_source_commit_fetch_failed'
+  git -C "${stage}/repo" checkout --quiet --detach "${SHA}" \
+    || fail 'approved_source_commit_checkout_failed'
+  actual="$(git -C "${stage}/repo" rev-parse HEAD)"
+fi
 [[ "${actual}" == "${SHA}" ]] || fail 'source_revision_mismatch'
 src="${stage}/repo/android-native"
 [[ -f "${src}/app/build.gradle.kts" ]] || fail 'android_project_not_found'
-grep -Eq '^[[:space:]]*versionCode[[:space:]]*=[[:space:]]*125[[:space:]]*$' "${src}/app/build.gradle.kts" \
+grep -Eq '^[[:space:]]*versionCode[[:space:]]*=[[:space:]]*130[[:space:]]*$' "${src}/app/build.gradle.kts" \
   || fail 'expected_android_version_code_missing'
-grep -Eq '^[[:space:]]*versionName[[:space:]]*=[[:space:]]*"0\.125\.0"[[:space:]]*$' "${src}/app/build.gradle.kts" \
+grep -Eq '^[[:space:]]*versionName[[:space:]]*=[[:space:]]*"0\.130\.0"[[:space:]]*$' "${src}/app/build.gradle.kts" \
   || fail 'expected_android_version_name_missing'
 grep -Fq 'AFFILIATE_REFERRAL_CODE' "${src}/app/build.gradle.kts" \
   || fail 'affiliate_attribution_build_config_missing'
@@ -105,7 +115,7 @@ fi
 
 # An old real directory is retained for rollback rather than deleted.
 if [[ -e "${INSTALL}" && ! -L "${INSTALL}" ]]; then
-  backup="${INSTALL}.before-125-$(date -u +%Y%m%dT%H%M%SZ)"
+  backup="${INSTALL}.before-130-$(date -u +%Y%m%dT%H%M%SZ)"
   mv -- "${INSTALL}" "${backup}"
   printf 'native_source_previous_preserved=%s\n' "${backup}"
 fi
@@ -118,7 +128,7 @@ mv -Tf -- "${tmpLink}" "${INSTALL}"
 su -s /bin/sh -c "test -r '${INSTALL}/app/build.gradle.kts'" "${OWNER}" \
   || fail 'web_account_cannot_read_native_source'
 
-printf 'android_source_installed=v0.125.0\n'
+printf 'android_source_installed=v0.130.0\n'
 printf 'android_source_revision=%s\n' "${SHA}"
 printf 'native_source_path=%s\n' "${INSTALL}"
 # The installed web route has separate mandatory guards for signing credentials,
