@@ -540,8 +540,6 @@ private fun PremiumTicket(
     }
 }
 
-}
-
 @Composable
 private fun TicketMoneyColumn(
     title: String, amount: String, modifier: Modifier = Modifier,
