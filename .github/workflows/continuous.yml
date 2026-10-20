@@ -10,6 +10,8 @@ on:
       - 'tests/unit/betsapi-wager-bridge.test.ts'
       - 'src/workers/odds.worker.ts'
       - 'src/workers/betsapi-live-trial-budget.ts'
+      - 'supabase/migrations/0218_betsapi_initial_live_price_version.sql'
+      - 'tests/unit/betsapi-initial-price-version.test.ts'
       - 'tests/unit/betsapi-live-trial-budget.test.ts'
       - 'ops/continuous/**'
       - '.github/workflows/continuous.yml'
