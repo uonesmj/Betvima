@@ -228,7 +228,8 @@ fun BetvimaApp(model: AppViewModel) {
             if (appWindowOrigin != origin) appWindowOrigin = origin
         }) {
         Scaffold(
-            containerColor = if (state.feature == Feature.CASINO)
+            containerColor = if (state.feature == Feature.CASINO ||
+                (state.feature == Feature.NONE && state.tab == Tab.BETS))
                 Color(0xFF141414) else Palette.paper,
             topBar = {
                 Column {
