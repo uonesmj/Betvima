@@ -41,16 +41,6 @@ private val pipBackground = Color(0xFF0A1920)
 private val pipGreen = Color(0xFF44E6A6)
 private val pipGold = Color(0xFFF7CB7B)
 private val pipMuted = Color(0xFFB3CCD1)
-private val pipStats = listOf(
-    "corners" to "Corners", "dangerous_attacks" to "Dangerous attacks",
-    "attacks" to "Attacks", "on_target" to "Shots on target",
-    "off_target" to "Shots off target", "fouls" to "Fouls",
-    "offsides" to "Offsides", "throwins" to "Throw-ins",
-    "yellowcards" to "Yellow cards", "redcards" to "Red cards",
-    "freekicks" to "Free kicks", "goalkicks" to "Goal kicks"
-)
-private data class PiPPulse128(val key: String, val team: String, val name: String, val count: Int)
-
 private fun pipAttackShare(facts: LiveMatchFacts?): Float? {
     val stat = facts?.stat("dangerous_attacks") ?: facts?.stat("attacks") ?: return null
     val a = stat.home ?: return null
@@ -90,33 +80,23 @@ internal fun PremiumMatchTvModal126(
     }
     var selected by remember(match.id) { mutableIntStateOf(0) }
     var previous by remember(match.id) { mutableStateOf<LiveMatchFacts?>(null) }
-    var pulse by remember(match.id) { mutableStateOf<PiPPulse128?>(null) }
-
-    LaunchedEffect(match.id, facts?.observedAt) {
-        val old = previous
-        previous = facts
-        if (old == null || facts == null || old.fi != facts.fi ||
-            old.observedAt == facts.observedAt) return@LaunchedEffect
-        // Animate ONLY confirmed increments, not made-up ball/player movement.
-        val next = facts.stats.firstNotNullOfOrNull { stat ->
-            val earlier = old.stat(stat.key) ?: return@firstNotNullOfOrNull null
-            if (stat.key !in setOf("corners", "dangerous_attacks", "attacks", "on_target",
-                    "off_target", "fouls", "offsides", "yellowcards", "redcards", "throwins"))
-                return@firstNotNullOfOrNull null
-            val h = if (stat.home != null && earlier.home != null) stat.home - earlier.home else 0
-            val a = if (stat.away != null && earlier.away != null) stat.away - earlier.away else 0
-            val cap = if (stat.key.contains("attack")) 15 else 4
-            val side = if (h in 1..cap) "home" else if (a in 1..cap) "away" else null
-            side?.let {
-                PiPPulse128(stat.key, it, if (fa) stat.fa else stat.en, if (it == "home") h else a)
-            }
-        }
-        if (next != null) pulse = next
+    var currentIncident by remember(match.id) { mutableStateOf<LiveIncidentCue129?>(null) }
+    val events = remember(match.id) {
+        kotlinx.coroutines.channels.Channel<LiveIncidentCue129>(capacity = 8)
     }
-    LaunchedEffect(pulse) {
-        val active = pulse ?: return@LaunchedEffect
-        delay(3900)
-        if (pulse == active) pulse = null
+    // First sample is a baseline, not a replay of historical incidents.
+    LaunchedEffect(match.id, facts?.observedAt) {
+        val newCues = observedIncidents129(previous, facts)
+        previous = facts
+        newCues.forEach { events.trySend(it) }
+    }
+    LaunchedEffect(match.id) {
+        for (incident in events) {
+            currentIncident = incident
+            delay(incident.durationMs)
+            currentIncident = null
+            delay(220)
+        }
     }
 
     val score = facts?.score?.split("-")?.takeIf { it.size == 2 }
@@ -224,45 +204,22 @@ internal fun PremiumMatchTvModal126(
                     Column(Modifier.fillMaxSize().padding(7.dp),
                         verticalArrangement = Arrangement.spacedBy(6.dp)) {
                         if (match.sport == "football") {
-                            Canvas(Modifier.fillMaxWidth().weight(1f)) {
-                                val w = size.width
-                                val h = size.height
-                                val stroke = 1.2.dp.toPx()
-                                drawRect(Color(0xFF176440))
-                                repeat(8) { i ->
-                                    if (i % 2 == 0) drawRect(
-                                        Color.White.copy(alpha = .04f),
-                                        Offset(w * i / 8f, 0f), Size(w / 8f, h))
-                                }
-                                val white = Color.White.copy(alpha = .75f)
-                                drawRect(white, Offset(w * .04f, h * .08f),
-                                    Size(w * .92f, h * .84f), style = Stroke(stroke))
-                                drawLine(white, Offset(w * .5f, h * .08f),
-                                    Offset(w * .5f, h * .92f), stroke)
-                                drawCircle(white, radius = minOf(w * .11f, h * .19f),
-                                    center = Offset(w * .5f, h * .5f), style = Stroke(stroke))
-                                drawRect(white, Offset(w * .04f, h * .29f),
-                                    Size(w * .16f, h * .42f), style = Stroke(stroke))
-                                drawRect(white, Offset(w * .8f, h * .29f),
-                                    Size(w * .16f, h * .42f), style = Stroke(stroke))
-                                val active = pulse?.team
-                                if (active != null) drawRect(
-                                    pipGreen.copy(alpha = .22f),
-                                    Offset(if (active == "home") w * .70f else w * .04f,
-                                        h * .08f), Size(w * .26f, h * .84f))
-                            }
+                            LiveIncidentPitch129(
+                                modifier = Modifier.fillMaxWidth().weight(1f),
+                                match = match, cue = currentIncident, fa = fa
+                            )
                         } else {
                             Text(if (fa) "آمار مسابقه" else "Match statistics",
                                 color = pipMuted, modifier = Modifier.weight(1f)
                                     .fillMaxWidth(), textAlign = TextAlign.Center)
                         }
-                        AnimatedVisibility(visible = pulse != null) {
-                            Text(pulse?.let { p ->
-                                (if (p.team == "home") match.home.name else match.away.name) +
-                                    " · +" + p.count + " " + p.name
-                            } ?: "", fontSize = 9.sp, color = pipGreen,
-                                maxLines = 1, overflow = TextOverflow.Ellipsis)
-                        }
+                        Text(
+                            if (fa) "جهت حمله شماتیک است؛ مکان واقعی توپ ارائه نشده."
+                            else "Illustrative attack direction · no real ball location",
+                            fontSize = 7.sp, color = pipMuted, maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth()
+                        )
                         Row(Modifier.fillMaxWidth().height(7.dp)
                             .background(Color(0xFF264A49), RoundedCornerShape(6.dp))) {
                             if (share != null) {
@@ -287,6 +244,7 @@ internal fun PremiumMatchTvModal126(
                     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())
                         .padding(horizontal = 9.dp, vertical = 6.dp),
                         verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                        IncidentStatsCue129(currentIncident, match, fa)
                         if (facts?.stats.isNullOrEmpty()) {
                             Text(if (fa) "آمار تأییدشده برای این مسابقه موجود نیست."
                                 else "No verified live statistics available.",
