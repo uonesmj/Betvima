@@ -56,8 +56,8 @@ fun PremiumMyBetsPage(state: AppState, model: AppViewModel) {
     , flingBehavior = rememberPremiumFlingBehavior()) {
         item(key = "bets-heading") {
             Surface(
-                color = Color.White, shape = RoundedCornerShape(20.dp),
-                border = BorderStroke(1.dp, Color(0xFFE1E7EE))
+                color = Color(0xFF11223A), shape = RoundedCornerShape(20.dp),
+                border = BorderStroke(1.dp, Color(0xFF263D59))
             ) {
                 Row(Modifier.fillMaxWidth().padding(15.dp),
                     verticalAlignment = Alignment.CenterVertically) {
@@ -70,21 +70,21 @@ fun PremiumMyBetsPage(state: AppState, model: AppViewModel) {
                     Spacer(Modifier.width(12.dp))
                     Column(Modifier.weight(1f)) {
                         Text(tr(state.lang, "My Bets", "شرط‌های من"),
-                            color = Palette.text, fontSize = 21.sp,
+                            color = Color.White, fontSize = 21.sp,
                             fontWeight = FontWeight.Black)
                         Spacer(Modifier.height(3.dp))
                         Text(tr(state.lang,
                             "Every selection, score and settlement in one place",
                             "انتخاب‌ها، نتایج و تسویه هر بلیت در یک نگاه"),
-                            color = Palette.muted, fontSize = 11.sp,
+                            color = Color(0xFF9DACC1), fontSize = 11.sp,
                             lineHeight = 16.sp)
                     }
                     if (state.signedIn) Surface(
-                        color = Color(0xFFF2F5F9),
+                        color = Color(0xFF1B3451),
                         shape = RoundedCornerShape(10.dp)
                     ) {
                         Text(state.historyBets.size.toString(),
-                            color = Palette.text, fontSize = 15.sp,
+                            color = Color.White, fontSize = 15.sp,
                             fontWeight = FontWeight.Black,
                             modifier = Modifier.padding(horizontal = 11.dp, vertical = 8.dp))
                     }
@@ -115,7 +115,7 @@ fun PremiumMyBetsPage(state: AppState, model: AppViewModel) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(tr(state.lang, "Ticket explorer", "جست‌وجوی بلیت‌ها"),
                         modifier = Modifier.weight(1f),
-                        color = Palette.text, fontSize = 17.sp,
+                        color = Color.White, fontSize = 17.sp,
                         fontWeight = FontWeight.Black)
                     IconButton(onClick = { model.refreshBetHistory() },
                         modifier = Modifier.size(43.dp)) {
@@ -132,6 +132,16 @@ fun PremiumMyBetsPage(state: AppState, model: AppViewModel) {
                     singleLine = true,
                     shape = RoundedCornerShape(15.dp),
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedTextColor = Color.White,
+                        unfocusedTextColor = Color.White,
+                        focusedContainerColor = Color(0xFF15263C),
+                        unfocusedContainerColor = Color(0xFF15263C),
+                        focusedBorderColor = Color(0xFF1D9BEB),
+                        unfocusedBorderColor = Color(0xFF2B415F),
+                        focusedPlaceholderColor = Color(0xFF9BAEC3),
+                        unfocusedPlaceholderColor = Color(0xFF9BAEC3)
+                    ),
                     leadingIcon = { Icon(Icons.Default.Search, null, tint = Palette.blue) },
                     placeholder = { Text(tr(state.lang,
                         "Search ticket, match or reference", "جست‌وجوی بلیت، مسابقه یا شناسه"),
@@ -274,21 +284,21 @@ private fun HistoryFilterTrigger(
     Surface(
         modifier = modifier.clickable(onClick = onClick),
         shape = RoundedCornerShape(15.dp),
-        color = if (active) Color(0xFFEAF4FF) else Color.White,
-        border = BorderStroke(1.dp, if (active) Palette.blue else Color(0xFFDCE4ED))
+        color = if (active) Color(0xFF173B53) else Color(0xFF15263C),
+        border = BorderStroke(1.dp, if (active) Palette.blue else Color(0xFF2C4361))
     ) {
         Column(Modifier.fillMaxWidth().padding(horizontal = 11.dp, vertical = 12.dp),
             verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            Text(title, fontSize = 10.sp, color = Palette.muted,
+            Text(title, fontSize = 10.sp, color = Color(0xFF9CB0C5),
                 maxLines = 1, overflow = TextOverflow.Ellipsis)
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(selected, modifier = Modifier.weight(1f),
-                    color = if (active) Palette.blue else Palette.text,
+                    color = if (active) Color(0xFF86C4FF) else Color.White,
                     fontSize = 12.sp, fontWeight = FontWeight.Black,
                     maxLines = 1, overflow = TextOverflow.Ellipsis)
                 Icon(Icons.Default.KeyboardArrowDown, null,
                     modifier = Modifier.size(17.dp),
-                    tint = if (active) Palette.blue else Palette.muted)
+                    tint = if (active) Color(0xFF86C4FF) else Color(0xFF9CB0C5))
             }
         }
     }
