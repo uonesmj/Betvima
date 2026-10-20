@@ -68,7 +68,7 @@ internal fun PremiumMatchTvModal126(
     val configuration = LocalConfiguration.current
     val density = LocalDensity.current
     val width = minOf(284, (configuration.screenWidthDp - 20).coerceAtLeast(190)).dp
-    val height = minOf(302, (configuration.screenHeightDp - 100).coerceAtLeast(190)).dp
+    val height = minOf(326, (configuration.screenHeightDp - 100).coerceAtLeast(190)).dp
     val pixelWidth = with(density) { width.roundToPx() }
     val pixelHeight = with(density) { height.roundToPx() }
     val screenWidth = with(density) { configuration.screenWidthDp.dp.roundToPx() }
@@ -114,9 +114,6 @@ internal fun PremiumMatchTvModal126(
         }
     }
 
-    val score = facts?.score?.split("-")?.takeIf { it.size == 2 }
-        ?.joinToString(" : ") ?: (match.homeScore?.toString() ?: "–") +
-            " : " + (match.awayScore?.toString() ?: "–")
     val share = pressureRatio130(facts)
     val livePulse = rememberInfiniteTransition(label = "livePulse130")
     val pulseAlpha by livePulse.animateFloat(initialValue = .40f, targetValue = 1f,
@@ -142,7 +139,7 @@ internal fun PremiumMatchTvModal126(
         ) {
             Column(Modifier.fillMaxSize()) {
                 Row(
-                    modifier = Modifier.fillMaxWidth().height(39.dp)
+                    modifier = Modifier.fillMaxWidth().height(37.dp)
                         .background(Brush.horizontalGradient(listOf(Color(0xFF133D38), Color(0xFF10252F)))),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
@@ -189,28 +186,7 @@ internal fun PremiumMatchTvModal126(
                     }
                 }
                 Row(
-                    Modifier.fillMaxWidth().height(43.dp)
-                        .background(Brush.horizontalGradient(
-                            listOf(Color(0xFF102C36), Color(0xFF153B3E), Color(0xFF102C36))))
-                        .padding(horizontal = 10.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(match.home.name, modifier = Modifier.weight(1f),
-                        maxLines = 1, overflow = TextOverflow.Ellipsis,
-                        fontWeight = FontWeight.ExtraBold, fontSize = 9.sp,
-                        color = premiumText130)
-                    Surface(color = Color(0xFF06151E), shape = RoundedCornerShape(9.dp),
-                        border = BorderStroke(1.dp, Color(0xFF3A806C))) {
-                        Text(score, modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
-                            fontSize = 16.sp, fontWeight = FontWeight.Black, color = Color.White)
-                    }
-                    Text(match.away.name, modifier = Modifier.weight(1f),
-                        textAlign = TextAlign.End, maxLines = 1, overflow = TextOverflow.Ellipsis,
-                        fontWeight = FontWeight.ExtraBold, fontSize = 9.sp,
-                        color = premiumText130)
-                }
-                Row(
-                    Modifier.fillMaxWidth().height(35.dp)
+                    Modifier.fillMaxWidth().height(32.dp)
                         .background(Color(0xFF0C202A)).padding(horizontal = 5.dp, vertical = 3.dp)
                 ) {
                     listOf(
@@ -235,8 +211,8 @@ internal fun PremiumMatchTvModal126(
                 }
                 when (selected) {
                     0 -> Column(
-                        Modifier.fillMaxSize().padding(horizontal = 8.dp, vertical = 6.dp),
-                        verticalArrangement = Arrangement.spacedBy(7.dp)
+                        Modifier.fillMaxSize().padding(horizontal = 5.dp, vertical = 5.dp),
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
                         if (match.sport == "football") {
                             LiveIncidentPitch129(
@@ -247,19 +223,11 @@ internal fun PremiumMatchTvModal126(
                             color = pipMuted, modifier = Modifier.weight(1f).fillMaxWidth(),
                             textAlign = TextAlign.Center)
                         PremiumPressureBar130(share, fa = fa, caption = true)
-                        Row(Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween) {
-                            listOf("corners", "dangerous_attacks", "on_target").forEach { key ->
-                                val stat = facts?.stat(key)
-                                Text((if (fa) stat?.fa ?: key else stat?.en ?: key) +
-                                    " " + (stat?.home ?: "—") + ":" + (stat?.away ?: "—"),
-                                    color = pipMuted, fontSize = 8.sp, maxLines = 1)
-                            }
-                        }
-                        Text(if (fa) "زمین شماتیک؛ بدون موقعیت واقعی توپ"
-                            else "Illustrative pitch · no ball coordinates",
+                        Text(if (fa) "نمای شماتیک، نه مکان واقعی توپ"
+                            else "Schematic animation · no ball tracking",
                             fontSize = 7.sp, color = pipMuted,
-                            textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
+                            textAlign = TextAlign.Center, maxLines = 1,
+                            modifier = Modifier.fillMaxWidth())
                     }
                     1 -> PremiumStatistics130(facts, fa, currentIncident, match)
                     2 -> PremiumMomentum130(observations.toList(), facts, fa)
