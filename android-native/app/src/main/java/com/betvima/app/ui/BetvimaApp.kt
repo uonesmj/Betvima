@@ -230,7 +230,8 @@ fun BetvimaApp(model: AppViewModel) {
         Scaffold(
             containerColor = when {
                 state.feature == Feature.CASINO -> Color(0xFF141414)
-                state.feature == Feature.NONE && state.tab == Tab.BETS -> Palette.headerDark
+                state.feature == Feature.NONE &&
+                    state.tab in setOf(Tab.BETS, Tab.WALLET) -> Palette.headerDark
                 else -> Palette.paper
             },
             topBar = {
