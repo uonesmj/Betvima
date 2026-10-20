@@ -30,17 +30,17 @@ describe('secure automatic affiliate APK build', () => {
     const install = read('ops/android/install-affiliate-apk-worker.sh');
     const worker = read('ops/android/affiliate_apk_worker.py');
     const route = read('src/app/api/v1/affiliate/app-download/[code]/route.ts');
-    const approvedSha = 'e32bb3fc280a60e01e6d6736a8cb111b1d613a36';
+    const approvedSha = 'c4a160723471a94213e3c11b633585d6615714e3';
     expect(sync).toContain(`SHA='${approvedSha}'`);
-    expect(sync).toContain('versionCode[[:space:]]*=[[:space:]]*130');
-    expect(sync).toContain('0\\.130\\.0');
-    expect(sync).toContain('android_source_installed=v0.130.0');
+    expect(sync).toContain('versionCode[[:space:]]*=[[:space:]]*133');
+    expect(sync).toContain('0\\.133\\.0');
+    expect(sync).toContain('android_source_installed=v0.133.0');
     expect(install).toContain(approvedSha);
-    expect(install).toContain('versionCode[[:space:]]*=[[:space:]]*130');
-    expect(install).toContain('0\\.130\\.0');
-    expect(install).toContain('native_version=0.130.0');
-    expect(worker).toContain('int(code.group(1)) < 130');
-    expect(route).toContain('const MINIMUM_NATIVE_VERSION = 130');
+    expect(install).toContain('versionCode[[:space:]]*=[[:space:]]*133');
+    expect(install).toContain('0\\.133\\.0');
+    expect(install).toContain('native_version=0.133.0');
+    expect(worker).toContain('int(code.group(1)) < 133');
+    expect(route).toContain('const MINIMUM_NATIVE_VERSION = 133');
     expect(route).not.toContain('const MINIMUM_NATIVE_VERSION = 125');
   });
 

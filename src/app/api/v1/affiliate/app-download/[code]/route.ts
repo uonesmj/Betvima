@@ -17,9 +17,9 @@ const ANDROID_DIR = '/var/www/betvima-android';
 const DOWNLOAD_DIR = '/var/www/nova/public/downloads/affiliate-app';
 const VERSION_FILE = path.join(ANDROID_DIR, 'app/build.gradle.kts');
 // A deployment must update the installed native sources before enabling downloads.
-// Native 0.130.0 contains the latest approved native UI and preserves affiliate attribution.
+// The audited native 0.133.0 build includes the current UI and affiliate attribution.
 // Older releases must not be shipped to newly referred users.
-const MINIMUM_NATIVE_VERSION = 130;
+const MINIMUM_NATIVE_VERSION = 133;
 const QUEUE_DIR = '/var/lib/betvima-affiliate-build/queue';
 const RUNNING_DIR = '/var/lib/betvima-affiliate-build/running';
 const FAILED_DIR = '/var/lib/betvima-affiliate-build/failed';
@@ -109,6 +109,29 @@ export async function GET(
   const source = await readFile(VERSION_FILE, 'utf8').catch(() => null);
   const version = source ? nativeVersion(source) : null;
   if (!version || version.code < MINIMUM_NATIVE_VERSION) {
+    // Keep the machine-readable failure for the affiliate dashboard, but
+    // never expose a raw JSON error page to users arriving from Chrome.
+    if (request.headers.get('accept')?.includes('text/html')) {
+      return new NextResponse(
+        '<!doctype html><html lang="fa" dir="rtl"><head><meta charset="utf-8">' +
+        '<meta name="viewport" content="width=device-width,initial-scale=1">' +
+        '<title>دانلود بت‌ویما</title>' +
+        '<style>body{margin:0;min-height:100vh;display:grid;place-items:center;' +
+        'background:#101114;color:#f5f5f5;font-family:system-ui,sans-serif;' +
+        'text-align:center}main{max-width:480px;padding:32px}h1{color:#03c978}' +
+        'p{line-height:1.9}</style></head><body><main>' +
+        '<h1>BetVima Android</h1>' +
+        '<p>نسخه جدید اپلیکیشن در حال آماده‌سازی است. لطفاً بعداً دوباره تلاش کنید.</p>' +
+        '<p lang="en" dir="ltr">Android download is temporarily unavailable. ' +
+        'Please try again later.</p></main></body></html>',
+        { status: 503, headers: {
+          'Content-Type': 'text/html; charset=utf-8',
+          'Cache-Control': 'no-store',
+          'Content-Security-Policy': "default-src 'none'; style-src 'unsafe-inline'",
+          'X-Content-Type-Options': 'nosniff',
+        } },
+      );
+    }
     return NextResponse.json(
       { ok: false, error: 'ANDROID_SOURCE_NOT_UPDATED' },
       { status: 503, headers: { 'Cache-Control': 'no-store' } },
