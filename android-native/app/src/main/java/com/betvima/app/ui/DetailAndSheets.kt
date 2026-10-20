@@ -337,9 +337,26 @@ fun LoginSheet(state: AppState, model: AppViewModel) {
             model.showLogin(false)
         }
     }
+    val loginFieldColors = OutlinedTextFieldDefaults.colors(
+        focusedTextColor = DarkHomePalette.ink,
+        unfocusedTextColor = DarkHomePalette.ink,
+        focusedContainerColor = DarkHomePalette.panel,
+        unfocusedContainerColor = DarkHomePalette.panel,
+        focusedBorderColor = Palette.blue,
+        unfocusedBorderColor = DarkHomePalette.outline,
+        focusedLabelColor = Color(0xFF85C5FF),
+        unfocusedLabelColor = DarkHomePalette.muted,
+        focusedLeadingIconColor = Color(0xFF85C5FF),
+        unfocusedLeadingIconColor = DarkHomePalette.muted,
+        focusedTrailingIconColor = DarkHomePalette.muted,
+        unfocusedTrailingIconColor = DarkHomePalette.muted,
+        cursorColor = Palette.blue
+    )
     ModalBottomSheet(
         onDismissRequest = smoothClose,
-        containerColor = Color.White,
+        containerColor = DarkHomePalette.canvas,
+        contentColor = DarkHomePalette.ink,
+        scrimColor = Color.Black.copy(alpha = .72f),
         sheetState = sheet,
         dragHandle = { BottomSheetDefaults.DragHandle() }
     ) {
@@ -408,7 +425,7 @@ fun LoginSheet(state: AppState, model: AppViewModel) {
                     }
                 }
             }
-            Surface(shape = RoundedCornerShape(14.dp), color = Color(0xFFEDEFF3)) {
+            Surface(shape = RoundedCornerShape(14.dp), color = DarkHomePalette.panel) {
                 Row(Modifier.fillMaxWidth().padding(4.dp)) {
                     listOf(
                         false to tr(state.lang, "Log in", "ورود"),
@@ -425,7 +442,7 @@ fun LoginSheet(state: AppState, model: AppViewModel) {
                                 .clickable { model.setRegisterScreen(register) }
                         ) {
                             Box(contentAlignment = Alignment.Center) {
-                                Text(title, color = if (selected) Color.White else Palette.text,
+                                Text(title, color = if (selected) Color.White else DarkHomePalette.ink,
                                     fontWeight = FontWeight.ExtraBold, fontSize = 14.sp)
                             }
                         }
@@ -439,7 +456,7 @@ fun LoginSheet(state: AppState, model: AppViewModel) {
                 exit = androidx.compose.animation.fadeOut() +
                     androidx.compose.animation.shrinkVertically()
             ) {
-                Surface(color = Color(0xFFFFEAEB),
+                Surface(color = Color(0xFF3D252B),
                     border = BorderStroke(1.dp, Palette.red.copy(alpha = .2f)),
                     shape = RoundedCornerShape(13.dp)) {
                     Row(Modifier.fillMaxWidth().padding(12.dp),
@@ -454,9 +471,9 @@ fun LoginSheet(state: AppState, model: AppViewModel) {
                 }
             }
             Surface(
-                color = Color(0xFFF0FAF6),
+                color = Color(0xFF1C2F2A),
                 shape = RoundedCornerShape(14.dp),
-                border = BorderStroke(1.dp, Color(0xFFD4EDE2)),
+                border = BorderStroke(1.dp, Color(0xFF34594C)),
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Row(
@@ -464,21 +481,21 @@ fun LoginSheet(state: AppState, model: AppViewModel) {
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Surface(
-                        color = Color(0xFFDDF5E7),
+                        color = Color(0xFF214237),
                         shape = RoundedCornerShape(10.dp)
                     ) {
-                        Icon(Icons.Default.VerifiedUser, null, tint = Color(0xFF087B50),
+                        Icon(Icons.Default.VerifiedUser, null, tint = Color(0xFF67D8AA),
                             modifier = Modifier.padding(7.dp).size(18.dp))
                     }
                     Spacer(Modifier.width(10.dp))
                     Column(Modifier.weight(1f)) {
                         Text(tr(state.lang, "Protected BetVima account", "حساب حفاظت‌شده بت‌ویما"),
-                            color = Palette.text, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                            color = DarkHomePalette.ink, fontWeight = FontWeight.Bold, fontSize = 12.sp)
                         Text(tr(state.lang, "Verified sign-in · Private account",
                             "ورود تأییدشده · حساب خصوصی"),
-                            color = Palette.muted, fontSize = 10.sp)
+                            color = DarkHomePalette.muted, fontSize = 10.sp)
                     }
-                    Icon(Icons.Default.Lock, null, tint = Color(0xFF087B50),
+                    Icon(Icons.Default.Lock, null, tint = Color(0xFF67D8AA),
                         modifier = Modifier.size(17.dp))
                 }
             }
@@ -496,15 +513,15 @@ fun LoginSheet(state: AppState, model: AppViewModel) {
                         )
                     } else if (state.mfaRequired) {
                         Text(tr(state.lang, "Authenticator verification", "تأیید دومرحله‌ای"),
-                            color = Palette.text, fontWeight = FontWeight.Black, fontSize = 23.sp)
+                            color = DarkHomePalette.ink, fontWeight = FontWeight.Black, fontSize = 23.sp)
                         Text(tr(state.lang,
                             "Open Google Authenticator and enter the six-digit code to finish signing in.",
                             "Google Authenticator را باز کنید و کد شش‌رقمی را برای تکمیل ورود وارد کنید."),
-                            color = Palette.muted, fontSize = 12.sp)
+                            color = DarkHomePalette.muted, fontSize = 12.sp)
                         if (state.mfaChoices.size > 1) {
                             Text(tr(state.lang, "Choose an authenticator",
                                 "برنامه امنیتی را انتخاب کنید"),
-                                color = Palette.text, fontSize = 12.sp,
+                                color = DarkHomePalette.ink, fontSize = 12.sp,
                                 fontWeight = FontWeight.Bold)
                             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                                 state.mfaChoices.forEach { factor ->
@@ -530,7 +547,7 @@ fun LoginSheet(state: AppState, model: AppViewModel) {
                             singleLine = true,
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
                             modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(14.dp))
+                            shape = RoundedCornerShape(14.dp), colors = loginFieldColors)
                         Button(
                             onClick = {
                                 model.verifyMfa(authenticatorCode)
@@ -556,18 +573,19 @@ fun LoginSheet(state: AppState, model: AppViewModel) {
                     } else if (!state.registerScreen) {
                         Text(tr(state.lang, "Welcome back", "خوش آمدید"),
                             fontSize = 24.sp, fontWeight = FontWeight.Black,
-                            color = Palette.text)
+                            color = DarkHomePalette.ink)
                         Text(tr(state.lang,
                             "Use your BetVima account credentials to access your wallet and tickets.",
                             "با مشخصات حساب بت‌ویما وارد شوید و به کیف‌پول و شرط‌ها دسترسی داشته باشید."),
-                            fontSize = 12.sp, color = Palette.muted, lineHeight = 19.sp)
+                            fontSize = 12.sp, color = DarkHomePalette.muted, lineHeight = 19.sp)
                         OutlinedTextField(
                             value = email, onValueChange = { email = it.trim().take(254) },
                             label = { Text(tr(state.lang, "Email", "ایمیل")) },
                             leadingIcon = { Icon(Icons.Default.Email, null) },
                             modifier = Modifier.fillMaxWidth(),
                             singleLine = true, shape = RoundedCornerShape(13.dp),
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email)
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
+                             colors = loginFieldColors
                         )
                         OutlinedTextField(
                             value = password, onValueChange = { password = it.take(128) },
@@ -586,7 +604,8 @@ fun LoginSheet(state: AppState, model: AppViewModel) {
                             visualTransformation = if (visible)
                                 androidx.compose.ui.text.input.VisualTransformation.None
                             else PasswordVisualTransformation(),
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password)
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                             colors = loginFieldColors
                         )
                         Button(onClick = { model.signIn(email, password) },
                             enabled = !state.busy && email.contains("@") &&
