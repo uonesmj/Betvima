@@ -14,15 +14,15 @@ A GitHub Android build, GitHub merge or production web deployment **does not**
 update the native source or APK signing worker on the VPS. Native deployment is
 an independently controlled root operation.
 
-## Approved Android 0.134.0 source
+## Approved Android 0.135.0 source
 
-- Native ref: `feat/android-134-my-bets-tickets-20261020`.
-- Pinned, reviewed source SHA: `0ea6675bedbc79a18258a1cc4c4452903e23032d`.
-- Version: `versionCode=134`, `versionName=0.134.0`.
+- Native ref: `fix/android-135-compact-notched-bets-20261020`.
+- Pinned, reviewed source SHA: `c7d5cf6cb0ff8b3dd588236a94cb7db5243bbc1d`.
+- Version: `versionCode=135`, `versionName=0.135.0`.
 - On-demand APKs contain `BuildConfig.AFFILIATE_REFERRAL_CODE` for the
   specific approved partner, with no secrets embedded into `BuildConfig`.
 - The public download endpoint, native source installer, isolated worker
-  installer and worker guard now all agree on **134**.
+  installer and worker guard now all agree on **135**.
 
 Do not change this SHA to a moving branch head, accept an older unreviewed
 version, or disable the signing certificate checks to make the endpoint return
@@ -67,7 +67,7 @@ sudo systemctl is-active betvima-affiliate-apk.timer
 sudo journalctl -u betvima-affiliate-apk.service --no-pager -n 35
 ```
 
-Expected: version `134 / 0.134.0`, pinned commit `0ea6675b...`, and an
+Expected: version `135 / 0.135.0`, pinned commit `c7d5cf6c...`, and an
 active worker timer. Do not paste secret values or unredacted private build logs
 into support conversations.
 
@@ -79,7 +79,7 @@ an HTML preparation page, automatically refreshed at most every 45 seconds.
 The separate root-owned timer performs one queued build. When ready, the
 endpoint returns HTTP 200 with
 `Content-Type: application/vnd.android.package-archive` and a
-`BetVima-<CODE>-v0.134.0.apk` attachment.
+`BetVima-<CODE>-v0.135.0.apk` attachment.
 
 Verify the APK certificate with `apksigner verify --print-certs` and confirm
 that the correct affiliate code was compiled into the build. On a test device,
