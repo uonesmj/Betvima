@@ -17,9 +17,9 @@ const ANDROID_DIR = '/var/www/betvima-android';
 const DOWNLOAD_DIR = '/var/www/nova/public/downloads/affiliate-app';
 const VERSION_FILE = path.join(ANDROID_DIR, 'app/build.gradle.kts');
 // A deployment must update the installed native sources before enabling downloads.
-// Native 0.125.0 removes user-facing referral diagnostics while preserving attribution.
+// Native 0.130.0 contains the latest approved native UI and preserves affiliate attribution.
 // Older releases must not be shipped to newly referred users.
-const MINIMUM_NATIVE_VERSION = 125;
+const MINIMUM_NATIVE_VERSION = 130;
 const QUEUE_DIR = '/var/lib/betvima-affiliate-build/queue';
 const RUNNING_DIR = '/var/lib/betvima-affiliate-build/running';
 const FAILED_DIR = '/var/lib/betvima-affiliate-build/failed';
