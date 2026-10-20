@@ -4,8 +4,20 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.ui.unit.dp
 
+/** Local-only Home color override. Switching back to v0.141 restores light Home. */
+internal val LocalDarkHome = compositionLocalOf { false }
+internal object DarkHomePalette {
+    val canvas = Color(0xFF111113)
+    val panel = Color(0xFF222224)
+    val outline = Color(0xFF39393D)
+    val ink = Color(0xFFF5F6F8)
+    val muted = Color(0xFFA9ADB8)
+    val soft = Color(0xFF2B2D31)
+    val blueSoft = Color(0xFF173550)
+}
 object Palette {
     val ink = Color(0xFF09131C)
     // Shared canvas for the standard header, My Bets, and its bottom navigation.
