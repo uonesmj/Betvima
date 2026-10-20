@@ -105,7 +105,7 @@ internal fun LiveIncidentPitch129(
                         drawLine(tint.copy(alpha = (0.40f - trail * .07f) * visibleAlpha),
                             Offset(trailX - direction * w * .035f, y),
                             Offset(trailX + direction * w * .015f, y),
-                            width = (4 - trail).dp.toPx())
+                            strokeWidth = (4 - trail).dp.toPx())
                     }
                 }
                 val arrow = Path().apply {
