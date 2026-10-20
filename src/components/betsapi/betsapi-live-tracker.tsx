@@ -10,7 +10,7 @@ type View = 'pitch' | 'stats' | 'timeline' | 'momentum';
 type Side = 'home' | 'away';
 type Observation = { id: string; side: Side | null; key: string; labelEn: string; labelFa: string; change: number | null; at: string; minute: number | null };
 type TrendPoint = { id: string; home: number | null; away: number | null; at: string };
-type Props = { facts: MatchLiveFacts | null; home: string; away: string; homeLogo?: string | null; awayLogo?: string | null; fa: boolean };
+type Props = { facts: MatchLiveFacts | null; home: string; away: string; homeLogo?: string | null; awayLogo?: string | null; fa: boolean; fallbackScore?: string | null; fallbackMinute?: number | null };
 const watched = new Set(['corners', 'throwins', 'fouls', 'offsides', 'yellowcards', 'redcards', 'on_target', 'off_target', 'attacks', 'dangerous_attacks', 'freekicks', 'goalkicks']);
 const nameFor = (line: StatLine | undefined, fa: boolean, fallback: string) => line ? (fa ? line.fa : line.en) : fallback;
 const percent = (home: number | null | undefined, away: number | null | undefined): number | null => {
@@ -29,7 +29,7 @@ const parseScore = (value: string | null): [number, number] | null => {
  * PRESSURE, never ball coordinates or player locations. New activity markers
  * are observed changes to provider counters, not timestamped match incidents.
  */
-export function BetsApiLiveTracker({ facts, home, away, homeLogo, awayLogo, fa }: Props) {
+export function BetsApiLiveTracker({ facts, home, away, homeLogo, awayLogo, fa, fallbackScore, fallbackMinute }: Props) {
   const [view, setView] = useState<View>('pitch');
   const [observations, setObservations] = useState<Observation[]>([]);
   const [trend, setTrend] = useState<TrendPoint[]>([]);
@@ -43,11 +43,11 @@ export function BetsApiLiveTracker({ facts, home, away, homeLogo, awayLogo, fa }
     clockObservedAt: facts.updatedAt,
     minute: facts.minute,
   } : null);
-  const time = clock != null ? formatTime(clock) : facts?.minute != null ? String(facts.minute) + '′' : 'LIVE';
+  const time = clock != null ? formatTime(clock) : (facts?.minute ?? fallbackMinute) != null ? String(facts?.minute ?? fallbackMinute) + '′' : 'LIVE';
   const attacks = stat('dangerous_attacks') ?? stat('attacks');
   const share = percent(attacks?.home, attacks?.away);
   const possession = stat('possession');
-  const score = parseScore(facts?.score ?? null);
+  const score = parseScore(facts?.score ?? fallbackScore ?? null);
   const isAvailable = Boolean(facts?.stats.length);
 
   useEffect(() => {
