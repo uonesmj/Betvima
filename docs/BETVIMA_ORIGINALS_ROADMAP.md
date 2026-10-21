@@ -20,6 +20,22 @@ with independently audited RNG, certified paytables, immutable rounds,
 idempotent ledger transactions, unique operation keys, complete session
 recovery, verifiable player-facing histories, anti-fraud and risk controls.
 
+## Royal Vault: first complete interactive demo
+
+- URL, behind the same server-only preview flag: `/casino/originals/royal-vault`.
+- Custom authored vector art: `public/originals/royal-vault-hero.svg`; branded responsive reels and custom controls.
+- 5 reels × 3 rows, 8 independent equiprobable symbols, 5 fixed lines (top, center, bottom, V and reverse V).
+- 2, 3, 4, 5 consecutive matching symbols starting from the left award 2×, 32×, 100×, 350× *per-line stake*, respectively. Every wager is divided into five line stakes.
+- The exact per-line/theoretical RTP is **91.259765625%** (derived analytically and checked over all 8^5 possible one-line outcomes). This is a demo result, not an audited/certified real-money RTP.
+- Royal Vault is a fully **interactive demo**: unbiased browser crypto random sample, sequential animated reel stops, five-payline wins, bet selector, large spin button, maximum bet, up-to-10-spin autoplay with stop, turbo animation, opt-in synthesized audio, rules/paytable, session statistics, nonredeemable credits and reset.
+- All its data lives in React state, not the authenticated financial backend. Refresh resets credits. Existing top navigation can show the signed-in user's **read-only** real wallet balance, but Royal Vault never uses or updates that amount.
+- No fake USD cash wins, supplier game launches, server wallet calls or real wagering hooks. Original provider casino catalogue is unchanged.
+- One wallet integration gate per approved environment must later atomically **reserve/debit and settle/credit** funds with idempotency, immutable round history, authoritative server RNG, loss/age/geo/KYC restrictions, regulated RNG and game fairness verification, dispute recovery and reconciliation. Mere UI support or this independent demo must never enable cash wagering.
+
+### Preview activation
+
+Only on a safe preview environment, set `BETVIMA_ORIGINALS_PREVIEW_ENABLED=true` and deploy the reviewed server build. If missing or false, both `/casino/originals` and `/casino/originals/royal-vault` respond with 404. No migration, wallet setting or live provider flag must be changed.
+
 ## 500-title catalogue *target*, not 500 completed titles
 
 | Game family | Target titles |
