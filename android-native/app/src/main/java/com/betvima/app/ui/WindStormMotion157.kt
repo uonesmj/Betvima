@@ -45,6 +45,23 @@ import kotlin.math.roundToInt
 internal fun windStormIntensity(value: Float): Float =
     if (value.isFinite()) value.coerceIn(0f, 1f) else 0f
 
+/**
+ * Feather each independent gust near both sides and the top/bottom.
+ * Unlike painting a full-width background gradient, this cannot form a
+ * rectangular tinted panel behind the league artwork.
+ */
+internal fun windStormEdgeFeather(
+    x: Float, y: Float, width: Float, height: Float
+): Float {
+    if (!x.isFinite() || !y.isFinite() || !width.isFinite() ||
+        !height.isFinite() || width <= 0f || height <= 0f) return 0f
+    val horizontal = (x / (width * .18f)).coerceIn(0f, 1f) *
+        ((width - x) / (width * .18f)).coerceIn(0f, 1f)
+    val vertical = (y / (height * .18f)).coerceIn(0f, 1f) *
+        ((height - y) / (height * .18f)).coerceIn(0f, 1f)
+    return (horizontal * vertical).coerceIn(0f, 1f)
+}
+
 internal fun windStormDirection(
     previousIndex: Int, previousOffset: Int, index: Int, offset: Int
 ): Float = when {
@@ -180,20 +197,10 @@ private fun WindStormTrails(
         val fromLeft = direction > 0f
         val blue = Color(0xFF128CFB)
         val frost = Color(0xFFCBEFFF)
-        // A translucent edge front makes the airflow legible but leaves
-        // labels, odds, icons and Refresh buttons readable and tappable.
-        drawRect(
-            Brush.horizontalGradient(
-                if (fromLeft)
-                    listOf(blue.copy(alpha = .21f * strength),
-                        frost.copy(alpha = .045f * strength), Color.Transparent)
-                else
-                    listOf(Color.Transparent, frost.copy(alpha = .045f * strength),
-                        blue.copy(alpha = .21f * strength))
-            ),
-            size = size
-        )
-        for (n in 0 until 21) {
+        // Intentionally no drawRect, solid surface, full-width gradient,
+        // clipping panel, or overlay background. Only separate, fading trails
+        // are painted directly over the existing natural page background.
+        for (n in 0 until 25) {
             val seed = ((n * 0.618034f) % 1f)
             val progression = ((seed + drift * (0.26f + (n % 5) * .04f)) % 1f + 1f) % 1f
             val y = h * (.13f + ((n * .27183f) % 1f) * .75f)
@@ -202,7 +209,8 @@ private fun WindStormTrails(
             val length = (16f + (n % 6) * 7f).dp.toPx()
             val tip = Offset(x, y)
             val tail = Offset(x - direction * length, y + (n % 3 - 1) * 4.dp.toPx())
-            val fade = (1f - lane / (w * .9f)).coerceIn(.08f, 1f)
+            val fade = windStormEdgeFeather(x, y, w, h) *
+                (1f - lane / (w * .88f)).coerceIn(0f, 1f)
             drawLine(
                 color = if (n % 4 == 0) frost.copy(alpha = strength * .64f * fade)
                     else blue.copy(alpha = strength * .36f * fade),
@@ -232,9 +240,20 @@ private fun WindStormTrails(
                     endX, middleY - h * .04f
                 )
             }
+            // Each curved strand fades at BOTH ends. A path-only brush never
+            // fills the surrounding frame, avoiding the hard-edged blue box.
             drawPath(
                 path = current,
-                color = frost.copy(alpha = strength * (.13f - lane * .025f)),
+                brush = Brush.horizontalGradient(
+                    colors = listOf(
+                        Color.Transparent,
+                        frost.copy(alpha = strength * (.18f - lane * .032f)),
+                        blue.copy(alpha = strength * (.12f - lane * .023f)),
+                        Color.Transparent
+                    ),
+                    startX = if (fromLeft) 0f else w * .54f,
+                    endX = if (fromLeft) w * .46f else w
+                ),
                 style = Stroke(width = (1.9f - lane * .35f).dp.toPx(), cap = StrokeCap.Round)
             )
         }
