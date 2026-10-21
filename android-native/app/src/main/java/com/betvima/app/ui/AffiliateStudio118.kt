@@ -284,10 +284,12 @@ internal fun AffiliateStudio118(
                                         onPayouts={onNavigate("payouts")})
                                 }
                                 "gifts" -> {
-                                    StudioSection118(tr(state.lang,"Registration gift codes",
-                                        "کدهای هدیه ثبت‌نام"),
-                                        tr(state.lang,"Up to 10 codes, 4–8 letters or digits",
-                                            "حداکثر ۱۰ کد، هر کد ۴ تا ۸ حرف یا عدد"))
+                                    FinancePanel159(
+                                        title=tr(state.lang,"Registration gift codes","کدهای هدیه ثبت‌نام"),
+                                        subtitle=tr(state.lang,
+                                            "Create and manage up to 10 real referral codes (4–8 letters or digits).",
+                                            "ساخت و مدیریت حداکثر ۱۰ کد دعوت واقعی، با ۴ تا ۸ نویسه")
+                                    ) {
                                     Row(verticalAlignment=Alignment.CenterVertically) {
                                         OutlinedTextField(giftCode,
                                             { giftCode=it.uppercase().filter(Char::isLetterOrDigit).take(8) },
@@ -329,6 +331,7 @@ internal fun AffiliateStudio118(
                                             model.notice(tr(state.lang,"Code copied","کد کپی شد"))
                                         }
                                     }
+                                    }
                                 }
                                 else -> {
                                     if(current=="links") {
@@ -367,15 +370,36 @@ internal fun AffiliateStudio118(
                                             ?.let { money(it,currency) } ?: "—",
                                         partner?.str("settlementTimezone","Asia/Tehran")
                                             ?: "Asia/Tehran", onPayouts=null)
-                                    AffiliateOperations(
-                                        state=state,model=model,currency=currency,
-                                        minimumPayoutMinor=partner?.str("minPayoutMinor","0") ?: "0",
-                                        requestedTab=current,
-                                        navigationRevision=1,
-                                        showNavigation=false,
-                                        reportTimezone=partner?.str("settlementTimezone","Asia/Tehran")
-                                            ?: "Asia/Tehran"
-                                    )
+                                    if(current in listOf("payouts","links","wallets")) {
+                                        FinancePanel159(
+                                            title=when(current) {
+                                                "payouts" -> tr(state.lang,"Payment operations","عملیات برداشت")
+                                                "links" -> tr(state.lang,"Campaign link studio","مدیریت لینک کمپین")
+                                                else -> tr(state.lang,"Receiving wallet management","مدیریت کیف پول دریافت")
+                                            },
+                                            subtitle=tr(state.lang,
+                                                "Secure account actions are verified by the partner server.",
+                                                "عملیات امن حساب در سرور افیلیت اعتبارسنجی می‌شود.")
+                                        ) {
+                                            AffiliateOperations(
+                                                state=state,model=model,currency=currency,
+                                                minimumPayoutMinor=partner?.str("minPayoutMinor","0") ?: "0",
+                                                requestedTab=current,navigationRevision=1,
+                                                showNavigation=false,
+                                                reportTimezone=partner?.str("settlementTimezone","Asia/Tehran")
+                                                    ?: "Asia/Tehran"
+                                            )
+                                        }
+                                    } else {
+                                        AffiliateOperations(
+                                            state=state,model=model,currency=currency,
+                                            minimumPayoutMinor=partner?.str("minPayoutMinor","0") ?: "0",
+                                            requestedTab=current,navigationRevision=1,
+                                            showNavigation=false,
+                                            reportTimezone=partner?.str("settlementTimezone","Asia/Tehran")
+                                                ?: "Asia/Tehran"
+                                        )
+                                    }
                                 }
                             }
                         }
