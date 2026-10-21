@@ -43,6 +43,7 @@ describe('SoftAggregator signed HTTP wallet webhook — no actual funds', () => 
     vi.resetAllMocks();
     vi.stubEnv('SOFTAGGREGATOR_SALT_KEY', SALT);
     vi.stubEnv('SOFTAGGREGATOR_EDGE_HMAC_SECRET', EDGE_SECRET);
+    vi.stubEnv('SOFTAGGREGATOR_CALLBACK_AUDIT_ENABLED', 'false');
     vi.mocked(casinoRealMoneyEnabled).mockReturnValue(true);
   });
   afterEach(() => vi.unstubAllEnvs());
@@ -57,6 +58,58 @@ describe('SoftAggregator signed HTTP wallet webhook — no actual funds', () => 
     expect(response.status).toBe(200); // Supplier business protocol.
     expect(await response.json()).toEqual({ error: 2, balance: 0 });
     expect(settleCasinoCallback).not.toHaveBeenCalled();
+  });
+
+  it('confirms both signatures for a genuine provider balance probe without enabling money or touching a wallet', async () => {
+    vi.mocked(casinoRealMoneyEnabled).mockReturnValue(false);
+    vi.stubEnv('SOFTAGGREGATOR_CALLBACK_AUDIT_ENABLED', 'true');
+    const info = vi.spyOn(console, 'info').mockImplementation(() => {});
+    try {
+      const response = await GET(signedCallback({
+        action: 'balance', username: 'softagg_test', call_id: 'bal_test_valid',
+      }));
+      expect(await response.json()).toEqual({ error: 2, balance: 0 });
+      expect(settleCasinoCallback).not.toHaveBeenCalled();
+      expect(info.mock.calls).toEqual([
+        ['softaggregator.callback.audit', 'dual_signature_verified_balance_only'],
+      ]);
+      expect(JSON.stringify(info.mock.calls)).not.toContain('softagg_test');
+      expect(JSON.stringify(info.mock.calls)).not.toContain(SALT);
+      expect(JSON.stringify(info.mock.calls)).not.toContain(EDGE_SECRET);
+    } finally {
+      info.mockRestore();
+    }
+  });
+
+  it('does not acknowledge or log malicious, monetary or disabled audit requests', async () => {
+    vi.mocked(casinoRealMoneyEnabled).mockReturnValue(false);
+    vi.stubEnv('SOFTAGGREGATOR_CALLBACK_AUDIT_ENABLED', 'true');
+    const info = vi.spyOn(console, 'info').mockImplementation(() => {});
+    try {
+      const valid = signedCallback({ action: 'balance', username: 'softagg_test', call_id: 'bal_1' });
+      const alteredEdge = new Headers(valid.headers);
+      alteredEdge.set('x-betvima-edge-signature', '0'.repeat(64));
+      const noProvider = new Headers(valid.headers);
+      noProvider.delete('x-signature');
+      const requests = [
+        new Request(valid, {headers: alteredEdge}),
+        new Request(valid, {headers: noProvider}),
+        signedCallback({ action: 'balance', username: 'softagg_test', call_id: 'bal_2' }, true),
+        signedCallback({ action: 'balance', username: USERNAME, call_id: 'bal_3' }),
+        signedCallback({ action: 'debit', username: 'softagg_test', call_id: 'debit_1', amount: '50' }),
+        signedCallback({ action: 'balance', username: 'softagg_test', call_id: 'bal_4', amount: '100' }),
+      ];
+      for (const request of requests) {
+        const response = await GET(request);
+        expect(await response.json()).toEqual({ error: 2, balance: 0 });
+      }
+      vi.stubEnv('SOFTAGGREGATOR_CALLBACK_AUDIT_ENABLED', 'false');
+      expect(await (await GET(valid)).json()).toEqual({ error: 2, balance: 0 });
+      expect(info).not.toHaveBeenCalled();
+      expect(settleCasinoCallback).not.toHaveBeenCalled();
+    } finally {
+      info.mockRestore();
+    }
   });
 
   it('rejects a valid timestamp with altered full-payload HMAC', async () => {
