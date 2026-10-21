@@ -5,6 +5,7 @@ import { ArrowRight, ArrowUpRight, AtSign, BarChart3, Check, ChevronDown, Chevro
 import { apiRequest } from '@/lib/hooks/useApi';
 import { useApp } from '@/components/layout/providers';
 import './affiliate-promo.css';
+import './affiliate-connected.css';
 
 type FaqItem = { en: string; fa: string; answerEn: string; answerFa: string };
 const faq: FaqItem[] = [
@@ -147,11 +148,34 @@ function Signup({ isFa }: { isFa: boolean }) {
   );
 }
 
+
+/** SVG meets both adjacent section edges; it is a connector, not a floating divider. */
+function AffiliateCircuit({ variant = 'right' }: { variant?: 'left' | 'right' }) {
+  return <div className={'bva2-circuit bva2-circuit--' + variant} aria-hidden="true">
+    <svg viewBox="0 0 1000 84" preserveAspectRatio="none" focusable="false">
+      <defs><filter id={'bva2-glow-' + variant}><feGaussianBlur stdDeviation="5" /></filter></defs>
+      <path className="bva2-trace-glow" filter={'url(#bva2-glow-' + variant + ')'} d={variant === 'left' ? 'M0 2 H90 L135 40 H340 L385 72 H610 L665 32 H875 L914 2 H1000' : 'M0 74 H86 L126 33 H345 L390 8 H635 L682 51 H883 L927 74 H1000'}/>
+      <path className="bva2-trace" d={variant === 'left' ? 'M0 2 H90 L135 40 H340 L385 72 H610 L665 32 H875 L914 2 H1000' : 'M0 74 H86 L126 33 H345 L390 8 H635 L682 51 H883 L927 74 H1000'}/>
+      <path className="bva2-trace-secondary" d={variant === 'left' ? 'M0 26 H115 L152 61 H290 M450 53 H599 L656 13 H791 L834 35 H1000' : 'M0 48 H95 L149 66 H311 L355 39 H554 M635 21 H798 L849 56 H1000'}/>
+      <circle cx={variant === 'left' ? '385' : '390'} cy={variant === 'left' ? '72' : '8'} r="9" className="bva2-node" />
+      <circle cx={variant === 'left' ? '665' : '682'} cy={variant === 'left' ? '32' : '51'} r="5" className="bva2-node" />
+    </svg>
+  </div>;
+}
+
+const affiliateEditorial = [
+  { key: 'portrait-blue', en: 'Editorial portrait', fa: 'پرتره تبلیغاتی', position: '0% 0%' },
+  { key: 'portrait-dark', en: 'Fashion campaign', fa: 'کمپین مد و برند', position: '100% 0%' },
+  { key: 'lifestyle-golf', en: 'Outdoor lifestyle', fa: 'سبک زندگی و ورزش', position: '0% 100%' },
+  { key: 'studio-white', en: 'Studio campaign', fa: 'عکاسی استودیویی', position: '100% 100%' },
+] as const;
+
 export function AffiliateShowcase() {
   const { locale } = useApp();
   const isFa = locale === 'fa';
   const [menuOpen, setMenuOpen] = useState(false);
-  const [openFaq, setOpenFaq] = useState<number | null>(null);
+  const [openFaq, setOpenFaq] = useState<number | null>(0);
+  const [activePhoto, setActivePhoto] = useState<number | null>(null);
   const productsRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const root = document.querySelector('.bva-root');
@@ -164,16 +188,27 @@ export function AffiliateShowcase() {
     items.forEach((item) => observer.observe(item));
     return () => observer.disconnect();
   }, [locale]);
+  useEffect(() => {
+    if (activePhoto === null) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setActivePhoto(null);
+      if (event.key === 'ArrowRight') setActivePhoto((value) => value === null ? null : (value + 1) % affiliateEditorial.length);
+      if (event.key === 'ArrowLeft') setActivePhoto((value) => value === null ? null : (value + affiliateEditorial.length - 1) % affiliateEditorial.length);
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [activePhoto]);
   const scrollProducts = (direction: number) => productsRef.current?.scrollBy({ left: direction * Math.min(340, productsRef.current.clientWidth * .83), behavior: 'smooth' });
   const nav = [
     { id: 'bva-features', en: 'Features', fa: 'ویژگی‌ها' },
     { id: 'bva-product', en: 'Product', fa: 'محصولات' },
     { id: 'bva-faq', en: 'FAQ', fa: 'سؤالات' },
-    { id: 'bva-about', en: 'About', fa: 'درباره ما' },
+    { id: 'bva-about', en: 'Benefits', fa: 'مزایا' },
+    { id: 'bva2-gallery', en: 'Gallery', fa: 'گالری' },
     { id: 'bva-signup', en: 'Contacts', fa: 'تماس' },
   ];
   return (
-    <div className="bva-root" dir={isFa ? 'rtl' : 'ltr'}>
+    <div className="bva-root bva-v2" dir={isFa ? 'rtl' : 'ltr'}>
       <header className="bva-header">
         <a href="#bva-top" className="bva-brand"><img src="/brand/betvima-logo-transparent.png" alt="BetVima Partners" /><span>PARTNERS</span></a>
         <div className="bva-header-actions"><a className="bva-header-login" href="/affiliate/login">{isFa ? 'ورود' : 'Log in'}</a><button aria-label={isFa ? 'منو' : 'Menu'} type="button" className="bva-menu-btn" onClick={() => setMenuOpen((v) => !v)}>{menuOpen ? <X size={23} /> : <Menu size={23} />}</button></div>
@@ -199,54 +234,61 @@ export function AffiliateShowcase() {
             <div className="bva-stat"><strong><Counter end={3} /></strong><span>{isFa ? 'دسته محصول' : 'Product experiences'}</span></div>
           </div>
         </section>
-        <section id="bva-features" className="bva-features bva-light-section">
-          <div className="bva-section-inner">
-            <Reveal><div className="bva-eyebrow">FEATURES</div><h2>{isFa ? 'اکوسیستمی پیشرفته برای رشد همکاری' : 'An advanced ecosystem for partner growth'}</h2></Reveal>
-            <Reveal><div className="bva-feature-dark">
-              <h3>{isFa ? 'همه‌چیز در دنیای BetVima' : 'Explore the BetVima experience'}</h3>
-              <div className="bva-feature-dark-visual"><PhoneMock variant="mobile" /><span className="bva-cube" aria-hidden="true"><Gamepad2 size={36} /></span></div>
+
+        <AffiliateCircuit variant="right" />
+        <section id="bva-features" className="bva2-partnership">
+          <div className="bva2-inner">
+            <Reveal><div className="bva2-kicker">{isFa ? 'همکاری شما' : 'YOUR PARTNERSHIP'}</div><h2>{isFa ? 'ساخته‌شده برای رشد واقعی' : 'Built for real growth'}</h2><p className="bva2-lead">{isFa ? 'BetVima را به مخاطبان خود معرفی کنید و کمیسیون‌ها را در یک پنل امن مدیریت کنید.' : 'Share BetVima with your audience and manage commissions from one secure dashboard.'}</p></Reveal>
+            <Reveal delay={70}><div className="bva2-revenue"><span className="bva2-rate">70%</span><div><b>{isFa ? 'نرخ پایه مشارکت در درآمد' : 'Default revenue share'}</b><p>{isFa ? 'برای حساب‌های تأییدشده؛ نرخ نهایی مطابق قرارداد هر همکار تعیین می‌شود.' : 'For approved accounts. Your actual rate is shown after sign-in and is subject to your agreement.'}</p></div></div></Reveal>
+            <Reveal delay={120}><div className="bva2-benefits">
+              <div className="bva2-benefit"><span><ShieldCheck size={28}/></span><div><b>{isFa ? 'تسویه طبق قرارداد' : 'Agreement-based settlement'}</b><small>{isFa ? 'زمان پرداخت پس از تأیید و مطابق شرایط حساب' : 'Settlement timing depends on your approved terms'}</small></div></div>
+              <div className="bva2-benefit"><span><BarChart3 size={28}/></span><div><b>{isFa ? 'آمار قابل‌پیگیری همکاران' : 'Verified partner analytics'}</b><small>{isFa ? 'پیگیری ثبت‌نام‌ها و کمیسیون ثبت‌شده' : 'Track attributed signups and earned commission'}</small></div></div>
+              <div className="bva2-benefit"><span><Smartphone size={28}/></span><div><b>{isFa ? 'تجربه مخصوص اندروید' : 'Native Android workspace'}</b><small>{isFa ? 'کمپین‌ها و پرداخت‌ها در یک محیط' : 'Campaigns and payouts in one workspace'}</small></div></div>
             </div></Reveal>
-            <Reveal><article className="bva-feature-white"><h3>{isFa ? 'تجربه‌ای یکپارچه' : 'Original product experience'}</h3><p>{isFa ? 'محصولات ورزشی و کازینو با طراحی یکپارچه و مناسب موبایل.' : 'Sports and casino products with a unified mobile-first presentation.'}</p><div className="bva-double-phone"><PhoneMock variant="casino" /><PhoneMock variant="sports" /></div></article></Reveal>
-            <div className="bva-feature-grid">
-              <Reveal><article className="bva-feature-white bva-mini-feature"><h3>{isFa ? 'محصول موبایل‌محور' : 'Android-first experience'}</h3><p>{isFa ? 'تجربه مناسب کاربران اندروید با پیمایش روان.' : 'Made to feel intuitive and fast on Android.'}</p><div className="bva-feature-symbols"><Smartphone size={34} /><Gamepad2 size={34} /></div></article></Reveal>
-              <Reveal delay={110}><article className="bva-feature-white bva-mini-feature"><h3>{isFa ? 'آمار قابل پیگیری' : 'Trackable partner stats'}</h3><p>{isFa ? 'اطلاعات همکاری از پنل اختصاصی قابل مشاهده است.' : 'Monitor your own tracked results in your dashboard.'}</p><div className="bva-graph"><span className="bva-online">● Online</span><svg viewBox="0 0 300 100" role="img" aria-label="Decorative animated trend line"><path d="M0 77 C48 35 82 110 132 62 S222 98 300 17" fill="none" stroke="#4565fa" strokeWidth="3" strokeLinecap="round" className="bva-graph-line" /></svg></div></article></Reveal>
+          </div>
+        </section>
+        <AffiliateCircuit variant="left" />
+        <section id="bva-product" className="bva2-products">
+          <div className="bva2-inner">
+            <Reveal><div className="bva2-kicker">{isFa ? 'محصولات ما' : 'OUR PRODUCTS'}</div><h2>{isFa ? 'بازیکنان را کنار هم بیاورید' : 'Bring players together'}</h2><p className="bva2-lead">{isFa ? 'تجربه‌هایی را ببینید که می‌توانید به مخاطبان معرفی کنید.' : 'Explore the experiences you can introduce to your audience.'}</p></Reveal>
+            <div ref={productsRef} className="bva2-product-scroll">
+              <a className="bva2-product-tile bva2-tile--sport" href="/bets"><span className="bva2-product-icon"><Trophy size={28}/></span><strong>{isFa ? 'ورزش' : 'Sports'}</strong><small>{isFa ? 'رویدادهای زنده و بازارهای پیش از مسابقه' : 'Live fixtures and pre-match markets'}</small><i /></a>
+              <a className="bva2-product-tile bva2-tile--casino" href="/casino"><span className="bva2-product-icon"><Gamepad2 size={28}/></span><strong>{isFa ? 'کازینو' : 'Casino'}</strong><small>{isFa ? 'کشف بازی‌های موجود در کازینو' : 'Discover available casino games'}</small><i /></a>
+              <a className="bva2-product-tile bva2-tile--mobile" href="#bva-signup"><span className="bva2-product-icon"><Smartphone size={28}/></span><strong>{isFa ? 'اپلیکیشن' : 'Mobile app'}</strong><small>{isFa ? 'تجربه موبایلی BetVima' : 'The BetVima mobile experience'}</small><i /></a>
             </div>
-            <Reveal><article className="bva-feature-dark bva-chart-feature"><h3>{isFa ? 'داشبوردی برای مدیریت همکاری' : 'A dashboard made for partner insights'}</h3><p>{isFa ? 'لینک‌های اختصاصی، ارجاع‌ها و سوابق کمیسیون را از یکجا ببینید.' : 'Access referral links, tracked users and commission history from one place.'}</p><Bars /></article></Reveal>
-            <Reveal><article className="bva-geography"><div className="bva-eyebrow">GLOBAL THINKING</div><h3>{isFa ? 'همکاری با نگاه جهانی' : 'Built for different audiences'}</h3><p>{isFa ? 'پشتیبانی از زبان‌ها و تجربه‌های مختلف با توجه به محدودیت‌های قانونی هر منطقه.' : 'A multilingual product experience. Availability and partnership eligibility depend on applicable regional rules.'}</p>
-              <div className="bva-network" aria-hidden="true"><Globe2 size={125} strokeWidth={.9} /><i /><i /><i /><i /></div>
-              <p className="bva-eligibility">{isFa ? 'ارائه خدمات فقط در مناطق مجاز و مطابق شرایط برنامه همکاری امکان‌پذیر است.' : 'Services and partner eligibility are subject to local rules and approved territories.'}</p>
-              <a className="bva-dark-btn" href="#bva-signup">{isFa ? 'شروع همکاری' : 'Become an affiliate'} <ArrowRight size={18} /></a>
-            </article></Reveal>
+            <div className="bva2-slider-controls"><button type="button" aria-label="Previous product" onClick={() => scrollProducts(isFa ? 1 : -1)}><ChevronLeft size={22}/></button><button type="button" aria-label="Next product" onClick={() => scrollProducts(isFa ? -1 : 1)}><ChevronRight size={22}/></button></div>
           </div>
         </section>
-        <section id="bva-product" className="bva-products-section">
-          <div className="bva-section-inner">
-            <Reveal><div className="bva-eyebrow">PRODUCT</div><h2>{isFa ? 'تجربه‌ای که معرفی‌کردن آن ساده است' : 'An experience built to be shared'}</h2><p className="bva-section-lead">{isFa ? 'با بخش‌های متنوع BetVima آشنا شوید.' : 'Discover the experiences available across BetVima.'}</p></Reveal>
-            <div ref={productsRef} className="bva-products-scroll" aria-label="Swipeable BetVima product cards">
-              {products.map((product) => { const Icon = product.icon; return <article key={product.name} className={'bva-product-card bva-product-' + product.skin}><div className="bva-product-heading"><Icon size={27}/><h3>{isFa ? product.fa : product.name}</h3></div><p>{isFa ? product.descFa : product.desc}</p><span className="bva-product-tag">{product.tag}</span><div className="bva-product-phone"><PhoneMock variant={product.skin} /></div></article>; })}
-            </div>
-            <div className="bva-slider-controls"><button aria-label="Previous product" type="button" onClick={() => scrollProducts(isFa ? 1 : -1)}><ChevronLeft size={21} /></button><button aria-label="Next product" type="button" onClick={() => scrollProducts(isFa ? -1 : 1)}><ChevronRight size={21} /></button></div>
+        <AffiliateCircuit variant="right" />
+        <section id="bva-faq" className="bva2-faq">
+          <div className="bva2-inner">
+            <Reveal><div className="bva2-kicker">FAQ</div><h2>{isFa ? 'سؤالات متداول' : 'Frequently asked questions'}</h2></Reveal>
+            <div className="bva2-accordion">{faq.map((item,index) => <div className="bva2-faq-item" key={item.en}><button type="button" aria-expanded={openFaq===index} aria-controls={'bva2-faq-'+index} onClick={()=>setOpenFaq(openFaq===index?null:index)}><span>{isFa?item.fa:item.en}</span><span className="bva2-plus">{openFaq===index?'−':'+'}</span></button><div id={'bva2-faq-'+index} hidden={openFaq!==index}><p>{isFa?item.answerFa:item.answerEn}</p></div></div>)}</div>
           </div>
         </section>
-        <section id="bva-faq" className="bva-faq bva-light-section">
-          <div className="bva-section-inner">
-            <Reveal><div className="bva-eyebrow bva-eyebrow--green">FAQ</div><h2>{isFa ? 'سؤالات متداول' : 'Frequently Asked Questions'}</h2></Reveal>
-            <Reveal><div className="bva-chat-demo"><div className="bva-chat-in">{isFa ? 'سلام، درباره همکاری با شما توضیح می‌دهید؟' : 'Hello! Tell me about the partner program.'}</div><div className="bva-chat-out">{isFa ? 'سلام! حساب افیلیت بسازید و لینک‌ها و آمار همکاری را از پنل خود مدیریت کنید.' : 'Hi! Join BetVima Partners and manage your referral links and statistics from your own dashboard.'}</div><div className="bva-chat-in">{isFa ? 'عالیه، شروع کنیم!' : "Sounds great. Let's get started!"}</div></div></Reveal>
-            <div className="bva-accordion">{faq.map((item, index) => <Reveal key={item.en} delay={index * 40}><div className={'bva-faq-item ' + (openFaq === index ? 'is-open' : '')}><button type="button" aria-expanded={openFaq === index} aria-controls={'bva-answer-' + index} onClick={() => setOpenFaq(openFaq === index ? null : index)}><span>{isFa ? item.fa : item.en}</span><span className="bva-plus">{openFaq === index ? '−' : '+'}</span></button><div id={'bva-answer-' + index} className="bva-answer" aria-hidden={openFaq !== index}><div>{isFa ? item.answerFa : item.answerEn}</div></div></div></Reveal>)}</div>
+        <AffiliateCircuit variant="left" />
+        <section id="bva-about" className="bva2-advantages">
+          <div className="bva2-inner">
+            <Reveal><div className="bva2-kicker">{isFa ? 'مزایای همکاری' : 'AFFILIATE ADVANTAGES'}</div><h2>{isFa ? 'معرفی کنید. پیگیری کنید. رشد کنید.' : 'Share. Track. Grow.'}</h2><p className="bva2-lead">{isFa ? 'لینک اختصاصی، گزارش‌های شفاف و کنترل همکاری، همه در پنل همکاران.' : 'Your links, reporting and partner tools in a focused dashboard.'}</p></Reveal>
+            <div className="bva2-advantages-grid"><div><ShieldCheck size={27}/><strong>{isFa?'حساب اختصاصی':'Dedicated account'}</strong></div><div><BarChart3 size={27}/><strong>{isFa?'گزارش کمیسیون':'Commission reporting'}</strong></div><div><Globe2 size={27}/><strong>{isFa?'پشتیبانی چندزبانه':'Multilingual experience'}</strong></div></div>
           </div>
         </section>
-        <section id="bva-about" className="bva-about bva-light-section">
-          <div className="bva-section-inner">
-            <Reveal><div className="bva-eyebrow">ABOUT US</div><h2>{isFa ? 'دنیای BetVima را کشف کنید' : 'Discover the world of BetVima'}</h2><p className="bva-section-lead">{isFa ? 'تجربه‌ها و قابلیت‌های محصولات ما در یک نگاه.' : 'A closer look at our brand and the experiences we are building.'}</p></Reveal>
-            <div className="bva-gallery">
-              <Reveal className="bva-gallery-item bva-gallery-one"><div className="bva-gallery-orbit"><img src="/brand/betvima-apk-logo.png" alt="BetVima app icon" /></div><strong>BETVIMA<br/>MOBILE</strong></Reveal>
-              <Reveal className="bva-gallery-item bva-gallery-two"><Trophy size={66} /><strong>SPORTS<br/>EXPERIENCE</strong></Reveal>
-              <Reveal className="bva-gallery-item bva-gallery-three"><Gamepad2 size={62} /><strong>CASINO<br/>DISCOVERY</strong></Reveal>
-              <Reveal className="bva-gallery-item bva-gallery-four"><BarChart3 size={62} /><strong>PARTNER<br/>INSIGHTS</strong></Reveal>
-            </div>
-          </div>
-        </section>
+        <AffiliateCircuit variant="right" />
         <Signup isFa={isFa} />
+
+        <AffiliateCircuit variant="left" />
+        <section id="bva2-gallery" className="bva2-editorial">
+          <div className="bva2-inner">
+            <div className="bva2-kicker">{isFa ? 'گالری برند' : 'BRAND GALLERY'}</div>
+            <h2>{isFa ? 'لحظه‌هایی با حال‌وهوای BetVima' : 'A closer look at BetVima'}</h2>
+            <p className="bva2-lead">{isFa ? 'چهار نمونه تصویری با چهره‌های واقعی و طراحی پیشنهادی برند.' : 'Four branded editorial concepts featuring real people.'}</p>
+            <div className="bva2-editorial-grid">
+              {affiliateEditorial.map((photo,index) => <button key={photo.key} type="button" className={'bva2-editorial-card bva2-photo-'+index} aria-label={(isFa?photo.fa:photo.en)+' — '+(isFa?'بزرگ‌نمایی':'Open photo')} onClick={()=>setActivePhoto(index)}><span className="bva2-editorial-image" aria-hidden="true" style={{backgroundPosition:photo.position}}/><span className="bva2-editorial-label">{isFa?photo.fa:photo.en} <ArrowUpRight size={17}/></span></button>)}
+            </div>
+            <small className="bva2-photo-note">{isFa ? 'تصاویر، نمونه‌های خلاقانه برگرفته از عکس‌های مرجع هستند و مستند رویداد رسمی BetVima نیستند.' : 'Illustrative creative mockups based on supplied reference photos; not photographs of official BetVima events.'}</small>
+          </div>
+        </section>
+        {activePhoto!==null ? <div className="bva2-lightbox" role="dialog" aria-modal="true" aria-label={isFa?'نمایش تصویر':'Gallery image viewer'}><button className="bva2-lightbox-backdrop" type="button" aria-label={isFa?'بستن':'Close'} onClick={()=>setActivePhoto(null)}/><div className="bva2-lightbox-content"><button className="bva2-lightbox-close" type="button" aria-label="Close gallery" onClick={()=>setActivePhoto(null)}><X size={25}/></button><div className="bva2-editorial-image" role="img" aria-label={isFa?affiliateEditorial[activePhoto].fa:affiliateEditorial[activePhoto].en} style={{backgroundPosition:affiliateEditorial[activePhoto].position}}/><div className="bva2-lightbox-nav"><button type="button" aria-label="Previous photo" onClick={()=>setActivePhoto((activePhoto+affiliateEditorial.length-1)%affiliateEditorial.length)}><ChevronLeft/></button><span>{activePhoto+1} / {affiliateEditorial.length}</span><button type="button" aria-label="Next photo" onClick={()=>setActivePhoto((activePhoto+1)%affiliateEditorial.length)}><ChevronRight/></button></div></div></div> : null}
       </main>
       <footer className="bva-footer"><div className="bva-footer-inner"><img src="/brand/betvima-logo-transparent.png" alt="BetVima" /><div className="bva-footer-contact"><span>{isFa ? 'ارتباط با ما' : 'Contact us'}</span><a href="mailto:BetVimaSupport@gmail.com"><Mail size={19} /> BetVimaSupport@gmail.com</a></div><div className="bva-footer-links"><a href="/legal/terms">{isFa ? 'شرایط و قوانین' : 'Terms and conditions'}</a><a href="/legal/privacy">{isFa ? 'حریم خصوصی' : 'Privacy Policy'}</a></div><small>© {new Date().getFullYear()} BetVima Partners. {isFa ? 'شرایط همکاری و تسویه مطابق قرارداد مورد تأیید است.' : 'Partnership and payout terms are subject to the approved agreement.'}</small></div></footer>
     </div>

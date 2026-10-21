@@ -1,0 +1,108 @@
+/* Affiliate connected landing: scoped, responsive, no changes to dashboard or auth. */
+.bva-v2{--bva-electric:#2389ff;--bva-navy:#050b13;--bva-mint:#4fce90;background:#050b13;color:#fff}
+.bva-v2 .bva-header{background:#111419;height:78px}
+.bva-v2 .bva-brand{flex-direction:row;gap:10px;align-items:center}
+.bva-v2 .bva-brand img{width:128px;height:42px}
+.bva-v2 .bva-brand span{font-size:11px;color:#54d99b;margin:0;letter-spacing:.13em;padding:0;border-left:1px solid #ffffff24;padding-left:11px}
+.bva-v2 .bva-header-login,.bva-v2 .bva-menu-btn{background:#20242c;border-radius:15px}
+.bva-v2 .bva-hero{padding-bottom:16px;background:radial-gradient(ellipse at 48% 62%,#111a2a,transparent 65%)}
+.bva-v2 .bva-hero h1 span{background:linear-gradient(100deg,#44df9d,#3095ff);background-clip:text;-webkit-background-clip:text}
+.bva-v2 .bva-hero-visual{height:325px}
+.bva-v2 .bva-hero-phone{scale:.82;top:5px}
+.bva-v2 .bva-blue-stats{background:#0e1821;border-radius:38px 38px 0 0;margin-inline:-6px;border-bottom:0;box-shadow:none}
+.bva2-inner{max-width:1080px;margin:0 auto;padding:0 clamp(26px,5vw,56px)}
+.bva-v2 .bva2-kicker{display:flex;align-items:center;gap:10px;color:#0d7450;font-size:12px;letter-spacing:.12em;font-weight:900;margin-bottom:19px}
+.bva-v2 .bva2-kicker:before{content:"";width:9px;height:9px;flex-shrink:0;border-radius:50%;background:#0a704f}
+.bva-v2 .bva2-partnership,.bva-v2 .bva2-faq,.bva-v2 .bva2-advantages{background:#fbfdfc;color:#0a0d0b;border-radius:44px;position:relative}
+.bva-v2 .bva2-partnership{padding:54px 0 52px}
+.bva-v2 .bva2-faq{padding:54px 0 52px}
+.bva-v2 .bva2-advantages{padding:50px 0 54px}
+.bva-v2 .bva2-partnership h2,.bva-v2 .bva2-faq h2,.bva-v2 .bva2-advantages h2,.bva-v2 .bva2-products h2,.bva-v2 .bva2-editorial h2{font-size:clamp(31px,4.8vw,49px);font-weight:850;letter-spacing:-.035em;line-height:1.16}
+.bva-v2 .bva2-lead{max-width:710px;margin-top:16px;font-size:clamp(14px,2vw,17px);line-height:1.65;color:#596d67}
+.bva-v2 .bva2-products .bva2-lead,.bva-v2 .bva2-editorial .bva2-lead{color:#9eacb8}
+.bva2-revenue{display:flex;align-items:center;gap:30px;padding:25px 28px;margin:30px 0 25px;background:#070c0b;border-radius:30px;color:#fff}
+.bva2-rate{font-size:clamp(51px,9vw,90px);font-weight:880;line-height:1;letter-spacing:-.06em;color:#49d897;font-variant-numeric:tabular-nums;white-space:nowrap}
+.bva2-revenue b{font-size:clamp(15px,2.7vw,21px)}
+.bva2-revenue p{font-size:14px;color:#abbab5;margin-top:5px;max-width:470px}
+.bva2-benefits{border-radius:30px;background:#e6f5ed;padding:4px 26px;overflow:hidden}
+.bva2-benefit{display:flex;align-items:center;gap:19px;padding:25px 0;min-height:105px}
+.bva2-benefit+.bva2-benefit{border-top:1px solid #cadfd2}
+.bva2-benefit>span{width:65px;height:65px;border-radius:19px;background:#fff;color:#126343;display:grid;place-items:center;flex-shrink:0}
+.bva2-benefit b{display:block;font-weight:800;font-size:16px;line-height:1.35}
+.bva2-benefit small{display:block;color:#6a8176;font-size:13px;margin-top:5px;line-height:1.4}
+.bva2-circuit{height:84px;width:100%;position:relative;z-index:4;margin:-21px 0 -21px;pointer-events:none;background:transparent}
+.bva2-circuit svg{width:100%;height:100%;display:block;overflow:visible}
+.bva2-trace,.bva2-trace-secondary,.bva2-trace-glow{fill:none;vector-effect:non-scaling-stroke;stroke-linecap:round;stroke-linejoin:round}
+.bva2-trace{stroke:#3ba9ff;stroke-width:2;filter:drop-shadow(0 0 4px #2185ff) drop-shadow(0 0 8px #116dff)}
+.bva2-trace-secondary{stroke:#2473c5;stroke-width:1.5;stroke-dasharray:380;animation:bva2-circuit-run 7s linear infinite}
+.bva2-trace-glow{stroke:#0879ff;stroke-width:10;opacity:.9}
+.bva2-node{fill:#091629;stroke:#72cfff;stroke-width:3;filter:drop-shadow(0 0 5px #268fff)}
+@keyframes bva2-circuit-run{to{stroke-dashoffset:-760}}
+.bva-v2 .bva2-products{background:#050b13;padding:76px 0 65px;color:#fff}
+.bva-v2 .bva2-products .bva2-kicker,.bva-v2 .bva2-editorial .bva2-kicker{color:#4fe2a0}
+.bva-v2 .bva2-products .bva2-kicker:before,.bva-v2 .bva2-editorial .bva2-kicker:before{background:#4fe2a0}
+.bva2-product-scroll{display:flex;overflow-x:auto;overscroll-behavior-x:contain;scroll-snap-type:x mandatory;gap:16px;margin:26px 0 18px;scrollbar-width:none;padding-bottom:4px}
+.bva2-product-scroll::-webkit-scrollbar{display:none}
+.bva2-product-tile{position:relative;flex:0 0 min(72vw,360px);height:350px;border-radius:30px;overflow:hidden;display:flex;flex-direction:column;justify-content:flex-end;padding:26px;color:#fff;scroll-snap-align:center;border:1px solid #ffffff1d;background-position:center;background-size:cover;box-shadow:inset 0 -135px 105px #03080ee8;transition:transform .24s ease}
+.bva2-product-tile:hover{transform:translateY(-3px)}
+.bva2-tile--sport{background-image:linear-gradient(180deg,#0003,#020b18d9),url('/sports/football.jpg')}
+.bva2-tile--casino{background-image:linear-gradient(180deg,#0003,#06110dd9),url('/sports/tennis.jpg')}
+.bva2-tile--mobile{background-image:radial-gradient(circle at 60% 30%,#227ac350,transparent 60%),linear-gradient(155deg,#0d1825,#092122 70%,#071114)}
+.bva2-product-icon{position:absolute;top:22px;left:24px;width:55px;height:55px;border:1px solid #ffffff54;border-radius:16px;display:grid;place-items:center;background:#0007;backdrop-filter:blur(10px)}
+.bva2-product-tile strong{position:relative;font-size:29px;font-weight:850;line-height:1.15}
+.bva2-product-tile small{position:relative;color:#ced8d7;font-size:13px;line-height:1.5;margin-top:9px;max-width:250px}
+.bva2-product-tile i{width:82px;height:5px;border-radius:8px;background:#52da98;margin-top:18px}
+.bva2-slider-controls{display:flex;justify-content:flex-end;gap:10px}
+.bva2-slider-controls button,.bva2-lightbox-nav button{height:39px;width:39px;display:grid;place-items:center;border:1px solid #455568;color:#fff;background:#141e2b;border-radius:50%}
+.bva2-slider-controls button:active,.bva2-lightbox-nav button:active{scale:.94}
+.bva2-accordion{background:#e6f5ed;border-radius:30px;padding:10px 26px;margin-top:30px}
+.bva2-faq-item+.bva2-faq-item{border-top:1px solid #cbdcd4}
+.bva2-faq-item>button{display:flex;justify-content:space-between;align-items:center;gap:16px;border:0;background:transparent;text-align:start;width:100%;min-height:75px;font-weight:750;font-size:16px;color:#0e1b17;padding:15px 0}
+.bva2-plus{color:#155f45;font-size:33px;line-height:1;font-weight:300}
+.bva2-faq-item p{font-size:14px;color:#61756e;padding:0 25px 25px 0;line-height:1.8}
+.bva2-advantages-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin-top:30px}
+.bva2-advantages-grid>div{display:flex;flex-direction:column;align-items:flex-start;gap:17px;padding:25px 22px;background:#e6f5ed;border-radius:25px;color:#075e3e}
+.bva2-advantages-grid strong{font-size:16px;color:#112d23}
+.bva-v2 .bva-signup-area{background:#080f17;max-width:none;padding:64px clamp(24px,5vw,52px);color:#fff}
+.bva-v2 .bva-signup-area>div{max-width:1040px;margin-inline:auto}
+.bva-v2 .bva-register-card{max-width:720px;margin-inline:auto}
+.bva-v2 .bva2-editorial{padding:58px 0 72px;background:#080f17}
+.bva2-editorial-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin-top:28px}
+.bva2-editorial-card{padding:0;position:relative;border:1px solid #2d3f50;min-width:0;aspect-ratio:3/4;border-radius:22px;overflow:hidden;background:#0d1820;color:#fff;box-shadow:0 10px 27px #0005;transition:transform .2s ease,border-color .2s ease}
+.bva2-editorial-card:hover{transform:translateY(-3px);border-color:#2695ff}
+.bva2-editorial-image{position:absolute;inset:0;background-image:url('/affiliate/gallery/people-sprite.webp');background-size:200% 200%;background-repeat:no-repeat;background-color:#15202b}
+.bva2-editorial-label{position:absolute;inset:auto 0 0;min-height:68px;background:linear-gradient(transparent,#000c);padding:25px 12px 14px;display:flex;justify-content:space-between;align-items:center;gap:5px;font-size:13px;font-weight:800;text-align:start}
+.bva2-photo-note{display:block;color:#93a7b3;font-size:11px;margin-top:15px;line-height:1.65}
+.bva2-lightbox{position:fixed;z-index:1000;inset:0;display:flex;justify-content:center;align-items:center;padding:24px}
+.bva2-lightbox-backdrop{background:#02060aee;position:absolute;inset:0;border:0}
+.bva2-lightbox-content{position:relative;width:min(440px,92vw);height:min(74dvh,680px);border-radius:24px;overflow:hidden;background:#0d1720;box-shadow:0 25px 80px #000b;display:flex;flex-direction:column}
+.bva2-lightbox-content>.bva2-editorial-image{position:relative;flex:1;min-height:0}
+.bva2-lightbox-close{position:absolute;z-index:2;top:12px;right:12px;border:1px solid #fff5;border-radius:50%;width:40px;height:40px;background:#0009;color:#fff;display:grid;place-items:center}
+.bva2-lightbox-nav{height:55px;flex-shrink:0;background:#0d1720;display:flex;justify-content:center;gap:30px;align-items:center;color:#fff;font-size:14px}
+.bva-v2[dir=rtl] .bva2-benefit{direction:rtl}
+.bva-v2[dir=rtl] .bva2-product-icon{left:auto;right:24px}
+.bva-v2[dir=rtl] .bva2-faq-item p{padding:0 0 25px 25px}
+@media(max-width:600px){
+.bva-v2 .bva-header{height:68px;padding-inline:14px}
+.bva-v2 .bva-brand img{width:108px}
+.bva-v2 .bva-brand span{font-size:9px;letter-spacing:.04em}
+.bva-v2 .bva-header-login{min-width:70px;height:44px;padding:0 12px;font-size:14px}
+.bva-v2 .bva-menu-btn{height:44px;width:44px}
+.bva-v2 .bva2-partnership,.bva-v2 .bva2-faq,.bva-v2 .bva2-advantages{border-radius:36px}
+.bva-v2 .bva2-partnership,.bva-v2 .bva2-faq{padding-block:47px}
+.bva2-revenue{padding:23px 19px;gap:18px;border-radius:26px}
+.bva2-revenue p{font-size:12px}
+.bva2-benefits{padding:2px 20px;border-radius:28px}
+.bva2-benefit{gap:15px;min-height:102px}
+.bva2-benefit>span{width:62px;height:62px}
+.bva2-product-tile{height:315px;flex-basis:min(83vw,350px);padding:20px}
+.bva2-accordion{margin-top:27px;padding:6px 22px}
+.bva2-faq-item>button{font-size:15px;min-height:75px}
+.bva2-advantages-grid{grid-template-columns:1fr;gap:10px}
+.bva2-advantages-grid>div{flex-direction:row;align-items:center;padding:16px 20px}
+.bva2-editorial-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.bva2-editorial-card{border-radius:18px}
+.bva2-editorial-label{font-size:11px}
+.bva2-circuit{height:67px}
+}
+@media(prefers-reduced-motion:reduce){.bva2-trace-secondary{animation:none}.bva2-product-tile,.bva2-editorial-card{transition:none}}
