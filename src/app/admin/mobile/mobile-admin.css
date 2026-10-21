@@ -30,3 +30,5 @@
 .bvm-auth{width:min(100%,440px);min-height:95dvh;display:flex;flex-direction:column;align-items:center;justify-content:center;margin:auto;padding:26px;text-align:center}.bvm-logo{height:78px;width:78px;border-radius:23px;font-size:44px;margin-bottom:24px}.bvm-auth h1{font:bold 27px Arial;margin:14px 0}.bvm-auth p{color:var(--sub);font-size:13px;line-height:2;margin:15px 0 28px}.bvm-auth>.bvm-primary{width:100%;padding:16px}.bvm-auth small{color:var(--sub);font-size:10px;margin:18px}.bvm-secondary{color:var(--sub);font-size:11px;text-decoration:underline;margin-top:9px}.bvm-auth>div:has(.mfa-settings){width:100%}
 @media(min-width:700px){.bvm-container{padding-top:36px}.bvm-top{padding-inline:max(calc((100vw - 700px)/2),24px)}}
 @media(max-width:355px){.bvm-container{padding:20px 12px}.bvm-quick{gap:6px}.bvm-quick button{padding:12px 7px}.bvm-quick strong{font-size:10px}.bvm-item-amount{display:none}}
+
+.bvm-logout{width:100%;background:#1c2922;color:#b9f5cf;margin-top:14px}
