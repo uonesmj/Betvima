@@ -4,7 +4,7 @@ import { z } from 'zod';
 import { jsonOk, withErrorHandling } from '@/lib/errors';
 import { withUser } from '@/server/http/guard';
 import { secureRoyalDemoSpin } from '@/server/originals/royal-vault-demo';
-import { royalVaultIsolatedPreview } from '@/server/originals/owner-preview-access';
+import { royalVaultIsolatedPreview, royalVaultSingleOwnerAllowed } from '@/server/originals/owner-preview-access';
 
 /**
  * Authenticated, server-generated DEMO result only.
@@ -28,7 +28,7 @@ export const POST = withErrorHandling('originals.royal-vault.demo-spin', async (
       return NextResponse.json({ error: 'NOT_FOUND' }, { status: 404 });
     }
     const auth = await withUser(request, ctx);
-    if (auth.user.role !== 'super_admin' || auth.user.status !== 'active') {
+    if (!await royalVaultSingleOwnerAllowed(auth.user)) {
       return NextResponse.json({ error: 'NOT_FOUND' }, { status: 404 });
     }
   }
