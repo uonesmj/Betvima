@@ -29,7 +29,9 @@ data class Match(
     val minute: Int?, val homeScore: Int?, val awayScore: Int?,
     val teams: List<Team>, val markets: List<Market>, val marketsCount: Int,
     val clockSeconds: Int? = null, val clockRunning: Boolean = false,
-    val clockObservedAt: String? = null
+    val clockObservedAt: String? = null,
+    /** Stable upstream league ID when supplied by the active catalogue. */
+    val leagueId: String = ""
 ) {
     val home get() = teams.firstOrNull { it.role == "HOME" } ?: teams.firstOrNull() ?: Team("TBD", "HOME", null)
     val away get() = teams.firstOrNull { it.role == "AWAY" } ?: teams.getOrNull(1) ?: Team("TBD", "AWAY", null)
@@ -110,7 +112,8 @@ fun parseMatch(o: JSONObject, overrideMarkets: JSONArray? = null): Match = Match
     clockSeconds = o.numberOrNull("clockSeconds")?.takeIf { it in 0..12_600 },
     clockRunning = o.optBoolean("clockRunning", false) &&
         o.numberOrNull("clockSeconds")?.let { it in 0..12_600 } == true,
-    clockObservedAt = o.str("clockObservedAt").takeIf(String::isNotBlank)
+    clockObservedAt = o.str("clockObservedAt").takeIf(String::isNotBlank),
+    leagueId = o.str("leagueId", o.optJSONObject("league")?.str("id").orEmpty())
 )
 fun odds(scaled: String): String = runCatching {
     BigDecimal(scaled).movePointLeft(4).setScale(2, RoundingMode.HALF_UP).toPlainString()
