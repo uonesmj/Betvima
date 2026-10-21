@@ -31,7 +31,9 @@ data class Match(
     val clockSeconds: Int? = null, val clockRunning: Boolean = false,
     val clockObservedAt: String? = null,
     /** Stable upstream league ID when supplied by the active catalogue. */
-    val leagueId: String = ""
+    val leagueId: String = "",
+    /** Explicit game category from provider; never inferred from league name. */
+    val esportsGame: String = ""
 ) {
     val home get() = teams.firstOrNull { it.role == "HOME" } ?: teams.firstOrNull() ?: Team("TBD", "HOME", null)
     val away get() = teams.firstOrNull { it.role == "AWAY" } ?: teams.getOrNull(1) ?: Team("TBD", "AWAY", null)
@@ -113,7 +115,8 @@ fun parseMatch(o: JSONObject, overrideMarkets: JSONArray? = null): Match = Match
     clockRunning = o.optBoolean("clockRunning", false) &&
         o.numberOrNull("clockSeconds")?.let { it in 0..12_600 } == true,
     clockObservedAt = o.str("clockObservedAt").takeIf(String::isNotBlank),
-    leagueId = o.str("leagueId", o.optJSONObject("league")?.str("id").orEmpty())
+    leagueId = o.str("leagueId", o.optJSONObject("league")?.str("id").orEmpty()),
+    esportsGame = o.str("gameKey", o.str("esportsGameKey", o.str("esportsGame")))
 )
 fun odds(scaled: String): String = runCatching {
     BigDecimal(scaled).movePointLeft(4).setScale(2, RoundingMode.HALF_UP).toPlainString()
