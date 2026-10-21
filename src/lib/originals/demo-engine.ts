@@ -21,7 +21,7 @@ export const DEMO_STARTING_CREDITS = 1000;
 export const DEMO_STAKES = [10, 20, 50, 100] as const;
 
 /** Visual variants share one mathematical engine per type. These are not distinct certified games. */
-export const ORIGINALS_DEMO_GAMES: readonly DemoGame[] = [
+export const ORIGINALS_DEMO_GAMES: readonly [DemoGame, ...DemoGame[]] = [
   { id: 'neon-sevens', name: 'Neon Sevens', engine: 'slots', accent: '#3B82F6', tagline: 'Classic three-reel demo' },
   { id: 'royal-vault', name: 'Royal Vault', engine: 'slots', accent: '#EAB308', tagline: 'Golden reels demo' },
   { id: 'eclipse-reels', name: 'Eclipse Reels', engine: 'slots', accent: '#A78BFA', tagline: 'Midnight reels demo' },
@@ -37,7 +37,7 @@ function secureUint32(): number {
   if (!globalThis.crypto?.getRandomValues) throw new Error('DEMO_SECURE_RANDOM_UNAVAILABLE');
   const sample = new Uint32Array(1);
   globalThis.crypto.getRandomValues(sample);
-  return sample[0];
+  return sample[0]!;
 }
 
 export function uniformDemoInt(bound: number, nextUint32: () => number = secureUint32): number {
