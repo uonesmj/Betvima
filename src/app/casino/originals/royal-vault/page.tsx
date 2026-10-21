@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation';
 import { PageShell } from '@/components/layout/page-shell';
 import { RoyalVaultGame } from '@/components/casino/royal-vault-game';
+import { royalVaultOwnerDemoAccess } from '@/server/originals/owner-preview-access';
 import './royal-vault.css';
 
 export const dynamic = 'force-dynamic';
@@ -9,10 +10,10 @@ export const metadata = {
   description: 'Royal Vault play-for-fun, five-reel slot preview using virtual credits only.',
 };
 
-export default function RoyalVaultPage() {
-  // The on/off switch is evaluated server-side, not in the browser.
-  // Never expose browser demo mathematics to a real-money wallet endpoint.
-  if (process.env.BETVIMA_ORIGINALS_PREVIEW_ENABLED !== 'true') notFound();
+export default async function RoyalVaultPage() {
+  // Isolated preview, or the single signed-in production super admin.
+  // Never authorize any real-money cash transfer from this page.
+  if (!await royalVaultOwnerDemoAccess()) notFound();
 
   return (
     <PageShell title="Royal Vault" subtitle="BetVima Originals · Play-for-fun">
