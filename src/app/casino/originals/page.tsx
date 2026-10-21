@@ -3,12 +3,12 @@ import Image from 'next/image';
 import { notFound } from 'next/navigation';
 import { PageShell } from '@/components/layout/page-shell';
 import { OriginalsDemo } from '@/components/casino/originals-demo';
+import { royalVaultOwnerDemoAccess } from '@/server/originals/owner-preview-access';
 
 export const dynamic = 'force-dynamic';
 
-export default function CasinoOriginalsPage() {
-  // Off by default: an explicitly enabled preview is not a real-money launch.
-  if (process.env.BETVIMA_ORIGINALS_PREVIEW_ENABLED !== 'true') notFound();
+export default async function CasinoOriginalsPage() {
+  if (!await royalVaultOwnerDemoAccess()) notFound();
 
   return (
     <PageShell title="BetVima Originals" subtitle="Play-for-fun technical preview">
