@@ -61,21 +61,14 @@ fun PremiumMyBetsPage(state: AppState, model: AppViewModel) {
     , flingBehavior = rememberPremiumFlingBehavior()) {
         if (!state.signedIn) {
             item {
-                LockedFeature(state.lang, tr(state.lang,
-                    "Log in to view your private ticket history",
-                    "برای مشاهده تاریخچه خصوصی شرط‌ها وارد شوید")) {
+                LockedFeature(
+                    state.lang,
+                    tr(state.lang, "Log in to view your private ticket history",
+                        "برای مشاهده تاریخچه خصوصی شرط‌ها وارد شوید"),
+                    onRegister = { model.showLogin(true, register = true) },
+                    icon = Icons.Default.ReceiptLong
+                ) {
                     model.showLogin(true)
-                }
-            }
-            item {
-                OutlinedButton(onClick = { model.showLogin(true, register = true) },
-                    shape = RoundedCornerShape(14.dp),
-                    modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
-                    Icon(Icons.Default.PersonAdd, null,
-                        modifier = Modifier.size(18.dp), tint = Palette.blue)
-                    Spacer(Modifier.width(7.dp))
-                    Text(tr(state.lang, "Create an account", "ساخت حساب کاربری"),
-                        color = Palette.blue, fontWeight = FontWeight.Bold)
                 }
             }
         } else {
