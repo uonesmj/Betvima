@@ -22,11 +22,20 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
-      - name: Validate and install Android SDK packages
+      - name: Bootstrap command line tools and Android SDK API 35
+        shell: bash
         run: |
-          echo "ANDROID_HOME=$ANDROID_HOME"
-          sdkmanager --list_installed | head -40
-          sdkmanager "platforms;android-35" "build-tools;35.0.0"
+          set -euo pipefail
+          export ANDROID_HOME="${ANDROID_HOME:-/usr/local/lib/android/sdk}"
+          mkdir -p "$ANDROID_HOME/cmdline-tools"
+          if [ ! -x "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" ]; then
+            curl -fLSs --retry 3 https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -o /tmp/android-tools.zip
+            mkdir -p /tmp/android-tools-unpacked
+            unzip -q /tmp/android-tools.zip -d /tmp/android-tools-unpacked
+            mv /tmp/android-tools-unpacked/cmdline-tools "$ANDROID_HOME/cmdline-tools/latest"
+          fi
+          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --sdk_root="$ANDROID_HOME" --licenses >/dev/null || true
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --sdk_root="$ANDROID_HOME" "platforms;android-35" "build-tools;35.0.0" "platform-tools"
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.9'
