@@ -25,8 +25,8 @@ import kotlinx.coroutines.launch
 
 @Composable
 fun FeaturePage(state: AppState, model: AppViewModel) {
-    // Casino is a seamless dark screen. Keep the standard white feature toolbar
-    // unchanged for all other features, but never render it above the casino.
+    // Keep the existing feature navigation. Settings and Support share the
+    // premium dark chrome; unrelated features retain their original palette.
     if (state.feature == Feature.CASINO) {
         CasinoLobby(state, model)
         return
@@ -45,27 +45,28 @@ fun FeaturePage(state: AppState, model: AppViewModel) {
         Feature.NOTIFICATIONS -> tr(state.lang, "Notifications", "اعلان‌ها")
         else -> "BetVima"
     }
-    val darkSupport = state.feature == Feature.SUPPORT
+    val darkChrome = state.feature == Feature.SUPPORT ||
+        state.feature == Feature.PROFILE
     Column(Modifier.fillMaxSize().background(
-        if (darkSupport) DarkHomePalette.canvas else Palette.paper)) {
-        Surface(color = if (darkSupport) DarkHomePalette.canvas else Color.White,
-            shadowElevation = if (darkSupport) 0.dp else 1.dp) {
+        if (darkChrome) Palette.headerDark else Palette.paper)) {
+        Surface(color = if (darkChrome) Palette.headerDark else Color.White,
+            shadowElevation = if (darkChrome) 0.dp else 1.dp) {
             Row(Modifier.fillMaxWidth().heightIn(min = 54.dp)
                 .padding(horizontal = 10.dp),
                 verticalAlignment = Alignment.CenterVertically) {
                 IconButton(onClick = { model.feature(Feature.NONE) }) {
                     Icon(Icons.Default.ArrowBack,
-                        tr(state.lang, "Back", "بازگشت"), tint = if (darkSupport) DarkHomePalette.ink else Palette.text)
+                        tr(state.lang, "Back", "بازگشت"), tint = if (darkChrome) DarkHomePalette.ink else Palette.text)
                 }
                 Text(title, fontSize = 17.sp, fontWeight = FontWeight.Black,
-                    color = if (darkSupport) DarkHomePalette.ink else Palette.text,
+                    color = if (darkChrome) DarkHomePalette.ink else Palette.text,
                     modifier = Modifier.weight(1f))
                 Surface(color = if (state.feature == Feature.VIP) Color(0xFFEAF4FF)
-                    else if (darkSupport) DarkHomePalette.panel else Palette.greenLight,
+                    else if (darkChrome) DarkHomePalette.panel else Palette.greenLight,
                     shape = RoundedCornerShape(10.dp)) {
                     Icon(if (state.feature == Feature.VIP) Icons.Default.WorkspacePremium
                         else Icons.Default.VerifiedUser, null,
-                        tint = if (state.feature == Feature.VIP || darkSupport) Palette.blue else Palette.ink,
+                        tint = if (state.feature == Feature.VIP || darkChrome) Palette.blue else Palette.ink,
                         modifier = Modifier.padding(8.dp).size(19.dp))
                 }
             }
