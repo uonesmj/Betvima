@@ -9,6 +9,12 @@ import android.util.Base64;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
+import java.net.URI;
+import java.net.UnknownHostException;
+import java.net.SocketTimeoutException;
+import java.net.ConnectException;
+import java.util.Locale;
+import javax.net.ssl.SSLException;
 import java.nio.charset.StandardCharsets;
 import java.security.KeyStore;
 import java.security.SecureRandom;
@@ -34,7 +40,11 @@ public final class AdminApi {
  public interface Success { void accept(JSONObject value) throws Exception; }
  public interface Failure { void accept(String message); }
  private interface Task { JSONObject run() throws Exception; }
- public static final String BASE="https://betvima.com";
+ public static final String DEFAULT_BASE="https://betvima.com";
+ /** A pin on the BetVima-authentication project prevents reconfiguration to an
+  * unrelated Supabase tenant. This is a public project identifier, not a secret. */
+ private static final String EXPECTED_AUTH_ORIGIN="https://mqygiufkubxxxjodsycu.supabase.co";
+ private volatile String serverOrigin=DEFAULT_BASE;
  private final Activity context;
  private final ExecutorService pool=Executors.newSingleThreadExecutor();
  private final Vault vault;
@@ -46,7 +56,46 @@ public final class AdminApi {
  private String accessToken="";
  private String refreshToken="";
 
- public AdminApi(Activity context){this.context=context;vault=new Vault(context);}
+ public AdminApi(Activity context){
+  this.context=context;vault=new Vault(context);
+  String stored=context.getSharedPreferences("admin_endpoint",Context.MODE_PRIVATE)
+   .getString("origin",DEFAULT_BASE);
+  try{serverOrigin=canonicalOrigin(stored);}catch(Exception ignored){serverOrigin=DEFAULT_BASE;}
+ }
+ public String origin(){return serverOrigin;}
+ /** Requires a deliberately selected HTTPS DNS hostname, not IP/ports/URL paths. */
+ private static String canonicalOrigin(String raw)throws Exception {
+  try {
+   String input=raw==null?"":raw.trim();
+   if(!input.startsWith("https://"))throw new Exception("آدرس سرور باید با https:// شروع شود.");
+   URI uri=new URI(input);
+   String host=uri.getHost();
+   if(host==null || !host.toLowerCase(Locale.ROOT).matches(
+      "(?=.{4,253}$)[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)+"))
+    throw new Exception("فقط نام دامنه معتبر HTTPS مجاز است؛ آدرس IP پذیرفته نمی‌شود.");
+   if(uri.getUserInfo()!=null||uri.getPort()>0||uri.getRawQuery()!=null
+      ||uri.getRawFragment()!=null||(!uri.getPath().isEmpty()&&!"/".equals(uri.getPath())))
+    throw new Exception("فقط دامنه HTTPS بدون پورت، مسیر یا پارامتر وارد کنید.");
+   return "https://"+host.toLowerCase(Locale.ROOT);
+  }catch(java.net.URISyntaxException err){
+   throw new Exception("آدرس دامنه معتبر نیست.");
+  }
+ }
+ /** Do not send the current session to a candidate domain during verification.
+  * Require the public bootstrap configuration to identify BetVima's auth tenant,
+  * then erase the previous session before accepting the new origin.
+  */
+ public JSONObject configureServer(String candidate)throws Exception {
+  String next=canonicalOrigin(candidate);
+  JSONObject config=bootstrapFor(next);
+  clear();serverOrigin=next;
+  supabaseUrl=config.getString("supabaseUrl").replaceAll("/+$","");
+  publishableKey=config.getString("supabaseAnonKey");
+  context.getSharedPreferences("admin_endpoint",Context.MODE_PRIVATE).edit()
+   .putString("origin",next).apply();
+  return config;
+ }
+ public JSONObject testServer()throws Exception {return bootstrapFor(serverOrigin);}
 
  public void perform(Checked task, Success ok,Failure fail){
   pool.execute(()->{
@@ -60,6 +109,13 @@ public final class AdminApi {
  }
  public interface Checked { JSONObject run() throws Exception; }
  private String message(Exception error){
+  if(error instanceof UnknownHostException) return "خطای DNS: آدرس "+serverOrigin+" پیدا نمی‌شود. آدرس سرور یا تنظیمات DNS را بررسی کنید.";
+  if(error instanceof SocketTimeoutException) return "مهلت اتصال تمام شد. پاسخ سرور کند است یا مسیر شبکه بسته شده است.";
+  if(error instanceof SSLException) return "گواهی TLS/SSL سرور معتبر نیست؛ اتصال برای محافظت از حساب ادمین رد شد.";
+  if(error instanceof ConnectException) return "امکان اتصال به سرور نیست. آدرس و وضعیت سرویس را بررسی کنید.";
+  Throwable cause=error.getCause();
+  if(cause instanceof UnknownHostException || cause instanceof SocketTimeoutException)
+   return message((Exception)cause);
   String m=error.getMessage();return m==null||m.isEmpty()?"خطا در ارتباط امن با سرور":m;
  }
  private JSONObject http(String method,String url,JSONObject data,String bearer,String apikey)throws Exception{
@@ -88,14 +144,18 @@ public final class AdminApi {
   }
  }
  private JSONObject values(JSONObject response){JSONObject data=response.optJSONObject("data");return data==null?response:data;}
- public JSONObject bootstrap()throws Exception{
-  JSONObject config=values(http("GET",BASE+"/api/v1/mobile/config",null,null,null));
-  String url=config.optString("supabaseUrl","");
+ private JSONObject bootstrapFor(String origin)throws Exception {
+  JSONObject config=values(http("GET",origin+"/api/v1/mobile/config",null,null,null));
+  String url=config.optString("supabaseUrl","").replaceAll("/+$","");
   String key=config.optString("supabaseAnonKey","");
-  if(!url.matches("https://[A-Za-z0-9-]+\\.supabase\\.co/?")||key.length()<20)
-   throw new Exception("تنظیمات احراز هویت در سرور موجود نیست");
-  supabaseUrl=url.replaceAll("/+$","");
-  publishableKey=key;
+  if(!EXPECTED_AUTH_ORIGIN.equals(url)||key.length()<20)
+   throw new Exception("سرور انتخابی به پروژه احراز هویت BetVima متصل نیست؛ تغییر آدرس رد شد.");
+  return config;
+ }
+ public JSONObject bootstrap()throws Exception{
+  JSONObject config=bootstrapFor(serverOrigin);
+  supabaseUrl=config.getString("supabaseUrl").replaceAll("/+$","");
+  publishableKey=config.getString("supabaseAnonKey");
   return config;
  }
  private JSONObject auth(String method,String path,JSONObject data)throws Exception{
@@ -120,7 +180,7 @@ public final class AdminApi {
   return auth("GET","/user",null);
  }
  public JSONObject checkRole()throws Exception{
-  JSONObject session=values(http("GET",BASE+"/api/v1/auth/session",null,accessToken,null));
+  JSONObject session=values(http("GET",serverOrigin+"/api/v1/auth/session",null,accessToken,null));
   JSONObject user=session.optJSONObject("user");
   if(!session.optBoolean("authenticated")||user==null||!user.optBoolean("isAdmin")){
    clear();throw new Exception("این حساب اجازه ورود به پنل مدیریت را ندارد");
@@ -161,7 +221,7 @@ public final class AdminApi {
  private JSONObject endpoint(String method,String path,JSONObject body)throws Exception{
   if(!path.startsWith("/api/v1/admin/")&&!path.equals("/api/v1/auth/session"))
    throw new Exception("مسیر API مدیر نامعتبر است");
-  try{return values(http(method,BASE+path,body,accessToken,null));}
+  try{return values(http(method,serverOrigin+path,body,accessToken,null));}
   catch(Exception error){
    if(error.getMessage()!=null&&error.getMessage().startsWith("UNAUTHORIZED:")&&!refreshToken.isEmpty()){
     refreshTokens();return values(http(method,BASE+path,body,accessToken,null));
