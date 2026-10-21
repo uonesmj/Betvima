@@ -3,6 +3,7 @@ package com.betvima.app.ui
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.*
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
@@ -53,6 +54,11 @@ fun BetvimaApp(model: AppViewModel) {
     var bonusOpen by rememberSaveable { mutableStateOf(false) }
     var appWindowOrigin by remember { mutableStateOf(Offset.Zero) }
     var slipFabWindowCenter by remember { mutableStateOf(Offset.Unspecified) }
+    var footerCoversSlip by remember { mutableStateOf(false) }
+    // Navigation always starts visible; only the active list's footer can hide the FAB.
+    LaunchedEffect(state.tab, state.homeMode, state.feature, searchOpen, state.detail?.id) {
+        footerCoversSlip = false
+    }
     LaunchedEffect(Unit) {
         // Motion is an entrance identity, not a proxy for backend progress.
         delay(1050)
@@ -281,15 +287,34 @@ fun BetvimaApp(model: AppViewModel) {
             floatingActionButton = {
                 if (state.tab in setOf(Tab.HOME, Tab.LIVE, Tab.SPORTS) &&
                     state.feature == Feature.NONE && !drawer.isOpen) {
-                    AnimatedFloatingBetslip(
-                        count = state.picks.size,
-                        lang = state.lang,
-                        onOpen = { model.showSlip(true) },
-                        onCenterChanged = { center ->
-                            if (slipFabWindowCenter != center) slipFabWindowCenter = center
-                        },
-                        receivingPick = state.pickFlight != null
-                    )
+                    // Reserve the same 112x48 FAB slot even while hidden, so
+                    // neither the scaffold nor any surrounding UI shifts.
+                    Box(Modifier.width(112.dp).height(48.dp),
+                        contentAlignment = Alignment.Center) {
+                        AnimatedVisibility(
+                            visible = !footerCoversSlip,
+                            enter = fadeIn(animationSpec = tween(260, delayMillis = 35)) +
+                                slideInVertically(animationSpec = tween(
+                                    280, easing = FastOutSlowInEasing)) { it / 3 } +
+                                scaleIn(initialScale = .94f,
+                                    animationSpec = tween(280, easing = FastOutSlowInEasing)),
+                            exit = fadeOut(animationSpec = tween(200)) +
+                                slideOutVertically(animationSpec = tween(
+                                    230, easing = FastOutSlowInEasing)) { it / 3 } +
+                                scaleOut(targetScale = .94f,
+                                    animationSpec = tween(220, easing = FastOutSlowInEasing))
+                        ) {
+                            AnimatedFloatingBetslip(
+                                count = state.picks.size,
+                                lang = state.lang,
+                                onOpen = { model.showSlip(true) },
+                                onCenterChanged = { center ->
+                                    if (slipFabWindowCenter != center) slipFabWindowCenter = center
+                                },
+                                receivingPick = state.pickFlight != null
+                            )
+                        }
+                    }
                 }
             },
             floatingActionButtonPosition = FabPosition.Center,
@@ -324,17 +349,18 @@ fun BetvimaApp(model: AppViewModel) {
                                 MatchDetailPage(state, model)
                             destination.startsWith("feature-") ->
                                 FeaturePage(state, model)
-                            destination.startsWith("home-") -> HomePage(filtered, model) {
-                                searchOpen = !searchOpen
-                            }
+                            destination.startsWith("home-") ->
+                                HomePage(filtered, model,
+                                    onSearch = { searchOpen = !searchOpen },
+                                    onFooterOverlapChanged = { footerCoversSlip = it })
                             destination == "tab-LIVE" ->
-                                CatalogPage(filtered, model, live = true) {
-                                    searchOpen = !searchOpen
-                                }
+                                CatalogPage(filtered, model, live = true,
+                                    onSearch = { searchOpen = !searchOpen },
+                                    onFooterOverlapChanged = { footerCoversSlip = it })
                             destination == "tab-SPORTS" ->
-                                CatalogPage(filtered, model, live = false) {
-                                    searchOpen = !searchOpen
-                                }
+                                CatalogPage(filtered, model, live = false,
+                                    onSearch = { searchOpen = !searchOpen },
+                                    onFooterOverlapChanged = { footerCoversSlip = it })
                             destination == "tab-BETS" -> BetsPage(state, model)
                             destination == "tab-WALLET" -> WalletPage(state, model)
                         }
