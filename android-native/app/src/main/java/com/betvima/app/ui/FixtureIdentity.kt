@@ -88,7 +88,19 @@ private val countryAliases = mapOf(
     "UNITED ARAB EMIRATES" to "AE", "INDIA" to "IN",
     "SOUTH AFRICA" to "ZA", "NEW ZEALAND" to "NZ",
     "EGYPT" to "EG", "MOROCCO" to "MA", "IRELAND" to "IE",
-    "SCOTLAND" to "GB", "WALES" to "GB", "ENGLAND" to "GB"
+    "SCOTLAND" to "GB", "WALES" to "GB", "ENGLAND" to "GB",
+    // Additional official national identities in the supplied sportsbook
+    // reference. Only exact country names map to ISO flags; never infer from
+    // a league, club or provider badge.
+    "ARMENIA" to "AM", "BAHRAIN" to "BH", "BELARUS" to "BY",
+    "BOLIVIA" to "BO", "CAMBODIA" to "KH", "CYPRUS" to "CY",
+    "CHINESE TAIPEI" to "TW", "EL SALVADOR" to "SV",
+    "GUATEMALA" to "GT", "ICELAND" to "IS", "ISRAEL" to "IL",
+    "KAZAKHSTAN" to "KZ", "MALTA" to "MT", "MONTENEGRO" to "ME",
+    "MYANMAR" to "MM", "NORTHERN IRELAND" to "GB",
+    "PHILIPPINES" to "PH", "PUERTO RICO" to "PR", "RWANDA" to "RW",
+    "SLOVAKIA" to "SK", "UGANDA" to "UG", "UZBEKISTAN" to "UZ",
+    "VENEZUELA" to "VE"
 )
 
 internal fun recognizedCountryCode(value: String): String? {
