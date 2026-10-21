@@ -114,6 +114,18 @@ class SnapshotSafety(unittest.TestCase):
         self.assertNotIn("pm2 delete",text)
         self.assertNotIn("do-release-upgrade",text)
 
+    def test_private_failure_log_installer_is_hash_pinned_and_safely_scoped(self):
+        code = pathlib.Path(__file__).with_name('install-private-logs-patch.py').read_text()
+        compile(code, 'install-private-logs-patch.py', 'exec')
+        self.assertIn('PREVIOUS_BLOB =', code)
+        self.assertIn('REPLACEMENT_BLOB =', code)
+        self.assertIn('fcntl.LOCK_EX | fcntl.LOCK_NB', code)
+        self.assertIn('blob_sha(updated) != REPLACEMENT_BLOB', code)
+        self.assertIn("ROOT/'controller.py'", code)
+        self.assertNotIn('pm2 restart', code)
+        self.assertNotIn('systemctl restart', code)
+        self.assertNotIn('DELETE FROM nova', code)
+
     def test_production_has_no_migration_or_worker_execution(self):
         text=pathlib.Path(__file__).with_name('production.py').read_text()
         self.assertIn('migration_change_requires_separate_approval',text)
