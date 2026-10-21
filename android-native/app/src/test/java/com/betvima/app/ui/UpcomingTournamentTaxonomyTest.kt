@@ -78,6 +78,22 @@ class UpcomingTournamentTaxonomyTest {
         assertEquals(4, upcomingWithinHours(all, null, now).size)
     }
 
+    @Test fun esportsGamesNeverBorrowFixturesFromOtherTitles() {
+        val cs2 = fixture("cs", "esports", "World", "Champions Cup", "9")
+            .copy(esportsGame = "Counter-Strike 2")
+        val dota = fixture("dota", "esports", "World", "Champions Cup", "9")
+            .copy(esportsGame = "Dota 2")
+        val unidentified = fixture("other", "esports", "World", "Champions Cup", "9")
+        val all = listOf(cs2, dota, unidentified)
+        assertEquals(listOf("cs"),
+            upcomingForSport(all, "esports:cs2").map { it.id })
+        assertEquals(listOf("dota"),
+            upcomingForSport(all, "esports:dota2").map { it.id })
+        assertNotEquals(upcomingLeagueKey(cs2), upcomingLeagueKey(dota))
+        assertEquals(1, tournamentSportNodes(all)
+            .first { it.sport == "esports:cs2" }.count)
+    }
+
     @Test fun sportNormalizationIsSafeForHockeyButNeverBasketball() {
         assertEquals("hockey", upcomingSportIdentity("ice-hockey"))
         assertEquals("football", upcomingSportIdentity("soccer"))
