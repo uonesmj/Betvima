@@ -143,6 +143,27 @@ internal fun tournamentCountryNodes(all: List<Match>, sport: String): List<Upcom
             compareByDescending<UpcomingNode> { it.count }.thenBy { it.label }
         )
 
+internal fun tournamentDirectLeagues(all: List<Match>, sport: String): List<UpcomingNode> =
+    upcomingForSport(all, sport)
+        .groupBy(::upcomingLeagueKey)
+        .map { (key, matches) ->
+            val first = matches.first()
+            UpcomingNode(key, first.league.ifBlank { "Unnamed competition" },
+                matches.size, sport, tournamentCountryKey(first.country), first)
+        }.sortedWith(compareByDescending<UpcomingNode> { it.count }.thenBy { it.label })
+
+internal fun tournamentTopLeagues(all: List<Match>): List<UpcomingNode> =
+    all.groupBy(::upcomingLeagueKey)
+        .map { (key, matches) ->
+            val first = matches.first()
+            UpcomingNode(key, first.league.ifBlank { "Unnamed competition" },
+                matches.size, upcomingSportIdentity(first.sport),
+                tournamentCountryKey(first.country), first)
+        }.sortedWith(compareByDescending<UpcomingNode> { it.count }.thenBy { it.label })
+
+internal fun tournamentDirectSport(sport: String): Boolean =
+    sport == "tennis" || sport == "esports" || sport.startsWith("esports:")
+
 internal fun tournamentLeagueNodes(
     all: List<Match>, sport: String, country: String
 ): List<UpcomingNode> =
