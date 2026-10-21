@@ -56,8 +56,9 @@ class LiveCatalogueCounts88Test {
             fixture("s2", "basketball", "Premier", "GB"),
         )
         assertEquals(2, two.groupBy { catalogueGroupKey88(it, true) }.size)
-        // Upcoming groups retain old keys, so tournament selectors remain valid.
-        assertEquals(1, two.groupBy { catalogueGroupKey88(it, false) }.size)
+        // Upcoming must now also preserve sport identity, matching the
+        // provider-safe competition picker; never merge different sports.
+        assertEquals(2, two.groupBy { catalogueGroupKey88(it, false) }.size)
     }
 
     @Test fun categoriesCoverSupportedSportsWithoutInventingFixtures() {
