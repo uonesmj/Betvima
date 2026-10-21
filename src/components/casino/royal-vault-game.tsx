@@ -12,7 +12,7 @@ import { OriginalsWalletReadonly } from '@/components/casino/originals-wallet-re
 import {
   INITIAL_ROYAL_GRID, ROYAL_MULTIPLIERS, ROYAL_PAYLINES, ROYAL_SYMBOLS,
   ROYAL_THEORETICAL_RTP, ROYAL_VAULT_BETS, ROYAL_VAULT_START_CREDITS,
-  royalSpin, type RoyalGrid, type RoyalRound, type RoyalSymbol,
+  royalSpin, settleRoyalGrid, ROYAL_VAULT_MATH_VERSION, type RoyalGrid, type RoyalRound, type RoyalSymbol,
 } from '@/lib/originals/royal-vault';
 
 const SYMBOL_LABELS: Record<RoyalSymbol, string> = {
@@ -46,7 +46,7 @@ type Modal = 'paytable' | 'rules' | null;
 const INITIAL_STATS = { rounds: 0, staked: 0, paid: 0 };
 
 export function RoyalVaultGame() {
-  const { locale } = useApp();
+  const { locale, session } = useApp();
   const t = (en: string, fa: string) => locale === 'fa' ? fa : en;
   const [credits, setCredits] = useState(ROYAL_VAULT_START_CREDITS);
   const creditsRef = useRef(ROYAL_VAULT_START_CREDITS);
@@ -130,7 +130,7 @@ export function RoyalVaultGame() {
     setBetIndex(clamped);
   };
 
-  const beginRound = () => {
+  const beginRound = async () => {
     if (rollingRef.current || !mountedRef.current) return;
     const bet = betRef.current;
     if (creditsRef.current < bet) {
@@ -138,15 +138,52 @@ export function RoyalVaultGame() {
       setStatus(t('Not enough demo credits. Reset to play again.', 'اعتبار نمایشی کافی نیست؛ برای ادامه بازنشانی کنید.'));
       return;
     }
+    // Lock UI before awaiting a server response, preventing concurrent spins.
+    rollingRef.current = true;
+    setRolling(true);
+    setStatus(t('Determining demo result...', 'در حال تعیین نتیجه آزمایشی...'));
     let round: RoyalRound;
     try {
-      round = royalSpin(bet);
+      if (session?.authenticated) {
+        const response = await fetch('/api/v1/originals/royal-vault/demo-spin', {
+          method: 'POST',
+          credentials: 'same-origin',
+          cache: 'no-store',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ stakeCredits: bet }),
+          signal: AbortSignal.timeout(8_000),
+        });
+        if (!response.ok) throw new Error('DEMO_SERVER_UNAVAILABLE');
+        const payload = await response.json() as {
+          ok?: boolean; data?: { mode?: string; round?: RoyalRound };
+        };
+        const result = payload.data?.round;
+        if (payload.ok !== true || payload.data?.mode !== 'demo' ||
+            !result || result.version !== ROYAL_VAULT_MATH_VERSION || result.bet !== bet) {
+          throw new Error('DEMO_INVALID_RESPONSE');
+        }
+        // Verify the declared winnings against the public versioned paytable.
+        const verified = settleRoyalGrid(result.grid, bet);
+        if (verified.totalAward !== result.totalAward ||
+            JSON.stringify(verified.wins) !== JSON.stringify(result.wins)) {
+          throw new Error('DEMO_INVALID_OUTCOME');
+        }
+        round = verified;
+      } else {
+        // Guests can still play locally without logging in; never for cash.
+        round = royalSpin(bet);
+      }
+      if (!mountedRef.current) return;
     } catch {
-      stopAuto();
-      setStatus(t('Secure random numbers are unavailable.', 'تولید اعداد تصادفی امن در دسترس نیست.'));
+      if (mountedRef.current) {
+        rollingRef.current = false;
+        setRolling(false);
+        stopAuto();
+        setRevealed(5);
+        setStatus(t('Demo result unavailable. No credits were deducted.', 'نتیجه آزمایشی در دسترس نیست. اعتباری کسر نشده است.'));
+      }
       return;
     }
-    rollingRef.current = true;
     creditsRef.current -= bet;
     setCredits(creditsRef.current);
     setRolling(true);
