@@ -35,8 +35,8 @@ describe('Royal Vault isolated round accounting (strictly NOT real money)', () =
       payoutMinor: 3_500n,
       netMinor: 3_490n,
     });
-    expect(quoteRoyalSettlement({ ...round, totalAward: -999, wins: [] }, 10n))
-      .toEqual(settlement);
+    const manipulatedOutcome = { ...round, totalAward: -999, wins: [] };
+    expect(quoteRoyalSettlement(manipulatedOutcome, 10n)).toEqual(settlement);
     expect(() => quoteRoyalSettlement(round, 11n)).toThrow('ROYAL_STAKE_INVALID');
     expect(() => quoteRoyalSettlement({ ...round, version: 'uncertified' as never }, 10n))
       .toThrow('ROYAL_MATH_VERSION_MISMATCH');
