@@ -4,6 +4,10 @@ on:
     branches: [main, 'codex/**']
   pull_request:
     paths:
+      - 'src/app/casino/royal-neon/**'
+      - 'src/components/casino/royal-neon-slot*'
+      - 'src/lib/casino/royal-neon-demo.ts'
+      - 'tests/unit/royal-neon-demo.test.ts'
       - 'src/app/api/v1/betsapi/**'
       - 'src/components/betsapi/**'
       - 'src/server/betsapi-wager-bridge.ts'
