@@ -8,6 +8,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.GenericShape
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.foundation.background
 import androidx.compose.ui.draw.clip
 import androidx.compose.animation.animateContentSize
@@ -37,25 +39,54 @@ private val walletEdge = Color(0xFF39393D)
 private val walletCanvas = Palette.headerDark
 private val walletPanel = Color(0xFF222224)
 
+// Ticket outline follows the two inward cutouts on both sides, including its
+// bright-blue border. No overlay touches any wallet or transaction data.
+private val walletTicketShape = GenericShape { size, _ ->
+    val width = size.width
+    val height = size.height
+    val radius = width * .045f
+    val notch = width * .034f
+    val cy = height * .43f
+    moveTo(radius, 0f)
+    lineTo(width - radius, 0f)
+    quadraticBezierTo(width, 0f, width, radius)
+    lineTo(width, cy - notch)
+    arcTo(Rect(width - notch, cy - notch, width + notch, cy + notch),
+        -90f, -180f, false)
+    lineTo(width, height - radius)
+    quadraticBezierTo(width, height, width - radius, height)
+    lineTo(radius, height)
+    quadraticBezierTo(0f, height, 0f, height - radius)
+    lineTo(0f, cy + notch)
+    arcTo(Rect(-notch, cy - notch, notch, cy + notch),
+        90f, -180f, false)
+    lineTo(0f, radius)
+    quadraticBezierTo(0f, 0f, radius, 0f)
+    close()
+}
+
 @Composable
 private fun WalletAction(
     name: String, detail: String, icon: androidx.compose.ui.graphics.vector.ImageVector,
     dark: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier
 ) {
-    Surface(
-        modifier = modifier.height(68.dp).clickable(onClick = onClick),
-        color = walletPanel,
-        shape = RoundedCornerShape(16.dp),
-        border = BorderStroke(1.dp,
-            if (dark) walletBlue.copy(alpha = .65f) else walletEdge)
-    ) {
-        Column(Modifier.fillMaxSize().padding(vertical = 9.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Icon(icon, null, tint = if (dark) Color(0xFF70B9FF) else Color(0xFFE0E2E7),
-                modifier = Modifier.size(20.dp))
+    val shape = RoundedCornerShape(17.dp)
+    val background = if (dark)
+        listOf(Color(0xFF0587FF), Color(0xFF0874E9))
+    else listOf(Color(0xFF26282D), Color(0xFF1E2025))
+    // Standalone actions, no shared outer panel.
+    Box(modifier = modifier.height(76.dp).clip(shape)
+        .background(Brush.linearGradient(background))
+        .border(if (dark) 1.2.dp else 1.dp,
+            if (dark) Color(0xFF59B3FF) else Color(0xFF3D424B), shape)
+        .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(7.dp)) {
+            Icon(icon, null, tint = Color(0xFFF2F5FB),
+                modifier = Modifier.size(23.dp))
             Text(name, color = Color.White, fontSize = 11.sp,
-                fontWeight = FontWeight.SemiBold, maxLines = 1)
+                fontWeight = FontWeight.Bold, maxLines = 1)
         }
     }
 }
@@ -64,29 +95,33 @@ private fun WalletAction(
 private fun WalletSummary(state: AppState, wallet: Wallet) {
     val lang = state.lang
     Surface(
-        shape = RoundedCornerShape(21.dp),
+        shape = walletTicketShape,
         modifier = Modifier.fillMaxWidth(),
-        shadowElevation = 1.dp,
+        shadowElevation = 2.dp,
+        border = BorderStroke(1.5.dp, Color(0xFF168AFF)),
         color = Color(0xFF0C2346)
     ) {
         Box {
             Box(
                 Modifier.matchParentSize().background(
                     Brush.linearGradient(
-                        listOf(Color(0xFF0B2345), Color(0xFF103E79), Color(0xFF0B63B9))
+                        listOf(Color(0xFF051D3D), Color(0xFF0A3B80), Color(0xFF0966C1))
                     )
                 )
             )
-            // Subtle glass-like circles provide depth without a static bitmap.
-            Box(Modifier.align(Alignment.TopEnd).offset(x = 72.dp, y = (-74).dp)
-                .size(150.dp).clip(CircleShape)
-                .background(Color.White.copy(alpha = .03f)))
-            Box(Modifier.align(Alignment.BottomStart).offset(x = (-82).dp, y = 89.dp)
-                .size(120.dp).clip(CircleShape)
-                .background(walletGreen.copy(alpha = .04f)))
+            // Layered low-contrast shapes create depth inside the ticket.
+            Box(Modifier.align(Alignment.TopEnd).offset(x = 75.dp, y = (-88).dp)
+                .size(230.dp).clip(CircleShape)
+                .background(Color(0xFF4EA9FF).copy(alpha = .08f)))
+            Box(Modifier.align(Alignment.BottomEnd).offset(x = 98.dp, y = 92.dp)
+                .size(205.dp).clip(CircleShape)
+                .background(Color(0xFF042147).copy(alpha = .22f)))
+            Box(Modifier.align(Alignment.BottomStart).offset(x = (-65).dp, y = 93.dp)
+                .size(135.dp).clip(CircleShape)
+                .background(walletGreen.copy(alpha = .05f)))
             Column(
-                Modifier.fillMaxWidth().padding(15.dp),
-                verticalArrangement = Arrangement.spacedBy(11.dp)
+                Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 20.dp),
+                verticalArrangement = Arrangement.spacedBy(13.dp)
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Surface(color = walletGreen.copy(alpha = .14f),
@@ -139,7 +174,7 @@ private fun WalletSummary(state: AppState, wallet: Wallet) {
                         )
                     }
                     Text(money(wallet.availableMinor, wallet.currency),
-                        color = Color.White, fontSize = 27.sp,
+                        color = Color.White, fontSize = 30.sp,
                         fontWeight = FontWeight.Black, maxLines = 1,
                         overflow = TextOverflow.Ellipsis)
                 }
