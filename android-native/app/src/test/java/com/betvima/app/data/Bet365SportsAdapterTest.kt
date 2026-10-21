@@ -181,4 +181,14 @@ class Bet365SportsAdapterTest {
         assertEquals("/api/v1/betsapi/market-refresh?mode=upcoming&sportId=17&fi=203138143",
             bet365PricesPath(ref))
     }
+
+    @Test fun additionalUpcomingPagesAreBoundedAndMetadataDriven() {
+        assertEquals(1, bet365UpcomingPageLimit(JSONObject()))
+        assertEquals(1, bet365UpcomingPageLimit(JSONObject().put("pageCount", 0)))
+        assertEquals(1, bet365UpcomingPageLimit(JSONObject().put("pageCount", "invalid")))
+        assertEquals(3, bet365UpcomingPageLimit(JSONObject().put("pageCount", 3)))
+        assertEquals(4, bet365UpcomingPageLimit(JSONObject().put("pageCount", 80)))
+        assertEquals(2, bet365UpcomingPageLimit(JSONObject().put("pageCount", 80), 2))
+        assertTrue(bet365CataloguePath("upcoming", "football", 2).endsWith("page=2"))
+    }
 }
