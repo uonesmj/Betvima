@@ -208,6 +208,43 @@ describe('SoftAggregator demo-only launch API', () => {
     expect(casinoRealMoneyUserAllowed(pilot)).toBe(false);
   });
 
+  it('accepts only 1–20 explicitly listed pilot UUIDs and refuses public or conflicting access', () => {
+    const id = (n: number) => '00000000-0000-4000-8000-' + n.toString(16).padStart(12, '0');
+    Object.assign(process.env, {
+      SOFTAGGREGATOR_ENABLED: 'true',
+      SOFTAGGREGATOR_REAL_MONEY_ENABLED: 'true',
+      SOFTAGGREGATOR_FINANCIAL_SCHEMA_READY: 'true',
+      SOFTAGGREGATOR_SALT_KEY: 'staging-contract-test-salt',
+      SOFTAGGREGATOR_CALLBACK_EDGE_READY: 'true',
+      SOFTAGGREGATOR_EDGE_HMAC_SECRET: 'staging-independent-edge-hmac-secret-32-plus-chars',
+    });
+    delete process.env.SOFTAGGREGATOR_TEST_USER_ID;
+    process.env.SOFTAGGREGATOR_PILOT_USER_IDS = Array.from({ length: 20 }, (_, index) => id(index + 1)).join(',');
+    expect(casinoRealMoneyUserAllowed(id(1))).toBe(true);
+    expect(casinoRealMoneyUserAllowed(id(10))).toBe(true);
+    expect(casinoRealMoneyUserAllowed(id(20))).toBe(true);
+    expect(casinoRealMoneyUserAllowed(id(21))).toBe(false);
+
+    process.env.SOFTAGGREGATOR_PILOT_USER_IDS += ',' + id(21);
+    expect(casinoRealMoneyUserAllowed(id(1))).toBe(false);
+    process.env.SOFTAGGREGATOR_PILOT_USER_IDS = id(1) + ',' + id(1);
+    expect(casinoRealMoneyUserAllowed(id(1))).toBe(false);
+    process.env.SOFTAGGREGATOR_PILOT_USER_IDS = id(1) + ',';
+    expect(casinoRealMoneyUserAllowed(id(1))).toBe(false);
+    process.env.SOFTAGGREGATOR_PILOT_USER_IDS = id(1) + ',*';
+    expect(casinoRealMoneyUserAllowed(id(1))).toBe(false);
+    process.env.SOFTAGGREGATOR_PILOT_USER_IDS = id(1);
+    process.env.SOFTAGGREGATOR_TEST_USER_ID = id(1);
+    expect(casinoRealMoneyUserAllowed(id(1))).toBe(false);
+
+    delete process.env.SOFTAGGREGATOR_TEST_USER_ID;
+    process.env.SOFTAGGREGATOR_REAL_MONEY_ENABLED = 'false';
+    expect(casinoRealMoneyUserAllowed(id(1))).toBe(false);
+    process.env.SOFTAGGREGATOR_REAL_MONEY_ENABLED = 'true';
+    process.env.SOFTAGGREGATOR_CALLBACK_EDGE_READY = 'false';
+    expect(casinoRealMoneyUserAllowed(id(1))).toBe(false);
+  });
+
   it('always sends an authorized ISO country to supplier getGame for real-money play', async () => {
     const pilot = '00000000-0000-4000-8000-000000000001';
     Object.assign(process.env, {
