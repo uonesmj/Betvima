@@ -36,6 +36,34 @@ recovery, verifiable player-facing histories, anti-fraud and risk controls.
 
 Only on a safe preview environment, set `BETVIMA_ORIGINALS_PREVIEW_ENABLED=true` and deploy the reviewed server build. If missing or false, both `/casino/originals` and `/casino/originals/royal-vault` respond with 404. No migration, wallet setting or live provider flag must be changed.
 
+## Safe wallet milestone (2026-10-21)
+
+The Royal Vault page now includes a separate authenticated **read-only**
+wallet panel. It requests the existing `GET /api/v1/wallet` endpoint using
+same-origin session credentials, validates the `{ok:true,data:{wallet,integrity}}`
+response envelope, requires `integrity:ok`, rejects unsupported currencies,
+unexpected currencies, malformed/negative amounts, and formats integer minor
+units accurately for USD and IRR. It clears stale amounts when verification
+fails or the session changes and polls while visible.
+
+**This is NOT wagering integration.** Spins still use resettable local `CR`
+credits, and no endpoint on the Royal Vault page can post a wallet debit or
+credit. There is no independently certified production Royal Vault game
+engine, dedicated round persistence table, evaluated server-controlled random
+seed, real-money settlement/rollback testing, or independently confirmed
+operator jurisdiction/age/KYC release clearance.
+
+Pre-launch: create a *separate isolated staging DB*, version the mathematical
+rules, implement authenticated/authorized idempotent debit and settlement
+in one durable transaction, design recovery after disconnect/timeout, audit
+all failure and concurrency branches, and verify an independent test report,
+legal authorization, wallet limits and a restorable full backup. Never
+reinterpret a read-only wallet snapshot as permission to stake funds.
+
+The only production SQL executed during this milestone was a **read-only**
+aggregate check: 92 wallets, 0 balance-to-posted-ledger mismatches; no
+balances or customer identifiers were returned to the assistant.
+
 ## 500-title catalogue *target*, not 500 completed titles
 
 | Game family | Target titles |
