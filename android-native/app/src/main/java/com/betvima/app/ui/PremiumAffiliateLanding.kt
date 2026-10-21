@@ -58,6 +58,7 @@ fun PremiumAffiliateSheet(state: AppState, model: AppViewModel, onClose: () -> U
     val affiliateVault = remember(context) { SessionVault(context, "affiliate") }
     var showPortal by rememberSaveable { mutableStateOf(affiliateVault.signedIn()) }
     var authMode by rememberSaveable { mutableStateOf<String?>(null) }
+    var confirmPartnerSignOut by remember { mutableStateOf(false) }
     val partnerDrawerState = rememberDrawerState(DrawerValue.Closed)
     val partnerDrawerScope = rememberCoroutineScope()
     var partnerNav by rememberSaveable { mutableStateOf("overview") }
@@ -92,7 +93,11 @@ fun PremiumAffiliateSheet(state: AppState, model: AppViewModel, onClose: () -> U
                         partnerNavRevision++
                         partnerDrawerScope.launch { partnerDrawerState.close() }
                     },
-                    onClose = { partnerDrawerScope.launch { partnerDrawerState.close() } }
+                    onClose = { partnerDrawerScope.launch { partnerDrawerState.close() } },
+                    onSignOut = {
+                        partnerDrawerScope.launch { partnerDrawerState.close() }
+                        confirmPartnerSignOut = true
+                    }
                 )
             }
         ) {
@@ -157,6 +162,35 @@ fun PremiumAffiliateSheet(state: AppState, model: AppViewModel, onClose: () -> U
                 }
             }
         }
+        }
+        if (confirmPartnerSignOut) {
+            AlertDialog(
+                onDismissRequest={confirmPartnerSignOut=false},
+                title={Text(tr(lang,"Sign out of partner account?",
+                    "از حساب همکاری خارج می‌شوید؟"))},
+                text={Text(tr(lang,
+                    "Only the affiliate session on this device will be cleared. Your main BetVima session and wallet are not affected.",
+                    "فقط نشست افیلیت این دستگاه پاک می‌شود. حساب اصلی و کیف پول بت‌ویما بدون تغییر می‌مانند."))},
+                confirmButton={
+                    TextButton(onClick={
+                        affiliateVault.clear()
+                        showPortal=false
+                        partnerNav="overview"
+                        partnerNavRevision++
+                        authMode=null
+                        confirmPartnerSignOut=false
+                    }) {
+                        Text(tr(lang,"Sign out","خروج"),
+                            color=Color(0xFFB73C40),fontWeight=FontWeight.Bold)
+                    }
+                },
+                dismissButton={
+                    TextButton(onClick={confirmPartnerSignOut=false}) {
+                        Text(tr(lang,"Cancel","انصراف"))
+                    }
+                },
+                containerColor=Color.White
+            )
         }
         if (authMode != null) {
             // An independently scrollable credential dialog over the current Affiliate sheet.
