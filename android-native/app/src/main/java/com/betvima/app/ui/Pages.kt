@@ -546,18 +546,133 @@ fun WalletPage(state: AppState, model: AppViewModel) {
     PremiumWalletPage(state, model)
 }
 
+/**
+ * Shared anonymous-account state for My Bets, Wallet, Bonuses and Support.
+ * Only presentation is shared; each destination retains its original actions.
+ */
 @Composable
-fun LockedFeature(lang: Lang, message: String, onLogin: () -> Unit) {
-    Surface(color = Color.White, shape = RoundedCornerShape(22.dp),
-        modifier = Modifier.fillMaxWidth(), border = BorderStroke(1.dp, Palette.border)) {
-        Column(Modifier.padding(25.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-            Icon(Icons.Default.Lock, null, tint = Palette.blue, modifier = Modifier.size(34.dp))
-            Spacer(Modifier.height(12.dp))
-            Text(message, fontSize = 14.sp, color = Palette.text,
-                textAlign = TextAlign.Center, fontWeight = FontWeight.Bold)
-            Spacer(Modifier.height(15.dp))
-            Button(onClick = onLogin, colors = ButtonDefaults.buttonColors(containerColor = Palette.green)) {
-                Text(tr(lang, "Sign in", "ورود"), color = Palette.ink, fontWeight = FontWeight.Bold)
+fun LockedFeature(
+    lang: Lang,
+    message: String,
+    onRegister: (() -> Unit)? = null,
+    icon: androidx.compose.ui.graphics.vector.ImageVector = Icons.Default.LockOutline,
+    onLogin: () -> Unit
+) {
+    val panel = Color(0xFF222224)
+    val edge = Color(0xFF39393D)
+    val ink = Color(0xFFF5F6F8)
+    val secondary = Color(0xFFA8ABB5)
+    val corner = RoundedCornerShape(21.dp)
+
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = corner,
+        color = panel,
+        border = BorderStroke(1.dp, edge),
+        shadowElevation = 0.dp
+    ) {
+        Column(
+            modifier = Modifier.fillMaxWidth()
+                .padding(horizontal = 18.dp, vertical = 19.dp),
+            verticalArrangement = Arrangement.spacedBy(15.dp)
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(13.dp)
+            ) {
+                Surface(
+                    modifier = Modifier.size(55.dp),
+                    shape = RoundedCornerShape(16.dp),
+                    color = Color(0xFF153A5C),
+                    border = BorderStroke(1.dp, Color(0xFF28567D))
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(icon, null,
+                            modifier = Modifier.size(27.dp),
+                            tint = Color(0xFF78C4FF))
+                    }
+                }
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(5.dp)
+                ) {
+                    Text(
+                        tr(lang, "SECURE ACCOUNT ACCESS", "دسترسی امن به حساب"),
+                        color = Color(0xFF83C9FF), fontSize = 10.sp,
+                        fontWeight = FontWeight.ExtraBold, letterSpacing = .6.sp
+                    )
+                    Text(
+                        message,
+                        color = ink, fontSize = 15.sp,
+                        fontWeight = FontWeight.Bold,
+                        lineHeight = 22.sp,
+                        maxLines = 3,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+            }
+            HorizontalDivider(color = edge, thickness = 1.dp)
+            Text(
+                tr(lang,
+                    "Your account information is private. Sign in or create an account to continue.",
+                    "اطلاعات حساب شما خصوصی است. برای ادامه وارد شوید یا حساب جدید بسازید."),
+                color = secondary, fontSize = 12.sp,
+                lineHeight = 19.sp
+            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(9.dp)
+            ) {
+                Surface(
+                    modifier = Modifier.weight(1f).height(49.dp)
+                        .clickable(role = androidx.compose.ui.semantics.Role.Button,
+                            onClickLabel = tr(lang, "Sign in", "ورود"),
+                            onClick = onLogin),
+                    shape = RoundedCornerShape(13.dp),
+                    color = Palette.blue,
+                    border = BorderStroke(1.dp, Color(0xFF3395FF))
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxSize()
+                            .padding(horizontal = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Center
+                    ) {
+                        Icon(Icons.Default.Login, null,
+                            tint = Color.White,
+                            modifier = Modifier.size(17.dp))
+                        Spacer(Modifier.width(8.dp))
+                        Text(tr(lang, "Sign in", "ورود"),
+                            color = Color.White, fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold)
+                    }
+                }
+                if (onRegister != null) {
+                    Surface(
+                        modifier = Modifier.weight(1f).height(49.dp)
+                            .clickable(role = androidx.compose.ui.semantics.Role.Button,
+                                onClickLabel = tr(lang, "Create account", "ساخت حساب"),
+                                onClick = onRegister),
+                        shape = RoundedCornerShape(13.dp),
+                        color = Color(0xFF2B2C30),
+                        border = BorderStroke(1.dp, Color(0xFF474B52))
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxSize()
+                                .padding(horizontal = 6.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center
+                        ) {
+                            Icon(Icons.Default.PersonAdd, null,
+                                modifier = Modifier.size(17.dp),
+                                tint = Color(0xFF9BD2FF))
+                            Spacer(Modifier.width(7.dp))
+                            Text(tr(lang, "Sign up", "ثبت‌نام"),
+                                color = ink, fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold)
+                        }
+                    }
+                }
             }
         }
     }
