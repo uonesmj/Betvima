@@ -36,7 +36,8 @@ internal fun PremiumAffiliateDrawer117(
     lang: Lang,
     selected: String,
     onNavigate: (String) -> Unit,
-    onClose: () -> Unit
+    onClose: () -> Unit,
+    onSignOut: () -> Unit
 ) {
     ModalDrawerSheet(
         modifier = Modifier.fillMaxHeight().width(318.dp),
@@ -109,6 +110,31 @@ internal fun PremiumAffiliateDrawer117(
             DrawerDestination117(lang,selected,"gifts",Icons.Default.CardGiftcard,
                 tr(lang,"Gift codes","کدهای هدیه"),
                 tr(lang,"Registration gift codes","کدهای هدیه ثبت‌نام"),onNavigate)
+            Spacer(Modifier.height(8.dp))
+            DrawerCaption117(tr(lang,"ACCOUNT & SECURITY","حساب و امنیت"))
+            Surface(
+                modifier=Modifier.fillMaxWidth().padding(horizontal=12.dp)
+                    .clickable(onClick=onSignOut),
+                color=Color(0xFF2B1E20),
+                shape=RoundedCornerShape(16.dp),
+                border=BorderStroke(1.dp,Color(0xFF6E3C45))
+            ) {
+                Row(Modifier.fillMaxWidth().padding(15.dp),
+                    verticalAlignment=Alignment.CenterVertically) {
+                    Icon(Icons.Default.Logout,null,tint=Color(0xFFFFA7AB),
+                        modifier=Modifier.size(21.dp))
+                    Spacer(Modifier.width(13.dp))
+                    Column(Modifier.weight(1f)) {
+                        Text(tr(lang,"Sign out of affiliate","خروج از حساب افیلیت"),
+                            color=Color.White,fontSize=13.sp,fontWeight=FontWeight.Bold)
+                        Text(tr(lang,"Your main BetVima account stays signed in.",
+                            "ورود حساب اصلی بت‌ویما حفظ می‌شود."),
+                            color=drawerMuted,fontSize=10.sp)
+                    }
+                    Icon(Icons.Default.ChevronRight,null,
+                        tint=drawerMuted,modifier=Modifier.size(17.dp))
+                }
+            }
             Spacer(Modifier.height(10.dp))
             HorizontalDivider(color=Color.White.copy(alpha=.10f),
                 modifier=Modifier.padding(horizontal=18.dp))
