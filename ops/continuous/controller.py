@@ -17,9 +17,20 @@ HIDDEN = ['/var/www', '/opt/nova-git-seed', '/opt/nova-releases', '/etc/betvima'
 MAX_ARCHIVE = 80 * 1024 * 1024
 
 def run(args, timeout=60, **kwargs):
+    # A production deployment is another Python process which imports this
+    # controller and uses run() for pg_dump, pg_restore, and other subcommands.
+    # It writes the *actual* restricted error to private-command-failure.log.
+    # Do not clobber that with the outer process's generic failure message.
+    log = STATE/'private-command-failure.log'
+    nested_production = (len(args) >= 2 and
+        args[0] == '/usr/bin/python3' and args[1] == str(LIB/'production.py'))
+    old_stamp = log.stat().st_mtime_ns if nested_production and log.is_file() else None
     r = subprocess.run(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=timeout, **kwargs)
     if r.returncode:
-        if STATE.exists():atomic(STATE/'private-command-failure.log',r.stdout[-1024*1024:]+b'\n--- STDERR ---\n'+r.stderr[-1024*1024:])
+        inner_log_updated = (nested_production and log.is_file() and
+            (old_stamp is None or log.stat().st_mtime_ns != old_stamp))
+        if STATE.exists() and not inner_log_updated:
+            atomic(log, r.stdout[-1024*1024:]+b'\n--- STDERR ---\n'+r.stderr[-1024*1024:])
         raise RuntimeError('command_failed_output_suppressed')
     return r.stdout
 
