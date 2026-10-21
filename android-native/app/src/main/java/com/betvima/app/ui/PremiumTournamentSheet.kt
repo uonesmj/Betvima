@@ -295,8 +295,13 @@ fun PremiumTournamentSheet(
             ) {
                 if (screen == "sports") {
                     itemsIndexed(visible, key = { _, node -> node.key }) { index, node ->
-                        val loaded = activeSport == "all" ||
-                            upcomingSportIdentity(activeSport) == node.sport ||
+                        // The "all" API call currently loads seven primary
+                        // sports, not every Bet365 category. Show a dash for
+                        // unqueried sports instead of a false zero.
+                        val loaded = if (activeSport == "all")
+                            node.sport in setOf("football", "basketball", "tennis",
+                                "volleyball", "hockey", "cricket", "handball")
+                        else upcomingSportIdentity(activeSport) == node.sport ||
                             (activeSport == "esports" && node.sport.startsWith("esports:"))
                         TournamentPickerRow(
                             title = node.label,
