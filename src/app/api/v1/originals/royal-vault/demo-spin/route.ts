@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { jsonOk, withErrorHandling } from '@/lib/errors';
 import { withUser } from '@/server/http/guard';
 import { secureRoyalDemoSpin } from '@/server/originals/royal-vault-demo';
+import { royalVaultIsolatedPreview } from '@/server/originals/owner-preview-access';
 
 /**
  * Authenticated, server-generated DEMO result only.
@@ -20,10 +21,17 @@ const Input = z.object({
 }).strict();
 
 export const POST = withErrorHandling('originals.royal-vault.demo-spin', async (ctx, request: Request) => {
-  if (process.env.BETVIMA_ORIGINALS_PREVIEW_ENABLED !== 'true') {
-    return NextResponse.json({ error: 'NOT_FOUND' }, { status: 404, headers: { 'Cache-Control': 'no-store' } });
+  // The only cashless anonymous context is the independently protected preview.
+  // In production this endpoint is available to the ONE signed-in super admin.
+  if (!royalVaultIsolatedPreview()) {
+    if (process.env.APP_ENV !== 'production') {
+      return NextResponse.json({ error: 'NOT_FOUND' }, { status: 404 });
+    }
+    const auth = await withUser(request, ctx);
+    if (auth.user.role !== 'super_admin' || auth.user.status !== 'active') {
+      return NextResponse.json({ error: 'NOT_FOUND' }, { status: 404 });
+    }
   }
-  await withUser(request, ctx); // Session verified server-side; no caller-supplied user ID.
   const length = Number(request.headers.get('content-length') ?? '0');
   if (!Number.isSafeInteger(length) || length < 0 || length > 1024) {
     return NextResponse.json({ error: 'INVALID_REQUEST' }, { status: 400 });
