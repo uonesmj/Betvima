@@ -118,14 +118,13 @@ fun PremiumTournamentSheet(
             tournamentDirectLeagues(filtered, currentSport)
         else tournamentLeagueNodes(filtered, currentSport, selectedCountry)
     }
-    val topNodes = remember(filtered) { tournamentTopLeagues(filtered) }
+    val searchingSports = screen == "sports" && filter.isNotBlank()
     val allNodes = when (screen) {
         "countries" -> countryNodes
         "leagues" -> leagueNodes
-        "top" -> topNodes
-        else -> sportNodes
+        else -> if (searchingSports) tournamentSearchNodes(filtered, filter) else sportNodes
     }
-    val visible = allNodes.filter {
+    val visible = if (searchingSports) allNodes else allNodes.filter {
         filter.isBlank() || it.label.contains(filter.trim(), ignoreCase = true)
     }
     val header = when (screen) {
@@ -135,12 +134,11 @@ fun PremiumTournamentSheet(
             upcomingSports.firstOrNull { it.first == currentSport }?.second ?: currentSport
             else tournamentCountryName(selectedCountry,
                 countryNodes.firstOrNull { it.country == selectedCountry }?.label.orEmpty())
-        "top" -> "Top"
         else -> "Sports"
     }
     val subtitle = when (screen) {
         "countries" -> tr(lang, "Select a country or region", "انتخاب کشور یا منطقه")
-        "leagues", "top" -> tr(lang, "Select an available league", "انتخاب لیگ موجود")
+        "leagues" -> tr(lang, "Select an available league", "انتخاب لیگ موجود")
         else -> tr(lang, "Select a sport", "انتخاب رشته ورزشی")
     }
     val back: () -> Unit = {
@@ -148,7 +146,7 @@ fun PremiumTournamentSheet(
         when (screen) {
             "leagues" -> screen = if (tournamentDirectSport(currentSport))
                 "sports" else "countries"
-            "countries", "top" -> screen = "sports"
+            "countries" -> screen = "sports"
             else -> dismiss()
         }
     }
@@ -212,14 +210,14 @@ fun PremiumTournamentSheet(
                 items(periods, key = { it.second }) { (value, title) ->
                     val selected = hours == value
                     Box(
-                        Modifier.height(39.dp).widthIn(min = 54.dp)
+                        Modifier.height(42.dp).widthIn(min = 58.dp)
                             .clip(CircleShape)
                             .background(if (selected) pickerBlue else pickerGray)
                             .clickable { onHoursChange(value) }
                             .padding(horizontal = 15.dp),
                         contentAlignment = Alignment.Center
                     ) {
-                        Text(title, fontSize = 12.sp,
+                        Text(title, fontSize = 14.sp,
                             color = if (selected) Color.White else pickerInk,
                             fontWeight = FontWeight.Bold)
                     }
@@ -227,14 +225,17 @@ fun PremiumTournamentSheet(
             }
             Spacer(Modifier.height(14.dp))
 
-            // "Top" restores the full selected-sport competition catalogue.
+            // Site parity: Top exits competition filtering to the current sport,
+            // rather than opening an extra nested league picker.
             Row(
                 Modifier.fillMaxWidth().padding(horizontal = 16.dp)
-                    .height(53.dp).clip(RoundedCornerShape(17.dp))
+                    .height(57.dp).clip(RoundedCornerShape(17.dp))
                     .background(pickerBlue)
                     .clickable {
                         filter = ""
-                        screen = "top"
+                        selectedCountry = ""
+                        onSelect("")
+                        dismiss()
                     }
                     .padding(horizontal = 14.dp),
                 verticalAlignment = Alignment.CenterVertically
@@ -248,9 +249,10 @@ fun PremiumTournamentSheet(
                     tint = Color.White, modifier = Modifier.size(23.dp))
             }
 
-            if (visible.size > 8 || screen == "leagues") {
-                Spacer(Modifier.height(10.dp))
-                OutlinedTextField(
+            // The website reference has a persistent search. Search includes
+            // real sport, country and league names, not only visible row labels.
+            Spacer(Modifier.height(10.dp))
+            OutlinedTextField(
                     value = filter, onValueChange = { filter = it.take(80) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
@@ -278,7 +280,6 @@ fun PremiumTournamentSheet(
                         cursorColor = pickerBlue
                     )
                 )
-            }
             Spacer(Modifier.height(9.dp))
 
             // The list scrolls independently, retaining header and time chips.
@@ -295,10 +296,11 @@ fun PremiumTournamentSheet(
             ) {
                 if (screen == "sports") {
                     itemsIndexed(visible, key = { _, node -> node.key }) { index, node ->
-                        // The "all" API call currently loads seven primary
-                        // sports, not every Bet365 category. Show a dash for
-                        // unqueried sports instead of a false zero.
-                        val loaded = if (activeSport == "all")
+                        val isSport = node.key.startsWith("sport:")
+                        val isCountry = node.key.startsWith("country:")
+                        // Dash means not queried, never a fabricated zero. All
+                        // loaded counts come from the active provider's fixtures.
+                        val loaded = if (!isSport) true else if (activeSport == "all")
                             node.sport in setOf("football", "basketball", "tennis",
                                 "volleyball", "hockey", "cricket", "handball")
                         else upcomingSportIdentity(activeSport) == node.sport ||
@@ -306,15 +308,39 @@ fun PremiumTournamentSheet(
                         TournamentPickerRow(
                             title = node.label,
                             count = node.count.takeIf { loaded },
-                            emblem = tournamentSportEmoji(node.sport),
+                            emblem = when {
+                                isSport -> tournamentSportEmoji(node.sport)
+                                isCountry -> tournamentPlaceEmoji(node.country)
+                                else -> "🏆"
+                            },
+                            match = if (!isSport && !isCountry) node.sample else null,
                             first = index == 0, last = index == visible.lastIndex,
                             onClick = {
-                                selectedSport = node.sport
-                                selectedCountry = ""
                                 filter = ""
-                                screen = if (tournamentDirectSport(node.sport))
-                                    "leagues" else "countries"
-                                if (upcomingSportIdentity(activeSport) != node.sport) {
+                                if (isSport) {
+                                    selectedSport = node.sport
+                                    selectedCountry = ""
+                                    screen = if (tournamentDirectSport(node.sport))
+                                        "leagues" else "countries"
+                                    if (upcomingSportIdentity(activeSport) != node.sport) {
+                                        onSportChange(if (node.sport.startsWith("esports:"))
+                                            "esports" else node.sport)
+                                    }
+                                } else if (isCountry) {
+                                    selectedSport = node.sport
+                                    selectedCountry = node.country
+                                    screen = "leagues"
+                                    if (upcomingSportIdentity(activeSport) != node.sport)
+                                        onSportChange(node.sport)
+                                } else if (upcomingSportIdentity(activeSport) == node.sport) {
+                                    onSelect(node.key)
+                                    dismiss()
+                                } else {
+                                    // The selected league must be loaded in the
+                                    // selected sport's own catalogue before use.
+                                    selectedSport = node.sport
+                                    selectedCountry = node.country
+                                    screen = "leagues"
                                     onSportChange(if (node.sport.startsWith("esports:"))
                                         "esports" else node.sport)
                                 }
@@ -396,8 +422,8 @@ private fun TournamentPickerRow(
         )
     ) {
         Row(
-            Modifier.heightIn(min = 54.dp)
-                .padding(horizontal = 13.dp, vertical = 7.dp),
+            Modifier.heightIn(min = 62.dp)
+                .padding(horizontal = 13.dp, vertical = 9.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             if (match != null) {
