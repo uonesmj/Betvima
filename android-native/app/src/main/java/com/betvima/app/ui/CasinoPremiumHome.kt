@@ -83,6 +83,7 @@ fun CasinoPremiumHome(
     error: String?,
     launching: String?,
     eligibility: CasinoEligibility?,
+    eligibilityLoading: Boolean,
     onCategory: (String) -> Unit,
     onProvider: (String) -> Unit,
     onQuery: (String) -> Unit,
@@ -169,6 +170,7 @@ fun CasinoPremiumHome(
         "other" to tr(state.lang, "Other games", "سایر بازی‌ها")
     )
     val realEnabled = eligibility?.realMoneyEnabled == true
+    val onPlay = if (realEnabled) onReal else onDemo
     val providerNames = (providers + allKnown.map { it.provider } + provider)
         .filter { it.isNotBlank() }.distinct().sorted()
     fun top() { scope.launch { listState.smoothBackToTop() } }
@@ -183,7 +185,7 @@ fun CasinoPremiumHome(
                 CasinoMainTabs(category, state.lang) { onCategory(it) }
             }
             item(key = "casino-hero") {
-                CasinoCarousel(highlighted.take(5), state.lang, onDemo)
+                CasinoCarousel(highlighted.take(5), state.lang, realEnabled, onPlay)
             }
             item(key = "casino-search") {
                 CasinoSearch("", state.lang, {
@@ -201,15 +203,21 @@ fun CasinoPremiumHome(
             }
             item(key = "casino-disclaimer") {
                 Text(
-                    if (realEnabled)
+                    if (!state.signedIn) tr(state.lang,
+                        "Sign in to check real-money availability", "برای بررسی دسترسی بازی پول واقعی وارد شوید")
+                    else if (eligibilityLoading) tr(state.lang,
+                        "Checking casino access…", "در حال بررسی دسترسی کازینو…")
+                    else if (eligibility == null) tr(state.lang,
+                        "Unable to check casino access. Tap to retry.", "بررسی دسترسی کازینو ناموفق بود. برای تلاش مجدد لمس کنید.")
+                    else if (realEnabled)
                         tr(state.lang, "USD games • Available $" + (eligibility?.displayedUsd ?: "0.00") +
                             " • Minimum $" + (eligibility?.displayedMinimumUsd ?: "0.20"),
                             "بازی دلاری • موجودی $" + (eligibility?.displayedUsd ?: "0.00") +
                             " • حداقل $" + (eligibility?.displayedMinimumUsd ?: "0.20"))
                     else tr(state.lang,
-                        "Demo mode • $0.20 minimum stake • Real-money play requires server approval",
-                        "حالت دمو • حداقل شرط ۰٫۲۰ دلار • بازی پول واقعی نیازمند تأیید سرور است"),
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 18.dp),
+                        "Real-money play is not available for this account yet • Demo available",
+                        "بازی پول واقعی هنوز برای این حساب در دسترس نیست • دمو در دسترس است"),
+                    modifier = Modifier.fillMaxWidth().clickable(enabled = !eligibilityLoading, onClick = onRetry).padding(horizontal = 18.dp),
                     color = secondary, fontSize = 11.sp, lineHeight = 16.sp
                 )
             }
@@ -257,8 +265,8 @@ fun CasinoPremiumHome(
                 }
                 if (highlighted.isNotEmpty()) {
                     item(key = "casino-featured-banner") {
-                        CasinoFeatured(highlighted.first(), state.lang) {
-                            onDemo(highlighted.first())
+                        CasinoFeatured(highlighted.first(), state.lang, realEnabled) {
+                            onPlay(highlighted.first())
                         }
                     }
                 }
@@ -296,8 +304,8 @@ fun CasinoPremiumHome(
                 }
                 if (highlighted.isNotEmpty() && subCategory.isBlank()) {
                     item(key = "special-feature") {
-                        CasinoFeatured(highlighted.first(), state.lang) {
-                            onDemo(highlighted.first())
+                        CasinoFeatured(highlighted.first(), state.lang, realEnabled) {
+                            onPlay(highlighted.first())
                         }
                     }
                 }
@@ -443,7 +451,7 @@ fun CasinoPremiumHome(
             providers = providerNames,
             initialProviders = openProviders,
             onDismiss = { searchDialog = false },
-            onGame = { game -> searchDialog = false; onDemo(game) },
+            onGame = { game -> searchDialog = false; onPlay(game) },
             onProvider = { selected ->
                 searchDialog = false
                 onCategory("")
@@ -636,7 +644,7 @@ private fun CasinoGenrePill(
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun CasinoCarousel(games: List<CasinoGame>, lang: Lang, onDemo: (CasinoGame) -> Unit) {
+private fun CasinoCarousel(games: List<CasinoGame>, lang: Lang, realEnabled: Boolean, onPlay: (CasinoGame) -> Unit) {
     val slides = games.take(5)
     val scope = rememberCoroutineScope()
     val pager = rememberPagerState(pageCount = { slides.size.coerceAtLeast(1) })
@@ -662,7 +670,7 @@ private fun CasinoCarousel(games: List<CasinoGame>, lang: Lang, onDemo: (CasinoG
                 .border(1.dp, Color(0xFF3865A4), RoundedCornerShape(23.dp))
                 .background(Brush.horizontalGradient(
                     listOf(Color(0xFF092766), Color(0xFF1661C5), Color(0xFF212A69))))
-                .clickable(enabled = game != null) { if (game != null) onDemo(game) }) {
+                .clickable(enabled = game != null) { if (game != null) onPlay(game) }) {
                 if (game?.imageUrl != null) {
                     AsyncImage(game.imageUrl, game.name,
                         modifier = Modifier.align(Alignment.CenterEnd)
@@ -688,9 +696,9 @@ private fun CasinoCarousel(games: List<CasinoGame>, lang: Lang, onDemo: (CasinoG
                         fontSize = 11.sp, maxLines = 1)
                     Surface(color = Color.White, shape = RoundedCornerShape(11.dp),
                         modifier = Modifier.casinoBounce {
-                            game?.let(onDemo)
+                            game?.let(onPlay)
                         }) {
-                        Text(tr(lang,"Try demo","امتحان دمو"), color = Color.Black,
+                        Text(if (realEnabled) tr(lang,"Play USD","بازی دلاری") else tr(lang,"Try demo","امتحان دمو"), color = Color.Black,
                             fontSize = 12.sp, fontWeight = FontWeight.Bold,
                             modifier = Modifier.padding(horizontal = 13.dp, vertical = 8.dp))
                     }
@@ -799,7 +807,7 @@ private fun CasinoCover(
                 listOf(Color(0xFF2046B0), Color(0xFF652983))))
             .border(1.dp, Color(0xFF48639C).copy(alpha = .55f),
                 RoundedCornerShape(13.dp))
-            .casinoBounce(onDemo)) {
+            .casinoBounce(if (realEnabled) onReal else onDemo)) {
             if (game.imageUrl != null) {
                 AsyncImage(game.imageUrl, game.name, modifier = Modifier.fillMaxSize(),
                     contentScale = ContentScale.Crop)
@@ -843,12 +851,12 @@ private fun CasinoCover(
 }
 
 @Composable
-private fun CasinoFeatured(game: CasinoGame, lang: Lang, onDemo: () -> Unit) {
+private fun CasinoFeatured(game: CasinoGame, lang: Lang, realEnabled: Boolean, onPlay: () -> Unit) {
     Box(Modifier.fillMaxWidth().padding(horizontal = 15.dp).height(150.dp)
         .clip(RoundedCornerShape(22.dp))
         .background(Brush.horizontalGradient(
             listOf(Color(0xFF174DF4), Color(0xFF426DFA))))
-        .clickable(onClick = onDemo)) {
+        .clickable(onClick = onPlay)) {
         if (game.imageUrl != null) {
             AsyncImage(game.imageUrl, game.name,
                 modifier = Modifier.fillMaxHeight().fillMaxWidth(.48f)
@@ -861,7 +869,7 @@ private fun CasinoFeatured(game: CasinoGame, lang: Lang, onDemo: () -> Unit) {
             Text(game.name, color = Color.White, fontSize = 12.sp,
                 fontWeight = FontWeight.Bold, maxLines = 2)
             Surface(color = Color.White, shape = RoundedCornerShape(11.dp)) {
-                Text(tr(lang,"Try demo","امتحان دمو"), color = Color.Black,
+                Text(if (realEnabled) tr(lang,"Play USD","بازی دلاری") else tr(lang,"Try demo","امتحان دمو"), color = Color.Black,
                     fontSize = 12.sp, fontWeight = FontWeight.Bold,
                     modifier = Modifier.padding(horizontal = 15.dp, vertical = 8.dp))
             }
