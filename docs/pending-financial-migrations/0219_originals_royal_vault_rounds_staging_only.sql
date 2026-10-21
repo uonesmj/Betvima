@@ -29,9 +29,17 @@ alter table nova.originals_rounds enable row level security;
 alter table nova.originals_rounds force row level security;
 revoke all on nova.originals_rounds from public, anon, authenticated;
 grant select, insert on nova.originals_rounds to service_role;
+create function nova.reject_originals_round_rewrite()
+returns trigger language plpgsql security invoker
+set search_path=pg_catalog,nova
+as $originals_immutable$
+begin
+  raise exception 'ORIGINALS_ROUND_IMMUTABLE' using errcode='42501';
+end;
+$originals_immutable$;
 create trigger originals_rounds_immutable
   before update or delete on nova.originals_rounds
-  for each row execute function nova.prevent_mutation();
+  for each row execute function nova.reject_originals_round_rewrite();
 
 -- Receipt integrity is enforced at the database layer, not only by TS tests.
 create function nova.check_originals_ledger_pair()
