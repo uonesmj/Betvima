@@ -204,7 +204,12 @@ public final class MainActivity extends Activity {
     else showMfa();
    },e->{api.clear();showLogin(e);});
   });
-  space(host,28);
+  space(host,12);
+  addAction(host,"⚙ تنظیم آدرس اتصال سرور",false,this::serverDialog);
+  space(host,8);
+  TextView configured=text("سرور فعلی: "+api.origin(),11,MUTED,false);
+  configured.setGravity(Gravity.CENTER);host.addView(configured);
+  space(host,20);
   TextView safety=text("حفاظت‌شده با احراز هویت دومرحله‌ای و دسترسی سطح مدیر",11,MUTED,false);
   safety.setGravity(Gravity.CENTER);host.addView(safety);
  }
@@ -324,7 +329,16 @@ public final class MainActivity extends Activity {
    menu.addView(item,new LinearLayout.LayoutParams(-1,dp(61)));
    item.setOnClickListener(v->{frame.removeView(cover);drawerOpened=false;showPage(entry[0]);});
   }
-  space(menu,18);divider(menu);
+  space(menu,14);divider(menu);
+  TextView address=text("آدرس API: "+api.origin(),10,MUTED,false);
+  address.setMaxLines(3);menu.addView(address);
+  addAction(menu,"⚙ تنظیم آدرس سرور",false,()->{
+   frame.removeView(cover);drawerOpened=false;serverDialog();
+  });
+  addAction(menu,"آزمایش اتصال سرور",false,()->{
+   api.perform(()->api.testServer(),d->showMessage("ارتباط HTTPS با API تایید شد."),this::showMessage);
+  });
+  space(menu,8);divider(menu);
   addAction(menu,"خروج امن از حساب",false,()->{
    new AlertDialog.Builder(this).setTitle("خروج از حساب").setMessage("نشست مدیریتی در این دستگاه پایان یابد؟")
     .setNegativeButton("انصراف",null).setPositiveButton("خروج",(d,w)->{
@@ -334,11 +348,44 @@ public final class MainActivity extends Activity {
  }
  private void busy(String title){body.removeAllViews();centerText(body,title+" ...");}
  private void failure(String err){
-  body.removeAllViews();LinearLayout p=panel(body);
-  p.addView(text("دریافت اطلاعات ممکن نشد",15,RED,true));space(p,9);p.addView(text(err,12,MUTED,false));
-  addAction(p,"تلاش دوباره",false,()->loadPage());
+  body.removeAllViews();
+  LinearLayout p=panel(body);
+  p.addView(text("دریافت اطلاعات ممکن نشد",16,RED,true));space(p,12);
+  p.addView(text(err,12,MUTED,false));space(p,13);
+  p.addView(label("آدرس فعلی سرور: "+api.origin()));space(p,7);
+  addAction(p,"↻ تلاش دوباره",false,this::loadPage);
+  addAction(p,"⚙ تغییر آدرس اتصال سرور",true,this::serverDialog);
+  addAction(p,"آزمایش مسیر HTTPS و تنظیمات احراز هویت",false,()->{
+   api.perform(()->api.testServer(),
+    ok->showMessage("اتصال امن به سرور برقرار است. اگر خطا باقی ماند، APIهای پنل باید منتشر شوند."),
+    this::showMessage);
+  });
  }
  private interface Display {void done(JSONObject json);}
+ /** Manual operator-controlled host selection, never automatically follows an unknown
+  * redirect or sends stored bearer tokens to an unverified destination.
+  */
+ private void serverDialog(){
+  LinearLayout box=col();box.setPadding(dp(18),dp(8),dp(18),dp(8));
+  box.addView(text("دامنه HTTPS سرور BetVima را وارد کنید. آدرس باید API فعلی و همان پروژه Supabase را داشته باشد.",12,MUTED,false));
+  EditText entry=input(box,"https://example.com",InputType.TYPE_CLASS_TEXT|InputType.TYPE_TEXT_VARIATION_URI);
+  entry.setText(api.origin());entry.setSelectAllOnFocus(true);
+  space(box,9);box.addView(label("آدرس IP، HTTP و گواهی SSL نامعتبر قبول نمی‌شوند. برای حفظ امنیت، بعد از تغییر سرور دوباره وارد شوید."));
+  AlertDialog prompt=new AlertDialog.Builder(this).setTitle("تنظیم اتصال سرور")
+   .setView(box).setNegativeButton("انصراف",(d,w)->{})
+   .setPositiveButton("تست و ذخیره",null).create();
+  prompt.setOnShowListener(dialog->prompt.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v->{
+   String entered=entry.getText().toString().trim();
+   prompt.getButton(AlertDialog.BUTTON_POSITIVE).setEnabled(false);
+   api.perform(()->api.configureServer(entered),response->{
+    prompt.dismiss();loggedIn=false;showLogin("سرور جدید تأیید شد. با حساب ادمین دوباره وارد شوید.");
+   },error->{
+    if(prompt.isShowing())prompt.getButton(AlertDialog.BUTTON_POSITIVE).setEnabled(true);
+    showMessage("سرور جدید تأیید نشد:\n"+error);
+   });
+  }));
+  prompt.show();
+ }
  private void request(String path,Display handler){
   busy("دریافت اطلاعات");
   api.perform(()->api.get(path),handler::done,e->failure(e));
