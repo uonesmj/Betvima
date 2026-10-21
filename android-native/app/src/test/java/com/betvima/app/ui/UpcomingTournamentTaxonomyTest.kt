@@ -46,6 +46,19 @@ class UpcomingTournamentTaxonomyTest {
             tournamentCountryKey("Fictional region"))
     }
 
+    @Test fun britishHomeNationsAreDistinctCompetitionRegions() {
+        val england = fixture("eng", "football", "England", "Premier League", "1")
+        val scotland = fixture("sct", "football", "Scotland", "Premier League", "1")
+        val wales = fixture("wal", "football", "Wales", "Premier League", "1")
+        val ni = fixture("ni", "football", "Northern Ireland", "Premier League", "1")
+        val matches = listOf(england, scotland, wales, ni)
+        assertEquals(4, matches.map(::upcomingLeagueKey).distinct().size)
+        assertEquals(4, tournamentCountryNodes(matches, "football").size)
+        assertEquals("home-nation:england", tournamentCountryKey("England"))
+        assertEquals("home-nation:scotland", tournamentCountryKey("Scotland"))
+        assertEquals("home-nation:wales", tournamentCountryKey("Wales"))
+    }
+
     @Test fun groupsCountsStayInsideExactSportAndRegion() {
         val all = listOf(
             fixture("a", "football", "Japan", "J League", "11"),
