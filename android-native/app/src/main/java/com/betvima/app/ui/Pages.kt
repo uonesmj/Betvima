@@ -288,18 +288,33 @@ fun CatalogPage(state: AppState, model: AppViewModel, live: Boolean,
         mutableStateOf(if (live) "" else state.tournamentLeague)
     }
     var tournamentOpen by remember { mutableStateOf(false) }
+    var selectedHours by rememberSaveable { mutableStateOf<Int?>(null) }
     val allMatches = if (live) state.live else state.upcoming
     // Remember catalogue transformations; state can update independently from
     // a user's scroll (balance, notifications, slip picks and live polling).
     val matches = remember(allMatches, live, liveSport) {
         if (live) liveSportMatches88(allMatches, liveSport) else allMatches
     }
-    val groups = remember(matches, live) {
-        matches.groupBy { catalogueGroupKey88(it, live) }
+    val scopedMatches = remember(matches, live, selectedHours) {
+        if (live) matches else upcomingWithinHours(matches, selectedHours, java.time.Instant.now())
     }
-    val visibleGroups = remember(groups, selectedLeague) {
-        if (selectedLeague.isBlank()) groups else
-            groups.filterKeys { it == selectedLeague }
+    val groups = remember(scopedMatches, live) {
+        scopedMatches.groupBy { catalogueGroupKey88(it, live) }
+    }
+    // Old Home shortcut deep links used "league|country"; resolve only by
+    // exact equality, never loose text matching across league names.
+    val selectedKey = remember(groups, selectedLeague) {
+        if (selectedLeague.isBlank()) "" else if (groups.containsKey(selectedLeague))
+            selectedLeague
+        else groups.entries.firstOrNull { (_, fixtures) ->
+            fixtures.firstOrNull()?.let { match ->
+                match.league + "|" + match.country == selectedLeague
+            } == true
+        }?.key ?: ""
+    }
+    val visibleGroups = remember(groups, selectedKey) {
+        if (selectedKey.isBlank()) groups else
+            groups.filterKeys { it == selectedKey }
     }
     val displayedCount = visibleFixtureCount88(visibleGroups, collapsedLeagues)
     val totalCount = visibleGroups.values.sumOf { it.size }
@@ -363,9 +378,9 @@ fun CatalogPage(state: AppState, model: AppViewModel, live: Boolean,
                             Text(tr(state.lang, "TOURNAMENTS", "رقابت‌ها"),
                                 fontSize = 9.sp, fontWeight = FontWeight.Black,
                                 color = DarkHomePalette.muted)
-                            Text(if (selectedLeague.isBlank())
+                            Text(if (selectedKey.isBlank())
                                 tr(state.lang, "Choose a tournament", "انتخاب لیگ")
-                                else groups[selectedLeague]?.firstOrNull()?.league.orEmpty(),
+                                else groups[selectedKey]?.firstOrNull()?.league.orEmpty(),
                                 fontSize = 13.sp, fontWeight = FontWeight.ExtraBold,
                                 color = DarkHomePalette.ink, maxLines = 1,
                                 overflow = TextOverflow.Ellipsis)
@@ -442,7 +457,12 @@ fun CatalogPage(state: AppState, model: AppViewModel, live: Boolean,
         }
     }
     if (tournamentOpen) PremiumTournamentSheet(
-        lang = state.lang, groups = groups, selected = selectedLeague,
+        lang = state.lang,
+        matches = matches,
+        activeSport = state.sport,
+        hours = selectedHours,
+        onHoursChange = { selectedHours = it; selectedLeague = "" },
+        onSportChange = { model.sport(it); selectedLeague = "" },
         onSelect = { selectedLeague = it },
         onDismiss = { tournamentOpen = false }
     )
