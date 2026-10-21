@@ -474,12 +474,33 @@ class ApiClient {
         return matches
     }
 
-    private suspend fun bet365List(mode: String, sport: String): List<Match> =
-        remember(parseBet365Catalogue(get(bet365CataloguePath(mode, sport)))
+    private suspend fun bet365List(mode: String, sport: String, page: Int = 1): List<Match> =
+        remember(parseBet365Catalogue(get(bet365CataloguePath(mode, sport, page)))
             .map { it.copy(
                 sport = if (it.sport == "ice-hockey") "hockey" else it.sport,
                 bettingAvailable = false
             ) })
+
+    /** The all-sports view stays inexpensive. A selected sport can fetch
+     * additional verified provider pages so its league list is not silently
+     * truncated at the first page. An unavailable later page cannot hide
+     * successfully loaded first-page fixtures.
+     */
+    private suspend fun bet365UpcomingSelectedSport(sport: String): List<Match> {
+        val firstResponse = get(bet365CataloguePath("upcoming", sport))
+        val first = parseBet365Catalogue(firstResponse).map {
+            it.copy(sport = if (it.sport == "ice-hockey") "hockey" else it.sport,
+                bettingAvailable = false)
+        }
+        val pages = bet365UpcomingPageLimit(firstResponse)
+        if (pages == 1) return remember(first)
+        val next = supervisorScope {
+            (2..pages).map { page -> async {
+                runCatching { bet365List("upcoming", sport, page) }.getOrDefault(emptyList())
+            } }.awaitAll()
+        }
+        return remember((first + next.flatten()).distinctBy { it.id })
+    }
 
     private suspend fun bet365Prices(ref: Bet365Ref): JSONObject {
         val key = "${ref.mode}:${ref.sportId}:${ref.fi}"
@@ -525,7 +546,10 @@ class ApiClient {
                    else listOf(betsApiSport(sport) ?: return emptyList())
         val lists = supervisorScope {
             keys.map { key -> async {
-                runCatching { bet365List("upcoming", key) }
+                runCatching {
+                    if (sport == "all") bet365List("upcoming", key)
+                    else bet365UpcomingSelectedSport(key)
+                }
             } }.awaitAll()
         }
         if (lists.all { it.isFailure })
