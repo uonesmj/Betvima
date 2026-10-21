@@ -418,12 +418,17 @@ private fun PremiumTicket(
     var winReplay by rememberSaveable(bet.id) { mutableIntStateOf(0) }
     val accent = ticketResultColor(bet)
     val confirmedWin = bet.isSettled && accent == Palette.green
+    val confirmedLoss = bet.isSettled && accent == Palette.red
     val isMix = bet.type.equals("MULTIPLE", ignoreCase = true) || bet.legs > 1
     val title = if (isMix)
         tr(lang, "Mix bet", "شرط میکس") + " (" + bet.legs + " " +
             tr(lang, "picks", "انتخاب") + ")"
         else tr(lang, "Single bet", "شرط تکی")
+    // Only server-settled losing tickets get red presentation.
+    // Winning tickets keep their original green style exactly.
     val green = Color(0xFF00BB81)
+    val lostRed = Color(0xFFD94C68)
+    val expandedFrame = if (confirmedLoss) lostRed else green
     val ink = Color(0xFF14243A)
     val muted = Color(0xFF77889A)
     Box(Modifier.fillMaxWidth()) {
@@ -432,7 +437,7 @@ private fun PremiumTicket(
         shape = RoundedCornerShape(18.dp),
         color = if (expanded) Color.White else myBetsClosedPanel,
         border = BorderStroke(1.dp,
-            if (expanded) green else myBetsClosedOutline),
+            if (expanded) expandedFrame else myBetsClosedOutline),
         shadowElevation = if (expanded) 6.dp else 0.dp
     ) {
         Column {
@@ -440,7 +445,10 @@ private fun PremiumTicket(
                 modifier = Modifier.fillMaxWidth()
                     .background(
                         Brush.linearGradient(
-                            if (expanded) listOf(Color(0xFF006B53), Color(0xFF00A77B))
+                            if (expanded && confirmedLoss)
+                                listOf(Color(0xFF86203C), Color(0xFFD33959))
+                            else if (expanded)
+                                listOf(Color(0xFF006B53), Color(0xFF00A77B))
                             else listOf(myBetsClosedPanel, myBetsClosedPanel)
                         )
                     ).clickable {
@@ -450,10 +458,12 @@ private fun PremiumTicket(
                     .padding(horizontal = 11.dp, vertical = 9.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Surface(color = if (expanded) Color(0xFFE9FFF4) else Color(0xFFE5F2FF),
+                Surface(color = if (expanded && confirmedLoss) Color(0xFFFFEBF0)
+                    else if (expanded) Color(0xFFE9FFF4) else Color(0xFFE5F2FF),
                     shape = RoundedCornerShape(13.dp)) {
                     Icon(Icons.Default.ConfirmationNumber, null,
-                        tint = if (expanded) Color(0xFF029A71) else Palette.blue,
+                        tint = if (expanded && confirmedLoss) Color(0xFFCC3456)
+                        else if (expanded) Color(0xFF029A71) else Palette.blue,
                         modifier = Modifier.padding(8.dp).size(19.dp))
                 }
                 Spacer(Modifier.width(8.dp))
@@ -533,12 +543,14 @@ private fun PremiumTicket(
                         bet.selections.take(if (showAllPicks) bet.selections.size else 2).forEach { leg ->
                             Box(Modifier.fillMaxWidth()) {
                                 BetSelectionOverview(leg, lang,
-                                    Modifier.fillMaxWidth(), state.matchForLeg(leg), compact = true)
+                                    Modifier.fillMaxWidth(), state.matchForLeg(leg), compact = true,
+                                    lossTheme = confirmedLoss)
                                 Text(
                                     "BETVIMA",
                                     modifier = Modifier.align(Alignment.Center).alpha(.055f),
                                     fontSize = 30.sp, fontWeight = FontWeight.Black,
-                                    color = Color(0xFF008965), maxLines = 1
+                                    color = if (confirmedLoss) Color(0xFFC84060)
+                                        else Color(0xFF008965), maxLines = 1
                                 )
                             }
                         }
