@@ -74,7 +74,7 @@ public final class AdminApi {
       "(?=.{4,253}$)[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)+"))
     throw new Exception("فقط نام دامنه معتبر HTTPS مجاز است؛ آدرس IP پذیرفته نمی‌شود.");
    if(uri.getUserInfo()!=null||uri.getPort()>0||uri.getRawQuery()!=null
-      ||uri.getRawFragment()!=null||(!uri.getPath().isEmpty()&&!"/".equals(uri.getPath())))
+      ||uri.getRawFragment()!=null||(uri.getPath()!=null&&!uri.getPath().isEmpty()&&!"/".equals(uri.getPath())))
     throw new Exception("فقط دامنه HTTPS بدون پورت، مسیر یا پارامتر وارد کنید.");
    return "https://"+host.toLowerCase(Locale.ROOT);
   }catch(java.net.URISyntaxException err){
