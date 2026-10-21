@@ -378,8 +378,8 @@ fun AffiliateOperations(state: AppState, model: AppViewModel, currency: String,
                             icon = Icons.Default.Payments
                         )
                     }
-                    Surface(color = Color.White, shape = RoundedCornerShape(19.dp),
-                        border = BorderStroke(1.dp, Palette.border)) {
+                    Surface(color = Color(0xFFF1F7F3), shape = RoundedCornerShape(12.dp),
+                        border = BorderStroke(1.dp, Color(0xFFDCE9E0))) {
                         Column(Modifier.fillMaxWidth().padding(15.dp),
                             verticalArrangement = Arrangement.spacedBy(9.dp)) {
                             Text(tr(state.lang,"Request a payout","درخواست برداشت افیلیت"),
@@ -479,8 +479,8 @@ fun AffiliateOperations(state: AppState, model: AppViewModel, currency: String,
                             }
                         }
                     }
-                    Surface(color=Color.White,shape=RoundedCornerShape(18.dp),
-                        border=BorderStroke(1.dp,Palette.border)) {
+                    Surface(color=Color(0xFFF1F7F3),shape=RoundedCornerShape(12.dp),
+                        border=BorderStroke(1.dp,Color(0xFFDCE9E0))) {
                         Column(Modifier.padding(14.dp),verticalArrangement=Arrangement.spacedBy(8.dp)) {
                             Text(tr(state.lang,"Create a campaign link","ساخت لینک کمپین"),
                                 fontWeight=FontWeight.Black)
@@ -512,8 +512,8 @@ fun AffiliateOperations(state: AppState, model: AppViewModel, currency: String,
                             icon = Icons.Default.AccountBalanceWallet
                         )
                     }
-                    Surface(color=Color.White,shape=RoundedCornerShape(19.dp),
-                        border=BorderStroke(1.dp,Palette.border)) {
+                    Surface(color=Color(0xFFF1F7F3),shape=RoundedCornerShape(12.dp),
+                        border=BorderStroke(1.dp,Color(0xFFDCE9E0))) {
                         Column(Modifier.padding(15.dp),
                             verticalArrangement=Arrangement.spacedBy(9.dp)) {
                             Text(tr(state.lang,"Save payout wallet","ثبت کیف پول برداشت"),
@@ -561,9 +561,21 @@ fun AffiliateOperations(state: AppState, model: AppViewModel, currency: String,
 
 @Composable
 private fun PartnerEmpty(lang: Lang) {
-    Text(tr(lang,"No records returned by your partner account.",
-        "هنوز رکوردی برای این بخش در حساب همکار ثبت نشده است."),
-        color=Palette.muted,fontSize=12.sp,modifier=Modifier.padding(12.dp))
+    Column(Modifier.fillMaxWidth()
+        .background(Color(0xFFF5F8F6),RoundedCornerShape(12.dp))
+        .padding(20.dp),
+        verticalArrangement=Arrangement.spacedBy(7.dp),
+        horizontalAlignment=Alignment.CenterHorizontally) {
+        Icon(Icons.Default.Inbox,null,tint=Color(0xFF799487),
+            modifier=Modifier.size(24.dp))
+        Text(tr(lang,"No verified entries in this period",
+            "در این بازه تراکنش تأییدشده‌ای موجود نیست"),
+            color=Color(0xFF65796C),fontWeight=FontWeight.Medium,
+            fontSize=12.sp)
+        Text(tr(lang,"Try another date range or refresh your partner data.",
+            "بازه زمانی دیگری را بررسی یا اطلاعات حساب را تازه‌سازی کنید."),
+            color=Color(0xFF809287),fontSize=10.sp)
+    }
 }
 
 @Composable
@@ -585,26 +597,29 @@ private fun PartnerAssetChooser(
 }
 
 @Composable
-private fun PartnerRow(title:String,subtitle:String,value:String,
-    icon:androidx.compose.ui.graphics.vector.ImageVector) {
-    Surface(color=Color.White,shape=RoundedCornerShape(17.dp),
-        border=BorderStroke(1.dp,Palette.border),shadowElevation=1.dp) {
-        Row(Modifier.fillMaxWidth().padding(13.dp),
+private fun PartnerRow(
+    title:String, subtitle:String, value:String,
+    icon:androidx.compose.ui.graphics.vector.ImageVector
+) {
+    Column(Modifier.fillMaxWidth()) {
+        Row(Modifier.fillMaxWidth().padding(vertical=12.dp),
             verticalAlignment=Alignment.CenterVertically) {
-            Surface(color=Palette.greenLight,shape=RoundedCornerShape(11.dp)) {
-                Icon(icon,null,tint=Palette.blue,
-                    modifier=Modifier.padding(9.dp).size(19.dp))
+            Surface(color=Color(0xFFE6F6EC),shape=RoundedCornerShape(11.dp)) {
+                Icon(icon,null,tint=Color(0xFF13794C),
+                    modifier=Modifier.padding(10.dp).size(18.dp))
             }
             Spacer(Modifier.width(10.dp))
             Column(Modifier.weight(1f)) {
-                Text(title,color=Palette.text,fontSize=12.sp,
-                    fontWeight=FontWeight.Black,maxLines=1,overflow=TextOverflow.Ellipsis)
-                Text(subtitle,color=Palette.muted,fontSize=10.sp,
+                Text(title,color=Color(0xFF14261C),fontSize=12.sp,
+                    fontWeight=FontWeight.Bold,maxLines=2,
+                    overflow=TextOverflow.Ellipsis)
+                Text(subtitle,color=Color(0xFF73827A),fontSize=10.sp,
                     maxLines=2,overflow=TextOverflow.Ellipsis)
             }
             Spacer(Modifier.width(7.dp))
-            Text(value,color=Palette.blue,fontWeight=FontWeight.Bold,
+            Text(value,color=Color(0xFF147C55),fontWeight=FontWeight.Black,
                 fontSize=11.sp,maxLines=2)
         }
+        HorizontalDivider(color=Color(0xFFE0EAE4))
     }
 }
