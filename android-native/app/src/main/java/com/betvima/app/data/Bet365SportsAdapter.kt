@@ -18,6 +18,15 @@ internal val bet365PrimarySports = listOf(
 internal val bet365LiveSports = bet365PrimarySports + listOf(
     "baseball", "american-football", "table-tennis", "esports", "mma", "boxing"
 )
+/** A selected sport may load a bounded number of additional provider pages.
+ * Missing/invalid metadata never invents extra fixture pages.
+ */
+internal fun bet365UpcomingPageLimit(data: JSONObject, maxPages: Int = 4): Int {
+    require(maxPages in 1..10)
+    val count = data.optInt("pageCount", 1)
+    return if (count in 1..100) count.coerceAtMost(maxPages) else 1
+}
+
 private val bet365AvailableSports = setOf(
     "football", "basketball", "tennis", "volleyball", "ice-hockey", "cricket", "handball",
     "baseball", "american-football", "table-tennis", "darts", "snooker", "futsal",
