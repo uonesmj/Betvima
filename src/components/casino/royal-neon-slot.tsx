@@ -135,7 +135,7 @@ export function RoyalNeonSlot() {
   const [burstId, setBurstId] = useState(0);
   const [showRules, setShowRules] = useState(false);
   const [message, setMessage] = useState('Choose your demo stake and spin to play');
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const intervalRef = useRef<number | null>(null);
   const spinningRef = useRef(false);
   const audioContextRef = useRef<AudioContext | null>(null);
   const bet = BET_LEVELS[betIndex]!;
