@@ -61,3 +61,26 @@
 @media(max-width:720px){.rv-world{width:100%;}.rv-cabinet{border-width:1px;border-radius:16px;}.rv-banner{max-height:220px;}.rv-dashboard{padding:10px 13px;}.rv-wallet-note{max-width:180px;font-size:9px;}.rv-game-inner{padding:12px 9px 10px;}.rv-reel-halo{padding:8px 5px 6px;border-width:3px;border-radius:13px;}.rv-reel{height:246px;}.rv-reel-grid{gap:2px;padding:2px;}.rv-art{width:97%;}.rv-art svg:not(.rv-lion-icon){width:66%;height:66%;}.rv-coin-mark{font-size:24px;border-width:3px;}.rv-vault-mark{padding:3px;border-width:2px;}.rv-vault-mark svg{width:24px;height:24px;}.rv-vault-mark small,.rv-gold-mark small{font-size:7px;}.rv-controls{grid-template-columns:minmax(0,1fr) 108px minmax(0,1fr);gap:8px;}.rv-spin{width:108px;height:108px;border-width:5px;box-shadow:0 0 0 2px #387fec,0 0 0 5px #74582f,0 0 19px #006dff84;}.rv-spin strong{font-size:20px;}.rv-spin svg{width:19px;}.rv-bet-stepper{min-height:50px;padding:2px;}.rv-bet-stepper button{width:29px;}.rv-bet-stepper strong{font-size:16px;}.rv-bet-stepper strong small{font-size:8px;}.rv-control-heading{font-size:8px;}.rv-control-button{min-height:51px;font-size:9px;gap:2px;}.rv-side-buttons{grid-template-columns:1fr;gap:4px;}.rv-footer-tools button{flex-direction:column;font-size:9px;min-height:52px;}.rv-win-panel{margin-top:13px;}.rv-reel-header{font-size:9px;}.rv-symbol{border-radius:2px;}}
 @media(max-width:390px){.rv-reel{height:206px;}.rv-wallet-note{font-size:8px;max-width:140px;}.rv-balance{gap:5px;}.rv-balance strong{font-size:15px;}.rv-game-inner{padding:10px 5px;}.rv-controls{grid-template-columns:minmax(0,1fr) 90px minmax(0,1fr);gap:7px;}.rv-spin{width:90px;height:90px;}.rv-spin strong{font-size:18px;}.rv-control-button{min-height:47px;}.rv-bet-stepper strong{font-size:14px;}.rv-art--coin .rv-coin-mark{font-size:21px;}}
 @media(prefers-reduced-motion:reduce){.rv-ticker{animation-duration:1.2s;}.rv-symbol--win{animation:none;}.rv-spin{transition:none;}}
+
+/* Authenticated REAL wallet: independent, read-only and visually separate from CR. */
+.rv-wallet-readonly {
+  margin:12px 18px 0; padding:12px 15px; border:1px solid #28486b;
+  border-radius:13px; background:linear-gradient(135deg,#0b1b2e,#0c1421);
+}
+.rv-wallet-readonly__heading { display:flex; align-items:center;gap:9px; flex-wrap:wrap;
+  font-size:11px;color:#b7ccdf;font-weight:900; }
+.rv-wallet-readonly__heading > svg {color:#7faaff;}
+.rv-wallet-readonly__tag {display:inline-flex;align-items:center;gap:4px;
+  padding:3px 8px;border-radius:6px;background:#192a3a;border:1px solid #3c566a;
+  color:#adbfce;font-size:9px;letter-spacing:.4px;}
+.rv-wallet-readonly__amount {display:block;min-height:27px;padding:4px 0;
+  color:#eaf2fe;font-size:18px;font-weight:900;font-variant-numeric:tabular-nums;}
+.rv-wallet-readonly__prompt {display:block;padding:8px 0;font-size:11px;color:#a4b6cd;}
+.rv-wallet-readonly__bottom {display:flex;justify-content:space-between;align-items:center;gap:9px; flex-wrap:wrap;
+  padding-top:6px;border-top:1px solid #233e59;color:#91a5bb;font-size:10px;}
+.rv-wallet-readonly__bottom > span {display:inline-flex;align-items:center;gap:5px;}
+.rv-wallet-readonly__bottom a {font-weight:800;color:#8bbfff;text-decoration:underline;}
+@media(max-width:720px){
+  .rv-wallet-readonly{margin:10px 9px 0;padding:10px;}
+  .rv-wallet-readonly__amount{font-size:16px;}
+}
