@@ -44,6 +44,17 @@ type Profile = {
   loss_limit_daily_minor: string | null; loss_limit_weekly_minor: string | null;
   max_payout_per_bet_minor: string | null;
 };
+/** PostgreSQL jsonb_build_object(bigint) may decode to a JS number. */
+function safePostedMinor(value: unknown): string {
+  if (typeof value === 'string' && /^(0|[1-9][0-9]*)$/.test(value)) {
+    return value;
+  }
+  if (typeof value === 'number' && Number.isSafeInteger(value) && value >= 0) {
+    return String(value);
+  }
+  throw new Error('ORIGINALS_STAGE_POSTED_BALANCE_UNSAFE');
+}
+
 type Existing = {
   round_id: string; client_request_id: string; wallet_currency: string;
   stake_minor: string; payout_minor: string; balance_after_minor: string;
@@ -234,11 +245,11 @@ export async function settleRoyalVaultStagingRound(
         p_balance_floor: account.locked_minor,
       },
     );
-    if (!debit?.transaction_id || typeof debit.balance_after_minor !== 'string')
+    if (!debit?.transaction_id || typeof debit.transaction_id !== 'string')
       throw new Error('ORIGINALS_STAGE_DEBIT_UNVERIFIED');
 
     let creditId: string | null = null;
-    let balanceAfter = debit.balance_after_minor;
+    let balanceAfter = safePostedMinor(debit.balance_after_minor);
     if (settlement.payoutMinor > 0n) {
       const credit = await tx.rpc<{transaction_id:string;balance_after_minor:string}>(
         'post_wallet_entry', {
@@ -249,10 +260,10 @@ export async function settleRoyalVaultStagingRound(
           p_metadata: {source:'originals',game:'royal-vault',math_version:ROYAL_VAULT_MATH_VERSION},
         },
       );
-      if (!credit?.transaction_id || typeof credit.balance_after_minor !== 'string')
+      if (!credit?.transaction_id || typeof credit.transaction_id !== 'string')
         throw new Error('ORIGINALS_STAGE_CREDIT_UNVERIFIED');
       creditId = credit.transaction_id;
-      balanceAfter = credit.balance_after_minor;
+      balanceAfter = safePostedMinor(credit.balance_after_minor);
     }
     await tx.query(
       'insert into nova.originals_rounds ' +
