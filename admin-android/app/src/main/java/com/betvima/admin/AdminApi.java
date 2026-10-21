@@ -224,7 +224,7 @@ public final class AdminApi {
   try{return values(http(method,serverOrigin+path,body,accessToken,null));}
   catch(Exception error){
    if(error.getMessage()!=null&&error.getMessage().startsWith("UNAUTHORIZED:")&&!refreshToken.isEmpty()){
-    refreshTokens();return values(http(method,BASE+path,body,accessToken,null));
+    refreshTokens();return values(http(method,serverOrigin+path,body,accessToken,null));
    }
    throw error;
   }
