@@ -236,7 +236,7 @@ fun BetvimaApp(model: AppViewModel) {
         Scaffold(
             containerColor = when {
                 state.feature == Feature.CASINO -> Color(0xFF141414)
-                state.feature == Feature.SUPPORT -> Palette.headerDark
+                state.feature == Feature.SUPPORT || state.feature == Feature.PROFILE -> Palette.headerDark
                 state.feature == Feature.NONE &&
                     state.tab in setOf(Tab.BETS, Tab.WALLET, Tab.HOME, Tab.LIVE, Tab.SPORTS) -> Palette.headerDark
                 else -> Palette.paper
