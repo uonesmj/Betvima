@@ -44,6 +44,11 @@ declare global {
   }
 }
 
+/** Return an administrator to the dedicated mobile workspace after password or MFA. */
+function signedInDestination() {
+  return window.location.pathname.startsWith('/admin/mobile') ? '/admin/mobile' : '/';
+}
+
 export function AuthForms({
   initialMode,
 }: {
@@ -156,7 +161,7 @@ export function AuthForms({
 
         if (result.authenticated) {
           await refreshSession();
-          window.location.href = '/';
+          window.location.href = signedInDestination();
           return;
         }
 
@@ -185,7 +190,7 @@ export function AuthForms({
             return;
           }
           await refreshSession();
-          window.location.href = '/';
+          window.location.href = signedInDestination();
       }
     } catch (err) {
       setError(
@@ -251,7 +256,7 @@ export function AuthForms({
         If your primary authenticator is unavailable, choose your previously
         enrolled backup authenticator below. A recovery code was not issued by Supabase.
       </p>
-      <TwoFactorSettings onVerified={() => { window.location.href = '/'; }} />
+      <TwoFactorSettings onVerified={() => { window.location.href = signedInDestination(); }} />
       <button type="button" className="text-sm text-slate-200 underline"
         onClick={() => { setAwaitingTotp(false); setMode('login'); }}>
         Back to sign in
