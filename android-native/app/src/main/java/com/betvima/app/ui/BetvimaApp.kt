@@ -348,7 +348,7 @@ fun BetvimaApp(model: AppViewModel) {
                             destination.startsWith("match-") ->
                                 MatchDetailPage(state, model)
                             destination.startsWith("feature-") ->
-                                FeaturePage(state, model)
+                                FeaturePage(stateForAnimatedDestination(destination, state), model)
                             destination.startsWith("home-") ->
                                 HomePage(filtered, model,
                                     onSearch = { searchOpen = !searchOpen },
