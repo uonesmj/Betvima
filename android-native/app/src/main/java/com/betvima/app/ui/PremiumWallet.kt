@@ -246,41 +246,58 @@ private fun WalletPaymentRow(
     payment: WalletPaymentRecord, lang: Lang, onClick: () -> Unit
 ) {
     val incoming = payment.direction == "deposit"
+    val accent = if (incoming) Color(0xFF2ED2A4) else Color(0xFF69B6FF)
+    val statusColor = when (payment.status.lowercase()) {
+        "succeeded" -> Color(0xFF54D7A4)
+        "failed", "cancelled", "reversed" -> Color(0xFFFF879A)
+        else -> Color(0xFFFFD488)
+    }
+    val shape = RoundedCornerShape(19.dp)
     Surface(
         modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
-        color = walletPanel, shape = RoundedCornerShape(15.dp),
+        color = walletPanel, shape = shape,
         border = BorderStroke(1.dp, walletEdge)
     ) {
-        Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 10.dp),
-            verticalAlignment = Alignment.CenterVertically) {
-            Surface(
-                color = if (incoming) Color(0xFF183B31) else Color(0xFF202E43),
-                shape = RoundedCornerShape(13.dp)
-            ) {
-                Icon(if (incoming) Icons.Default.SouthWest else Icons.Default.NorthEast,
-                    null, tint = if (incoming) Color(0xFF087D4D) else walletBlue,
-                    modifier = Modifier.padding(10.dp).size(20.dp))
-            }
-            Spacer(Modifier.width(11.dp))
-            Column(Modifier.weight(1f)) {
-                Text(if (incoming) tr(lang, "Deposit", "واریز")
-                    else tr(lang, "Withdrawal", "برداشت"),
-                    color = walletInk, fontSize = 13.sp, fontWeight = FontWeight.Bold)
-                Text(walletDate(payment.createdAt), color = walletMute, fontSize = 10.sp)
-                Text(payment.publicId.take(18), color = walletMute, fontSize = 9.sp,
-                    maxLines = 1, overflow = TextOverflow.Ellipsis)
-            }
-            Column(horizontalAlignment = Alignment.End) {
-                Text((if (incoming) "+" else "−") +
-                    money(payment.amountMinor, payment.currency),
-                    color = if (incoming) Color(0xFF54D7A4) else walletInk,
-                    fontSize = 12.sp, fontWeight = FontWeight.Black)
-                Text(walletStatusText(payment.status, lang),
-                    color = when (payment.status.lowercase()) {
-                        "succeeded" -> Color(0xFF54D7A4)
-                        "failed", "cancelled" -> Color(0xFFFF879A)
-                        else -> Color(0xFFFFD488)
-                    }, fontSize = 10.sp)
+        Box(Modifier.fillMaxWidth()
+            .background(Brush.linearGradient(listOf(
+                Color(0xFF23262B), Color(0xFF1F2227), Color(0xFF24272B)
+            )))) {
+            Box(Modifier.align(Alignment.TopEnd).offset(x = 44.dp, y = (-57).dp)
+                .size(133.dp).clip(CircleShape)
+                .background(accent.copy(alpha = .045f)))
+            Box(Modifier.align(Alignment.CenterStart).width(3.dp).height(45.dp)
+                .clip(RoundedCornerShape(topEnd = 3.dp, bottomEnd = 3.dp))
+                .background(accent.copy(alpha = .77f)))
+            Row(Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 17.dp),
+                verticalAlignment = Alignment.CenterVertically) {
+                Box(Modifier.size(49.dp).clip(RoundedCornerShape(15.dp))
+                    .background(if (incoming) Color(0xFF10503D) else Color(0xFF173954))
+                    .border(1.dp, accent.copy(alpha = .19f), RoundedCornerShape(15.dp)),
+                    contentAlignment = Alignment.Center) {
+                    Icon(if (incoming) Icons.Default.SouthWest else Icons.Default.NorthEast,
+                        null, tint = accent, modifier = Modifier.size(23.dp))
+                }
+                Spacer(Modifier.width(12.dp))
+                Column(Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                    Text(if (incoming) tr(lang, "Deposit", "واریز")
+                        else tr(lang, "Withdrawal", "برداشت"),
+                        color = walletInk, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                    Text(walletDate(payment.createdAt), color = walletMute, fontSize = 10.sp)
+                    Text(payment.publicId.take(18), color = walletMute, fontSize = 9.sp,
+                        maxLines = 1, overflow = TextOverflow.Ellipsis)
+                }
+                Spacer(Modifier.width(6.dp))
+                Column(horizontalAlignment = Alignment.End,
+                    verticalArrangement = Arrangement.spacedBy(9.dp)) {
+                    Text((if (incoming) "+" else "−") +
+                        money(payment.amountMinor, payment.currency),
+                        color = if (incoming) Color(0xFF54D7A4) else Color(0xFFE1E8F0),
+                        fontSize = 12.sp, fontWeight = FontWeight.Black,
+                        maxLines = 1)
+                    Text(walletStatusText(payment.status, lang),
+                        color = statusColor, fontSize = 10.sp)
+                }
             }
         }
     }
@@ -299,25 +316,9 @@ fun PremiumWalletPage(state: AppState, model: AppViewModel) {
 
     LazyColumn(
         modifier = Modifier.fillMaxSize().background(walletCanvas),
-        contentPadding = PaddingValues(horizontal = 15.dp, vertical = 15.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
+        contentPadding = PaddingValues(horizontal = 15.dp, vertical = 16.dp),
+        verticalArrangement = Arrangement.spacedBy(15.dp)
     , flingBehavior = rememberPremiumFlingBehavior()) {
-        item {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Column(Modifier.weight(1f)) {
-                    Text(tr(lang, "Wallet", "کیف پول"), color = walletInk,
-                        fontSize = 24.sp, fontWeight = FontWeight.Black)
-                    Text(tr(lang, "Manage funds and payments",
-                        "مدیریت موجودی و عملیات مالی"),
-                        color = walletMute, fontSize = 11.sp)
-                }
-                IconButton(onClick = model::refreshAccount,
-                    enabled = state.signedIn && !state.accountLoading) {
-                    Icon(Icons.Default.Refresh, tr(lang, "Refresh", "تازه‌سازی"),
-                        tint = walletBlue)
-                }
-            }
-        }
         if (!state.signedIn) {
             item {
                 LockedFeature(lang,
@@ -340,7 +341,8 @@ fun PremiumWalletPage(state: AppState, model: AppViewModel) {
             } else {
                 item { WalletSummary(state, wallet) }
                 item {
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = Modifier.fillMaxWidth()) {
                         WalletAction(tr(lang,"Deposit","واریز"),
                             tr(lang,"Add funds","شارژ حساب"),
                             Icons.Default.ArrowDownward, true,
@@ -373,6 +375,13 @@ fun PremiumWalletPage(state: AppState, model: AppViewModel) {
                         Text(tr(lang,"Recent payments","پرداخت‌های اخیر"),
                             color = walletInk, fontSize = 17.sp, fontWeight = FontWeight.Black,
                             modifier = Modifier.weight(1f))
+                        IconButton(onClick = model::refreshAccount,
+                            enabled = state.signedIn && !state.accountLoading,
+                            modifier = Modifier.size(36.dp)) {
+                            Icon(Icons.Default.Refresh,
+                                tr(lang, "Refresh", "تازه‌سازی"),
+                                tint = walletBlue, modifier = Modifier.size(21.dp))
+                        }
                         Box {
                             TextButton(onClick = { filterOpen = true }) {
                                 Icon(Icons.Default.Tune, null, modifier = Modifier.size(17.dp))
