@@ -191,17 +191,20 @@ fun HomePage(state: AppState, model: AppViewModel, onSearch: () -> Unit,
                         Icons.Default.Sensors, Color(0xFFE82465)) { model.tab(Tab.LIVE) }
                     if (state.live.isNotEmpty()) ReferenceMatchCarousel(state.live, state, model)
                     else if (state.liveLoading) FixtureSkeleton(Modifier.fillMaxWidth())
-                    else EmptyPanel(
-                        tr(state.lang, if (state.liveError) "Live feed unavailable"
-                            else "No live matches",
-                            if (state.liveError) "داده زنده در دسترس نیست"
-                            else "مسابقه زنده‌ای موجود نیست"),
-                        tr(state.lang, if (state.liveError)
-                            "The BetsAPI provider did not return a usable live feed."
-                            else "Check again as events begin.",
-                            if (state.liveError)
-                            "منبع BetsAPI فهرست زنده قابل استفاده‌ای برنگردانده است."
-                            else "با شروع مسابقات دوباره بررسی کنید.")) { model.refreshLive() }
+                    else WindStormEmptyLiveCard {
+                        EmptyPanel(
+                            tr(state.lang, if (state.liveError) "Live feed unavailable"
+                                else "No live matches",
+                                if (state.liveError) "داده زنده در دسترس نیست"
+                                else "مسابقه زنده‌ای موجود نیست"),
+                            tr(state.lang, if (state.liveError)
+                                "The BetsAPI provider did not return a usable live feed."
+                                else "Check again as events begin.",
+                                if (state.liveError)
+                                "منبع BetsAPI فهرست زنده قابل استفاده‌ای برنگردانده است."
+                                else "با شروع مسابقات دوباره بررسی کنید.")
+                        ) { model.refreshLive() }
+                    }
                 }
             }
             item {
