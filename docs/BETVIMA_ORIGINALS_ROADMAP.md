@@ -64,6 +64,58 @@ The only production SQL executed during this milestone was a **read-only**
 aggregate check: 92 wallets, 0 balance-to-posted-ledger mismatches; no
 balances or customer identifiers were returned to the assistant.
 
+## Server-owned staging math and cash integration boundary (2026-10-21)
+
+- An authenticated `POST /api/v1/originals/royal-vault/demo-spin` now returns a
+  **server-generated demo outcome** using Node's cryptographic random bytes
+  and unbiased range sampling. It is gated behind
+  `BETVIMA_ORIGINALS_PREVIEW_ENABLED=true`. This route **never** posts
+  financial entries, does not read wallet balances, does not persist round
+  receipts, and must not be advertised as a live casino-money endpoint.
+- Signed-in players' demo outcomes are checked against the versioned
+  paytable before any **local CR-only** points change. Logged-out visitors
+  continue local-only play.
+- The isolated `royal-vault-accounting.ts` re-evaluates all five paylines,
+  computes settlement only in **bigint minor units**, and refuses stakes not
+  divisible by five, unsupported math versions or out-of-range amounts.
+- `RoyalVaultSimulatedLedger` is a **unit-test-only memory simulator**:
+  it demonstrates account-scoped sequencing, unique request IDs,
+  idempotent replay, changed-request rejection, eligible account checks,
+  insufficient funds rejection, failed-RNG rollback, immutable debit/credit
+  snapshots, concurrent spin serialization and per-user isolation.
+  Its state is volatile and not allowed to back actual money.
+- The production `nova.wallets` and `nova.wallet_transactions` remain
+  untouched. **No production database migration was applied.**
+  GitHub CI passing does not establish a deployed preview or a cash launch.
+
+### Requirements before using one's own BetVima USD/IRR wallet
+
+1. Verify lawful operator authorization and game jurisdiction, player age,
+   independent game mathematics/RNG review, responsible-gaming limits,
+   self-exclusion and KYC; determine permitted fiat conversion policy.
+2. Provision an independently isolated PostgreSQL staging environment and
+   an approved, versioned `nova.originals_rounds` migration with
+   unique (user_id, client_request_id) and immutable, auditable round facts.
+   RLS, immutable write protections and SQL privilege checks are mandatory.
+3. Build a **single DB transaction** that records a request fingerprint,
+   obtains an account-scoped financial lock, verifies limits and balances,
+   commits the `bet_debit` using `nova.post_wallet_entry`, records a
+   verifiable server-origin result and pays `win_credit` exactly once.
+   If any stage fails, roll back the entire transaction. Client win
+   amounts and client RNG are never financial authority.
+4. Define recovery for network timeouts, cross-worker retries, crashes,
+   cancellation/reversal, abandoned sessions, FX rates and frozen balances.
+   Reconcile each round's stake and payout against posted immutable ledger
+   entries; test concurrency on real PostgreSQL, not just mocked memory.
+5. Independently restore-test a complete, current production database backup,
+   have the schema and game reviewed, then require a signed owner-approved
+   release and a controlled, authorized single-user pilot.
+6. **Only after** verified end-to-end, money-moving settlement tests,
+   reviewed licensing and published build verification can the operator be
+   advised to run a minimal-stake wallet pilot.
+
+The user must **not** test Royal Vault with a real-money BetVima balance yet.
+
 ## 500-title catalogue *target*, not 500 completed titles
 
 | Game family | Target titles |
