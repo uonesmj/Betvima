@@ -36,6 +36,7 @@ export function BetVimaOriginalsClient() {
   const crashPoint = useRef(1);
   const crashWager = useRef(0);
   const multiplierRef = useRef(1);
+  const crashStartTime = useRef(0);
 
   const [roulettePick, setRoulettePick] = useState<RoulettePick>('red');
   const [rouletteNumber, setRouletteNumber] = useState<number | null>(null);
@@ -84,6 +85,7 @@ export function BetVimaOriginalsClient() {
     setCrashMultiplier(1);
     setBalance((prev) => prev - wager);
     const startTime = performance.now();
+    crashStartTime.current = startTime;
     crashTimer.current = setInterval(() => {
       if (!crashActive.current) return;
       const multiple = demoCrashMultiplier(performance.now() - startTime);
@@ -105,7 +107,9 @@ export function BetVimaOriginalsClient() {
     crashActive.current = false;
     if (crashTimer.current) clearInterval(crashTimer.current);
     crashTimer.current = null;
-    const multiple = multiplierRef.current;
+    const multiple = demoCrashMultiplier(performance.now() - crashStartTime.current);
+    multiplierRef.current = multiple;
+    setCrashMultiplier(multiple);
     if (multiple >= crashPoint.current) {
       setCrashPhase('crashed');
       setCrashOutcome(crashPoint.current);
