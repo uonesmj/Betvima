@@ -71,30 +71,45 @@ export function playerPassword(userId: string, secret: string): string {
   return createHmac('sha256', secret).update('softaggregator-player:' + userId).digest('hex');
 }
 
-export function validateCallback(
+/**
+ * Authenticate the independently signed Cloudflare edge attestation and the
+ * supplier's legacy timestamp MD5, without looking up a player or touching
+ * a wallet. This is used both for normal callbacks and for an opt-in,
+ * non-financial balance-only ingress audit.
+ *
+ * Supplier X-Signature HMAC is checked SEPARATELY.
+ */
+export function verifyCallbackEdgeSignature(
   url: URL, signature: string | null, salt: string,
   now = Date.now(), signedPayloadSecret: string = salt,
-): SignedCallback | null {
-  if (!salt || salt.length < 12) return null;
+): boolean {
+  if (!salt || salt.length < 12) return false;
   const params = url.searchParams;
   const names = [...params.keys()];
-  if (names.length !== new Set(names).size) return null;
-  if (names.length > 24) return null;
+  if (names.length > 24 || names.length !== new Set(names).size) return false;
   const timestamp = params.get('timestamp') ?? '';
   const key = params.get('key') ?? '';
-  if (!/^\d{10,13}$/.test(timestamp)) return null;
+  if (!/^\d{10,13}$/.test(timestamp)) return false;
   const epoch = Number(timestamp) * (timestamp.length === 10 ? 1_000 : 1);
-  if (!Number.isSafeInteger(epoch) || Math.abs(now - epoch) > CALLBACK_TOLERANCE_MS) return null;
+  if (!Number.isSafeInteger(epoch) || Math.abs(now - epoch) > CALLBACK_TOLERANCE_MS) return false;
   const md5 = createHash('md5').update(timestamp + salt).digest('hex');
-  if (!equalHex(md5, key)) return null;
+  if (!equalHex(md5, key)) return false;
   // Full-payload HMAC is mandatory; MD5(timestamp + salt) alone does NOT authenticate the amount.
-  if (!signature || Buffer.byteLength(signedPayloadSecret, 'utf8') < 12) return null;
+  if (!signature || Buffer.byteLength(signedPayloadSecret, 'utf8') < 12) return false;
   // Percent-encoded canonicalization prevents delimiter-collision attacks.
   const canonical = new URLSearchParams([...params.entries()]
     .sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0)).toString();
   const expected = createHmac('sha256', signedPayloadSecret).update(canonical).digest('hex');
-  if (!equalHex(expected, signature.trim())) return null;
+  return equalHex(expected, signature.trim());
+}
 
+export function validateCallback(
+  url: URL, signature: string | null, salt: string,
+  now = Date.now(), signedPayloadSecret: string = salt,
+): SignedCallback | null {
+  if (!verifyCallbackEdgeSignature(url, signature, salt, now, signedPayloadSecret))
+    return null;
+  const params = url.searchParams;
   const action = params.get('action');
   const username = params.get('username') ?? '';
   if (action !== 'balance' && action !== 'debit' && action !== 'credit') return null;
