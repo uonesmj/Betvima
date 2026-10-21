@@ -22,4 +22,14 @@ class WindStormMotion157Test {
         assertEquals(0f, windStormIntensity(Float.NaN))
         assertEquals(0f, windStormIntensity(Float.POSITIVE_INFINITY))
     }
+
+    @Test fun individualGustsFeatherToTransparentAtViewportEdges() {
+        assertEquals(0f, windStormEdgeFeather(0f, 50f, 400f, 100f))
+        assertEquals(0f, windStormEdgeFeather(400f, 50f, 400f, 100f))
+        assertEquals(0f, windStormEdgeFeather(200f, 0f, 400f, 100f))
+        assertEquals(0f, windStormEdgeFeather(200f, 100f, 400f, 100f))
+        assertEquals(1f, windStormEdgeFeather(200f, 50f, 400f, 100f))
+        assertEquals(0f, windStormEdgeFeather(Float.NaN, 50f, 400f, 100f))
+        assertEquals(0f, windStormEdgeFeather(200f, 50f, 0f, 100f))
+    }
 }
