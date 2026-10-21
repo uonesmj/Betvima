@@ -555,7 +555,7 @@ fun LockedFeature(
     lang: Lang,
     message: String,
     onRegister: (() -> Unit)? = null,
-    icon: androidx.compose.ui.graphics.vector.ImageVector = Icons.Default.LockOutline,
+    icon: androidx.compose.ui.graphics.vector.ImageVector = Icons.Default.Lock,
     onLogin: () -> Unit
 ) {
     val panel = Color(0xFF222224)
