@@ -89,14 +89,21 @@ export function casinoRealMoneyEnabled() {
     Buffer.byteLength(process.env.SOFTAGGREGATOR_EDGE_HMAC_SECRET ?? '', 'utf8') >= 32;
 }
 /**
- * Explicit one-account pilot allowlist. Enabling the provider's real-money flag
- * never opens wagering for every user. A configured UUID is required.
+ * Closed, opt-in cash pilot only: one legacy test user OR an explicit list of
+ * at most 20 UUIDs. No wildcard, duplicates, malformed IDs, or mixed settings.
+ * Every enrolled user must still satisfy the separate financial, age/KYC,
+ * provider-signature, wallet and jurisdiction checks. Never public access.
  */
 export function casinoRealMoneyUserAllowed(userId: string): boolean {
   if (!casinoRealMoneyEnabled()) return false;
-  const pilotUser = (process.env.SOFTAGGREGATOR_TEST_USER_ID ?? '').trim().toLowerCase();
-  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(pilotUser) &&
-    pilotUser === userId.toLowerCase();
+  const single = (process.env.SOFTAGGREGATOR_TEST_USER_ID ?? '').trim().toLowerCase();
+  const multiple = (process.env.SOFTAGGREGATOR_PILOT_USER_IDS ?? '').trim().toLowerCase();
+  if ((single && multiple) || (!single && !multiple)) return false;
+  const ids = multiple ? multiple.split(',').map((value) => value.trim()) : [single];
+  const validUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+  if (ids.length < 1 || ids.length > 20 || ids.some((id) => !validUuid.test(id)) ||
+      new Set(ids).size !== ids.length) return false;
+  return validUuid.test(userId.toLowerCase()) && ids.includes(userId.toLowerCase());
 }
 export function requireCasinoEnabled() {
   if (!casinoEnabled()) throw new Error('CASINO_DISABLED');
