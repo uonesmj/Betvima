@@ -40,6 +40,14 @@ internal fun upcomingSportIdentity(sport: String): String = when (
 
 internal fun tournamentCountryKey(raw: String): String {
     val value = raw.trim()
+    // These are distinct competition federations. An ISO "GB" fallback
+    // must NEVER collapse England, Scotland, Wales and Northern Ireland.
+    when (value.lowercase(Locale.ROOT).replace(Regex("\\s+"), " ")) {
+        "england" -> return "home-nation:england"
+        "scotland" -> return "home-nation:scotland"
+        "wales" -> return "home-nation:wales"
+        "northern ireland" -> return "home-nation:northern-ireland"
+    }
     recognizedCountryCode(value)?.let { return it }
     val simple = value.lowercase(Locale.ROOT).replace(Regex("\\s+"), " ")
     return when (simple) {
@@ -57,6 +65,10 @@ internal fun tournamentCountryKey(raw: String): String {
 
 internal fun tournamentCountryName(key: String, source: String): String = when (key) {
     "international" -> "International"
+    "home-nation:england" -> "England"
+    "home-nation:scotland" -> "Scotland"
+    "home-nation:wales" -> "Wales"
+    "home-nation:northern-ireland" -> "Northern Ireland"
     "world" -> "World"
     "europe" -> "Europe"
     "asia" -> "Asia"
@@ -65,6 +77,7 @@ internal fun tournamentCountryName(key: String, source: String): String = when (
     "north-america" -> "North and Central America"
     "oceania" -> "Oceania"
     else -> if (key.startsWith("unverified:")) source.ifBlank { "International" }
+        else if (source.length > 3 && recognizedCountryCode(source) == key) source
         else countryDisplayName(key)
 }
 
