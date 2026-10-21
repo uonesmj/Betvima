@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -102,11 +103,15 @@ fun PremiumTournamentSheet(
         tournamentCountryNodes(filtered, currentSport)
     }
     val leagueNodes = remember(filtered, currentSport, selectedCountry) {
-        tournamentLeagueNodes(filtered, currentSport, selectedCountry)
+        if (tournamentDirectSport(currentSport))
+            tournamentDirectLeagues(filtered, currentSport)
+        else tournamentLeagueNodes(filtered, currentSport, selectedCountry)
     }
+    val topNodes = remember(filtered) { tournamentTopLeagues(filtered) }
     val allNodes = when (screen) {
         "countries" -> countryNodes
         "leagues" -> leagueNodes
+        "top" -> topNodes
         else -> sportNodes
     }
     val visible = allNodes.filter {
@@ -115,20 +120,24 @@ fun PremiumTournamentSheet(
     val header = when (screen) {
         "countries" -> upcomingSports.firstOrNull { it.first == currentSport }?.second
             ?: currentSport.replace('-', ' ')
-        "leagues" -> tournamentCountryName(selectedCountry,
-            countryNodes.firstOrNull { it.country == selectedCountry }?.label.orEmpty())
+        "leagues" -> if (tournamentDirectSport(currentSport))
+            upcomingSports.firstOrNull { it.first == currentSport }?.second ?: currentSport
+            else tournamentCountryName(selectedCountry,
+                countryNodes.firstOrNull { it.country == selectedCountry }?.label.orEmpty())
+        "top" -> "Top"
         else -> "Sports"
     }
     val subtitle = when (screen) {
         "countries" -> tr(lang, "Select a country or region", "انتخاب کشور یا منطقه")
-        "leagues" -> tr(lang, "Select an available league", "انتخاب لیگ موجود")
+        "leagues", "top" -> tr(lang, "Select an available league", "انتخاب لیگ موجود")
         else -> tr(lang, "Select a sport", "انتخاب رشته ورزشی")
     }
     val back: () -> Unit = {
         filter = ""
         when (screen) {
-            "leagues" -> screen = "countries"
-            "countries" -> screen = "sports"
+            "leagues" -> screen = if (tournamentDirectSport(currentSport))
+                "sports" else "countries"
+            "countries", "top" -> screen = "sports"
             else -> dismiss()
         }
     }
@@ -213,9 +222,8 @@ fun PremiumTournamentSheet(
                     .height(53.dp).clip(RoundedCornerShape(17.dp))
                     .background(pickerBlue)
                     .clickable {
-                        onHoursChange(null)
-                        onSelect("")
-                        dismiss()
+                        filter = ""
+                        screen = "top"
                     }
                     .padding(horizontal = 14.dp),
                 verticalAlignment = Alignment.CenterVertically
@@ -275,7 +283,7 @@ fun PremiumTournamentSheet(
                 flingBehavior = rememberPremiumFlingBehavior()
             ) {
                 if (screen == "sports") {
-                    items(visible, key = { it.key }) { node ->
+                    itemsIndexed(visible, key = { _, node -> node.key }) { index, node ->
                         val loaded = activeSport == "all" ||
                             upcomingSportIdentity(activeSport) == node.sport ||
                             (activeSport == "esports" && node.sport.startsWith("esports:"))
@@ -283,11 +291,13 @@ fun PremiumTournamentSheet(
                             title = node.label,
                             count = node.count.takeIf { loaded },
                             emblem = tournamentSportEmoji(node.sport),
+                            first = index == 0, last = index == visible.lastIndex,
                             onClick = {
                                 selectedSport = node.sport
                                 selectedCountry = ""
                                 filter = ""
-                                screen = "countries"
+                                screen = if (tournamentDirectSport(node.sport))
+                                    "leagues" else "countries"
                                 if (upcomingSportIdentity(activeSport) != node.sport) {
                                     onSportChange(if (node.sport.startsWith("esports:"))
                                         "esports" else node.sport)
@@ -296,11 +306,12 @@ fun PremiumTournamentSheet(
                         )
                     }
                 } else if (screen == "countries") {
-                    items(visible, key = { it.key }) { node ->
+                    itemsIndexed(visible, key = { _, node -> node.key }) { index, node ->
                         TournamentPickerRow(
                             title = node.label,
                             count = node.count,
                             emblem = tournamentPlaceEmoji(node.country),
+                            first = index == 0, last = index == visible.lastIndex,
                             onClick = {
                                 selectedCountry = node.country
                                 filter = ""
@@ -309,11 +320,12 @@ fun PremiumTournamentSheet(
                         )
                     }
                 } else {
-                    items(visible, key = { it.key }) { node ->
+                    itemsIndexed(visible, key = { _, node -> node.key }) { index, node ->
                         TournamentPickerRow(
                             title = node.label,
                             count = node.count,
                             emblem = "🏆",
+                            first = index == 0, last = index == visible.lastIndex,
                             match = node.sample,
                             onClick = {
                                 onSelect(node.key)
@@ -354,11 +366,18 @@ fun PremiumTournamentSheet(
 @Composable
 private fun TournamentPickerRow(
     title: String, count: Int?, emblem: String,
-    match: Match? = null, onClick: () -> Unit
+    match: Match? = null, first: Boolean = false, last: Boolean = false,
+    onClick: () -> Unit
 ) {
     Surface(
         modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
-        color = pickerGray, shape = RoundedCornerShape(0.dp)
+        color = pickerGray,
+        shape = RoundedCornerShape(
+            topStart = if (first) 17.dp else 0.dp,
+            topEnd = if (first) 17.dp else 0.dp,
+            bottomStart = if (last) 17.dp else 0.dp,
+            bottomEnd = if (last) 17.dp else 0.dp
+        )
     ) {
         Row(
             Modifier.heightIn(min = 54.dp)
