@@ -71,11 +71,14 @@ internal fun AffiliateShowcase119(
         item(key="partner-product-connected") {
             AffiliateConnectedBridge151(lightAfter = true)
         }
-        item(key="partner-earnings") {
-            Affiliate119Earnings(lang, onRegister)
-        }
-        item(key="partner-faq") {
-            Affiliate119Faq(lang)
+        // The CTA and FAQ share one continuous light surface, preventing the
+        // dark LazyColumn background from leaking through the rounded corners.
+        item(key="partner-earnings-faq-connected") {
+            Column(Modifier.fillMaxWidth().background(cIvory)) {
+                Affiliate119Earnings(lang, onRegister)
+                AffiliateEarningsFaqBridge153()
+                Affiliate119Faq(lang)
+            }
         }
         item(key="partner-faq-connected") {
             AffiliateConnectedBridge151(lightAfter = false)
@@ -271,7 +274,7 @@ private fun Affiliate119Earnings(lang:Lang,onRegister:()->Unit) {
     Column(Modifier.fillMaxWidth()
         .clip(RoundedCornerShape(topStart=34.dp,topEnd=34.dp))
         .background(cIvory)
-        .padding(top=25.dp,bottom=46.dp),
+        .padding(top=25.dp,bottom=14.dp),
         verticalArrangement=Arrangement.spacedBy(16.dp)) {
         Column(Modifier.padding(horizontal=22.dp),
             verticalArrangement=Arrangement.spacedBy(10.dp)) {
@@ -314,7 +317,6 @@ private fun Affiliate119Earnings(lang:Lang,onRegister:()->Unit) {
             Spacer(Modifier.height(13.dp))
             Affiliate119Primary(tr(lang,"Start partnering","شروع همکاری"),
                 onRegister,Modifier.fillMaxWidth())
-            Spacer(Modifier.height(17.dp))
         }
     }
 }
@@ -395,9 +397,8 @@ private fun Affiliate119Faq(lang:Lang) {
     )
     var expanded by remember { mutableIntStateOf(0) }
     Column(Modifier.fillMaxWidth()
-        .clip(RoundedCornerShape(topStart=35.dp,topEnd=35.dp))
         .background(cIvory)
-        .padding(start=19.dp,end=19.dp,top=27.dp,bottom=33.dp),
+        .padding(start=19.dp,end=19.dp,top=17.dp,bottom=33.dp),
         verticalArrangement=Arrangement.spacedBy(12.dp)) {
         Affiliate119Eyebrow("FAQ",cForest)
         Text(tr(lang,"Frequently asked questions","پرسش‌های متداول"),
