@@ -174,8 +174,33 @@ internal fun tournamentTopLeagues(all: List<Match>): List<UpcomingNode> =
                 tournamentCountryKey(first.country), first)
         }.sortedWith(compareByDescending<UpcomingNode> { it.count }.thenBy { it.label })
 
+/**
+ * Keep the Android picker in step with the website: only football has a
+ * country/region drill-down. Other sports show their leagues directly.
+ */
 internal fun tournamentDirectSport(sport: String): Boolean =
-    sport == "tennis" || sport == "esports" || sport.startsWith("esports:")
+    upcomingSportIdentity(sport) != "football"
+
+/**
+ * Search can find an exact sport, provider-supplied competition country or
+ * league from the loaded catalogue, without guessing regions from team names.
+ * Node keys retain the sport and country so identically named leagues never merge.
+ */
+internal fun tournamentSearchNodes(all: List<Match>, query: String): List<UpcomingNode> {
+    val term = query.trim().take(80)
+    if (term.isEmpty()) return tournamentSportNodes(all)
+    val sports = tournamentSportNodes(all).filter {
+        it.label.contains(term, ignoreCase = true)
+    }
+    val countries = all.map { upcomingSportIdentity(it.sport) }.distinct()
+        .filterNot(::tournamentDirectSport)
+        .flatMap { tournamentCountryNodes(all, it) }
+        .filter { it.label.contains(term, ignoreCase = true) }
+    val leagues = tournamentTopLeagues(all).filter {
+        it.label.contains(term, ignoreCase = true)
+    }
+    return (sports + countries + leagues).distinctBy { it.key }
+}
 
 internal fun tournamentLeagueNodes(
     all: List<Match>, sport: String, country: String
