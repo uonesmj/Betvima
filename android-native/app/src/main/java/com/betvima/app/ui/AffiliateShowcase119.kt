@@ -56,23 +56,38 @@ internal fun AffiliateShowcase119(
         item(key="partner-main-hero") {
             Affiliate119Hero(lang, fadeInStarted.value, onRegister, onLogin)
         }
+        item(key="partner-hero-connected") {
+            AffiliateConnectedBridge151(lightAfter = true)
+        }
         item(key="partner-advantage") {
             Affiliate119Advantage(lang)
+        }
+        item(key="partner-advantage-connected") {
+            AffiliateConnectedBridge151(lightAfter = false)
         }
         item(key="partner-categories") {
             Affiliate119Products(lang)
         }
+        item(key="partner-product-connected") {
+            AffiliateConnectedBridge151(lightAfter = true)
+        }
         item(key="partner-earnings") {
             Affiliate119Earnings(lang, onRegister)
-        }
-        item(key="partner-stories") {
-            Affiliate119Gallery(lang)
         }
         item(key="partner-faq") {
             Affiliate119Faq(lang)
         }
+        item(key="partner-faq-connected") {
+            AffiliateConnectedBridge151(lightAfter = false)
+        }
         item(key="partner-final-action") {
             Affiliate119Join(lang,onRegister,onLogin)
+        }
+        item(key="partner-gallery-connected") {
+            AffiliateDarkCircuit151()
+        }
+        item(key="partner-real-photo-gallery") {
+            AffiliateRealPeopleGallery151(lang)
         }
     }
 }
