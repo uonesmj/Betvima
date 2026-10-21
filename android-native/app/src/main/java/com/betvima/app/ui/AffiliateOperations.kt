@@ -73,6 +73,7 @@ fun AffiliateOperations(state: AppState, model: AppViewModel, currency: String,
     var availableWalletAssets by remember { mutableStateOf<Set<String>>(emptySet()) }
     var payoutKey by remember { mutableStateOf(UUID.randomUUID().toString()) }
     var referralRange by rememberSaveable { mutableStateOf("7D") }
+    var ledgerType by rememberSaveable { mutableStateOf("") }
     var customFrom by rememberSaveable { mutableStateOf("") }
     var customTo by rememberSaveable { mutableStateOf("") }
     var registeredOnly by rememberSaveable { mutableStateOf(false) }
@@ -80,28 +81,49 @@ fun AffiliateOperations(state: AppState, model: AppViewModel, currency: String,
         runCatching { ZoneId.of(reportTimezone) }.getOrDefault(ZoneId.of("Asia/Tehran"))
     }
     val reportToday = LocalDate.now(zone)
-    val reportStart = when (referralRange) {
-        "TODAY" -> reportToday.toString()
-        "30D" -> reportToday.minusDays(29).toString()
-        "90D" -> reportToday.minusDays(89).toString()
-        "CUSTOM" -> customFrom.ifBlank { reportToday.minusDays(6).toString() }
-        else -> reportToday.minusDays(6).toString()
+    val reportStart = when(referralRange) {
+        "1D" -> affiliatePresetStart159(1,reportToday).toString()
+        "7D" -> affiliatePresetStart159(7,reportToday).toString()
+        "30D" -> affiliatePresetStart159(30,reportToday).toString()
+        "90D" -> affiliatePresetStart159(90,reportToday).toString()
+        "180D" -> affiliatePresetStart159(180,reportToday).toString()
+        "365D" -> affiliatePresetStart159(365,reportToday).toString()
+        "CUSTOM" -> customFrom.ifBlank { affiliatePresetStart159(7,reportToday).toString() }
+        else -> affiliatePresetStart159(7,reportToday).toString()
     }
-    val reportEnd = if (referralRange == "CUSTOM") customTo.ifBlank {
+    val reportEnd = if(referralRange=="CUSTOM") customTo.ifBlank {
         reportToday.toString()
     } else reportToday.toString()
+    val rangeFrom = runCatching { LocalDate.parse(reportStart) }.getOrDefault(reportToday)
+    val rangeTo = runCatching { LocalDate.parse(reportEnd) }.getOrDefault(reportToday)
+    val validRange = affiliateRange159(rangeFrom,rangeTo,reportToday)
     val referralDateParams = "&from=" + URLEncoder.encode(reportStart, "UTF-8") +
         "&to=" + URLEncoder.encode(reportEnd, "UTF-8") +
         (if (registeredOnly) "&registeredOnly=true" else "")
 
-    LaunchedEffect(selected, page, refresh, referralDateParams) {
+    LaunchedEffect(selected, page, refresh, referralDateParams, ledgerType) {
+        if (selected in listOf("referrals","ledger") && !validRange) {
+            error = tr(state.lang,"Choose a valid 1–365-day range.",
+                "بازه معتبر ۱ تا ۳۶۵ روز انتخاب کنید.")
+            values=emptyList();data=null;busy=false
+            return@LaunchedEffect
+        }
         busy = true; error = null
         try {
             val token = vault.accessToken(api) ?: throw IllegalStateException("Sign in required")
             val path = when (selected) {
                 "referrals" -> "/api/v1/affiliate/referrals?pageSize=20&page=" +
                     page + referralDateParams
-                "ledger" -> "/api/v1/affiliate/ledger?pageSize=20&page=" + page
+                "ledger" -> {
+                    val from=rangeFrom.atStartOfDay(zone).toInstant().toString()
+                    val to=rangeTo.plusDays(1).atStartOfDay(zone).toInstant()
+                        .minusNanos(1).toString()
+                    "/api/v1/affiliate/ledger?pageSize=20&page=" + page +
+                        "&from=" + URLEncoder.encode(from,"UTF-8") +
+                        "&to=" + URLEncoder.encode(to,"UTF-8") +
+                        (if(ledgerType.isBlank())"" else "&type="+
+                            URLEncoder.encode(ledgerType,"UTF-8"))
+                }
                 "payouts" -> "/api/v1/affiliate/payouts"
                 "links" -> "/api/v1/affiliate/links"
                 else -> "/api/v1/affiliate/wallets"
@@ -218,130 +240,127 @@ fun AffiliateOperations(state: AppState, model: AppViewModel, currency: String,
         if (!busy || values.isNotEmpty()) {
             when(selected) {
                 "referrals" -> {
-                    Text(tr(state.lang,"Referral reporting","گزارش زیرمجموعه‌ها"),
-                        fontSize=19.sp,fontWeight=FontWeight.Black,color=affiliateInk)
-                    Text(tr(state.lang,
-                        "Real registration, deposit, withdrawal and commission records.",
-                        "آمار واقعی ثبت‌نام، واریز، برداشت و کمیسیون"),
-                        fontSize=11.sp,color=Palette.muted)
-                    Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
-                        horizontalArrangement=Arrangement.spacedBy(7.dp)) {
-                        listOf(
-                            "TODAY" to tr(state.lang,"Today","امروز"),
-                            "7D" to tr(state.lang,"7 days","۷ روز"),
-                            "30D" to tr(state.lang,"30 days","۳۰ روز"),
-                            "90D" to tr(state.lang,"90 days","۹۰ روز")
-                        ).forEach { (key,label) ->
-                            FilterChip(
-                                selected=referralRange==key,
-                                onClick={referralRange=key;page=1;values=emptyList();data=null},
-                                label={Text(label,fontSize=11.sp)},
-                                colors=FilterChipDefaults.filterChipColors(
-                                    selectedContainerColor=Color(0xFFC9F4DD),
-                                    selectedLabelColor=Color(0xFF08683D))
-                            )
+                    FinanceDateFilter159(state.lang,rangeFrom,rangeTo,reportToday,zone,
+                        referralRange,
+                        onPreset={ choice ->
+                            referralRange=choice;page=1;values=emptyList();data=null
+                        },
+                        onDates={ from,to ->
+                            customFrom=from.toString();customTo=to.toString()
+                            referralRange="CUSTOM";page=1;values=emptyList();data=null
+                        })
+                    FinancePanel159(
+                        title=tr(state.lang,"Referral reporting","گزارش زیرمجموعه‌ها"),
+                        subtitle=tr(state.lang,
+                            "Daily registration, deposits, withdrawals and credited commission.",
+                            "ثبت‌نام، واریز، برداشت و کمیسیون ثبت‌شده در دوره")
+                    ) {
+                        Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
+                            Text(tr(state.lang,"Only sign-ups in selected period",
+                                "فقط ثبت‌نام‌های همین دوره"),
+                                color=affiliateInk,fontSize=12.sp,
+                                modifier=Modifier.weight(1f))
+                            Switch(checked=registeredOnly,onCheckedChange={
+                                registeredOnly=it;page=1;values=emptyList();data=null
+                            })
+                        }
+                        val counts=data?.optJSONObject("statusCounts")
+                        val period=data?.optJSONObject("periodSummary")
+                        if(counts!=null) {
+                            FinanceSectionRow159(
+                                tr(state.lang,"All referred accounts","کل حساب‌های معرفی‌شده"),
+                                counts.optInt("total").toString(),Icons.Default.Groups)
+                            HorizontalDivider(color=Color(0xFFE0EAE4))
+                            FinanceSectionRow159(
+                                tr(state.lang,"Confirmed","تأییدشده"),
+                                counts.optInt("confirmed").toString(),Icons.Default.Verified)
+                            HorizontalDivider(color=Color(0xFFE0EAE4))
+                            FinanceSectionRow159(
+                                tr(state.lang,"Under review","در حال بررسی"),
+                                (counts.optInt("pending")+counts.optInt("review")).toString(),
+                                Icons.Default.HourglassTop)
+                        }
+                        if(period!=null) {
+                            HorizontalDivider(color=Color(0xFFE0EAE4))
+                            FinanceSectionRow159(
+                                tr(state.lang,"Registered in period","ثبت‌نام در بازه"),
+                                period.optInt("registrations").toString(),
+                                Icons.Default.PersonAdd)
                         }
                     }
-                    Row(horizontalArrangement=Arrangement.spacedBy(9.dp),
-                        verticalAlignment=Alignment.CenterVertically) {
-                        OutlinedButton(
-                            modifier=Modifier.weight(1f),
-                            onClick={
-                                val chosen=runCatching { LocalDate.parse(reportStart) }
-                                    .getOrDefault(reportToday)
-                                android.app.DatePickerDialog(context,
-                                    { _,year,month,day ->
-                                        customFrom=LocalDate.of(year,month+1,day).toString()
-                                        if(customTo.isBlank()||customTo<customFrom) customTo=customFrom
-                                        referralRange="CUSTOM";page=1;values=emptyList();data=null
-                                    },chosen.year,chosen.monthValue-1,chosen.dayOfMonth).show()
-                            },contentPadding=PaddingValues(horizontal=8.dp,vertical=10.dp)
-                        ) {
-                            Text(tr(state.lang,"From ","از ") + reportStart,
-                                fontSize=10.sp,maxLines=1)
+                    FinancePanel159(
+                        title=tr(state.lang,"Period finance by currency","گزارش مالی دوره برحسب ارز"),
+                        subtitle=tr(state.lang,
+                            "Account-wide verified transactions, not estimates or page subtotals.",
+                            "تراکنش‌های تأییدشده کل زیرمجموعه‌ها، نه برآورد صفحه")
+                    ) {
+                        val currencies=data?.optJSONObject("periodSummary")
+                            ?.arr("byCurrency")?.objects() ?: emptyList()
+                        if(currencies.isEmpty()) {
+                            Text(tr(state.lang,
+                                "No verified deposits, withdrawals or commissions in this period.",
+                                "در این بازه واریز، برداشت یا کمیسیونی ثبت نشده است."),
+                                fontSize=12.sp,color=Palette.muted)
                         }
-                        OutlinedButton(
-                            modifier=Modifier.weight(1f),
-                            onClick={
-                                val chosen=runCatching { LocalDate.parse(reportEnd) }
-                                    .getOrDefault(reportToday)
-                                android.app.DatePickerDialog(context,
-                                    { _,year,month,day ->
-                                        customTo=LocalDate.of(year,month+1,day).toString()
-                                        if(customFrom.isBlank()||customFrom>customTo) customFrom=customTo
-                                        referralRange="CUSTOM";page=1;values=emptyList();data=null
-                                    },chosen.year,chosen.monthValue-1,chosen.dayOfMonth).show()
-                            },contentPadding=PaddingValues(horizontal=8.dp,vertical=10.dp)
-                        ) {
-                            Text(tr(state.lang,"To ","تا ") + reportEnd,
-                                fontSize=10.sp,maxLines=1)
-                        }
+                        currencies.forEach { AffiliateReferralPeriodSummary124(it,state.lang) }
                     }
-                    Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
-                        Text(tr(state.lang,"Registered in selected period only",
-                            "فقط ثبت‌نام‌های بازه انتخاب‌شده"),
-                            fontSize=11.sp,modifier=Modifier.weight(1f),
-                            color=affiliateInk)
-                        Switch(checked=registeredOnly,onCheckedChange={
-                            registeredOnly=it;page=1;values=emptyList();data=null
-                        },modifier=Modifier.height(28.dp))
-                    }
-                    Text(tr(state.lang,"Reporting time zone: ","منطقه زمانی گزارش: ") +
-                        zone.id,color=Palette.muted,fontSize=10.sp)
-                    val summary = data?.optJSONObject("statusCounts")
-                    if (summary != null) {
-                        Row(horizontalArrangement=Arrangement.spacedBy(8.dp)) {
-                            BvStatCard(
-                                tr(state.lang,"Total referrals","کل زیرمجموعه‌ها"),
-                                summary.optInt("total").toString(),
-                                Icons.Default.Groups,Palette.green)
-                        }
-                        Text(
-                            tr(state.lang,"Under review: ","در انتظار بررسی: ") +
-                                summary.optInt("review").toString() + "  ·  " +
-                                tr(state.lang,"Confirmed: ","تأییدشده: ") +
-                                summary.optInt("confirmed").toString(),
-                            color=affiliateInk,fontSize=12.sp,fontWeight=FontWeight.Bold
-                        )
-                    } else if (data != null) {
-                        Text(tr(state.lang,"All referrals: ","کل زیرمجموعه‌ها: ") +
-                            data!!.optInt("total"),
-                            color=affiliateInk,fontSize=13.sp,
-                            fontWeight=FontWeight.Bold)
-                    }
-                    if(data != null) {
-                        val period = data?.optJSONObject("periodSummary")
-                        BvStatCard(
-                            tr(state.lang,"Registrations in selected period",
-                                "ثبت‌نام در بازه انتخاب‌شده"),
-                            period?.optInt("registrations",0)?.toString() ?: "0",
-                            Icons.Default.PersonAdd,Palette.green)
-                        val periodCurrencies = period?.arr("byCurrency")?.objects() ?: emptyList()
-                        if(periodCurrencies.isEmpty()) {
-                            Text(tr(state.lang,"No recorded deposits, withdrawals or settlements in this period.",
-                                "در این دوره واریز، برداشت یا تسویه‌ای ثبت نشده است."),
-                                color=Palette.muted,fontSize=11.sp)
-                        }
-                        periodCurrencies.forEach { c ->
-                            AffiliateReferralPeriodSummary124(c,state.lang)
-                        }
-                    }
-                    if (values.isEmpty() && !busy && error == null && data != null)
-                        PartnerEmpty(state.lang)
-                    values.forEach { row ->
-                        AffiliateReferralCard122(row, state.lang,zone.id)
+                    FinancePanel159(
+                        title=tr(state.lang,"Referred users","کاربران زیرمجموعه"),
+                        subtitle=tr(state.lang,
+                            "Tap an account for period and lifetime financial details.",
+                            "برای مشاهده جزئیات دوره و کل فعالیت روی کاربر بزنید.")
+                    ) {
+                        if(values.isEmpty() && !busy && error==null)
+                            PartnerEmpty(state.lang)
+                        values.forEach { row -> FinanceReferralRow159(row,state.lang,zone.id) }
                     }
                 }
                 "ledger" -> {
-                    if (values.isEmpty()) PartnerEmpty(state.lang)
-                    values.forEach { row ->
-                        PartnerRow(
-                            title = row.str("type").replace("_", " "),
-                            subtitle = row.str("createdAt").take(16).replace("T", " · "),
-                            value = row.str("amountMinor").takeIf { it.isNotBlank() }
-                                ?.let { money(it, currency) } ?: "—",
-                            icon = Icons.Default.ReceiptLong
-                        )
+                    FinanceDateFilter159(state.lang,rangeFrom,rangeTo,reportToday,zone,
+                        referralRange,
+                        onPreset={ choice ->
+                            referralRange=choice;page=1;values=emptyList();data=null
+                        },
+                        onDates={ from,to ->
+                            customFrom=from.toString();customTo=to.toString()
+                            referralRange="CUSTOM";page=1;values=emptyList();data=null
+                        })
+                    FinancePanel159(
+                        title=tr(state.lang,"Commission journal","دفتر کمیسیون"),
+                        subtitle=tr(state.lang,
+                            "Only posted ledger entries returned by the partner server.",
+                            "فقط تراکنش‌های ثبت‌شده در دفتر مالی سرور")
+                    ) {
+                        Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                            horizontalArrangement=Arrangement.spacedBy(7.dp)) {
+                            listOf(
+                                "" to tr(state.lang,"All","همه"),
+                                "user_loss_commission" to tr(state.lang,"Earnings","درآمد"),
+                                "adjustment" to tr(state.lang,"Adjustments","اصلاحیه"),
+                                "carry_forward_release" to tr(state.lang,"Carry forward","انتقال مانده")
+                            ).forEach { (code,label) ->
+                                FilterChip(selected=ledgerType==code,
+                                    onClick={ledgerType=code;page=1;values=emptyList();data=null},
+                                    label={Text(label,fontSize=11.sp)},
+                                    colors=FilterChipDefaults.filterChipColors(
+                                        selectedContainerColor=Color(0xFFD5F2E1),
+                                        selectedLabelColor=Color(0xFF147B51)))
+                            }
+                        }
+                        FinanceSectionRow159(
+                            tr(state.lang,"Entries in selected period","تراکنش‌های بازه انتخاب‌شده"),
+                            data?.optInt("total")?.toString() ?: "—",
+                            Icons.Default.ReceiptLong)
+                    }
+                    FinancePanel159(
+                        title=tr(state.lang,"Transaction activity","گردش تراکنش‌ها"),
+                        subtitle=tr(state.lang,
+                            "Open an entry to view the source, description and reference.",
+                            "برای دیدن منبع، توضیح و شناسه تراکنش آن را باز کنید.")
+                    ) {
+                        if(values.isEmpty() && !busy && error==null)
+                            PartnerEmpty(state.lang)
+                        values.forEach { row -> FinanceLedgerRow159(row,state.lang,currency) }
                     }
                 }
                 "payouts" -> {
