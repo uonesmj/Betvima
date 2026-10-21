@@ -126,7 +126,8 @@ internal fun BetSelectionOverview(
     lang: Lang,
     modifier: Modifier = Modifier,
     resolvedMatch: Match? = null,
-    compact: Boolean = false
+    compact: Boolean = false,
+    lossTheme: Boolean = false
 ) {
     val result = leg.result.ifBlank { leg.status }
     val terminalPhase = leg.matchStatus.lowercase() in finalPhases
@@ -150,7 +151,7 @@ internal fun BetSelectionOverview(
     ) {
         Column(Modifier.fillMaxWidth().padding(if (compact) 8.dp else 13.dp),
             verticalArrangement = Arrangement.spacedBy(if (compact) 6.dp else 10.dp)) {
-            TicketSelectionSpotlight(leg, lang, result, outcomeColor, compact)
+            TicketSelectionSpotlight(leg, lang, result, outcomeColor, compact, lossTheme)
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Default.SportsSoccer, null,
                     tint = Palette.blue, modifier = Modifier.size(17.dp))
@@ -228,36 +229,45 @@ internal fun BetSelectionOverview(
 @Composable
 private fun TicketSelectionSpotlight(
     leg: BetLegDetail, lang: Lang, result: String, outcomeColor: Color,
-    compact: Boolean = false
+    compact: Boolean = false,
+    lossTheme: Boolean = false
 ) {
     Surface(
         shape = RoundedCornerShape(15.dp),
-        color = Color(0xFFEDFBF4),
-        border = BorderStroke(1.dp, Color(0xFF9DDFC1))
+        color = if (lossTheme) Color(0xFFFFEFF2) else Color(0xFFEDFBF4),
+        border = BorderStroke(1.dp, if (lossTheme) Color(0xFFF0A5B9)
+            else Color(0xFF9DDFC1))
     ) {
         Row(Modifier.fillMaxWidth().padding(if (compact) 8.dp else 13.dp), verticalAlignment = Alignment.Top) {
-            Surface(color = Color(0xFF00A86B), shape = RoundedCornerShape(11.dp)) {
+            Surface(color = if (lossTheme) Color(0xFFD23F61)
+                else Color(0xFF00A86B), shape = RoundedCornerShape(11.dp)) {
                 Icon(Icons.Default.GpsFixed, null, tint = Color.White,
                     modifier = Modifier.padding(if (compact) 6.dp else 10.dp).size(if (compact) 16.dp else 20.dp))
             }
             Spacer(Modifier.width(if (compact) 7.dp else 10.dp))
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(if (compact) 4.dp else 6.dp)) {
                 Text(tr(lang, "YOUR BET · EXACT SELECTION", "شرط شما · انتخاب ثبت‌شده"),
-                    color = Color(0xFF16704B), fontSize = 10.sp,
+                    color = if (lossTheme) Color(0xFF9E2946) else Color(0xFF16704B),
+                    fontSize = 10.sp,
                     fontWeight = FontWeight.Black)
                 // Never derive a pick from the score, selected team, or market key.
                 Text(leg.selectionLabel.ifBlank {
                     tr(lang, "Selection unavailable", "انتخاب نامشخص")
                 }, fontWeight = FontWeight.Black,
                     fontSize = if (compact) 14.sp else 18.sp,
-                    lineHeight = if (compact) 18.sp else 23.sp, color = Color(0xFF122E23))
-                HorizontalDivider(color = Color(0xFFBBE8D2))
+                    lineHeight = if (compact) 18.sp else 23.sp,
+                    color = if (lossTheme) Color(0xFF502331) else Color(0xFF122E23))
+                HorizontalDivider(color = if (lossTheme) Color(0xFFF0C4CF)
+                    else Color(0xFFBBE8D2))
                 Text(tr(lang, "MARKET", "نوع بازار"),
-                    color = Color(0xFF547C69), fontSize = 10.sp,
+                    color = if (lossTheme) Color(0xFF925569) else Color(0xFF547C69),
+                    fontSize = 10.sp,
                     fontWeight = FontWeight.Bold)
                 Text(leg.marketLabel.ifBlank {
                     tr(lang, "Market unavailable", "مارکت نامشخص")
-                }, color = Color(0xFF244A38), fontSize = if (compact) 11.sp else 13.sp,
+                }, color = if (lossTheme) Color(0xFF613646)
+                    else Color(0xFF244A38),
+                    fontSize = if (compact) 11.sp else 13.sp,
                     lineHeight = if (compact) 15.sp else 19.sp, fontWeight = FontWeight.SemiBold)
                 val validOdds = leg.oddsScaled.toBigDecimalOrNull()?.signum() == 1
                 Row(
@@ -266,10 +276,12 @@ private fun TicketSelectionSpotlight(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Surface(color = Color.White, shape = RoundedCornerShape(9.dp),
-                        border = BorderStroke(1.dp, Color(0xFFAAD9C3))) {
+                        border = BorderStroke(1.dp, if (lossTheme) Color(0xFFE9B2C1)
+                            else Color(0xFFAAD9C3))) {
                         Text(tr(lang, "Accepted odds ", "ضریب ثبت‌شده ") +
                             if (validOdds) odds(leg.oddsScaled) else "—",
-                            color = Color(0xFF176E4B), fontSize = 11.sp,
+                            color = if (lossTheme) Color(0xFF9E2946) else Color(0xFF176E4B),
+                            fontSize = 11.sp,
                             fontWeight = FontWeight.Black,
                             modifier = Modifier.padding(horizontal = 8.dp, vertical = if (compact) 4.dp else 7.dp))
                     }
