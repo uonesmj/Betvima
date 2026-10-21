@@ -150,7 +150,7 @@ export function OriginalsDemo() {
             <div aria-live="polite" className="mt-4 min-h-[46px] rounded-xl border border-white/10 bg-[#0C1420] px-4 py-3 text-center text-xs font-bold text-[#D8E5F8]">
               {currentRound
                 ? currentRound.outcome.won
-                  ? t('Demo win: +', 'برد نمایشی: +') + currentRound.award.toLocaleString('en-US') + t(' credits', ' اعتبار')
+                  ? t('Demo payout: ', 'پرداخت نمایشی: ') + currentRound.award.toLocaleString('en-US') + t(' credits (stake included)', ' اعتبار (شامل اعتبار بازی‌شده)')
                   : t('No win this round — try another free round.', 'این دور برنده نشدید؛ دور آزمایشی دیگری را امتحان کنید.')
                 : t('Select your demo stake and play.', 'مقدار اعتبار آزمایشی را انتخاب کنید و بازی را شروع کنید.')}
             </div>
