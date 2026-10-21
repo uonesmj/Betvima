@@ -32,10 +32,11 @@ import com.google.zxing.qrcode.QRCodeWriter
 import kotlinx.coroutines.launch
 import org.json.JSONObject
 
-private val ink87=Color(0xFFF8F9FC)
-private val muted87=Color(0xFFADB2C0)
+private val ink87=Color(0xFFF6F7FA)
+private val muted87=Color(0xFFB9BEC9)
 private val accent87=Color(0xFF188AFF)
-private val panel87=Color(0xFF202127)
+private val panel87=Color(0xFF222327)
+private val stroke87=Color(0xFF363B43)
 private fun label87(lang:Lang,en:String,fa:String)=tr(lang,en,fa)
 
 @Composable
@@ -95,7 +96,7 @@ internal fun AccountSettings87(state:AppState,model:AppViewModel) {
     val phone=profile?.str("phone").orEmpty()
     val phoneVerified=profile?.optBoolean("isPhoneVerified",false)?:false
     val lastLogin=profile?.str("lastLoginAt").orEmpty()
-    val bg=when(appearance){"dark"->Color(0xFF07080A);"light"->Color(0xFF25262E);else->Color(0xFF111216)}
+    val bg=when(appearance){"dark"->Color(0xFF0C0D0F);"light"->Color(0xFF191B1F);else->Palette.headerDark}
     fun open(v:String){
         when(v) {
             "password" -> showPassword88=true
@@ -358,24 +359,56 @@ internal fun AccountSettings87(state:AppState,model:AppViewModel) {
     LazyColumn(Modifier.fillMaxSize().background(bg),
         contentPadding=PaddingValues(horizontal=13.dp,vertical=15.dp),
         verticalArrangement=Arrangement.spacedBy(15.dp),flingBehavior=rememberPremiumFlingBehavior()){
-        item{
-            Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(27.dp))
-                .background(Brush.linearGradient(listOf(Color(0xFF292B37),Color(0xFF11131A),Color(0xFF090B10))))
-                .padding(21.dp),verticalArrangement=Arrangement.spacedBy(9.dp)){
-                Row(verticalAlignment=Alignment.CenterVertically){
-                    Icon(Icons.Default.AdminPanelSettings,null,tint=accent87,modifier=Modifier.size(34.dp))
-                    Spacer(Modifier.width(10.dp))
-                    Column{
-                        Text("BETVIMA / ACCOUNT",color=accent87,fontSize=10.sp,fontWeight=FontWeight.Black)
-                        Text(label87(lang,"Settings & Security","تنظیمات و امنیت"),
-                            color=ink87,fontWeight=FontWeight.Black,fontSize=22.sp)
+        item {
+            Box(
+                Modifier.fillMaxWidth()
+                    .clip(RoundedCornerShape(22.dp))
+                    .background(Brush.linearGradient(listOf(
+                        Color(0xFF18273B), Color(0xFF15191F), Color(0xFF17181D))))
+                    .border(1.dp, Color(0xFF2B4059), RoundedCornerShape(22.dp))
+            ) {
+                Column(Modifier.fillMaxWidth().padding(19.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(13.dp)) {
+                        Box(Modifier.size(49.dp).clip(RoundedCornerShape(15.dp))
+                            .background(Brush.linearGradient(listOf(
+                                Color(0xFF164873), Color(0xFF172E48))))
+                            .border(1.dp, Color(0xFF3978A7), RoundedCornerShape(15.dp)),
+                            contentAlignment = Alignment.Center) {
+                            Icon(Icons.Default.AdminPanelSettings, null,
+                                tint = Color(0xFFA7DCFF), modifier = Modifier.size(27.dp))
+                        }
+                        Column(Modifier.weight(1f),
+                            verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            Text("BETVIMA / ACCOUNT", color = Color(0xFF84C7FF),
+                                fontSize = 10.sp, fontWeight = FontWeight.Black,
+                                letterSpacing = .8.sp)
+                            Text(label87(lang,"Settings & Security","تنظیمات و امنیت"),
+                                color = ink87, fontWeight = FontWeight.ExtraBold,
+                                fontSize = 20.sp, lineHeight = 26.sp)
+                        }
+                        Icon(Icons.Default.VerifiedUser, null,
+                            tint = Color(0xFF7ED8BA), modifier = Modifier.size(19.dp))
+                    }
+                    HorizontalDivider(color = Color(0xFF34404D))
+                    Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                        Text(name, color = ink87, fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold)
+                        Text(email.ifBlank{"—"}, color = muted87, fontSize = 12.sp,
+                            maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    }
+                    Row(verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+                        Box(Modifier.size(7.dp).clip(RoundedCornerShape(50))
+                            .background(if(status=="active")Color(0xFF4ADFB4)
+                                else Color(0xFFFFB77C)))
+                        Text(label87(lang,"Account status: ","وضعیت حساب: ")+status,
+                            color = if(status=="active") Color(0xFF93EAC6)
+                                else Color(0xFFFFC99A),
+                            fontWeight = FontWeight.Bold, fontSize = 11.sp)
                     }
                 }
-                Text(name,color=ink87,fontSize=17.sp,fontWeight=FontWeight.Bold)
-                Text(email.ifBlank{"—"},color=muted87,fontSize=12.sp)
-                Text(label87(lang,"Account status: ","وضعیت حساب: ")+status,
-                    color=if(status=="active")Color(0xFF82DDB8) else Color(0xFFFFC39A),
-                    fontWeight=FontWeight.Bold,fontSize=11.sp)
             }
         }
         if(loading)item{LinearProgressIndicator(Modifier.fillMaxWidth(),color=accent87)}
