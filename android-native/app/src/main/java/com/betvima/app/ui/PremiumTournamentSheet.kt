@@ -40,6 +40,10 @@ private fun tournamentSportEmoji(key: String): String = when (key) {
     "volleyball" -> "🏐"
     "baseball" -> "⚾"
     "esports" -> "🎮"
+    "esports:cs2" -> "🎯"
+    "esports:dota2" -> "⚔️"
+    "esports:lol" -> "🏰"
+    "esports:valorant" -> "🎮"
     "boxing" -> "🥊"
     "mma" -> "🥋"
     "handball" -> "🤾"
@@ -273,7 +277,8 @@ fun PremiumTournamentSheet(
                 if (screen == "sports") {
                     items(visible, key = { it.key }) { node ->
                         val loaded = activeSport == "all" ||
-                            upcomingSportIdentity(activeSport) == node.sport
+                            upcomingSportIdentity(activeSport) == node.sport ||
+                            (activeSport == "esports" && node.sport.startsWith("esports:"))
                         TournamentPickerRow(
                             title = node.label,
                             count = node.count.takeIf { loaded },
@@ -284,7 +289,8 @@ fun PremiumTournamentSheet(
                                 filter = ""
                                 screen = "countries"
                                 if (upcomingSportIdentity(activeSport) != node.sport) {
-                                    onSportChange(node.sport)
+                                    onSportChange(if (node.sport.startsWith("esports:"))
+                                        "esports" else node.sport)
                                 }
                             }
                         )
