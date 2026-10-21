@@ -156,6 +156,12 @@ public final class MainActivity extends Activity {
  private String money(JSONObject o,String usdKey,String fallback){
   return cash(o.optString(usdKey,o.optString(fallback,"0")));
  }
+ private String amountMinor(Object value,String currency){
+  try{
+   BigDecimal n=new BigDecimal(String.valueOf(value)).movePointLeft(2);
+   return new DecimalFormat("#,##0.00",java.text.DecimalFormatSymbols.getInstance(Locale.US)).format(n)+" "+currency;
+  }catch(Exception ignored){return "—";}
+ }
  private String date(String value){
   try{
    Date d=Date.from(Instant.parse(value));
@@ -540,7 +546,7 @@ public final class MainActivity extends Activity {
      JSONObject record=records.optJSONObject(i);if(record==null)continue;
      LinearLayout p=panel(body);
      info(p,"نوع",pick(record,"direction","type"));
-     info(p,"مبلغ",cash(record.optString("amountMinor","0"))+" "+pick(record,"currency"));
+     info(p,"مبلغ",amountMinor(record.optString("amountMinor","0"),pick(record,"currency")));
      info(p,"زمان",date(pick(record,"createdAt","initiatedAt")));
     }
    }
@@ -552,7 +558,7 @@ public final class MainActivity extends Activity {
    for(int i=0;i<amounts.length();i++){
     JSONObject a=amounts.optJSONObject(i);if(a==null)continue;
     LinearLayout t=panel(body);
-    info(t,pick(a,"type")+" · "+pick(a,"currency"),cash(a.optString("amountMinor","0"))+" "+pick(a,"currency"));
+    info(t,pick(a,"type")+" · "+pick(a,"currency"),amountMinor(a.optString("amountMinor","0"),pick(a,"currency")));
     info(t,"تعداد",pick(a,"count"));
    }
   });
@@ -587,7 +593,7 @@ public final class MainActivity extends Activity {
  private void paymentDetail(JSONObject item){
   LinearLayout p=panel(body);
   info(p,"شناسه عمومی",pick(item,"publicId","id"));info(p,"وضعیت",pick(item,"status"));
-  info(p,"مبلغ",cash(item.optString("amountMinor","0"))+" "+pick(item,"currency"));
+  info(p,"مبلغ",amountMinor(item.optString("amountMinor","0"),pick(item,"currency")));
   info(p,"مبلغ USD",money(item,"usdAmountMinor","amountMinor"));
   info(p,"شناسه کاربر",pick(item,"userId"));
   info(p,"ارائه‌دهنده",pick(item,"provider"));
@@ -664,9 +670,9 @@ public final class MainActivity extends Activity {
     JSONObject r=rows.optJSONObject(i);if(r==null)continue;
     LinearLayout p=panel(body);p.addView(text("slot".equals(r.optString("source"))?"اسلات داخلی":"SoftAggregator",16,FG,true));
     space(p,12);info(p,"ارز",pick(r,"currency"));info(p,"تعداد دور",pick(r,"rounds"));
-    info(p,"گردش شرط",cash(r.optString("stakeMinor","0")));
-    info(p,"پرداخت برد",cash(r.optString("payoutMinor","0")));
-    info(p,"سود ناخالص",cash(r.optString("netMinor","0")));
+    info(p,"گردش شرط",amountMinor(r.optString("stakeMinor","0"),pick(r,"currency")));
+    info(p,"پرداخت برد",amountMinor(r.optString("payoutMinor","0"),pick(r,"currency")));
+    info(p,"سود ناخالص",amountMinor(r.optString("netMinor","0"),pick(r,"currency")));
    }
    body.addView(label("ارزهای مختلف هرگز بدون تبدیل معتبر با یکدیگر جمع نمی‌شوند."));
   });
