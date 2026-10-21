@@ -25,10 +25,27 @@ def main(mode):
     if ticket:
         print('::add-mask::'+ticket,flush=True)
         deadline=time.monotonic()+5500
+        poll_failures=0
         while report.get('status')=='running' and time.monotonic()<deadline:
             time.sleep(35)
             request=urllib.request.Request('https://preview.betvima.com/__ci',data=json.dumps({'ticket':ticket}).encode(),headers={'Content-Type':'application/json'},method='POST')
-            with urllib.request.urlopen(request,timeout=60) as response:report=json.load(response)
+            try:
+                with urllib.request.urlopen(request,timeout=60) as response:report=json.load(response)
+                poll_failures=0
+            except urllib.error.HTTPError:
+                # Authorization or expired ticket failures are not connectivity
+                # errors; never obtain a fresh OIDC token or readmit deployment.
+                raise
+            except (urllib.error.URLError, TimeoutError, ConnectionError):
+                # Ticket lookups are read-only and idempotent. An admitted
+                # production deployment can outlive a temporary TCP failure.
+                poll_failures+=1
+                print('ci_ticket_poll_transient_connection_failure',flush=True)
+                if poll_failures>=6:
+                    raise RuntimeError('ci_ticket_poll_network_unavailable') from None
+                continue
+        if report.get('status')=='running':
+            raise RuntimeError('ci_ticket_poll_deadline_exceeded')
     if report.get('status')!='verified':
         # Safe, fixed-vocabulary stage information only. Raw server output,
         # credentials and payment diagnostics must never enter Actions logs.
