@@ -13,6 +13,45 @@ def tar(entries):
             archive.addfile(member,io.BytesIO(content) if kind=='file' else None)
     return out.getvalue()
 
+class NestedProductionFailureLogSafety(unittest.TestCase):
+    def test_preserves_inner_pg_dump_failure_diagnostic_when_child_fails(self):
+        with tempfile.TemporaryDirectory() as folder:
+            state = pathlib.Path(folder)
+            private = state/'private-command-failure.log'
+            command = ['/usr/bin/python3', str(c.LIB/'production.py'), 'a'*40]
+            def failed_inner(*args, **kwargs):
+                private.write_bytes(b'pg_dump: private diagnostic stays root-only')
+                return types.SimpleNamespace(returncode=1,
+                    stdout=b'production_deploy_blocked_or_rolled_back_details_suppressed',
+                    stderr=b'')
+            with patch.object(c, 'STATE', state), patch.object(c.subprocess, 'run', side_effect=failed_inner):
+                with self.assertRaisesRegex(RuntimeError, 'command_failed_output_suppressed'):
+                    c.run(command)
+            self.assertEqual(private.read_bytes(), b'pg_dump: private diagnostic stays root-only')
+
+    def test_stale_log_gets_replaced_if_nested_child_writes_no_diagnostic(self):
+        with tempfile.TemporaryDirectory() as folder:
+            state = pathlib.Path(folder)
+            private = state/'private-command-failure.log'
+            private.write_bytes(b'previous run should not be treated as current')
+            command = ['/usr/bin/python3', str(c.LIB/'production.py'), 'a'*40]
+            result = types.SimpleNamespace(returncode=1, stdout=b'safe failure', stderr=b'')
+            with patch.object(c, 'STATE', state), patch.object(c.subprocess, 'run', return_value=result):
+                with self.assertRaises(RuntimeError):
+                    c.run(command)
+            self.assertEqual(private.read_bytes(), b'safe failure\\n--- STDERR ---\\n')
+
+    def test_nonproduction_subprocess_error_still_captures_private_stderr(self):
+        with tempfile.TemporaryDirectory() as folder:
+            state = pathlib.Path(folder)
+            result = types.SimpleNamespace(returncode=1, stdout=b'output', stderr=b'private error')
+            with patch.object(c, 'STATE', state), patch.object(c.subprocess, 'run', return_value=result):
+                with self.assertRaises(RuntimeError):
+                    c.run(['/usr/bin/pg_dump'])
+            self.assertEqual((state/'private-command-failure.log').read_bytes(),
+                             b'output\\n--- STDERR ---\\nprivate error')
+
+
 class SnapshotSafety(unittest.TestCase):
     def test_excludes_secrets_apk_and_execution_metadata(self):
         for name in ('../escape','/root/key','src/../../key','.env.production','src/.env','node_modules/x','.git/config','public/downloads/BetVima.apk','private-key.txt','cert.key','a\\b'):
