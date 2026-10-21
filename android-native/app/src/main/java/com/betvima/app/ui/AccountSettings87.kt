@@ -512,31 +512,95 @@ internal fun AccountSettings87(state:AppState,model:AppViewModel) {
     }
 }
 @Composable private fun Group87(title:String,content:@Composable ColumnScope.()->Unit){
-    Column(verticalArrangement=Arrangement.spacedBy(8.dp)){
-        Text(title,modifier=Modifier.padding(start=9.dp),color=Color(0xFF8AB9FF),
-            fontWeight=FontWeight.Black,fontSize=11.sp)
-        Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(23.dp))
-            .background(panel87).padding(horizontal=14.dp,vertical=4.dp),
-            content=content)
+    Column(verticalArrangement=Arrangement.spacedBy(10.dp)) {
+        Row(Modifier.padding(start=9.dp), verticalAlignment=Alignment.CenterVertically,
+            horizontalArrangement=Arrangement.spacedBy(8.dp)) {
+            Box(Modifier.width(3.dp).height(13.dp)
+                .clip(RoundedCornerShape(3.dp)).background(accent87))
+            Text(title,color=Color(0xFF9AC6FF),fontWeight=FontWeight.Black,
+                fontSize=11.sp,letterSpacing=.55.sp)
+        }
+        Surface(
+            modifier=Modifier.fillMaxWidth(),
+            color=panel87,
+            shape=RoundedCornerShape(22.dp),
+            border=BorderStroke(1.dp,stroke87)
+        ) {
+            Column(Modifier.padding(horizontal=15.dp,vertical=4.dp),
+                content=content)
+        }
     }
 }
+
 @Composable private fun Tile87(icon:ImageVector,title:String,subtitle:String,
     suffix:String,onClick:()->Unit){
-    Row(Modifier.fillMaxWidth().clickable(onClick=onClick).heightIn(min=65.dp)
-        .padding(vertical=9.dp),verticalAlignment=Alignment.CenterVertically){
-        Box(Modifier.size(39.dp).clip(RoundedCornerShape(12.dp))
-            .background(Color(0xFF323540)),contentAlignment=Alignment.Center){
-            Icon(icon,null,tint=Color(0xFF93BFFF),modifier=Modifier.size(20.dp))
+    val tileTint=when(icon){
+        Icons.Default.VerifiedUser, Icons.Default.Security,
+        Icons.Default.AdminPanelSettings, Icons.Default.SupportAgent ->
+            Color(0xFF6EDCC4)
+        Icons.Default.NotificationsActive, Icons.Default.Language,
+        Icons.Default.Palette, Icons.Default.WifiTethering ->
+            Color(0xFF86BDFF)
+        Icons.Default.Key, Icons.Default.Pin,
+        Icons.Default.History -> Color(0xFFA5B9FF)
+        Icons.Default.QrCode2, Icons.Default.Share ->
+            Color(0xFF91D8F7)
+        else -> Color(0xFF9AC6FF)
+    }
+    val shape=RoundedCornerShape(14.dp)
+    Column {
+        Row(
+            Modifier.fillMaxWidth()
+                .clickable(onClick=onClick)
+                .heightIn(min=75.dp)
+                .padding(vertical=11.dp),
+            verticalAlignment=Alignment.CenterVertically
+        ) {
+            Box(
+                Modifier.size(46.dp)
+                    .clip(shape)
+                    .background(Brush.linearGradient(listOf(
+                        tileTint.copy(alpha=.23f),
+                        Color(0xFF2A303C))))
+                    .border(1.dp,tileTint.copy(alpha=.30f),shape),
+                contentAlignment=Alignment.Center
+            ){
+                Icon(icon,null,tint=tileTint,
+                    modifier=Modifier.size(23.dp))
+                Box(Modifier.align(Alignment.TopEnd).padding(6.dp)
+                    .size(5.dp).clip(RoundedCornerShape(4.dp))
+                    .background(tileTint.copy(alpha=.75f)))
+            }
+            Spacer(Modifier.width(13.dp))
+            Column(Modifier.weight(1f),
+                verticalArrangement=Arrangement.spacedBy(5.dp)) {
+                Text(title,color=ink87,fontSize=14.sp,
+                    fontWeight=FontWeight.SemiBold,lineHeight=19.sp,
+                    maxLines=2,overflow=TextOverflow.Ellipsis)
+                Text(subtitle,color=muted87,fontSize=11.5.sp,
+                    fontWeight=FontWeight.Normal,lineHeight=17.sp,
+                    maxLines=2,overflow=TextOverflow.Ellipsis)
+            }
+            Spacer(Modifier.width(6.dp))
+            Surface(
+                modifier=Modifier.size(31.dp),
+                color=Color(0xFF2B333D),
+                shape=RoundedCornerShape(10.dp),
+                border=BorderStroke(1.dp,Color(0xFF3A4653))
+            ) {
+                Box(contentAlignment=Alignment.Center) {
+                    Icon(if(suffix=="copy")Icons.Default.ContentCopy
+                        else if(suffix=="edit")Icons.Default.Edit
+                        else Icons.Default.ChevronRight,
+                        null,tint=tileTint,modifier=Modifier.size(17.dp))
+                }
+            }
         }
-        Spacer(Modifier.width(11.dp))
-        Column(Modifier.weight(1f),verticalArrangement=Arrangement.spacedBy(4.dp)){
-            Text(title,color=ink87,fontSize=13.sp,fontWeight=FontWeight.Bold)
-            Text(subtitle,color=muted87,fontSize=10.sp,maxLines=1,
-                overflow=TextOverflow.Ellipsis)
-        }
-        Icon(if(suffix=="copy")Icons.Default.ContentCopy
-            else if(suffix=="edit")Icons.Default.Edit else Icons.Default.ChevronRight,
-            null,tint=accent87,modifier=Modifier.size(19.dp))
+        HorizontalDivider(
+            modifier=Modifier.padding(start=59.dp),
+            color=Color(0xFF393C44).copy(alpha=.70f),
+            thickness=.6.dp
+        )
     }
 }
 private fun createQr87(link:String):android.graphics.Bitmap?=runCatching{
