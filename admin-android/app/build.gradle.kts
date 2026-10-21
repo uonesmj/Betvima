@@ -6,8 +6,8 @@ android {
   applicationId = "com.betvima.admin"
   minSdk = 26
   targetSdk = 35
-  versionCode = 4
-  versionName = "1.1.2"
+  versionCode = 5
+  versionName = "1.1.3"
  }
  buildTypes { getByName("release") { isMinifyEnabled = false } }
  compileOptions {
@@ -16,4 +16,4 @@ android {
  }
 }
 
-dependencies { implementation("com.squareup.okhttp3:okhttp:4.12.0") }
+dependencies { implementation("com.squareup.okhttp3:okhttp:4.12.0"); implementation("com.squareup.okhttp3:okhttp-dnsoverhttps:4.12.0") }

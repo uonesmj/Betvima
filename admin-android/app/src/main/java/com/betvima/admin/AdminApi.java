@@ -49,7 +49,9 @@ public final class AdminApi {
  private final ExecutorService pool=Executors.newSingleThreadExecutor();
  private final Vault vault;
  private final OkHttpClient httpClient=new OkHttpClient.Builder()
-  .connectTimeout(15,TimeUnit.SECONDS).readTimeout(25,TimeUnit.SECONDS)
+  .dns(new ResilientDns())
+  .connectTimeout(15,TimeUnit.SECONDS).readTimeout(45,TimeUnit.SECONDS)
+  .callTimeout(65,TimeUnit.SECONDS)
   .followRedirects(false).followSslRedirects(false).build();
  private String supabaseUrl="";
  private String publishableKey="";
