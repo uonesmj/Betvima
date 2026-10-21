@@ -8,6 +8,7 @@ import {
   Minus, Plus, RotateCcw, Shield, Sparkles, Volume2, VolumeX, X, Zap,
 } from 'lucide-react';
 import { useApp } from '@/components/layout/providers';
+import { OriginalsWalletReadonly } from '@/components/casino/originals-wallet-readonly';
 import {
   INITIAL_ROYAL_GRID, ROYAL_MULTIPLIERS, ROYAL_PAYLINES, ROYAL_SYMBOLS,
   ROYAL_THEORETICAL_RTP, ROYAL_VAULT_BETS, ROYAL_VAULT_START_CREDITS,
@@ -232,8 +233,10 @@ export function RoyalVaultGame() {
             <strong className="rv-number"><Coins size={17} /> {money(credits)} <small>CR</small></strong>
             <button type="button" onClick={resetDemo} disabled={rolling} className="rv-reset"><RotateCcw size={12} />{t('Reset', 'بازنشانی')}</button>
           </div>
-          <div className="rv-wallet-note"><LockKeyhole size={17} /><span>{t('Your real BetVima wallet is separate. Credits here have no cash value.', 'کیف پول واقعی بت‌ویما جداست؛ اعتبار این بازی ارزش نقدی ندارد.')}</span></div>
+          <div className="rv-wallet-note"><LockKeyhole size={17} /><span>{t('Demo credits have no cash value.', 'اعتبار آزمایشی ارزش نقدی ندارد.')}</span></div>
         </div>
+
+        <OriginalsWalletReadonly />
 
         <div className="rv-game-inner">
           <div className="rv-reel-halo">
