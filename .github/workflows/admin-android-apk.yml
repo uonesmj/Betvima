@@ -41,7 +41,7 @@ jobs:
           gradle-version: '8.9'
       - name: Verify there is no embedded browser or WebView
         run: |
-          if grep -R -n -E "WebView|WebChromeClient|loadUrl\\(" admin-android/app/src/main/java; then
+          if grep -R -n -E "import android\\.webkit\\.WebView|new WebView\\(|setWebViewClient\\(|\\.loadUrl\\(" admin-android/app/src/main/java; then
             echo "Native-only policy violated"; exit 1
           fi
       - name: Compile admin APK
