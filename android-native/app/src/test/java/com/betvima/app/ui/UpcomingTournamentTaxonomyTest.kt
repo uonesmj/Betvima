@@ -59,6 +59,20 @@ class UpcomingTournamentTaxonomyTest {
         assertEquals("home-nation:wales", tournamentCountryKey("Wales"))
     }
 
+    @Test fun actualCountryLabelsResolveToTheirOwnFlags() {
+        val expected = mapOf(
+            "Belarus" to "BY", "Kazakhstan" to "KZ",
+            "Chinese Taipei" to "TW", "Myanmar" to "MM",
+            "Puerto Rico" to "PR", "Uzbekistan" to "UZ",
+            "Rwanda" to "RW", "Bahrain" to "BH",
+            "Montenegro" to "ME", "Armenia" to "AM"
+        )
+        expected.forEach { (name, code) ->
+            assertEquals(name, code, recognizedCountryCode(name))
+            assertNotNull(name, countryFlag(name))
+        }
+    }
+
     @Test fun groupsCountsStayInsideExactSportAndRegion() {
         val all = listOf(
             fixture("a", "football", "Japan", "J League", "11"),
