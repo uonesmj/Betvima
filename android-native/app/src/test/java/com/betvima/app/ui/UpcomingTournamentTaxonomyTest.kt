@@ -128,8 +128,10 @@ class UpcomingTournamentTaxonomyTest {
         val nodes = tournamentDirectLeagues(listOf(first, second, third), "tennis")
         assertEquals(2, nodes.size)
         assertTrue(tournamentDirectSport("tennis"))
+        assertTrue(tournamentDirectSport("basketball"))
         assertTrue(tournamentDirectSport("esports:cs2"))
         assertFalse(tournamentDirectSport("football"))
+        assertFalse(tournamentDirectSport("soccer"))
         assertEquals(3, tournamentTopLeagues(listOf(first, second, third)).size)
     }
 
@@ -138,5 +140,21 @@ class UpcomingTournamentTaxonomyTest {
         assertEquals("football", upcomingSportIdentity("soccer"))
         assertEquals("basketball", upcomingSportIdentity("basketball"))
         assertTrue(upcomingSportIdentity("ice-hockey") != upcomingSportIdentity("football"))
+    }
+
+    @Test fun pickerSearchUsesExactLoadedProviderLeagueAndRegionNodes() {
+        val english = fixture("one", "football", "England", "Premier League", "101")
+        val basketball = fixture("two", "basketball", "USA", "Premier League", "101")
+        val tennis = fixture("three", "tennis", "USA", "WTA Tour", "102")
+        val all = listOf(english, basketball, tennis)
+        val premier = tournamentSearchNodes(all, "premier")
+        assertEquals(2, premier.size)
+        assertEquals(2, premier.map { it.key }.distinct().size)
+        assertEquals(setOf("football", "basketball"), premier.map { it.sport }.toSet())
+        val englishRows = tournamentSearchNodes(all, "England")
+        assertEquals(1, englishRows.count { it.key.startsWith("country:") })
+        assertEquals("home-nation:england", englishRows.first { it.key.startsWith("country:") }.country)
+        assertTrue(tournamentSearchNodes(all, "wta").any { it.label == "WTA Tour" })
+        assertTrue(tournamentSearchNodes(all, "not-on-feed").isEmpty())
     }
 }
