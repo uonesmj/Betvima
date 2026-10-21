@@ -506,9 +506,10 @@ private val rules=listOf(
             item {
                 LockedFeature(lang,
                     tr(lang,"Sign in to view your rewards",
-                        "برای دیدن پاداش‌های حساب وارد شوید")) {
-                    model.showLogin(true)
-                }
+                        "برای دیدن پاداش‌های حساب وارد شوید"),
+                    onRegister = { model.showLogin(true, register = true) },
+                    icon = Icons.Default.CardGiftcard
+                ) { model.showLogin(true) }
             }
         } else {
             item {
