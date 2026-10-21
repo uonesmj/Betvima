@@ -35,7 +35,7 @@
 .rv-art--vault {color:#f4c767;background:radial-gradient(circle,#463521,#13233c 72%,transparent 80%);}.rv-vault-mark {display:grid;place-items:center;gap:1px;border:3px double #d3a95c;border-radius:8px;padding:8px;background:#172941;box-shadow:0 0 12px #fdcd673a;}.rv-vault-mark small {font-size:8px;letter-spacing:1px;font-weight:900;color:#e9cd91;}
 .rv-art--ruby {color:#fa6fbc;background:radial-gradient(circle,#541a49,#21172b 72%,transparent 80%);}.rv-art--ruby svg {width:70%;height:70%;fill:#f53f9e66;stroke:#ffafe0;}
 .rv-art--gold {color:#ffda72;background:radial-gradient(circle,#574320,#171e29 72%,transparent 80%);}.rv-gold-mark {display:grid;place-items:center;gap:1px}.rv-gold-mark small {font-size:10px;font-weight:900;color:#ffdd83;}
-.rv-ticker { height:1200%;flex-shrink:0;display:flex;flex-direction:column;gap:3px;animation:rv-roll .32s linear infinite;will-change:transform; }
+.rv-ticker { height:400%;flex-shrink:0;display:flex;flex-direction:column;gap:3px;animation:rv-roll .32s linear infinite;will-change:transform; }
 .rv-ticker > .rv-symbol { flex:0 0 calc((100% - 33px)/12); }
 .rv-payline-legend { display:flex;justify-content:center;gap:9px;margin-top:9px;direction:ltr; }
 .rv-line-tag {display:grid;place-items:center;width:24px;height:22px;border-radius:6px;background:#101c2d;border:1px solid #5a6a79;color:#8fa5bd;font-size:10px;font-weight:900;}.rv-line-tag--win {background:#86621d;color:#fff5cd;border-color:#fbd887;}
