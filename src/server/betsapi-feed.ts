@@ -3,6 +3,7 @@
  * A hard boundary separates external fixture IDs from wagerable internal UUIDs.
  * In particular this module never reads previously imported The Odds API rows.
  */
+import { readManualFixtures } from '@/server/manual-fixtures';
 import { exploreBetsApi, type ExplorerFixture, type ExplorerList } from '@/providers/betsapi-explorer';
 import { BETSAPI_SPORTS, sportByKey, type BetsMode } from '@/lib/betsapi-sports-map';
 import type { MatchViewPayload } from '@/server/queries/public';
@@ -178,9 +179,10 @@ export async function getBetsApiSport(mode: BetsMode, sportKey: string, page = 1
 
 const HOMEPAGE_SPORTS = ['football', 'basketball', 'tennis', 'volleyball', 'ice-hockey', 'cricket', 'handball'];
 export async function getBetsApiHomepage() {
-  const [live, upcoming] = await Promise.all([
+  const [live, upcoming, manual] = await Promise.all([
     Promise.all(HOMEPAGE_SPORTS.map(s => getBetsApiSport('live', s))),
     Promise.all(HOMEPAGE_SPORTS.map(s => getBetsApiSport('upcoming', s))),
+    readManualFixtures(undefined,12),
   ]);
   const errors = [...live, ...upcoming].filter(x => x.error).map(x => x.sportKey + ': ' + x.error);
   const counts: Record<string, number> = {};
@@ -190,8 +192,8 @@ export async function getBetsApiHomepage() {
   return {
     source: 'betsapi_bet365' as const, readOnly: true as const,
     live: live.flatMap(x => x.matches.slice(0, 4)).slice(0, 12),
-    upcoming: upcoming.flatMap(x => x.matches.slice(0, 4)).slice(0, 12),
-    liveTotal: knownTotal(live), upcomingTotal: knownTotal(upcoming),
+    upcoming: [...manual,...upcoming.flatMap(x => x.matches.slice(0, 4))].slice(0, 12),
+    liveTotal: knownTotal(live), upcomingTotal: knownTotal(upcoming) === null ? null : knownTotal(upcoming)! + manual.length,
     liveSportCounts: counts, errors, configured: Boolean(betsApiToken()),
   };
 }
