@@ -18,6 +18,8 @@ internal val upcomingSports = listOf(
     "basketball" to "Basketball", "hockey" to "Ice Hockey",
     "table-tennis" to "Table Tennis", "volleyball" to "Volleyball",
     "baseball" to "Baseball", "esports" to "Esports",
+    "esports:cs2" to "CS2", "esports:dota2" to "Dota 2",
+    "esports:lol" to "League of Legends", "esports:valorant" to "Valorant",
     "handball" to "Handball", "cricket" to "Cricket",
     "mma" to "MMA", "boxing" to "Boxing",
     "american-football" to "American Football",
@@ -74,8 +76,20 @@ private fun cleanTournamentPart(input: String): String =
  * two different competitions cannot accidentally merge across those levels.
  * With missing provider IDs, exact names are an explicit limited fallback.
  */
+internal fun esportsGameIdentity(game: String): String = when (
+    game.trim().lowercase(Locale.ROOT).replace(Regex("[^a-z0-9]+"), "")
+) {
+    "cs2", "counterstrike2" -> "cs2"
+    "dota2", "defenseoftheancients2" -> "dota2"
+    "lol", "leagueoflegends" -> "lol"
+    "valorant" -> "valorant"
+    else -> ""
+}
+
 internal fun upcomingLeagueKey(match: Match): String {
-    val sport = upcomingSportIdentity(match.sport)
+    val baseSport = upcomingSportIdentity(match.sport)
+    val game = if (baseSport == "esports") esportsGameIdentity(match.esportsGame) else ""
+    val sport = if (game.isNotBlank()) "esports:" + game else baseSport
     val country = tournamentCountryKey(match.country)
     val competition = match.leagueId.trim().takeIf { it.isNotBlank() }
         ?.let { "id:" + cleanTournamentPart(it) }
@@ -85,7 +99,11 @@ internal fun upcomingLeagueKey(match: Match): String {
 
 internal fun upcomingForSport(all: List<Match>, sport: String): List<Match> =
     if (sport == "all" || sport == "top") all
-    else all.filter { upcomingSportIdentity(it.sport) == upcomingSportIdentity(sport) }
+    else if (sport.startsWith("esports:")) {
+        val game = sport.substringAfter(":")
+        all.filter { upcomingSportIdentity(it.sport) == "esports" &&
+            esportsGameIdentity(it.esportsGame) == game }
+    } else all.filter { upcomingSportIdentity(it.sport) == upcomingSportIdentity(sport) }
 
 internal fun upcomingWithinHours(all: List<Match>, hours: Int?, now: Instant): List<Match> {
     if (hours == null) return all
@@ -99,8 +117,12 @@ internal fun upcomingWithinHours(all: List<Match>, hours: Int?, now: Instant): L
 
 internal fun tournamentSportNodes(all: List<Match>): List<UpcomingNode> {
     val counts = all.groupingBy { upcomingSportIdentity(it.sport) }.eachCount()
+    val gameCounts = all.filter { upcomingSportIdentity(it.sport) == "esports" }
+        .mapNotNull { esportsGameIdentity(it.esportsGame).takeIf(String::isNotBlank) }
+        .groupingBy { "esports:" + it }.eachCount()
     val known = upcomingSports.map { (key, title) ->
-        UpcomingNode("sport:" + key, title, counts[key] ?: 0, key)
+        UpcomingNode("sport:" + key, title,
+            if (key.startsWith("esports:")) gameCounts[key] ?: 0 else counts[key] ?: 0, key)
     }
     val extra = counts.filterKeys { key -> upcomingSports.none { it.first == key } }
         .toSortedMap().map { (key, count) ->
@@ -129,7 +151,7 @@ internal fun tournamentLeagueNodes(
         .groupBy(::upcomingLeagueKey).map { (key, matches) ->
             val first = matches.first()
             UpcomingNode(key, first.league.ifBlank { "Unnamed competition" },
-                matches.size, upcomingSportIdentity(first.sport),
+                matches.size, sport,
                 tournamentCountryKey(first.country), first)
         }.sortedWith(compareByDescending<UpcomingNode> { it.count }.thenBy { it.label })
 
