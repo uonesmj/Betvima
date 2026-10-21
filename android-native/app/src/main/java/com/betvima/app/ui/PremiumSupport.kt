@@ -291,7 +291,10 @@ fun PremiumSupportPage(state: AppState, model: AppViewModel) {
         if (!state.signedIn) {
             item { LockedFeature(lang,
                 tr(lang,"Sign in to securely access your tickets",
-                    "برای ثبت و پیگیری درخواست‌ها وارد حساب شوید")) { model.showLogin(true) } }
+                    "برای ثبت و پیگیری درخواست‌ها وارد حساب شوید"),
+                onRegister = { model.showLogin(true, register = true) },
+                icon = Icons.Default.SupportAgent
+            ) { model.showLogin(true) } }
         } else {
             item {
                 Row(verticalAlignment = Alignment.CenterVertically) {
