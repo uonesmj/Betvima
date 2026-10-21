@@ -78,6 +78,7 @@ internal fun AffiliateStudio118(
     var stats by remember { mutableStateOf<JSONObject?>(null) }
     var payable by remember { mutableStateOf<JSONObject?>(null) }
     var days by remember { mutableStateOf<List<SignupDay>>(emptyList()) }
+    var overviewDays by remember { mutableIntStateOf(30) }
     var hasDailyReport by remember { mutableStateOf(false) }
     var referralTotal by remember { mutableStateOf<Int?>(null) }
     var primaryUrl by remember { mutableStateOf("") }
@@ -93,14 +94,14 @@ internal fun AffiliateStudio118(
             .getOrDefault(ZoneId.of("Asia/Tehran"))
     }
     val today = LocalDate.now(zone)
-    LaunchedEffect(generation, vault) {
+    LaunchedEffect(generation, vault, overviewDays) {
         loading = true
         reportError = null
         try {
             val token = vault.accessToken(api) ?: error("Partner sign-in required")
             val now = LocalDate.now(zone)
             val from = URLEncoder.encode(
-                now.minusDays(13).atStartOfDay(zone).toInstant().toString(), "UTF-8")
+                affiliatePresetStart159(overviewDays, now).atStartOfDay(zone).toInstant().toString(), "UTF-8")
             val to = URLEncoder.encode(
                 now.plusDays(1).atStartOfDay(zone).toInstant().toString(), "UTF-8")
             val overview = api.get("/api/v1/affiliate/overview?from=$from&to=$to", token)
@@ -112,7 +113,7 @@ internal fun AffiliateStudio118(
             val byDay = rows.mapNotNull { row ->
                 parseStudioDay(row.str("day"))?.let { it to row.optInt("registrations", 0) }
             }.groupBy({ it.first }, { it.second }).mapValues { (_, values) -> values.sum() }
-            days = (13 downTo 0).map { offset ->
+            days = ((overviewDays - 1) downTo 0).map { offset ->
                 val d = now.minusDays(offset.toLong())
                 SignupDay(d, byDay[d] ?: 0)
             }
@@ -150,7 +151,7 @@ internal fun AffiliateStudio118(
     val page = if (destination in setOf("overview", "referrals", "ledger", "payouts",
             "links", "wallets", "gifts")) destination else "overview"
 
-    Column(Modifier.fillMaxSize().background(sBg)) {
+    Column(Modifier.fillMaxSize().background(sWhite)) {
         Row(
             Modifier.fillMaxWidth().background(sBlack)
                 .padding(horizontal=19.dp, vertical=10.dp),
@@ -211,58 +212,70 @@ internal fun AffiliateStudio118(
                             }
                         )
                         Column(Modifier.fillMaxWidth()
-                            .clip(RoundedCornerShape(topStart=33.dp,topEnd=33.dp))
                             .background(sWhite)
-                            .padding(start=17.dp,end=17.dp,top=22.dp,bottom=30.dp),
-                            verticalArrangement=Arrangement.spacedBy(16.dp)) {
+                            .padding(start=12.dp,end=12.dp,top=14.dp,bottom=24.dp),
+                            verticalArrangement=Arrangement.spacedBy(10.dp)) {
                             if(partner == null && !loading && reportError == null) {
                                 Text(tr(state.lang,"Partner profile unavailable",
                                     "پروفایل همکاری در دسترس نیست"),color=sGray)
                             }
                             when(current) {
                                 "overview" -> {
-                                    StudioRevenue118(state.lang,rateText,partner,payable,currency)
-                                    StudioLink118(state.lang,primaryUrl,
-                                        onCopy={
-                                            if(primaryUrl.isNotBlank()) {
-                                                clipboard.setText(AnnotatedString(primaryUrl))
-                                                model.notice(tr(state.lang,"Link copied","لینک کپی شد"))
-                                            }
-                                        },
-                                        onShare={
-                                            if(primaryUrl.isNotBlank()) {
+                                    FinanceOverview159(
+                                        lang=state.lang,
+                                        partner=partner,
+                                        payable=payable,
+                                        stats=stats,
+                                        currency=currency,
+                                        rate=rateText,
+                                        allReferrals=referralTotal,
+                                        registrationDays=days.map { it.count },
+                                        verifiedDaily=hasDailyReport,
+                                        selectedDays=overviewDays,
+                                        onDaysChange={ overviewDays=it },
+                                        onNavigate=onNavigate
+                                    )
+                                    StudioChart118(state.lang,days.takeLast(7),hasDailyReport)
+                                    FinancePanel159(
+                                        title=tr(state.lang,"Referral growth tools","ابزارهای رشد زیرمجموعه"),
+                                        subtitle=tr(state.lang,
+                                            "Your dedicated invitation link and native partner app.",
+                                            "لینک دعوت اختصاصی و اپلیکیشن همکاری شما")
+                                    ) {
+                                        StudioLink118(state.lang,primaryUrl,
+                                            onCopy={
+                                                if(primaryUrl.isNotBlank()) {
+                                                    clipboard.setText(AnnotatedString(primaryUrl))
+                                                    model.notice(tr(state.lang,"Link copied","لینک کپی شد"))
+                                                }
+                                            },
+                                            onShare={
+                                                if(primaryUrl.isNotBlank()) {
+                                                    context.startActivity(Intent.createChooser(
+                                                        Intent(Intent.ACTION_SEND).apply {
+                                                            type="text/plain"
+                                                            putExtra(Intent.EXTRA_TEXT,primaryUrl)
+                                                        },tr(state.lang,"Share referral link","اشتراک لینک")))
+                                                }
+                                            },
+                                            onManage={onNavigate("links")}
+                                        )
+                                        StudioAffiliateApp120(state.lang,
+                                            partner?.str("code").orEmpty(),
+                                            approved=partner?.str("status")=="approved",
+                                            onDownload={ url ->
+                                                context.startActivity(Intent(Intent.ACTION_VIEW,Uri.parse(url))
+                                                    .addCategory(Intent.CATEGORY_BROWSABLE))
+                                            },
+                                            onShare={ url ->
                                                 context.startActivity(Intent.createChooser(
                                                     Intent(Intent.ACTION_SEND).apply {
                                                         type="text/plain"
-                                                        putExtra(Intent.EXTRA_TEXT,primaryUrl)
-                                                    },tr(state.lang,"Share referral link","اشتراک لینک")))
+                                                        putExtra(Intent.EXTRA_TEXT,url)
+                                                    },tr(state.lang,"Share your partner app","اشتراک برنامه اختصاصی")))
                                             }
-                                        },
-                                        onManage={onNavigate("links")})
-                                    StudioAffiliateApp120(state.lang,
-                                        partner?.str("code").orEmpty(),
-                                        approved=partner?.str("status")=="approved",
-                                        onDownload={ url ->
-                                            context.startActivity(Intent(Intent.ACTION_VIEW,Uri.parse(url))
-                                                .addCategory(Intent.CATEGORY_BROWSABLE))
-                                        },
-                                        onShare={ url ->
-                                            context.startActivity(Intent.createChooser(
-                                                Intent(Intent.ACTION_SEND).apply {
-                                                    type="text/plain"
-                                                    putExtra(Intent.EXTRA_TEXT,url)
-                                                },tr(state.lang,"Share your partner app","اشتراک برنامه اختصاصی")))
-                                        })
-                                    val seven = days.takeLast(7)
-                                    val previous = days.take(7)
-                                    StudioStats118(state.lang,referralTotal,hasDailyReport,
-                                        seven.lastOrNull()?.count,
-                                        seven.getOrNull(5)?.count,
-                                        previous.sumOf { it.count },
-                                        seven.sumOf { it.count },
-                                        stats?.optInt("activeUsers",0),
-                                        stats?.optInt("firstDeposits",0))
-                                    StudioChart118(state.lang,seven,hasDailyReport)
+                                        )
+                                    }
                                     StudioTerms118(state.lang,
                                         partner?.str("minPayoutMinor")?.takeIf(String::isNotBlank)
                                             ?.let { money(it,currency) } ?: "—",
@@ -396,24 +409,29 @@ private fun studioTitle(lang: Lang, page: String) = when(page) {
 
 @Composable
 private fun StudioHero118(lang:Lang,page:String,subtitle:String) {
-    Box(Modifier.fillMaxWidth().heightIn(min=168.dp)
-        .background(Brush.linearGradient(listOf(sBlack,Color(0xFF153826),sNight)))) {
-        Box(Modifier.align(Alignment.TopEnd).offset(x=30.dp,y=(-58).dp)
-            .size(172.dp).clip(CircleShape).background(sGreen.copy(alpha=.09f)))
-        Box(Modifier.align(Alignment.BottomEnd).offset(x=(-54).dp,y=43.dp)
-            .size(95.dp).clip(CircleShape).background(sGreen.copy(alpha=.14f)))
-        Column(Modifier.fillMaxWidth().padding(start=24.dp,end=22.dp,top=23.dp,bottom=44.dp),
-            verticalArrangement=Arrangement.spacedBy(11.dp)) {
-            Row(verticalAlignment=Alignment.CenterVertically) {
-                Icon(Icons.Default.AutoAwesome,null,tint=sGreen,
-                    modifier=Modifier.size(17.dp))
-                Spacer(Modifier.width(7.dp))
-                Text("BETVIMA · PARTNERS",color=sGreen,fontWeight=FontWeight.Bold,
-                    fontSize=10.sp,letterSpacing=1.3.sp)
-            }
+    // A compact full-width bar replaces the old oversized isolated banner.
+    Row(Modifier.fillMaxWidth()
+        .background(Brush.horizontalGradient(listOf(sNight, Color(0xFF18362A))))
+        .padding(horizontal=18.dp,vertical=18.dp),
+        verticalAlignment=Alignment.CenterVertically) {
+        Surface(shape=RoundedCornerShape(12.dp),
+            color=Color.White.copy(alpha=.09f)) {
+            Icon(when(page) {
+                "overview" -> Icons.Default.Dashboard
+                "referrals" -> Icons.Default.Groups
+                "ledger" -> Icons.Default.ReceiptLong
+                "payouts" -> Icons.Default.Payments
+                "links" -> Icons.Default.Link
+                "wallets" -> Icons.Default.AccountBalanceWallet
+                else -> Icons.Default.CardGiftcard
+            },null,tint=sGreen,modifier=Modifier.padding(11.dp).size(24.dp))
+        }
+        Spacer(Modifier.width(12.dp))
+        Column(Modifier.weight(1f),verticalArrangement=Arrangement.spacedBy(4.dp)) {
             Text(studioTitle(lang,page),color=Color.White,
-                fontWeight=FontWeight.Black,fontSize=28.sp)
-            Text(subtitle,color=Color(0xFFCFDCD2),fontSize=12.sp,lineHeight=19.sp)
+                fontWeight=FontWeight.Black,fontSize=20.sp)
+            Text(subtitle,color=Color(0xFFC6D8CD),
+                fontSize=11.sp,maxLines=2,lineHeight=16.sp)
         }
     }
 }
