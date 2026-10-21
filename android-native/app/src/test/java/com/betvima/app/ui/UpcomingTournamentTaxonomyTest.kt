@@ -94,6 +94,18 @@ class UpcomingTournamentTaxonomyTest {
             .first { it.sport == "esports:cs2" }.count)
     }
 
+    @Test fun tennisOpensDirectLeagueListWithExactKeys() {
+        val first = fixture("one", "tennis", "World", "ATP", "100")
+        val second = fixture("two", "tennis", "World", "WTA", "101")
+        val third = fixture("three", "football", "World", "ATP", "100")
+        val nodes = tournamentDirectLeagues(listOf(first, second, third), "tennis")
+        assertEquals(2, nodes.size)
+        assertTrue(tournamentDirectSport("tennis"))
+        assertTrue(tournamentDirectSport("esports:cs2"))
+        assertFalse(tournamentDirectSport("football"))
+        assertEquals(3, tournamentTopLeagues(listOf(first, second, third)).size)
+    }
+
     @Test fun sportNormalizationIsSafeForHockeyButNeverBasketball() {
         assertEquals("hockey", upcomingSportIdentity("ice-hockey"))
         assertEquals("football", upcomingSportIdentity("soccer"))
