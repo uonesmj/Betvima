@@ -39,7 +39,7 @@ class NestedProductionFailureLogSafety(unittest.TestCase):
             with patch.object(c, 'STATE', state), patch.object(c.subprocess, 'run', return_value=result):
                 with self.assertRaises(RuntimeError):
                     c.run(command)
-            self.assertEqual(private.read_bytes(), b'safe failure\\n--- STDERR ---\\n')
+            self.assertEqual(private.read_bytes(), b'safe failure\n--- STDERR ---\n')
 
     def test_nonproduction_subprocess_error_still_captures_private_stderr(self):
         with tempfile.TemporaryDirectory() as folder:
@@ -49,7 +49,7 @@ class NestedProductionFailureLogSafety(unittest.TestCase):
                 with self.assertRaises(RuntimeError):
                     c.run(['/usr/bin/pg_dump'])
             self.assertEqual((state/'private-command-failure.log').read_bytes(),
-                             b'output\\n--- STDERR ---\\nprivate error')
+                             b'output\n--- STDERR ---\nprivate error')
 
 
 class SnapshotSafety(unittest.TestCase):
