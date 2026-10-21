@@ -271,7 +271,7 @@ private fun Affiliate119Earnings(lang:Lang,onRegister:()->Unit) {
     Column(Modifier.fillMaxWidth()
         .clip(RoundedCornerShape(topStart=34.dp,topEnd=34.dp))
         .background(cIvory)
-        .padding(top=25.dp,bottom=28.dp),
+        .padding(top=25.dp,bottom=46.dp),
         verticalArrangement=Arrangement.spacedBy(16.dp)) {
         Column(Modifier.padding(horizontal=22.dp),
             verticalArrangement=Arrangement.spacedBy(10.dp)) {
@@ -314,6 +314,7 @@ private fun Affiliate119Earnings(lang:Lang,onRegister:()->Unit) {
             Spacer(Modifier.height(13.dp))
             Affiliate119Primary(tr(lang,"Start partnering","شروع همکاری"),
                 onRegister,Modifier.fillMaxWidth())
+            Spacer(Modifier.height(17.dp))
         }
     }
 }

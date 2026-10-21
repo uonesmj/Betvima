@@ -1,6 +1,5 @@
 package com.betvima.app.ui
 
-import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
@@ -154,25 +153,22 @@ private val editorialTitles151 = listOf(
  * The WebP sheet is bundled locally so the native gallery works offline.
  */
 @Composable
-private fun rememberEditorialPhotos151(): List<ImageBitmap> {
+private fun rememberEditorialPhotos151(): List<ImageBitmap?> {
     val context = LocalContext.current
-    val photos by produceState<List<ImageBitmap>>(initialValue=emptyList(),context) {
+    // Four full-resolution, individually compressed reference photos, not
+    // 4 quadrants from a 5 KB sprite. Preserve indices if a file is missing.
+    val photos by produceState<List<ImageBitmap?>>(
+        initialValue = List(4) { null },
+        context
+    ) {
         value = withContext(Dispatchers.IO) {
-            runCatching {
-                val original = context.assets.open("affiliate/people-sprite.webp")
-                    .use { BitmapFactory.decodeStream(it) }
-                    ?: return@runCatching emptyList()
-                val width=original.width/2
-                val height=original.height/2
-                try {
-                    listOf(0 to 0,1 to 0,0 to 1,1 to 1).map { (x,y) ->
-                        Bitmap.createBitmap(original,x*width,y*height,width,height)
-                            .asImageBitmap()
+            (1..4).map { index ->
+                runCatching {
+                    context.assets.open("affiliate/people_${index}.webp").use {
+                        BitmapFactory.decodeStream(it)?.asImageBitmap()
                     }
-                } finally {
-                    original.recycle()
-                }
-            }.getOrElse { emptyList() }
+                }.getOrNull()
+            }
         }
     }
     return photos
