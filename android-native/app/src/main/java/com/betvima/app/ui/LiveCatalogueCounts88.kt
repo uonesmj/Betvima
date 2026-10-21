@@ -22,7 +22,7 @@ internal fun liveSportMatches88(matches: List<Match>, selectedSport: String): Li
 
 internal fun catalogueGroupKey88(match: Match, live: Boolean): String =
     if (live) match.sport + "|" + match.league + "|" + match.country
-    else match.league + "|" + match.country
+    else upcomingLeagueKey(match)
 
 internal fun visibleFixtureCount88(
     groups: Map<String, List<Match>>,
