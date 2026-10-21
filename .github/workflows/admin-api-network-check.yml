@@ -1,0 +1,27 @@
+name: Admin API network diagnostics
+on:
+  push:
+    branches: [codex/admin-native-android-v1-20261021]
+    paths: ['.github/workflows/admin-api-network-check.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - name: Check DNS and public API without credentials
+        shell: bash
+        run: |
+          set +e
+          echo "=== system DNS ==="
+          getent ahostsv4 betvima.com | head -6 || true
+          echo "=== HTTP checks (only status / timing, do not log response bodies) ==="
+          for url in https://betvima.com/ https://betvima.com/api/v1/mobile/config https://betvima.com/api/v1/auth/session https://betvima.com/api/v1/admin/dashboard; do
+            curl --max-time 12 --connect-timeout 6 -L -sS -o /dev/null -w "$url : http=%{http_code} resolved=%{remote_ip} dns=%{time_namelookup} tls=%{time_appconnect} total=%{time_total}\n" "$url"
+          done
+          echo "=== public DNS A from Google API ==="
+          curl --max-time 10 -sS 'https://dns.google/resolve?name=betvima.com&type=A' | python3 -c 'import json,sys; data=json.load(sys.stdin); print({"status":data.get("Status"),"answers":[v.get("data") for v in data.get("Answer",[]) if v.get("type")==1]})' || true
+          echo "=== public DNS A from Cloudflare API ==="
+          curl --max-time 10 -sS -H 'accept: application/dns-json' 'https://cloudflare-dns.com/dns-query?name=betvima.com&type=A' | python3 -c 'import json,sys; data=json.load(sys.stdin); print({"status":data.get("Status"),"answers":[v.get("data") for v in data.get("Answer",[]) if v.get("type")==1]})' || true
