@@ -61,6 +61,7 @@ fun PremiumAppFooter(
     onBackToTop: () -> Unit
 ) {
     var informationOpen by rememberSaveable { mutableStateOf(false) }
+    var informationPage by rememberSaveable { mutableStateOf<String?>(null) }
     var categoriesOpen by rememberSaveable { mutableStateOf(false) }
     var languageOpen by rememberSaveable { mutableStateOf(false) }
     var linkCopied by remember { mutableStateOf(false) }
@@ -188,14 +189,18 @@ fun PremiumAppFooter(
             expanded = informationOpen,
             onToggle = { informationOpen = !informationOpen }
         ) {
-            legalLinks.forEach { (name, url, icon) ->
+            legalLinks.forEachIndexed { index, (name, _, icon) ->
                 FooterMenuAction(name, icon) {
-                    runCatching { uriHandler.openUri(url) }
+                    informationPage = when (index) {
+                        0 -> "terms"
+                        1 -> "privacy"
+                        else -> "responsible"
+                    }
                 }
             }
             FooterMenuAction(tr(lang, "Visit BetVima", "وب‌سایت بت‌ویما"),
                 Icons.Default.Public) {
-                runCatching { uriHandler.openUri("https://betvima.com") }
+                informationPage = "guide"
             }
         }
         FooterAccordion(
@@ -367,6 +372,13 @@ fun PremiumAppFooter(
         onSelect = { selected -> model.setLanguage(selected); languageOpen = false },
         onDismiss = { languageOpen = false }
     )
+    informationPage?.let { page ->
+        FooterInformationSheet(
+            id = page,
+            lang = lang,
+            onDismiss = { informationPage = null }
+        )
+    }
 }
 
 @Composable
