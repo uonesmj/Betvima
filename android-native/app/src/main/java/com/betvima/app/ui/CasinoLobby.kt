@@ -21,6 +21,9 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -73,18 +76,30 @@ fun CasinoLobby(state: AppState, model: AppViewModel) {
     var sessionUrl by remember { mutableStateOf<String?>(null) }
     var launchError by remember { mutableStateOf<Pair<String, String>?>(null) }
     var pilot by remember { mutableStateOf<CasinoEligibility?>(null) }
+    var eligibilityLoading by remember { mutableStateOf(false) }
     var pilotRefreshSerial by remember { mutableIntStateOf(0) }
     var pendingRealGame by remember { mutableStateOf<CasinoGame?>(null) }
     var realMoneyAcknowledged by remember { mutableStateOf(false) }
     var gameUsesRealMoney by remember { mutableStateOf(false) }
     var failedRealMoneyLaunch by remember { mutableStateOf(false) }
 
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) pilotRefreshSerial++
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
+
     LaunchedEffect(state.signedIn, pilotRefreshSerial) {
         pilot = null
+        eligibilityLoading = state.signedIn
         if (state.signedIn) {
             try { pilot = model.casinoEligibility() }
             catch (cancel: CancellationException) { throw cancel }
             catch (_: Exception) { pilot = null } // Deny by default.
+            finally { eligibilityLoading = false }
         }
     }
 
@@ -240,6 +255,7 @@ fun CasinoLobby(state: AppState, model: AppViewModel) {
         error = error,
         launching = launching,
         eligibility = pilot,
+        eligibilityLoading = eligibilityLoading,
         onCategory = { selected ->
             if (category != selected || provider.isNotBlank() || query.isNotBlank()) {
                 category = selected
@@ -262,6 +278,7 @@ fun CasinoLobby(state: AppState, model: AppViewModel) {
             games = emptyList()
         },
         onRetry = {
+            pilotRefreshSerial++
             page = 1
             games = emptyList()
             refreshSerial++
