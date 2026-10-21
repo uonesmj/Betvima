@@ -16,6 +16,8 @@ import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.platform.LocalDensity
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -88,10 +90,35 @@ fun SportsRibbon(selected: String, lang: Lang, showEsports: Boolean = true,
     }
 }
 
+/**
+ * Observe the actual footer item in the list viewport rather than relying on
+ * estimated scroll percentages. This modifies only the floating slip visibility.
+ */
+internal fun footerCoversFloatingSlip(
+    footerTopPx: Int?, viewportEndPx: Int, clearancePx: Int
+): Boolean = footerTopPx != null && footerTopPx <= viewportEndPx - clearancePx
+
 @Composable
-fun HomePage(state: AppState, model: AppViewModel, onSearch: () -> Unit) {
+private fun ObserveFooterForFloatingSlip(
+    listState: LazyListState, footerKey: String, onOverlapChanged: (Boolean) -> Unit
+) {
+    val updatedCallback by rememberUpdatedState(onOverlapChanged)
+    val clearancePx = with(LocalDensity.current) { 78.dp.roundToPx() }
+    LaunchedEffect(listState, footerKey, clearancePx) {
+        snapshotFlow {
+            val layout = listState.layoutInfo
+            val footerTop = layout.visibleItemsInfo.firstOrNull { it.key == footerKey }?.offset
+            footerCoversFloatingSlip(footerTop, layout.viewportEndOffset, clearancePx)
+        }.distinctUntilChanged().collect { updatedCallback(it) }
+    }
+}
+
+@Composable
+fun HomePage(state: AppState, model: AppViewModel, onSearch: () -> Unit,
+    onFooterOverlapChanged: (Boolean) -> Unit = {}) {
     val footerListState = rememberLazyListState()
     val footerScope = rememberCoroutineScope()
+    ObserveFooterForFloatingSlip(footerListState, "premium-home-footer", onFooterOverlapChanged)
     // Quotes from BetsAPI are displayed as previews, but remain deliberately
     // non-wagerable. Ranking must not require bettingAvailable/selection.available:
     // these flags are false for *every* external bookmaker preview and previously
@@ -247,9 +274,10 @@ fun HomePage(state: AppState, model: AppViewModel, onSearch: () -> Unit) {
 
 @Composable
 fun CatalogPage(state: AppState, model: AppViewModel, live: Boolean,
-    onSearch: () -> Unit) {
+    onSearch: () -> Unit, onFooterOverlapChanged: (Boolean) -> Unit = {}) {
     val footerListState = rememberLazyListState()
     val footerScope = rememberCoroutineScope()
+    ObserveFooterForFloatingSlip(footerListState, "premium-catalog-footer", onFooterOverlapChanged)
     var liveSport by rememberSaveable { mutableStateOf("top") }
     // All 46 (or any current API count) fixtures are initially visible:
     // no silently closed league can inflate the counter without a card.
