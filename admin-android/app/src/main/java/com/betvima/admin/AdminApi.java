@@ -9,16 +9,18 @@ import android.util.Base64;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
-import java.io.ByteArrayOutputStream;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.net.HttpURLConnection;
-import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.security.KeyStore;
 import java.security.SecureRandom;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+
+import okhttp3.MediaType;
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.RequestBody;
+import okhttp3.Response;
+import java.util.concurrent.TimeUnit;
 
 import javax.crypto.Cipher;
 import javax.crypto.KeyGenerator;
@@ -36,6 +38,9 @@ public final class AdminApi {
  private final Activity context;
  private final ExecutorService pool=Executors.newSingleThreadExecutor();
  private final Vault vault;
+ private final OkHttpClient httpClient=new OkHttpClient.Builder()
+  .connectTimeout(15,TimeUnit.SECONDS).readTimeout(25,TimeUnit.SECONDS)
+  .followRedirects(false).followSslRedirects(false).build();
  private String supabaseUrl="";
  private String publishableKey="";
  private String accessToken="";
@@ -59,28 +64,17 @@ public final class AdminApi {
  }
  private JSONObject http(String method,String url,JSONObject data,String bearer,String apikey)throws Exception{
   if(!url.startsWith("https://"))throw new Exception("ارتباط فقط از طریق HTTPS مجاز است");
-  HttpURLConnection c=(HttpURLConnection)new URL(url).openConnection();
-  c.setConnectTimeout(15000);c.setReadTimeout(25000);
-  c.setRequestMethod(method);c.setInstanceFollowRedirects(false);
-  c.setRequestProperty("Accept","application/json");
-  c.setRequestProperty("Cache-Control","no-store");
-  if(bearer!=null&&!bearer.isEmpty())c.setRequestProperty("Authorization","Bearer "+bearer);
-  if(apikey!=null&&!apikey.isEmpty())c.setRequestProperty("apikey",apikey);
-  try {
-   if(data!=null){
-    c.setDoOutput(true);c.setRequestProperty("Content-Type","application/json");
-    byte[] b=data.toString().getBytes(StandardCharsets.UTF_8);
-    try(OutputStream stream=c.getOutputStream()){stream.write(b);}
-   }
-   int status=c.getResponseCode();
+  Request.Builder request=new Request.Builder().url(url).header("Accept","application/json")
+   .header("Cache-Control","no-store");
+  if(bearer!=null&&!bearer.isEmpty())request.header("Authorization","Bearer "+bearer);
+  if(apikey!=null&&!apikey.isEmpty())request.header("apikey",apikey);
+  RequestBody payload=data==null?null:RequestBody.create(data.toString(),MediaType.get("application/json; charset=utf-8"));
+  request.method(method,payload);
+  try(Response response=httpClient.newCall(request.build()).execute()){
+   int status=response.code();
    if(status>=300&&status<400)throw new Exception("سرور پاسخ انتقال ناامن داد");
-   InputStream in=status>=400?c.getErrorStream():c.getInputStream();
-   ByteArrayOutputStream bytes=new ByteArrayOutputStream();
-   if(in!=null)try(InputStream stream=in){
-    byte[] buffer=new byte[4096];int n;
-    while((n=stream.read(buffer))!=-1){if(bytes.size()>3_000_000)throw new Exception("پاسخ بیش از حد بزرگ");bytes.write(buffer,0,n);}
-   }
-   String body=bytes.toString("UTF-8");
+   String body=response.body()==null?"":response.body().string();
+   if(body.length()>3_000_000)throw new Exception("پاسخ بیش از حد بزرگ");
    JSONObject json=body.trim().startsWith("{")?new JSONObject(body):new JSONObject();
    if(status>=400){
     String error=json.optString("message",json.optString("msg",json.optString("error_description",json.optString("error","HTTP "+status))));
@@ -89,9 +83,9 @@ public final class AdminApi {
     if(status==404)throw new Exception("این API هنوز روی سرور BetVima منتشر نشده است.");
     throw new Exception(error);
    }
-   if(json.optBoolean("ok",true)==false)throw new Exception(json.optString("message","Server error"));
+   if(!json.optBoolean("ok",true))throw new Exception(json.optString("message","Server error"));
    return json;
-  }finally{c.disconnect();}
+  }
  }
  private JSONObject values(JSONObject response){JSONObject data=response.optJSONObject("data");return data==null?response:data;}
  public JSONObject bootstrap()throws Exception{

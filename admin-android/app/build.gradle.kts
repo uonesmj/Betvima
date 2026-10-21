@@ -15,3 +15,5 @@ android {
   targetCompatibility = JavaVersion.VERSION_17
  }
 }
+
+dependencies { implementation("com.squareup.okhttp3:okhttp:4.12.0") }
