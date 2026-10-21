@@ -285,8 +285,12 @@ fun PremiumWalletPage(state: AppState, model: AppViewModel) {
         }
         if (!state.signedIn) {
             item {
-                LockedFeature(lang, tr(lang, "Sign in to open your secure wallet",
-                    "برای استفاده از کیف پول وارد حساب شوید")) { model.showLogin(true) }
+                LockedFeature(lang,
+                    tr(lang, "Sign in to open your secure wallet",
+                        "برای استفاده از کیف پول وارد حساب شوید"),
+                    onRegister = { model.showLogin(true, register = true) },
+                    icon = Icons.Default.AccountBalanceWallet
+                ) { model.showLogin(true) }
             }
         } else {
             if (state.accountLoading) item {
