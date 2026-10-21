@@ -3,6 +3,8 @@ package com.betvima.app.ui
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -10,6 +12,7 @@ import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -22,6 +25,7 @@ import com.betvima.app.data.*
 import org.json.JSONObject
 import java.math.BigDecimal
 import java.time.LocalDate
+import java.time.ZoneId
 import java.time.temporal.ChronoUnit
 
 private val financeInk159 = Color(0xFF10231D)
@@ -311,5 +315,92 @@ private fun FinanceReferralMoney159(lang:Lang,values:List<JSONObject>,label:Stri
                     fontWeight=FontWeight.Bold,fontSize=12.sp)
             }
         }
+    }
+}
+
+/**
+ * Single reusable 1-to-365-day filter for referrals AND ledger.
+ * All calendar boundaries are based on the affiliate settlement timezone.
+ * Never pass invalid ranges to the server and never substitute lifetime money
+ * for period money.
+ */
+@Composable
+internal fun FinanceDateFilter159(
+    lang: Lang,
+    from: LocalDate,
+    to: LocalDate,
+    today: LocalDate,
+    zone: ZoneId,
+    selectedPreset: String,
+    onPreset: (String) -> Unit,
+    onDates: (LocalDate, LocalDate) -> Unit
+) {
+    val context=LocalContext.current
+    FinancePanel159(
+        title=tr(lang,"Reporting period","بازه گزارش"),
+        subtitle=tr(lang,
+            "Choose 1 to 365 days. Dates use your partner settlement timezone.",
+            "از ۱ تا ۳۶۵ روز؛ تاریخ‌ها بر اساس منطقه زمانی تسویه حساب است.")
+    ) {
+        Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+            horizontalArrangement=Arrangement.spacedBy(7.dp)) {
+            listOf(
+                "1D" to "1D","7D" to "7D","30D" to "30D",
+                "90D" to "90D","180D" to "180D","365D" to "1Y"
+            ).forEach { (preset,label) ->
+                FilterChip(
+                    selected=selectedPreset==preset,
+                    onClick={onPreset(preset)},
+                    label={Text(label,fontSize=12.sp,fontWeight=FontWeight.Bold)},
+                    colors=FilterChipDefaults.filterChipColors(
+                        selectedContainerColor=Color(0xFFD5F2E1),
+                        selectedLabelColor=financeGreen159)
+                )
+            }
+        }
+        Row(Modifier.fillMaxWidth(),
+            horizontalArrangement=Arrangement.spacedBy(8.dp)) {
+            listOf(true,false).forEach { isStart ->
+                val chosen=if(isStart)from else to
+                OutlinedButton(
+                    onClick={
+                        android.app.DatePickerDialog(
+                            context,
+                            { _,year,month,day ->
+                                val picked=LocalDate.of(year,month+1,day)
+                                    .coerceIn(affiliatePresetStart159(365,today),today)
+                                val newFrom=if(isStart) picked else
+                                    from.coerceAtMost(picked)
+                                val newTo=if(isStart) to.coerceAtLeast(picked) else picked
+                                if(affiliateRange159(newFrom,newTo,today)) onDates(newFrom,newTo)
+                            },
+                            chosen.year,chosen.monthValue-1,chosen.dayOfMonth
+                        ).apply {
+                            datePicker.minDate=affiliatePresetStart159(365,today)
+                                .atStartOfDay(zone).toInstant().toEpochMilli()
+                            datePicker.maxDate=today.plusDays(1).atStartOfDay(zone)
+                                .toInstant().toEpochMilli()-1
+                        }.show()
+                    },
+                    modifier=Modifier.weight(1f),
+                    shape=RoundedCornerShape(12.dp),
+                    contentPadding=PaddingValues(horizontal=7.dp, vertical=10.dp),
+                    border=BorderStroke(1.dp,financeDivider159)
+                ) {
+                    Icon(Icons.Default.CalendarMonth,null,modifier=Modifier.size(15.dp),
+                        tint=financeGreen159)
+                    Spacer(Modifier.width(4.dp))
+                    Column {
+                        Text(if(isStart)tr(lang,"From","از") else tr(lang,"To","تا"),
+                            fontSize=9.sp,color=financeGray159)
+                        Text(chosen.toString(),fontSize=11.sp,
+                            fontWeight=FontWeight.Bold,color=financeInk159,
+                            maxLines=1)
+                    }
+                }
+            }
+        }
+        Text(tr(lang,"Timezone: ","منطقه زمانی: ")+zone.id,
+            color=financeGray159,fontSize=10.sp)
     }
 }
