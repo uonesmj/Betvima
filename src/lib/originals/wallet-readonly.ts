@@ -12,7 +12,7 @@ export type OriginalsWalletSnapshot = Readonly<{
   availableFormatted: string;
 }>;
 
-type WalletPayload = {
+type WalletData = {
   wallet?: {
     currency?: unknown;
     availableMinor?: unknown;
@@ -28,7 +28,11 @@ export function parseOriginalsWalletSnapshot(
   locale: Locale,
 ): OriginalsWalletSnapshot {
   if (!payload || typeof payload !== 'object') throw new Error('ORIGINALS_WALLET_MALFORMED');
-  const response = payload as WalletPayload;
+  const envelope = payload as { ok?: unknown; data?: unknown };
+  if (envelope.ok !== true || !envelope.data || typeof envelope.data !== 'object') {
+    throw new Error('ORIGINALS_WALLET_RESPONSE_FAILED');
+  }
+  const response = envelope.data as WalletData;
   const wallet = response.wallet;
   if (response.integrity !== 'ok' || !wallet || typeof wallet !== 'object') {
     throw new Error('ORIGINALS_WALLET_UNVERIFIED');
