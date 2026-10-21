@@ -55,8 +55,18 @@ private fun tournamentSportEmoji(key: String): String = when (key) {
     else -> "🏆"
 }
 
-private fun tournamentPlaceEmoji(code: String): String =
-    countryFlag(code) ?: when (code) {
+private fun homeNationFlag(tag: String): String {
+    // Unicode regional subdivision flags: gbeng, gbsct, gbwls.
+    return "🏴" + tag.map { String(Character.toChars(0xE0000 + it.code)) }
+        .joinToString("") + String(Character.toChars(0xE007F))
+}
+
+private fun tournamentPlaceEmoji(code: String): String = when (code) {
+    "home-nation:england" -> homeNationFlag("gbeng")
+    "home-nation:scotland" -> homeNationFlag("gbsct")
+    "home-nation:wales" -> homeNationFlag("gbwls")
+    "home-nation:northern-ireland" -> "🌐"
+    else -> countryFlag(code) ?: when (code) {
         "world", "international" -> "🌐"
         "europe" -> "🌍"
         "asia" -> "🌏"
@@ -64,6 +74,7 @@ private fun tournamentPlaceEmoji(code: String): String =
         "south-america", "north-america" -> "🌎"
         else -> "🌐"
     }
+}
 
 /**
  * Root sport -> authoritative country/region -> authoritative league.
