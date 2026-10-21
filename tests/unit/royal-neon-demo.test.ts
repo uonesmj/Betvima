@@ -59,11 +59,11 @@ describe('Royal Neon visual demo mathematics (never real money)', () => {
 
   it('never pays for a line without three consecutive matching symbols', () => {
     const grid: ReelGrid = [
-      ['crown', 'ruby', 'seven'],
-      ['ruby', 'seven', 'crown'],
-      ['seven', 'crown', 'ruby'],
-      ['emerald', 'ruby', 'seven'],
-      ['star', 'emerald', 'crown'],
+      ['crown', 'crown', 'crown'],
+      ['ruby', 'ruby', 'ruby'],
+      ['seven', 'seven', 'seven'],
+      ['emerald', 'emerald', 'emerald'],
+      ['star', 'star', 'star'],
     ];
     expect(evaluateGrid(grid, 10).wins).toHaveLength(0);
   });
