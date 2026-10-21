@@ -480,7 +480,7 @@ fun ReferenceTournamentRibbon(state: AppState, model: AppViewModel) {
         animationSpec = tween(durationMillis = 260),
         label = "competitionCarouselEdgeGlow"
     )
-    Box(Modifier.fillMaxWidth()) {
+    WindStormScrollFrame(ribbonState, Modifier.fillMaxWidth()) {
         LazyRow(
             Modifier.fillMaxWidth(),
             state = ribbonState,
@@ -666,11 +666,15 @@ private fun ReferenceCompactOdd(
 fun ReferenceMatchCarousel(
     matches: List<Match>, state: AppState, model: AppViewModel
 ) {
-    LazyRow(Modifier.fillMaxWidth(),
-        contentPadding = PaddingValues(end = 1.dp),
-        horizontalArrangement = Arrangement.spacedBy(10.dp), flingBehavior = rememberPremiumFlingBehavior()) {
-        items(matches.take(10), key = { it.id }) { match ->
-            PremiumFixtureCard(match, state, model, Modifier.width(315.dp))
+    val carouselState = rememberLazyListState()
+    WindStormScrollFrame(carouselState, Modifier.fillMaxWidth()) {
+        LazyRow(Modifier.fillMaxWidth(), state = carouselState,
+            contentPadding = PaddingValues(end = 1.dp),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            flingBehavior = rememberPremiumFlingBehavior()) {
+            items(matches.take(10), key = { it.id }) { match ->
+                PremiumFixtureCard(match, state, model, Modifier.width(315.dp))
+            }
         }
     }
 }
