@@ -39,8 +39,8 @@ android {
         applicationId = "com.betvima.app"
         minSdk = 26
         targetSdk = 35
-        versionCode = 160
-        versionName = "0.160.0"
+        versionCode = 161
+        versionName = "0.161.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         buildConfigField("String", "API_BASE_URL", "\"https://betvima.com/\"")
         buildConfigField("String", "AFFILIATE_REFERRAL_CODE", "\"$embeddedPartnerCode\"")
