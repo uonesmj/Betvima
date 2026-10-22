@@ -40,7 +40,7 @@ export class PostgresAdminRepository implements AdminRepository {
       return totalUsdMinor;
     };
 
-    const row = await this.db.queryOne<Row>(
+    const dashboardCountsPromise = this.db.queryOne<Row>(
       `select
         (select count(*) from nova.profiles where role in ('user','affiliate')) as users_total,
         (select count(*) from nova.profiles where last_login_at > now() - interval '${interval}') as users_active,
@@ -59,7 +59,7 @@ export class PostgresAdminRepository implements AdminRepository {
         (select max(settled_at) from nova.bets) as last_settlement_at`,
     );
 
-    const [stake, payout, openLiability] = await Promise.all([
+    const financialAggregatesPromise = Promise.all([
       aggregateByCurrency(
             `select currency::text as currency, coalesce(sum(stake_minor),0) as amount_minor
                from nova.bets
@@ -80,7 +80,7 @@ export class PostgresAdminRepository implements AdminRepository {
               group by currency`,
           ),
     ]);
-    const [deposits, withdrawals, walletLiability] = await Promise.all([
+    const paymentAggregatesPromise = Promise.all([
       aggregateByCurrency(
             `select currency::text as currency, coalesce(sum(amount_minor),0) as amount_minor
                from nova.payment_transactions
@@ -103,7 +103,7 @@ export class PostgresAdminRepository implements AdminRepository {
               group by currency`,
           ),
     ]);
-    const [pendingPayoutAmount, commission, payable] = await Promise.all([
+    const affiliateAggregatesPromise = Promise.all([
       aggregateByCurrency(
             `select currency::text as currency, coalesce(sum(amount_minor),0) as amount_minor
                from nova.affiliate_payouts
@@ -124,6 +124,7 @@ export class PostgresAdminRepository implements AdminRepository {
               group by currency`,
           ),
     ]);
+    const [row, [stake, payout, openLiability], [deposits, withdrawals, walletLiability], [pendingPayoutAmount, commission, payable]] = await Promise.all([dashboardCountsPromise, financialAggregatesPromise, paymentAggregatesPromise, affiliateAggregatesPromise]);
     const env = serverEnv();
     const betsCount = toNum(row?.bets_count);
     const ggr = stake - payout;
