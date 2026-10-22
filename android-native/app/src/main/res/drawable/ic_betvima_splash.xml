@@ -1,41 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!--
-  Android 12+ and AndroidX SplashScreen scale the drawable itself to the system
-  icon slot. Keep artwork inside the centre of a 288dp transparent viewport so
-  the native splash matches our 180dp Compose orbit and ~72dp BV monogram.
-  Do not reuse the small UI monogram directly: Android enlarges it to ~192dp.
--->
+<!-- Pure-black system handoff. Compose draws the sole bouncing BetVima watermark. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
-    android:width="288dp"
-    android:height="288dp"
-    android:viewportWidth="288"
-    android:viewportHeight="288">
-    <path
-        android:strokeColor="#1BFFFFFF"
-        android:strokeWidth="1.5"
-        android:fillColor="@android:color/transparent"
-        android:pathData="M207,144 A63,63 0,1 1,81 144 A63,63 0,1 1,207 144" />
-    <path
-        android:strokeColor="#2600D47A"
-        android:strokeWidth="2"
-        android:fillColor="@android:color/transparent"
-        android:pathData="M190,144 A46,46 0,1 1,98 144 A46,46 0,1 1,190 144" />
-    <path
-        android:strokeColor="#00D47A"
-        android:strokeWidth="3.5"
-        android:strokeLineCap="round"
-        android:fillColor="@android:color/transparent"
-        android:pathData="M144,81 A63,63 0,0 1,205 128" />
-    <group
-        android:translateX="100"
-        android:translateY="102"
-        android:scaleX="1.7"
-        android:scaleY="1.7">
-        <path
-            android:fillColor="#FFFFFFFF"
-            android:pathData="M5,9 L16,9 C23,9 26,12 26,17 C26,20 24,22 21,23 C26,24 28,27 28,32 C28,38 23,41 16,41 L5,41 Z M12,15 L12,21 L16,21 C19,21 20,20 20,18 C20,16 19,15 16,15 Z M12,27 L12,35 L16,35 C19,35 21,34 21,31 C21,29 19,27 16,27 Z" />
-        <path
-            android:fillColor="#FF00D981"
-            android:pathData="M24,9 L31.2,9 L36,27 L40.7,9 L47,9 L39.5,41 L32.5,41 Z" />
-    </group>
+    android:width="288dp" android:height="288dp"
+    android:viewportWidth="288" android:viewportHeight="288">
+    <path android:fillColor="#00000000"
+        android:pathData="M0,0 L288,0 L288,288 L0,288 Z" />
 </vector>
