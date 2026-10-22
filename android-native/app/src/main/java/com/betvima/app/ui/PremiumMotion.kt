@@ -67,10 +67,10 @@ fun PremiumLoadingOverlay(visible: Boolean, lang: Lang) {
         }
         val movement = rememberInfiniteTransition(label = "betvimaWatermarkBounce")
         val verticalBounce by movement.animateFloat(
-            initialValue = -8f,
-            targetValue = 8f,
+            initialValue = -24f,
+            targetValue = 24f,
             animationSpec = infiniteRepeatable(
-                animation = tween(1150, easing = FastOutSlowInEasing),
+                animation = tween(1500, easing = androidx.compose.animation.core.CubicBezierEasing(.42f, 0f, .58f, 1f)),
                 repeatMode = androidx.compose.animation.core.RepeatMode.Reverse
             ),
             label = "watermarkVerticalPosition"
