@@ -17,6 +17,13 @@ export const GET = withErrorHandling('admin.dashboard', async (ctx, request: Req
     section('worker_heartbeats', degraded, () => services.admin.workerHeartbeats(), [], ctx.correlationId),
     services.providers.statuses(),
   ]);
+  const coverage = (metrics as typeof metrics & { financialCoverage?: { complete: boolean; excludedCurrencies: string[] } }).financialCoverage;
+  if (coverage && !coverage.complete) {
+    degraded.push({
+      section: 'financial_currency_conversion',
+      message: 'Financial totals are USD-only; non-USD amounts are excluded until a verified FX rate is available. Excluded currencies: ' + coverage.excludedCurrencies.join(', '),
+    });
+  }
   const config = services.providers;
   // Notification channels are reported straight from the registry - configured or not, never assumed.
   const channelRows: ProviderStatus[] = ([
