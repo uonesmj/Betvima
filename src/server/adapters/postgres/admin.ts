@@ -4,6 +4,8 @@ import type {
   AdminPermission, AuditLogEntry, Currency, DashboardMetrics, Job, KillSwitchState, Paginated, ProviderHealth,
   ReconciliationReport, RiskRule, SystemSetting, UUID, UserRole, WorkerHeartbeat,
 } from '@/lib/types';
+import { convertAdminAmountToUsd, getAdminUsdRates } from '@/server/utils/admin-usd';
+import { serverEnv } from '@/server/env';
 import { ROLE_LABELS, permissionsForRole } from '@/server/auth/rbac';
 import { type Row, toBig, toBool, toIso, toIsoOrNull, toJson, toNum, toNumOrNull, toStr, toStrOrNull } from '@/server/db/rows';
 
