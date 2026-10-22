@@ -5,10 +5,12 @@ import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
@@ -100,8 +102,10 @@ internal object HomeLeagueBadgeLayout {
         else -> cropInsetPx
     }
     fun cropSizeFor(index: Int): Int = sourceTilePx - 2 * cropInsetFor(index)
-    const val cardWidthDp = 88      // Previously 70dp: >= 25% wider
-    const val diameterDp = 80       // Previously 64dp: exactly 25% larger
+    const val cardWidthDp = 106
+    const val diameterDp = 76
+    const val cardHeightDp = 144
+    const val imageFrameDp = 92
 }
 
 @Composable
@@ -122,42 +126,57 @@ fun LeagueBadgeShortcut(label: String, index: Int, onClick: () -> Unit) {
         val options = BitmapFactory.Options().apply { inScaled = false }
         BitmapFactory.decodeResource(context.resources, resId, options).asImageBitmap()
     }
+    // Each emblem and title is contained by a single consistent card.
+    // Keep the complete badge within its image frame instead of scaling the
+    // whole atlas tile to the card edges (which clipped labels and rim detail).
     Column(
-        Modifier.width(HomeLeagueBadgeLayout.cardWidthDp.dp).clickable(onClick = onClick),
-        horizontalAlignment = Alignment.CenterHorizontally
+        Modifier.width(HomeLeagueBadgeLayout.cardWidthDp.dp)
+            .height(HomeLeagueBadgeLayout.cardHeightDp.dp)
+            .clip(RoundedCornerShape(16.dp))
+            .background(if (darkHome) Color(0xFF1E1E21) else Color(0xFFF1F3F6))
+            .clickable(onClick = onClick)
+            .padding(horizontal = 5.dp, vertical = 9.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Top
     ) {
-        // Artwork itself is the circular emblem. Do not add a second white
-        // Surface border, which used to look like unwanted concentric rings.
-        Surface(
-            modifier = Modifier.size(HomeLeagueBadgeLayout.diameterDp.dp),
-            shape = CircleShape,
-            color = Color.Transparent
+        Box(
+            Modifier.fillMaxWidth().height(HomeLeagueBadgeLayout.imageFrameDp.dp),
+            contentAlignment = Alignment.Center
         ) {
-            Canvas(Modifier.fillMaxSize().clip(CircleShape)) {
-                val inset = HomeLeagueBadgeLayout.cropInsetFor(index)
-                val tileCrop = HomeLeagueBadgeLayout.cropSizeFor(index)
-                drawImage(
-                    image = atlas,
-                    srcOffset = IntOffset(
-                        (index % 4) * HomeLeagueBadgeLayout.sourceTilePx + inset,
-                        inset
-                    ),
-                    srcSize = IntSize(tileCrop, tileCrop),
-                    dstOffset = IntOffset.Zero,
-                    dstSize = IntSize(size.width.toInt(), size.height.toInt()),
-                    filterQuality = FilterQuality.High
-                )
+            Surface(
+                modifier = Modifier.size(HomeLeagueBadgeLayout.diameterDp.dp),
+                shape = CircleShape,
+                color = Color.Transparent
+            ) {
+                Canvas(Modifier.fillMaxSize().clip(CircleShape)) {
+                    // No aggressive optical zoom. Preserve entire badge and
+                    // its intrinsic round rim for every league.
+                    val inset = HomeLeagueBadgeLayout.cropInsetPx
+                    val tileCrop = HomeLeagueBadgeLayout.cropSizePx
+                    drawImage(
+                        image = atlas,
+                        srcOffset = IntOffset(
+                            (index % 4) * HomeLeagueBadgeLayout.sourceTilePx + inset,
+                            inset
+                        ),
+                        srcSize = IntSize(tileCrop, tileCrop),
+                        dstOffset = IntOffset.Zero,
+                        dstSize = IntSize(size.width.toInt(), size.height.toInt()),
+                        filterQuality = FilterQuality.High
+                    )
+                }
             }
         }
-        Spacer(Modifier.height(8.dp))
+        Spacer(Modifier.height(4.dp))
         Text(
             label, textAlign = TextAlign.Center,
             color = if (darkHome) DarkHomePalette.ink else Palette.text,
-            fontWeight = FontWeight.ExtraBold,
-            fontSize = 11.sp,
-            lineHeight = 15.sp,
+            fontWeight = FontWeight.Bold,
+            fontSize = 10.sp,
+            lineHeight = 13.sp,
             maxLines = 2,
-            overflow = TextOverflow.Ellipsis
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.fillMaxWidth()
         )
     }
 }
