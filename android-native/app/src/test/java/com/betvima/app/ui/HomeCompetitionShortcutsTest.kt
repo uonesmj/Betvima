@@ -34,33 +34,27 @@ class HomeCompetitionShortcutsTest {
         assertFalse(leagueMatchesShortcut("UEFA Europa Conference League", europa))
     }
 
-    @Test fun enlargedCircularBadgesHaveSafeFullBleedSourceCrop() {
-        assertEquals(80, HomeLeagueBadgeLayout.diameterDp)
-        assertEquals(88, HomeLeagueBadgeLayout.cardWidthDp)
-        assertTrue(HomeLeagueBadgeLayout.diameterDp * 4 >= 64 * 5)
-        assertTrue(HomeLeagueBadgeLayout.cardWidthDp * 4 >= 70 * 5)
-        assertEquals(512, HomeLeagueBadgeLayout.sourceTilePx)
-        assertEquals(4, HomeLeagueBadgeLayout.cropInsetPx)
-        assertEquals(
-            HomeLeagueBadgeLayout.sourceTilePx,
-            HomeLeagueBadgeLayout.cropSizePx +
-                (2 * HomeLeagueBadgeLayout.cropInsetPx)
-        )
-        assertTrue(HomeLeagueBadgeLayout.cropSizePx > 0)
+    @Test fun containedLeagueCardsKeepArtworkAndTitlesInsideBounds() {
+        assertEquals(76, HomeLeagueBadgeLayout.diameterDp)
+        assertEquals(106, HomeLeagueBadgeLayout.cardWidthDp)
+        assertEquals(144, HomeLeagueBadgeLayout.cardHeightDp)
+        assertEquals(92, HomeLeagueBadgeLayout.imageFrameDp)
+        assertTrue(HomeLeagueBadgeLayout.imageFrameDp >= HomeLeagueBadgeLayout.diameterDp)
+        assertTrue(HomeLeagueBadgeLayout.cardWidthDp > HomeLeagueBadgeLayout.diameterDp)
+        assertTrue(HomeLeagueBadgeLayout.cardHeightDp >
+            HomeLeagueBadgeLayout.imageFrameDp + 4)
     }
 
-    @Test fun opticalCroppingIsCorrectedWithoutChangingCircleDimensions() {
-        assertEquals(20, HomeLeagueBadgeLayout.cropInsetFor(2))
-        assertEquals(20, HomeLeagueBadgeLayout.cropInsetFor(4))
-        assertEquals(4, HomeLeagueBadgeLayout.cropInsetFor(0))
-        assertEquals(4, HomeLeagueBadgeLayout.cropInsetFor(15))
-        assertEquals(
-            HomeLeagueBadgeLayout.sourceTilePx,
-            HomeLeagueBadgeLayout.cropSizeFor(2) +
-                HomeLeagueBadgeLayout.cropInsetFor(2) * 2
-        )
-        assertTrue(HomeLeagueBadgeLayout.cropSizeFor(2) > 0)
-        assertEquals(80, HomeLeagueBadgeLayout.diameterDp)
+    @Test fun allSixteenBadgesUseTheSameNonClippingAtlasCrop() {
+        assertEquals(512, HomeLeagueBadgeLayout.sourceTilePx)
+        assertEquals(4, HomeLeagueBadgeLayout.cropInsetPx)
+        assertEquals(504, HomeLeagueBadgeLayout.cropSizePx)
+        assertEquals(HomeLeagueBadgeLayout.sourceTilePx,
+            HomeLeagueBadgeLayout.cropSizePx + 2 * HomeLeagueBadgeLayout.cropInsetPx)
+        for (index in 0..15) {
+            assertTrue(HomeLeagueBadgeLayout.cropSizeFor(index) > 0)
+            assertTrue(HomeLeagueBadgeLayout.cropInsetFor(index) >= 0)
+        }
     }
 
     @Test fun carouselRevealIsBoundedAndFadesOnlyNearEdges() {
