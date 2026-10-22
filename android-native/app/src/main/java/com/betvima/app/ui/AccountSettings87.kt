@@ -34,9 +34,9 @@ import org.json.JSONObject
 
 private val ink87=Color(0xFFF6F7FA)
 private val muted87=Color(0xFFB9BEC9)
-private val accent87=Color(0xFF188AFF)
-private val panel87=Color(0xFF222327)
-private val stroke87=Color(0xFF363B43)
+private val accent87=Color(0xFF00D47A)
+private val panel87=Color(0xFF19191C)
+private val stroke87=Color(0xFF2C2D30)
 private fun label87(lang:Lang,en:String,fa:String)=tr(lang,en,fa)
 
 @Composable
@@ -96,7 +96,7 @@ internal fun AccountSettings87(state:AppState,model:AppViewModel) {
     val phone=profile?.str("phone").orEmpty()
     val phoneVerified=profile?.optBoolean("isPhoneVerified",false)?:false
     val lastLogin=profile?.str("lastLoginAt").orEmpty()
-    val bg=when(appearance){"dark"->Color(0xFF0C0D0F);"light"->Color(0xFF191B1F);else->Palette.headerDark}
+    val bg=Color.Black
     fun open(v:String){
         when(v) {
             "password" -> showPassword88=true
@@ -364,8 +364,8 @@ internal fun AccountSettings87(state:AppState,model:AppViewModel) {
                 Modifier.fillMaxWidth()
                     .clip(RoundedCornerShape(22.dp))
                     .background(Brush.linearGradient(listOf(
-                        Color(0xFF18273B), Color(0xFF15191F), Color(0xFF17181D))))
-                    .border(1.dp, Color(0xFF2B4059), RoundedCornerShape(22.dp))
+                        Color(0xFF1C1D20), Color(0xFF171719), Color(0xFF171719))))
+                    .border(1.dp, Color(0xFF36383A), RoundedCornerShape(22.dp))
             ) {
                 Column(Modifier.fillMaxWidth().padding(19.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -373,15 +373,15 @@ internal fun AccountSettings87(state:AppState,model:AppViewModel) {
                         horizontalArrangement = Arrangement.spacedBy(13.dp)) {
                         Box(Modifier.size(49.dp).clip(RoundedCornerShape(15.dp))
                             .background(Brush.linearGradient(listOf(
-                                Color(0xFF164873), Color(0xFF172E48))))
-                            .border(1.dp, Color(0xFF3978A7), RoundedCornerShape(15.dp)),
+                                Color(0xFF292A2C), Color(0xFF232426))))
+                            .border(1.dp, Color(0xFF3A3C3E), RoundedCornerShape(15.dp)),
                             contentAlignment = Alignment.Center) {
                             Icon(Icons.Default.AdminPanelSettings, null,
-                                tint = Color(0xFFA7DCFF), modifier = Modifier.size(27.dp))
+                                tint = Color(0xFFF2F3F4), modifier = Modifier.size(27.dp))
                         }
                         Column(Modifier.weight(1f),
                             verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                            Text("BETVIMA / ACCOUNT", color = Color(0xFF84C7FF),
+                            Text("BETVIMA / ACCOUNT", color = Color(0xFFB9BEC9),
                                 fontSize = 10.sp, fontWeight = FontWeight.Black,
                                 letterSpacing = .8.sp)
                             Text(label87(lang,"Settings & Security","تنظیمات و امنیت"),
@@ -477,11 +477,11 @@ internal fun AccountSettings87(state:AppState,model:AppViewModel) {
             item{
                 OutlinedButton(onClick={model.signOut()},
                     modifier=Modifier.fillMaxWidth().height(55.dp),
-                    border=BorderStroke(1.dp,Color(0xFF944758)),
-                    shape=RoundedCornerShape(18.dp)){
-                    Icon(Icons.Default.Logout,null,tint=Color(0xFFFFA5B1))
+                    border=BorderStroke(1.dp,stroke87),
+                    shape=RoundedCornerShape(24.dp)){
+                    Icon(Icons.Default.Logout,null,tint=ink87)
                     Spacer(Modifier.width(9.dp))
-                    Text(label87(lang,"Sign out","خروج از حساب"),color=Color(0xFFFFA5B1),
+                    Text(label87(lang,"Sign out","خروج از حساب"),color=ink87,
                         fontWeight=FontWeight.Bold)
                 }
             }
@@ -512,95 +512,41 @@ internal fun AccountSettings87(state:AppState,model:AppViewModel) {
     }
 }
 @Composable private fun Group87(title:String,content:@Composable ColumnScope.()->Unit){
-    Column(verticalArrangement=Arrangement.spacedBy(10.dp)) {
-        Row(Modifier.padding(start=9.dp), verticalAlignment=Alignment.CenterVertically,
-            horizontalArrangement=Arrangement.spacedBy(8.dp)) {
-            Box(Modifier.width(3.dp).height(13.dp)
-                .clip(RoundedCornerShape(3.dp)).background(accent87))
-            Text(title,color=Color(0xFF9AC6FF),fontWeight=FontWeight.Black,
-                fontSize=11.sp,letterSpacing=.55.sp)
-        }
-        Surface(
-            modifier=Modifier.fillMaxWidth(),
-            color=panel87,
-            shape=RoundedCornerShape(22.dp),
-            border=BorderStroke(1.dp,stroke87)
-        ) {
-            Column(Modifier.padding(horizontal=15.dp,vertical=4.dp),
-                content=content)
-        }
+    Column(verticalArrangement=Arrangement.spacedBy(8.dp)) {
+        Text(title,modifier=Modifier.padding(start=10.dp,bottom=3.dp),
+            color=Color(0xFFBCBEC2),fontWeight=FontWeight.Black,
+            fontSize=11.sp,letterSpacing=.5.sp)
+        Column(Modifier.fillMaxWidth(),
+            verticalArrangement=Arrangement.spacedBy(8.dp),content=content)
     }
 }
 
 @Composable private fun Tile87(icon:ImageVector,title:String,subtitle:String,
     suffix:String,onClick:()->Unit){
-    val tileTint=when(icon){
-        Icons.Default.VerifiedUser, Icons.Default.Security,
-        Icons.Default.AdminPanelSettings, Icons.Default.SupportAgent ->
-            Color(0xFF6EDCC4)
-        Icons.Default.NotificationsActive, Icons.Default.Language,
-        Icons.Default.Palette, Icons.Default.WifiTethering ->
-            Color(0xFF86BDFF)
-        Icons.Default.Key, Icons.Default.Pin,
-        Icons.Default.History -> Color(0xFFA5B9FF)
-        Icons.Default.QrCode2, Icons.Default.Share ->
-            Color(0xFF91D8F7)
-        else -> Color(0xFF9AC6FF)
-    }
-    val shape=RoundedCornerShape(14.dp)
-    Column {
-        Row(
-            Modifier.fillMaxWidth()
-                .clickable(onClick=onClick)
-                .heightIn(min=75.dp)
-                .padding(vertical=11.dp),
-            verticalAlignment=Alignment.CenterVertically
-        ) {
-            Box(
-                Modifier.size(46.dp)
-                    .clip(shape)
-                    .background(Brush.linearGradient(listOf(
-                        tileTint.copy(alpha=.23f),
-                        Color(0xFF2A303C))))
-                    .border(1.dp,tileTint.copy(alpha=.30f),shape),
-                contentAlignment=Alignment.Center
-            ){
-                Icon(icon,null,tint=tileTint,
-                    modifier=Modifier.size(23.dp))
-                Box(Modifier.align(Alignment.TopEnd).padding(6.dp)
-                    .size(5.dp).clip(RoundedCornerShape(4.dp))
-                    .background(tileTint.copy(alpha=.75f)))
-            }
-            Spacer(Modifier.width(13.dp))
-            Column(Modifier.weight(1f),
-                verticalArrangement=Arrangement.spacedBy(5.dp)) {
-                Text(title,color=ink87,fontSize=14.sp,
-                    fontWeight=FontWeight.SemiBold,lineHeight=19.sp,
-                    maxLines=2,overflow=TextOverflow.Ellipsis)
-                Text(subtitle,color=muted87,fontSize=11.5.sp,
-                    fontWeight=FontWeight.Normal,lineHeight=17.sp,
-                    maxLines=2,overflow=TextOverflow.Ellipsis)
-            }
-            Spacer(Modifier.width(6.dp))
-            Surface(
-                modifier=Modifier.size(31.dp),
-                color=Color(0xFF2B333D),
-                shape=RoundedCornerShape(10.dp),
-                border=BorderStroke(1.dp,Color(0xFF3A4653))
-            ) {
-                Box(contentAlignment=Alignment.Center) {
-                    Icon(if(suffix=="copy")Icons.Default.ContentCopy
-                        else if(suffix=="edit")Icons.Default.Edit
-                        else Icons.Default.ChevronRight,
-                        null,tint=tileTint,modifier=Modifier.size(17.dp))
-                }
-            }
+    val shape=RoundedCornerShape(24.dp)
+    Row(
+        Modifier.fillMaxWidth().clip(shape).background(panel87)
+            .border(1.dp,stroke87,shape).clickable(onClick=onClick)
+            .heightIn(min=73.dp).padding(horizontal=14.dp,vertical=9.dp),
+        verticalAlignment=Alignment.CenterVertically
+    ) {
+        Box(Modifier.size(41.dp).clip(RoundedCornerShape(13.dp))
+            .background(Color(0xFF29292C)),
+            contentAlignment=Alignment.Center){
+            Icon(icon,null,tint=Color(0xFFE8E9EA),modifier=Modifier.size(21.dp))
         }
-        HorizontalDivider(
-            modifier=Modifier.padding(start=59.dp),
-            color=Color(0xFF393C44).copy(alpha=.70f),
-            thickness=.6.dp
-        )
+        Spacer(Modifier.width(13.dp))
+        Column(Modifier.weight(1f),
+            verticalArrangement=Arrangement.spacedBy(3.dp)){
+            Text(title,color=ink87,fontSize=13.sp,fontWeight=FontWeight.Bold,
+                maxLines=2,overflow=TextOverflow.Ellipsis)
+            Text(subtitle,color=muted87,fontSize=10.sp,maxLines=2,
+                overflow=TextOverflow.Ellipsis)
+        }
+        Icon(if(suffix=="copy") Icons.Default.ContentCopy
+            else if(suffix=="edit") Icons.Default.Edit
+            else Icons.Default.ChevronRight,
+            null,tint=Color(0xFF999BA0),modifier=Modifier.size(20.dp))
     }
 }
 private fun createQr87(link:String):android.graphics.Bitmap?=runCatching{
