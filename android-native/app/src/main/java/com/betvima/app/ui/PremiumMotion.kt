@@ -51,86 +51,46 @@ import androidx.compose.ui.unit.sp
  */
 @Composable
 fun PremiumLoadingOverlay(visible: Boolean, lang: Lang) {
-    AnimatedVisibility(visible = visible,
-        enter = EnterTransition.None, exit = fadeOut(tween(330))) {
+    AnimatedVisibility(
+        visible = visible,
+        enter = EnterTransition.None,
+        exit = fadeOut(tween(260))
+    ) {
         val context = LocalContext.current
         val motionEnabled = remember(context) {
             runCatching {
-                Settings.Global.getFloat(context.contentResolver,
-                    Settings.Global.ANIMATOR_DURATION_SCALE, 1f) > 0f
+                Settings.Global.getFloat(
+                    context.contentResolver,
+                    Settings.Global.ANIMATOR_DURATION_SCALE, 1f
+                ) > 0f
             }.getOrDefault(true)
         }
-        val animation = rememberInfiniteTransition(label = "betvimaLuxuryLoader")
-        val rotation by animation.animateFloat(
-            initialValue = 0f, targetValue = if (motionEnabled) 360f else 0f,
+        val movement = rememberInfiniteTransition(label = "betvimaWatermarkBounce")
+        val verticalBounce by movement.animateFloat(
+            initialValue = -8f,
+            targetValue = 8f,
             animationSpec = infiniteRepeatable(
-                tween(if (motionEnabled) 2100 else 100000, easing = LinearEasing)),
-            label = "orbitRotation")
-        val breathe by animation.animateFloat(
-            initialValue = .55f, targetValue = if (motionEnabled) 1f else .75f,
-            animationSpec = infiniteRepeatable(
-                tween(if (motionEnabled) 1250 else 100000, easing = FastOutSlowInEasing),
-                repeatMode = androidx.compose.animation.core.RepeatMode.Reverse),
-            label = "logoBreathing")
+                animation = tween(1150, easing = FastOutSlowInEasing),
+                repeatMode = androidx.compose.animation.core.RepeatMode.Reverse
+            ),
+            label = "watermarkVerticalPosition"
+        )
         Box(
-            Modifier.fillMaxSize().background(Color.Black),
+            modifier = Modifier.fillMaxSize().background(Color.Black),
             contentAlignment = Alignment.Center
         ) {
-            // Native splash and this loader share the exact same centre.
-            // No entrance fade: the first Compose frame fully covers app content.
-            Box(Modifier.size(180.dp).align(Alignment.Center),
-                contentAlignment = Alignment.Center) {
-                    Canvas(Modifier.fillMaxSize()) {
-                        val centerRadius = size.minDimension * .35f
-                        drawCircle(
-                            brush = Brush.radialGradient(listOf(
-                                Palette.green.copy(alpha = .19f * breathe),
-                                Palette.blue.copy(alpha = .05f), Color.Transparent)),
-                            radius = size.minDimension / 2f)
-                        drawCircle(Color.White.copy(alpha = .09f),
-                            radius = centerRadius,
-                            style = Stroke(width = 1.5.dp.toPx()))
-                        drawCircle(Palette.green.copy(alpha = .15f),
-                            radius = centerRadius * .72f,
-                            style = Stroke(width = 2.dp.toPx()))
-                        rotate(rotation) {
-                            drawArc(Palette.green, startAngle = -90f,
-                                sweepAngle = 104f, useCenter = false,
-                                topLeft = androidx.compose.ui.geometry.Offset(
-                                    center.x - centerRadius, center.y - centerRadius),
-                                size = androidx.compose.ui.geometry.Size(
-                                    centerRadius * 2f, centerRadius * 2f),
-                                style = Stroke(width = 4.dp.toPx(), cap = StrokeCap.Round))
-                        }
-                        rotate(-rotation * .7f) {
-                            val smallRadius = centerRadius * .75f
-                            drawArc(Palette.blue, startAngle = 35f, sweepAngle = 84f,
-                                useCenter = false,
-                                topLeft = androidx.compose.ui.geometry.Offset(
-                                    center.x - smallRadius, center.y - smallRadius),
-                                size = androidx.compose.ui.geometry.Size(
-                                    smallRadius * 2f, smallRadius * 2f),
-                                style = Stroke(width = 3.dp.toPx(), cap = StrokeCap.Round))
-                        }
-                    }
-                    CasinoBrandMark(size = 72.dp)
-            }
-            Column(
-                modifier = Modifier.align(Alignment.Center).offset(y = 155.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Text("BETVIMA", fontSize = 31.sp, fontWeight = FontWeight.Black,
-                    color = Color.White, letterSpacing = 5.sp)
-                Spacer(Modifier.height(9.dp))
-                Box(Modifier.width(76.dp).height(3.dp)
-                    .clip(RoundedCornerShape(50))
-                    .background(Brush.horizontalGradient(listOf(
-                        Palette.blue, Palette.green, Palette.blue))))
-                Spacer(Modifier.height(22.dp))
-                Text(tr(lang, "THE GAME. ELEVATED.", "تجربه‌ای فراتر از بازی"),
-                    color = Color(0xFFB2C3CF), fontSize = 11.sp,
-                    letterSpacing = 1.sp, textAlign = TextAlign.Center)
-            }
+            // Exactly one subdued BetVima wordmark. No BV icon, orbit,
+            // second caption, glow, progress bar, or duplicate watermark.
+            Text(
+                text = "BetVima",
+                color = Color(0xFF73777F).copy(alpha = .28f),
+                fontSize = 31.sp,
+                fontWeight = FontWeight.Black,
+                letterSpacing = -.5.sp,
+                modifier = Modifier.offset(
+                    y = if (motionEnabled) verticalBounce.dp else 0.dp
+                )
+            )
         }
     }
 }
