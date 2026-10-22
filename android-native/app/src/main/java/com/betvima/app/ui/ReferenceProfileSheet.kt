@@ -40,7 +40,7 @@ internal fun profileQuickDestinations(): List<ProfileQuickDestination> =
     ProfileQuickDestination.entries.toList()
 
 private object ProfileStyle161 {
-    val canvas=Color(0xFF101012)
+    val canvas=Color.Black
     val surface=Color(0xFF212124)
     val border=Color(0xFF36383A)
     val text=Color(0xFFF7F8F8)
@@ -150,13 +150,13 @@ fun ReferenceProfileSheet(state: AppState, model: AppViewModel, onClose: () -> U
                     Modifier.fillMaxWidth().height(if(compressed)126.dp else 144.dp)
                         .clip(RoundedCornerShape(21.dp))
                         .background(Brush.linearGradient(
-                            listOf(Color(0xFF1B4132),Color(0xFF1C2725),Color(0xFF212225))))
-                        .border(1.dp,Color(0xFF385345),RoundedCornerShape(21.dp))
+                            listOf(Color(0xFF1A1C1D),Color(0xFF111314),Color(0xFF1C1D1F))))
+                        .border(1.dp,Color(0xFF353739),RoundedCornerShape(21.dp))
                 ) {
                     Box(
                         Modifier.align(Alignment.TopEnd).offset(x=36.dp,y=(-52).dp)
                             .size(155.dp).background(
-                                Color(0xFF56DEA2).copy(alpha=.065f),CircleShape))
+                                Color.White.copy(alpha=.018f),CircleShape))
                     Column(Modifier.fillMaxSize().padding(
                         horizontal=17.dp,vertical=if(compressed)11.dp else 15.dp),
                         verticalArrangement=Arrangement.SpaceBetween
@@ -214,28 +214,21 @@ fun ReferenceProfileSheet(state: AppState, model: AppViewModel, onClose: () -> U
                 }
                 Spacer(Modifier.height(if(compressed)6.dp else 9.dp))
 
-                // Each row shares the remaining height. Nothing vertically scrolls,
-                // and sign out is always pinned to the bottom of the sheet.
+                // Six independent, curved black rows. Each one uses equal
+                // remaining height, so the page itself never needs scrolling.
                 Column(
                     Modifier.fillMaxWidth().weight(1f),
                     verticalArrangement=Arrangement.spacedBy(8.dp)
                 ) {
-                    profileQuickDestinations().chunked(2).forEach { row ->
-                        Row(
-                            Modifier.fillMaxWidth().weight(1f),
-                            horizontalArrangement=Arrangement.spacedBy(8.dp)
-                        ) {
-                            row.forEach { destination ->
-                                val tint=profileQuickTint161(destination)
-                                ProfileQuickTile161(
-                                    destination=destination,lang=state.lang,
-                                    compact=compressed,
-                                    tint=tint,
-                                    modifier=Modifier.weight(1f).fillMaxHeight(),
-                                    onClick={navigate(destination)}
-                                )
-                            }
-                        }
+                    profileQuickDestinations().forEach { destination ->
+                        ProfileQuickTile161(
+                            destination=destination,
+                            lang=state.lang,
+                            compact=compressed,
+                            tint=ProfileStyle161.text,
+                            modifier=Modifier.fillMaxWidth().weight(1f),
+                            onClick={navigate(destination)}
+                        )
                     }
                 }
                 Spacer(Modifier.height(gap))
@@ -244,31 +237,22 @@ fun ReferenceProfileSheet(state: AppState, model: AppViewModel, onClose: () -> U
                         .height(if(compressed)43.dp else 48.dp)
                         .clickable { onClose();model.signOut() },
                     shape=RoundedCornerShape(13.dp),
-                    color=Color(0xFF2B2025),
-                    border=BorderStroke(1.dp,Color(0xFF613A44))
+                    color=Color(0xFF18181A),
+                    border=BorderStroke(1.dp,Color(0xFF36383A))
                 ) {
                     Row(Modifier.fillMaxSize(),verticalAlignment=Alignment.CenterVertically,
                         horizontalArrangement=Arrangement.Center) {
-                        Icon(Icons.Default.Logout,null,tint=ProfileStyle161.red,
+                        Icon(Icons.Default.Logout,null,tint=ProfileStyle161.text,
                             modifier=Modifier.size(18.dp))
                         Spacer(Modifier.width(8.dp))
                         Text(tr(state.lang,"Sign out","خروج از حساب"),
-                            color=ProfileStyle161.red,fontWeight=FontWeight.Bold,
+                            color=ProfileStyle161.text,fontWeight=FontWeight.Bold,
                             fontSize=12.sp)
                     }
                 }
             }
         }
     }
-}
-
-private fun profileQuickTint161(destination:ProfileQuickDestination):Color=when(destination) {
-    ProfileQuickDestination.BONUSES -> Color(0xFFFFBD74)
-    ProfileQuickDestination.VIP -> Color(0xFFF4D37A)
-    ProfileQuickDestination.BET_HISTORY -> Color(0xFF84BFFF)
-    ProfileQuickDestination.TRANSACTIONS -> Color(0xFF63DBB1)
-    ProfileQuickDestination.SETTINGS -> Color(0xFFB7A2F8)
-    ProfileQuickDestination.SUPPORT -> Color(0xFF76D5ED)
 }
 
 @Composable
@@ -304,42 +288,36 @@ private fun ProfileQuickTile161(
         ProfileQuickDestination.SETTINGS -> tr(lang,"Privacy & security","حریم خصوصی و امنیت")
         ProfileQuickDestination.SUPPORT -> tr(lang,"Tickets & replies","تیکت‌ها و پاسخ‌ها")
     }
-    Box(
-        modifier.clip(RoundedCornerShape(18.dp))
-            .background(Brush.linearGradient(
-                listOf(tint.copy(alpha=.15f).compositeOver(ProfileStyle161.surface),
-                    ProfileStyle161.surface)))
-            .border(1.dp,tint.copy(alpha=.21f),RoundedCornerShape(18.dp))
+    Row(
+        modifier
+            .clip(RoundedCornerShape(24.dp))
+            .background(Color(0xFF19191C))
+            .border(1.dp,Color(0xFF2C2D30),RoundedCornerShape(24.dp))
             .clickable(onClick=onClick)
+            .padding(horizontal=14.dp,vertical=5.dp),
+        verticalAlignment=Alignment.CenterVertically
     ) {
-        Box(Modifier.align(Alignment.TopEnd).offset(x=26.dp,y=(-33).dp)
-            .size(100.dp).background(tint.copy(alpha=.075f),CircleShape))
-        Column(
-            Modifier.fillMaxSize().padding(
-                horizontal=if(compact)11.dp else 13.dp,
-                vertical=if(compact)9.dp else 12.dp),
-            verticalArrangement=Arrangement.SpaceBetween
+        Box(
+            Modifier.size(if(compact)35.dp else 42.dp)
+                .clip(RoundedCornerShape(13.dp))
+                .background(Color(0xFF29292C)),
+            contentAlignment=Alignment.Center
         ) {
-            Row(verticalAlignment=Alignment.CenterVertically) {
-                Surface(color=tint.copy(alpha=.16f),
-                    shape=RoundedCornerShape(11.dp)) {
-                    Icon(icon,null,tint=tint,
-                        modifier=Modifier.padding(if(compact)7.dp else 9.dp)
-                            .size(if(compact)18.dp else 21.dp))
-                }
-                Spacer(Modifier.weight(1f))
-                Icon(Icons.Default.ArrowOutward,null,
-                    tint=tint.copy(alpha=.8f),
-                    modifier=Modifier.size(15.dp))
-            }
-            Column(verticalArrangement=Arrangement.spacedBy(2.dp)) {
-                Text(name,color=ProfileStyle161.text,
-                    fontSize=if(compact)11.sp else 12.sp,
-                    fontWeight=FontWeight.Black,
-                    maxLines=1,overflow=TextOverflow.Ellipsis)
-                if(!compact) Text(subtitle,color=ProfileStyle161.muted,
-                    fontSize=9.sp,maxLines=1,overflow=TextOverflow.Ellipsis)
-            }
+            Icon(icon,null,tint=Color(0xFFE8E9EA),
+                modifier=Modifier.size(if(compact)19.dp else 22.dp))
         }
+        Spacer(Modifier.width(13.dp))
+        Column(Modifier.weight(1f),
+            verticalArrangement=Arrangement.Center) {
+            Text(name,color=ProfileStyle161.text,
+                fontSize=if(compact)12.sp else 13.sp,
+                fontWeight=FontWeight.Bold,maxLines=1,
+                overflow=TextOverflow.Ellipsis)
+            Text(subtitle,color=ProfileStyle161.muted,
+                fontSize=if(compact)9.sp else 10.sp,
+                maxLines=1,overflow=TextOverflow.Ellipsis)
+        }
+        Icon(Icons.Default.ChevronRight,null,
+            tint=Color(0xFF999BA0),modifier=Modifier.size(19.dp))
     }
 }
