@@ -182,7 +182,7 @@ export class PostgresAdminRepository implements AdminRepository {
         lastOddsSyncAt: toIsoOrNull(row?.last_odds_at),
         lastSettlementAt: toIsoOrNull(row?.last_settlement_at),
       },
-    };
+    } as DashboardMetrics & { financialCoverage: { currency: 'USD'; excludedCurrencies: string[]; complete: boolean } };
   }
 
   async auditLog(filter: AuditFilter): Promise<Paginated<AuditLogEntry>> {
