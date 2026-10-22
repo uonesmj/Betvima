@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { logger } from '@/server/logger';
 import { withErrorHandling, jsonOk } from '@/lib/errors';
 import { withAdmin } from '@/server/http/guard';
 import { searchParams } from '@/server/http/request';
@@ -8,14 +9,24 @@ import type { ProviderStatus } from '@/lib/ports/providers';
 export const dynamic = 'force-dynamic';
 
 export const GET = withErrorHandling('admin.dashboard', async (ctx, request: Request) => {
+  const startedAt = Date.now();
   const { services } = await withAdmin(request, ctx, 'dashboard.view');
+  logger.info('admin.dashboard.stage', { stage: 'authorization', durationMs: Date.now() - startedAt, correlationId: ctx.correlationId });
   const window = z.enum(['24h', '7d', '30d']).catch('24h').parse(searchParams(request).get('window') ?? '24h');
   const degraded: DegradedSection[] = [];
+  const timed = async <T>(stage: string, operation: () => Promise<T>): Promise<T> => {
+    const stageStartedAt = Date.now();
+    try {
+      return await operation();
+    } finally {
+      logger.info('admin.dashboard.stage', { stage, durationMs: Date.now() - stageStartedAt, correlationId: ctx.correlationId });
+    }
+  };
   const [metrics, jobStats, heartbeats, providers] = await Promise.all([
-    services.admin.dashboard(window),
-    section('job_stats', degraded, () => services.admin.jobStats(), [], ctx.correlationId),
-    section('worker_heartbeats', degraded, () => services.admin.workerHeartbeats(), [], ctx.correlationId),
-    services.providers.statuses(),
+    timed('metrics', () => services.admin.dashboard(window)),
+    timed('job_stats', () => section('job_stats', degraded, () => services.admin.jobStats(), [], ctx.correlationId)),
+    timed('worker_heartbeats', () => section('worker_heartbeats', degraded, () => services.admin.workerHeartbeats(), [], ctx.correlationId)),
+    timed('provider_statuses', () => services.providers.statuses()),
   ]);
   const coverage = (metrics as typeof metrics & { financialCoverage?: { complete: boolean; excludedCurrencies: string[] } }).financialCoverage;
   if (coverage && !coverage.complete) {
