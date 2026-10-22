@@ -11,11 +11,6 @@ import {
 
 import { serverEnv } from '@/server/env';
 import {
-  convertSignedNativeMinorToUsdMinor,
-  getEurRate,
-  getGbpRate,
-  getUsdSellRate,
-} from '@/server/providers/navasan/client';
 import { ROLE_LABELS, permissionsForRole } from '@/server/auth/rbac';
 import { type Row, toBig, toBool, toIso, toIsoOrNull, toJson, toNum, toNumOrNull, toStr, toStrOrNull } from '@/server/db/rows';
 
@@ -30,97 +25,23 @@ export class PostgresAdminRepository implements AdminRepository {
       amount_minor?: unknown;
     };
 
-    // Share FX lookups within this dashboard request. Failed lookups remain failures;
-    // no fabricated exchange rate is used for financial totals.
-    const fxRates = {
-      usd: undefined as ReturnType<typeof getUsdSellRate> | undefined,
-      eur: undefined as ReturnType<typeof getEurRate> | undefined,
-      gbp: undefined as ReturnType<typeof getGbpRate> | undefined,
-    };
-    const usdRateOnce = () => (fxRates.usd ??= getUsdSellRate());
-    const eurRateOnce = () => (fxRates.eur ??= getEurRate());
-    const gbpRateOnce = () => (fxRates.gbp ??= getGbpRate());
-
-    const aggregateByCurrency = async (
-      sql: string,
-    ): Promise<bigint> => {
+    // The dashboard is denominated in USD minor units. Never convert other
+    // currencies with an expired FX provider or silently treat them as USD.
+    // Excluded currencies are explicitly reported to the API consumer.
+    const excludedCurrencies = new Set<string>();
+    const aggregateByCurrency = async (sql: string): Promise<bigint> => {
       const rows = await this.db.query<Row>(sql) as CurrencyAmountRow[];
-
-      if (!rows.length) return 0n;
-
-      const currencies = new Set(
-        rows
-          .map((r) => String(r.currency ?? '').trim().toUpperCase())
-          .filter(Boolean),
-      );
-
-      const usdRatePromise = currencies.has('IRT') || currencies.has('IRR')
-        ? usdRateOnce()
-        : Promise.resolve(null);
-      const eurRatePromise = currencies.has('EUR') ? eurRateOnce() : Promise.resolve(null);
-      const gbpRatePromise = currencies.has('GBP') ? gbpRateOnce() : Promise.resolve(null);
-
-      const [usdRate, eurRate, gbpRate] = await Promise.all([
-        usdRatePromise,
-        eurRatePromise,
-        gbpRatePromise,
-      ]);
-
-      if ((currencies.has('IRT') || currencies.has('IRR')) && !usdRate) {
-        throw new Error('ADMIN_USD_IRR_RATE_UNAVAILABLE');
-      }
-      if (currencies.has('EUR') && !eurRate) {
-        throw new Error('ADMIN_EUR_RATE_UNAVAILABLE');
-      }
-      if (currencies.has('GBP') && !gbpRate) {
-        throw new Error('ADMIN_GBP_RATE_UNAVAILABLE');
-      }
-
       let totalUsdMinor = 0n;
-
       for (const row of rows) {
         const currency = String(row.currency ?? '').trim().toUpperCase();
         if (!currency) continue;
-
         const amount = toBig(row.amount_minor);
-
         if (currency === 'USD') {
           totalUsdMinor += amount;
-          continue;
+        } else if (amount !== 0n) {
+          excludedCurrencies.add(currency);
         }
-
-        if (currency === 'IRT' || currency === 'IRR') {
-          totalUsdMinor += convertSignedNativeMinorToUsdMinor(
-            amount,
-            currency,
-            usdRate!.value,
-          );
-          continue;
-        }
-
-        if (currency === 'EUR') {
-          totalUsdMinor += convertSignedNativeMinorToUsdMinor(
-            amount,
-            currency,
-            usdRate?.value ?? '',
-            eurRate!.value,
-          );
-          continue;
-        }
-
-        if (currency === 'GBP') {
-          totalUsdMinor += convertSignedNativeMinorToUsdMinor(
-            amount,
-            currency,
-            usdRate?.value ?? '',
-            gbpRate!.value,
-          );
-          continue;
-        }
-
-        throw new Error(`ADMIN_UNSUPPORTED_CURRENCY:${currency}`);
       }
-
       return totalUsdMinor;
     };
 
@@ -213,6 +134,11 @@ export class PostgresAdminRepository implements AdminRepository {
     const ggr = stake - payout;
 
     return {
+      financialCoverage: {
+        currency: 'USD' as const,
+        excludedCurrencies: [...excludedCurrencies].sort(),
+        complete: excludedCurrencies.size === 0,
+      },
       generatedAt: new Date().toISOString(),
       window,
       users: {
