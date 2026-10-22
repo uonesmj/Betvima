@@ -30,6 +30,17 @@ export class PostgresAdminRepository implements AdminRepository {
       amount_minor?: unknown;
     };
 
+    // Share FX lookups within this dashboard request. Failed lookups remain failures;
+    // no fabricated exchange rate is used for financial totals.
+    const fxRates = {
+      usd: undefined as ReturnType<typeof getUsdSellRate> | undefined,
+      eur: undefined as ReturnType<typeof getEurRate> | undefined,
+      gbp: undefined as ReturnType<typeof getGbpRate> | undefined,
+    };
+    const usdRateOnce = () => (fxRates.usd ??= getUsdSellRate());
+    const eurRateOnce = () => (fxRates.eur ??= getEurRate());
+    const gbpRateOnce = () => (fxRates.gbp ??= getGbpRate());
+
     const aggregateByCurrency = async (
       sql: string,
     ): Promise<bigint> => {
@@ -44,10 +55,10 @@ export class PostgresAdminRepository implements AdminRepository {
       );
 
       const usdRatePromise = currencies.has('USD') || currencies.has('IRT') || currencies.has('IRR')
-        ? getUsdSellRate()
+        ? usdRateOnce()
         : Promise.resolve(null);
-      const eurRatePromise = currencies.has('EUR') ? getEurRate() : Promise.resolve(null);
-      const gbpRatePromise = currencies.has('GBP') ? getGbpRate() : Promise.resolve(null);
+      const eurRatePromise = currencies.has('EUR') ? eurRateOnce() : Promise.resolve(null);
+      const gbpRatePromise = currencies.has('GBP') ? gbpRateOnce() : Promise.resolve(null);
 
       const [usdRate, eurRate, gbpRate] = await Promise.all([
         usdRatePromise,
@@ -135,74 +146,72 @@ export class PostgresAdminRepository implements AdminRepository {
         (select max(settled_at) from nova.bets) as last_settlement_at`,
     );
 
-    const stake = await aggregateByCurrency(
-      `select currency::text as currency, coalesce(sum(stake_minor),0) as amount_minor
-         from nova.bets
-        where placed_at > now() - interval '${interval}'
-          and status <> 'rejected'
-        group by currency`,
-    );
-
-    const payout = await aggregateByCurrency(
-      `select currency::text as currency, coalesce(sum(payout_minor),0) as amount_minor
-         from nova.bets
-        where settled_at > now() - interval '${interval}'
-        group by currency`,
-    );
-
-    const openLiability = await aggregateByCurrency(
-      `select currency::text as currency, coalesce(sum(potential_payout_minor),0) as amount_minor
-         from nova.bets
-        where status in ('accepted','partially_settled')
-        group by currency`,
-    );
-
-    const deposits = await aggregateByCurrency(
-      `select currency::text as currency, coalesce(sum(amount_minor),0) as amount_minor
-         from nova.payment_transactions
-        where type = 'deposit'
-          and status = 'succeeded'
-          and completed_at > now() - interval '${interval}'
-        group by currency`,
-    );
-
-    const withdrawals = await aggregateByCurrency(
-      `select currency::text as currency, coalesce(sum(amount_minor),0) as amount_minor
-         from nova.payment_transactions
-        where type = 'withdrawal'
-          and status in ('succeeded','requires_action','pending')
-          and created_at > now() - interval '${interval}'
-        group by currency`,
-    );
-
-    const walletLiability = await aggregateByCurrency(
-      `select currency::text as currency, coalesce(sum(balance_minor),0) as amount_minor
-         from nova.wallets
-        group by currency`,
-    );
-
-    const pendingPayoutAmount = await aggregateByCurrency(
-      `select currency::text as currency, coalesce(sum(amount_minor),0) as amount_minor
-         from nova.affiliate_payouts
-        where status in ('pending','eligible','approved','processing','manual_review')
-        group by currency`,
-    );
-
-    const commission = await aggregateByCurrency(
-      `select currency::text as currency, coalesce(sum(amount_minor),0) as amount_minor
-         from nova.affiliate_ledger
-        where type in ('user_loss_commission','adjustment')
-          and created_at > now() - interval '${interval}'
-        group by currency`,
-    );
-
-    const payable = await aggregateByCurrency(
-      `select currency::text as currency, coalesce(sum(payable_minor),0) as amount_minor
-         from nova.affiliate_settlements
-        where status <> 'skipped'
-        group by currency`,
-    );
-
+    const [stake, payout, openLiability] = await Promise.all([
+      aggregateByCurrency(
+            `select currency::text as currency, coalesce(sum(stake_minor),0) as amount_minor
+               from nova.bets
+              where placed_at > now() - interval '${interval}'
+                and status <> 'rejected'
+              group by currency`,
+          ),
+      aggregateByCurrency(
+            `select currency::text as currency, coalesce(sum(payout_minor),0) as amount_minor
+               from nova.bets
+              where settled_at > now() - interval '${interval}'
+              group by currency`,
+          ),
+      aggregateByCurrency(
+            `select currency::text as currency, coalesce(sum(potential_payout_minor),0) as amount_minor
+               from nova.bets
+              where status in ('accepted','partially_settled')
+              group by currency`,
+          ),
+    ]);
+    const [deposits, withdrawals, walletLiability] = await Promise.all([
+      aggregateByCurrency(
+            `select currency::text as currency, coalesce(sum(amount_minor),0) as amount_minor
+               from nova.payment_transactions
+              where type = 'deposit'
+                and status = 'succeeded'
+                and completed_at > now() - interval '${interval}'
+              group by currency`,
+          ),
+      aggregateByCurrency(
+            `select currency::text as currency, coalesce(sum(amount_minor),0) as amount_minor
+               from nova.payment_transactions
+              where type = 'withdrawal'
+                and status in ('succeeded','requires_action','pending')
+                and created_at > now() - interval '${interval}'
+              group by currency`,
+          ),
+      aggregateByCurrency(
+            `select currency::text as currency, coalesce(sum(balance_minor),0) as amount_minor
+               from nova.wallets
+              group by currency`,
+          ),
+    ]);
+    const [pendingPayoutAmount, commission, payable] = await Promise.all([
+      aggregateByCurrency(
+            `select currency::text as currency, coalesce(sum(amount_minor),0) as amount_minor
+               from nova.affiliate_payouts
+              where status in ('pending','eligible','approved','processing','manual_review')
+              group by currency`,
+          ),
+      aggregateByCurrency(
+            `select currency::text as currency, coalesce(sum(amount_minor),0) as amount_minor
+               from nova.affiliate_ledger
+              where type in ('user_loss_commission','adjustment')
+                and created_at > now() - interval '${interval}'
+              group by currency`,
+          ),
+      aggregateByCurrency(
+            `select currency::text as currency, coalesce(sum(payable_minor),0) as amount_minor
+               from nova.affiliate_settlements
+              where status <> 'skipped'
+              group by currency`,
+          );
+          ),
+    ]);
     const env = serverEnv();
     const betsCount = toNum(row?.bets_count);
     const ggr = stake - payout;
