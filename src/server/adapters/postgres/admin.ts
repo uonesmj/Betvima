@@ -54,7 +54,7 @@ export class PostgresAdminRepository implements AdminRepository {
           .filter(Boolean),
       );
 
-      const usdRatePromise = currencies.has('USD') || currencies.has('IRT') || currencies.has('IRR')
+      const usdRatePromise = currencies.has('IRT') || currencies.has('IRR')
         ? usdRateOnce()
         : Promise.resolve(null);
       const eurRatePromise = currencies.has('EUR') ? eurRateOnce() : Promise.resolve(null);
@@ -66,9 +66,6 @@ export class PostgresAdminRepository implements AdminRepository {
         gbpRatePromise,
       ]);
 
-      if (currencies.has('USD') && !usdRate) {
-        throw new Error('ADMIN_USD_RATE_UNAVAILABLE');
-      }
       if ((currencies.has('IRT') || currencies.has('IRR')) && !usdRate) {
         throw new Error('ADMIN_USD_IRR_RATE_UNAVAILABLE');
       }
