@@ -73,9 +73,7 @@ fun PremiumLoadingOverlay(visible: Boolean, lang: Lang) {
                 repeatMode = androidx.compose.animation.core.RepeatMode.Reverse),
             label = "logoBreathing")
         Box(
-            Modifier.fillMaxSize().background(
-                Brush.verticalGradient(listOf(Color(0xFF060D16),
-                    Color(0xFF060D16), Color(0xFF060D16)))),
+            Modifier.fillMaxSize().background(Color.Black),
             contentAlignment = Alignment.Center
         ) {
             // Native splash and this loader share the exact same centre.
