@@ -209,7 +209,6 @@ export class PostgresAdminRepository implements AdminRepository {
                from nova.affiliate_settlements
               where status <> 'skipped'
               group by currency`,
-          );
           ),
     ]);
     const env = serverEnv();
