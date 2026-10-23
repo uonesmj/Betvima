@@ -10,7 +10,7 @@ TRANS = re.compile(r'\b(?:tr|label87|infoText|tr87|labelFor|localized)\(\s*[^,()
 DIRECT = re.compile(r'\bText\(\s*(?:(?:text|value)\s*=\s*)?' + QUOTED)
 KEY = re.compile(QUOTED + r'\s+to\s+')
 latin = re.compile(r'[A-Za-z]{2}')
-FILES = sorted(ROOT.glob("*.kt"))
+FILES = sorted(ROOT.rglob("*.kt"))
 def unescape(x):
     return x.replace(r'\\n', '\\n').replace(r'\\"', '"')
 results = {}
@@ -25,6 +25,12 @@ armenian=set(unescape(m.group(1)) for m in KEY.finditer((ROOT/"Armenian172.kt").
 arabic=set()
 for f in ROOT.glob("ArabicTranslations175*.kt"):
     arabic |= set(unescape(m.group(1)) for m in KEY.finditer(f.read_text()))
+for f in (ROOT / "NativeTranslations176").glob("NativeTr176Part*.kt"):
+    turkish |= set(unescape(m.group(1)) for m in KEY.finditer(f.read_text(encoding="utf-8")))
+for f in (ROOT / "NativeTranslations176").glob("NativeHy176Part*.kt"):
+    armenian |= set(unescape(m.group(1)) for m in KEY.finditer(f.read_text(encoding="utf-8")))
+for f in (ROOT / "NativeTranslations176").glob("NativeAr176Part*.kt"):
+    arabic |= set(unescape(m.group(1)) for m in KEY.finditer(f.read_text(encoding="utf-8")))
 all_keys={k for r in results.values() for k in r["tr"]}
 all_direct={k for r in results.values() for k in r["direct"]}
 out={
@@ -51,3 +57,5 @@ path=pathlib.Path("native-localization-audit.json")
 path.write_text(json.dumps(out, ensure_ascii=False, indent=2),encoding="utf-8")
 print(json.dumps(out["summary"], ensure_ascii=False, indent=2))
 print("Wrote",path)
+if "--fail-on-gaps" in __import__("sys").argv and any(out["missing"][l] for l in ("tr","hy","ar")):
+    raise SystemExit("Incomplete native translations")
