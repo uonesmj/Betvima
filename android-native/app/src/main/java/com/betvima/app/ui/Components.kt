@@ -436,7 +436,7 @@ fun MatchTile(match: Match, lang: Lang, liveEnabled: Boolean, picks: List<Pick>,
                 HorizontalDivider(color = Palette.border.copy(alpha = .6f), thickness = .5.dp)
                 Column(Modifier.fillMaxWidth().background(Color(0xFFFBFCFD))
                     .padding(horizontal = 12.dp, vertical = 10.dp)) {
-                    Text(market.label(lang == Lang.FA), fontSize = 10.sp,
+                    Text(NativeMarketLabels176.selection(lang, market.label(false), market.label(true)), fontSize = 10.sp,
                         fontWeight = FontWeight.Bold, color = Palette.muted,
                         modifier = Modifier.padding(bottom = 6.dp),
                         maxLines = 1, overflow = TextOverflow.Ellipsis)
