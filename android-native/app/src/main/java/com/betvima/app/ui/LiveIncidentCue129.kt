@@ -93,19 +93,19 @@ internal fun observedIncidents129(
     ).take(2)
 }
 
-internal fun incidentCaption129(kind: IncidentKind129, fa: Boolean): String = when (kind) {
-    IncidentKind129.GOAL -> if (fa) "گل!" else "GOAL!"
-    IncidentKind129.PENALTY -> if (fa) "پنالتی ثبت‌شده" else "Penalty recorded"
-    IncidentKind129.RED_CARD -> if (fa) "کارت قرمز" else "Red card"
-    IncidentKind129.YELLOW_CARD -> if (fa) "کارت زرد" else "Yellow card"
-    IncidentKind129.SHOT_ON -> if (fa) "شوت در چارچوب" else "Shot on target"
-    IncidentKind129.SHOT_OFF -> if (fa) "شوت خارج چارچوب" else "Shot off target"
-    IncidentKind129.CORNER -> if (fa) "کرنر" else "Corner"
-    IncidentKind129.OFFSIDE -> if (fa) "آفساید" else "Offside"
-    IncidentKind129.FOUL -> if (fa) "خطا" else "Foul"
-    IncidentKind129.THROW_IN -> if (fa) "اوت دستی" else "Throw-in"
-    IncidentKind129.FREE_KICK -> if (fa) "ضربه آزاد" else "Free kick"
-    IncidentKind129.GOAL_KICK -> if (fa) "ضربه دروازه" else "Goal kick"
-    IncidentKind129.DANGEROUS_ATTACK -> if (fa) "حمله خطرناک" else "Dangerous attack"
-    IncidentKind129.ATTACK -> if (fa) "حمله" else "Attack"
+internal fun incidentCaption129(kind: IncidentKind129, fa: Boolean, lang: Lang = if (fa) Lang.FA else Lang.EN): String = when (kind) {
+    IncidentKind129.GOAL -> tr(lang, "GOAL!", "گل!")
+    IncidentKind129.PENALTY -> tr(lang, "Penalty recorded", "پنالتی ثبت‌شده")
+    IncidentKind129.RED_CARD -> tr(lang, "Red card", "کارت قرمز")
+    IncidentKind129.YELLOW_CARD -> tr(lang, "Yellow card", "کارت زرد")
+    IncidentKind129.SHOT_ON -> tr(lang, "Shot on target", "شوت در چارچوب")
+    IncidentKind129.SHOT_OFF -> tr(lang, "Shot off target", "شوت خارج چارچوب")
+    IncidentKind129.CORNER -> tr(lang, "Corner", "کرنر")
+    IncidentKind129.OFFSIDE -> tr(lang, "Offside", "آفساید")
+    IncidentKind129.FOUL -> tr(lang, "Foul", "خطا")
+    IncidentKind129.THROW_IN -> tr(lang, "Throw-in", "اوت دستی")
+    IncidentKind129.FREE_KICK -> tr(lang, "Free kick", "ضربه آزاد")
+    IncidentKind129.GOAL_KICK -> tr(lang, "Goal kick", "ضربه دروازه")
+    IncidentKind129.DANGEROUS_ATTACK -> tr(lang, "Dangerous attack", "حمله خطرناک")
+    IncidentKind129.ATTACK -> tr(lang, "Attack", "حمله")
 }
