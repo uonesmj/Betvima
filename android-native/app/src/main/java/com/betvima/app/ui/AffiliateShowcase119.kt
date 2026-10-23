@@ -400,7 +400,7 @@ private fun Affiliate119Faq(lang:Lang) {
         .background(cIvory)
         .padding(start=19.dp,end=19.dp,top=17.dp,bottom=33.dp),
         verticalArrangement=Arrangement.spacedBy(12.dp)) {
-        Affiliate119Eyebrow("FAQ",cForest)
+        Affiliate119Eyebrow(tr(lang, "FAQ", "پرسش‌های متداول"),cForest)
         Text(tr(lang,"Frequently asked questions","پرسش‌های متداول"),
             color=cNight,fontSize=27.sp,fontWeight=FontWeight.Black)
         Spacer(Modifier.height(4.dp))
@@ -410,7 +410,7 @@ private fun Affiliate119Faq(lang:Lang) {
                     Row(Modifier.fillMaxWidth().clickable { expanded=if(expanded==idx)-1 else idx }
                         .padding(horizontal=15.dp,vertical=17.dp),
                         verticalAlignment=Alignment.CenterVertically) {
-                        Text(tr(lang,q.en,q.fa),color=cNight,fontSize=13.sp,
+                        Text(tr(lang,q.en,q.fa),color=cNight,fontSize=13.sp,lineHeight=19.sp,
                             fontWeight=FontWeight.Bold,modifier=Modifier.weight(1f))
                         Icon(if(expanded==idx)Icons.Default.Remove else Icons.Default.Add,
                             null,tint=cForest)
