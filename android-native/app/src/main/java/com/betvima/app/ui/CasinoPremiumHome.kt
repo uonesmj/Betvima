@@ -685,7 +685,7 @@ private fun CasinoCarousel(games: List<CasinoGame>, lang: Lang, realEnabled: Boo
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         CasinoBrandMark(size = 16.dp)
                         Spacer(Modifier.width(6.dp))
-                        Text("BETVIMA • CASINO", color = Color(0xFFB0D9FF),
+                        Text(tr(LocalNativeLanguage176.current, "BETVIMA • CASINO", "BETVIMA • کازینو"), color = Color(0xFFB0D9FF),
                             fontSize = 10.sp, fontWeight = FontWeight.Black)
                     }
                     Text(game?.name ?: tr(lang,"Casino games","بازی‌های کازینو"),
