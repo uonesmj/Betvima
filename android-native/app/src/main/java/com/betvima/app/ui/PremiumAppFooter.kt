@@ -161,7 +161,7 @@ fun PremiumAppFooter(
                 Row(Modifier.heightIn(min = 48.dp)
                     .padding(horizontal = 10.dp, vertical = 10.dp),
                     verticalAlignment = Alignment.CenterVertically) {
-                    Text(if (lang == Lang.FA) "🇮🇷" else "🇬🇧", fontSize = 19.sp)
+                    Text(when(lang) { Lang.FA -> "🇮🇷"; Lang.TR -> "🇹🇷"; Lang.EN -> "🇬🇧" }, fontSize = 19.sp)
                     Spacer(Modifier.width(5.dp))
                     Text(if (lang == Lang.FA) "FA" else "EN",
                         color = Color.White, fontWeight = FontWeight.Bold, fontSize = 12.sp)
