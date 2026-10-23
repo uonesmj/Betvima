@@ -19,7 +19,7 @@ internal object ArabicTranslations175H {
         "Ticket status is uncertain. Close and reopen support before retrying." to "حالة التذكرة غير مؤكدة. أغلق الدعم وأعد فتحه قبل المحاولة.",
         "Sign in to chat with support." to "سجل الدخول للتواصل مع الدعم.",
         "Online Support" to "الدعم المباشر",
-        "We are ready to help you 24/7.\\nPlease enter your contact information and your question." to "نحن مستعدون لمساعدتك على مدار الساعة.\\nأدخل معلومات الاتصال وسؤالك.",
+        "We are ready to help you 24/7.\nPlease enter your contact information and your question." to "نحن مستعدون لمساعدتك على مدار الساعة.\nأدخل معلومات الاتصال وسؤالك.",
         "Resume conversation" to "استئناف المحادثة",
         "Previous conversations" to "المحادثات السابقة",
         "Your name (optional)" to "اسمك (اختياري)",
