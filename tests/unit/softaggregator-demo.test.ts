@@ -218,7 +218,7 @@ describe('SoftAggregator demo-only launch API', () => {
       SOFTAGGREGATOR_CALLBACK_EDGE_READY: 'true',
       SOFTAGGREGATOR_EDGE_HMAC_SECRET: 'staging-independent-edge-hmac-secret-32-plus-chars',
       SOFTAGGREGATOR_TEST_USER_ID: pilot,
-      SOFTAGGREGATOR_ALLOWED_COUNTRIES: 'DE',
+      SOFTAGGREGATOR_ALLOWED_COUNTRIES: 'TR',
     });
     const calls: Array<Record<string, unknown>> = [];
     vi.stubGlobal('fetch', vi.fn(async (_: string, options: RequestInit) => {
@@ -242,11 +242,11 @@ describe('SoftAggregator demo-only launch API', () => {
     }));
     const url = await launchCasinoGame({
       userId: pilot, gameId: 'x887bde40b16350c',
-      demo: false, lang: 'fa', device: 'mobile', country: 'DE',
+      demo: false, lang: 'fa', device: 'mobile', country: 'TR',
     });
     expect(url).toBe('https://cdn.provider.test/real-game');
     const cashLaunch = calls.find((call) => call.method === 'getGame');
-    expect(cashLaunch).toMatchObject({ country: 'DE', currency: 'USD',
+    expect(cashLaunch).toMatchObject({ country: 'TR', currency: 'USD',
       gameid: 'x887bde40b16350c' });
     expect(calls.some((call) => call.method === 'getGameDemo')).toBe(false);
   });
@@ -261,7 +261,7 @@ describe('SoftAggregator demo-only launch API', () => {
       SOFTAGGREGATOR_CALLBACK_EDGE_READY: 'true',
       SOFTAGGREGATOR_EDGE_HMAC_SECRET: 'staging-independent-edge-hmac-secret-32-plus-chars',
       SOFTAGGREGATOR_TEST_USER_ID: pilot,
-      SOFTAGGREGATOR_ALLOWED_COUNTRIES: 'DE',
+      SOFTAGGREGATOR_ALLOWED_COUNTRIES: 'TR',
     });
     const spy = vi.fn();
     vi.stubGlobal('fetch', spy);
