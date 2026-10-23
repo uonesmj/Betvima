@@ -56,6 +56,7 @@ internal fun LiveIncidentPitch129(
     cue: LiveIncidentCue129?,
     fa: Boolean
 ) {
+    val activeLang177 = LocalNativeLanguage176.current
     // Visible activity even between provider observations is a decorative
     // pitch scan; it does NOT pretend to be actual ball/player movement.
     val ambient = rememberInfiniteTransition(label = "pitchAmbient131")
@@ -233,9 +234,9 @@ internal fun LiveIncidentPitch129(
                             fontSize = 9.sp)
                         Text(
                             (if (cue.confirmedScore) {
-                                if (fa) "نتیجهٔ تأییدشده" else "Verified score change"
+                                tr(activeLang177, "Verified score change", "نتیجهٔ تأییدشده")
                             } else {
-                                if (fa) "تغییر آمار +" else "Stat update +"
+                                tr(activeLang177, "Stat update +", "تغییر آمار +")
                             }) + (if (cue.confirmedScore) "" else cue.amount.toString()) +
                                 "  ·  " + (cue.minute?.toString()?.plus("′") ?: "LIVE"),
                             color = Color(0xFFD1DFE0), fontSize = 7.sp,
@@ -250,6 +251,7 @@ internal fun LiveIncidentPitch129(
 
 @Composable
 internal fun IncidentStatsCue129(cue: LiveIncidentCue129?, match: Match, fa: Boolean) {
+    val activeLang177 = LocalNativeLanguage176.current
     AnimatedVisibility(visible = cue != null,
         enter = fadeIn(), exit = fadeOut()) {
         if(cue != null) {
