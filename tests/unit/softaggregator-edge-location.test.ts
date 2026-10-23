@@ -13,7 +13,7 @@ function edgeRequest(options: {
   timestamp?: number;
   forged?: boolean;
 } = {}) {
-  const country = options.country ?? 'DE';
+  const country = options.country ?? 'IR';
   const ip = options.ip ?? '203.0.113.25';
   const target = options.path ?? url;
   const method = options.method ?? 'POST';
@@ -35,7 +35,7 @@ function edgeRequest(options: {
 
 describe('SoftAggregator cash-game verified current geolocation', () => {
   beforeEach(() => {
-    vi.stubEnv('SOFTAGGREGATOR_ALLOWED_COUNTRIES', 'DE,BR');
+    vi.stubEnv('SOFTAGGREGATOR_ALLOWED_COUNTRIES', 'IR,TR');
   });
   afterEach(() => {
     vi.unstubAllEnvs();
@@ -43,8 +43,8 @@ describe('SoftAggregator cash-game verified current geolocation', () => {
 
   it('accepts only an explicitly licensed country with a valid edge HMAC', () => {
     const nowSeconds = 1792116000;
-    expect(verifiedCasinoLocation(edgeRequest(), {secret, nowSeconds})).toBe('DE');
-    expect(verifiedCasinoLocation(edgeRequest({country:'BR'}), {secret, nowSeconds})).toBe('BR');
+    expect(verifiedCasinoLocation(edgeRequest(), {secret, nowSeconds})).toBe('IR');
+    expect(verifiedCasinoLocation(edgeRequest({country:'TR'}), {secret, nowSeconds})).toBe('TR');
     expect(verifiedCasinoLocation(edgeRequest({country:'FR'}), {secret, nowSeconds})).toBeNull();
   });
 
@@ -81,13 +81,13 @@ describe('SoftAggregator cash-game verified current geolocation', () => {
     expect(verifiedCasinoLocation(edgeRequest({timestamp:nowSeconds+46}),
       {secret,nowSeconds})).toBeNull();
     expect(verifiedCasinoLocation(edgeRequest({timestamp:nowSeconds-45}),
-      {secret,nowSeconds})).toBe('DE');
+      {secret,nowSeconds})).toBe('IR');
   });
 
   it('rejects duplicates and wildcard operator rules', () => {
     vi.stubEnv('SOFTAGGREGATOR_ALLOWED_COUNTRIES', '*');
     expect(verifiedCasinoLocation(edgeRequest(), {secret,nowSeconds:1792116000})).toBeNull();
-    vi.stubEnv('SOFTAGGREGATOR_ALLOWED_COUNTRIES', 'DE,DE');
+    vi.stubEnv('SOFTAGGREGATOR_ALLOWED_COUNTRIES', 'IR,IR');
     expect(verifiedCasinoLocation(edgeRequest(), {secret,nowSeconds:1792116000})).toBeNull();
   });
 });
