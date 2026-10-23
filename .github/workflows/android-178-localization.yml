@@ -1,4 +1,5 @@
 name: BetVima Android 0.178.0 Locale Fixes
+# Numeric percent tests also accept Turkish percent-prefix notation.
 
 on:
   push:
