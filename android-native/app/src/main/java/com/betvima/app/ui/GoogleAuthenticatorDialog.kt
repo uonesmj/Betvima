@@ -102,7 +102,7 @@ internal fun GoogleAuthenticatorDialog(
                         "کد QR را اسکن کنید یا کلید را دستی وارد کنید؛ سپس کد شش‌رقمی را تأیید کنید."),
                         fontSize = 12.sp, color = Color(0xFFCFD3DD))
                     qr?.let {
-                        Image(it, "Authenticator setup QR",
+                        Image(it, tr(lang, "Authenticator setup QR", "کد QR تنظیمات احراز هویت"),
                             modifier = Modifier.align(Alignment.CenterHorizontally).size(200.dp)
                                 .background(Color.White).padding(7.dp))
                     }
