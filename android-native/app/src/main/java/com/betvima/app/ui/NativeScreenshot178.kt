@@ -7,6 +7,10 @@ package com.betvima.app.ui
  */
 internal object NativeScreenshot178 {
     private val turkish: Map<String, String> = mapOf(
+        "TOP Bets" to "Öne çıkan bahisler",
+        "Top Bets" to "Öne çıkan bahisler",
+        "No verified odds were returned by the provider." to "Veri sağlayıcısından doğrulanmış oran alınamadı.",
+        "Top markets are unavailable" to "Öne çıkan bahis oranları kullanılamıyor",
         "100% deposit match" to "Yatırıma %100 bonus",
         "Each eligible successful deposit produces a separate matching reward after provider confirmation." to "Şartları karşılayan her başarılı para yatırma işlemi, ödeme sağlayıcısının onayından sonra yatırılan tutar kadar ayrı bir bonus kazandırır.",
         "24-hour limit" to "24 saatlik süre",
@@ -40,6 +44,10 @@ internal object NativeScreenshot178 {
         "Register" to "Kayıt ol"
     )
     private val armenian: Map<String, String> = mapOf(
+        "TOP Bets" to "Լավագույն խաղադրույքներ",
+        "Top Bets" to "Լավագույն խաղադրույքներ",
+        "No verified odds were returned by the provider." to "Տվյալների մատակարարը հաստատված գործակիցներ չի տրամադրել։",
+        "Top markets are unavailable" to "Լավագույն խաղադրույքների գործակիցները հասանելի չեն",
         "100% deposit match" to "Ավանդի 100% բոնուս",
         "Each eligible successful deposit produces a separate matching reward after provider confirmation." to "Պայմաններին համապատասխանող յուրաքանչյուր հաջող մուտքագրում վճարային ծառայության հաստատումից հետո ստանում է նույն չափի առանձին բոնուս։",
         "24-hour limit" to "24-ժամյա ժամկետ",
@@ -73,6 +81,10 @@ internal object NativeScreenshot178 {
         "Register" to "Գրանցվել"
     )
     private val arabic: Map<String, String> = mapOf(
+        "TOP Bets" to "أبرز الرهانات",
+        "Top Bets" to "أبرز الرهانات",
+        "No verified odds were returned by the provider." to "لم يقدّم مزوّد البيانات أي معاملات مراهنة مؤكّدة.",
+        "Top markets are unavailable" to "أسواق الرهانات البارزة غير متاحة",
         "100% deposit match" to "مكافأة إيداع بنسبة 100%",
         "Each eligible successful deposit produces a separate matching reward after provider confirmation." to "كل إيداع ناجح ومؤهل يمنح مكافأة مستقلة مساوية لمبلغ الإيداع بعد تأكيد مزوّد الدفع.",
         "24-hour limit" to "مهلة 24 ساعة",
@@ -106,6 +118,10 @@ internal object NativeScreenshot178 {
         "Register" to "إنشاء حساب"
     )
     private val dari: Map<String, String> = mapOf(
+        "TOP Bets" to "شرط‌های برتر",
+        "Top Bets" to "شرط‌های برتر",
+        "No verified odds were returned by the provider." to "منبع داده هیچ ضریب تأییدشده‌ای ارائه نکرد.",
+        "Top markets are unavailable" to "ضرایب شرط‌های برتر در دسترس نیست",
         "100% deposit match" to "بونوس ۱۰۰٪ برابر با واریز",
         "Each eligible successful deposit produces a separate matching reward after provider confirmation." to "هر واریز موفق و واجد شرایط، پس از تأیید درگاه، بونوس جداگانه‌ای به همان میزان دریافت می‌کند.",
         "24-hour limit" to "مهلت ۲۴ ساعته",
