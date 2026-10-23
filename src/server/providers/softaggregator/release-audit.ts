@@ -1,4 +1,4 @@
-import { casinoCountryPermitted, casinoCountryRestrictedByProvider } from './jurisdiction';
+import { casinoCountryPermitted } from './jurisdiction';
 
 /**
  * Read-only production casino readiness classification.
@@ -106,7 +106,7 @@ export function explicitCasinoCountryList(value: string | undefined): boolean {
   if (!value || value.length > 255) return false;
   const values = value.split(',').map(v => v.trim());
   return values.length > 0 && values.length <= 30 &&
-    values.every(v => /^[A-Z]{2}$/.test(v) && !casinoCountryRestrictedByProvider(v) &&
+    values.every(v => /^[A-Z]{2}$/.test(v) &&
       casinoCountryPermitted(v, value)) &&
     new Set(values).size === values.length;
 }
