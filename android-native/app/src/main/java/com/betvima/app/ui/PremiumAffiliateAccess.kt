@@ -54,7 +54,7 @@ fun AffiliateHeroBanner(lang: Lang, authenticated: Boolean = false) {
                         Icon(Icons.Default.AutoAwesome,null,tint=affiliatePink,
                             modifier=Modifier.size(16.dp))
                         Spacer(Modifier.width(6.dp))
-                        Text("BETVIMA  PARTNERS",fontSize=11.sp,
+                        Text(tr(LocalNativeLanguage176.current, "BETVIMA  PARTNERS", "BETVIMA  PARTNERS"),fontSize=11.sp,
                             fontWeight=FontWeight.Black,color=affiliateInk)
                     }
                 }
