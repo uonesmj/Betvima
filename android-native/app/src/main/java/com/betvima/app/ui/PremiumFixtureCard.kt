@@ -248,7 +248,7 @@ private fun PremiumFixtureOdd(
     var oddCenter by remember(selection.id) { mutableStateOf(Offset.Unspecified) }
     val name = if (market.key == "h2h" && market.selections.size >= 3 && index < 3)
         listOf("1", "X", "2")[index]
-    else selection.label(state.lang == Lang.FA)
+    else NativeMarketLabels176.selection(state.lang, selection.label(false), selection.label(true))
     Surface(
         modifier = Modifier.fillMaxWidth().height(45.dp)
             .onGloballyPositioned { oddCenter = it.boundsInWindow().center }
