@@ -5,7 +5,7 @@ ALTER TABLE nova.profiles
   ADD COLUMN status text NOT NULL DEFAULT 'active',
   ADD COLUMN age_verified boolean NOT NULL DEFAULT true,
   ADD COLUMN kyc_status text NOT NULL DEFAULT 'verified',
-  ADD COLUMN jurisdiction text NOT NULL DEFAULT 'DE',
+  ADD COLUMN jurisdiction text NOT NULL DEFAULT 'TR',
   ADD COLUMN preferred_currency text NOT NULL DEFAULT 'USD';
 CREATE TABLE nova.user_limits (
   user_id uuid NOT NULL REFERENCES nova.profiles(id), currency text NOT NULL,
@@ -19,6 +19,14 @@ CREATE TABLE nova.user_restrictions (
   is_active boolean NOT NULL DEFAULT false, kind text NOT NULL DEFAULT 'account_restriction',
   effective_from timestamptz NOT NULL DEFAULT now(),
   effective_to timestamptz
+);
+-- Synthetic verification evidence exists only in disposable CI PostgreSQL.
+-- It does not imply that any production player has completed KYC.
+CREATE TABLE nova.kyc_submissions (
+  user_id uuid NOT NULL REFERENCES nova.profiles(id),
+  status text NOT NULL,
+  legal_age_confirmed boolean NOT NULL DEFAULT false,
+  reviewed_by uuid
 );
 CREATE TABLE nova.wallets (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -81,7 +89,10 @@ BEGIN
 END $wallet_function$;
 
 INSERT INTO nova.profiles(id,status,age_verified,kyc_status,jurisdiction,preferred_currency)
-  VALUES('00000000-0000-4000-8000-000000000002','active',true,'verified','DE','USD');
+  VALUES('00000000-0000-4000-8000-000000000002','active',true,'verified','TR','USD');
+INSERT INTO nova.kyc_submissions(user_id,status,legal_age_confirmed,reviewed_by)
+VALUES('00000000-0000-4000-8000-000000000002','verified',true,
+       '00000000-0000-4000-8000-000000000001');
 INSERT INTO nova.wallets(user_id,currency,balance_minor)
   VALUES('00000000-0000-4000-8000-000000000002','USD',1000);
 INSERT INTO nova.wallet_transactions(wallet_id,user_id,type,amount_minor,
