@@ -107,48 +107,58 @@ fun PremiumAffiliateSheet(state: AppState, model: AppViewModel, onClose: () -> U
                 .background(partnerNight)
                 .windowInsetsPadding(WindowInsets.safeDrawing)
         ) {
-            Row(
-                Modifier.fillMaxWidth().height(64.dp)
-                    .background(Color(0xFF17181D))
-                    .padding(horizontal=14.dp),
-                verticalAlignment=Alignment.CenterVertically
+            // VIP-style header only. Landing, drawer and partner data stay unchanged.
+            Column(
+                Modifier.fillMaxWidth()
+                    .background(Brush.verticalGradient(listOf(
+                        Color(0xFF202127), Color(0xFF0E0F13))))
+                    .padding(horizontal=19.dp,vertical=14.dp)
             ) {
-                Icon(
-                    painter=painterResource(com.betvima.app.R.drawable.ic_betvima_mini),
-                    contentDescription=null,tint=partnerMint,
-                    modifier=Modifier.size(25.dp)
-                )
-                Spacer(Modifier.width(7.dp))
-                Text("BETVIMA",fontWeight=FontWeight.Black,
-                    color=Color.White,fontSize=19.sp,letterSpacing=(-.8).sp)
-                Spacer(Modifier.width(11.dp))
-                Column {
-                    Text("PARTNERS",color=partnerMint,fontSize=10.sp,
-                        fontWeight=FontWeight.Black,letterSpacing=1.2.sp)
-                    Text(tr(lang,"Affiliate center","مرکز همکاری"),
-                        color=Color(0xFFB4C0D5),fontSize=9.sp)
-                }
-                Spacer(Modifier.weight(1f))
-                if(showPortal) {
-                    IconButton(onClick={ partnerDrawerScope.launch { partnerDrawerState.open() } }) {
-                        Icon(Icons.Default.Menu, tr(lang,"Open partner menu","باز کردن منوی افیلیت"),
-                            tint=partnerMint,modifier=Modifier.size(25.dp))
+                Box(Modifier.align(Alignment.CenterHorizontally)
+                    .width(37.dp).height(4.dp)
+                    .clip(CircleShape)
+                    .background(Color.White.copy(alpha=.25f)))
+                Spacer(Modifier.height(11.dp))
+                Row(verticalAlignment=Alignment.CenterVertically) {
+                    Box(Modifier.size(43.dp)
+                        .clip(RoundedCornerShape(13.dp))
+                        .background(Color(0xFF19382D)),
+                        contentAlignment=Alignment.Center) {
+                        Icon(painter=painterResource(com.betvima.app.R.drawable.ic_betvima_mini),
+                            contentDescription=null,tint=partnerMint,
+                            modifier=Modifier.size(27.dp))
                     }
-                    TextButton(onClick={showPortal=false}) {
-                        Text(tr(lang,"Explore","معرفی"),color=Color.White)
+                    Spacer(Modifier.width(11.dp))
+                    Column(Modifier.weight(1f)) {
+                        Text("BETVIMA  /  PARTNERS",
+                            color=partnerMint,fontSize=10.sp,
+                            fontWeight=FontWeight.Black,letterSpacing=1.2.sp)
+                        Text(tr(lang,"Affiliate Center","مرکز همکاری"),
+                            color=Color.White,fontSize=23.sp,
+                            fontWeight=FontWeight.Black)
                     }
-                } else {
-                    TextButton(onClick=openLogin) {
-                        Text(tr(lang,"Log in","ورود"),color=Color.White)
+                    if(showPortal) {
+                        IconButton(onClick={
+                            partnerDrawerScope.launch { partnerDrawerState.open() }
+                        }) {
+                            Icon(Icons.Default.Menu,
+                                tr(lang,"Open partner menu","باز کردن منو"),
+                                tint=partnerMint)
+                        }
+                    } else {
+                        TextButton(onClick=openLogin) {
+                            Text(tr(lang,"Log in","ورود"),color=Color.White)
+                        }
                     }
-                }
-                IconButton(onClick={ closeWith({}) }) {
-                    Icon(Icons.Default.Close,
-                        tr(lang,"Close affiliate","بستن افیلیت"),
-                        tint=Color.White,modifier=Modifier.size(27.dp))
+                    IconButton(onClick={closeWith({})},
+                        modifier=Modifier.clip(CircleShape)
+                            .background(Color.White.copy(alpha=.1f))) {
+                        Icon(Icons.Default.Close,
+                            tr(lang,"Close affiliate","بستن افیلیت"),
+                            tint=Color.White)
+                    }
                 }
             }
-            HorizontalDivider(color=Color.White.copy(alpha=.10f))
             Box(Modifier.weight(1f)) {
                 if(showPortal) {
                     AffiliateStudio118(
