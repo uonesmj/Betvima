@@ -202,6 +202,7 @@ internal fun BonusHero80(
 
 @Composable
 private fun BonusRing80(progress:Float) {
+    val lang = LocalNativeLanguage176.current
     Box(Modifier.size(95.dp),contentAlignment=Alignment.Center) {
         Canvas(Modifier.fillMaxSize()) {
             val sw=8.dp.toPx()
@@ -220,7 +221,7 @@ private fun BonusRing80(progress:Float) {
         Column(horizontalAlignment=Alignment.CenterHorizontally) {
             Icon(Icons.Default.CardGiftcard,null,tint=premiumEmerald,
                 modifier=Modifier.size(29.dp))
-            Text("BONUS",color=Color.White,fontSize=9.sp,
+            Text(tr(lang, "BONUS", "بونوس"),color=Color.White,fontSize=9.sp,
                 fontWeight=FontWeight.Bold,letterSpacing=1.sp)
         }
     }
