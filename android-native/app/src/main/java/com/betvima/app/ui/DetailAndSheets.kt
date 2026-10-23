@@ -40,7 +40,8 @@ fun MatchDetailPage(state: AppState, model: AppViewModel) {
     if (match == null) {
         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             if (state.detailLoading) CircularProgressIndicator(color = Palette.green)
-            else EmptyPanel("Match unavailable", "Return to the live or sports catalogue.") { model.closeMatch() }
+            else EmptyPanel(tr(state.lang, "Match unavailable", "بازی در دسترس نیست"),
+                tr(state.lang, "Return to the live or sports catalogue.", "به صفحه زنده یا فهرست مسابقات برگردید.")) { model.closeMatch() }
         }
         return
     }
@@ -267,7 +268,7 @@ fun MatchDetailPage(state: AppState, model: AppViewModel) {
                     Row(Modifier.fillMaxWidth().clickable { expanded = !expanded }
                         .padding(horizontal = 14.dp, vertical = 15.dp),
                         verticalAlignment = Alignment.CenterVertically) {
-                        Text(market.label(state.lang == Lang.FA), modifier = Modifier.weight(1f),
+                        Text(NativeMarketLabels176.selection(state.lang, market.label(false), market.label(true)), modifier = Modifier.weight(1f),
                             fontWeight = FontWeight.Bold, color = Palette.text, fontSize = 13.sp)
                         SmallPill(market.selections.size.toString(),
                             Palette.paper, Palette.muted)
