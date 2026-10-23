@@ -89,8 +89,8 @@ describe('SoftAggregator read-only production readiness classifier', () => {
       'DE,,BR', 'DE;BR']) {
       expect(explicitCasinoCountryList(list)).toBe(false);
     }
-    expect(explicitCasinoCountryList('DE,BR')).toBe(true);
-    expect(explicitCasinoCountryList('CW')).toBe(true);
+    expect(explicitCasinoCountryList('IR,TR')).toBe(true);
+    expect(explicitCasinoCountryList('AZ')).toBe(true);
   });
 
   it('accepts only a proper pilot UUID without printing the ID', () => {
