@@ -1,0 +1,104 @@
+name: Generate Full Native Turkish Armenian Arabic Coverage 176
+
+on:
+  push:
+    branches: [feat/android-176-tr-hy-ar-complete-audit-20261023]
+    paths:
+      - '.github/workflows/android-locales-generate-176.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  translate-build-commit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - name: Confirm machine translation and preserved placeholders
+        run: |
+          python3 - <<'PY'
+          import importlib.util
+          s=importlib.util.spec_from_file_location("generator","scripts/generate-native-translations-176.py")
+          m=importlib.util.module_from_spec(s)
+          s.loader.exec_module(m)
+          for locale in ('tr','hy','ar'):
+              for phrase in ('Wallet and support', 'Account USD balance in BetVima', 'Live · $count'):
+                  _,_,translated,error=m.translate((locale,phrase))
+                  print(locale,repr(phrase),repr(translated),error,flush=True)
+                  if error or translated is None:
+                      raise SystemExit("translation service or protected token failure")
+          PY
+      - name: Extract untranslated native user interface
+        run: python3 scripts/android-localization-audit.py
+      - name: Translate gaps and generate static locale maps
+        run: python3 -u scripts/generate-native-translations-176.py
+      - name: Wire generated maps without touching English defaults or visual layout
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          root=Path('android-native/app/src/main/java/com/betvima/app/ui')
+          edits={
+            'TurkishTranslations169.kt':[
+              ('fun translate(english: String): String = terms[english] ?: english',
+               'fun translate(english: String): String = terms[english] ?: TurkishTranslations176.translate(english)')],
+            'Armenian172.kt':[
+              ('?: deepTerms174[english] ?: english',
+               '?: deepTerms174[english] ?: ArmenianTranslations176.translate(english)')],
+            'ArabicTranslations175.kt':[
+              ('ArabicTranslations175K.terms',
+               'ArabicTranslations175K.terms +\n        ArabicTranslations176.terms')],
+          }
+          for name,replacements in edits.items():
+              path=root/name;s=path.read_text()
+              for before,after in replacements:
+                  assert s.count(before)==1,(name,before,s.count(before))
+                  s=s.replace(before,after)
+              path.write_text(s)
+          gradle=Path('android-native/app/build.gradle.kts')
+          s=gradle.read_text()
+          assert 'versionCode = 175' in s and 'versionName = "0.175.0"' in s
+          gradle.write_text(s.replace('versionCode = 175','versionCode = 176').replace('versionName = "0.175.0"','versionName = "0.176.0"'))
+          PY
+      - name: Commit audited translations on isolated native branch
+        run: |
+          git config user.name 'betvima-localization-ci'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add android-native/app/src/main/java/com/betvima/app/ui/NativeTranslations176
+          git add android-native/app/src/main/java/com/betvima/app/ui/{TurkishTranslations169.kt,Armenian172.kt,ArabicTranslations175.kt}
+          git add android-native/app/build.gradle.kts
+          git commit -m 'feat(android): fill TR HY AR untranslated native labels and bump to 0.176.0'
+          git push origin HEAD:feat/android-176-tr-hy-ar-complete-audit-20261023
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Configure Android SDK
+        run: |
+          echo "ANDROID_HOME=/usr/local/lib/android/sdk" >> "$GITHUB_ENV"
+          /usr/local/lib/android/sdk/cmdline-tools/latest/bin/sdkmanager 'platforms;android-35' 'build-tools;35.0.0' || true
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.10.2'
+      - name: Build translated Android APK and run unit tests
+        working-directory: android-native
+        run: gradle --no-daemon --stacktrace :app:assembleDebug :app:testDebugUnitTest
+      - uses: actions/upload-artifact@v4
+        with:
+          name: BetVima-0.176.0-TR-HY-AR-direct-debug-APK
+          path: android-native/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+          retention-days: 30
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: BetVima-0.176.0-translation-coverage-report
+          path: |
+            native-localization-audit.json
+            native-localization-generation.json
+            native-localization-errors.json
+          if-no-files-found: ignore
+          retention-days: 14
