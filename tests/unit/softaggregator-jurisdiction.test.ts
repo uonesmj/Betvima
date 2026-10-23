@@ -4,6 +4,7 @@ import {
   casinoCountryPermitted,
   casinoCountryRestrictedByProvider,
   SOFTAGGREGATOR_RESTRICTED_COUNTRIES,
+  BETVIMA_CASINO_APPROVED_COUNTRIES,
 } from '@/server/providers/softaggregator/jurisdiction';
 
 describe('SoftAggregator supplier country restrictions', () => {
@@ -30,12 +31,22 @@ describe('SoftAggregator supplier country restrictions', () => {
   it('does not treat other EU countries as supplier-restricted', () => {
     for (const country of ['DE', 'AT', 'BE', 'PT', 'SE']) {
       expect(casinoCountryRestrictedByProvider(country)).toBe(false);
-      expect(casinoCountryPermitted(country, country)).toBe(true);
+      expect(casinoCountryPermitted(country, country)).toBe(false);
     }
   });
 
+  it('allows only the six operator-confirmed countries when explicitly configured', () => {
+    expect(BETVIMA_CASINO_APPROVED_COUNTRIES).toEqual(['IR','TR','AF','GE','AZ','TJ']);
+    const config = 'IR,TR,AF,GE,AZ,TJ';
+    for (const country of BETVIMA_CASINO_APPROVED_COUNTRIES) {
+      expect(casinoCountryPermitted(country, config)).toBe(true);
+    }
+    expect(casinoCountryPermitted('DE', config)).toBe(false);
+    expect(casinoCountryPermitted('GB', config)).toBe(false);
+  });
+
   it('still requires explicit operator approval for any other country', () => {
-    expect(casinoCountryPermitted('DE', 'TR,GE,AZ')).toBe(false);
+    expect(casinoCountryPermitted('DE', 'DE,TR,GE,AZ')).toBe(false);
     expect(casinoCountryPermitted('TR', 'TR,GE,AZ')).toBe(true);
   });
 });
@@ -46,7 +57,8 @@ describe('Casino readiness operator country list', () => {
     expect(explicitCasinoCountryList('TR,FR')).toBe(false);
   });
   it('accepts a well-formed explicit list without supplier-restricted countries', () => {
-    expect(explicitCasinoCountryList('DE,TR,GE,AZ')).toBe(true);
+    expect(explicitCasinoCountryList('TR,GE,AZ')).toBe(true);
+    expect(explicitCasinoCountryList('DE,TR,GE,AZ')).toBe(false);
     expect(explicitCasinoCountryList('')).toBe(false);
     expect(explicitCasinoCountryList('*')).toBe(false);
     expect(explicitCasinoCountryList('TR,TR')).toBe(false);
