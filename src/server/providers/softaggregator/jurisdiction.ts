@@ -8,22 +8,20 @@
  * This is a *second* gate beside the one-player pilot allowlist; it does not
  * enable any player or override production feature flags.
  */
-/** EU member states (ISO 3166-1 alpha-2). A provider restriction is an
- * absolute deny rule, even when an operator accidentally allowlists a state.
- * This list must be reviewed when EU membership or provider terms change.
+/** Latest supplier-confirmed restricted territories (2026-10-23).
+ * This provider list supersedes the earlier EU-wide restriction.
+ * Operator licensing and local legal requirements are independent.
  */
-export const SOFTAGGREGATOR_EU_RESTRICTED_COUNTRIES = Object.freeze([
-  'AT', 'BE', 'BG', 'HR', 'CY', 'CZ', 'DK', 'EE', 'FI',
-  'FR', 'DE', 'GR', 'HU', 'IE', 'IT', 'LV', 'LT', 'LU',
-  'MT', 'NL', 'PL', 'PT', 'RO', 'SK', 'SI', 'ES', 'SE',
+export const SOFTAGGREGATOR_RESTRICTED_COUNTRIES = Object.freeze([
+  'IT', 'ES', 'FR', 'MT', 'NL', 'LV', 'LT', 'IE',
 ] as const);
 
-const euRestrictedCountries: ReadonlySet<string> =
-  new Set(SOFTAGGREGATOR_EU_RESTRICTED_COUNTRIES);
+const providerRestrictedCountries: ReadonlySet<string> =
+  new Set(SOFTAGGREGATOR_RESTRICTED_COUNTRIES);
 
 export function casinoCountryRestrictedByProvider(country: string | null): boolean {
   // Missing or malformed countries are handled by the fail-closed allowlist below.
-  return typeof country === 'string' && euRestrictedCountries.has(country);
+  return typeof country === 'string' && providerRestrictedCountries.has(country);
 }
 
 export function casinoCountryPermitted(
