@@ -99,6 +99,19 @@ describe('SoftAggregator trusted Cloudflare ingress interoperability', () => {
     )?.amountMinor).toBe(50n);
   });
 
+  it('accepts the dedicated Worker root and forwards to the protected callback path', async () => {
+    const original = callback();
+    const req = new Request(edgeHost + '/?' + new URL(original.url).searchParams, {
+      headers: original.headers,
+    });
+    const response = await worker.fetch(req, edgeEnv());
+    expect(await response.json()).toEqual({error:0,balance:250});
+    expect(new URL(forwarded.url).pathname).toBe('/api/webhooks/softaggregator');
+    expect(verifySupplierCallbackSignature(
+      new URL(forwarded.url), forwarded.headers.get('x-signature'), salt
+    )).toBe(true);
+  });
+
   it('denies other workers.dev hosts and unknown IPs before forwarding', async () => {
     const original = callback();
     for (const [hostname, ip] of [
