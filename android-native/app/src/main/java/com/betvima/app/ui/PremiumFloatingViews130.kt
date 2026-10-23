@@ -242,7 +242,7 @@ internal fun PremiumEvents130(
                 horizontalArrangement = Arrangement.spacedBy(7.dp)) {
                 PremiumEventMark130(cue.kind)
                 Column(Modifier.weight(1f)) {
-                    Text(incidentCaption129(cue.kind, fa), color = premiumText130,
+                    Text(incidentCaption129(cue.kind, fa, activeLang177), color = premiumText130,
                         fontSize = 10.sp, fontWeight = FontWeight.Bold)
                     Text(if (cue.side == IncidentSide129.HOME)
                         match.home.name else match.away.name,
