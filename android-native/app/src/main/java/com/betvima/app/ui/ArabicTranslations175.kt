@@ -23,7 +23,7 @@ internal object ArabicTranslations175 {
     // Interpolated status codes, live counts and period labels must preserve their
     // actual values. Do not attempt automatic translation of arbitrary server data.
     private fun dynamicText(english: String): String? {
-        val httpCode = Regex("""HTTP (\\d{3})""").find(english)?.groupValues?.get(1)
+        val httpCode = Regex("""HTTP (\d{3})""").find(english)?.groupValues?.get(1)
         if (httpCode != null) {
             return when {
                 english.startsWith("File content or format was rejected (HTTP ") ->
@@ -33,9 +33,9 @@ internal object ArabicTranslations175 {
                 else -> null
             }
         }
-        val liveCount = Regex("""Live · (\\d+)""").matchEntire(english)
+        val liveCount = Regex("""Live · (\d+)""").matchEntire(english)
         if (liveCount != null) return "مباشر · ${liveCount.groupValues[1]}"
-        val days = Regex("""(\\d+) days""").matchEntire(english)
+        val days = Regex("""(\d+) days""").matchEntire(english)
         if (days != null) return "${days.groupValues[1]} يومًا"
         return null
     }
