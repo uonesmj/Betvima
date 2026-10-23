@@ -8,7 +8,7 @@
  * This is a *second* gate beside the one-player pilot allowlist; it does not
  * enable any player or override production feature flags.
  */
-/** Latest supplier-confirmed restricted territories (2026-10-23).
+/** Historical supplier-reported restricted territories (2026-10-23), informational only.
  * This provider list supersedes the earlier EU-wide restriction.
  * Operator licensing and local legal requirements are independent.
  */
@@ -37,7 +37,9 @@ export function casinoCountryPermitted(
   configured: string | undefined = process.env.SOFTAGGREGATOR_ALLOWED_COUNTRIES,
 ): boolean {
   if (typeof country !== 'string' || !/^[A-Z]{2}$/.test(country)) return false;
-  if (casinoCountryRestrictedByProvider(country)) return false;
+  // Supplier game-level restrictions are enforced by SoftAggregator, not
+  // duplicated as a potentially stale local country blacklist. This gate
+  // independently checks the operator's authorized real-money territories.
   if (!operatorApprovedCountries.has(country)) return false;
   if (!configured || configured.length > 255) return false;
   const entries = configured.split(',').map((value) => value.trim());
