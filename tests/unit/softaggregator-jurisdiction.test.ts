@@ -17,7 +17,7 @@ describe('SoftAggregator supplier country restrictions', () => {
     }
   });
 
-  it('rejects exactly the eight supplier-confirmed countries even if allowlisted', () => {
+  it('reports the historical supplier list for diagnostics, without using it as a runtime per-game blacklist', () => {
     expect(SOFTAGGREGATOR_RESTRICTED_COUNTRIES).toEqual([
       'IT', 'ES', 'FR', 'MT', 'NL', 'LV', 'LT', 'IE',
     ]);
