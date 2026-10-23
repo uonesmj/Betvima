@@ -115,7 +115,7 @@ private fun SupportHero(lang: Lang, total: Int, needsReply: Int) {
                     }
                     Spacer(Modifier.width(10.dp))
                     Column(Modifier.weight(1f)) {
-                        Text("BETVIMA / SUPPORT", color = Color.White,
+                        Text(tr(LocalNativeLanguage176.current, "BETVIMA / SUPPORT", "BETVIMA / SUPPORT"), color = Color.White,
                             fontWeight = FontWeight.Black, fontSize = 13.sp,
                             letterSpacing = .75.sp)
                         Text(tr(lang, "Dedicated help center", "مرکز ارتباط با پشتیبانی"),
