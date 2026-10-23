@@ -3,13 +3,12 @@ import { NextResponse } from 'next/server';
 import { withUser } from '@/server/http/guard';
 import { withErrorHandling } from '@/lib/errors';
 import { readJson, enforceRateLimit } from '@/server/http/request';
-import { casinoIdentityApproved } from '@/server/kyc/eligibility';
 import { casinoEnabled, launchCasinoGame } from '@/server/providers/softaggregator/client';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
-/** Demo-only entry point; no financial movement and KYC-gated. */
+/** Demo-only entry point; no wallet settlement or mandatory ID upload. */
 const schema = z.object({
   gameId: z.string().min(1).max(200),
   device: z.enum(['mobile', 'desktop']).default('mobile'),
@@ -22,7 +21,6 @@ export const POST = withErrorHandling('casino.demo', async (ctx, request: Reques
   // Share the same bucket as the legacy launch route; no rate-limit bypass.
   await enforceRateLimit('casino:launch:' + user.id, 20, 60);
   const input = await readJson(request, schema, ctx);
-  if (!(await casinoIdentityApproved(user.id))) return NextResponse.json({ error: 'CASINO_KYC_REQUIRED' }, { status: 403, headers: { 'Cache-Control': 'no-store' } });
   const url = await launchCasinoGame({
     userId: user.id,
     gameId: input.gameId,
