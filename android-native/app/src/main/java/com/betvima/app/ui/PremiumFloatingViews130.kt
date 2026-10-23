@@ -64,11 +64,12 @@ private val importantStats130 = listOf(
 internal fun PremiumPressureBar130(
     ratio: Float?, modifier: Modifier = Modifier, fa: Boolean = false, caption: Boolean = false
 ) {
+    val activeLang177 = LocalNativeLanguage176.current
     val home by animateFloatAsState(targetValue = ratio ?: .5f,
         animationSpec = tween(850), label = "pressure130")
     Column(modifier, verticalArrangement = Arrangement.spacedBy(5.dp)) {
         if (caption) Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            Text(if (fa) "فشار حملات ثبت‌شده" else "REPORTED ATTACKING PRESSURE",
+            Text(tr(activeLang177, "REPORTED ATTACKING PRESSURE", "فشار حملات ثبت‌شده"),
                 modifier = Modifier.weight(1f), color = premiumMuted130,
                 fontSize = 8.sp, fontWeight = FontWeight.ExtraBold)
             Text(if (ratio == null) "—" else
@@ -94,6 +95,7 @@ internal fun PremiumPressureBar130(
 
 @Composable
 private fun PremiumMetric130(stat: LiveStat, fa: Boolean) {
+    val activeLang177 = LocalNativeLanguage176.current
     val h = stat.home
     val a = stat.away
     val total = (h ?: 0).toLong() + (a ?: 0)
@@ -109,7 +111,7 @@ private fun PremiumMetric130(stat: LiveStat, fa: Boolean) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text((h ?: "—").toString(), color = premiumMint130,
                 fontSize = 12.sp, fontWeight = FontWeight.Black)
-            Text(if (fa) stat.fa else stat.en, modifier = Modifier.weight(1f),
+            Text(tr(activeLang177, stat.en, stat.fa), modifier = Modifier.weight(1f),
                 fontSize = 9.sp, color = premiumText130, fontWeight = FontWeight.SemiBold,
                 textAlign = TextAlign.Center, maxLines = 1, overflow = TextOverflow.Ellipsis)
             Text((a ?: "—").toString(), color = premiumAmber130,
@@ -136,14 +138,14 @@ private fun PremiumMetric130(stat: LiveStat, fa: Boolean) {
 internal fun PremiumStatistics130(
     facts: LiveMatchFacts?, fa: Boolean, cue: LiveIncidentCue129?, match: Match
 ) {
+    val activeLang177 = LocalNativeLanguage176.current
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())
         .padding(horizontal = 9.dp, vertical = 9.dp),
         verticalArrangement = Arrangement.spacedBy(7.dp)) {
         IncidentStatsCue129(cue, match, fa)
         val available = importantStats130.mapNotNull { facts?.stat(it) }
         if (available.isEmpty()) {
-            PremiumNoData130(if (fa) "آمار معتبر مسابقه هنوز دریافت نشده."
-                else "Waiting for verified live match statistics.")
+            PremiumNoData130(tr(activeLang177, "Waiting for verified live match statistics.", "آمار معتبر مسابقه هنوز دریافت نشده."))
         } else available.forEach { PremiumMetric130(it, fa) }
     }
 }
@@ -152,22 +154,21 @@ internal fun PremiumStatistics130(
 internal fun PremiumMomentum130(
     samples: List<PressureSample130>, facts: LiveMatchFacts?, fa: Boolean
 ) {
+    val activeLang177 = LocalNativeLanguage176.current
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())
         .padding(10.dp), verticalArrangement = Arrangement.spacedBy(9.dp)) {
-        Text(if (fa) "روند فشار حملات" else "ATTACKING PRESSURE",
+        Text(tr(activeLang177, "ATTACKING PRESSURE", "روند فشار حملات"),
             color = premiumText130, fontWeight = FontWeight.Black, fontSize = 11.sp)
         Row(horizontalArrangement = Arrangement.spacedBy(6.dp),
             verticalAlignment = Alignment.CenterVertically) {
             Box(Modifier.size(6.dp).background(premiumMint130, RoundedCornerShape(2.dp)))
-            Text(if (fa) "میزبان" else "Home", color = premiumMuted130, fontSize = 9.sp)
+            Text(tr(activeLang177, "Home", "میزبان"), color = premiumMuted130, fontSize = 9.sp)
             Spacer(Modifier.width(10.dp))
             Box(Modifier.size(6.dp).background(premiumAmber130, RoundedCornerShape(2.dp)))
-            Text(if (fa) "مهمان" else "Away", color = premiumMuted130, fontSize = 9.sp)
+            Text(tr(activeLang177, "Away", "مهمان"), color = premiumMuted130, fontSize = 9.sp)
         }
         if (samples.size < 2) {
-            PremiumNoData130(if (fa)
-                "نمودار پس از دریافت چند به‌روزرسانی واقعی ساخته می‌شود."
-                else "The trend builds from new provider snapshots in this session.")
+            PremiumNoData130(tr(activeLang177, "The trend builds from new provider snapshots in this session.", "نمودار پس از دریافت چند به‌روزرسانی واقعی ساخته می‌شود."))
         } else Canvas(Modifier.fillMaxWidth().height(104.dp)
             .background(Color(0xFF12333D), RoundedCornerShape(11.dp))
             .padding(9.dp)) {
@@ -192,9 +193,7 @@ internal fun PremiumMomentum130(
             }
         }
         PremiumPressureBar130(pressureRatio130(facts), caption = true, fa = fa)
-        Text(if (fa)
-            "نمودار بر اساس تغییر شمارندهٔ حملات در طول بازدید است، نه موقعیت توپ."
-            else "Observed attack-counter shares during this visit; not actual ball tracking.",
+        Text(tr(activeLang177, "Observed attack-counter shares during this visit; not actual ball tracking.", "نمودار بر اساس تغییر شمارندهٔ حملات در طول بازدید است، نه موقعیت توپ."),
             color = premiumMuted130, fontSize = 8.sp, lineHeight = 11.sp)
     }
 }
@@ -227,14 +226,13 @@ private fun PremiumEventMark130(kind: IncidentKind129) {
 internal fun PremiumEvents130(
     entries: List<LiveIncidentCue129>, match: Match, fa: Boolean
 ) {
+    val activeLang177 = LocalNativeLanguage176.current
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())
         .padding(horizontal = 9.dp, vertical = 10.dp),
         verticalArrangement = Arrangement.spacedBy(7.dp)) {
-        Text(if (fa) "تغییرات ثبت‌شده در این بازدید" else "OBSERVED MATCH UPDATES",
+        Text(tr(activeLang177, "OBSERVED MATCH UPDATES", "تغییرات ثبت‌شده در این بازدید"),
             color = premiumMuted130, fontSize = 9.sp, fontWeight = FontWeight.Black)
-        if (entries.isEmpty()) PremiumNoData130(if (fa)
-            "هنوز تغییر جدیدی دریافت نشده است."
-            else "New confirmed changes will appear here.")
+        if (entries.isEmpty()) PremiumNoData130(tr(activeLang177, "New confirmed changes will appear here.", "هنوز تغییر جدیدی دریافت نشده است."))
         else entries.take(18).forEach { cue ->
             Row(Modifier.fillMaxWidth()
                 .background(Color(0xFF13313B), RoundedCornerShape(11.dp))
@@ -254,14 +252,12 @@ internal fun PremiumEvents130(
                 Column(horizontalAlignment = Alignment.End) {
                     Text(cue.minute?.toString()?.plus("′") ?: "LIVE", color = premiumMint130,
                         fontSize = 10.sp, fontWeight = FontWeight.Bold)
-                    Text(if (cue.confirmedScore) (if (fa) "نتیجه" else "Score")
+                    Text(if (cue.confirmedScore) (tr(activeLang177, "Score", "نتیجه"))
                         else "+" + cue.amount, color = premiumMuted130, fontSize = 8.sp)
                 }
             }
         }
-        Text(if (fa)
-            "تغییرات شمارنده‌های API؛ زمان وقوع دقیق رویدادها تأیید نشده است."
-            else "Provider counter changes, not officially timestamped incident records.",
+        Text(tr(activeLang177, "Provider counter changes, not officially timestamped incident records.", "تغییرات شمارنده‌های API؛ زمان وقوع دقیق رویدادها تأیید نشده است."),
             color = premiumMuted130, fontSize = 8.sp, lineHeight = 11.sp)
     }
 }
