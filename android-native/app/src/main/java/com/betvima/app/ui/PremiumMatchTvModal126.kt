@@ -65,6 +65,7 @@ internal fun PremiumMatchTvModal126(
     match: Match, facts: LiveMatchFacts?, fa: Boolean,
     clockLabel: String, onClose: () -> Unit, onRefresh: () -> Unit
 ) {
+    val activeLang177 = LocalNativeLanguage176.current
     val configuration = LocalConfiguration.current
     val density = LocalDensity.current
     val width = minOf(284, (configuration.screenWidthDp - 20).coerceAtLeast(190)).dp
@@ -163,7 +164,7 @@ internal fun PremiumMatchTvModal126(
                         Spacer(Modifier.width(6.dp))
                         Text("⠿", fontSize = 15.sp, color = pipMuted)
                         Spacer(Modifier.width(5.dp))
-                        Text(if (fa) "زنده" else "LIVE",
+                        Text(tr(activeLang177, "LIVE", "زنده"),
                             color = pipGreen, fontSize = 10.sp, fontWeight = FontWeight.Black)
                         Spacer(Modifier.width(5.dp))
                         Surface(color = Color(0xFF151515),
@@ -176,12 +177,12 @@ internal fun PremiumMatchTvModal126(
                     }
                     IconButton(onClick = onRefresh, modifier = Modifier.size(33.dp)) {
                         Icon(Icons.Default.Refresh,
-                            contentDescription = if (fa) "تازه‌سازی" else "Refresh",
+                            contentDescription = tr(activeLang177, "Refresh", "تازه‌سازی"),
                             tint = pipMuted, modifier = Modifier.size(16.dp))
                     }
                     IconButton(onClick = onClose, modifier = Modifier.size(36.dp)) {
                         Icon(Icons.Default.Close,
-                            contentDescription = if (fa) "بستن پنجره" else "Close window",
+                            contentDescription = tr(activeLang177, "Close window", "بستن پنجره"),
                             tint = Color.White, modifier = Modifier.size(18.dp))
                     }
                 }
@@ -190,10 +191,10 @@ internal fun PremiumMatchTvModal126(
                         .background(Color.Black).padding(horizontal = 5.dp, vertical = 3.dp)
                 ) {
                     listOf(
-                        if (fa) "زمین" else "Pitch",
-                        if (fa) "آمار" else "Stats",
-                        if (fa) "روند" else "Trend",
-                        if (fa) "رویداد" else "Events"
+                        tr(activeLang177, "Pitch", "زمین"),
+                        tr(activeLang177, "Stats", "آمار"),
+                        tr(activeLang177, "Trend", "روند"),
+                        tr(activeLang177, "Events", "رویداد")
                     ).forEachIndexed { i, label ->
                         Box(
                             modifier = Modifier.weight(1f).fillMaxHeight()
@@ -219,12 +220,11 @@ internal fun PremiumMatchTvModal126(
                                 modifier = Modifier.fillMaxWidth().weight(1f),
                                 match = match, cue = currentIncident, fa = fa
                             )
-                        } else Text(if (fa) "آمار مسابقه" else "Match statistics",
+                        } else Text(tr(activeLang177, "Match statistics", "آمار مسابقه"),
                             color = pipMuted, modifier = Modifier.weight(1f).fillMaxWidth(),
                             textAlign = TextAlign.Center)
                         PremiumPressureBar130(share, fa = fa, caption = true)
-                        Text(if (fa) "نمای شماتیک، نه مکان واقعی توپ"
-                            else "Schematic animation · no ball tracking",
+                        Text(tr(activeLang177, "Schematic animation · no ball tracking", "نمای شماتیک، نه مکان واقعی توپ"),
                             fontSize = 7.sp, color = pipMuted,
                             textAlign = TextAlign.Center, maxLines = 1,
                             modifier = Modifier.fillMaxWidth())
