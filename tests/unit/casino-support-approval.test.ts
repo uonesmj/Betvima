@@ -1,13 +1,24 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { getDb } from '@/server/db';
-import { casinoSupportApproved } from '@/server/kyc/casino-support';
+import { casinoManualReviewRequired, casinoManualReviewSatisfied, casinoSupportApproved } from '@/server/kyc/casino-support';
 import type { Db } from '@/lib/ports/db';
 
 vi.mock('@/server/db', () => ({ getDb: vi.fn() }));
 const id = '11111111-1111-4111-8111-111111111111';
 
 describe('Support-reviewed casino approval (independent of document KYC)', () => {
-  beforeEach(() => vi.clearAllMocks());
+  beforeEach(() => { vi.clearAllMocks(); vi.stubEnv('SOFTAGGREGATOR_SUPPORT_REVIEW_REQUIRED', 'false'); });
+  afterEach(() => vi.unstubAllEnvs());
+
+  it('skips optional casino-specific KYC and support-review database access by default', async () => {
+    const db = { queryOne: vi.fn().mockRejectedValue(new Error('No KYC database')) } as unknown as Db;
+    expect(casinoManualReviewRequired()).toBe(false);
+    expect(await casinoManualReviewSatisfied(id, db)).toBe(true);
+    expect(db.queryOne).not.toHaveBeenCalled();
+    vi.stubEnv('SOFTAGGREGATOR_SUPPORT_REVIEW_REQUIRED', 'true');
+    expect(casinoManualReviewRequired()).toBe(true);
+    expect(await casinoManualReviewSatisfied(id, db)).toBe(false);
+  });
 
   it('permits an existing staff-approved account only', async () => {
     const db = { queryOne: vi.fn().mockResolvedValue({ approved: true }) } as unknown as Db;

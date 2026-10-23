@@ -21,7 +21,8 @@ CREATE TABLE nova.user_restrictions (
   effective_to timestamptz
 );
 -- Install the exact operator-review migration on the disposable database.
--- Only the review entry authorizes test wagering; unrelated KYC status does not.
+-- A synthetic manual-review record is retained for future opt-in tests.
+-- By default, this record does not authorize or block cash transactions.
 \i supabase/migrations/0220_casino_support_manual_approval.sql
 CREATE TABLE nova.wallets (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -84,7 +85,7 @@ BEGIN
 END $wallet_function$;
 
 INSERT INTO nova.profiles(id,status,age_verified,kyc_status,jurisdiction,preferred_currency)
-  VALUES('00000000-0000-4000-8000-000000000002','active',false,'pending','TR','USD');
+  VALUES('00000000-0000-4000-8000-000000000002','active',true,'pending','TR','USD');
 INSERT INTO nova.casino_support_approvals(user_id,status,legal_age_confirmed,reviewed_by,ticket_id,review_note)
 VALUES('00000000-0000-4000-8000-000000000002','approved',true,
        '00000000-0000-4000-8000-000000000001',

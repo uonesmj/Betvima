@@ -7,7 +7,7 @@ import {
   validateCasinoFxSnapshot, type CasinoCurrency, type CasinoFxSnapshot,
 } from './fx';
 import { casinoCountryPermitted } from './jurisdiction';
-import { CASINO_SUPPORT_APPROVAL_SQL } from '@/server/kyc/casino-support';
+import { CASINO_SUPPORT_APPROVAL_SQL, casinoManualReviewRequired } from '@/server/kyc/casino-support';
 import { pilotCasinoDebitPermitted } from './pilot-limits';
 
 type FiatCurrency = Extract<CasinoCurrency, 'IRR' | 'IRT'>;
@@ -37,14 +37,15 @@ function usable(row: Wallet | null): bigint {
     ? BigInt(row.balance_minor) - BigInt(row.locked_minor) : 0n;
 }
 function allowed(profile: Profile): boolean {
-  return profile.status === 'active' && profile.age_verified && profile.support_approved === true &&
+  return profile.status === 'active' && profile.age_verified &&
+    (!casinoManualReviewRequired() || profile.support_approved === true) &&
     casinoCountryPermitted(profile.country) && !profile.self_excluded && !profile.restricted;
 }
 
 async function readProfile(db: Db, userId: string, walletCurrency?: FiatCurrency): Promise<Profile | null> {
   return db.queryOne<Profile>([
-    "select p.status::text as status, (coalesce(p.age_verified,false) or " + CASINO_SUPPORT_APPROVAL_SQL + ") as age_verified,",
-    CASINO_SUPPORT_APPROVAL_SQL + " as support_approved,",
+    "select p.status::text as status, coalesce(p.age_verified,false) as age_verified,",
+    (casinoManualReviewRequired() ? CASINO_SUPPORT_APPROVAL_SQL : 'false') + " as support_approved,",
     "p.preferred_currency as currency, p.jurisdiction as country,", 
     "coalesce(l.self_excluded_until > now(), false) as self_excluded,",
     "exists(select 1 from nova.user_restrictions r where r.user_id = p.id",

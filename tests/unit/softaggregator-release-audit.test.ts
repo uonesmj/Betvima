@@ -15,8 +15,8 @@ function baseline(): CasinoAuditSnapshot {
     supplierRounds: 0,
     playerBindings: 0,
     receiptLedgerDiscrepancies: 0,
-    supportApprovalCount: 1,
-    pilotSupportApproved: true,
+    ageVerifiedCount: 1,
+    pilotAgeVerified: true,
     providerApiConfigured: true,
     callbackHmacConfigured: true,
     geoHmacConfigured: true,
@@ -56,8 +56,8 @@ describe('SoftAggregator read-only production readiness classifier', () => {
       { walletCount: -1 },
       { journalCount: Number.NaN },
       { callbackReceipts: -1 },
-      { supportApprovalCount: -1 },
-      { pilotSupportApproved: false },
+      { ageVerifiedCount: -1 },
+      { pilotAgeVerified: false },
     ]) {
       const report = assessCasinoReadiness({ ...baseline(), ...changes });
       expect(report.status).toBe('blocked_technical');
@@ -66,15 +66,15 @@ describe('SoftAggregator read-only production readiness classifier', () => {
     }
   });
 
-  it('requires staff-reviewed legal age for the pilot without mandatory document KYC', () => {
+  it('requires independent legal-age clearance even when casino-specific KYC is off', () => {
     const report = assessCasinoReadiness({
-      ...baseline(), supportApprovalCount: 0, pilotSupportApproved: false,
+      ...baseline(), ageVerifiedCount: 0, pilotAgeVerified: false,
     });
     expect(report.publicMoneyApproved).toBe(false);
     expect(report.status).toBe('blocked_technical');
-    expect(report.checks.find(c => c.name === 'pilot_support_age_reviewed')?.status)
+    expect(report.checks.find(c => c.name === 'pilot_legal_age_verified')?.status)
       .toBe('failed');
-    expect(report.financial.supportApprovalCount).toBe(0);
+    expect(report.financial.ageVerifiedCount).toBe(0);
   });
 
   it('treats a preapproval cash feature flag as an unsafe configuration', () => {

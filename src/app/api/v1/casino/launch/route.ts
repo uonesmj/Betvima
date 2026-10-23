@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server';
 import { withUser } from '@/server/http/guard';
 import { withErrorHandling } from '@/lib/errors';
 import { readJson, enforceRateLimit } from '@/server/http/request';
-import { casinoSupportApproved } from '@/server/kyc/casino-support';
+import { casinoManualReviewSatisfied } from '@/server/kyc/casino-support';
 import { casinoEnabled, casinoRealMoneyUserAllowed, launchCasinoGame } from '@/server/providers/softaggregator/client';
 import { casinoPlayerMayLaunch } from '@/server/providers/softaggregator/wallet';
 import { verifiedCasinoLocation } from '@/server/providers/softaggregator/edge-location';
@@ -29,8 +29,8 @@ export const POST = withErrorHandling('casino.launch', async (ctx, request: Requ
   if (!demo && !casinoRealMoneyUserAllowed(user.id)) {
     return NextResponse.json({ error: 'CASINO_REAL_MONEY_DISABLED' }, { status: 503 });
   }
-  if (!demo && !(await casinoSupportApproved(user.id))) {
-    return NextResponse.json({ error: 'CASINO_SUPPORT_REVIEW_REQUIRED' }, { status: 403, headers: { 'Cache-Control': 'no-store' } });
+  if (!demo && !(await casinoManualReviewSatisfied(user.id))) {
+    return NextResponse.json({ error: 'CASINO_MANUAL_REVIEW_REQUIRED' }, { status: 403, headers: { 'Cache-Control': 'no-store' } });
   }
   let verifiedCountry: string | undefined;
   if (!demo) {

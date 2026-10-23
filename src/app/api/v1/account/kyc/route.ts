@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { withErrorHandling, ApiError } from '@/lib/errors';
 import { withUser } from '@/server/http/guard';
-import { casinoSupportApproved } from '@/server/kyc/casino-support';
+import { casinoManualReviewRequired, casinoManualReviewSatisfied } from '@/server/kyc/casino-support';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -17,12 +17,15 @@ export const GET = withErrorHandling('account.kyc.get', async (ctx, request: Req
     'select id,status,document_type,created_at::text,review_note from nova.kyc_submissions ' +
     'where user_id=$1 order by created_at desc limit 1', [user.id],
   );
-  // Legacy account KYC remains informational. It is not a casino demo gate.
-  const approved = await casinoSupportApproved(user.id, services.db);
+  // Preserve the legacy response field for older Android clients. While
+  // optional casino-specific KYC is disabled, no manual approval is required.
+  const casinoVerificationRequired = casinoManualReviewRequired();
+  const approved = await casinoManualReviewSatisfied(user.id, services.db);
   return NextResponse.json({ ok: true, data: {
     kycStatus: submission?.status ?? profile.kycStatus,
     gameAccessApproved: profile.status === 'active',
     casinoSupportApproved: approved,
+    casinoVerificationRequired,
     status: profile.status,
     canSubmit: submission?.status !== 'pending' && submission?.status !== 'verified',
     submission: submission ? {

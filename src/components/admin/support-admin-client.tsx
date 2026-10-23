@@ -161,13 +161,6 @@ export function SupportAdminClient() {
   const [loadingList, setLoadingList] = useState(true);
   const [loadingTicket, setLoadingTicket] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [casinoReviewer, setCasinoReviewer] = useState(false);
-  const [casinoStatus, setCasinoStatus] = useState<'unreviewed'|'approved'|'revoked'>('unreviewed');
-  const [casinoReviewReason, setCasinoReviewReason] = useState('');
-  const [casinoAgeConfirmed, setCasinoAgeConfirmed] = useState(false);
-  const [casinoReviewBusy, setCasinoReviewBusy] = useState(false);
-  const [casinoReviewFeedback, setCasinoReviewFeedback] = useState('');
-
   const filteredTickets = useMemo(() => {
     const query = search.trim().toLowerCase();
     if (!query) return tickets;
@@ -223,31 +216,12 @@ export function SupportAdminClient() {
   }, [statusFilter, categoryFilter, priorityFilter]);
 
   useEffect(() => {
-    setCasinoReviewer(false);
-    setCasinoStatus('unreviewed');
-    setCasinoAgeConfirmed(false);
-    setCasinoReviewReason('');
-    setCasinoReviewFeedback('');
     if (!selectedId) {
       setTicket(null);
       setMessages([]);
       return;
     }
     void loadTicket(selectedId);
-    const controller = new AbortController();
-    fetch('/api/v1/admin/support/' + selectedId + '/casino-approval', {
-      credentials: 'same-origin', cache: 'no-store', signal: controller.signal,
-    }).then(async (response) => {
-      if (!response.ok) throw new Error('Not authorized or casino support-review migration missing');
-      return response.json() as Promise<{ data?: { status: 'unreviewed'|'approved'|'revoked' } }>;
-    }).then((payload) => {
-      if (controller.signal.aborted) return;
-      setCasinoStatus(payload.data?.status ?? 'unreviewed');
-      setCasinoReviewer(true);
-    }).catch(() => {
-      if (!controller.signal.aborted) setCasinoReviewer(false);
-    });
-    return () => controller.abort();
   }, [selectedId]);
 
   useEffect(() => {
@@ -304,39 +278,6 @@ export function SupportAdminClient() {
   async function applyAssignment() {
     if (!selectedId) return;
     await updateTicket({ assignedTo: assignedTo.trim() || null });
-  }
-
-  async function decideCasinoAccess(decision: 'approve'|'revoke') {
-    if (!selectedId || !casinoReviewer || casinoReviewBusy ||
-        casinoReviewReason.trim().length < 8 ||
-        (decision === 'approve' && !casinoAgeConfirmed)) return;
-    if (!window.confirm(decision === 'approve'
-      ? 'Confirm this account has been reviewed by support and legal age verified?'
-      : 'Revoke casino access for this customer?')) return;
-    setCasinoReviewBusy(true);
-    setCasinoReviewFeedback('');
-    try {
-      const result = await request<{ status: 'approved'|'revoked' }>(
-        '/api/v1/admin/support/' + selectedId + '/casino-approval', {
-          method: 'POST',
-          body: JSON.stringify({
-            decision,
-            ageConfirmed: decision === 'approve' ? true : false,
-            reason: casinoReviewReason.trim(),
-          }),
-        });
-      setCasinoStatus(result.status);
-      setCasinoReviewReason('');
-      setCasinoAgeConfirmed(false);
-      setCasinoReviewFeedback(
-        'Support review saved with audit trail. Real-money eligibility is checked separately.',
-      );
-      await loadTicket(selectedId, true);
-    } catch (cause) {
-      setCasinoReviewFeedback(cause instanceof Error ? cause.message : 'Casino review failed.');
-    } finally {
-      setCasinoReviewBusy(false);
-    }
   }
 
   return (
@@ -482,53 +423,6 @@ export function SupportAdminClient() {
                 </div>
               </div>
 
-              {casinoReviewer ? (
-                <section className="shrink-0 space-y-3 border-b border-[#DCE5F1] bg-[#F6F9FE] p-4 sm:p-5" aria-label="Manual casino support authorization">
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <div>
-                      <h3 className="text-sm font-bold text-[#25354D]">Casino access — support review</h3>
-                      <p className="mt-1 text-[11px] text-[#6D7F96]">
-                        No mandatory document upload for casino access. Only authorized staff can approve or revoke.
-                        A lawful legal-age review and an audit reason are still required.
-                      </p>
-                    </div>
-                    <span className="rounded-full border border-[#D3DCE8] bg-[#EDF3FA] px-2.5 py-1 text-[11px] font-bold text-[#44556F]">
-                      {casinoStatus === 'approved' ? 'Approved' : casinoStatus === 'revoked' ? 'Revoked' : 'Not reviewed'}
-                    </span>
-                  </div>
-                  <label className="block text-xs font-semibold text-[#34445A]">
-                    Staff review note (required)
-                    <textarea className="nova-input mt-1.5 min-h-[70px] w-full resize-y"
-                      value={casinoReviewReason} disabled={casinoReviewBusy}
-                      maxLength={500} onChange={(event) => setCasinoReviewReason(event.target.value)}
-                      placeholder="State the verification procedure and why the decision is justified." />
-                  </label>
-                  <label className="flex items-start gap-2.5 text-xs leading-5 text-[#314158]">
-                    <input type="checkbox" className="mt-1 size-4 shrink-0 accent-emerald-500"
-                      checked={casinoAgeConfirmed} disabled={casinoReviewBusy}
-                      onChange={(event) => setCasinoAgeConfirmed(event.target.checked)} />
-                    <span>I verified that this customer meets the legal gambling age by an applicable lawful method.</span>
-                  </label>
-                  <div className="flex flex-wrap gap-2">
-                    {casinoStatus !== 'approved' ? (
-                      <button type="button" className="rounded-xl bg-emerald-500 px-4 py-2.5 text-xs font-bold text-white disabled:opacity-50"
-                        disabled={casinoReviewBusy || !casinoAgeConfirmed || casinoReviewReason.trim().length < 8}
-                        onClick={() => void decideCasinoAccess('approve')}>
-                        Approve casino account
-                      </button>
-                    ) : (
-                      <button type="button" className="rounded-xl bg-rose-600 px-4 py-2.5 text-xs font-bold text-white disabled:opacity-50"
-                        disabled={casinoReviewBusy || casinoReviewReason.trim().length < 8}
-                        onClick={() => void decideCasinoAccess('revoke')}>
-                        Revoke casino account
-                      </button>
-                    )}
-                  </div>
-                  {casinoReviewFeedback ? (
-                    <p role="status" className="rounded-lg bg-[#E8F1FF] px-3 py-2 text-xs text-[#225287]">{casinoReviewFeedback}</p>
-                  ) : null}
-                </section>
-              ) : null}
               <div className="min-h-0 flex-1 space-y-3 overflow-y-auto p-4">
                 {messages.length === 0 ? (
                   <div className="text-xs text-[#6E7C91]">No messages.</div>
