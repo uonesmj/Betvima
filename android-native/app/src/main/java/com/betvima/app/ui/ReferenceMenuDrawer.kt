@@ -161,7 +161,7 @@ fun ReferenceMenuDrawer(
                 dismiss(); openNotifications()
             }
             DrawerRow(tr(state.lang, "Language", "زبان"),
-                Icons.Default.Language, if (state.lang == Lang.FA) "فارسی" else "English") {
+                Icons.Default.Language, when(state.lang) { Lang.FA -> "🇮🇷 فارسی"; Lang.TR -> "🇹🇷 Türkçe"; Lang.EN -> "🇬🇧 English" }) {
                 dismiss(); openLanguage()
             }
             Spacer(Modifier.height(15.dp))
