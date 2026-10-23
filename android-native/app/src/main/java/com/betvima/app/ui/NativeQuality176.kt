@@ -3,6 +3,10 @@ package com.betvima.app.ui
 /** Human-reviewed critical native UI terms. Overrides machine-generated translations. */
 internal object NativeQuality176 {
     private val tr = mapOf(
+        "Grow together with a\npremium Sports & Casino brand" to "Seçkin spor ve kumarhane markasıyla\nbirlikte büyüyün",
+        "The BetVima experience,\nin your pocket" to "BetVima deneyimi,\ncebinizde",
+        "Welcome to the\ninner circle" to "Özel topluluğa\nhoş geldiniz",
+        "We are ready to help you 24/7.\nPlease enter your contact information and your question." to "Size 7/24 yardımcı olmaya hazırız.\nLütfen iletişim bilgilerinizi ve sorunuzu girin.",
         "Authenticator setup QR" to "Kimlik doğrulayıcı kurulum QR kodu",
         "BetVima website QR" to "BetVima web sitesi QR kodu",
         "Match unavailable" to "Maç kullanılamıyor",
@@ -83,6 +87,10 @@ internal object NativeQuality176 {
         "Bonuses" to "Bonuslar"
     )
     private val hy = mapOf(
+        "Grow together with a\npremium Sports & Casino brand" to "Պրեմիում սպորտային և կազինո ապրանքանիշի հետ\nզարգացեք միասին",
+        "The BetVima experience,\nin your pocket" to "BetVima փորձը՝\nձեր գրպանում",
+        "Welcome to the\ninner circle" to "Բարի գալուստ\nհատուկ ակումբ",
+        "We are ready to help you 24/7.\nPlease enter your contact information and your question." to "Մենք պատրաստ ենք օգնել ձեզ շուրջօրյա։\nՄուտքագրեք ձեր կոնտակտային տվյալներն ու հարցը։",
         "Authenticator setup QR" to "Նույնականացման հավելվածի կարգավորման QR կոդ",
         "BetVima website QR" to "BetVima կայքի QR կոդ",
         "Match unavailable" to "Հանդիպումն անհասանելի է",
@@ -163,6 +171,10 @@ internal object NativeQuality176 {
         "Bonuses" to "Բոնուսներ"
     )
     private val ar = mapOf(
+        "Grow together with a\npremium Sports & Casino brand" to "انمُ مع علامة رياضية وكازينو\nمتميزة",
+        "The BetVima experience,\nin your pocket" to "تجربة BetVima،\nبين يديك",
+        "Welcome to the\ninner circle" to "مرحبًا بك في\nالدائرة المميزة",
+        "We are ready to help you 24/7.\nPlease enter your contact information and your question." to "نحن مستعدون لمساعدتك على مدار الساعة.\nأدخل معلومات الاتصال وسؤالك.",
         "Authenticator setup QR" to "رمز QR لإعداد تطبيق المصادقة",
         "BetVima website QR" to "رمز QR لموقع BetVima",
         "Match unavailable" to "المباراة غير متاحة",
