@@ -63,7 +63,7 @@ internal fun LiveMatchActivityPanel(
                 val change = if (from != null && to != null) to - from else 0
                 if (change > 0 && change <= if (current.key.contains("attack")) 8 else 3)
                     MatchPulse114(current.key + side + facts.observedAt,
-                        side, tr(activeLang177, current.en, current.fa), change)
+                        side, trLive177(activeLang177, current.en, current.fa), change)
                 else null
             }
         }
@@ -101,7 +101,7 @@ internal fun LiveMatchActivityPanel(
                     Icon(Icons.Default.Sensors, null, tint = Color(0xFF63E8BA),
                         modifier = Modifier.size(15.dp))
                     Spacer(Modifier.width(6.dp))
-                    Text(tr(activeLang177, "Live match flow", "جریان زنده مسابقه"),
+                    Text(trLive177(activeLang177, "Live match flow", "جریان زنده مسابقه"),
                         fontSize = 11.sp, fontWeight = FontWeight.ExtraBold,
                         color = Color.White, modifier = Modifier.weight(1f))
                     Surface(color = Color(0xFF12362F), shape = RoundedCornerShape(8.dp)) {
@@ -130,10 +130,10 @@ internal fun LiveMatchActivityPanel(
                 }
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                     Text((attackHome?.toString() ?: "—") +
-                            tr(activeLang177, " attacks", " حمله"),
+                            trLive177(activeLang177, " attacks", " حمله"),
                         fontSize = 10.sp, color = Color(0xFFCDF4E5))
                     Text((attackAway?.toString() ?: "—") +
-                            tr(activeLang177, " attacks", " حمله"),
+                            trLive177(activeLang177, " attacks", " حمله"),
                         fontSize = 10.sp, color = Color(0xFFFFEACD))
                 }
                 AnimatedVisibility(visible = pulse != null) {
@@ -151,7 +151,7 @@ internal fun LiveMatchActivityPanel(
                     }
                 }
                 if (pulse == null) Text(
-                    tr(activeLang177, "Reported attack balance · not ball tracking", "نسبت حملات ثبت‌شده؛ نه مکان واقعی توپ"),
+                    trLive177(activeLang177, "Reported attack balance · not ball tracking", "نسبت حملات ثبت‌شده؛ نه مکان واقعی توپ"),
                     fontSize = 9.sp, color = Color(0xFFB4D9CF)
                 )
             }
@@ -177,7 +177,7 @@ internal fun LiveMatchActivityPanel(
                     val data = facts?.stat(key)
                     LiveMatchMetricChip(
                         modifier = Modifier.weight(1f),
-                        title = tr(activeLang177, english, persian),
+                        title = trLive177(activeLang177, english, persian),
                         home = data?.home, away = data?.away,
                         highlighted = pulse?.identity?.startsWith(key) == true
                     )
@@ -186,7 +186,7 @@ internal fun LiveMatchActivityPanel(
         }
         }
         if (expanded && facts?.stats.isNullOrEmpty()) Text(
-            tr(activeLang177, "No verified match statistics received for this fixture.", "آمار تأییدشده‌ای از API برای این بازی دریافت نشده است."),
+            trLive177(activeLang177, "No verified match statistics received for this fixture.", "آمار تأییدشده‌ای از API برای این بازی دریافت نشده است."),
             fontSize = 11.sp, color = Palette.muted
         )
     }
