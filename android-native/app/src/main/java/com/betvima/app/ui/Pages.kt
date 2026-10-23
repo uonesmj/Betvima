@@ -67,7 +67,7 @@ fun SportsRibbon(selected: String, lang: Lang, showEsports: Boolean = true,
                 "table-tennis" -> "پینگ‌پنگ"; "baseball" -> "بیسبال"
                 "esports" -> "ورزش الکترونیک"; "other" -> "سایر ورزش‌ها"
                 else -> sportName(sport)
-            } else sportName(sport)
+            } else NativeLocalizedNouns176.sport(lang, sport, sportName(sport))
             Column(Modifier.width(71.dp).clickable { onChange(sport) }
                 .padding(vertical = 2.dp),
                 horizontalAlignment = Alignment.CenterHorizontally) {
@@ -546,7 +546,8 @@ fun BetsPage(state: AppState, model: AppViewModel) {
 }
 
 private fun walletTransactionLabel(type: String, lang: Lang): String =
-    if (lang == Lang.EN) type.replace("_", " ").replaceFirstChar { it.uppercase() }
+    NativeLocalizedNouns176.transaction(lang, type)
+        ?: if (lang == Lang.EN) type.replace("_", " ").replaceFirstChar { it.uppercase() }
     else when (type) {
         "deposit" -> "واریز"
         "withdrawal" -> "برداشت"
