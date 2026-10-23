@@ -199,7 +199,7 @@ internal fun LiveIncidentPitch129(
                 .fillMaxWidth(.67f).padding(top = 7.dp)
         ) {
             if (cue != null) {
-                val title = incidentCaption129(cue.kind, fa)
+                val title = incidentCaption129(cue.kind, fa, activeLang177)
                 val team = if (cue.side == IncidentSide129.HOME)
                     match.home.name else match.away.name
                 val serious = cue.kind == IncidentKind129.GOAL
@@ -257,7 +257,7 @@ internal fun IncidentStatsCue129(cue: LiveIncidentCue129?, match: Match, fa: Boo
         if(cue != null) {
             val team = if (cue.side == IncidentSide129.HOME) match.home.name else match.away.name
             Text(
-                team + " · " + incidentCaption129(cue.kind, fa) + " +" + cue.amount,
+                team + " · " + incidentCaption129(cue.kind, fa, activeLang177) + " +" + cue.amount,
                 modifier = Modifier.fillMaxWidth().background(
                     Color(0xFF1D6148), RoundedCornerShape(9.dp))
                     .padding(horizontal = 9.dp, vertical = 6.dp),
