@@ -844,5 +844,5 @@ internal object TurkishTranslations169 {
         "Clear eligibility" to "Açık uygunluk kriterleri"
     )
 
-    fun translate(english: String): String = terms[english] ?: english
+    fun translate(english: String): String = terms[english] ?: TurkishTranslations176.translate(english)
 }

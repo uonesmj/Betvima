@@ -588,5 +588,5 @@ internal object Armenian172 {
         "Confirm ticket status before submitting again." to "Կրկին ուղարկելուց առաջ ստուգեք հարցման կարգավիճակը։",
     )
 
-    fun translate(english: String): String = terms[english] ?: extraTerms[english] ?: deepTerms174[english] ?: english
+    fun translate(english: String): String = terms[english] ?: extraTerms[english] ?: deepTerms174[english] ?: ArmenianTranslations176.translate(english)
 }
