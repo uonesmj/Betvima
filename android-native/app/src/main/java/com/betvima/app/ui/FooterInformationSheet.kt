@@ -134,7 +134,7 @@ internal fun FooterInformationSheet(
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Surface(color = Color(0xFF204367),
                                 shape = RoundedCornerShape(8.dp)) {
-                                Text("BETVIMA / GUIDE", color = Color(0xFFBBDCF9),
+                                Text(tr(LocalNativeLanguage176.current, "BETVIMA / GUIDE", "BETVIMA / GUIDE"), color = Color(0xFFBBDCF9),
                                     fontWeight = FontWeight.ExtraBold, fontSize = 9.sp,
                                     letterSpacing = .6.sp,
                                     modifier = Modifier.padding(horizontal = 10.dp, vertical = 7.dp))
