@@ -56,11 +56,14 @@ fun LanguagePickerDialog(current: Lang, onSelect: (Lang) -> Unit, onDismiss: () 
                         modifier = Modifier.size(19.dp))
                 }
             }
-            CompactLocaleOption("فا", "فارسی", "Persian", current == Lang.FA) {
+            CompactLocaleOption("🇮🇷", "فارسی", "Persian", current == Lang.FA) {
                 onSelect(Lang.FA)
             }
-            CompactLocaleOption("EN", "English", "English", current == Lang.EN) {
+            CompactLocaleOption("🇬🇧", "English", "English", current == Lang.EN) {
                 onSelect(Lang.EN)
+            }
+            CompactLocaleOption("🇹🇷", "Türkçe", "Turkish", current == Lang.TR) {
+                onSelect(Lang.TR)
             }
         }
     }
