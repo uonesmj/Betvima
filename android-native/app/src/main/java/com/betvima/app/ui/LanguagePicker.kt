@@ -65,6 +65,9 @@ fun LanguagePickerDialog(current: Lang, onSelect: (Lang) -> Unit, onDismiss: () 
             CompactLocaleOption("🇹🇷", "Türkçe", "Turkish", current == Lang.TR) {
                 onSelect(Lang.TR)
             }
+            CompactLocaleOption("🇦🇫", "دری", "Afghan Dari", current == Lang.DARI) {
+                onSelect(Lang.DARI)
+            }
         }
     }
 }

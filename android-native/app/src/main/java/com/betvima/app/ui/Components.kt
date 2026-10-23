@@ -30,6 +30,7 @@ fun tr(lang: Lang, en: String, fa: String): String = when (lang) {
     Lang.EN -> en
     Lang.FA -> fa
     Lang.TR -> TurkishTranslations169.translate(en)
+    Lang.DARI -> AfghanDari171.translate(en, fa)
 }
 
 /**
