@@ -119,7 +119,7 @@ fun SportsbookTopTabs(state: AppState, model: AppViewModel, onSearch: () -> Unit
                         verticalAlignment = Alignment.CenterVertically) {
                         if (id == "bets") {
                             Surface(color = Color(0xFFFF4F20), shape = RoundedCornerShape(6.dp)) {
-                                Text("NEW", modifier = Modifier.padding(horizontal = 5.dp,
+                                Text(tr(state.lang,"NEW","جدید"), modifier = Modifier.padding(horizontal = 5.dp,
                                     vertical = 2.dp), fontWeight = FontWeight.Black,
                                     fontSize = 9.sp, color = Color.White)
                             }
