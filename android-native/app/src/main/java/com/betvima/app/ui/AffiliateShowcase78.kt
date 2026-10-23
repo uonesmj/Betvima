@@ -328,7 +328,7 @@ private fun A78Products(lang: Lang, active: Boolean) {
                 }
             }
         }
-        Text("‹     SWIPE     ›",color=a78Muted,fontSize=10.sp,
+        Text(tr(lang, "‹     SWIPE     ›", "‹     بکشید     ›"),color=a78Muted,fontSize=10.sp,
             modifier=Modifier.align(Alignment.CenterHorizontally)
                 .padding(top=12.dp),letterSpacing=2.sp)
     }
@@ -367,7 +367,7 @@ private fun A78Analytics(lang: Lang, active: Boolean) {
                         color=a78Green.copy(alpha=.15f),
                         shape=RoundedCornerShape(30.dp)
                     ) {
-                        Text("● LIVE DEMO",color=a78Green,fontSize=9.sp,
+                        Text(tr(lang, "● LIVE DEMO", "● نمایش آزمایشی زنده"),color=a78Green,fontSize=9.sp,
                             modifier=Modifier.padding(horizontal=10.dp,vertical=6.dp))
                     }
                 }
