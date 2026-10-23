@@ -479,7 +479,7 @@ private fun AffiliateDashboardHero117(lang: Lang) {
                         modifier=Modifier.padding(8.dp).size(21.dp))
                 }
                 Spacer(Modifier.width(10.dp))
-                Text("BETVIMA  /  PARTNERS",fontSize=11.sp,
+                Text(tr(LocalNativeLanguage176.current, "BETVIMA  /  PARTNERS", "BETVIMA  /  PARTNERS"),fontSize=11.sp,
                     fontWeight=FontWeight.Black,color=Color(0xFFBBDFFF),
                     letterSpacing=1.sp,modifier=Modifier.weight(1f))
                 Icon(Icons.Default.AutoAwesome,null,
