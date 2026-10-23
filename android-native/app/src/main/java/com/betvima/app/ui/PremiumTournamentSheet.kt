@@ -242,7 +242,7 @@ fun PremiumTournamentSheet(
             ) {
                 Text("🔥", fontSize = 22.sp)
                 Spacer(Modifier.width(12.dp))
-                Text("Top", modifier = Modifier.weight(1f),
+                Text(tr(lang, "Top", "برترین‌ها"), modifier = Modifier.weight(1f),
                     color = Color.White, fontSize = 15.sp,
                     fontWeight = FontWeight.Bold)
                 Icon(Icons.Default.ChevronRight, null,
