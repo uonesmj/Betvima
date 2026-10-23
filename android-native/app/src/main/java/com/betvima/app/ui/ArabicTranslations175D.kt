@@ -4,7 +4,7 @@ package com.betvima.app.ui
 internal object ArabicTranslations175D {
     val terms: Map<String, String> = mapOf(
         "Remaining time:  " to "الوقت المتبقي:  ",
-        "Copy ID" to "تحتفظ نسخة من المعرّف",
+        "Copy ID" to "نسخ المعرّف",
         "Read all requirements" to "اقرأ كل المتطلبات",
         "AN EXPERIENCE ABOVE THE ORDINARY" to "تجربة تفوق المعتاد",
         "Welcome to the\\ninner circle" to "مرحبًا بك في\\nالدائرة المميزة",
