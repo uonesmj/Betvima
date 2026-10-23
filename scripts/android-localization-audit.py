@@ -6,7 +6,7 @@ Never translate provider/team names, amounts, odds, identifiers or user-entered 
 import json, re, pathlib, collections
 ROOT = pathlib.Path(__file__).resolve().parents[1] / "android-native" / "app" / "src" / "main" / "java" / "com" / "betvima" / "app" / "ui"
 QUOTED = r'"((?:\\.|[^"\\])*)"'
-TRANS = re.compile(r'\b(?:tr|trLive177|label87|infoText|tr87|labelFor|localized)\(\s*[^,()]*,\s*' + QUOTED + r'\s*,')
+TRANS = re.compile(r'\b(?:tr|trLive177|label87|infoText|tr87|labelFor)\(\s*[^,()]*,\s*' + QUOTED + r'\s*,')
 DIRECT = re.compile(r'\bText\(\s*(?:(?:text|value)\s*=\s*)?' + QUOTED)
 KEY = re.compile(QUOTED + r'\s+to\s+')
 latin = re.compile(r'[A-Za-z]{2}')
