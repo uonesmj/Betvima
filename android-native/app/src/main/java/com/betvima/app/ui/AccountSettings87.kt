@@ -309,7 +309,7 @@ internal fun AccountSettings87(state:AppState,model:AppViewModel) {
                         "این کد به betvima.com می‌رود؛ لینک دائمی معتبر دانلود APK هنوز مشخص نشده است."),
                         color=muted87,fontSize=11.sp)
                     val image=remember{createQr87("https://betvima.com")}
-                    if(image!=null)Image(image.asImageBitmap(),"BetVima website QR",
+                    if(image!=null)Image(image.asImageBitmap(),tr(lang, "BetVima website QR", "کد QR وب‌سایت بت‌ویما"),
                         Modifier.align(Alignment.CenterHorizontally).size(195.dp))
                 }
             }
