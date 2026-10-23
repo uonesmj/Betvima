@@ -164,7 +164,7 @@ internal fun PremiumMatchTvModal126(
                         Spacer(Modifier.width(6.dp))
                         Text("⠿", fontSize = 15.sp, color = pipMuted)
                         Spacer(Modifier.width(5.dp))
-                        Text(tr(activeLang177, "LIVE", "زنده"),
+                        Text(trLive177(activeLang177, "LIVE", "زنده"),
                             color = pipGreen, fontSize = 10.sp, fontWeight = FontWeight.Black)
                         Spacer(Modifier.width(5.dp))
                         Surface(color = Color(0xFF151515),
@@ -177,12 +177,12 @@ internal fun PremiumMatchTvModal126(
                     }
                     IconButton(onClick = onRefresh, modifier = Modifier.size(33.dp)) {
                         Icon(Icons.Default.Refresh,
-                            contentDescription = tr(activeLang177, "Refresh", "تازه‌سازی"),
+                            contentDescription = trLive177(activeLang177, "Refresh", "تازه‌سازی"),
                             tint = pipMuted, modifier = Modifier.size(16.dp))
                     }
                     IconButton(onClick = onClose, modifier = Modifier.size(36.dp)) {
                         Icon(Icons.Default.Close,
-                            contentDescription = tr(activeLang177, "Close window", "بستن پنجره"),
+                            contentDescription = trLive177(activeLang177, "Close window", "بستن پنجره"),
                             tint = Color.White, modifier = Modifier.size(18.dp))
                     }
                 }
@@ -191,10 +191,10 @@ internal fun PremiumMatchTvModal126(
                         .background(Color.Black).padding(horizontal = 5.dp, vertical = 3.dp)
                 ) {
                     listOf(
-                        tr(activeLang177, "Pitch", "زمین"),
-                        tr(activeLang177, "Stats", "آمار"),
-                        tr(activeLang177, "Trend", "روند"),
-                        tr(activeLang177, "Events", "رویداد")
+                        trLive177(activeLang177, "Pitch", "زمین"),
+                        trLive177(activeLang177, "Stats", "آمار"),
+                        trLive177(activeLang177, "Trend", "روند"),
+                        trLive177(activeLang177, "Events", "رویداد")
                     ).forEachIndexed { i, label ->
                         Box(
                             modifier = Modifier.weight(1f).fillMaxHeight()
@@ -220,11 +220,11 @@ internal fun PremiumMatchTvModal126(
                                 modifier = Modifier.fillMaxWidth().weight(1f),
                                 match = match, cue = currentIncident, fa = fa
                             )
-                        } else Text(tr(activeLang177, "Match statistics", "آمار مسابقه"),
+                        } else Text(trLive177(activeLang177, "Match statistics", "آمار مسابقه"),
                             color = pipMuted, modifier = Modifier.weight(1f).fillMaxWidth(),
                             textAlign = TextAlign.Center)
                         PremiumPressureBar130(share, fa = fa, caption = true)
-                        Text(tr(activeLang177, "Schematic animation · no ball tracking", "نمای شماتیک، نه مکان واقعی توپ"),
+                        Text(trLive177(activeLang177, "Schematic animation · no ball tracking", "نمای شماتیک، نه مکان واقعی توپ"),
                             fontSize = 7.sp, color = pipMuted,
                             textAlign = TextAlign.Center, maxLines = 1,
                             modifier = Modifier.fillMaxWidth())
