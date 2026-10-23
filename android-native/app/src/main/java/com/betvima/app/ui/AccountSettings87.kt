@@ -262,7 +262,7 @@ internal fun AccountSettings87(state:AppState,model:AppViewModel) {
                     else label87(lang,"SMS verification service is not configured. A number cannot be called verified until a valid one-time code is confirmed by the server.",
                         "سرویس تأیید پیامکی پیکربندی نشده است. بدون دریافت و تأیید کد معتبر، شماره تأییدشده تلقی نمی‌شود."),
                     color=muted87,fontSize=12.sp)
-                "mfa"->Text("Authenticator settings",color=muted87,fontSize=12.sp)
+                "mfa"->Text(tr(lang, "Authenticator settings", "تنظیمات احراز هویت"),color=muted87,fontSize=12.sp)
                 "history"->{
                     Text(label87(lang,"Last server-recorded login","آخرین ورود ثبت‌شده"),
                         color=muted87,fontSize=12.sp)
