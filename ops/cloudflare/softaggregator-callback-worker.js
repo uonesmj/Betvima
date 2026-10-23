@@ -50,7 +50,15 @@ function exactIpAllowed(ip, configured) {
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
-    if ((url.pathname !== WEBHOOK_PATH && url.pathname !== '/') || request.method !== 'GET')
+    // The bare / endpoint belongs only to the dedicated rehearsal hostname.
+    // A misconfigured zone route must never let this Worker process or sign
+    // an unrelated website-root request.
+    const approvedRehearsalHost =
+      url.hostname === 'betvima-casino-callback.mimmim283228.workers.dev';
+    if (request.method !== 'GET' ||
+        (url.pathname !== WEBHOOK_PATH &&
+          !(url.pathname === '/' && approvedRehearsalHost)) ||
+        (url.hostname.endsWith('.workers.dev') && !approvedRehearsalHost))
       return refuse();
 
     const ip = request.headers.get('cf-connecting-ip');
