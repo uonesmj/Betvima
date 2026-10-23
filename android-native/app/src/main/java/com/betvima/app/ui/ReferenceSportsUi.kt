@@ -634,7 +634,7 @@ private fun ReferenceCompactOdd(
     ) {
         Row(Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically) {
-            Text(selection.label(state.lang == Lang.FA),
+            Text(tr(state.lang, selection.label(false), selection.label(true)),
                 fontSize = 10.sp, color = Palette.text,
                 maxLines = 1, overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.weight(1f))
