@@ -833,6 +833,14 @@ internal object TurkishTranslations169 {
         "Close profile" to "Profili kapat",
         "6 shortcuts" to "6 kısayol",
         "Verified phone: " to "Doğrulanmış telefon: ",
+        "A saved payout wallet is required. Server validates funds, minimums and approval." to "Kayıtlı ödeme cüzdanı gereklidir. Sunucu bakiyeyi, asgari tutarı ve onayı doğrular.",
+        "Save a wallet for the chosen network before requesting a payout." to "Ödeme talebinden önce seçilen ağ için bir cüzdan kaydedin.",
+        "Submit payout request for approval? This is not an instant transfer." to "Ödeme talebi onaya gönderilsin mi? Bu anlık bir transfer değildir.",
+        "Minimum payout: " to "Asgari ödeme: ",
+        "BetVima — Sports and live events: https://betvima.com" to "BetVima — Spor ve canlı etkinlikler: https://betvima.com",
+        "  IRR" to "  IRR",
+        "Space freed: " to "Boşaltılan alan: ",
+        "Temporary files removed: " to "Silinen geçici dosyalar: ",
         "Clear eligibility" to "Açık uygunluk kriterleri"
     )
 
