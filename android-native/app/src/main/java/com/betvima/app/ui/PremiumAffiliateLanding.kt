@@ -434,10 +434,10 @@ private fun PartnerPhone() {
                     Color(0xFF167443), Color(0xFF11291B))))) {
                 Column(Modifier.align(Alignment.CenterStart).padding(11.dp)) {
                     Text("BETVIMA", color = Color(0xFFB7C5FF), fontSize = 8.sp)
-                    Text("Explore the game", color = Color.White, fontSize = 14.sp,
+                    Text(tr(lang,"Explore the game","دنیای بازی"), color = Color.White, fontSize = 14.sp,
                         fontWeight = FontWeight.Black)
                     Spacer(Modifier.height(5.dp))
-                    Text("SPORTS • CASINO", color = Color.White, fontSize = 7.sp)
+                    Text(tr(lang,"SPORTS • CASINO","ورزش • کازینو"), color = Color.White, fontSize = 7.sp)
                 }
             }
             Spacer(Modifier.height(9.dp))
@@ -652,7 +652,7 @@ private fun PartnerProducts(lang: Lang, active: Boolean) {
     Column(Modifier.fillMaxWidth().background(partnerNight)
         .padding(vertical=45.dp)) {
         Column(Modifier.padding(horizontal=24.dp)) {
-            Text("PRODUCT", color=partnerMint,letterSpacing=2.sp,fontSize=11.sp,
+            Text(tr(lang,"PRODUCT","محصولات"), color=partnerMint,letterSpacing=2.sp,fontSize=11.sp,
                 fontWeight=FontWeight.Black)
             Spacer(Modifier.height(14.dp))
             Text(tr(lang,"The BetVima experience,\nin your pocket",
@@ -705,7 +705,7 @@ private fun PartnerProducts(lang: Lang, active: Boolean) {
             }
         }
         Spacer(Modifier.height(13.dp))
-        Text("←   SWIPE   →",color=Color(0xFF99A3BE),
+        Text(tr(lang,"←   SWIPE   →","←   ورق بزنید   →"),color=Color(0xFF99A3BE),
             modifier=Modifier.align(Alignment.CenterHorizontally),fontSize=11.sp)
     }
 }
@@ -734,7 +734,7 @@ private val partnerQuestions=listOf(
 private fun PartnerFaq(lang: Lang, active: Boolean) {
     Column(Modifier.fillMaxWidth().background(partnerPaper)
         .padding(horizontal=19.dp, vertical=45.dp)) {
-        Text("FAQ",color=partnerBlue,letterSpacing=2.sp,fontSize=12.sp,
+        Text(tr(lang,"FAQ","پرسش‌های متداول"),color=partnerBlue,letterSpacing=2.sp,fontSize=12.sp,
             fontWeight=FontWeight.Black)
         Spacer(Modifier.height(13.dp))
         Text(tr(lang,"Frequently asked questions","پرسش‌های متداول"),
@@ -786,7 +786,7 @@ private fun PartnerFaq(lang: Lang, active: Boolean) {
 private fun PartnerGallery(lang: Lang, active: Boolean) {
     Column(Modifier.fillMaxWidth().background(Color(0xFFFAFAFD))
         .padding(20.dp)) {
-        Text("ABOUT US",color=partnerBlue,letterSpacing=2.sp,
+        Text(tr(lang,"ABOUT US","درباره ما"),color=partnerBlue,letterSpacing=2.sp,
             fontWeight=FontWeight.Black,fontSize=11.sp)
         Spacer(Modifier.height(12.dp))
         Text(tr(lang,"Discover BetVima","دنیای بت‌ویما"),
@@ -839,7 +839,7 @@ private fun PartnerSignup(lang: Lang, active: Boolean, onGetStarted: () -> Unit)
                 Modifier.fillMaxWidth().height(205.dp),active,corner=24)
         }
         Spacer(Modifier.height(24.dp))
-        Text("JOIN US",color=partnerMint,fontSize=11.sp,letterSpacing=2.sp,
+        Text(tr(lang,"JOIN US","به ما بپیوندید"),color=partnerMint,fontSize=11.sp,letterSpacing=2.sp,
             fontWeight=FontWeight.Black)
         Spacer(Modifier.height(13.dp))
         Text(tr(lang,"Start earning right now","همین حالا همکاری را آغاز کنید"),
