@@ -17,8 +17,8 @@ export type CasinoAuditSnapshot = Readonly<{
   supplierRounds: number;
   playerBindings: number;
   receiptLedgerDiscrepancies: number;
-  supportApprovalCount: number;
-  pilotSupportApproved: boolean;
+  ageVerifiedCount: number;
+  pilotAgeVerified: boolean;
   providerApiConfigured: boolean;
   callbackHmacConfigured: boolean;
   geoHmacConfigured: boolean;
@@ -46,7 +46,7 @@ export function assessCasinoReadiness(snapshot: CasinoAuditSnapshot) {
   check('wallet_journal_integrity',
     countOk(snapshot.walletCount) && countOk(snapshot.journalCount) &&
     snapshot.walletDiscrepancies === 0);
-  check('support_review_count_valid', countOk(snapshot.supportApprovalCount));
+  check('verified_age_count_valid', countOk(snapshot.ageVerifiedCount));
   check('receipt_ledger_integrity',
     countOk(snapshot.callbackReceipts) && countOk(snapshot.supplierRounds) &&
     countOk(snapshot.playerBindings) &&
@@ -68,7 +68,7 @@ export function assessCasinoReadiness(snapshot: CasinoAuditSnapshot) {
     status: 'needs_external_evidence',
   });
   check('single_player_pilot_configured', snapshot.singlePlayerPilotConfigured);
-  check('pilot_support_age_reviewed', snapshot.pilotSupportApproved);
+  check('pilot_legal_age_verified', snapshot.pilotAgeVerified);
   check('cash_flag_remains_off_before_approval', !snapshot.realMoneyFlagEnabled);
 
   for (const name of [
@@ -96,7 +96,7 @@ export function assessCasinoReadiness(snapshot: CasinoAuditSnapshot) {
       providerRoundRows: snapshot.supplierRounds,
       playerBindingRows: snapshot.playerBindings,
       receiptLedgerDiscrepancies: snapshot.receiptLedgerDiscrepancies,
-      supportApprovalCount: snapshot.supportApprovalCount,
+      ageVerifiedCount: snapshot.ageVerifiedCount,
     },
     checks,
   };
