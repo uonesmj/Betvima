@@ -6,7 +6,7 @@ Never translate provider/team names, amounts, odds, identifiers or user-entered 
 import json, re, pathlib, collections
 ROOT = pathlib.Path(__file__).resolve().parents[1] / "android-native" / "app" / "src" / "main" / "java" / "com" / "betvima" / "app" / "ui"
 QUOTED = r'"((?:\\.|[^"\\])*)"'
-TRANS = re.compile(r'\b(?:tr|label87|infoText|tr87|labelFor|localized)\(\s*[^,()]*,\s*' + QUOTED + r'\s*,')
+TRANS = re.compile(r'\b(?:tr|trLive177|label87|infoText|tr87|labelFor|localized)\(\s*[^,()]*,\s*' + QUOTED + r'\s*,')
 DIRECT = re.compile(r'\bText\(\s*(?:(?:text|value)\s*=\s*)?' + QUOTED)
 KEY = re.compile(QUOTED + r'\s+to\s+')
 latin = re.compile(r'[A-Za-z]{2}')
@@ -35,6 +35,11 @@ reviewed=set(unescape(m.group(1)) for m in KEY.finditer((ROOT/"NativeQuality176.
 turkish |= reviewed
 armenian |= reviewed
 arabic |= reviewed
+live_reviewed=set(unescape(m.group(1)) for m in KEY.finditer(
+    (ROOT/"NativeLiveTranslations177.kt").read_text(encoding="utf-8")))
+turkish |= live_reviewed
+armenian |= live_reviewed
+arabic |= live_reviewed
 all_keys={k for r in results.values() for k in r["tr"]}
 all_direct={k for r in results.values() for k in r["direct"]}
 out={
@@ -64,3 +69,19 @@ print("Wrote",path)
 if "--fail-on-gaps" in __import__("sys").argv and any(out["missing"][l] for l in ("tr","hy","ar")):
     print(json.dumps(out["missing"], ensure_ascii=False, indent=2))
     raise SystemExit("Incomplete native translations")
+
+# The six previously bilingual live-match screens must not bypass TR/HY/AR.
+LIVE_SCREENS = (
+    "LiveIncidentCue129.kt", "LiveIncidentPitch129.kt",
+    "LiveMatchActivityPanel.kt", "PremiumFloatingViews130.kt",
+    "PremiumMatchScoreHeader126.kt", "PremiumMatchTvModal126.kt",
+    "PremiumNativeLiveTracker.kt"
+)
+stale = []
+for name in LIVE_SCREENS:
+    code = (ROOT / name).read_text(encoding="utf-8")
+    if re.search(r'if\s*\(\s*fa\s*\)\s*"[^"]+"\s*else\s*"[^"]+"', code):
+        stale.append(name)
+print("Live screen binary-language fallbacks:", stale)
+if stale:
+    raise SystemExit("Some live screens still force English outside Persian")
