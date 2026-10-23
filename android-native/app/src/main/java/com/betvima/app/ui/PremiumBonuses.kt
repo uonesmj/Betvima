@@ -95,7 +95,7 @@ private fun bonusDate(iso: String): String =
                             Icon(Icons.Default.AutoAwesome,null,tint=accent,
                                 modifier=Modifier.size(15.dp))
                             Spacer(Modifier.width(7.dp))
-                            Text("BETVIMA REWARDS",color=Color(0xFFC6FFE3),
+                            Text(tr(LocalNativeLanguage176.current, "BETVIMA REWARDS", "BETVIMA REWARDS"),color=Color(0xFFC6FFE3),
                                 fontSize=10.sp,fontWeight=FontWeight.Black)
                         }
                     }
