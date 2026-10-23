@@ -115,7 +115,7 @@ private fun VipHero(lang: Lang, onExplore: () -> Unit, onWallet: () -> Unit) {
                     Icon(Icons.Default.Stars, null, tint = vipBlue,
                         modifier = Modifier.size(15.dp))
                     Spacer(Modifier.width(5.dp))
-                    Text("BETVIMA  VIP CLUB", fontSize = 10.sp,
+                    Text(tr(LocalNativeLanguage176.current, "BETVIMA  VIP CLUB", "BETVIMA  VIP CLUB"), fontSize = 10.sp,
                         fontWeight = FontWeight.Black, color = vipInk)
                 }
             }
