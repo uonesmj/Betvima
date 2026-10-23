@@ -69,7 +69,7 @@ internal fun PremiumPressureBar130(
         animationSpec = tween(850), label = "pressure130")
     Column(modifier, verticalArrangement = Arrangement.spacedBy(5.dp)) {
         if (caption) Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            Text(tr(activeLang177, "REPORTED ATTACKING PRESSURE", "فشار حملات ثبت‌شده"),
+            Text(trLive177(activeLang177, "REPORTED ATTACKING PRESSURE", "فشار حملات ثبت‌شده"),
                 modifier = Modifier.weight(1f), color = premiumMuted130,
                 fontSize = 8.sp, fontWeight = FontWeight.ExtraBold)
             Text(if (ratio == null) "—" else
@@ -111,7 +111,7 @@ private fun PremiumMetric130(stat: LiveStat, fa: Boolean) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text((h ?: "—").toString(), color = premiumMint130,
                 fontSize = 12.sp, fontWeight = FontWeight.Black)
-            Text(tr(activeLang177, stat.en, stat.fa), modifier = Modifier.weight(1f),
+            Text(trLive177(activeLang177, stat.en, stat.fa), modifier = Modifier.weight(1f),
                 fontSize = 9.sp, color = premiumText130, fontWeight = FontWeight.SemiBold,
                 textAlign = TextAlign.Center, maxLines = 1, overflow = TextOverflow.Ellipsis)
             Text((a ?: "—").toString(), color = premiumAmber130,
@@ -145,7 +145,7 @@ internal fun PremiumStatistics130(
         IncidentStatsCue129(cue, match, fa)
         val available = importantStats130.mapNotNull { facts?.stat(it) }
         if (available.isEmpty()) {
-            PremiumNoData130(tr(activeLang177, "Waiting for verified live match statistics.", "آمار معتبر مسابقه هنوز دریافت نشده."))
+            PremiumNoData130(trLive177(activeLang177, "Waiting for verified live match statistics.", "آمار معتبر مسابقه هنوز دریافت نشده."))
         } else available.forEach { PremiumMetric130(it, fa) }
     }
 }
@@ -157,18 +157,18 @@ internal fun PremiumMomentum130(
     val activeLang177 = LocalNativeLanguage176.current
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())
         .padding(10.dp), verticalArrangement = Arrangement.spacedBy(9.dp)) {
-        Text(tr(activeLang177, "ATTACKING PRESSURE", "روند فشار حملات"),
+        Text(trLive177(activeLang177, "ATTACKING PRESSURE", "روند فشار حملات"),
             color = premiumText130, fontWeight = FontWeight.Black, fontSize = 11.sp)
         Row(horizontalArrangement = Arrangement.spacedBy(6.dp),
             verticalAlignment = Alignment.CenterVertically) {
             Box(Modifier.size(6.dp).background(premiumMint130, RoundedCornerShape(2.dp)))
-            Text(tr(activeLang177, "Home", "میزبان"), color = premiumMuted130, fontSize = 9.sp)
+            Text(trLive177(activeLang177, "Home", "میزبان"), color = premiumMuted130, fontSize = 9.sp)
             Spacer(Modifier.width(10.dp))
             Box(Modifier.size(6.dp).background(premiumAmber130, RoundedCornerShape(2.dp)))
-            Text(tr(activeLang177, "Away", "مهمان"), color = premiumMuted130, fontSize = 9.sp)
+            Text(trLive177(activeLang177, "Away", "مهمان"), color = premiumMuted130, fontSize = 9.sp)
         }
         if (samples.size < 2) {
-            PremiumNoData130(tr(activeLang177, "The trend builds from new provider snapshots in this session.", "نمودار پس از دریافت چند به‌روزرسانی واقعی ساخته می‌شود."))
+            PremiumNoData130(trLive177(activeLang177, "The trend builds from new provider snapshots in this session.", "نمودار پس از دریافت چند به‌روزرسانی واقعی ساخته می‌شود."))
         } else Canvas(Modifier.fillMaxWidth().height(104.dp)
             .background(Color(0xFF12333D), RoundedCornerShape(11.dp))
             .padding(9.dp)) {
@@ -193,7 +193,7 @@ internal fun PremiumMomentum130(
             }
         }
         PremiumPressureBar130(pressureRatio130(facts), caption = true, fa = fa)
-        Text(tr(activeLang177, "Observed attack-counter shares during this visit; not actual ball tracking.", "نمودار بر اساس تغییر شمارندهٔ حملات در طول بازدید است، نه موقعیت توپ."),
+        Text(trLive177(activeLang177, "Observed attack-counter shares during this visit; not actual ball tracking.", "نمودار بر اساس تغییر شمارندهٔ حملات در طول بازدید است، نه موقعیت توپ."),
             color = premiumMuted130, fontSize = 8.sp, lineHeight = 11.sp)
     }
 }
@@ -230,9 +230,9 @@ internal fun PremiumEvents130(
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())
         .padding(horizontal = 9.dp, vertical = 10.dp),
         verticalArrangement = Arrangement.spacedBy(7.dp)) {
-        Text(tr(activeLang177, "OBSERVED MATCH UPDATES", "تغییرات ثبت‌شده در این بازدید"),
+        Text(trLive177(activeLang177, "OBSERVED MATCH UPDATES", "تغییرات ثبت‌شده در این بازدید"),
             color = premiumMuted130, fontSize = 9.sp, fontWeight = FontWeight.Black)
-        if (entries.isEmpty()) PremiumNoData130(tr(activeLang177, "New confirmed changes will appear here.", "هنوز تغییر جدیدی دریافت نشده است."))
+        if (entries.isEmpty()) PremiumNoData130(trLive177(activeLang177, "New confirmed changes will appear here.", "هنوز تغییر جدیدی دریافت نشده است."))
         else entries.take(18).forEach { cue ->
             Row(Modifier.fillMaxWidth()
                 .background(Color(0xFF13313B), RoundedCornerShape(11.dp))
@@ -252,12 +252,12 @@ internal fun PremiumEvents130(
                 Column(horizontalAlignment = Alignment.End) {
                     Text(cue.minute?.toString()?.plus("′") ?: "LIVE", color = premiumMint130,
                         fontSize = 10.sp, fontWeight = FontWeight.Bold)
-                    Text(if (cue.confirmedScore) (tr(activeLang177, "Score", "نتیجه"))
+                    Text(if (cue.confirmedScore) (trLive177(activeLang177, "Score", "نتیجه"))
                         else "+" + cue.amount, color = premiumMuted130, fontSize = 8.sp)
                 }
             }
         }
-        Text(tr(activeLang177, "Provider counter changes, not officially timestamped incident records.", "تغییرات شمارنده‌های API؛ زمان وقوع دقیق رویدادها تأیید نشده است."),
+        Text(trLive177(activeLang177, "Provider counter changes, not officially timestamped incident records.", "تغییرات شمارنده‌های API؛ زمان وقوع دقیق رویدادها تأیید نشده است."),
             color = premiumMuted130, fontSize = 8.sp, lineHeight = 11.sp)
     }
 }
