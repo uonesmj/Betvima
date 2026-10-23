@@ -86,7 +86,7 @@ fun PremiumAppFooter(
         runCatching { uriHandler.openUri("mailto:$address") }
             .onFailure {
                 Toast.makeText(context,
-                    if (lang == Lang.FA) "برنامه ایمیل در دسترس نیست" else "No email app available",
+                    tr(lang, "No email app available", "برنامه ایمیل در دسترس نیست"),
                     Toast.LENGTH_SHORT).show()
             }
     }
