@@ -32,11 +32,15 @@ val LocalNativeLanguage176 = staticCompositionLocalOf { Lang.EN }
 fun tr(lang: Lang, en: String, fa: String): String = when (lang) {
     Lang.EN -> en
     Lang.FA -> fa
-    Lang.TR -> NativeLiveTranslations177.translate(lang, en) ?: NativeQuality176.translate(lang, en) ?: NativeDynamic176.translate(lang, en) ?: TurkishTranslations169.translate(en)
+    Lang.TR -> NativeQuality176.translate(lang, en) ?: NativeDynamic176.translate(lang, en) ?: TurkishTranslations169.translate(en)
     Lang.DARI -> AfghanDari171.translate(en, fa)
-    Lang.HY -> NativeLiveTranslations177.translate(lang, en) ?: NativeQuality176.translate(lang, en) ?: NativeDynamic176.translate(lang, en) ?: Armenian172.translate(en)
-    Lang.AR -> NativeLiveTranslations177.translate(lang, en) ?: NativeQuality176.translate(lang, en) ?: NativeDynamic176.translate(lang, en) ?: ArabicTranslations175.translate(en)
+    Lang.HY -> NativeQuality176.translate(lang, en) ?: NativeDynamic176.translate(lang, en) ?: Armenian172.translate(en)
+    Lang.AR -> NativeQuality176.translate(lang, en) ?: NativeDynamic176.translate(lang, en) ?: ArabicTranslations175.translate(en)
 }
+
+/** Localized football statistics; does not confuse \"Home\" (team) with Home navigation. */
+fun trLive177(lang: Lang, en: String, fa: String): String =
+    NativeLiveTranslations177.translate(lang, en) ?: tr(lang, en, fa)
 
 /**
  * BetVima's compact sportsbook header, aligned to the supplied 1win reference.
