@@ -430,7 +430,7 @@ internal fun AccountSettings87(state:AppState,model:AppViewModel) {
                 Tile87(Icons.Default.PhoneAndroid,label87(lang,"Phone verification","تأیید شماره"),
                     if(phoneVerified)phone else label87(lang,"Requires SMS provider","نیازمند سرویس پیامک"),"next"){open("phone")}
                 Tile87(Icons.Default.Language,label87(lang,"Language","زبان"),
-                    when(lang) { Lang.FA -> "🇮🇷 فارسی"; Lang.TR -> "🇹🇷 Türkçe"; Lang.DARI -> "🇦🇫 دری"; Lang.HY -> "🇦🇲 Հայերեն"; Lang.EN -> "🇬🇧 English" },"next"){langOpen=true}
+                    when(lang) { Lang.FA -> "🇮🇷 فارسی"; Lang.TR -> "🇹🇷 Türkçe"; Lang.DARI -> "🇦🇫 دری"; Lang.HY -> "🇦🇲 Հայերեն"; Lang.AR -> "🇸🇦 العربية"; Lang.EN -> "🇬🇧 English" },"next"){langOpen=true}
                 Tile87(Icons.Default.VerifiedUser,label87(lang,"Account status","وضعیت حساب"),status,"next"){}
             }}
             item{Group87(label87(lang,"SECURITY","امنیت")){
