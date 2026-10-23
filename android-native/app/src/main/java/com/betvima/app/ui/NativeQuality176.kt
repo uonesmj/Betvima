@@ -3,6 +3,8 @@ package com.betvima.app.ui
 /** Human-reviewed critical native UI terms. Overrides machine-generated translations. */
 internal object NativeQuality176 {
     private val tr = mapOf(
+        "Authenticator setup QR" to "Kimlik doğrulayıcı kurulum QR kodu",
+        "BetVima website QR" to "BetVima web sitesi QR kodu",
         "Match unavailable" to "Maç kullanılamıyor",
         "Return to the live or sports catalogue." to "Canlı maçlara veya spor listesine dönün.",
         "Affiliate Studio" to "Ortaklık Stüdyosu",
@@ -81,6 +83,8 @@ internal object NativeQuality176 {
         "Bonuses" to "Bonuslar"
     )
     private val hy = mapOf(
+        "Authenticator setup QR" to "Նույնականացման հավելվածի կարգավորման QR կոդ",
+        "BetVima website QR" to "BetVima կայքի QR կոդ",
         "Match unavailable" to "Հանդիպումն անհասանելի է",
         "Return to the live or sports catalogue." to "Վերադարձեք ուղիղ հանդիպումներին կամ մարզաձևերի ցանկին։",
         "Affiliate Studio" to "Գործընկերային կենտրոն",
@@ -159,6 +163,8 @@ internal object NativeQuality176 {
         "Bonuses" to "Բոնուսներ"
     )
     private val ar = mapOf(
+        "Authenticator setup QR" to "رمز QR لإعداد تطبيق المصادقة",
+        "BetVima website QR" to "رمز QR لموقع BetVima",
         "Match unavailable" to "المباراة غير متاحة",
         "Return to the live or sports catalogue." to "ارجع إلى المباريات المباشرة أو قائمة الرياضات.",
         "Affiliate Studio" to "استوديو الشركاء",
