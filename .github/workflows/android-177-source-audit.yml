@@ -1,0 +1,37 @@
+name: Android 177 Source Inventory
+on:
+  push:
+    branches: [feat/android-177-tr-hy-ar-native-deep-20261023]
+    paths:
+      - '.github/workflows/android-177-source-audit.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - name: Inventory source and string literals
+        run: |
+          python3 - <<'PY'
+          import pathlib,re,json,collections
+          root=pathlib.Path('android-native/app/src/main')
+          files=list(root.rglob('*.kt'))
+          print('Kotlin main files:',len(files))
+          print('Kotlin lines:',sum(len(p.read_text().splitlines()) for p in files))
+          print('Hard-coded Text quoted:',sum(len(re.findall(r'\bText\s*\(\s*"[^"]+"',p.read_text())) for p in files))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: BetVima-177-android-source
+          path: |
+            android-native/app/src/main/java/com/betvima/app/
+            android-native/app/src/main/res/
+            android-native/app/src/test/
+            android-native/app/build.gradle.kts
+            android-native/build.gradle.kts
+            scripts/android-localization-audit.py
+          retention-days: 5
+          if-no-files-found: error
