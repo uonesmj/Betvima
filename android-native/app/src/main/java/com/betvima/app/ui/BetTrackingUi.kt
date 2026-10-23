@@ -251,9 +251,9 @@ private fun TicketSelectionSpotlight(
                     fontSize = 10.sp,
                     fontWeight = FontWeight.Black)
                 // Never derive a pick from the score, selected team, or market key.
-                Text(leg.selectionLabel.ifBlank {
-                    tr(lang, "Selection unavailable", "انتخاب نامشخص")
-                }, fontWeight = FontWeight.Black,
+                Text(leg.selectionLabel.takeIf { it.isNotBlank() }
+                    ?.let { tr(lang, it, it) }
+                    ?: tr(lang, "Selection unavailable", "انتخاب نامشخص"), fontWeight = FontWeight.Black,
                     fontSize = if (compact) 14.sp else 18.sp,
                     lineHeight = if (compact) 18.sp else 23.sp,
                     color = if (lossTheme) Color(0xFF502331) else Color(0xFF122E23))
@@ -263,9 +263,9 @@ private fun TicketSelectionSpotlight(
                     color = if (lossTheme) Color(0xFF925569) else Color(0xFF547C69),
                     fontSize = 10.sp,
                     fontWeight = FontWeight.Bold)
-                Text(leg.marketLabel.ifBlank {
-                    tr(lang, "Market unavailable", "مارکت نامشخص")
-                }, color = if (lossTheme) Color(0xFF613646)
+                Text(leg.marketLabel.takeIf { it.isNotBlank() }
+                    ?.let { tr(lang, it, it) }
+                    ?: tr(lang, "Market unavailable", "مارکت نامشخص"), color = if (lossTheme) Color(0xFF613646)
                     else Color(0xFF244A38),
                     fontSize = if (compact) 11.sp else 13.sp,
                     lineHeight = if (compact) 15.sp else 19.sp, fontWeight = FontWeight.SemiBold)
