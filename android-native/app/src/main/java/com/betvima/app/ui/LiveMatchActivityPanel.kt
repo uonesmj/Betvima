@@ -47,6 +47,7 @@ internal fun LiveMatchActivityPanel(
     expanded: Boolean,
     clockLabel: String
 ) {
+    val activeLang177 = LocalNativeLanguage176.current
     var prior by remember(match.id) { mutableStateOf<LiveMatchFacts?>(null) }
     var pulse by remember(match.id) { mutableStateOf<MatchPulse114?>(null) }
     LaunchedEffect(facts?.observedAt, match.id) {
@@ -62,7 +63,7 @@ internal fun LiveMatchActivityPanel(
                 val change = if (from != null && to != null) to - from else 0
                 if (change > 0 && change <= if (current.key.contains("attack")) 8 else 3)
                     MatchPulse114(current.key + side + facts.observedAt,
-                        side, if (fa) current.fa else current.en, change)
+                        side, tr(activeLang177, current.en, current.fa), change)
                 else null
             }
         }
@@ -100,7 +101,7 @@ internal fun LiveMatchActivityPanel(
                     Icon(Icons.Default.Sensors, null, tint = Color(0xFF63E8BA),
                         modifier = Modifier.size(15.dp))
                     Spacer(Modifier.width(6.dp))
-                    Text(if (fa) "جریان زنده مسابقه" else "Live match flow",
+                    Text(tr(activeLang177, "Live match flow", "جریان زنده مسابقه"),
                         fontSize = 11.sp, fontWeight = FontWeight.ExtraBold,
                         color = Color.White, modifier = Modifier.weight(1f))
                     Surface(color = Color(0xFF12362F), shape = RoundedCornerShape(8.dp)) {
@@ -129,10 +130,10 @@ internal fun LiveMatchActivityPanel(
                 }
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                     Text((attackHome?.toString() ?: "—") +
-                            if (fa) " حمله" else " attacks",
+                            tr(activeLang177, " attacks", " حمله"),
                         fontSize = 10.sp, color = Color(0xFFCDF4E5))
                     Text((attackAway?.toString() ?: "—") +
-                            if (fa) " حمله" else " attacks",
+                            tr(activeLang177, " attacks", " حمله"),
                         fontSize = 10.sp, color = Color(0xFFFFEACD))
                 }
                 AnimatedVisibility(visible = pulse != null) {
@@ -150,8 +151,7 @@ internal fun LiveMatchActivityPanel(
                     }
                 }
                 if (pulse == null) Text(
-                    if (fa) "نسبت حملات ثبت‌شده؛ نه مکان واقعی توپ"
-                    else "Reported attack balance · not ball tracking",
+                    tr(activeLang177, "Reported attack balance · not ball tracking", "نسبت حملات ثبت‌شده؛ نه مکان واقعی توپ"),
                     fontSize = 9.sp, color = Color(0xFFB4D9CF)
                 )
             }
@@ -177,7 +177,7 @@ internal fun LiveMatchActivityPanel(
                     val data = facts?.stat(key)
                     LiveMatchMetricChip(
                         modifier = Modifier.weight(1f),
-                        title = if (fa) persian else english,
+                        title = tr(activeLang177, english, persian),
                         home = data?.home, away = data?.away,
                         highlighted = pulse?.identity?.startsWith(key) == true
                     )
@@ -186,8 +186,7 @@ internal fun LiveMatchActivityPanel(
         }
         }
         if (expanded && facts?.stats.isNullOrEmpty()) Text(
-            if (fa) "آمار تأییدشده‌ای از API برای این بازی دریافت نشده است."
-            else "No verified match statistics received for this fixture.",
+            tr(activeLang177, "No verified match statistics received for this fixture.", "آمار تأییدشده‌ای از API برای این بازی دریافت نشده است."),
             fontSize = 11.sp, color = Palette.muted
         )
     }
