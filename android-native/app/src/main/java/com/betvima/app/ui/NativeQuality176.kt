@@ -3,6 +3,8 @@ package com.betvima.app.ui
 /** Human-reviewed critical native UI terms. Overrides machine-generated translations. */
 internal object NativeQuality176 {
     private val tr = mapOf(
+        "Match unavailable" to "Maç kullanılamıyor",
+        "Return to the live or sports catalogue." to "Canlı maçlara veya spor listesine dönün.",
         "Affiliate Studio" to "Ortaklık Stüdyosu",
         "BETSLIP" to "BAHİS KUPONU",
         "BETVIMA MATCH CENTER" to "BETVIMA MAÇ MERKEZİ",
@@ -79,6 +81,8 @@ internal object NativeQuality176 {
         "Bonuses" to "Bonuslar"
     )
     private val hy = mapOf(
+        "Match unavailable" to "Հանդիպումն անհասանելի է",
+        "Return to the live or sports catalogue." to "Վերադարձեք ուղիղ հանդիպումներին կամ մարզաձևերի ցանկին։",
         "Affiliate Studio" to "Գործընկերային կենտրոն",
         "BETSLIP" to "ԽԱՂԱԴՐՈՒՅՔԻ ԿՏՐՈՆ",
         "BETVIMA MATCH CENTER" to "BETVIMA ՄՐՑՈՒՄՆԵՐԻ ԿԵՆՏՐՈՆ",
@@ -155,6 +159,8 @@ internal object NativeQuality176 {
         "Bonuses" to "Բոնուսներ"
     )
     private val ar = mapOf(
+        "Match unavailable" to "المباراة غير متاحة",
+        "Return to the live or sports catalogue." to "ارجع إلى المباريات المباشرة أو قائمة الرياضات.",
         "Affiliate Studio" to "استوديو الشركاء",
         "BETSLIP" to "قسيمة الرهان",
         "BETVIMA MATCH CENTER" to "مركز مباريات BETVIMA",
