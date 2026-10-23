@@ -133,7 +133,7 @@ private fun WalletSummary(state: AppState, wallet: Wallet) {
                     }
                     Spacer(Modifier.width(10.dp))
                     Column(Modifier.weight(1f)) {
-                        Text("BETVIMA / WALLET", color = Color.White,
+                        Text(tr(LocalNativeLanguage176.current, "BETVIMA / WALLET", "BETVIMA / WALLET"), color = Color.White,
                             fontSize = 13.sp, fontWeight = FontWeight.Black,
                             letterSpacing = .8.sp)
                         Text(tr(lang, "Your private balance", "موجودی اختصاصی شما"),
