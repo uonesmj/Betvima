@@ -27,6 +27,7 @@ import kotlinx.coroutines.delay
 @Composable
 internal fun LocalPinGate87(locked: Boolean, onUnlock: () -> Unit) {
     if (!locked) return
+    val lang = LocalNativeLanguage176.current
     val context = LocalContext.current
     val settings = remember(context) { SettingsDevice87(context) }
     var pin by remember { mutableStateOf("") }
@@ -45,9 +46,10 @@ internal fun LocalPinGate87(locked: Boolean, onUnlock: () -> Unit) {
             1 -> { pin = ""; message = ""; onUnlock() }
             -1 -> {
                 pin = ""; remaining = settings.blockedRemainingMs88()
-                message = "Too many attempts. Please wait."
+                message = tr(lang, "Too many attempts. Please wait.", "تعداد تلاش‌ها بیش از حد مجاز است. لطفاً صبر کنید.")
             }
-            else -> { pin = ""; message = "Incorrect " + if (mode == "pattern") "pattern" else "PIN" }
+            else -> { pin = ""; message = if (mode == "pattern") tr(lang, "Incorrect pattern", "الگوی اشتباه")
+                    else tr(lang, "Incorrect PIN", "پین اشتباه") }
         }
     }
     Dialog(onDismissRequest = {}, properties = DialogProperties(
@@ -61,10 +63,10 @@ internal fun LocalPinGate87(locked: Boolean, onUnlock: () -> Unit) {
             verticalArrangement = Arrangement.spacedBy(13.dp)) {
             Icon(Icons.Default.Shield, null, tint = Color(0xFF168CFF),
                 modifier = Modifier.size(37.dp))
-            Text("Unlock BetVima", color = Color.White,
+            Text(tr(lang, "Unlock BetVima", "بازکردن قفل بت‌ویما"), color = Color.White,
                 fontSize = 22.sp, fontWeight = FontWeight.Black)
-            Text(if (mode == "pattern") "Draw your secure unlock pattern"
-                    else "Enter your 6-digit PIN",
+            Text(if (mode == "pattern") tr(lang, "Draw your secure unlock pattern", "الگوی امن خود را رسم کنید")
+                    else tr(lang, "Enter your 6-digit PIN", "پین شش‌رقمی خود را وارد کنید"),
                 color = Color(0xFFB2B7C6), fontSize = 12.sp)
             if (mode == "pattern") {
                 PatternPad88(onComplete = ::attempt)
@@ -78,10 +80,10 @@ internal fun LocalPinGate87(locked: Boolean, onUnlock: () -> Unit) {
                     enabled = pin.length == 6 && remaining == 0L,
                     modifier = Modifier.fillMaxWidth().height(49.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF168CFF)),
-                    shape = RoundedCornerShape(14.dp)) { Text("Unlock") }
+                    shape = RoundedCornerShape(14.dp)) { Text(tr(lang, "Unlock", "بازکردن قفل")) }
             }
             if (message.isNotBlank()) Text(message, color = Color(0xFFFFABAE), fontSize = 12.sp)
-            if (remaining > 0L) Text("Locked for " + (remaining / 1000 + 1) + " seconds",
+            if (remaining > 0L) Text(tr(lang, "Locked for ", "زمان قفل باقی‌مانده: ") + (remaining / 1000 + 1) + tr(lang, " seconds", " ثانیه"),
                 color = Color(0xFFE9BE7D), fontSize = 12.sp)
         }
     }
