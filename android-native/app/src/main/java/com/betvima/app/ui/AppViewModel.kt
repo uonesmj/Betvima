@@ -126,7 +126,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     fun language() =
         setLanguage(when(state.value.lang) { Lang.EN -> Lang.FA; Lang.FA -> Lang.TR; Lang.TR -> Lang.DARI; Lang.DARI -> Lang.HY; Lang.HY -> Lang.AR; Lang.AR -> Lang.EN })
     fun setLanguage(lang: Lang) {
-        preferences.edit().putString("language", when(lang) { Lang.FA -> "fa"; Lang.TR -> "tr"; Lang.DARI -> "prs"; Lang.HY -> "hy"; Lang.AR -> "en"; Lang.EN -> "en" }).apply()
+        preferences.edit().putString("language", when(lang) { Lang.FA -> "fa"; Lang.TR -> "tr"; Lang.DARI -> "prs"; Lang.HY -> "hy"; Lang.AR -> "ar"; Lang.EN -> "en" }).apply()
         mutable.update { it.copy(lang = lang) }
     }
     fun homeMode(mode: HomeMode) {
@@ -176,7 +176,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             ?: throw ApiFailure(401, "Please sign in to open a game")
         // Backend rechecks test-account allowlist and wallet eligibility.
         return api.casinoLaunch(token, gameId, demo = false,
-            lang = when(language) { Lang.FA, Lang.DARI -> "fa"; Lang.TR -> "tr"; Lang.HY -> "hy"; Lang.EN -> "en" })
+            lang = when(language) { Lang.FA, Lang.DARI -> "fa"; Lang.TR -> "tr"; Lang.HY -> "hy"; Lang.AR -> "en"; Lang.EN -> "en" })
     }
 
     suspend fun casinoDemoLaunch(gameId: String, language: Lang): String {
