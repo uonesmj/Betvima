@@ -12,29 +12,39 @@ import pg from 'pg';
 const { Client } = pg;
 import { GET } from '../../src/app/api/webhooks/softaggregator/route';
 import { closeDb } from '../../src/server/db';
+import { compareCasinoHistory, type SignedReceipt } from '../../src/server/providers/softaggregator/reconcile';
 
 const uid = '00000000-0000-4000-8000-000000000002';
 const username = 'bv_' + uid.replaceAll('-', '');
 const salt = 'synthetic-hmac-SOFTAGGREGATOR-STAGING-ONLY';
+const edgeSecret = 'isolated-CI-independent-edge-signature-secret-2026';
 const roundId = 'isolated-round-1';
 const gameId = 'synthetic-provider/game-1';
 
 async function signed(action: 'debit' | 'credit' | 'balance',
-  id: string, amount: number, rollback = false, badSignature = false) {
+  id: string, amount: number, rollback = false, badSignature = false,
+  badEdgeSignature = false, providerRoundId = roundId) {
   const timestamp = String(Math.floor(Date.now()/1000));
   const query = new URLSearchParams({
     action, username, currency:'USD',
     timestamp, key: createHash('md5').update(timestamp+salt).digest('hex'),
     ...(action === 'balance' ? {} : {
-      call_id:id,amount:String(amount),round_id:roundId,game_id:gameId,rb:rollback?'1':'0',
+      call_id:id,amount:String(amount),round_id:providerRoundId,game_id:gameId,rb:rollback?'1':'0',
     }),
   });
-  const canonical = [...query.entries()].sort(([a],[b]) => a.localeCompare(b))
-    .map(([k,v])=>k+'='+v).join('&');
+  // Supplier signs decoded query values; the independent trusted edge signs
+  // percent-encoded canonical values. Both proofs are mandatory.
+  const sorted = [...query.entries()].sort(([a],[b]) => a < b ? -1 : a > b ? 1 : 0);
+  const canonical = sorted.map(([k,v])=>k+'='+v).join('&');
   const signature = createHmac('sha256',salt).update(canonical).digest('hex');
+  const edgeSignature = createHmac('sha256',edgeSecret)
+    .update(new URLSearchParams(sorted).toString()).digest('hex');
   const response = await GET(new Request(
     'https://betvima.example/api/webhooks/softaggregator?'+query.toString(),
-    { headers: {'X-Signature':badSignature?'0'.repeat(64):signature} },
+    { headers: {
+      'X-Signature':badSignature?'0'.repeat(64):signature,
+      'X-BetVima-Edge-Signature':badEdgeSignature?'0'.repeat(64):edgeSignature,
+    } },
   ));
   assert.equal(response.status,200);
   const body = await response.json() as {error:number;balance:number};
@@ -48,7 +58,8 @@ async function main(){
      process.env.PGHOST!=='127.0.0.1' || process.env.PGDATABASE!=='postgres' ||
      process.env.PGSSLMODE!=='disable' ||
      process.env.SUPABASE_DB_URL || process.env.DATABASE_URL ||
-     process.env.SOFTAGGREGATOR_API_PASSWORD)
+     process.env.SOFTAGGREGATOR_API_PASSWORD || process.env.SOFTAGGREGATOR_API_LOGIN)
+
     throw new Error('CASINO_CASH_TEST_REQUIRES_EPHEMERAL_CI_DATABASE');
   Object.assign(process.env, {
     SOFTAGGREGATOR_ENABLED:'true',
@@ -56,7 +67,9 @@ async function main(){
     SOFTAGGREGATOR_FINANCIAL_SCHEMA_READY:'true',
     SOFTAGGREGATOR_TEST_USER_ID:uid,
     SOFTAGGREGATOR_SALT_KEY:salt,
-    SOFTAGGREGATOR_ALLOWED_COUNTRIES:'DE',
+    SOFTAGGREGATOR_EDGE_HMAC_SECRET:edgeSecret,
+    SOFTAGGREGATOR_CALLBACK_EDGE_READY:'true',
+    SOFTAGGREGATOR_ALLOWED_COUNTRIES:'TR',
     DB_DRIVER:'postgres',
   });
   const sql = new Client();
@@ -75,7 +88,9 @@ async function main(){
     };
     assert.deepEqual(await signed('balance','',0), {error:0,balance:1000});
     assert.deepEqual(await signed('debit','real-pg-debit-1',20,false,true),
-      {error:2,balance:0},'HMAC tampering must fail before DB');
+      {error:2,balance:0},'supplier HMAC tampering must fail before DB');
+    assert.deepEqual(await signed('debit','synthetic-edge-tamper',20,false,false,true),
+      {error:2,balance:0},'independent edge HMAC tampering must fail before DB');
     assert.equal(await count(),1);
 
     assert.deepEqual(await signed('debit','real-pg-debit-1',20),
@@ -145,9 +160,21 @@ async function main(){
     // Re-enable only the ephemeral synthetic account for this test; the
     // protected Production environment remains outside this test runner.
     await sql.query("update nova.profiles set kyc_status='verified' where id=$1", [uid]);
+    // Prepare a low synthetic wallet balance with a legitimate non-casino
+    // fixture ledger entry. No live funds or external accounts are touched.
+    const balanceBeforeFixtureSpend = await balance();
+    assert(balanceBeforeFixtureSpend > 70);
+    await sql.query(
+      "select nova.post_wallet_entry(p_user_id=>$1::uuid,p_type=>'withdrawal'," +
+      "p_amount_minor=>$2::bigint,p_currency=>'USD'," +
+      "p_idempotency_key=>'synthetic-wallet-reduction'," +
+      "p_reference=>'isolated-fixture-only')",
+      [uid, String(70 - balanceBeforeFixtureSpend)],
+    );
     const beforeOverdraft = await balance();
-    const stake = Math.floor(beforeOverdraft * 0.6);
-    assert(stake >= 20 && stake < beforeOverdraft);
+    assert.equal(beforeOverdraft, 70);
+    const stake = 42;
+    assert(stake >= 20 && stake <= 100 && stake < beforeOverdraft);
     const competing = await Promise.all(Array.from({length:4}, (_, index) =>
       signed('debit', 'isolated-competing-stake-' + index, stake)));
     const approved = competing.filter((x) => x.error === 0);
@@ -187,6 +214,34 @@ async function main(){
       {error:1,balance:currentBalance},
       'a reversed supplier win must count toward daily net-loss before authorizing a bet');
     assert.equal(await balance(),currentBalance,'denied stake must not mutate available cash');
+
+    // Demonstrate read-only history matching against SUCCESSFUL, COMMITTED
+    // signed receipts in PostgreSQL. The supplier-like round is synthetic:
+    // actual SoftAggregator history can only be verified in a separate pilot.
+    await sql.query('delete from nova.user_limits where user_id=$1', [uid]);
+    const beforeCleanRound = await balance();
+    assert.deepEqual(await signed('debit','synthetic-reconcile-debit',20,
+      false,false,false,'isolated-clean-reconcile'),
+      {error:0,balance:beforeCleanRound-20});
+    assert.deepEqual(await signed('credit','synthetic-reconcile-credit',25,
+      false,false,false,'isolated-clean-reconcile'),
+      {error:0,balance:beforeCleanRound+5});
+    const syntheticRows = await sql.query<SignedReceipt>(
+      'select round_id,game_id,action,rollback,amount_minor::text ' +
+      'from nova.softaggregator_callback_receipts where user_id=$1 ' +
+      'and round_id=$2 and response_error=0',
+      [uid,'isolated-clean-reconcile']);
+    assert.equal(syntheticRows.rows.length,2);
+    const cleanHistory = {
+      round_id:'isolated-clean-reconcile',gameid:gameId,
+      bet:20,win:25,ended_at:'synthetic-complete',rolled_back:false,
+    };
+    assert.equal(compareCasinoHistory([cleanHistory],syntheticRows.rows)[0]?.status,'matched');
+    assert.equal(compareCasinoHistory([{...cleanHistory,win:26}],syntheticRows.rows)[0]?.status,'mismatch');
+    const finalLedger = await sql.query(
+      "select coalesce(sum(amount_minor),0)::bigint as total from nova.wallet_transactions " +
+      "where user_id=$1 and status='posted'", [uid]);
+    assert.equal(Number(finalLedger.rows[0].total),await balance());
 
     process.stdout.write('CASINO_INTEGRATED_SIGNED_CALLBACK_POSTGRES_PASS; synthetic USD, no production funds\n');
   } finally {
