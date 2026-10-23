@@ -1,4 +1,5 @@
 name: Android 177 Translation Audit and APK
+# Re-run after multiline locale normalization and numeric-template audit correction
 on:
   push:
     branches: [feat/android-177-tr-hy-ar-native-deep-20261023]
