@@ -17,6 +17,7 @@ function fakeDb(walletCurrency: 'IRT' | 'IRR' = 'IRT', original = 2_500_000n) {
   let balance = original;
   let preferred: string = walletCurrency;
   let kycStatus = 'verified';
+  let ageVerified = true;
   let supportApproved = true;
   let country = 'TR';
   const perCurrencyStakeLimit = new Map<string, bigint>();
@@ -27,7 +28,7 @@ function fakeDb(walletCurrency: 'IRT' | 'IRR' = 'IRT', original = 2_500_000n) {
   const db = {
     queryOne: vi.fn(async (sql: string, args: unknown[] = []) => {
       if (sql.includes('from nova.profiles p')) return {
-        status: 'active', age_verified: true, kyc_status: kycStatus,
+        status: 'active', age_verified: ageVerified, kyc_status: kycStatus,
         support_approved: supportApproved,
         currency: preferred, country,
         restricted: false, self_excluded: false,
@@ -97,6 +98,7 @@ function fakeDb(walletCurrency: 'IRT' | 'IRR' = 'IRT', original = 2_500_000n) {
     setPreferredCurrency: (currency: string) => { preferred = currency; },
     setKycStatus: (status: string) => { kycStatus = status; },
     setSupportApproved: (value: boolean) => { supportApproved = value; },
+    setAgeVerified: (value: boolean) => { ageVerified = value; },
     setCountry: (value: string) => { country = value; },
     setStakeLimit: (currency: string, minor: bigint) => { perCurrencyStakeLimit.set(currency, minor); } };
 }
@@ -114,6 +116,7 @@ describe('Casino fiat settle staging contract', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.stubEnv('SOFTAGGREGATOR_ALLOWED_COUNTRIES', 'TR');
+    vi.stubEnv('SOFTAGGREGATOR_SUPPORT_REVIEW_REQUIRED', 'false');
     vi.mocked(getUsdIrtRate).mockResolvedValue({
       value: '250000.00000000', timestamp: new Date().toISOString(),
     });
@@ -126,17 +129,26 @@ describe('Casino fiat settle staging contract', () => {
     expect(t.posted).toHaveLength(0);
   });
 
-  it('blocks IRT and IRR wagers until support approves the casino account', async () => {
+  it('allows fiat wagers without optional casino KYC and supports deliberate later reactivation', async () => {
     for (const currency of ['IRT', 'IRR'] as const) {
       const t = fakeDb(currency, currency === 'IRR' ? 25_000_000n : 2_500_000n);
       t.setSupportApproved(false);
-      expect((await fiatCasinoBalance(t.db, userId)).error).toBe(2);
+      t.setKycStatus('not_started');
+      expect((await fiatCasinoBalance(t.db, userId)).error).toBe(0);
+      expect((await settleFiatCasinoCallback(t.db, userId, event('no-review-needed', 'debit', 20n))).error).toBe(0);
+      vi.stubEnv('SOFTAGGREGATOR_SUPPORT_REVIEW_REQUIRED', 'true');
       expect((await settleFiatCasinoCallback(t.db, userId, event('support-denied', 'debit', 20n))).error).toBe(1);
-      expect(t.posted).toHaveLength(0);
       t.setSupportApproved(true);
       expect((await settleFiatCasinoCallback(t.db, userId, event('support-approved', 'debit', 20n))).error).toBe(0);
-      expect(t.posted).toHaveLength(1);
+      vi.stubEnv('SOFTAGGREGATOR_SUPPORT_REVIEW_REQUIRED', 'false');
     }
+  });
+
+  it('still blocks fiat casino debits when legal age has not been independently cleared', async () => {
+    const t = fakeDb();
+    t.setAgeVerified(false);
+    expect((await settleFiatCasinoCallback(t.db, userId, event('age-not-cleared', 'debit', 20n))).error).toBe(1);
+    expect(t.posted).toHaveLength(0);
   });
 
   it('accepts support-reviewed fiat wager without legacy KYC document flag', async () => {
