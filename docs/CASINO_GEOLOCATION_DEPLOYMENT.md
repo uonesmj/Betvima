@@ -5,6 +5,14 @@ The user profile `nova.profiles.jurisdiction` is a KYC/account attribute,
 sent by the operator's `getGame` request and does not geolocate the player.
 The casino must **not** equate provider game availability with an operating licence.
 
+**Supplier game availability is provider-managed.** BetVima does not maintain
+or enforce a second, static list of supplier-restricted game territories.
+For a cash launch, BetVima sends its independently edge-verified country to
+the supplier's `getGame` call; SoftAggregator determines whether that game
+is available there. A supplier refusal must never be bypassed or retried with
+a spoofed country. This does not remove independent operator authorization,
+identity, responsible-gambling, or current-location requirements.
+
 ## Implementation
 
 `src/server/providers/softaggregator/edge-location.ts` independently
