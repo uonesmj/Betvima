@@ -52,11 +52,11 @@ describe('SoftAggregator supplier country restrictions', () => {
 });
 
 describe('Casino readiness operator country list', () => {
-  it('rejects supplier-restricted countries', () => {
+  it('does not accept countries outside the operator authorization, independently of supplier rules', () => {
     expect(explicitCasinoCountryList('IT')).toBe(false);
     expect(explicitCasinoCountryList('TR,FR')).toBe(false);
   });
-  it('accepts a well-formed explicit list without supplier-restricted countries', () => {
+  it('accepts only explicitly configured operator territories', () => {
     expect(explicitCasinoCountryList('TR,GE,AZ')).toBe(true);
     expect(explicitCasinoCountryList('DE,TR,GE,AZ')).toBe(false);
     expect(explicitCasinoCountryList('')).toBe(false);
