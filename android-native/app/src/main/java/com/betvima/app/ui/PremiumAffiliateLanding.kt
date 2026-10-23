@@ -376,7 +376,7 @@ private fun PartnerHero(lang: Lang, active: Boolean, onGetStarted: () -> Unit, o
                     translationY = floatY
                     rotationZ = -9f
                 }) {
-                PartnerPhone()
+                PartnerPhone(lang)
             }
             PartnerFloatLabel("RevShare",
                 tr(lang, "Agreement based", "طبق قرارداد"),
@@ -404,7 +404,7 @@ private fun PartnerFloatLabel(title: String, sub: String, modifier: Modifier) {
 }
 
 @Composable
-private fun PartnerPhone() {
+private fun PartnerPhone(lang:Lang) {
     Surface(
         modifier = Modifier.size(width = 183.dp, height = 337.dp),
         color = Color(0xFF080A13), shape = RoundedCornerShape(27.dp),
