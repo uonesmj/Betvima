@@ -4,6 +4,7 @@ import { withErrorHandling, ApiError } from '@/lib/errors';
 import { withAdmin } from '@/server/http/guard';
 import { requireAdmin } from '@/server/auth/session';
 import { enforceRateLimit, readJson } from '@/server/http/request';
+import { casinoManualReviewRequired } from '@/server/kyc/casino-support';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -30,6 +31,7 @@ export const GET = withErrorHandling('admin.support.casino_approval.get', async 
 ) => {
   const { services, user } = await withAdmin(request, ctx, 'users.kyc');
   requireAdmin(user, 'support.view');
+  if (!casinoManualReviewRequired()) return NextResponse.json({ error: 'CASINO_MANUAL_REVIEW_DISABLED' }, { status: 410, headers: noStore });
   const { id } = await params.params;
   if (!uuid.safeParse(id).success) throw new ApiError('VALIDATION_FAILED', 'Invalid ticket');
   const ticket = await services.support.getForAdmin(id);
@@ -52,6 +54,7 @@ export const POST = withErrorHandling('admin.support.casino_approval.decide', as
 ) => {
   const { services, user } = await withAdmin(request, ctx, 'users.kyc');
   requireAdmin(user, 'support.view');
+  if (!casinoManualReviewRequired()) return NextResponse.json({ error: 'CASINO_MANUAL_REVIEW_DISABLED' }, { status: 410, headers: noStore });
   await enforceRateLimit('support:casino:review:' + user.id, 30, 3600);
   const { id } = await params.params;
   if (!uuid.safeParse(id).success) throw new ApiError('VALIDATION_FAILED', 'Invalid ticket');
