@@ -62,4 +62,5 @@ path.write_text(json.dumps(out, ensure_ascii=False, indent=2),encoding="utf-8")
 print(json.dumps(out["summary"], ensure_ascii=False, indent=2))
 print("Wrote",path)
 if "--fail-on-gaps" in __import__("sys").argv and any(out["missing"][l] for l in ("tr","hy","ar")):
+    print(json.dumps(out["missing"], ensure_ascii=False, indent=2))
     raise SystemExit("Incomplete native translations")
