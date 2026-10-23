@@ -99,6 +99,17 @@ describe('SoftAggregator trusted Cloudflare ingress interoperability', () => {
     )?.amountMinor).toBe(50n);
   });
 
+  it('never treats the site root as a callback on the production hostname', async () => {
+    const original = callback();
+    const root = new Request(origin + '/?' + new URL(original.url).searchParams, {
+      headers: original.headers,
+    });
+    const result = await worker.fetch(root, edgeEnv());
+    expect(result.status).toBe(200);
+    expect(await result.json()).toEqual({error:2,balance:0});
+    expect(forwarded).toBeNull();
+  });
+
   it('accepts the dedicated Worker root and forwards to the protected callback path', async () => {
     const original = callback();
     const req = new Request(edgeHost + '/?' + new URL(original.url).searchParams, {
