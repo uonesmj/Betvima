@@ -500,8 +500,7 @@ fun EmptyPanel(title: String, detail: String, onRetry: (() -> Unit)? = null) {
                 modifier = Modifier.padding(top = 7.dp))
             if (onRetry != null) {
                 Spacer(Modifier.height(10.dp))
-                BvPrimaryButton(if (LocalLayoutDirection.current == LayoutDirection.Rtl)
-                    "تازه‌سازی" else "Refresh",
+                BvPrimaryButton(tr(LocalNativeLanguage176.current, "Refresh", "تازه‌سازی"),
                     onClick = onRetry, icon = Icons.Default.Refresh)
             }
         }
