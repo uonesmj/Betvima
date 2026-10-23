@@ -1,0 +1,148 @@
+package com.betvima.app.ui
+
+/**
+ * Hand-reviewed copy for all six BetVima native UI languages.
+ * Keys correspond exactly to bonus rules, affiliate FAQs, account labels and casino tabs.
+ * Percentages, balances, payout terms and dates are never altered in data.
+ */
+internal object NativeScreenshot178 {
+    private val turkish: Map<String, String> = mapOf(
+        "100% deposit match" to "Yatırıma %100 bonus",
+        "Each eligible successful deposit produces a separate matching reward after provider confirmation." to "Şartları karşılayan her başarılı para yatırma işlemi, ödeme sağlayıcısının onayından sonra yatırılan tutar kadar ayrı bir bonus kazandırır.",
+        "24-hour limit" to "24 saatlik süre",
+        "The bonus expires 24 hours after its actual issuance time. Unused amounts do not carry forward." to "Bonus, hesabınıza tanımlandığı andan itibaren 24 saat sonra sona erer. Kullanılmayan tutar devretmez.",
+        "Exactly four picks" to "Tam dört seçim",
+        "One accumulator of exactly four selections. Every selection must have odds at least 1.60." to "Tam olarak dört seçimden oluşan tek bir kombine kupon gerekir. Her seçimin oranı en az 1,60 olmalıdır.",
+        "Full bonus stake" to "Bonus bakiyesinin tamamı",
+        "The stake must equal the full bonus balance and use the Bonus Account only. Cash cannot be combined." to "Bahis tutarı bonus bakiyesinin tamamına eşit olmalı ve yalnızca Bonus Hesabı kullanılmalıdır. Nakit bakiyeyle birleştirilemez.",
+        "Win and loss policy" to "Kazanç ve kayıp koşulları",
+        "A qualifying win credits only the original bonus to the Main Account, not the full accumulator payout. A loss does not credit cash." to "Şartlara uygun kupon kazanırsa ana hesaba yalnızca başlangıçtaki bonus tutarı aktarılır; kombine kuponun toplam kazancı aktarılmaz. Kaybedilen kupon için nakit ödeme yapılmaz.",
+        "How can I join?" to "Nasıl katılabilirim?",
+        "Create an affiliate account and wait for approval. Then sign in to manage campaigns." to "Bir iş ortaklığı hesabı oluşturup onaylanmasını bekleyin. Onaydan sonra giriş yaparak kampanyalarınızı yönetin.",
+        "Is the 70% rate guaranteed?" to "%70 komisyon oranı garanti mi?",
+        "The public programme shows a default rate. Your approved account rate and campaign terms take precedence." to "Programda gösterilen oran varsayılandır. Onaylanmış hesabınıza tanımlanan oran ve kampanya koşulları geçerlidir.",
+        "When are payouts available?" to "Ödemeler ne zaman yapılır?",
+        "Settlement is generally weekly. Requests depend on a verified payable balance, minimum amount and approval." to "Hesaplaşma genellikle haftalıktır. Ödeme talebi, doğrulanmış çekilebilir bakiye, asgari tutar ve onaya bağlıdır.",
+        "Where do I see my referrals?" to "Davet ettiğim kullanıcıları nerede görebilirim?",
+        "After signing in, use the Referrals page for the data your account is allowed to access." to "Giriş yaptıktan sonra Davet Edilenler bölümünden hesabınızın erişim iznine sahip olduğu verileri görüntüleyebilirsiniz.",
+        "Partner username" to "İş ortağı kullanıcı adı",
+        "Registered affiliate email" to "Kayıtlı iş ortağı e-postası",
+        "Payout account identifier" to "Ödeme hesabı kimliği",
+        "Live Casino" to "Canlı kumarhane",
+        "Live casino" to "Canlı kumarhane",
+        "Refresh" to "Yenile",
+        "FAQ" to "Sık sorulan sorular",
+        "No email app available" to "E-posta uygulaması bulunamadı",
+        "Your partner account" to "İş ortağı hesabınız",
+        "Partner credentials are separate from your normal sportsbook login." to "İş ortağı hesabının giriş bilgileri, normal bahis hesabınızdan ayrıdır.",
+        "Provide the payout account identifier required by BetVima registration. You can add crypto wallets after sign-in." to "Kayıt için gerekli ödeme hesabı kimliğini girin. Kripto cüzdanlarınızı giriş yaptıktan sonra ekleyebilirsiniz.",
+        "Sign in" to "Giriş yap",
+        "Register" to "Kayıt ol"
+    )
+    private val armenian: Map<String, String> = mapOf(
+        "100% deposit match" to "Ավանդի 100% բոնուս",
+        "Each eligible successful deposit produces a separate matching reward after provider confirmation." to "Պայմաններին համապատասխանող յուրաքանչյուր հաջող մուտքագրում վճարային ծառայության հաստատումից հետո ստանում է նույն չափի առանձին բոնուս։",
+        "24-hour limit" to "24-ժամյա ժամկետ",
+        "The bonus expires 24 hours after its actual issuance time. Unused amounts do not carry forward." to "Բոնուսն ավարտվում է այն տրամադրելու պահից 24 ժամ անց։ Չօգտագործված գումարը չի փոխանցվում հաջորդ ժամանակահատված։",
+        "Exactly four picks" to "Ճիշտ չորս ընտրություն",
+        "One accumulator of exactly four selections. Every selection must have odds at least 1.60." to "Պահանջվում է ճիշտ չորս ընտրությունից կազմված մեկ բազմակի խաղադրույք։ Յուրաքանչյուր ընտրության գործակիցը պետք է լինի առնվազն 1.60։",
+        "Full bonus stake" to "Բոնուսի ամբողջ մնացորդը",
+        "The stake must equal the full bonus balance and use the Bonus Account only. Cash cannot be combined." to "Խաղադրույքի գումարը պետք է հավասար լինի բոնուսի ամբողջ մնացորդին և կատարվի միայն բոնուսային հաշվից։ Կանխիկ մնացորդի հետ միավորել չի կարելի։",
+        "Win and loss policy" to "Հաղթանակի և պարտության պայմաններ",
+        "A qualifying win credits only the original bonus to the Main Account, not the full accumulator payout. A loss does not credit cash." to "Պայմաններին համապատասխանող հաղթանակի դեպքում հիմնական հաշվին մուտքագրվում է միայն սկզբնական բոնուսի գումարը, ոչ թե բազմակի խաղադրույքի ամբողջ շահումը։ Պարտության դեպքում կանխիկ գումար չի փոխանցվում։",
+        "How can I join?" to "Ինչպե՞ս կարող եմ միանալ։",
+        "Create an affiliate account and wait for approval. Then sign in to manage campaigns." to "Ստեղծեք գործընկերային հաշիվ և սպասեք հաստատմանը։ Այնուհետև մուտք գործեք՝ ձեր արշավները կառավարելու համար։",
+        "Is the 70% rate guaranteed?" to "70% միջնորդավճարը երաշխավորվո՞ւմ է։",
+        "The public programme shows a default rate. Your approved account rate and campaign terms take precedence." to "Հրապարակված ծրագրում նշված տոկոսադրույքը նախնական է։ Գործում են ձեր հաստատված հաշվի միջնորդավճարը և արշավի պայմանները։",
+        "When are payouts available?" to "Ե՞րբ են հասանելի վճարումները։",
+        "Settlement is generally weekly. Requests depend on a verified payable balance, minimum amount and approval." to "Հաշվարկները սովորաբար կատարվում են շաբաթական։ Վճարման հարցումը կախված է հաստատված վճարելի մնացորդից, նվազագույն գումարից և հաստատումից։",
+        "Where do I see my referrals?" to "Որտե՞ղ կարող եմ տեսնել իմ հրավիրված օգտատերերին։",
+        "After signing in, use the Referrals page for the data your account is allowed to access." to "Մուտք գործելուց հետո բացեք «Հրավիրված օգտատերեր» բաժինը՝ ձեր հաշվին հասանելի տվյալները դիտելու համար։",
+        "Partner username" to "Գործընկերոջ օգտանուն",
+        "Registered affiliate email" to "Գործընկերային հաշվի գրանցված էլ. փոստ",
+        "Payout account identifier" to "Վճարման հաշվի նույնացուցիչ",
+        "Live Casino" to "Կենդանի կազինո",
+        "Live casino" to "Կենդանի կազինո",
+        "Refresh" to "Թարմացնել",
+        "FAQ" to "Հաճախ տրվող հարցեր",
+        "No email app available" to "Էլ. փոստի հավելված չկա",
+        "Your partner account" to "Ձեր գործընկերային հաշիվը",
+        "Partner credentials are separate from your normal sportsbook login." to "Գործընկերային հաշվի մուտքի տվյալները տարբերվում են հիմնական մարզական հաշվից։",
+        "Provide the payout account identifier required by BetVima registration. You can add crypto wallets after sign-in." to "Մուտքագրեք գրանցման համար անհրաժեշտ վճարման հաշվի նույնացուցիչը։ Կրիպտոդրամապանակները կարող եք ավելացնել մուտք գործելուց հետո։",
+        "Sign in" to "Մուտք գործել",
+        "Register" to "Գրանցվել"
+    )
+    private val arabic: Map<String, String> = mapOf(
+        "100% deposit match" to "مكافأة إيداع بنسبة 100%",
+        "Each eligible successful deposit produces a separate matching reward after provider confirmation." to "كل إيداع ناجح ومؤهل يمنح مكافأة مستقلة مساوية لمبلغ الإيداع بعد تأكيد مزوّد الدفع.",
+        "24-hour limit" to "مهلة 24 ساعة",
+        "The bonus expires 24 hours after its actual issuance time. Unused amounts do not carry forward." to "تنتهي صلاحية المكافأة بعد 24 ساعة من وقت إصدارها الفعلي، ولا يُرحّل المبلغ غير المستخدم.",
+        "Exactly four picks" to "أربعة اختيارات بالضبط",
+        "One accumulator of exactly four selections. Every selection must have odds at least 1.60." to "يجب أن تتكوّن القسيمة المجمّعة من أربعة اختيارات بالضبط، وألّا يقل معامل أي اختيار عن 1.60.",
+        "Full bonus stake" to "استخدام كامل رصيد المكافأة",
+        "The stake must equal the full bonus balance and use the Bonus Account only. Cash cannot be combined." to "يجب أن يساوي مبلغ الرهان رصيد المكافأة كاملًا، وأن يُستخدم حساب المكافأة فقط. لا يمكن دمجه مع الرصيد النقدي.",
+        "Win and loss policy" to "شروط الربح والخسارة",
+        "A qualifying win credits only the original bonus to the Main Account, not the full accumulator payout. A loss does not credit cash." to "عند فوز رهان مستوفٍ للشروط، يُضاف إلى الحساب الرئيسي مبلغ المكافأة الأصلي فقط، وليس كامل عائد القسيمة المجمّعة. لا يُضاف أي مبلغ نقدي عند الخسارة.",
+        "How can I join?" to "كيف يمكنني الانضمام؟",
+        "Create an affiliate account and wait for approval. Then sign in to manage campaigns." to "أنشئ حساب شريك وانتظر الموافقة عليه، ثم سجّل الدخول لإدارة حملاتك.",
+        "Is the 70% rate guaranteed?" to "هل نسبة العمولة 70% مضمونة؟",
+        "The public programme shows a default rate. Your approved account rate and campaign terms take precedence." to "النسبة المعلنة في البرنامج هي النسبة الافتراضية. وتكون الأولوية للنسبة المعتمدة في حسابك وشروط الحملة.",
+        "When are payouts available?" to "متى تتاح الدفعات؟",
+        "Settlement is generally weekly. Requests depend on a verified payable balance, minimum amount and approval." to "تتم التسويات عادةً أسبوعيًا. وتعتمد طلبات الدفع على الرصيد المستحق المؤكد والحد الأدنى للمبلغ والموافقة.",
+        "Where do I see my referrals?" to "أين أجد المستخدمين الذين أحلتهم؟",
+        "After signing in, use the Referrals page for the data your account is allowed to access." to "بعد تسجيل الدخول، افتح صفحة «الإحالات» للاطلاع على البيانات المسموح بها لحسابك.",
+        "Partner username" to "اسم مستخدم الشريك",
+        "Registered affiliate email" to "البريد الإلكتروني المسجّل للشريك",
+        "Payout account identifier" to "معرّف حساب استلام الدفعات",
+        "Live Casino" to "كازينو مباشر",
+        "Live casino" to "كازينو مباشر",
+        "Refresh" to "تحديث",
+        "FAQ" to "الأسئلة الشائعة",
+        "No email app available" to "لا يوجد تطبيق بريد إلكتروني",
+        "Your partner account" to "حساب الشريك الخاص بك",
+        "Partner credentials are separate from your normal sportsbook login." to "بيانات دخول الشريك منفصلة عن بيانات الدخول إلى حساب المراهنات الرئيسي.",
+        "Provide the payout account identifier required by BetVima registration. You can add crypto wallets after sign-in." to "أدخل معرّف حساب استلام الدفعات المطلوب للتسجيل في BetVima. ويمكنك إضافة محافظ العملات الرقمية بعد تسجيل الدخول.",
+        "Sign in" to "تسجيل الدخول",
+        "Register" to "إنشاء حساب"
+    )
+    private val dari: Map<String, String> = mapOf(
+        "100% deposit match" to "بونوس ۱۰۰٪ برابر با واریز",
+        "Each eligible successful deposit produces a separate matching reward after provider confirmation." to "هر واریز موفق و واجد شرایط، پس از تأیید درگاه، بونوس جداگانه‌ای به همان میزان دریافت می‌کند.",
+        "24-hour limit" to "مهلت ۲۴ ساعته",
+        "The bonus expires 24 hours after its actual issuance time. Unused amounts do not carry forward." to "بونوس ۲۴ ساعت پس از زمان صدور منقضی می‌شود و مبلغ استفاده‌نشده منتقل نمی‌شود.",
+        "Exactly four picks" to "دقیقاً چهار انتخاب",
+        "One accumulator of exactly four selections. Every selection must have odds at least 1.60." to "تنها یک شرط ترکیبی با دقیقاً چهار انتخاب مجاز است و ضریب هر انتخاب باید حداقل ۱٫۶۰ باشد.",
+        "Full bonus stake" to "استفاده از کل بونوس",
+        "The stake must equal the full bonus balance and use the Bonus Account only. Cash cannot be combined." to "مبلغ شرط باید برابر کل موجودی بونوس باشد و فقط از حساب بونوس استفاده شود؛ ترکیب با موجودی نقدی مجاز نیست.",
+        "Win and loss policy" to "قانون برد و باخت",
+        "A qualifying win credits only the original bonus to the Main Account, not the full accumulator payout. A loss does not credit cash." to "در صورت بردِ واجد شرایط، فقط اصل بونوس به حساب اصلی واریز می‌شود، نه کل سود شرط ترکیبی. در صورت باخت مبلغ نقدی افزوده نمی‌شود.",
+        "How can I join?" to "چطور می‌توانم عضو شوم؟",
+        "Create an affiliate account and wait for approval. Then sign in to manage campaigns." to "حساب همکار بسازید و منتظر تأیید بمانید. سپس وارد شوید و کمپین‌های خود را مدیریت کنید.",
+        "Is the 70% rate guaranteed?" to "آیا نرخ ۷۰٪ تضمین شده است؟",
+        "The public programme shows a default rate. Your approved account rate and campaign terms take precedence." to "نرخ اعلام‌شده پیش‌فرض است؛ نرخ حساب تأییدشده و شرایط کمپین ملاک هستند.",
+        "When are payouts available?" to "تسویه چه زمانی انجام می‌شود؟",
+        "Settlement is generally weekly. Requests depend on a verified payable balance, minimum amount and approval." to "تسویه معمولاً هفتگی است و درخواست پرداخت به موجودی تأییدشده، حداقل مبلغ و تأیید بستگی دارد.",
+        "Where do I see my referrals?" to "زیرمجموعه‌های من کجا هستند؟",
+        "After signing in, use the Referrals page for the data your account is allowed to access." to "پس از ورود، در صفحه زیرمجموعه‌ها اطلاعات مجاز حساب خود را مشاهده کنید.",
+        "Partner username" to "نام کاربری همکار",
+        "Registered affiliate email" to "ایمیل ثبت‌شده همکار",
+        "Payout account identifier" to "شناسه حساب دریافت تسویه",
+        "Live Casino" to "کازینوی زنده",
+        "Live casino" to "کازینوی زنده",
+        "Refresh" to "تازه‌سازی",
+        "FAQ" to "پرسش‌های متداول",
+        "No email app available" to "برنامه ایمیل در دسترس نیست",
+        "Your partner account" to "حساب همکاری شما",
+        "Partner credentials are separate from your normal sportsbook login." to "اطلاعات ورود حساب همکار از حساب عادی پیش‌بینی ورزشی جداست.",
+        "Provide the payout account identifier required by BetVima registration. You can add crypto wallets after sign-in." to "شناسه حساب تسویه موردنیاز ثبت‌نام را وارد کنید. کیف پول رمزارزی را پس از ورود می‌توانید اضافه کنید.",
+        "Sign in" to "ورود",
+        "Register" to "ثبت‌نام"
+    )
+    fun translate(lang: Lang, en: String): String? = when (lang) {
+        Lang.TR -> turkish[en]
+        Lang.HY -> armenian[en]
+        Lang.AR -> arabic[en]
+        Lang.DARI -> dari[en]
+        else -> null
+    }
+}
