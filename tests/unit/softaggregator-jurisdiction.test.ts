@@ -1,3 +1,4 @@
+import { explicitCasinoCountryList } from '@/server/providers/softaggregator/release-audit';
 import { describe, expect, it } from 'vitest';
 import {
   casinoCountryPermitted,
@@ -32,5 +33,19 @@ describe('SoftAggregator jurisdiction and EU provider restriction', () => {
     expect(casinoCountryPermitted('BR', 'GB,BR')).toBe(true);
     expect(casinoCountryPermitted('TR', 'GB,BR')).toBe(false);
     expect(casinoCountryPermitted('GB', 'DE,GB')).toBe(true);
+  });
+});
+
+describe('Casino readiness country-list audit', () => {
+  it('rejects EU countries in an otherwise valid operator allowlist', () => {
+    expect(explicitCasinoCountryList('DE')).toBe(false);
+    expect(explicitCasinoCountryList('TR,DE')).toBe(false);
+    expect(explicitCasinoCountryList('FR,GB')).toBe(false);
+  });
+  it('requires an explicit unique non-EU country list', () => {
+    expect(explicitCasinoCountryList('TR,GE,AZ')).toBe(true);
+    expect(explicitCasinoCountryList('')).toBe(false);
+    expect(explicitCasinoCountryList('*')).toBe(false);
+    expect(explicitCasinoCountryList('TR,TR')).toBe(false);
   });
 });
