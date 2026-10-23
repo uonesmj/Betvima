@@ -176,7 +176,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             ?: throw ApiFailure(401, "Please sign in to open a game")
         // Backend rechecks test-account allowlist and wallet eligibility.
         return api.casinoLaunch(token, gameId, demo = false,
-            lang = when(language) { Lang.FA -> "fa"; Lang.TR -> "tr"; Lang.EN -> "en" })
+            lang = when(language) { Lang.FA, Lang.DARI -> "fa"; Lang.TR -> "tr"; Lang.EN -> "en" })
     }
 
     suspend fun casinoDemoLaunch(gameId: String, language: Lang): String {
@@ -378,7 +378,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         if (!match.bettingAvailable || !market.available || !selection.available ||
             (match.live && !state.value.liveEnabled)) return
         quoteGeneration++
-        val persian = state.value.lang == Lang.FA
+        val persian = state.value.lang == Lang.FA || state.value.lang == Lang.DARI
         val entry = Pick(match.id, market.id, selection.id, match.title,
             market.label(persian), selection.label(persian),
             selection.oddsScaled, market.version, match.live)
