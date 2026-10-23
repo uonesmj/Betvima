@@ -2,11 +2,23 @@ import type { Db } from '@/lib/ports/db';
 import { getDb } from '@/server/db';
 
 /**
- * Separate support-reviewed casino authorization. This is NOT a claim that
- * document KYC has been completed, nor a substitute for jurisdiction/AML checks.
- * A revoked approval immediately denies NEW casino wagers. Existing owed
- * winnings can still be settled through the financial callback logic.
+ * Optional casino-specific support review. Disabled by default.
+ * When the operator re-enables it, only a reviewed account may launch NEW
+ * real-money sessions. This is NOT itself proof of regulatory KYC completion.
+ * Never treat the flag as authorization for legal-age or territory checks.
  */
+export function casinoManualReviewRequired(): boolean {
+  return process.env.SOFTAGGREGATOR_SUPPORT_REVIEW_REQUIRED === 'true';
+}
+
+/** No casino-specific identity step unless the operator opts in later. */
+export async function casinoManualReviewSatisfied(
+  userId: string, db: Pick<Db, 'queryOne'> = getDb(),
+): Promise<boolean> {
+  if (!casinoManualReviewRequired()) return true;
+  return casinoSupportApproved(userId, db);
+}
+
 export const CASINO_SUPPORT_APPROVAL_SQL = `
 exists (
   select 1 from nova.casino_support_approvals ca
