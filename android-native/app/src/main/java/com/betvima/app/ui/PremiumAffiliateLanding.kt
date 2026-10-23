@@ -130,7 +130,7 @@ fun PremiumAffiliateSheet(state: AppState, model: AppViewModel, onClose: () -> U
                     }
                     Spacer(Modifier.width(11.dp))
                     Column(Modifier.weight(1f)) {
-                        Text("BETVIMA  /  PARTNERS",
+                        Text(tr(LocalNativeLanguage176.current, "BETVIMA  /  PARTNERS", "BETVIMA  /  PARTNERS"),
                             color=partnerMint,fontSize=10.sp,
                             fontWeight=FontWeight.Black,letterSpacing=1.2.sp)
                         Text(tr(lang,"Affiliate Center","مرکز همکاری"),
@@ -227,7 +227,7 @@ fun PremiumAffiliateSheet(state: AppState, model: AppViewModel, onClose: () -> U
                             .padding(horizontal = 19.dp, vertical = 10.dp),
                             verticalAlignment = Alignment.CenterVertically) {
                             Column(Modifier.weight(1f)) {
-                                Text("BetVima Partners", color = Color.White,
+                                Text(tr(LocalNativeLanguage176.current, "BetVima Partners", "BetVima Partners"), color = Color.White,
                                     fontWeight = FontWeight.Black, fontSize = 19.sp)
                                 Text(
                                     if(authMode=="register")
@@ -337,7 +337,7 @@ private fun PartnerHero(lang: Lang, active: Boolean, onGetStarted: () -> Unit, o
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Spacer(Modifier.height(33.dp))
-        Text("BETVIMA  PARTNERS", fontSize = 11.sp,
+        Text(tr(LocalNativeLanguage176.current, "BETVIMA  PARTNERS", "BETVIMA  PARTNERS"), fontSize = 11.sp,
             letterSpacing = 2.sp, color = partnerMint, fontWeight = FontWeight.Black)
         Spacer(Modifier.height(21.dp))
         Text(tr(lang, "Grow together with a\npremium Sports & Casino brand",
