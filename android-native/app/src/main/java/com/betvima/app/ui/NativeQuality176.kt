@@ -3,6 +3,7 @@ package com.betvima.app.ui
 /** Human-reviewed critical native UI terms. Overrides machine-generated translations. */
 internal object NativeQuality176 {
     private val tr = mapOf(
+        "BETVIMA • CASINO" to "BetVima • KUMARHANE",
         "Connect at least four dots" to "En az dört noktayı birleştirin",
         "BETVIMA REWARDS" to "BetVima ÖDÜLLERİ",
         "BETVIMA / ACCOUNT" to "BetVima / HESAP",
@@ -70,6 +71,7 @@ internal object NativeQuality176 {
         "Bonuses" to "Bonuslar"
     )
     private val hy = mapOf(
+        "BETVIMA • CASINO" to "BetVima • ԽԱՂԱՏՈՒՆ",
         "Connect at least four dots" to "Միացրեք առնվազն չորս կետ",
         "BETVIMA REWARDS" to "BetVima ՊԱՐԳԵՎՆԵՐ",
         "BETVIMA / ACCOUNT" to "BetVima / ՀԱՇԻՎ",
@@ -137,6 +139,7 @@ internal object NativeQuality176 {
         "Bonuses" to "Բոնուսներ"
     )
     private val ar = mapOf(
+        "BETVIMA • CASINO" to "BetVima • الكازينو",
         "Connect at least four dots" to "صِل أربع نقاط على الأقل",
         "BETVIMA REWARDS" to "مكافآت BetVima",
         "BETVIMA / ACCOUNT" to "BetVima / الحساب",
