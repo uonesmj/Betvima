@@ -12,7 +12,7 @@ KEY = re.compile(QUOTED + r'\s+to\s+')
 latin = re.compile(r'[A-Za-z]{2}')
 FILES = sorted(ROOT.rglob("*.kt"))
 def unescape(x):
-    return x.replace(r'\\n', '\\n').replace(r'\\"', '"')
+    return x.replace(r'\r'\\n', '\\n').replace(r'\\"', '"'), 'r'\\n', '\\n').replace(r'\\"', '"')).replace(r'\\n', '\\n').replace(r'\\"', '"')
 results = {}
 for f in FILES:
     s=f.read_text(encoding='utf-8')
