@@ -234,9 +234,9 @@ internal fun LiveIncidentPitch129(
                             fontSize = 9.sp)
                         Text(
                             (if (cue.confirmedScore) {
-                                tr(activeLang177, "Verified score change", "نتیجهٔ تأییدشده")
+                                trLive177(activeLang177, "Verified score change", "نتیجهٔ تأییدشده")
                             } else {
-                                tr(activeLang177, "Stat update +", "تغییر آمار +")
+                                trLive177(activeLang177, "Stat update +", "تغییر آمار +")
                             }) + (if (cue.confirmedScore) "" else cue.amount.toString()) +
                                 "  ·  " + (cue.minute?.toString()?.plus("′") ?: "LIVE"),
                             color = Color(0xFFD1DFE0), fontSize = 7.sp,
