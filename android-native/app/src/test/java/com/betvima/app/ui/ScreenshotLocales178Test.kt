@@ -61,9 +61,9 @@ class ScreenshotLocales178Test {
 
     @Test fun preservesNumbersCurrencyAndBrandNames() {
         for (language in listOf(Lang.TR, Lang.HY, Lang.AR)) {
-            assertTrue(tr(language, "100% deposit match", "پاداش واریز").contains("100%"))
+            assertTrue(Regex("(?:100%|%100)").containsMatchIn(tr(language, "100% deposit match", "پاداش واریز")))
             assertTrue(tr(language, "24-hour limit", "۲۴ ساعت").contains("24"))
-            assertTrue(tr(language, "Is the 70% rate guaranteed?", "۷۰ درصد").contains("70%"))
+            assertTrue(Regex("(?:70%|%70)").containsMatchIn(tr(language, "Is the 70% rate guaranteed?", "۷۰ درصد")))
             assertEquals("33.74 USD", tr(language, "33.74 USD", "۳۳٫۷۴ دلار"))
             assertEquals("BetVima", tr(language, "BetVima", "بت ویما"))
         }
