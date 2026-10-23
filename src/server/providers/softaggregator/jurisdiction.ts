@@ -16,6 +16,14 @@ export const SOFTAGGREGATOR_RESTRICTED_COUNTRIES = Object.freeze([
   'IT', 'ES', 'FR', 'MT', 'NL', 'LV', 'LT', 'IE',
 ] as const);
 
+/** Operator-confirmed intended territories. Deployment and legal verification remain separate. */
+export const BETVIMA_CASINO_APPROVED_COUNTRIES = Object.freeze([
+  'IR', 'TR', 'AF', 'GE', 'AZ', 'TJ',
+] as const);
+
+const operatorApprovedCountries: ReadonlySet<string> =
+  new Set(BETVIMA_CASINO_APPROVED_COUNTRIES);
+
 const providerRestrictedCountries: ReadonlySet<string> =
   new Set(SOFTAGGREGATOR_RESTRICTED_COUNTRIES);
 
@@ -30,6 +38,7 @@ export function casinoCountryPermitted(
 ): boolean {
   if (typeof country !== 'string' || !/^[A-Z]{2}$/.test(country)) return false;
   if (casinoCountryRestrictedByProvider(country)) return false;
+  if (!operatorApprovedCountries.has(country)) return false;
   if (!configured || configured.length > 255) return false;
   const entries = configured.split(',').map((value) => value.trim());
   if (!entries.length || entries.length > 30 ||
