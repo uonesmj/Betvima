@@ -1,6 +1,6 @@
 /**
  * SoftAggregator signed-ingress adapter for a dedicated Cloudflare route:
- *   betvima.com/api/webhooks/softaggregator*
+ *   betvima.com/api/webhooks/softaggregator*\n * Provider may also call the exact root (/) of the dedicated Worker host.\n * Root is never a general-purpose website route.
  * An exact allowlisted workers.dev hostname may be used for an isolated
  * non-monetary connectivity rehearsal without changing the site's nameservers.
  *
@@ -50,7 +50,7 @@ function exactIpAllowed(ip, configured) {
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
-    if (url.pathname !== WEBHOOK_PATH || request.method !== 'GET')
+    if ((url.pathname !== WEBHOOK_PATH && url.pathname !== '/') || request.method !== 'GET')
       return refuse();
 
     const ip = request.headers.get('cf-connecting-ip');
