@@ -13,10 +13,10 @@ export function casinoManualReviewRequired(): boolean {
 
 /** No casino-specific identity step unless the operator opts in later. */
 export async function casinoManualReviewSatisfied(
-  userId: string, db: Pick<Db, 'queryOne'> = getDb(),
+  userId: string, db?: Pick<Db, 'queryOne'>,
 ): Promise<boolean> {
   if (!casinoManualReviewRequired()) return true;
-  return casinoSupportApproved(userId, db);
+  return casinoSupportApproved(userId, db ?? getDb());
 }
 
 export const CASINO_SUPPORT_APPROVAL_SQL = `
