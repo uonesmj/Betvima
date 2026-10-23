@@ -26,6 +26,9 @@ import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.betvima.app.data.*
 
+/** Presentation locale; visual layout direction stays fixed for all languages. */
+val LocalNativeLanguage176 = staticCompositionLocalOf { Lang.EN }
+
 fun tr(lang: Lang, en: String, fa: String): String = when (lang) {
     Lang.EN -> en
     Lang.FA -> fa
@@ -335,7 +338,7 @@ fun OddsChoice(match: Match, market: Market, selection: Selection, liveEnabled: 
         Column(Modifier.fillMaxSize().padding(horizontal = 3.dp, vertical = 7.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center) {
-            Text(selection.label(LocalLayoutDirection.current == LayoutDirection.Rtl),
+            Text(tr(LocalNativeLanguage176.current, selection.label(false), selection.label(true)),
                 fontSize = 10.sp, maxLines = 1, overflow = TextOverflow.Ellipsis,
                 color = if (selected) Palette.blue else Palette.muted,
                 textAlign = TextAlign.Center, fontWeight = FontWeight.Medium)
