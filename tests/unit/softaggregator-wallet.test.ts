@@ -23,6 +23,7 @@ function makeFakeDb(initial = 1000n, held = 200n) {
   let preferredCurrency = 'USD';
   let boundCurrency: string | null = 'USD';
   let kycStatus = 'verified';
+  let ageVerified = true;
   let supportApproved = true;
   let country = 'TR';
   let financialSchemaReady = true;
@@ -56,7 +57,7 @@ function makeFakeDb(initial = 1000n, held = 200n) {
       }
       if (sql.includes('from nova.profiles p')) {
         return {
-          status: 'active', age_verified: true, kyc_status: kycStatus,
+          status: 'active', age_verified: ageVerified, kyc_status: kycStatus,
           support_approved: supportApproved,
           country, currency: preferredCurrency,
           self_excluded: false, restricted: false,
@@ -106,6 +107,7 @@ function makeFakeDb(initial = 1000n, held = 200n) {
     setBinding: (currency: string | null) => { boundCurrency = currency; },
     setKycStatus: (status: string) => { kycStatus = status; },
     setSupportApproved: (value: boolean) => { supportApproved = value; },
+    setAgeVerified: (value: boolean) => { ageVerified = value; },
     setCountry: (value: string) => { country = value; },
     setSchemaReady: (ready: boolean) => { financialSchemaReady = ready; } };
 }
@@ -114,6 +116,7 @@ describe('SoftAggregator financial callback behavior (isolated DB contract)', ()
   beforeEach(() => {
     vi.clearAllMocks();
     vi.stubEnv('SOFTAGGREGATOR_ALLOWED_COUNTRIES', 'TR');
+    vi.stubEnv('SOFTAGGREGATOR_SUPPORT_REVIEW_REQUIRED', 'false');
   });
   afterEach(() => vi.unstubAllEnvs());
 
@@ -146,14 +149,24 @@ describe('SoftAggregator financial callback behavior (isolated DB contract)', ()
     expect(t.postings[0]?.p_type).toBe('win_credit');
   });
 
-  it('rejects USD wagers until a support reviewer approves the casino account', async () => {
+  it('does not require KYC or support approval by default, but can re-enable review later', async () => {
     const t = makeFakeDb();
     t.setSupportApproved(false);
+    t.setKycStatus('not_started');
     vi.mocked(getDb).mockReturnValue(t.fake as unknown as Db);
-    expect((await settleCasinoCallback(identity('not-reviewed', 'debit', 20n))).error).toBe(1);
-    expect(t.postings).toHaveLength(0);
+    expect((await settleCasinoCallback(identity('no-review-needed', 'debit', 20n))).error).toBe(0);
+    vi.stubEnv('SOFTAGGREGATOR_SUPPORT_REVIEW_REQUIRED', 'true');
+    expect((await settleCasinoCallback(identity('manual-review-required', 'debit', 20n))).error).toBe(1);
     t.setSupportApproved(true);
     expect((await settleCasinoCallback(identity('now-approved', 'debit', 20n))).error).toBe(0);
+  });
+
+  it('still requires legal-age evidence independently of optional casino KYC', async () => {
+    const t = makeFakeDb();
+    t.setAgeVerified(false);
+    vi.mocked(getDb).mockReturnValue(t.fake as unknown as Db);
+    expect((await settleCasinoCallback(identity('underage-or-unverified-age', 'debit', 20n))).error).toBe(1);
+    expect(t.postings).toHaveLength(0);
   });
 
   it('denies wagering in a country absent from operator allowlist', async () => {
