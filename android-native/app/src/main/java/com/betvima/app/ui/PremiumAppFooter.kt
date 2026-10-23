@@ -163,7 +163,7 @@ fun PremiumAppFooter(
                     verticalAlignment = Alignment.CenterVertically) {
                     Text(when(lang) { Lang.FA -> "🇮🇷"; Lang.TR -> "🇹🇷"; Lang.EN -> "🇬🇧" }, fontSize = 19.sp)
                     Spacer(Modifier.width(5.dp))
-                    Text(if (lang == Lang.FA) "FA" else "EN",
+                    Text(when(lang) { Lang.FA -> "FA"; Lang.TR -> "TR"; Lang.EN -> "EN" },
                         color = Color.White, fontWeight = FontWeight.Bold, fontSize = 12.sp)
                     Icon(Icons.Default.ExpandMore,
                         tr(lang, "Select language", "انتخاب زبان"),
