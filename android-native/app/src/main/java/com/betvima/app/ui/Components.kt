@@ -338,7 +338,7 @@ fun OddsChoice(match: Match, market: Market, selection: Selection, liveEnabled: 
         Column(Modifier.fillMaxSize().padding(horizontal = 3.dp, vertical = 7.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center) {
-            Text(tr(LocalNativeLanguage176.current, selection.label(false), selection.label(true)),
+            Text(NativeMarketLabels176.selection(LocalNativeLanguage176.current, selection.label(false), selection.label(true)),
                 fontSize = 10.sp, maxLines = 1, overflow = TextOverflow.Ellipsis,
                 color = if (selected) Palette.blue else Palette.muted,
                 textAlign = TextAlign.Center, fontWeight = FontWeight.Medium)
