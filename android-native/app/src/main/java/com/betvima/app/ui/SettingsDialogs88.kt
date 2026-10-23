@@ -57,7 +57,7 @@ private fun SecureShell88(title:String,close:()->Unit,content:@Composable Column
                 Text(title,color=white88,fontWeight=FontWeight.Black,fontSize=20.sp,
                     modifier=Modifier.weight(1f))
                 IconButton(onClick=close){
-                    Icon(Icons.Default.Close,contentDescription=tr(lang, "Close", "بستن"),tint=gray88)
+                    Icon(Icons.Default.Close,contentDescription=tr(LocalNativeLanguage176.current, "Close", "بستن"),tint=gray88)
                 }
             }
             content()
