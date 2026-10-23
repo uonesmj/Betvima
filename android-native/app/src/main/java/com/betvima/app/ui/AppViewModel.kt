@@ -20,7 +20,7 @@ import java.math.RoundingMode
 enum class Tab { HOME, LIVE, SPORTS, BETS, WALLET }
 enum class HomeMode { TOP, TOP_BETS }
 enum class Feature { NONE, PROFILE, BONUSES, VIP, SUPPORT, CASINO, AFFILIATE, NOTIFICATIONS }
-enum class Lang { EN, FA, TR }
+enum class Lang { EN, FA, TR, DARI }
 
 /** Ephemeral visual-only signal, never used in pricing or settlement. */
 data class PickFlight84(
@@ -105,7 +105,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     private val ticketLookupSemaphore = Semaphore(2)
     private val mutable = MutableStateFlow(AppState(
         signedIn = vault.signedIn(),
-        lang = when (preferences.getString("language", "en")) { "fa" -> Lang.FA; "tr" -> Lang.TR; else -> Lang.EN }
+        lang = when (preferences.getString("language", "en")) { "fa" -> Lang.FA; "tr" -> Lang.TR; "prs" -> Lang.DARI; else -> Lang.EN }
     ))
     val state = mutable.asStateFlow()
     init {
@@ -124,9 +124,9 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         mutable.update { it.copy(wageringEnabled = available) }
     }
     fun language() =
-        setLanguage(when(state.value.lang) { Lang.EN -> Lang.FA; Lang.FA -> Lang.TR; Lang.TR -> Lang.EN })
+        setLanguage(when(state.value.lang) { Lang.EN -> Lang.FA; Lang.FA -> Lang.TR; Lang.TR -> Lang.DARI; Lang.DARI -> Lang.EN })
     fun setLanguage(lang: Lang) {
-        preferences.edit().putString("language", when(lang) { Lang.FA -> "fa"; Lang.TR -> "tr"; Lang.EN -> "en" }).apply()
+        preferences.edit().putString("language", when(lang) { Lang.FA -> "fa"; Lang.TR -> "tr"; Lang.DARI -> "prs"; Lang.EN -> "en" }).apply()
         mutable.update { it.copy(lang = lang) }
     }
     fun homeMode(mode: HomeMode) {
