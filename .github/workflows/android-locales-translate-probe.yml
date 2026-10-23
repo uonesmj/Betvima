@@ -1,0 +1,25 @@
+name: Native Translation Service Probe
+on:
+  push:
+    branches: [feat/android-176-tr-hy-ar-complete-audit-20261023]
+    paths: ['.github/workflows/android-locales-translate-probe.yml']
+permissions:
+  contents: read
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check translation service accessibility and accuracy
+        run: |
+          python3 - <<'PY'
+          import urllib.parse,urllib.request,json
+          for locale in ('tr','hy','ar'):
+              q=urllib.parse.urlencode(dict(client='gtx',sl='en',tl=locale,dt='t',q='Your wallet balance is unavailable. Please try again.'))
+              try:
+                  req=urllib.request.Request('https://translate.googleapis.com/translate_a/single?'+q,headers={'User-Agent':'Mozilla/5.0'})
+                  response=urllib.request.urlopen(req,timeout=12)
+                  result=json.loads(response.read().decode('utf-8'))
+                  print(locale, response.status, ''.join(c[0] or '' for c in result[0]))
+              except Exception as exc: print(locale, type(exc).__name__,str(exc)[:180])
+          PY
