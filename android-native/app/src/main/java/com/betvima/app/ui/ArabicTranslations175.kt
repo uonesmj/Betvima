@@ -16,7 +16,8 @@ internal object ArabicTranslations175 {
         ArabicTranslations175G.terms +
         ArabicTranslations175H.terms +
         ArabicTranslations175I.terms +
-        ArabicTranslations175J.terms
+        ArabicTranslations175J.terms +
+        ArabicTranslations175K.terms
 
     fun translate(english: String): String =
         terms[english] ?: dynamicText(english) ?: english
