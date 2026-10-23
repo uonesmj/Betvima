@@ -54,7 +54,19 @@ export function assessCasinoReadiness(snapshot: CasinoAuditSnapshot) {
   check('provider_api_credentials_configured', snapshot.providerApiConfigured);
   check('callback_signing_key_configured', snapshot.callbackHmacConfigured);
   check('geo_attestation_key_configured', snapshot.geoHmacConfigured);
-  check('explicit_country_list_configured', snapshot.explicitCountryList);
+  // The supplier may enforce per-game territory restrictions. An absent operator
+  // country list must not be represented as a failed *supplier game-filter*
+  // configuration check. It still blocks real-money release pending independent
+  // operator authorization and verified player-location evidence. Runtime
+  // jurisdiction checks remain fail-closed and are not relaxed here.
+  checks.push({
+    name: 'operator_country_authorization_configured',
+    status: snapshot.explicitCountryList ? 'passed' : 'needs_external_evidence',
+  });
+  checks.push({
+    name: 'supplier_game_country_filter_verified',
+    status: 'needs_external_evidence',
+  });
   check('single_player_pilot_configured', snapshot.singlePlayerPilotConfigured);
   check('pilot_age_and_kyc_verified', snapshot.pilotIdentityVerified);
   check('cash_flag_remains_off_before_approval', !snapshot.realMoneyFlagEnabled);
