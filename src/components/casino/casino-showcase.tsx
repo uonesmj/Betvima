@@ -184,60 +184,13 @@ export function CasinoCatalogueClient() {
   const [loading, setLoading] = useState(true);
   const [launchingId, setLaunchingId] = useState<string | null>(null);
   const [message, setMessage] = useState('');
-  const [identityAccess, setIdentityAccess] = useState(false);
-  const [identityChecked, setIdentityChecked] = useState(false);
   const [realMoneyAvailable, setRealMoneyAvailable] = useState(false);
   const [realMoneyChecked, setRealMoneyChecked] = useState(false);
-  // The operator may approve KYC in another session while the customer is
-  // looking at the catalogue. Refresh the server-side approval automatically,
-  // so the buttons unlock without logging out, resubmitting, or reloading.
+
+  // Demo play is never gated by document KYC. Cash access is independently
+  // checked by the server (support approval, age, country and wallet gates).
   useEffect(() => {
     if (!session?.authenticated) {
-      setIdentityAccess(false);
-      setIdentityChecked(true);
-      return;
-    }
-    const controller = new AbortController();
-    let inFlight = false;
-    setIdentityChecked(false);
-    const refresh = async () => {
-      if (inFlight || controller.signal.aborted) return;
-      inFlight = true;
-      try {
-        const response = await fetch('/api/v1/account/kyc', {
-          credentials: 'same-origin', cache: 'no-store', signal: controller.signal,
-        });
-        if (!response.ok) throw new Error('CASINO_IDENTITY_STATUS_UNAVAILABLE');
-        const payload = await response.json() as { data?: { gameAccessApproved?: boolean } };
-        if (!controller.signal.aborted) {
-          setIdentityAccess(payload.data?.gameAccessApproved === true);
-        }
-      } catch {
-        if (!controller.signal.aborted) setIdentityAccess(false);
-      } finally {
-        inFlight = false;
-        if (!controller.signal.aborted) setIdentityChecked(true);
-      }
-    };
-    const onReturn = () => {
-      if (document.visibilityState === 'visible') void refresh();
-    };
-    void refresh();
-    const pollId = window.setInterval(onReturn, 15000);
-    document.addEventListener('visibilitychange', onReturn);
-    window.addEventListener('focus', onReturn);
-    return () => {
-      controller.abort();
-      window.clearInterval(pollId);
-      document.removeEventListener('visibilitychange', onReturn);
-      window.removeEventListener('focus', onReturn);
-    };
-  }, [session?.authenticated, session?.user?.id]);
-
-  // A single operator KYC approval stays on the account. Real-money capability is
-  // independently evaluated by the server using current financial and location gates.
-  useEffect(() => {
-    if (!session?.authenticated || !identityChecked || !identityAccess) {
       setRealMoneyAvailable(false);
       setRealMoneyChecked(false);
       return;
@@ -275,7 +228,7 @@ export function CasinoCatalogueClient() {
       document.removeEventListener('visibilitychange', onReturn);
       window.removeEventListener('focus', onReturn);
     };
-  }, [session?.authenticated, session?.user?.id, identityAccess, identityChecked]);
+  }, [session?.authenticated, session?.user?.id]);
 
   useEffect(() => {
     const initialQuery = new URLSearchParams(window.location.search).get('q');
@@ -313,10 +266,6 @@ export function CasinoCatalogueClient() {
       return;
     }
     if (sessionLoading || launchingId) return;
-    if (!identityChecked || !identityAccess) {
-      setMessage(label('Send your ID in support chat for one-time approval.', 'مدرک خود را در چت پشتیبانی ارسال کنید تا یک‌بار تأیید شود.'));
-      return;
-    }
     if (!demo && !realMoneyAvailable) {
       setMessage(label('Real-money play is not available for this account yet.', 'بازی با پول واقعی هنوز برای این حساب در دسترس نیست.'));
       return;
@@ -334,9 +283,9 @@ export function CasinoCatalogueClient() {
       const payload: { data?: { url?: string }; error?: string } = await response.json();
       const url = payload.data?.url;
       if (!response.ok || !url || !url.startsWith('https://')) {
-        if (payload.error === 'CASINO_KYC_REQUIRED') {
-          setIdentityAccess(false);
-          setMessage(label('Support must verify your identity before playing.', 'پشتیبانی باید هویت شما را پیش از بازی تأیید کند.'));
+        if (payload.error === 'CASINO_SUPPORT_REVIEW_REQUIRED') {
+          setRealMoneyAvailable(false);
+          setMessage(label('Contact support for manual casino account review.', 'برای تأیید دستی حساب کازینو با پشتیبانی تماس بگیرید.'));
         } else if (payload.error === 'CASINO_GEO_VERIFICATION_REQUIRED' || payload.error === 'CASINO_COUNTRY_MISMATCH') {
           setRealMoneyAvailable(false);
           setMessage(label('Your current location could not be verified for real-money play.', 'موقعیت فعلی شما برای بازی با پول واقعی قابل تأیید نیست.'));
@@ -378,24 +327,21 @@ export function CasinoCatalogueClient() {
             placeholder={label('Search games', 'جستجوی بازی‌ها')} aria-label={label('Search games', 'جستجوی بازی‌ها')} maxLength={80} />
         </label>
       </div>
-      {session?.authenticated && identityChecked && !identityAccess ? (
-        <div role="status" className="rounded-2xl border border-[#BCD8F6] bg-[#EFF7FF] px-4 py-4 text-xs font-semibold text-[#234A72]">
-          <p>{label('Games are visible. Send your identity document through the existing support chat. An authorized reviewer will verify identity and legal age before games unlock.', 'بازی‌ها قابل مشاهده هستند. مدارک هویتی خود را در چت پشتیبانی موجود ارسال کنید تا مدیر مجاز هویت و سن قانونی را بررسی و تأیید کند.')}</p>
-          <Link href="/support" className="mt-2 inline-block font-black text-[#087FF5] underline">{label('Send your ID to support', 'ارسال مدارک به پشتیبانی')}</Link>
-        </div>
-      ) : null}
-      {session?.authenticated && identityAccess && realMoneyChecked && !realMoneyAvailable ? (
+      {session?.authenticated && realMoneyChecked && !realMoneyAvailable ? (
         <div role="status" className="rounded-xl border border-[#D9E3F0] bg-[#F6F9FD] px-4 py-3 text-xs font-semibold text-[#31516D]">
           {label(
-            'Your identity is approved. No further documents are needed. Real-money play will appear here when your account and the casino service are eligible; demo remains available.',
-            'احراز هویت شما تأیید شده و نیازی به ارسال دوباره مدارک نیست. پس از آماده‌شدن دسترسی حساب و سرویس کازینو، گزینه بازی با موجودی واقعی اینجا نمایش داده می‌شود. بازی دمو همچنان در دسترس است.',
+            'Demo games are available without uploading identity documents. Real-money access requires an authorized support review and separate eligibility checks.',
+            'بازی دمو بدون بارگذاری مدارک هویتی در دسترس است. فعال‌شدن بازی با موجودی واقعی به بررسی دستی پشتیبانی و سایر شرایط دسترسی بستگی دارد.',
           )}
+          <Link href="/support" className="ms-2 font-bold underline">
+            {label('Contact support', 'ارتباط با پشتیبانی')}
+          </Link>
         </div>
       ) : null}
       {message ? <p role="status" className="rounded-xl bg-[#FFF5ED] px-4 py-3 text-xs font-semibold text-[#9A4E14]">{message}</p> : null}
       {games.length ? (
         <div className="grid grid-cols-2 gap-2.5 md:grid-cols-3 xl:grid-cols-4">
-          {games.map((game) => <CasinoGameCard key={game.id} game={game} onPlay={(selected) => void launchGame(selected, true)} onPlayReal={(selected) => void launchGame(selected, false)} realMoneyAvailable={realMoneyAvailable} launching={launchingId === game.id} locked={!identityAccess || !identityChecked} />)}
+          {games.map((game) => <CasinoGameCard key={game.id} game={game} onPlay={(selected) => void launchGame(selected, true)} onPlayReal={(selected) => void launchGame(selected, false)} realMoneyAvailable={realMoneyAvailable} launching={launchingId === game.id} locked={false} />)}
         </div>
       ) : !loading ? (
         <div className="rounded-2xl border border-[#DDE1E6] bg-white px-5 py-10 text-center text-sm font-semibold text-[#69717A]">

@@ -161,15 +161,12 @@ export function SupportAdminClient() {
   const [loadingList, setLoadingList] = useState(true);
   const [loadingTicket, setLoadingTicket] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [identityReviewer, setIdentityReviewer] = useState(false);
-  const [identityStatus, setIdentityStatus] = useState('unverified');
-  const [identityFile, setIdentityFile] = useState('');
-  const [identityType, setIdentityType] = useState<'national_id' | 'passport' | 'drivers_license'>('national_id');
-  const [identityReason, setIdentityReason] = useState('');
-  const [identityConsent, setIdentityConsent] = useState(false);
-  const [identityAge, setIdentityAge] = useState(false);
-  const [identityBusy, setIdentityBusy] = useState(false);
-  const [identityFeedback, setIdentityFeedback] = useState('');
+  const [casinoReviewer, setCasinoReviewer] = useState(false);
+  const [casinoStatus, setCasinoStatus] = useState<'unreviewed'|'approved'|'revoked'>('unreviewed');
+  const [casinoReviewReason, setCasinoReviewReason] = useState('');
+  const [casinoAgeConfirmed, setCasinoAgeConfirmed] = useState(false);
+  const [casinoReviewBusy, setCasinoReviewBusy] = useState(false);
+  const [casinoReviewFeedback, setCasinoReviewFeedback] = useState('');
 
   const filteredTickets = useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -226,12 +223,11 @@ export function SupportAdminClient() {
   }, [statusFilter, categoryFilter, priorityFilter]);
 
   useEffect(() => {
-    setIdentityReviewer(false);
-    setIdentityStatus('unverified');
-    setIdentityFile('');
-    setIdentityConsent(false);
-    setIdentityAge(false);
-    setIdentityFeedback('');
+    setCasinoReviewer(false);
+    setCasinoStatus('unreviewed');
+    setCasinoAgeConfirmed(false);
+    setCasinoReviewReason('');
+    setCasinoReviewFeedback('');
     if (!selectedId) {
       setTicket(null);
       setMessages([]);
@@ -239,17 +235,17 @@ export function SupportAdminClient() {
     }
     void loadTicket(selectedId);
     const controller = new AbortController();
-    fetch('/api/v1/admin/support/' + selectedId + '/kyc', {
+    fetch('/api/v1/admin/support/' + selectedId + '/casino-approval', {
       credentials: 'same-origin', cache: 'no-store', signal: controller.signal,
     }).then(async (response) => {
-      if (!response.ok) throw new Error('Not an authorized identity reviewer');
-      return response.json() as Promise<{ data?: { status: string } }>;
+      if (!response.ok) throw new Error('Not authorized or casino support-review migration missing');
+      return response.json() as Promise<{ data?: { status: 'unreviewed'|'approved'|'revoked' } }>;
     }).then((payload) => {
       if (controller.signal.aborted) return;
-      setIdentityStatus(payload.data?.status ?? 'unverified');
-      setIdentityReviewer(true);
+      setCasinoStatus(payload.data?.status ?? 'unreviewed');
+      setCasinoReviewer(true);
     }).catch(() => {
-      if (!controller.signal.aborted) setIdentityReviewer(false);
+      if (!controller.signal.aborted) setCasinoReviewer(false);
     });
     return () => controller.abort();
   }, [selectedId]);
@@ -310,32 +306,36 @@ export function SupportAdminClient() {
     await updateTicket({ assignedTo: assignedTo.trim() || null });
   }
 
-  const userDocuments = messages.filter(m => m.senderRole === 'user')
-    .flatMap(m => m.attachments)
-    .filter(a => a.uploaderRole === 'user' && a.bucketId === 'support-attachments'
-      && a.sizeBytes <= 8 * 1024 * 1024 && a.sizeBytes >= 12
-      && ['image/jpeg','image/png','image/webp','application/pdf'].includes(a.mimeType));
-
-  async function approveIdentity() {
-    if (!selectedId || !identityReviewer || !identityFile || !identityAge
-      || !identityConsent || identityReason.trim().length < 8 || identityBusy) return;
-    if (!window.confirm('Approve identity from the selected customer attachment?')) return;
-    setIdentityBusy(true);
-    setIdentityFeedback('');
+  async function decideCasinoAccess(decision: 'approve'|'revoke') {
+    if (!selectedId || !casinoReviewer || casinoReviewBusy ||
+        casinoReviewReason.trim().length < 8 ||
+        (decision === 'approve' && !casinoAgeConfirmed)) return;
+    if (!window.confirm(decision === 'approve'
+      ? 'Confirm this account has been reviewed by support and legal age verified?'
+      : 'Revoke casino access for this customer?')) return;
+    setCasinoReviewBusy(true);
+    setCasinoReviewFeedback('');
     try {
-      await request('/api/v1/admin/support/' + selectedId + '/kyc', {
-        method: 'POST', body: JSON.stringify({
-          attachmentId: identityFile, documentType: identityType,
-          ageConfirmed: true, consentConfirmed: true, reason: identityReason.trim(),
-        }),
-      });
-      setIdentityStatus('verified');
-      setIdentityFeedback('Identity verified and audit recorded. Customer chat notified.');
+      const result = await request<{ status: 'approved'|'revoked' }>(
+        '/api/v1/admin/support/' + selectedId + '/casino-approval', {
+          method: 'POST',
+          body: JSON.stringify({
+            decision,
+            ageConfirmed: decision === 'approve' ? true : false,
+            reason: casinoReviewReason.trim(),
+          }),
+        });
+      setCasinoStatus(result.status);
+      setCasinoReviewReason('');
+      setCasinoAgeConfirmed(false);
+      setCasinoReviewFeedback(
+        'Support review saved with audit trail. Real-money eligibility is checked separately.',
+      );
       await loadTicket(selectedId, true);
-    } catch (e) {
-      setIdentityFeedback(e instanceof Error ? e.message : 'Approval failed.');
+    } catch (cause) {
+      setCasinoReviewFeedback(cause instanceof Error ? cause.message : 'Casino review failed.');
     } finally {
-      setIdentityBusy(false);
+      setCasinoReviewBusy(false);
     }
   }
 
@@ -482,96 +482,51 @@ export function SupportAdminClient() {
                 </div>
               </div>
 
-              {identityReviewer ? (
-                <section className="shrink-0 space-y-3 border-b border-[#DCE5F1] bg-[#F6F9FE] p-4 sm:p-5" aria-label="Approve identity in existing support chat">
+              {casinoReviewer ? (
+                <section className="shrink-0 space-y-3 border-b border-[#DCE5F1] bg-[#F6F9FE] p-4 sm:p-5" aria-label="Manual casino support authorization">
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <div>
-                      <h3 className="text-sm font-bold text-[#25354D]">Identity verification</h3>
-                      <p className="mt-1 text-[11px] text-[#6D7F96]">Review identity within this support conversation. No additional customer form is needed.</p>
+                      <h3 className="text-sm font-bold text-[#25354D]">Casino access — support review</h3>
+                      <p className="mt-1 text-[11px] text-[#6D7F96]">
+                        No mandatory document upload for casino access. Only authorized staff can approve or revoke.
+                        A lawful legal-age review and an audit reason are still required.
+                      </p>
                     </div>
-                    <span className={`rounded-full border px-2.5 py-1 text-[11px] font-bold ${
-                      identityStatus === 'verified'
-                        ? 'border-emerald-400/35 bg-emerald-400/15 text-emerald-700'
-                        : identityStatus === 'pending'
-                          ? 'border-amber-400/35 bg-amber-400/15 text-amber-700'
-                          : 'border-[#D3DCE8] bg-[#EDF3FA] text-[#44556F]'
-                    }`}>
-                      {identityStatus === 'verified' ? 'Approved' : identityStatus === 'pending' ? 'Pending review' : 'Not verified'}
+                    <span className="rounded-full border border-[#D3DCE8] bg-[#EDF3FA] px-2.5 py-1 text-[11px] font-bold text-[#44556F]">
+                      {casinoStatus === 'approved' ? 'Approved' : casinoStatus === 'revoked' ? 'Revoked' : 'Not reviewed'}
                     </span>
                   </div>
-                  {identityStatus === 'verified' ? (
-                    <p role="status" className="rounded-xl border border-emerald-400/30 bg-emerald-400/10 p-3 text-xs font-medium text-emerald-800">
-                      Identity approved for this account. No repeat document submission is required.
-                    </p>
-                  ) : identityStatus === 'pending' ? (
-                    <p role="status" className="rounded-xl border border-amber-400/30 bg-amber-400/10 p-3 text-xs text-amber-800">
-                      This account already has a pending identity review. Resolve it before approving from support.
-                    </p>
-                  ) : (
-                    <div className="space-y-3">
-                      <p className="text-xs leading-5 text-[#4C607A]">
-                        Select an ID uploaded by the customer in this exact ticket. Review the document and legal age before granting access; receiving a file alone does not approve identity.
-                      </p>
-                      {userDocuments.length === 0 ? (
-                        <p role="status" className="rounded-xl border border-amber-400/30 bg-amber-400/10 px-3 py-2.5 text-xs font-medium text-amber-800">
-                          No eligible customer ID attachment in this conversation. Ask the customer to send a JPG, PNG, WebP or PDF (up to 8 MB) through the existing support chat.
-                        </p>
-                      ) : null}
-                      <div className="grid min-w-0 gap-3 sm:grid-cols-2">
-                        <label className="block min-w-0 text-xs font-semibold text-[#34445A]">
-                          Customer-uploaded document
-                          <select className="nova-input mt-1.5 block w-full min-w-0 !text-[#182431]" value={identityFile}
-                            disabled={identityBusy || userDocuments.length === 0} onChange={e => setIdentityFile(e.target.value)}>
-                            <option value="">Choose a document</option>
-                            {userDocuments.map(a => (
-                              <option key={a.id} value={a.id}>{a.originalName.slice(0, 60)} · {a.id.slice(0, 8)}</option>
-                            ))}
-                          </select>
-                        </label>
-                        <label className="block min-w-0 text-xs font-semibold text-[#34445A]">
-                          Identity document type
-                          <select className="nova-input mt-1.5 block w-full min-w-0 !text-[#182431]" value={identityType}
-                            disabled={identityBusy}
-                            onChange={e => setIdentityType(e.target.value as typeof identityType)}>
-                            <option value="national_id">National ID</option>
-                            <option value="passport">Passport</option>
-                            <option value="drivers_license">Driving license</option>
-                          </select>
-                        </label>
-                      </div>
-                      <label className="block text-xs font-semibold text-[#34445A]">
-                        Review record and explanation
-                        <textarea className="nova-input mt-1.5 block w-full min-w-0 !text-[#182431]" value={identityReason}
-                          onChange={e => setIdentityReason(e.target.value)}
-                          disabled={identityBusy}
-                          placeholder="Record what was checked and why (at least 8 characters)" maxLength={500} rows={2} />
-                      </label>
-                      <div className="space-y-2 rounded-xl border border-[#DFE7F1] bg-[#FFFFFF] p-3">
-                        <label className="flex cursor-pointer items-start gap-2.5 text-xs leading-5 text-[#314158]">
-                          <input className="mt-1 size-4 shrink-0 accent-emerald-500" type="checkbox" checked={identityConsent}
-                            disabled={identityBusy}
-                            onChange={e => setIdentityConsent(e.target.checked)} />
-                          <span>I verified the customer explicitly consented in this conversation to using the ID for verification.</span>
-                        </label>
-                        <label className="flex cursor-pointer items-start gap-2.5 text-xs leading-5 text-[#314158]">
-                          <input className="mt-1 size-4 shrink-0 accent-emerald-500" type="checkbox" checked={identityAge}
-                            disabled={identityBusy}
-                            onChange={e => setIdentityAge(e.target.checked)} />
-                          <span>I independently confirmed the customer meets the legal gambling age using this ID.</span>
-                        </label>
-                      </div>
-                      <button type="button"
-                        className="flex min-h-11 w-full items-center justify-center rounded-xl bg-[#10B981] px-4 py-3 text-xs font-bold text-[#041D15] transition enabled:hover:bg-[#34D399] disabled:cursor-not-allowed disabled:bg-[#D7E1EA] disabled:text-[#66768C] disabled:opacity-75"
-                        onClick={() => void approveIdentity()}
-                        disabled={identityBusy || !identityFile || !identityAge || !identityConsent || identityReason.trim().length < 8}>
-                        {identityBusy ? 'Saving approval…' : 'Approve verified identity for casino'}
+                  <label className="block text-xs font-semibold text-[#34445A]">
+                    Staff review note (required)
+                    <textarea className="nova-input mt-1.5 min-h-[70px] w-full resize-y"
+                      value={casinoReviewReason} disabled={casinoReviewBusy}
+                      maxLength={500} onChange={(event) => setCasinoReviewReason(event.target.value)}
+                      placeholder="State the verification procedure and why the decision is justified." />
+                  </label>
+                  <label className="flex items-start gap-2.5 text-xs leading-5 text-[#314158]">
+                    <input type="checkbox" className="mt-1 size-4 shrink-0 accent-emerald-500"
+                      checked={casinoAgeConfirmed} disabled={casinoReviewBusy}
+                      onChange={(event) => setCasinoAgeConfirmed(event.target.checked)} />
+                    <span>I verified that this customer meets the legal gambling age by an applicable lawful method.</span>
+                  </label>
+                  <div className="flex flex-wrap gap-2">
+                    {casinoStatus !== 'approved' ? (
+                      <button type="button" className="rounded-xl bg-emerald-500 px-4 py-2.5 text-xs font-bold text-white disabled:opacity-50"
+                        disabled={casinoReviewBusy || !casinoAgeConfirmed || casinoReviewReason.trim().length < 8}
+                        onClick={() => void decideCasinoAccess('approve')}>
+                        Approve casino account
                       </button>
-                      <p className="text-[11px] text-[#657891]">
-                        The action stays unavailable until a document, review reason, consent and legal-age check are present.
-                      </p>
-                    </div>
-                  )}
-                  {identityFeedback ? <p role="status" className="rounded-lg bg-[#E8F1FF] px-3 py-2 text-xs text-[#225287]">{identityFeedback}</p> : null}
+                    ) : (
+                      <button type="button" className="rounded-xl bg-rose-600 px-4 py-2.5 text-xs font-bold text-white disabled:opacity-50"
+                        disabled={casinoReviewBusy || casinoReviewReason.trim().length < 8}
+                        onClick={() => void decideCasinoAccess('revoke')}>
+                        Revoke casino account
+                      </button>
+                    )}
+                  </div>
+                  {casinoReviewFeedback ? (
+                    <p role="status" className="rounded-lg bg-[#E8F1FF] px-3 py-2 text-xs text-[#225287]">{casinoReviewFeedback}</p>
+                  ) : null}
                 </section>
               ) : null}
               <div className="min-h-0 flex-1 space-y-3 overflow-y-auto p-4">

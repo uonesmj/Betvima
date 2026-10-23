@@ -131,9 +131,9 @@ async function main(){
       'all concurrent exact retries must report original settled balance');
     assert.equal(await balance(),987);
 
-    await sql.query("update nova.profiles set kyc_status='pending' where id=$1",[uid]);
-    assert.deepEqual(await signed('debit','real-pg-kyc-denied',20),
-      {error:1,balance:987},'new betting must block unverified KYC');
+    await sql.query("update nova.casino_support_approvals set status='revoked' where user_id=$1",[uid]);
+    assert.deepEqual(await signed('debit','real-pg-support-denied',20),
+      {error:1,balance:987},'new betting must stop after support revocation');
     assert.deepEqual(await signed('credit','real-pg-owed-credit',30),
       {error:0,balance:1017},'legitimate existing winnings must still settle');
 
@@ -159,7 +159,7 @@ async function main(){
     // serialize: four overlapping stakes cannot each spend the same funds.
     // Re-enable only the ephemeral synthetic account for this test; the
     // protected Production environment remains outside this test runner.
-    await sql.query("update nova.profiles set kyc_status='verified' where id=$1", [uid]);
+    await sql.query("update nova.casino_support_approvals set status='approved' where user_id=$1", [uid]);
     // Prepare a low synthetic wallet balance with a legitimate non-casino
     // fixture ledger entry. No live funds or external accounts are touched.
     const balanceBeforeFixtureSpend = await balance();

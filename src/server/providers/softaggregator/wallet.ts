@@ -6,12 +6,13 @@ import { casinoRealMoneyUserAllowed } from './client';
 import { fiatCasinoBalance, settleFiatCasinoCallback } from './fiat-wallet';
 import { casinoFinancialSchemaReady } from './financial-readiness';
 import { casinoCountryPermitted } from './jurisdiction';
+import { CASINO_SUPPORT_APPROVAL_SQL } from '@/server/kyc/casino-support';
 import { pilotCasinoDebitPermitted } from './pilot-limits';
 import { bindCasinoPlayerWallet, readCasinoPlayerWallet } from './player-wallet-binding';
 
 export type CasinoBalanceResponse = { error: 0 | 1 | 2; balance: number };
 type ProfileRow = {
-  status: string; age_verified: boolean; kyc_status: string; kyc_document_approved: boolean; country: string | null; currency: string;
+  status: string; age_verified: boolean; support_approved: boolean; country: string | null; currency: string;
   self_excluded: boolean; restricted: boolean;
   max_stake_per_bet_minor: string | null; max_stake_per_day_minor: string | null;
   loss_limit_daily_minor: string | null; loss_limit_weekly_minor: string | null;
@@ -21,8 +22,8 @@ type ReceiptRow = { identity_hash: string; response_error: 0 | 1 | 2; response_b
 
 async function getProfile(db: Db, userId: string): Promise<ProfileRow | null> {
   const sql = [
-    "select p.status::text as status, p.age_verified, p.kyc_status::text as kyc_status,", 
-    "exists(select 1 from nova.kyc_submissions k where k.user_id=p.id and k.status='verified' and k.legal_age_confirmed and k.reviewed_by is not null) as kyc_document_approved,",
+    "select p.status::text as status, (coalesce(p.age_verified,false) or " + CASINO_SUPPORT_APPROVAL_SQL + ") as age_verified,",
+    CASINO_SUPPORT_APPROVAL_SQL + " as support_approved,",
     "p.jurisdiction as country, p.preferred_currency as currency,", 
     "coalesce(l.self_excluded_until > now(), false) as self_excluded,",
     "exists (select 1 from nova.user_restrictions r where r.user_id = p.id and r.is_active",
@@ -36,7 +37,9 @@ async function getProfile(db: Db, userId: string): Promise<ProfileRow | null> {
   return db.queryOne<ProfileRow>(sql, [userId]);
 }
 function accountCanBet(p: ProfileRow): boolean {
-  return p.status === 'active' && p.age_verified === true && p.kyc_status === 'verified' && p.kyc_document_approved === true &&
+  // Manual support approval replaces the casino-specific document submission
+  // gate. Age, independent country authorization and exclusion still apply.
+  return p.status === 'active' && p.age_verified === true && p.support_approved === true &&
     casinoCountryPermitted(p.country) && !p.self_excluded && !p.restricted;
 }
 export async function casinoPlayerMayLaunch(userId: string, commitBinding = false): Promise<{ country: string; walletCurrency: string }> {
