@@ -41,7 +41,7 @@ private fun infoIcon(id: String): ImageVector = when (id) {
 }
 
 private fun infoText(lang: Lang, en: String, fa: String): String =
-    if (lang == Lang.FA) fa else en
+    tr(lang, en, fa)
 
 /**
  * Four long-form native reading experiences. Official website policies remain
@@ -85,12 +85,12 @@ internal fun FooterInformationSheet(
                         modifier = Modifier.size(23.dp))
                 }
                 Column(Modifier.weight(1f)) {
-                    Text(infoText(lang, article.titleEn, article.titleFa),
+                    Text((FooterTurkish170.article(lang, article, "title") ?: infoText(lang, article.titleEn, article.titleFa)),
                         color = infoInk, fontSize = 19.sp, fontWeight = FontWeight.Black,
                         maxLines = 2, lineHeight = 25.sp,
                         overflow = TextOverflow.Ellipsis)
                     Spacer(Modifier.height(3.dp))
-                    Text(infoText(lang, article.subtitleEn, article.subtitleFa),
+                    Text((FooterTurkish170.article(lang, article, "subtitle") ?: infoText(lang, article.subtitleEn, article.subtitleFa)),
                         color = infoMuted, fontSize = 9.sp,
                         fontWeight = FontWeight.SemiBold, letterSpacing = .5.sp, maxLines = 2)
                 }
@@ -143,7 +143,7 @@ internal fun FooterInformationSheet(
                             Icon(Icons.Default.AutoAwesome, null, tint = infoMint,
                                 modifier = Modifier.size(21.dp))
                         }
-                        Text(infoText(lang, article.summaryEn, article.summaryFa),
+                        Text((FooterTurkish170.article(lang, article, "summary") ?: infoText(lang, article.summaryEn, article.summaryFa)),
                             color = infoInk, fontSize = 13.sp, fontWeight = FontWeight.Medium,
                             lineHeight = 23.sp)
                         Row(verticalAlignment = Alignment.CenterVertically,
@@ -188,7 +188,7 @@ internal fun FooterInformationSheet(
                                             color = Color(0xFF80C7FF),
                                             fontWeight = FontWeight.ExtraBold, fontSize = 10.sp)
                                         Spacer(Modifier.width(7.dp))
-                                        Text(infoText(lang, section.headingEn, section.headingFa),
+                                        Text((FooterTurkish170.section(lang, section, true) ?: infoText(lang, section.headingEn, section.headingFa)),
                                             color = infoInk, fontSize = 11.sp,
                                             fontWeight = FontWeight.Medium, maxLines = 1)
                                     }
@@ -234,13 +234,13 @@ internal fun FooterInformationSheet(
                                     modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp))
                             }
                             Spacer(Modifier.width(10.dp))
-                            Text(infoText(lang, section.headingEn, section.headingFa),
+                            Text((FooterTurkish170.section(lang, section, true) ?: infoText(lang, section.headingEn, section.headingFa)),
                                 color = infoInk, fontWeight = FontWeight.Bold,
                                 fontSize = 15.sp, lineHeight = 23.sp,
                                 modifier = Modifier.weight(1f))
                         }
                         HorizontalDivider(color = Color.White.copy(alpha = .075f))
-                        Text(infoText(lang, section.bodyEn, section.bodyFa),
+                        Text((FooterTurkish170.section(lang, section, false) ?: infoText(lang, section.bodyEn, section.bodyFa)),
                             color = Color(0xFFCCD3DE), fontSize = 12.sp, lineHeight = 23.sp)
                     }
                 }
