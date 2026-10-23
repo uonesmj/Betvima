@@ -40,6 +40,7 @@ internal fun PremiumMatchScoreHeader126(
     clockLabel: String,
     onOpenStudio: () -> Unit
 ) {
+    val activeLang177 = LocalNativeLanguage176.current
     val score = facts?.score?.split("-")?.takeIf { it.size == 2 }
         ?.joinToString(" : ")
         ?: if (match.homeScore != null && match.awayScore != null)
@@ -60,11 +61,11 @@ internal fun PremiumMatchScoreHeader126(
                         RoundedCornerShape(5.dp)))
                     Spacer(Modifier.width(7.dp))
                     Text(if (match.live) "LIVE  ·  " + clockLabel
-                        else if (fa) "پیش از شروع" else "UPCOMING",
+                        else tr(activeLang177, "UPCOMING", "پیش از شروع"),
                         color = Color(0xFFAAFBDD), fontSize = 11.sp,
                         fontWeight = FontWeight.Black)
                 }
-                Text(if (fa) "نتیجه رسمی" else "MATCH SCORE",
+                Text(tr(activeLang177, "MATCH SCORE", "نتیجه رسمی"),
                     color = Color(0xFFA6C4BC), fontSize = 9.sp,
                     fontWeight = FontWeight.ExtraBold)
             }
@@ -79,7 +80,7 @@ internal fun PremiumMatchScoreHeader126(
                         color = Color.White, maxLines = 2, lineHeight = 17.sp,
                         overflow = TextOverflow.Ellipsis)
                     Spacer(Modifier.height(4.dp))
-                    Text(if (fa) "میزبان" else "HOME",
+                    Text(tr(activeLang177, "HOME", "میزبان"),
                         color = Color(0xFFA4BDBC), fontSize = 9.sp)
                 }
                 Column(Modifier.width(100.dp), horizontalAlignment = Alignment.CenterHorizontally) {
@@ -107,7 +108,7 @@ internal fun PremiumMatchScoreHeader126(
                         color = Color.White, maxLines = 2, lineHeight = 17.sp,
                         overflow = TextOverflow.Ellipsis)
                     Spacer(Modifier.height(4.dp))
-                    Text(if (fa) "مهمان" else "AWAY",
+                    Text(tr(activeLang177, "AWAY", "مهمان"),
                         color = Color(0xFFA4BDBC), fontSize = 9.sp)
                 }
             }
@@ -119,7 +120,7 @@ internal fun PremiumMatchScoreHeader126(
                     Text(match.league, color = Color(0xFFEAF6F1), fontSize = 11.sp,
                         fontWeight = FontWeight.ExtraBold, maxLines = 1,
                         overflow = TextOverflow.Ellipsis)
-                    Text(if (fa) "داده‌های تأییدشده مسابقه" else "Provider-confirmed match data",
+                    Text(tr(activeLang177, "Provider-confirmed match data", "داده‌های تأییدشده مسابقه"),
                         fontSize = 9.sp, color = Color(0xFF9ABDB6))
                 }
                 if (match.live) Surface(
@@ -131,7 +132,7 @@ internal fun PremiumMatchScoreHeader126(
                         Icon(Icons.Default.Tv, null, tint = Color(0xFF06311E),
                             modifier = Modifier.size(14.dp))
                         Spacer(Modifier.width(5.dp))
-                        Text(if (fa) "TV زنده" else "LIVE TV",
+                        Text(tr(activeLang177, "LIVE TV", "TV زنده"),
                             color = Color(0xFF06311E), fontSize = 10.sp,
                             fontWeight = FontWeight.Black)
                         Spacer(Modifier.width(4.dp))
