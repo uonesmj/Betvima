@@ -29,6 +29,7 @@ internal fun PatternPad88(
     onComplete: (String) -> Unit,
     label: String = "Connect at least four dots"
 ) {
+    val lang = LocalNativeLanguage176.current
     val nodes = remember { mutableStateListOf<Int>() }
     var finger by remember { mutableStateOf<Offset?>(null) }
     val callback by rememberUpdatedState(onComplete)
@@ -75,7 +76,7 @@ internal fun PatternPad88(
         verticalArrangement = Arrangement.spacedBy(4.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(9.dp)) {
-            Text(label, fontSize = 12.sp, color = Color(0xFFC1C9D8))
+            Text(tr(lang, label, "حداقل چهار نقطه را به هم وصل کنید"), fontSize = 12.sp, color = Color(0xFFC1C9D8))
             Text("${nodes.size}/9", fontSize = 11.sp, color = Color(0xFF6DAEFF))
         }
         BoxWithConstraints(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
@@ -139,10 +140,10 @@ internal fun PatternPad88(
         Row(horizontalArrangement = Arrangement.spacedBy(19.dp),
             verticalAlignment = Alignment.CenterVertically) {
             TextButton(onClick = { nodes.clear(); finger = null }) {
-                Text("Reset", color = Color(0xFFB3C0D5))
+                Text(tr(lang, "Reset", "پاک‌کردن"), color = Color(0xFFB3C0D5))
             }
             TextButton(enabled = nodes.size >= 4, onClick = ::submit) {
-                Text("Confirm pattern", color = Color(0xFF64B4FF))
+                Text(tr(lang, "Confirm pattern", "تأیید الگو"), color = Color(0xFF64B4FF))
             }
         }
     }
