@@ -3,6 +3,7 @@ package com.betvima.app.ui
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CardGiftcard
 import androidx.compose.material.icons.filled.Close
@@ -52,7 +53,9 @@ fun BonusPopup83(state: AppState, model: AppViewModel, onDismiss: () -> Unit) {
                             color = Color.White, fontWeight = FontWeight.Black,
                             fontSize = 20.sp)
                     }
-                    IconButton(onClick = { closeWith({}) }) {
+                    IconButton(onClick = { closeWith({}) },
+                        modifier = Modifier.clip(CircleShape)
+                            .background(Color.White.copy(alpha = .1f))) {
                         Icon(Icons.Default.Close,
                             tr(state.lang, "Close bonuses", "بستن بونوس‌ها"),
                             tint = Color.White)
