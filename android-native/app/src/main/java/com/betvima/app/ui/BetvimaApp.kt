@@ -213,7 +213,8 @@ fun BetvimaApp(model: AppViewModel) {
 
     // Keep the app shell, headers, footer and cards anchored in the same places
     // for both languages. Text content itself remains Unicode Persian when selected.
-    CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
+    CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr,
+        LocalNativeLanguage176 provides state.lang) {
         ModalNavigationDrawer(
             drawerState = drawer,
             drawerContent = {
