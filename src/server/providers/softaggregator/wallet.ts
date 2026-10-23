@@ -23,7 +23,7 @@ type ReceiptRow = { identity_hash: string; response_error: 0 | 1 | 2; response_b
 async function getProfile(db: Db, userId: string): Promise<ProfileRow | null> {
   const sql = [
     "select p.status::text as status, coalesce(p.age_verified,false) as age_verified,",
-    CASINO_SUPPORT_APPROVAL_SQL + " as support_approved,",
+    (casinoManualReviewRequired() ? CASINO_SUPPORT_APPROVAL_SQL : 'false') + " as support_approved,",
     "p.jurisdiction as country, p.preferred_currency as currency,", 
     "coalesce(l.self_excluded_until > now(), false) as self_excluded,",
     "exists (select 1 from nova.user_restrictions r where r.user_id = p.id and r.is_active",
