@@ -67,7 +67,7 @@ internal fun PremiumAffiliateDrawer117(
                         Column(Modifier.weight(1f)) {
                             Text("BETVIMA", color = Color.White, fontSize = 19.sp,
                                 fontWeight = FontWeight.Black)
-                            Text("PARTNERS", color = drawerCyan, fontSize = 10.sp,
+                            Text(tr(LocalNativeLanguage176.current, "PARTNERS", "PARTNERS"), color = drawerCyan, fontSize = 10.sp,
                                 fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp)
                         }
                         IconButton(onClick = onClose) {
