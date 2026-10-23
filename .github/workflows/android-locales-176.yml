@@ -1,14 +1,17 @@
 name: BetVima Native Locale Audit and APK 0.176.0
 
 on:
+  workflow_dispatch:
   push:
     branches:
       - feat/android-176-tr-hy-ar-complete-audit-20261023
     paths:
-      - 'android-native/**'
       - 'scripts/android-localization-audit.py'
       - '.github/workflows/android-locales-176.yml'
-  workflow_dispatch:
+
+concurrency:
+  group: betvima-locale-audit-${{ github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
