@@ -31,6 +31,10 @@ for f in (ROOT / "NativeTranslations176").glob("NativeHy176Part*.kt"):
     armenian |= set(unescape(m.group(1)) for m in KEY.finditer(f.read_text(encoding="utf-8")))
 for f in (ROOT / "NativeTranslations176").glob("NativeAr176Part*.kt"):
     arabic |= set(unescape(m.group(1)) for m in KEY.finditer(f.read_text(encoding="utf-8")))
+reviewed=set(unescape(m.group(1)) for m in KEY.finditer((ROOT/"NativeQuality176.kt").read_text(encoding="utf-8")))
+turkish |= reviewed
+armenian |= reviewed
+arabic |= reviewed
 all_keys={k for r in results.values() for k in r["tr"]}
 all_direct={k for r in results.values() for k in r["direct"]}
 out={
