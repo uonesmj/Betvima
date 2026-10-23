@@ -68,6 +68,9 @@ fun LanguagePickerDialog(current: Lang, onSelect: (Lang) -> Unit, onDismiss: () 
             CompactLocaleOption("🇦🇫", "دری", "Afghan Dari", current == Lang.DARI) {
                 onSelect(Lang.DARI)
             }
+            CompactLocaleOption("🇦🇲", "Հայերեն", "Armenian", current == Lang.HY) {
+                onSelect(Lang.HY)
+            }
         }
     }
 }
