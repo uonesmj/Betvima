@@ -71,6 +71,7 @@ internal fun PremiumNativeLiveTracker(
     match: Match, facts: LiveMatchFacts?, fa: Boolean, clockLabel: String,
     embedded: Boolean = false
 ) {
+    val activeLang177 = LocalNativeLanguage176.current
     var page by remember(match.id) { mutableStateOf(0) }
     var previous by remember(match.id) { mutableStateOf<LiveMatchFacts?>(null) }
     var currentPulse by remember(match.id) { mutableStateOf<TrackerChange?>(null) }
@@ -123,8 +124,8 @@ internal fun PremiumNativeLiveTracker(
         if (currentPulse?.id == id) currentPulse = null
     }
 
-    val tabNames = if (fa) listOf("زمین", "آمار", "رویدادها", "روند")
-        else listOf("Pitch", "Stats", "Updates", "Trend")
+    val tabNames = listOf(tr(activeLang177, "Pitch", "زمین"), tr(activeLang177, "Stats", "آمار"),
+        tr(activeLang177, "Updates", "رویدادها"), tr(activeLang177, "Trend", "روند"))
     val icons = listOf(Icons.Default.Sensors, Icons.Default.BarChart,
         Icons.Default.History, Icons.Default.TrendingUp)
 
@@ -143,7 +144,7 @@ internal fun PremiumNativeLiveTracker(
             ) {
                 Box(Modifier.size(8.dp).background(trackerGreen, RoundedCornerShape(8.dp)))
                 Spacer(Modifier.width(7.dp))
-                Text(if (fa) "مرکز زنده مسابقه" else "LIVE MATCH CENTRE",
+                Text(tr(activeLang177, "LIVE MATCH CENTRE", "مرکز زنده مسابقه"),
                     color = trackerWhite, fontWeight = FontWeight.Black,
                     fontSize = 10.sp, modifier = Modifier.weight(1f))
                 Text(clockLabel, color = trackerGreen, fontSize = 14.sp,
@@ -169,12 +170,12 @@ internal fun PremiumNativeLiveTracker(
             Row(Modifier.fillMaxWidth().background(Color(0xFF112B36))
                 .padding(vertical = 9.dp, horizontal = 12.dp),
                 horizontalArrangement = Arrangement.SpaceEvenly) {
-                TrackerHeaderFact(if (fa) "مالکیت میزبان" else "Home possession",
+                TrackerHeaderFact(tr(activeLang177, "Home possession", "مالکیت میزبان"),
                     possession?.home?.let { it.toString() + "%" } ?: "—")
-                TrackerHeaderFact(if (fa) "حملات خطرناک" else "Dangerous attacks",
+                TrackerHeaderFact(tr(activeLang177, "Dangerous attacks", "حملات خطرناک"),
                     (facts?.stat("dangerous_attacks")?.home?.toString() ?: "—") + " : " +
                         (facts?.stat("dangerous_attacks")?.away?.toString() ?: "—"))
-                TrackerHeaderFact(if (fa) "مالکیت مهمان" else "Away possession",
+                TrackerHeaderFact(tr(activeLang177, "Away possession", "مالکیت مهمان"),
                     possession?.away?.let { it.toString() + "%" } ?: "—")
             }
             Row(
@@ -213,7 +214,7 @@ internal fun PremiumNativeLiveTracker(
                                 horizontalAlignment = Alignment.CenterHorizontally) {
                                 Text(if (pulse.side == "home") match.home.name else match.away.name,
                                     color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.ExtraBold)
-                                Text((if (fa) pulse.fa else pulse.en) + " +" + pulse.increase,
+                                Text((tr(activeLang177, pulse.en, pulse.fa)) + " +" + pulse.increase,
                                     color = Color(0xFFB5FCE1), fontSize = 11.sp)
                             }
                         }
@@ -221,7 +222,7 @@ internal fun PremiumNativeLiveTracker(
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                         Text(match.home.name, fontSize = 10.sp, color = trackerWhite,
                             maxLines = 1, modifier = Modifier.weight(1f))
-                        Text(if (fa) "فشار حملات" else "ATTACK PRESSURE",
+                        Text(tr(activeLang177, "ATTACK PRESSURE", "فشار حملات"),
                             fontSize = 9.sp, color = Color(0xFFA3B7BD))
                         Text(match.away.name, fontSize = 10.sp, color = trackerWhite,
                             maxLines = 1, textAlign = TextAlign.End,
@@ -236,23 +237,20 @@ internal fun PremiumNativeLiveTracker(
                                 .background(trackerGold, RoundedCornerShape(9.dp)))
                         }
                     }
-                    Text(if (fa)
-                        "زمین شماتیک است؛ برجسته‌سازی‌ها تغییر آمار دریافتی‌اند، نه موقعیت واقعی توپ."
-                        else "Schematic pitch · highlights indicate verified counter changes, not real ball positions.",
+                    Text(tr(activeLang177, "Schematic pitch · highlights indicate verified counter changes, not real ball positions.", "زمین شماتیک است؛ برجسته‌سازی‌ها تغییر آمار دریافتی‌اند، نه موقعیت واقعی توپ."),
                         color = Color(0xFFACC5CC), fontSize = 10.sp,
                         textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
                 }
                 1 -> Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     if (facts?.stats.isNullOrEmpty()) {
-                        TrackerEmpty(if (fa) "آمار معتبر مسابقه از API موجود نیست" else "No verified match statistics supplied")
+                        TrackerEmpty(tr(activeLang177, "No verified match statistics supplied", "آمار معتبر مسابقه از API موجود نیست"))
                     } else facts!!.stats.forEach { stat ->
                         NativeTrackerStat(stat, fa)
                     }
                 }
                 2 -> Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     if (changes.isEmpty()) TrackerEmpty(
-                        if (fa) "تغییرات از زمان باز شدن این صفحه نمایش داده می‌شوند."
-                        else "Changes observed since opening this page will appear here."
+                        tr(activeLang177, "Changes observed since opening this page will appear here.", "تغییرات از زمان باز شدن این صفحه نمایش داده می‌شوند.")
                     )
                     changes.take(20).forEach { update ->
                         Surface(color = Color(0xFF1B3B48), shape = RoundedCornerShape(10.dp)) {
@@ -261,7 +259,7 @@ internal fun PremiumNativeLiveTracker(
                                 Text(if (update.side == "home") match.home.name else match.away.name,
                                     color = trackerWhite, fontSize = 11.sp, fontWeight = FontWeight.Bold,
                                     maxLines = 1, modifier = Modifier.weight(1f))
-                                Text((if (fa) update.fa else update.en) + " +" + update.increase,
+                                Text((tr(activeLang177, update.en, update.fa)) + " +" + update.increase,
                                     color = trackerGreen, fontSize = 10.sp,
                                     modifier = Modifier.weight(1f), textAlign = TextAlign.End)
                                 Spacer(Modifier.width(8.dp))
@@ -270,17 +268,15 @@ internal fun PremiumNativeLiveTracker(
                             }
                         }
                     }
-                    Text(if (fa) "این موارد تغییر شمارنده‌ها هستند؛ رویدادهای رسمی با زمان دقیق نیستند."
-                        else "Counter changes are not an official timestamped incident feed.",
+                    Text(tr(activeLang177, "Counter changes are not an official timestamped incident feed.", "این موارد تغییر شمارنده‌ها هستند؛ رویدادهای رسمی با زمان دقیق نیستند."),
                         color = Color(0xFFA3B7BD), fontSize = 9.sp,
                         modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center)
                 }
                 else -> Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Text(if (fa) "نمودار فشار حملات در همین بازدید" else "Attacking pressure during this session",
+                    Text(tr(activeLang177, "Attacking pressure during this session", "نمودار فشار حملات در همین بازدید"),
                         color = trackerWhite, fontSize = 11.sp, fontWeight = FontWeight.ExtraBold)
                     if (trend.isEmpty()) TrackerEmpty(
-                        if (fa) "با دریافت داده‌های جدید نمودار ساخته می‌شود."
-                        else "The graph appears as fresh snapshots are received."
+                        tr(activeLang177, "The graph appears as fresh snapshots are received.", "با دریافت داده‌های جدید نمودار ساخته می‌شود.")
                     )
                     else Row(Modifier.fillMaxWidth().height(118.dp).background(Color(0xFF1A3945),
                         RoundedCornerShape(10.dp)).padding(10.dp), horizontalArrangement = Arrangement.spacedBy(3.dp)) {
@@ -299,7 +295,7 @@ internal fun PremiumNativeLiveTracker(
                                 Column(Modifier.weight(1f).background(Color(0xFF1A3945),
                                     RoundedCornerShape(10.dp)).padding(9.dp),
                                     horizontalAlignment = Alignment.CenterHorizontally) {
-                                    Text(if (fa) stat?.fa ?: key else stat?.en ?: key,
+                                    Text(tr(activeLang177, stat?.en ?: key, stat?.fa ?: key),
                                         color = Color(0xFFA3B7BD), fontSize = 9.sp, maxLines = 1)
                                     Text((stat?.home?.toString() ?: "—") + " : " +
                                         (stat?.away?.toString() ?: "—"),
@@ -311,7 +307,7 @@ internal fun PremiumNativeLiveTracker(
                 }
             }
             Text(
-                (if (fa) "آخرین دریافت API: " else "Last provider update: ") +
+                (tr(activeLang177, "Last provider update: ", "آخرین دریافت API: ")) +
                     (facts?.observedAt?.takeIf { it.isNotBlank() } ?: "—"),
                 fontSize = 9.sp, color = Color(0xFF93B2BD),
                 modifier = Modifier.fillMaxWidth().background(Color(0xFF0E2630)).padding(11.dp)
@@ -336,6 +332,7 @@ private fun TrackerEmpty(label: String) {
 
 @Composable
 private fun NativeTrackerStat(stat: LiveStat, fa: Boolean) {
+    val activeLang177 = LocalNativeLanguage176.current
     val share = trackerShare(stat.home, stat.away)
     Surface(color = Color(0xFF1A3945), shape = RoundedCornerShape(12.dp)) {
         Column(Modifier.fillMaxWidth().padding(11.dp),
@@ -343,7 +340,7 @@ private fun NativeTrackerStat(stat: LiveStat, fa: Boolean) {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Text(stat.home?.toString() ?: "—", color = trackerGreen,
                     fontSize = 14.sp, fontWeight = FontWeight.Black)
-                Text(if (fa) stat.fa else stat.en, modifier = Modifier.weight(1f),
+                Text(tr(activeLang177, stat.en, stat.fa), modifier = Modifier.weight(1f),
                     color = trackerWhite, fontSize = 11.sp, textAlign = TextAlign.Center)
                 Text(stat.away?.toString() ?: "—", color = trackerGold,
                     fontSize = 14.sp, fontWeight = FontWeight.Black)
