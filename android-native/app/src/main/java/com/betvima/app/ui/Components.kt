@@ -26,7 +26,11 @@ import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.betvima.app.data.*
 
-fun tr(lang: Lang, en: String, fa: String) = if (lang == Lang.FA) fa else en
+fun tr(lang: Lang, en: String, fa: String): String = when (lang) {
+    Lang.EN -> en
+    Lang.FA -> fa
+    Lang.TR -> TurkishTranslations169.translate(en)
+}
 
 /**
  * BetVima's compact sportsbook header, aligned to the supplied 1win reference.
