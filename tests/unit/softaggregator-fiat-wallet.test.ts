@@ -18,7 +18,7 @@ function fakeDb(walletCurrency: 'IRT' | 'IRR' = 'IRT', original = 2_500_000n) {
   let preferred: string = walletCurrency;
   let kycStatus = 'verified';
   let documentApproved = true;
-  let country = 'DE';
+  let country = 'TR';
   const perCurrencyStakeLimit = new Map<string, bigint>();
   const posted: Array<Record<string, unknown>> = [];
   const entries = new Map<string, Record<string, unknown>>();
@@ -113,7 +113,7 @@ describe('Casino fiat settle staging contract', () => {
   afterEach(() => vi.unstubAllEnvs());
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.stubEnv('SOFTAGGREGATOR_ALLOWED_COUNTRIES', 'DE');
+    vi.stubEnv('SOFTAGGREGATOR_ALLOWED_COUNTRIES', 'TR');
     vi.mocked(getUsdIrtRate).mockResolvedValue({
       value: '250000.00000000', timestamp: new Date().toISOString(),
     });
