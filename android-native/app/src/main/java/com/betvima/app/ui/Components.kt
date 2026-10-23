@@ -29,10 +29,10 @@ import com.betvima.app.data.*
 fun tr(lang: Lang, en: String, fa: String): String = when (lang) {
     Lang.EN -> en
     Lang.FA -> fa
-    Lang.TR -> TurkishTranslations169.translate(en)
+    Lang.TR -> NativeQuality176.translate(lang, en) ?: TurkishTranslations169.translate(en)
     Lang.DARI -> AfghanDari171.translate(en, fa)
-    Lang.HY -> Armenian172.translate(en)
-    Lang.AR -> ArabicTranslations175.translate(en)
+    Lang.HY -> NativeQuality176.translate(lang, en) ?: Armenian172.translate(en)
+    Lang.AR -> NativeQuality176.translate(lang, en) ?: ArabicTranslations175.translate(en)
 }
 
 /**
