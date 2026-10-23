@@ -24,7 +24,7 @@ function makeFakeDb(initial = 1000n, held = 200n) {
   let boundCurrency: string | null = 'USD';
   let kycStatus = 'verified';
   let documentApproved = true;
-  let country = 'DE';
+  let country = 'TR';
   let financialSchemaReady = true;
   const receipts = new Map<string, { identity_hash: string; response_error: 0 | 1 | 2; response_balance_minor: string; action: string; wallet_amount_minor: string; round_id: string; game_id: string; amount_minor: string; reversed: boolean }>();
   const postings: Array<Record<string, unknown>> = [];
@@ -113,7 +113,7 @@ function makeFakeDb(initial = 1000n, held = 200n) {
 describe('SoftAggregator financial callback behavior (isolated DB contract)', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.stubEnv('SOFTAGGREGATOR_ALLOWED_COUNTRIES', 'DE');
+    vi.stubEnv('SOFTAGGREGATOR_ALLOWED_COUNTRIES', 'TR');
   });
   afterEach(() => vi.unstubAllEnvs());
 
