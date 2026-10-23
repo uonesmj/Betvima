@@ -3,6 +3,17 @@ package com.betvima.app.ui
 /** Human-reviewed critical native UI terms. Overrides machine-generated translations. */
 internal object NativeQuality176 {
     private val tr = mapOf(
+        "Affiliate Studio" to "Ortaklık Stüdyosu",
+        "BETSLIP" to "BAHİS KUPONU",
+        "BETVIMA MATCH CENTER" to "BETVIMA MAÇ MERKEZİ",
+        "BETVIMA PARTNERS" to "BETVIMA İŞ ORTAKLARI",
+        "INBOX" to "GELEN KUTUSU",
+        "Minimum" to "Asgari",
+        "Casino" to "Kumarhane",
+        "Casino · USD" to "Kumarhane · USD",
+        "Casino · Demo" to "Kumarhane · Deneme",
+        "Bonus balance changed. Refresh and quote again." to "Bonus bakiyesi değişti. Yenileyip yeni oran teklifi isteyin.",
+        "Casino games are unavailable. Tap to retry." to "Kumarhane oyunları kullanılamıyor. Tekrar denemek için dokunun.",
         "BETVIMA • CASINO" to "BetVima • KUMARHANE",
         "Connect at least four dots" to "En az dört noktayı birleştirin",
         "BETVIMA REWARDS" to "BetVima ÖDÜLLERİ",
@@ -68,6 +79,17 @@ internal object NativeQuality176 {
         "Bonuses" to "Bonuslar"
     )
     private val hy = mapOf(
+        "Affiliate Studio" to "Գործընկերային կենտրոն",
+        "BETSLIP" to "ԽԱՂԱԴՐՈՒՅՔԻ ԿՏՐՈՆ",
+        "BETVIMA MATCH CENTER" to "BETVIMA ՄՐՑՈՒՄՆԵՐԻ ԿԵՆՏՐՈՆ",
+        "BETVIMA PARTNERS" to "BETVIMA ԳՈՐԾԸՆԿԵՐՆԵՐ",
+        "INBOX" to "ՄՈՒՏՔԱՐԿՂ",
+        "Minimum" to "Նվազագույն",
+        "Casino" to "Խաղատուն",
+        "Casino · USD" to "Խաղատուն · USD",
+        "Casino · Demo" to "Խաղատուն · Փորձնական",
+        "Bonus balance changed. Refresh and quote again." to "Բոնուսի մնացորդը փոխվել է։ Թարմացրեք և պահանջեք գործակիցների նոր առաջարկ։",
+        "Casino games are unavailable. Tap to retry." to "Խաղատան խաղերն անհասանելի են։ Հպեք կրկին փորձելու համար։",
         "BETVIMA • CASINO" to "BetVima • ԽԱՂԱՏՈՒՆ",
         "Connect at least four dots" to "Միացրեք առնվազն չորս կետ",
         "BETVIMA REWARDS" to "BetVima ՊԱՐԳԵՎՆԵՐ",
@@ -133,6 +155,17 @@ internal object NativeQuality176 {
         "Bonuses" to "Բոնուսներ"
     )
     private val ar = mapOf(
+        "Affiliate Studio" to "استوديو الشركاء",
+        "BETSLIP" to "قسيمة الرهان",
+        "BETVIMA MATCH CENTER" to "مركز مباريات BETVIMA",
+        "BETVIMA PARTNERS" to "شركاء BETVIMA",
+        "INBOX" to "الوارد",
+        "Minimum" to "الحد الأدنى",
+        "Casino" to "الكازينو",
+        "Casino · USD" to "الكازينو · USD",
+        "Casino · Demo" to "الكازينو · تجريبي",
+        "Bonus balance changed. Refresh and quote again." to "تغير رصيد المكافأة. حدّث واطلب عرض احتمالات جديدًا.",
+        "Casino games are unavailable. Tap to retry." to "ألعاب الكازينو غير متاحة. اضغط لإعادة المحاولة.",
         "BETVIMA • CASINO" to "BetVima • الكازينو",
         "Connect at least four dots" to "صِل أربع نقاط على الأقل",
         "BETVIMA REWARDS" to "مكافآت BetVima",
