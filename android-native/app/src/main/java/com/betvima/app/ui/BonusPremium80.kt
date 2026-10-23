@@ -84,7 +84,7 @@ internal fun BonusHero80(
                             Icon(Icons.Default.AutoAwesome,null,tint=premiumEmerald,
                                 modifier=Modifier.size(16.dp))
                             Spacer(Modifier.width(6.dp))
-                            Text("BETVIMA REWARDS",color=Color(0xFFDEE8FF),
+                            Text(tr(LocalNativeLanguage176.current, "BETVIMA REWARDS", "BETVIMA REWARDS"),color=Color(0xFFDEE8FF),
                                 fontWeight=FontWeight.Black,letterSpacing=.7.sp,
                                 fontSize=10.sp)
                         }
