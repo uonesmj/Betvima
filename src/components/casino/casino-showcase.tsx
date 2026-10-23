@@ -33,7 +33,7 @@ function safeGameImage(src: string | null): string | null {
 }
 
 export function CasinoGameCard({
-  game, compact = false, onPlay, onPlayReal, realMoneyAvailable = false, launching = false, locked = false,
+  game, compact = false, onPlay, onPlayReal, realMoneyAvailable = false, launching = false,
 }: {
   game: CasinoListing;
   compact?: boolean;
@@ -41,7 +41,6 @@ export function CasinoGameCard({
   onPlayReal?: (game: CasinoListing) => void;
   realMoneyAvailable?: boolean;
   launching?: boolean;
-  locked?: boolean;
 }) {
   const { locale } = useApp();
   const [imageFailed, setImageFailed] = useState(false);
@@ -101,11 +100,7 @@ export function CasinoGameCard({
       <div className="border-t border-[#E5E7EB] bg-white px-3 py-2.5">
         <p className="truncate text-[12px] font-extrabold text-[#20242A]" title={game.name}>{game.name}</p>
         <p className="mt-0.5 truncate text-[10px] font-semibold text-[#8A9199]">{groupLabel} · {game.providerName || game.provider}</p>
-        {onPlay && locked ? (
-          <Link href="/support" className="mt-2 flex h-9 items-center justify-center rounded-[9px] bg-[#087FF5] text-[11px] font-extrabold text-white">
-            {label('Verify through support', 'احراز هویت از طریق پشتیبانی')}
-          </Link>
-        ) : onPlay ? (
+        {onPlay ? (
           <div className="mt-2 grid gap-1.5">
             {realMoneyAvailable && onPlayReal ? (
               <button type="button" disabled={launching} onClick={() => onPlayReal(game)}
@@ -187,8 +182,8 @@ export function CasinoCatalogueClient() {
   const [realMoneyAvailable, setRealMoneyAvailable] = useState(false);
   const [realMoneyChecked, setRealMoneyChecked] = useState(false);
 
-  // Demo play is never gated by document KYC. Cash access is independently
-  // checked by the server (support approval, age, country and wallet gates).
+  // No casino-specific KYC or support review step in the default flow.
+  // Cash eligibility retains separate statutory and financial safeguards.
   useEffect(() => {
     if (!session?.authenticated) {
       setRealMoneyAvailable(false);
@@ -283,10 +278,7 @@ export function CasinoCatalogueClient() {
       const payload: { data?: { url?: string }; error?: string } = await response.json();
       const url = payload.data?.url;
       if (!response.ok || !url || !url.startsWith('https://')) {
-        if (payload.error === 'CASINO_SUPPORT_REVIEW_REQUIRED') {
-          setRealMoneyAvailable(false);
-          setMessage(label('Contact support for manual casino account review.', 'برای تأیید دستی حساب کازینو با پشتیبانی تماس بگیرید.'));
-        } else if (payload.error === 'CASINO_GEO_VERIFICATION_REQUIRED' || payload.error === 'CASINO_COUNTRY_MISMATCH') {
+        if (payload.error === 'CASINO_GEO_VERIFICATION_REQUIRED' || payload.error === 'CASINO_COUNTRY_MISMATCH') {
           setRealMoneyAvailable(false);
           setMessage(label('Your current location could not be verified for real-money play.', 'موقعیت فعلی شما برای بازی با پول واقعی قابل تأیید نیست.'));
         } else if (!demo && (payload.error === 'CASINO_REAL_MONEY_DISABLED' || response.status === 503)) {
@@ -330,18 +322,15 @@ export function CasinoCatalogueClient() {
       {session?.authenticated && realMoneyChecked && !realMoneyAvailable ? (
         <div role="status" className="rounded-xl border border-[#D9E3F0] bg-[#F6F9FD] px-4 py-3 text-xs font-semibold text-[#31516D]">
           {label(
-            'Demo games are available without uploading identity documents. Real-money access requires an authorized support review and separate eligibility checks.',
-            'بازی دمو بدون بارگذاری مدارک هویتی در دسترس است. فعال‌شدن بازی با موجودی واقعی به بررسی دستی پشتیبانی و سایر شرایط دسترسی بستگی دارد.',
+            'Demo games are available. Real-money casino has not been enabled for this account.',
+            'بازی‌های دمو در دسترس هستند. کازینو با موجودی واقعی هنوز برای این حساب فعال نشده است.',
           )}
-          <Link href="/support" className="ms-2 font-bold underline">
-            {label('Contact support', 'ارتباط با پشتیبانی')}
-          </Link>
         </div>
       ) : null}
       {message ? <p role="status" className="rounded-xl bg-[#FFF5ED] px-4 py-3 text-xs font-semibold text-[#9A4E14]">{message}</p> : null}
       {games.length ? (
         <div className="grid grid-cols-2 gap-2.5 md:grid-cols-3 xl:grid-cols-4">
-          {games.map((game) => <CasinoGameCard key={game.id} game={game} onPlay={(selected) => void launchGame(selected, true)} onPlayReal={(selected) => void launchGame(selected, false)} realMoneyAvailable={realMoneyAvailable} launching={launchingId === game.id} locked={false} />)}
+          {games.map((game) => <CasinoGameCard key={game.id} game={game} onPlay={(selected) => void launchGame(selected, true)} onPlayReal={(selected) => void launchGame(selected, false)} realMoneyAvailable={realMoneyAvailable} launching={launchingId === game.id} />)}
         </div>
       ) : !loading ? (
         <div className="rounded-2xl border border-[#DDE1E6] bg-white px-5 py-10 text-center text-sm font-semibold text-[#69717A]">
