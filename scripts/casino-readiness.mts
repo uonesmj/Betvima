@@ -44,7 +44,7 @@ type Row = {
   round_count: number;
   player_binding_count: number;
   receipt_ledger_discrepancies: number;
-  verified_identity_count: number;
+  support_approval_count: number;
 };
 
 async function run() {
@@ -73,9 +73,10 @@ async function run() {
         (select count(*)::int from nova.softaggregator_callback_receipts) as receipt_count,
         (select count(*)::int from nova.softaggregator_round_fx) as round_count,
         (select count(*)::int from nova.softaggregator_player_wallet_bindings) as player_binding_count,
-        (select count(*)::int from nova.profiles p where
-          p.status::text='active' and p.age_verified is true
-          and p.kyc_status::text='verified') as verified_identity_count,
+        (select count(*)::int from nova.profiles p
+          join nova.casino_support_approvals ca on ca.user_id=p.id
+          where p.status::text='active' and ca.status='approved'
+          and ca.legal_age_confirmed=true and ca.reviewed_by is not null) as support_approval_count,
         (select count(*)::int from nova.softaggregator_callback_receipts r
           left join nova.wallet_transactions t on t.id=r.ledger_transaction_id
           left join nova.softaggregator_round_fx fx
@@ -97,15 +98,17 @@ async function run() {
     `);
     if (!row) throw Error('CASINO_FINANCIAL_COUNTS_UNAVAILABLE');
 
-    // No identification details are printed. A configured pilot UUID is NOT
-    // evidence of completed verification of age and identity.
+    // Staff review is audited separately from document KYC. This automated
+    // count does not substitute for independent legal/regulatory verification.
     const pilotId = (process.env.SOFTAGGREGATOR_TEST_USER_ID ?? '').trim();
     const validPilotId = singlePilotIdConfigured(pilotId);
     const pilot = validPilotId
       ? await db.queryOne<{ verified: boolean }>(
-        "select exists(select 1 from nova.profiles p where p.id=$1::uuid " +
-        "and p.status::text='active' and p.age_verified is true " +
-        "and p.kyc_status::text='verified') as verified",
+        "select exists(select 1 from nova.profiles p " +
+        "join nova.casino_support_approvals ca on ca.user_id=p.id " +
+        "where p.id=$1::uuid and p.status::text='active' " +
+        "and ca.status='approved' and ca.legal_age_confirmed=true " +
+        "and ca.reviewed_by is not null) as verified",
         [pilotId],
       )
       : null;
@@ -120,8 +123,8 @@ async function run() {
       supplierRounds: row.round_count,
       playerBindings: row.player_binding_count,
       receiptLedgerDiscrepancies: row.receipt_ledger_discrepancies,
-      verifiedIdentityCount: row.verified_identity_count,
-      pilotIdentityVerified: pilot?.verified === true,
+      supportApprovalCount: row.support_approval_count,
+      pilotSupportApproved: pilot?.verified === true,
       providerApiConfigured: Boolean(
         process.env.SOFTAGGREGATOR_API_LOGIN && process.env.SOFTAGGREGATOR_API_PASSWORD,
       ),
