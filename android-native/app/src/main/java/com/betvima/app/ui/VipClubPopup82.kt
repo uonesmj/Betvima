@@ -115,7 +115,7 @@ fun VipClubPopup82(
                     }
                     Spacer(Modifier.width(11.dp))
                     Column(Modifier.weight(1f)) {
-                        Text("BETVIMA  /  VIP",
+                        Text(tr(LocalNativeLanguage176.current, "BETVIMA  /  VIP", "BETVIMA  /  VIP"),
                             fontSize = 10.sp, letterSpacing = 1.5.sp,
                             fontWeight = FontWeight.Black, color = clubGreen)
                         Text(tr(lang, "VIP Club", "باشگاه VIP"),
