@@ -381,7 +381,7 @@ internal fun AccountSettings87(state:AppState,model:AppViewModel) {
                         }
                         Column(Modifier.weight(1f),
                             verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                            Text("BETVIMA / ACCOUNT", color = Color(0xFFB9BEC9),
+                            Text(tr(LocalNativeLanguage176.current, "BETVIMA / ACCOUNT", "BETVIMA / ACCOUNT"), color = Color(0xFFB9BEC9),
                                 fontSize = 10.sp, fontWeight = FontWeight.Black,
                                 letterSpacing = .8.sp)
                             Text(label87(lang,"Settings & Security","تنظیمات و امنیت"),
