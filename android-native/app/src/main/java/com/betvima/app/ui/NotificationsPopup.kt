@@ -227,49 +227,18 @@ private fun NotificationCategoryTabs(
     lang: Lang,
     onSelect: (NotificationCategory) -> Unit
 ) {
-    val values = NotificationCategory.entries
-    BoxWithConstraints(
-        Modifier.fillMaxWidth().padding(horizontal = 16.dp)
-            .clip(RoundedCornerShape(17.dp))
-            .background(notificationTabGray)
-            .border(1.dp, Color(0xFF39393D), RoundedCornerShape(17.dp))
-            .padding(3.dp)
-    ) {
-        val cellWidth = maxWidth / 3
-        val index = values.indexOf(selected)
-        val offset by animateDpAsState(
-            targetValue = cellWidth * index,
-            animationSpec = spring(dampingRatio = .86f),
-            label = "notificationTabSlide"
-        )
-        Box(Modifier.offset(x = offset).width(cellWidth).height(49.dp)
-            .shadow(4.dp, RoundedCornerShape(14.dp))
-            .clip(RoundedCornerShape(14.dp)).background(notificationBlue))
-        Row(Modifier.fillMaxWidth()) {
-            values.forEach { tab ->
-                Box(Modifier.weight(1f).height(49.dp)
-                    .clip(RoundedCornerShape(14.dp))
-                    .clickable { onSelect(tab) },
-                    contentAlignment = Alignment.Center
-                ) {
-                    val color by animateColorAsState(
-                        if (tab == selected) Color.White else Color(0xFFE1E2E7),
-                        label = "notificationTabText"
-                    )
-                    Text(
-                        when (tab) {
-                            NotificationCategory.ALL -> tr(lang, "All", "همه")
-                            NotificationCategory.PERSONAL -> tr(lang, "Personal", "شخصی")
-                            NotificationCategory.GENERAL -> tr(lang, "General", "عمومی")
-                        },
-                        fontSize = 15.sp, fontWeight = FontWeight.SemiBold,
-                        color = color, maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
-            }
-        }
-    }
+    SmoothThreeTabs184(
+        selected = selected,
+        options = listOf(
+            SmoothTab184(NotificationCategory.ALL, tr(lang, "All", "همه")),
+            SmoothTab184(NotificationCategory.PERSONAL, tr(lang, "Personal", "شخصی")),
+            SmoothTab184(NotificationCategory.GENERAL, tr(lang, "General", "عمومی"))
+        ),
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+        height = 55.dp,
+        textSize = 15.sp,
+        onSelect = onSelect
+    )
 }
 
 @Composable
