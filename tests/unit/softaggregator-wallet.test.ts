@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Db } from '@/lib/ports/db';
 import { getDb } from '@/server/db';
-import { settleCasinoCallback } from '@/server/providers/softaggregator/wallet';
+import { casinoPlayerMayLaunch, settleCasinoCallback } from '@/server/providers/softaggregator/wallet';
 import type { SignedCallback } from '@/server/providers/softaggregator/contract';
 
 vi.mock('@/server/db', () => ({ getDb: vi.fn() }));
@@ -23,6 +23,7 @@ function makeFakeDb(initial = 1000n, held = 200n) {
   let preferredCurrency = 'USD';
   let boundCurrency: string | null = 'USD';
   let kycStatus = 'verified';
+  let kycEvidenceVerified = true;
   let ageVerified = true;
   let supportApproved = true;
   let country = 'TR';
@@ -58,6 +59,7 @@ function makeFakeDb(initial = 1000n, held = 200n) {
       if (sql.includes('from nova.profiles p')) {
         return {
           status: 'active', age_verified: ageVerified, kyc_status: kycStatus,
+          kyc_document_verified: kycEvidenceVerified,
           support_approved: supportApproved,
           country, currency: preferredCurrency,
           self_excluded: false, restricted: false,
@@ -106,6 +108,7 @@ function makeFakeDb(initial = 1000n, held = 200n) {
     setPreferredCurrency: (currency: string) => { preferredCurrency = currency; },
     setBinding: (currency: string | null) => { boundCurrency = currency; },
     setKycStatus: (status: string) => { kycStatus = status; },
+    setKycEvidenceVerified: (value: boolean) => { kycEvidenceVerified = value; },
     setSupportApproved: (value: boolean) => { supportApproved = value; },
     setAgeVerified: (value: boolean) => { ageVerified = value; },
     setCountry: (value: string) => { country = value; },
@@ -128,6 +131,25 @@ describe('SoftAggregator financial callback behavior (isolated DB contract)', ()
       .toEqual({ error: 2, balance: 0 });
     expect(t.postings).toHaveLength(0);
     expect(t.receipts.size).toBe(0);
+  });
+
+  it('requires admin-reviewed KYC evidence before cash launch and fresh USD debit', async () => {
+    vi.stubEnv('SOFTAGGREGATOR_REAL_MONEY_ENABLED', 'true');
+    const t = makeFakeDb();
+    vi.mocked(getDb).mockReturnValue(t.fake as unknown as Db);
+    t.setKycStatus('verified');
+    t.setKycEvidenceVerified(false);
+    await expect(casinoPlayerMayLaunch(userId)).rejects.toThrow('CASINO_PLAYER_NOT_ELIGIBLE');
+    expect((await settleCasinoCallback(identity('kyc-document-missing', 'debit', 20n))).error).toBe(1);
+    expect(t.postings).toHaveLength(0);
+    t.setKycEvidenceVerified(true);
+    t.setKycStatus('pending');
+    await expect(casinoPlayerMayLaunch(userId)).rejects.toThrow('CASINO_PLAYER_NOT_ELIGIBLE');
+    t.setKycStatus('verified');
+    await expect(casinoPlayerMayLaunch(userId)).resolves.toMatchObject({ walletCurrency: 'USD' });
+    t.setKycEvidenceVerified(false);
+    // Previously owed wins must remain payable even if a player's KYC is revoked.
+    expect((await settleCasinoCallback(identity('owed-win-after-kyc-revocation', 'credit', 20n))).error).toBe(0);
   });
 
   it('does not use unrelated KYC statuses as casino support approval', async () => {
