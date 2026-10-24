@@ -1,4 +1,5 @@
 name: BetVima Android 184 Notifications Motion and Localization
+# Build after the Material3 bottom-sheet opt-in, including locale-aware notice content.
 
 on:
   push:
