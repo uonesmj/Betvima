@@ -14,8 +14,6 @@
     "lint": "next lint",
     "test": "vitest run",
     "test:watch": "vitest",
-    "casino:diagnose": "node scripts/softaggregator-diagnose.mjs",
-    "casino:reconcile": "node --import tsx scripts/casino-reconcile.mts",
     "test:unit": "vitest run tests/unit",
     "test:integration": "vitest run tests/integration",
     "test:coverage": "vitest run --coverage",
@@ -33,8 +31,7 @@
     "worker:crypto-payout": "node --import tsx src/workers/entrypoints/crypto-payout.worker.ts",
     "worker:odds-live": "node --import tsx src/workers/entrypoints/odds.worker.ts",
     "worker:payment": "node --import tsx src/workers/entrypoints/payment.worker.ts",
-    "worker:logo": "node --import tsx src/workers/entrypoints/logo.worker.ts",
-    "casino:readiness": "node --import tsx scripts/casino-readiness.mts"
+    "worker:logo": "node --import tsx src/workers/entrypoints/logo.worker.ts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.5.2",
