@@ -1,0 +1,66 @@
+name: BetVima Android 183 Blue Icon Only Bottom Nav
+
+on:
+  push:
+    branches: [feat/android-183-icon-only-active-bottom-nav-20261024]
+    paths: ['.github/workflows/android-183-icon-nav.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - name: Enforce unchanged bar dimensions, original routes and NO selected background
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          root=Path('android-native/app/src/main/java/com/betvima/app/ui')
+          src=(root/'ReferenceBottomNav.kt').read_text()
+          nav=src.split('fun ReferenceAnimatedBottomNav(',1)[1].split('fun ReferenceBottomBar(',1)[0]
+          routes=re.findall(r'BvDestination\("(menu|home|casino|bets|sports)"',src)
+          assert routes==['menu','home','casino','bets','sports'],routes
+          assert '.height(67.dp)' in nav
+          assert 'nav183SelectedIconColor' in nav
+          assert 'nav183IconScale' in nav
+          assert 'nav183IconLift' in nav
+          assert 'Color(0xFF168DFF)' in nav
+          assert '.offset(y = iconRise)' in nav
+          assert 'tint = iconTint' in nav
+          assert 'onNavigate(item.id)' in nav
+          assert 'this.selected = active' in nav
+          assert '.background(' not in nav.split('bottomDestinations.forEach',1)[1]
+          assert '.border(' not in nav
+          assert '.width(slotWidth' not in nav
+          assert 'sliderX' not in nav
+          assert 'Brush.horizontalGradient' not in nav
+          assert 'indicatorWidth' not in nav
+          assert 'bottomBar = {' in (root/'BetvimaApp.kt').read_text()
+          assert 'versionName = "0.183.0"' in Path('android-native/app/build.gradle.kts').read_text()
+          print('PASS: fixed compact bar, only selected icon turns blue, 5 route semantics unchanged')
+          PY
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Configure Android SDK
+        run: |
+          echo "ANDROID_HOME=/usr/local/lib/android/sdk" >> "$GITHUB_ENV"
+          /usr/local/lib/android/sdk/cmdline-tools/latest/bin/sdkmanager 'platforms;android-35' 'build-tools;35.0.0' || true
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.10.2'
+      - name: Compile Android debug APK and run native navigation tests
+        working-directory: android-native
+        run: gradle --no-daemon --stacktrace :app:assembleDebug :app:testDebugUnitTest
+      - uses: actions/upload-artifact@v4
+        with:
+          name: BetVima-Android-v0.183.0-Blue-Icon-Only-APK
+          path: android-native/app/build/outputs/apk/debug/app-debug.apk
+          retention-days: 30
+          if-no-files-found: error
