@@ -6,6 +6,16 @@ package com.betvima.app.ui
  */
 internal object RussianQuality180 {
     val terms: Map<String, String> = mapOf(
+        "clicks" to "клики",
+        "picks" to "выборы",
+        "provider" to "провайдер",
+        "sections" to "разделы",
+        "Top picks" to "Лучшие выборы",
+        "Affiliates" to "Партнёры",
+        "Partner" to "Партнёр",
+        "My referrals" to "Мои приглашённые пользователи",
+        "Share BetVima" to "Поделиться BetVima",
+        "SHARE BETVIMA" to "ПОДЕЛИТЬСЯ BETVIMA",
         "This game has no available demo session right now. No real-money game was started. Try the confirmed Aviator demo." to "Для этой игры сейчас нет доступной демоверсии. Игра на реальные деньги не запускалась. Попробуйте подтверждённую демоверсию Aviator.",
         "Please sign in again to start this demo." to "Чтобы запустить демоверсию, войдите снова.",
         "The provider rejected this title's demo. No wallet funds were charged. Try another game; this request never switches to real-money play." to "Провайдер отклонил запуск демоверсии этой игры. Средства из кошелька не списаны. Попробуйте другую игру; этот запрос не переключается на игру на реальные деньги.",
