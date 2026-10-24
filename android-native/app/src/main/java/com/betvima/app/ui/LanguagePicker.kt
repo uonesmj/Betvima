@@ -60,37 +60,47 @@ fun LanguagePickerDialog(current: Lang, onSelect: (Lang) -> Unit, onDismiss: () 
                         modifier = Modifier.size(19.dp))
                 }
             }
-            CompactLocaleOption("🇮🇷", "فارسی", localeNameAZ179(current, "Persian"), current == Lang.FA) {
+            CompactLocaleOption("🇮🇷", "فارسی", localeName180(current, "Persian"), current == Lang.FA) {
                 onSelect(Lang.FA)
             }
-            CompactLocaleOption("🇬🇧", "English", localeNameAZ179(current, "English"), current == Lang.EN) {
+            CompactLocaleOption("🇬🇧", "English", localeName180(current, "English"), current == Lang.EN) {
                 onSelect(Lang.EN)
             }
-            CompactLocaleOption("🇹🇷", "Türkçe", localeNameAZ179(current, "Turkish"), current == Lang.TR) {
+            CompactLocaleOption("🇹🇷", "Türkçe", localeName180(current, "Turkish"), current == Lang.TR) {
                 onSelect(Lang.TR)
             }
-            CompactLocaleOption("🇦🇫", "دری", localeNameAZ179(current, "Afghan Dari"), current == Lang.DARI) {
+            CompactLocaleOption("🇦🇫", "دری", localeName180(current, "Afghan Dari"), current == Lang.DARI) {
                 onSelect(Lang.DARI)
             }
-            CompactLocaleOption("🇦🇲", "Հայերեն", localeNameAZ179(current, "Armenian"), current == Lang.HY) {
+            CompactLocaleOption("🇦🇲", "Հայերեն", localeName180(current, "Armenian"), current == Lang.HY) {
                 onSelect(Lang.HY)
             }
-            CompactLocaleOption("🇸🇦", "العربية", localeNameAZ179(current, "Arabic"), current == Lang.AR) {
+            CompactLocaleOption("🇸🇦", "العربية", localeName180(current, "Arabic"), current == Lang.AR) {
                 onSelect(Lang.AR)
             }
-            CompactLocaleOption("🇦🇿", "Azərbaycan dili", localeNameAZ179(current, "Azerbaijani"), current == Lang.AZ) {
+            CompactLocaleOption("🇦🇿", "Azərbaycan dili", localeName180(current, "Azerbaijani"), current == Lang.AZ) {
                 onSelect(Lang.AZ)
             }
-            CompactLocaleOption("🇷🇺", "Русский", localeNameRU180(current, "Russian"), current == Lang.RU) {
+            CompactLocaleOption("🇷🇺", "Русский", localeName180(current, "Russian"), current == Lang.RU) {
                 onSelect(Lang.RU)
             }
         }
     }
 }
 
-/** Localize language descriptions only when Azerbaijani is selected. */
-private fun localeNameAZ179(lang: Lang, english: String): String =
-    if (lang != Lang.AZ) english else when (english) {
+/** Labels translated only; row geometry, icon and selection state do not change. */
+private fun localeName180(lang: Lang, english: String): String =
+    if (lang == Lang.RU) when (english) {
+        "Persian" -> "Персидский"
+        "English" -> "Английский"
+        "Turkish" -> "Турецкий"
+        "Afghan Dari" -> "Дари"
+        "Armenian" -> "Армянский"
+        "Arabic" -> "Арабский"
+        "Azerbaijani" -> "Азербайджанский"
+        "Russian" -> "Русский"
+        else -> english
+    } else if (lang != Lang.AZ) english else when (english) {
         "Persian" -> "Fars dili"
         "English" -> "İngilis dili"
         "Turkish" -> "Türk dili"
@@ -98,6 +108,7 @@ private fun localeNameAZ179(lang: Lang, english: String): String =
         "Armenian" -> "Erməni dili"
         "Arabic" -> "Ərəb dili"
         "Azerbaijani" -> "Azərbaycan dili"
+        "Russian" -> "Rus dili"
         else -> english
     }
 
