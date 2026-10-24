@@ -117,7 +117,7 @@ private fun CasinoHomeGameCard95(game: CasinoGame, lang: Lang, onOpen: () -> Uni
     val cardMuted = if (darkHome) DarkHomePalette.muted else casinoCardMuted95
     val fa = lang == Lang.FA
     val isLive = game.category.contains("live", ignoreCase = true)
-    val categoryName = casinoCategoryLabel(game.category, fa)
+    val categoryName = tr(lang, casinoCategoryLabel(game.category, false), casinoCategoryLabel(game.category, true))
     var imageFailed by remember(game.id) { mutableStateOf(false) }
 
     Surface(
