@@ -20,7 +20,7 @@ import java.math.RoundingMode
 enum class Tab { HOME, LIVE, SPORTS, BETS, WALLET }
 enum class HomeMode { TOP, TOP_BETS }
 enum class Feature { NONE, PROFILE, BONUSES, VIP, SUPPORT, CASINO, AFFILIATE, NOTIFICATIONS }
-enum class Lang { EN, FA, TR, DARI, HY, AR, AZ }
+enum class Lang { EN, FA, TR, DARI, HY, AR, AZ, RU }
 
 /** Ephemeral visual-only signal, never used in pricing or settlement. */
 data class PickFlight84(
@@ -105,7 +105,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     private val ticketLookupSemaphore = Semaphore(2)
     private val mutable = MutableStateFlow(AppState(
         signedIn = vault.signedIn(),
-        lang = when (preferences.getString("language", "en")) { "fa" -> Lang.FA; "tr" -> Lang.TR; "prs" -> Lang.DARI; "hy" -> Lang.HY; "ar" -> Lang.AR; "az" -> Lang.AZ; else -> Lang.EN }
+        lang = when (preferences.getString("language", "en")) { "fa" -> Lang.FA; "tr" -> Lang.TR; "prs" -> Lang.DARI; "hy" -> Lang.HY; "ar" -> Lang.AR; "az" -> Lang.AZ; "ru" -> Lang.RU; else -> Lang.EN }
     ))
     val state = mutable.asStateFlow()
     init {
@@ -124,9 +124,9 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         mutable.update { it.copy(wageringEnabled = available) }
     }
     fun language() =
-        setLanguage(when(state.value.lang) { Lang.EN -> Lang.FA; Lang.FA -> Lang.TR; Lang.TR -> Lang.DARI; Lang.DARI -> Lang.HY; Lang.HY -> Lang.AR; Lang.AR -> Lang.AZ; Lang.AZ -> Lang.EN })
+        setLanguage(when(state.value.lang) { Lang.EN -> Lang.FA; Lang.FA -> Lang.TR; Lang.TR -> Lang.DARI; Lang.DARI -> Lang.HY; Lang.HY -> Lang.AR; Lang.AR -> Lang.AZ; Lang.AZ -> Lang.RU; Lang.RU -> Lang.EN })
     fun setLanguage(lang: Lang) {
-        preferences.edit().putString("language", when(lang) { Lang.FA -> "fa"; Lang.TR -> "tr"; Lang.DARI -> "prs"; Lang.HY -> "hy"; Lang.AR -> "ar"; Lang.AZ -> "az"; Lang.EN -> "en" }).apply()
+        preferences.edit().putString("language", when(lang) { Lang.FA -> "fa"; Lang.TR -> "tr"; Lang.DARI -> "prs"; Lang.HY -> "hy"; Lang.AR -> "ar"; Lang.AZ -> "az"; Lang.RU -> "ru"; Lang.EN -> "en" }).apply()
         mutable.update { it.copy(lang = lang) }
     }
     fun homeMode(mode: HomeMode) {
@@ -176,7 +176,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             ?: throw ApiFailure(401, "Please sign in to open a game")
         // Backend rechecks test-account allowlist and wallet eligibility.
         return api.casinoLaunch(token, gameId, demo = false,
-            lang = when(language) { Lang.FA, Lang.DARI -> "fa"; Lang.TR -> "tr"; Lang.HY -> "hy"; Lang.AR -> "en"; Lang.AZ -> "en"; Lang.EN -> "en" })
+            lang = when(language) { Lang.FA, Lang.DARI -> "fa"; Lang.TR -> "tr"; Lang.HY -> "hy"; Lang.AR -> "en"; Lang.AZ -> "en"; Lang.RU -> "en"; Lang.EN -> "en" })
     }
 
     suspend fun casinoDemoLaunch(gameId: String, language: Lang): String {
