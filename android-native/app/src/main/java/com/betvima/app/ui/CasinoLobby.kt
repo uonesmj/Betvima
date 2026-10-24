@@ -151,9 +151,11 @@ fun CasinoLobby(state: AppState, model: AppViewModel) {
                 val status = (failure as? ApiFailure)?.code
                 val rawDetails = casinoDemoFailure(status, confirmedDemo, fa,
                     (failure as? ApiFailure)?.serverCode)
-                val details = if (state.lang == Lang.AZ)
-                    AzerbaijaniQuality179.translate(rawDetails) ?: rawDetails
-                    else rawDetails
+                val details = when (state.lang) {
+                    Lang.RU -> RussianQuality180.translate(rawDetails) ?: RussianTranslations180.translate(rawDetails)
+                    Lang.AZ -> AzerbaijaniQuality179.translate(rawDetails) ?: rawDetails
+                    else -> rawDetails
+                }
                 val safeStatus = status?.takeIf { it in 400..599 }
                 launchError = gameName to (details + if (safeStatus != null) " (HTTP $safeStatus)" else "")
             } finally {
