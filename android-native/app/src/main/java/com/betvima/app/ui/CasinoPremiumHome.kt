@@ -317,7 +317,7 @@ fun CasinoPremiumHome(
                             when {
                                 query.isNotBlank() -> tr(state.lang, "Search results", "نتایج جست‌وجو")
                                 provider.isNotBlank() -> provider
-                                category.isNotBlank() -> casinoCategoryLabel(category, fa)
+                                category.isNotBlank() -> tr(state.lang, casinoCategoryLabel(category, false), casinoCategoryLabel(category, true))
                                 else -> tr(state.lang, "All games", "همه بازی‌ها")
                             }, color = Color.White, fontWeight = FontWeight.Bold,
                             fontSize = 19.sp, modifier = Modifier.weight(1f))
