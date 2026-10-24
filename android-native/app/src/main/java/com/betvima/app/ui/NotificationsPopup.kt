@@ -141,7 +141,17 @@ fun NotificationsPopup(
                 NotificationCategoryTabs(category, lang) { category = it }
                 Spacer(Modifier.height(14.dp))
                 Box(Modifier.weight(1f).fillMaxWidth()) {
-                    when {
+                    Crossfade(
+                        targetState = category,
+                        animationSpec = tween(230, easing = FastOutSlowInEasing),
+                        label = "notificationCategoryContent184"
+                    ) { currentCategory ->
+                        val notices = state.notifications.filter {
+                            notificationStillVisible(it.createdAt, System.currentTimeMillis()) &&
+                                notificationMatchesCategory(it, currentCategory)
+                        }
+                        Box(Modifier.fillMaxSize()) {
+                            when {
                         !state.signedIn -> NotificationEmpty(
                             title = tr(lang, "Sign in to view notifications", "برای مشاهده اعلان‌ها وارد شوید"),
                             message = tr(lang,
@@ -215,6 +225,8 @@ fun NotificationsPopup(
                                 }
                             }
                             item(key = "bottom-space") { Spacer(Modifier.height(20.dp)) }
+                        }
+                            }
                         }
                     }
                 }
@@ -298,6 +310,7 @@ private fun NotificationReferenceCard(
     onAction: (NotificationDestination) -> Unit
 ) {
     val destination = notificationDestination(note.ctaHref)
+    val display = notificationDisplayCopy184(note, lang)
     val hasAction = destination != null && !note.ctaLabel.isNullOrBlank()
     Column(
         Modifier.fillMaxWidth()
@@ -330,10 +343,10 @@ private fun NotificationReferenceCard(
             }
         }
         Spacer(Modifier.height(5.dp))
-        Text(note.title, color = Color(0xFFF5F6F8), fontSize = 18.sp,
+        Text(display.title, color = Color(0xFFF5F6F8), fontSize = 18.sp,
             fontWeight = FontWeight.Black, lineHeight = 25.sp)
         Spacer(Modifier.height(6.dp))
-        Text(note.body, color = notificationMuted, fontSize = 14.sp,
+        Text(display.body, color = notificationMuted, fontSize = 14.sp,
             lineHeight = 22.sp)
         if (hasAction && destination != null) {
             Spacer(Modifier.height(14.dp))
@@ -345,7 +358,7 @@ private fun NotificationReferenceCard(
                 colors = ButtonDefaults.buttonColors(containerColor = notificationBlue),
                 contentPadding = PaddingValues(horizontal = 14.dp)
             ) {
-                Text(note.ctaLabel.orEmpty(),
+                Text(display.cta.orEmpty(),
                     color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.Bold,
                     maxLines = 1, overflow = TextOverflow.Ellipsis)
                 Spacer(Modifier.width(6.dp))
