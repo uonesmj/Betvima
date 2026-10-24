@@ -1,4 +1,5 @@
 name: BetVima Android 179 Azerbaijani Final QA
+# Recheck native Azerbaijani UI after casino-provider locale fallback and error localization
 
 on:
   push:
