@@ -31,6 +31,7 @@ internal object NativeMarketLabels176 {
     }
 
     fun selection(lang: Lang, english: String, persian: String): String {
+        if (lang == Lang.AZ) return AzerbaijaniMarket179.selection(english)
         if (lang == Lang.EN || lang == Lang.FA || lang == Lang.DARI)
             return tr(lang, english, persian)
         localized(lang, marketTerms[english])?.let { return it }
