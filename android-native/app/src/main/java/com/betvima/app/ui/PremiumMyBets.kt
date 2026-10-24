@@ -81,38 +81,21 @@ fun PremiumMyBetsPage(state: AppState, model: AppViewModel) {
                     horizontalArrangement = Arrangement.spacedBy(6.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    // Quick status switching stays visible; every query is server-side.
-                    Row(
-                        modifier = Modifier.weight(1f).height(43.dp)
-                            .background(Color(0xFF252527), RoundedCornerShape(14.dp))
-                            .padding(3.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        listOf(
-                            Triple("all", tr(state.lang, "All", "همه"), 1),
-                            Triple("open", tr(state.lang, "Open", "باز"), 1),
-                            Triple("settled", tr(state.lang, "Finished", "نهایی"), 1)
-                        ).forEach { (status, title, _) ->
-                            Surface(
-                                modifier = Modifier.weight(1f).fillMaxHeight()
-                                    .clickable {
-                                        if (filter.status != status) {
-                                            model.setBetHistoryQuery(filter.copy(status = status))
-                                        }
-                                    },
-                                shape = RoundedCornerShape(11.dp),
-                                color = if (selectedStatus == status) Palette.blue
-                                    else Color.Transparent
-                            ) {
-                                Box(contentAlignment = Alignment.Center) {
-                                    Text(title, fontSize = 11.sp, maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis,
-                                        color = if (selectedStatus == status) Color.White
-                                            else Color(0xFFC3C4CB),
-                                        fontWeight = if (selectedStatus == status)
-                                            FontWeight.Black else FontWeight.Medium)
-                                }
-                            }
+                    // The status query remains server-side. Only the visual
+                    // selection slides; no optimistic/fabricated tickets.
+                    SmoothThreeTabs184(
+                        selected = selectedStatus,
+                        options = listOf(
+                            SmoothTab184("all", tr(state.lang, "All", "همه")),
+                            SmoothTab184("open", tr(state.lang, "Open", "باز")),
+                            SmoothTab184("settled", tr(state.lang, "Finished", "نهایی"))
+                        ),
+                        modifier = Modifier.weight(1f),
+                        height = 43.dp,
+                        textSize = 11.sp
+                    ) { status ->
+                        if (filter.status != status) {
+                            model.setBetHistoryQuery(filter.copy(status = status))
                         }
                     }
                     Surface(
