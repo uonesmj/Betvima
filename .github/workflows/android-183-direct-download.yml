@@ -1,0 +1,59 @@
+name: Publish BetVima 0.183.0 Direct APK
+
+on:
+  push:
+    branches: [feat/android-183-icon-only-active-bottom-nav-20261024]
+    paths: ['.github/workflows/android-183-direct-download.yml']
+  workflow_dispatch:
+
+permissions:
+  actions: read
+  contents: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fetch verified successful Android build APK (no ZIP for users)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p apk
+          gh run download 40080726991 \
+            --repo "${{ github.repository }}" \
+            --name BetVima-Android-v0.183.0-Blue-Icon-Only-APK \
+            --dir apk
+          test -s apk/app-debug.apk
+          mv apk/app-debug.apk apk/BetVima-Android-v0.183.0-Blue-Icon-Only.apk
+          file apk/*.apk
+          unzip -t apk/*.apk | tail -1
+          sha256sum apk/*.apk
+      - name: Publish permanent direct APK through public GitHub Releases
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag=v0.183.0-icon-only
+          target=bd09ca78684c5af57856968f8d2c75975de86349
+          asset=apk/BetVima-Android-v0.183.0-Blue-Icon-Only.apk
+          if gh release view "$tag" --repo "${{ github.repository }}" >/dev/null 2>&1; then
+            gh release upload "$tag" "$asset" --clobber --repo "${{ github.repository }}"
+          else
+            gh release create "$tag" "$asset" \
+              --repo "${{ github.repository }}" \
+              --target "$target" \
+              --title "BetVima Android v0.183.0 — Blue icon bottom navigation" \
+              --notes "Native Android v0.183.0 debug-signed APK. Verified CI run 40080726991; selected bottom navigation icon is blue with no oversized square. Existing 5 tabs and all languages preserved." \
+              --latest=false
+          fi
+          gh release view "$tag" --repo "${{ github.repository }}" --json assets,url | tee release.json
+          python3 - <<'PY'
+          import json
+          j=json.load(open('release.json'))
+          assets=j['assets']
+          assert len(assets)>=1,assets
+          a=next(x for x in assets if x['name']=='BetVima-Android-v0.183.0-Blue-Icon-Only.apk')
+          assert a['size']>22_000_000,a
+          print('DIRECT_APK_URL:',a['url'])
+          PY
