@@ -40,6 +40,9 @@ internal object NativeLocalizedNouns176 {
         else -> null
     }
     fun sport(lang: Lang, key: String, english: String): String =
-        localized(lang, sports[key]) ?: english
-    fun transaction(lang: Lang, key: String): String? = localized(lang, finance[key])
+        if (lang == Lang.AZ) AzerbaijaniMarket179.sport(key, english)
+        else localized(lang, sports[key]) ?: english
+    fun transaction(lang: Lang, key: String): String? =
+        if (lang == Lang.AZ) AzerbaijaniMarket179.transaction(key)
+        else localized(lang, finance[key])
 }
