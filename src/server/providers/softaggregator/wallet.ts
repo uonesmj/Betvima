@@ -13,6 +13,7 @@ import { bindCasinoPlayerWallet, readCasinoPlayerWallet } from './player-wallet-
 export type CasinoBalanceResponse = { error: 0 | 1 | 2; balance: number };
 type ProfileRow = {
   status: string; age_verified: boolean; support_approved: boolean; country: string | null; currency: string;
+  kyc_status: string; kyc_document_verified: boolean;
   self_excluded: boolean; restricted: boolean;
   max_stake_per_bet_minor: string | null; max_stake_per_day_minor: string | null;
   loss_limit_daily_minor: string | null; loss_limit_weekly_minor: string | null;
@@ -23,6 +24,10 @@ type ReceiptRow = { identity_hash: string; response_error: 0 | 1 | 2; response_b
 async function getProfile(db: Db, userId: string): Promise<ProfileRow | null> {
   const sql = [
     "select p.status::text as status, coalesce(p.age_verified,false) as age_verified,",
+    "p.kyc_status::text as kyc_status,",
+    "exists (select 1 from nova.kyc_submissions ks where ks.user_id=p.id",
+    "and ks.status='verified' and ks.legal_age_confirmed=true",
+    "and ks.reviewed_by is not null) as kyc_document_verified,",
     (casinoManualReviewRequired() ? CASINO_SUPPORT_APPROVAL_SQL : 'false') + " as support_approved,",
     "p.jurisdiction as country, p.preferred_currency as currency,", 
     "coalesce(l.self_excluded_until > now(), false) as self_excluded,",
@@ -37,9 +42,11 @@ async function getProfile(db: Db, userId: string): Promise<ProfileRow | null> {
   return db.queryOne<ProfileRow>(sql, [userId]);
 }
 function accountCanBet(p: ProfileRow): boolean {
-  // Casino-specific manual review is currently optional. This does not
-  // relax legal-age, operator-country, exclusion or account restrictions.
+  // Real-money wagers require reviewed KYC documentation, regardless of the
+  // optional extra casino support-review switch. Demo/test funds stay isolated.
   return p.status === 'active' && p.age_verified === true &&
+    (process.env.SOFTAGGREGATOR_REAL_MONEY_ENABLED !== 'true' ||
+      (p.kyc_status === 'verified' && p.kyc_document_verified === true)) &&
     (!casinoManualReviewRequired() || p.support_approved === true) &&
     casinoCountryPermitted(p.country) && !p.self_excluded && !p.restricted;
 }
