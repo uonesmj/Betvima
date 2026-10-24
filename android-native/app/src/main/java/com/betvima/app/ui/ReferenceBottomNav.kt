@@ -14,6 +14,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.layout.onGloballyPositioned
@@ -28,6 +29,7 @@ import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -44,9 +46,25 @@ private val bottomDestinations = listOf(
     BvDestination("sports", "Sports", "ورزش‌ها", Icons.Default.SportsSoccer)
 )
 
+/** The original five routes and their order are an API contract with Scaffold. */
+internal val fixedBottomNavigationIds: List<String> = bottomDestinations.map { it.id }
+
+/** Preserve existing selection priority; this function has no UI or state side effects. */
+internal fun selectedBottomNavigationId(state: AppState, menuOpen: Boolean): String = when {
+    menuOpen -> "menu"
+    state.feature == Feature.CASINO -> "casino"
+    state.tab == Tab.BETS && state.feature == Feature.NONE -> "bets"
+    state.tab == Tab.LIVE || state.tab == Tab.SPORTS -> "sports"
+    state.tab == Tab.HOME && state.feature == Feature.NONE -> "home"
+    else -> ""
+}
+
 /**
- * Fixed native navigation: five independent actions on one continuous dark
- * background. No extra outer card, rounded frame, border or shadow.
+ * Permanent premium bottom navigation, still mounted in Scaffold.bottomBar.
+ *
+ * Maintains the exact five destinations/icons and the stable equal-width
+ * footprint. Icon wells have a fixed size even when a tab is selected, so
+ * changing pages cannot shift neighbouring tabs or the footer.
  */
 @Composable
 fun ReferenceAnimatedBottomNav(
@@ -54,64 +72,120 @@ fun ReferenceAnimatedBottomNav(
     menuOpen: Boolean = false,
     onNavigate: (String) -> Unit
 ) {
-    val selected = when {
-        menuOpen -> "menu"
-        state.feature == Feature.CASINO -> "casino"
-        state.tab == Tab.BETS && state.feature == Feature.NONE -> "bets"
-        state.tab == Tab.LIVE || state.tab == Tab.SPORTS -> "sports"
-        state.tab == Tab.HOME && state.feature == Feature.NONE -> "home"
-        else -> ""
-    }
+    val selected = selectedBottomNavigationId(state, menuOpen)
+    val surface = if (selected == "bets") Palette.headerDark else Color(0xFF101114)
+
     CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
-        Row(
-            Modifier.fillMaxWidth()
-                .background(if (selected == "bets") Palette.headerDark else Color(0xFF101114))
-                // Activity fits system windows; don't pad the nav a second time.
-                .padding(horizontal = 4.dp, vertical = 5.dp)
-                .heightIn(min = 67.dp),
-            verticalAlignment = Alignment.CenterVertically
+        Column(
+            modifier = Modifier.fillMaxWidth().background(surface)
         ) {
-            bottomDestinations.forEach { item ->
-                val active = selected == item.id
-                val tint by animateColorAsState(
-                    if (active) Palette.blue else Color(0xFFB6BDCB),
-                    animationSpec = tween(200), label = "independentTabTint")
-                val scale by animateFloatAsState(
-                    if (active) 1.08f else 1f,
-                    animationSpec = spring(
-                        dampingRatio = Spring.DampingRatioNoBouncy,
-                        stiffness = Spring.StiffnessMedium),
-                    label = "independentTabScale")
-                val underline by animateDpAsState(
-                    if (active) 24.dp else 0.dp,
-                    animationSpec = tween(220), label = "independentTabUnderline")
-                Column(
-                    Modifier.weight(1f).heightIn(min = 64.dp)
-                        .clickable(role = Role.Tab) { onNavigate(item.id) }
-                        .semantics { this.selected = active }
-                        .padding(top = 9.dp, bottom = 4.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.SpaceBetween
-                ) {
+            // Subtle separator from page content, not a floating card or overlay.
+            Box(
+                Modifier.fillMaxWidth().height(1.dp)
+                    .background(Color(0xFF30343C))
+            )
+            Row(
+                modifier = Modifier.fillMaxWidth()
+                    .padding(horizontal = 5.dp, vertical = 5.dp)
+                    .height(83.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                bottomDestinations.forEach { item ->
+                    val active = selected == item.id
+                    val interactions = remember(item.id) { MutableInteractionSource() }
+                    val pressed by interactions.collectIsPressedAsState()
+
+                    val iconTint by animateColorAsState(
+                        targetValue = if (active) Color(0xFF299AFF) else Color(0xFFBFC6D3),
+                        animationSpec = tween(220),
+                        label = "nav181IconTint"
+                    )
+                    val captionTint by animateColorAsState(
+                        targetValue = if (active) Color(0xFF57B0FF) else Color(0xFFADB6C6),
+                        animationSpec = tween(220),
+                        label = "nav181TextTint"
+                    )
+                    val haloTop by animateColorAsState(
+                        targetValue = if (active) Color(0xFF203752) else Color.Transparent,
+                        animationSpec = tween(230),
+                        label = "nav181HaloTop"
+                    )
+                    val haloBottom by animateColorAsState(
+                        targetValue = if (active) Color(0xFF13273C) else Color.Transparent,
+                        animationSpec = tween(230),
+                        label = "nav181HaloBottom"
+                    )
+                    val stroke by animateColorAsState(
+                        targetValue = if (active) Color(0xFF345C88) else Color.Transparent,
+                        animationSpec = tween(230),
+                        label = "nav181HaloStroke"
+                    )
+                    val iconScale by animateFloatAsState(
+                        targetValue = if (pressed) 0.93f else if (active) 1.07f else 1f,
+                        animationSpec = spring(
+                            dampingRatio = Spring.DampingRatioNoBouncy,
+                            stiffness = Spring.StiffnessMedium
+                        ),
+                        label = "nav181IconScale"
+                    )
+                    val indicatorWidth by animateDpAsState(
+                        targetValue = if (active) 30.dp else 0.dp,
+                        animationSpec = tween(240),
+                        label = "nav181Indicator"
+                    )
+
                     Column(
+                        modifier = Modifier.weight(1f).fillMaxHeight()
+                            .clip(RoundedCornerShape(15.dp))
+                            .clickable(
+                                interactionSource = interactions,
+                                indication = ripple(bounded = true),
+                                role = Role.Tab,
+                                onClick = { onNavigate(item.id) }
+                            )
+                            .semantics { this.selected = active }
+                            .padding(top = 3.dp, bottom = 3.dp),
                         horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(5.dp)
+                        verticalArrangement = Arrangement.SpaceBetween
                     ) {
-                        Icon(item.icon,
-                            contentDescription = tr(state.lang, item.en, item.fa),
-                            tint = tint,
-                            modifier = Modifier.size(23.dp).graphicsLayer {
-                                scaleX = scale; scaleY = scale
-                            })
-                        Text(tr(state.lang, item.en, item.fa),
-                            fontSize = 9.sp, lineHeight = 12.sp,
-                            fontWeight = if (active) FontWeight.Black
-                                else FontWeight.SemiBold,
-                            color = tint,
-                            maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Box(
+                            modifier = Modifier.size(width = 54.dp, height = 42.dp)
+                                .clip(RoundedCornerShape(15.dp))
+                                .background(Brush.verticalGradient(
+                                    colors = listOf(haloTop, haloBottom)
+                                ))
+                                .border(1.dp, stroke, RoundedCornerShape(15.dp)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = item.icon,
+                                contentDescription = tr(state.lang, item.en, item.fa),
+                                tint = iconTint,
+                                modifier = Modifier.size(27.dp).graphicsLayer {
+                                    scaleX = iconScale
+                                    scaleY = iconScale
+                                }
+                            )
+                        }
+                        Text(
+                            text = tr(state.lang, item.en, item.fa),
+                            fontSize = 10.sp,
+                            lineHeight = 13.sp,
+                            fontWeight = if (active) FontWeight.Bold else FontWeight.Medium,
+                            color = captionTint,
+                            maxLines = 1,
+                            softWrap = false,
+                            overflow = TextOverflow.Ellipsis,
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier.fillMaxWidth().padding(horizontal = 1.dp)
+                        )
+                        Box(
+                            modifier = Modifier.width(indicatorWidth).height(3.dp)
+                                .clip(CircleShape).background(
+                                    if (active) Palette.blue else Color.Transparent
+                                )
+                        )
                     }
-                    Box(Modifier.width(underline).height(3.dp)
-                        .clip(CircleShape).background(tint))
                 }
             }
         }
