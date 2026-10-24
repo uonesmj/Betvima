@@ -60,30 +60,43 @@ fun LanguagePickerDialog(current: Lang, onSelect: (Lang) -> Unit, onDismiss: () 
                         modifier = Modifier.size(19.dp))
                 }
             }
-            CompactLocaleOption("🇮🇷", "فارسی", "Persian", current == Lang.FA) {
+            CompactLocaleOption("🇮🇷", "فارسی", localeNameAZ179(current, "Persian"), current == Lang.FA) {
                 onSelect(Lang.FA)
             }
-            CompactLocaleOption("🇬🇧", "English", "English", current == Lang.EN) {
+            CompactLocaleOption("🇬🇧", "English", localeNameAZ179(current, "English"), current == Lang.EN) {
                 onSelect(Lang.EN)
             }
-            CompactLocaleOption("🇹🇷", "Türkçe", "Turkish", current == Lang.TR) {
+            CompactLocaleOption("🇹🇷", "Türkçe", localeNameAZ179(current, "Turkish"), current == Lang.TR) {
                 onSelect(Lang.TR)
             }
-            CompactLocaleOption("🇦🇫", "دری", "Afghan Dari", current == Lang.DARI) {
+            CompactLocaleOption("🇦🇫", "دری", localeNameAZ179(current, "Afghan Dari"), current == Lang.DARI) {
                 onSelect(Lang.DARI)
             }
-            CompactLocaleOption("🇦🇲", "Հայերեն", "Armenian", current == Lang.HY) {
+            CompactLocaleOption("🇦🇲", "Հայերեն", localeNameAZ179(current, "Armenian"), current == Lang.HY) {
                 onSelect(Lang.HY)
             }
-            CompactLocaleOption("🇸🇦", "العربية", "Arabic", current == Lang.AR) {
+            CompactLocaleOption("🇸🇦", "العربية", localeNameAZ179(current, "Arabic"), current == Lang.AR) {
                 onSelect(Lang.AR)
             }
-            CompactLocaleOption("🇦🇿", "Azərbaycan dili", "Azerbaijani", current == Lang.AZ) {
+            CompactLocaleOption("🇦🇿", "Azərbaycan dili", localeNameAZ179(current, "Azerbaijani"), current == Lang.AZ) {
                 onSelect(Lang.AZ)
             }
         }
     }
 }
+
+/** Localize language descriptions only when Azerbaijani is selected. */
+private fun localeNameAZ179(lang: Lang, english: String): String =
+    if (lang != Lang.AZ) english else when (english) {
+        "Persian" -> "Fars dili"
+        "English" -> "İngilis dili"
+        "Turkish" -> "Türk dili"
+        "Afghan Dari" -> "Dari dili"
+        "Armenian" -> "Erməni dili"
+        "Arabic" -> "Ərəb dili"
+        "Azerbaijani" -> "Azərbaycan dili"
+        else -> english
+    }
 
 @Composable
 private fun CompactLocaleOption(
