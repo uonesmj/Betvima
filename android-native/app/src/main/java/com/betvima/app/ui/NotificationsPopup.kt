@@ -4,7 +4,17 @@ import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.Crossfade
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.MutableTransitionState
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -59,16 +69,42 @@ fun NotificationsPopup(
 ) {
     var category by remember { mutableStateOf(NotificationCategory.ALL) }
     val lang = state.lang
-    val notices = state.notifications.filter {
-        notificationStillVisible(it.createdAt, System.currentTimeMillis()) &&
-            notificationMatchesCategory(it, category)
+    // Keep Dialog mounted until the exit motion finishes. Closing, Back and
+    // opening a notification all animate down instead of abruptly removing it.
+    val visible = remember { MutableTransitionState(false) }
+    var didOpen by remember { mutableStateOf(false) }
+    var pendingLogin by remember { mutableStateOf(false) }
+    var pendingRoute by remember { mutableStateOf<Pair<NotificationDestination, String?>?>(null) }
+    LaunchedEffect(Unit) {
+        didOpen = true
+        visible.targetState = true
     }
+    LaunchedEffect(visible.isIdle, visible.currentState, visible.targetState, didOpen) {
+        if (didOpen && visible.isIdle && !visible.currentState && !visible.targetState) {
+            onDismiss()
+            if (pendingLogin) onLogin()
+            pendingRoute?.let { (destination, id) -> onNavigate(destination, id) }
+        }
+    }
+    val closeAnimated = { visible.targetState = false }
     Dialog(
-        onDismissRequest = onDismiss,
+        onDismissRequest = closeAnimated,
         properties = DialogProperties(usePlatformDefaultWidth = false)
     ) {
         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.BottomCenter) {
             val popupShape = RoundedCornerShape(topStart = 30.dp, topEnd = 30.dp)
+            AnimatedVisibility(
+                visibleState = visible,
+                enter = slideInVertically(
+                    initialOffsetY = { it },
+                    animationSpec = tween(420, easing = FastOutSlowInEasing)
+                ) + fadeIn(tween(250)),
+                exit = slideOutVertically(
+                    targetOffsetY = { it },
+                    animationSpec = tween(300, easing = FastOutSlowInEasing)
+                ) + fadeOut(tween(230)),
+                modifier = Modifier.fillMaxWidth()
+            ) {
             Column(
                 Modifier.fillMaxWidth().fillMaxHeight(.94f)
                     .shadow(22.dp, popupShape)
@@ -108,7 +144,7 @@ fun NotificationsPopup(
                         }
                     }
                     IconButton(
-                        onClick = onDismiss,
+                        onClick = closeAnimated,
                         modifier = Modifier.size(42.dp)
                             .clip(CircleShape).background(Color(0xFF29292C))
                     ) {
@@ -128,7 +164,7 @@ fun NotificationsPopup(
                                 "Sign in to receive personal updates from BetVima.",
                                 "برای دیدن پیام‌های شخصی بت‌ویما وارد حساب خود شوید."),
                             buttonText = tr(lang, "Sign in", "ورود"),
-                            onClick = onLogin
+                            onClick = { pendingLogin = true; closeAnimated() }
                         )
                         notices.isEmpty() && state.notificationLoading ->
                             CircularProgressIndicator(
@@ -160,8 +196,8 @@ fun NotificationsPopup(
                                     onMarkRead = { model.markNotificationRead(note.id) },
                                     onAction = { destination ->
                                         if (note.readAt == null) model.markNotificationRead(note.id)
-                                        onDismiss()
-                                        onNavigate(destination, supportTicketFromNotificationHref(note.ctaHref))
+                                        pendingRoute = destination to supportTicketFromNotificationHref(note.ctaHref)
+                                        closeAnimated()
                                     }
                                 )
                             }
@@ -216,6 +252,7 @@ fun NotificationsPopup(
                         }
                     }
                 }
+            }
             }
         }
     }
