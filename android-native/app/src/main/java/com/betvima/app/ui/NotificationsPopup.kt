@@ -309,7 +309,8 @@ private fun NotificationReferenceCard(
     onAction: (NotificationDestination) -> Unit
 ) {
     val destination = notificationDestination(note.ctaHref)
-    val hasAction = destination != null && !note.ctaLabel.isNullOrBlank()
+    val copy = displayNotification184(note, lang)
+    val hasAction = destination != null && !copy.ctaLabel.isNullOrBlank()
     Column(
         Modifier.fillMaxWidth()
             .shadow(2.dp, RoundedCornerShape(23.dp))
@@ -341,10 +342,10 @@ private fun NotificationReferenceCard(
             }
         }
         Spacer(Modifier.height(5.dp))
-        Text(note.title, color = Color(0xFFF5F6F8), fontSize = 18.sp,
+        Text(copy.title, color = Color(0xFFF5F6F8), fontSize = 18.sp,
             fontWeight = FontWeight.Black, lineHeight = 25.sp)
         Spacer(Modifier.height(6.dp))
-        Text(note.body, color = notificationMuted, fontSize = 14.sp,
+        Text(copy.body, color = notificationMuted, fontSize = 14.sp,
             lineHeight = 22.sp)
         if (hasAction && destination != null) {
             Spacer(Modifier.height(14.dp))
@@ -356,7 +357,7 @@ private fun NotificationReferenceCard(
                 colors = ButtonDefaults.buttonColors(containerColor = notificationBlue),
                 contentPadding = PaddingValues(horizontal = 14.dp)
             ) {
-                Text(note.ctaLabel.orEmpty(),
+                Text(copy.ctaLabel.orEmpty(),
                     color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.Bold,
                     maxLines = 1, overflow = TextOverflow.Ellipsis)
                 Spacer(Modifier.width(6.dp))
