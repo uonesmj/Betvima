@@ -17,6 +17,7 @@ function fakeDb(walletCurrency: 'IRT' | 'IRR' = 'IRT', original = 2_500_000n) {
   let balance = original;
   let preferred: string = walletCurrency;
   let kycStatus = 'verified';
+  let kycEvidenceVerified = true;
   let ageVerified = true;
   let supportApproved = true;
   let country = 'TR';
@@ -29,6 +30,7 @@ function fakeDb(walletCurrency: 'IRT' | 'IRR' = 'IRT', original = 2_500_000n) {
     queryOne: vi.fn(async (sql: string, args: unknown[] = []) => {
       if (sql.includes('from nova.profiles p')) return {
         status: 'active', age_verified: ageVerified, kyc_status: kycStatus,
+        kyc_document_verified: kycEvidenceVerified,
         support_approved: supportApproved,
         currency: preferred, country,
         restricted: false, self_excluded: false,
@@ -97,6 +99,7 @@ function fakeDb(walletCurrency: 'IRT' | 'IRR' = 'IRT', original = 2_500_000n) {
   return { db: db as unknown as Db, posted, receipts, getBalance: () => balance,
     setPreferredCurrency: (currency: string) => { preferred = currency; },
     setKycStatus: (status: string) => { kycStatus = status; },
+    setKycEvidenceVerified: (value: boolean) => { kycEvidenceVerified = value; },
     setSupportApproved: (value: boolean) => { supportApproved = value; },
     setAgeVerified: (value: boolean) => { ageVerified = value; },
     setCountry: (value: string) => { country = value; },
@@ -127,6 +130,23 @@ describe('Casino fiat settle staging contract', () => {
     expect(await fiatCasinoBalance(t.db, userId)).toEqual({ error: 0, balance: 1000 });
     expect(t.getBalance()).toBe(2_500_000n);
     expect(t.posted).toHaveLength(0);
+  });
+
+  it('requires reviewed documents and verified KYC status in cash-mode fiat wallets', async () => {
+    vi.stubEnv('SOFTAGGREGATOR_REAL_MONEY_ENABLED', 'true');
+    for (const currency of ['IRT', 'IRR'] as const) {
+      const t = fakeDb(currency, currency === 'IRR' ? 25_000_000n : 2_500_000n);
+      t.setKycEvidenceVerified(false);
+      expect((await fiatCasinoBalance(t.db, userId)).error).toBe(2);
+      expect((await settleFiatCasinoCallback(t.db, userId,
+        event('cash-kyc-denied-' + currency, 'debit', 20n))).error).toBe(1);
+      expect(t.posted).toHaveLength(0);
+      t.setKycEvidenceVerified(true);
+      t.setKycStatus('pending');
+      expect((await fiatCasinoBalance(t.db, userId)).error).toBe(2);
+      t.setKycStatus('verified');
+      expect((await fiatCasinoBalance(t.db, userId)).error).toBe(0);
+    }
   });
 
   it('allows fiat wagers without optional casino KYC and supports deliberate later reactivation', async () => {
