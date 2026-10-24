@@ -3,8 +3,10 @@ package com.betvima.app.ui
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.Crossfade
+import kotlinx.coroutines.launch
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -34,8 +36,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
 import com.betvima.app.data.UserNotification
 
 private val notificationBlue = Color(0xFF087FF5)
@@ -59,22 +59,42 @@ fun NotificationsPopup(
 ) {
     var category by remember { mutableStateOf(NotificationCategory.ALL) }
     val lang = state.lang
-    val notices = state.notifications.filter {
-        notificationStillVisible(it.createdAt, System.currentTimeMillis()) &&
-            notificationMatchesCategory(it, category)
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val scope = rememberCoroutineScope()
+
+    // Hiding first retains the bottom-to-top / top-to-bottom material animation.
+    val closeSheet: () -> Unit = {
+        scope.launch {
+            sheetState.hide()
+            onDismiss()
+        }
     }
-    Dialog(
-        onDismissRequest = onDismiss,
-        properties = DialogProperties(usePlatformDefaultWidth = false)
+    val openLogin: () -> Unit = {
+        scope.launch {
+            sheetState.hide()
+            onDismiss()
+            onLogin()
+        }
+    }
+    val openDestination: (NotificationDestination, String?) -> Unit = { destination, ticket ->
+        scope.launch {
+            sheetState.hide()
+            onDismiss()
+            onNavigate(destination, ticket)
+        }
+    }
+    ModalBottomSheet(
+        onDismissRequest = closeSheet,
+        sheetState = sheetState,
+        containerColor = notificationPaper,
+        scrimColor = Color.Black.copy(alpha = .77f),
+        shape = RoundedCornerShape(topStart = 30.dp, topEnd = 30.dp),
+        dragHandle = null
     ) {
-        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.BottomCenter) {
-            val popupShape = RoundedCornerShape(topStart = 30.dp, topEnd = 30.dp)
-            Column(
-                Modifier.fillMaxWidth().fillMaxHeight(.94f)
-                    .shadow(22.dp, popupShape)
-                    .clip(popupShape)
-                    .background(notificationPaper)
-            ) {
+        Column(
+            Modifier.fillMaxWidth().fillMaxHeight(.93f)
+                .background(notificationPaper)
+        ) {
                 // A tactile sheet grabber and an unobstructed, reference-style title.
                 Box(Modifier.fillMaxWidth().padding(top = 10.dp, bottom = 5.dp),
                     contentAlignment = Alignment.Center) {
@@ -108,7 +128,7 @@ fun NotificationsPopup(
                         }
                     }
                     IconButton(
-                        onClick = onDismiss,
+                        onClick = closeSheet,
                         modifier = Modifier.size(42.dp)
                             .clip(CircleShape).background(Color(0xFF29292C))
                     ) {
@@ -128,7 +148,7 @@ fun NotificationsPopup(
                                 "Sign in to receive personal updates from BetVima.",
                                 "برای دیدن پیام‌های شخصی بت‌ویما وارد حساب خود شوید."),
                             buttonText = tr(lang, "Sign in", "ورود"),
-                            onClick = onLogin
+                            onClick = openLogin
                         )
                         notices.isEmpty() && state.notificationLoading ->
                             CircularProgressIndicator(
@@ -160,8 +180,7 @@ fun NotificationsPopup(
                                     onMarkRead = { model.markNotificationRead(note.id) },
                                     onAction = { destination ->
                                         if (note.readAt == null) model.markNotificationRead(note.id)
-                                        onDismiss()
-                                        onNavigate(destination, supportTicketFromNotificationHref(note.ctaHref))
+                                        openDestination(destination, supportTicketFromNotificationHref(note.ctaHref))
                                     }
                                 )
                             }
@@ -217,7 +236,6 @@ fun NotificationsPopup(
                     }
                 }
             }
-        }
     }
 }
 
@@ -239,8 +257,8 @@ private fun NotificationCategoryTabs(
         val index = values.indexOf(selected)
         val offset by animateDpAsState(
             targetValue = cellWidth * index,
-            animationSpec = spring(dampingRatio = .86f),
-            label = "notificationTabSlide"
+            animationSpec = tween(340, easing = FastOutSlowInEasing),
+            label = "notificationTabSlide184"
         )
         Box(Modifier.offset(x = offset).width(cellWidth).height(49.dp)
             .shadow(4.dp, RoundedCornerShape(14.dp))
