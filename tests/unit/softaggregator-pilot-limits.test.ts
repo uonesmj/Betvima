@@ -28,13 +28,32 @@ describe('SoftAggregator single-account financial pilot limits', () => {
     });
   });
 
-  it('only enforces additional limits for the configured pilot user', async () => {
+  it('allows isolated wallet-engine tests without cash authorization to exercise non-pilot flows', async () => {
     vi.stubEnv('SOFTAGGREGATOR_TEST_USER_ID', pilotId);
     const test = fixture();
     expect(await pilotCasinoDebitPermitted(test.db, pilotId, 100n)).toBe(true);
     expect(await pilotCasinoDebitPermitted(test.db,
       '7aa50699-cba1-4767-b7b4-dcd644399816', 10_000n)).toBe(true);
     expect(test.queryOne).toHaveBeenCalledTimes(1);
+  });
+
+  it('fails closed for non-pilot users whenever the real-money flag is enabled', async () => {
+    vi.stubEnv('SOFTAGGREGATOR_REAL_MONEY_ENABLED', 'true');
+    vi.stubEnv('SOFTAGGREGATOR_TEST_USER_ID', pilotId);
+    const test = fixture();
+    expect(await pilotCasinoDebitPermitted(test.db,
+      '7aa50699-cba1-4767-b7b4-dcd644399816', 10n)).toBe(false);
+    expect(test.queryOne).not.toHaveBeenCalled();
+    expect(await pilotCasinoDebitPermitted(test.db, pilotId, 100n)).toBe(true);
+    expect(test.queryOne).toHaveBeenCalledTimes(1);
+  });
+
+  it('fails closed if the pilot allowlist is missing while cash is enabled', async () => {
+    vi.stubEnv('SOFTAGGREGATOR_REAL_MONEY_ENABLED', 'true');
+    vi.stubEnv('SOFTAGGREGATOR_TEST_USER_ID', '');
+    const test = fixture();
+    expect(await pilotCasinoDebitPermitted(test.db, pilotId, 10n)).toBe(false);
+    expect(test.queryOne).not.toHaveBeenCalled();
   });
 
   it('denies wagers exceeding $1 or crossing $5 daily stakes', async () => {

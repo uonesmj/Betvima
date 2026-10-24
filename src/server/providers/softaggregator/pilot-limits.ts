@@ -27,9 +27,13 @@ export async function pilotCasinoDebitPermitted(
   db: Pick<Db, 'queryOne'>, userId: string, amountMinor: bigint,
 ): Promise<boolean> {
   const pilot = (process.env.SOFTAGGREGATOR_TEST_USER_ID ?? '').trim().toLowerCase();
-  // Without a pilot allowlist, live play is denied by casinoRealMoneyUserAllowed.
-  // Unit tests of the shared wallet engine may exercise it without that flag.
-  if (!pilot || pilot !== userId.toLowerCase()) return true;
+  // Fail closed for non-pilot accounts whenever the real-money flag is on.
+  // Other layers also enforce the single-user allowlist, but this independent
+  // debit guard must never silently waive wagering caps if routing changes.
+  // With cash disabled, isolated wallet tests may still exercise the engine.
+  if (!pilot || pilot !== userId.toLowerCase()) {
+    return process.env.SOFTAGGREGATOR_REAL_MONEY_ENABLED !== 'true';
+  }
   if (amountMinor < 1n || amountMinor > CASINO_PILOT_CAPS.stakePerBetMinor) return false;
 
   try {
