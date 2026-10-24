@@ -136,7 +136,11 @@ data class UserNotification(
     val readAt: String?,
     val audience: String = "personal",
     val ctaLabel: String? = null,
-    val ctaHref: String? = null
+    val ctaHref: String? = null,
+    // Optional trusted server i18n payload. Defaults keep old API responses valid.
+    val localizedTitles: Map<String, String> = emptyMap(),
+    val localizedBodies: Map<String, String> = emptyMap(),
+    val localizedCtaLabels: Map<String, String> = emptyMap()
 )
 data class NotificationPage(
     val items: List<UserNotification>,
