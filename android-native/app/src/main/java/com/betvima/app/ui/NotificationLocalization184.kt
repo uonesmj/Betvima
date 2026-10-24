@@ -36,6 +36,7 @@ internal fun isWelcomeDepositBonus184(note: UserNotification): Boolean {
                 in '٠'..'٩' -> ('0'.code + (ch.code - '٠'.code)).toChar()
                 '‌', '‍' -> ' '
                 'آ' -> 'ا'
+                '٫', '،' -> '.'
                 else -> ch
             })
         }
@@ -47,7 +48,7 @@ internal fun isWelcomeDepositBonus184(note: UserNotification): Boolean {
     val bonus = (title.contains("بونوس") || title.contains("bonus")) &&
         (title.contains("100") || body.contains("100"))
     return greeting && bonus && body.contains("24") &&
-        body.contains("4") && (body.contains("1.60") || body.contains("۱٫۶۰"))
+        body.contains("4") && body.contains("1.60")
 }
 
 /** Curated translations of the existing promotional welcome template. */
