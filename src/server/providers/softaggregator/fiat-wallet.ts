@@ -15,6 +15,7 @@ type BalanceResult = { error: 0 | 1 | 2; balance: number };
 type Wallet = { balance_minor: string; locked_minor: string; is_frozen: boolean };
 type Profile = {
   status: string; age_verified: boolean; support_approved: boolean; currency: string;
+  kyc_status: string; kyc_document_verified: boolean;
   country: string | null;
   self_excluded: boolean; restricted: boolean;
   max_stake_per_bet_minor: string | null; max_stake_per_day_minor: string | null;
@@ -38,6 +39,8 @@ function usable(row: Wallet | null): bigint {
 }
 function allowed(profile: Profile): boolean {
   return profile.status === 'active' && profile.age_verified &&
+    (process.env.SOFTAGGREGATOR_REAL_MONEY_ENABLED !== 'true' ||
+      (profile.kyc_status === 'verified' && profile.kyc_document_verified === true)) &&
     (!casinoManualReviewRequired() || profile.support_approved === true) &&
     casinoCountryPermitted(profile.country) && !profile.self_excluded && !profile.restricted;
 }
@@ -45,6 +48,10 @@ function allowed(profile: Profile): boolean {
 async function readProfile(db: Db, userId: string, walletCurrency?: FiatCurrency): Promise<Profile | null> {
   return db.queryOne<Profile>([
     "select p.status::text as status, coalesce(p.age_verified,false) as age_verified,",
+    "p.kyc_status::text as kyc_status,",
+    "exists (select 1 from nova.kyc_submissions ks where ks.user_id=p.id",
+    "and ks.status='verified' and ks.legal_age_confirmed=true",
+    "and ks.reviewed_by is not null) as kyc_document_verified,",
     (casinoManualReviewRequired() ? CASINO_SUPPORT_APPROVAL_SQL : 'false') + " as support_approved,",
     "p.preferred_currency as currency, p.jurisdiction as country,", 
     "coalesce(l.self_excluded_until > now(), false) as self_excluded,",
