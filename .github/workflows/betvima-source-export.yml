@@ -1,0 +1,152 @@
+name: Export sanitized BetVima source
+
+on:
+  push:
+    branches:
+      - exports/betvima-sanitized-20261024175106
+    paths:
+      - .github/workflows/betvima-source-export.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  sanitized-export:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout repository without persisted credentials
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Collect source and reject embedded secrets
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path, PurePosixPath
+          import datetime as dt
+          import json
+          import re
+          import shutil
+          import subprocess
+          import sys
+          
+          root = Path.cwd()
+          out = root / "_betvima_export"
+          out.mkdir(exist_ok=False)
+          allowed_dirs = ("src/", "public/", "supabase/", "deploy/", "ops/", "scripts/", "docs/", "tests/", "cloudflare/")
+          allowed_roots = {
+              ".eslintrc.json", ".gitignore", "AGENTS.md", "ARCHIVE_MANIFEST.txt",
+              "package.json", "package-lock.json", "yarn.lock", "pnpm-lock.yaml",
+              "next.config.js", "next.config.mjs", "next.config.ts",
+              "tsconfig.json", "tailwind.config.js", "tailwind.config.ts",
+              "postcss.config.js", "postcss.config.mjs", "ecosystem.config.js",
+              "ecosystem.config.cjs", "middleware.ts", "next-env.d.ts",
+              "playwright.config.ts", "vitest.config.ts", "wrangler.jsonc"
+          }
+          blocked_dirs = {
+              ".git", "node_modules", ".next", "dist", "build", "coverage", "uploads",
+              "upload", "logs", "log", ".turbo", ".cache", "__pycache__", "tmp",
+              "temp", ".vercel", "backups", "dumps", "private"
+          }
+          blocked_names = {
+              "credentials.json", "secrets.json", "secret.json", "service-account.json",
+              "service_account.json", "id_rsa", "id_ed25519", ".npmrc", ".pypirc",
+              ".netrc", "known_hosts", "authorized_keys", "betvima.zip"
+          }
+          blocked_suffixes = (
+              ".pem", ".key", ".p12", ".pfx", ".jks", ".keystore", ".kdbx", ".dump",
+              ".sqlite", ".sqlite3", ".db", ".log", ".bak", ".zip", ".7z", ".tar",
+              ".tgz", ".gz", ".asc", ".gpg", ".p8", ".p7b", ".p7c"
+          )
+          secret_markers = (
+              re.compile(rb"-----BEGIN (?:RSA |DSA |EC |OPENSSH )?PRIVATE KEY-----"),
+              re.compile(rb"(?<![A-Za-z0-9])gh[pousr]_[A-Za-z0-9_]{30,}"),
+              re.compile(rb"(?<![A-Za-z0-9])AKIA[0-9A-Z]{16}"),
+              re.compile(rb"(?<![A-Za-z0-9])sk_(?:live|test)_[A-Za-z0-9]{16,}"),
+              re.compile(rb"(?<![A-Za-z0-9])sk-proj-[A-Za-z0-9_-]{20,}"),
+              re.compile(rb"(?<![A-Za-z0-9])AIza[0-9A-Za-z_-]{35}"),
+              re.compile(rb"(?i)\b(?:password|api_key|api_secret|salt_key|client_secret|private_key|database_url|service_role_key)\b\s*[:=]\s*[\"']([A-Za-z0-9_+=./-]{24,})[\"']")
+          )
+          text_suffixes = {
+              ".ts", ".tsx", ".js", ".jsx", ".cjs", ".mjs", ".json", ".sql", ".sh",
+              ".py", ".md", ".txt", ".yml", ".yaml", ".toml", ".xml", ".css", ".html",
+              ".properties", ".conf", ".gradle", ".kt", ".java", ".svg", ".jsonc"
+          }
+          
+          tracked = subprocess.check_output(["git", "ls-files", "-z"]).split(b"\x00")
+          included = []
+          blocked = []
+          for item in tracked:
+              if not item:
+                  continue
+              relname = item.decode("utf-8")
+              rel = PurePosixPath(relname)
+              if not (relname in allowed_roots or relname.startswith(allowed_dirs)):
+                  continue
+              parts = tuple(part.lower() for part in rel.parts)
+              base = parts[-1]
+              if (any(part in blocked_dirs or part.startswith(".env") for part in parts)
+                      or base in blocked_names or base.endswith(blocked_suffixes)
+                      or ".bak-" in base or ".backup" in base
+                      or "credentials." in base or "secrets." in base
+                      or "private_key" in base or "private-key" in base):
+                  blocked.append(relname)
+                  continue
+              src = root / relname
+              if src.is_symlink() or not src.is_file():
+                  blocked.append(relname)
+                  continue
+              if src.suffix.lower() in text_suffixes or base in allowed_roots:
+                  raw = src.read_bytes()
+                  if any(pattern.search(raw) for pattern in secret_markers):
+                      blocked.append(relname)
+                      continue
+              dest = out / relname
+              dest.parent.mkdir(parents=True, exist_ok=True)
+              shutil.copy2(src, dest)
+              included.append(relname)
+          
+          required = (
+              "package.json", "package-lock.json", "next.config.mjs", "tsconfig.json",
+              "ecosystem.config.cjs", "deploy/nginx/nova.conf",
+              "supabase/migrations/0010_catalog.sql", "supabase/migrations/0030_wallet.sql"
+          )
+          missing = [x for x in required if x not in included]
+          if missing:
+              print("Required source files missing:", ", ".join(missing))
+              sys.exit(1)
+          
+          manifest = {
+              "project": "BetVima",
+              "source_repository": "uonesmj/Betvima",
+              "commit": subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip(),
+              "created_utc": dt.datetime.now(dt.timezone.utc).isoformat(),
+              "file_count": len(included),
+              "excluded_suspicious_files": len(blocked),
+              "excluded_classes": [
+                  "env and secret files", "credentials and private keys", "logs and uploads",
+                  "node_modules and build outputs", "local backups and binary archives",
+                  "unrelated root files"
+              ],
+              "contents": [
+                  "frontend, backend, public assets, SQL migrations",
+                  "package and lockfile", "configuration", "Nginx and PM2"
+              ],
+              "note": "No user data, environment variables, or Git history were exported."
+          }
+          (out / "BETVIMA_EXPORT_MANIFEST.json").write_text(json.dumps(manifest, indent=2) + "\n")
+          print(f"Exported {len(included)} files, excluded {len(blocked)} suspicious paths.")
+          
+          PY
+
+      - name: Upload sanitized source
+        uses: actions/upload-artifact@v4
+        with:
+          name: betvima-source-sanitized
+          path: _betvima_export/
+          include-hidden-files: true
+          retention-days: 7
+          if-no-files-found: error
