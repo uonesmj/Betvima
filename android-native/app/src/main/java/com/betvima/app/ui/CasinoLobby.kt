@@ -440,7 +440,7 @@ private fun CasinoGameCard(
                 Surface(modifier = Modifier.align(Alignment.TopStart).padding(8.dp),
                     shape = RoundedCornerShape(8.dp),
                     color = Palette.ink.copy(alpha = .83f)) {
-                    Text(casinoCategoryLabel(game.category, lang == Lang.FA),
+                    Text(tr(lang, casinoCategoryLabel(game.category, false), casinoCategoryLabel(game.category, true)),
                         color = Color.White, fontSize = 10.sp,
                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 5.dp))
                 }
