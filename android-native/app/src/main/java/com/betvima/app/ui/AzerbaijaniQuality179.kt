@@ -3,6 +3,14 @@ package com.betvima.app.ui
 /** Human-reviewed, Azerbaijani (Latin) UI terms. Preserves server and currency identifiers. */
 internal object AzerbaijaniQuality179 {
     val terms: Map<String, String> = mapOf(
+        "This game has no available demo session right now. No real-money game was started. Try the confirmed Aviator demo." to "Bu oyun üçün hazırda demo seansı yoxdur. Real pulla oyun başladılmayıb. Təsdiqlənmiş Aviator demosunu yoxlayın.",
+        "Please sign in again to start this demo." to "Bu demonu başlatmaq üçün yenidən daxil olun.",
+        "The provider rejected this title's demo. No wallet funds were charged. Try another game; this request never switches to real-money play." to "Təchizatçı bu oyunun demosunu rədd etdi. Pul kisəsindən vəsait tutulmayıb. Başqa oyunu sınayın; bu sorğu heç vaxt real pulla oyuna keçmir.",
+        "This title is no longer in the provider catalogue. Refresh the game list." to "Bu oyun artıq təchizatçının siyahısında yoxdur. Oyunların siyahısını yeniləyin.",
+        "Too many requests. Please retry in a moment." to "Həddindən artıq sorğu göndərilib. Bir az sonra yenidən cəhd edin.",
+        "The game provider is temporarily unavailable. Retry later; no real-money wager was submitted." to "Oyun təchizatçısı müvəqqəti əlçatan deyil. Sonra yenidən yoxlayın; real pulla mərc göndərilməyib.",
+        "This verified demo failed to launch. It may be a temporary connection or provider error. Please retry and report the error code if it persists." to "Bu təsdiqlənmiş demonu başlatmaq mümkün olmadı. Müvəqqəti bağlantı və ya təchizatçı xətası ola bilər. Yenidən cəhd edin; problem davam edərsə, xəta kodunu bildirin.",
+        "This demo launch failed. This title might not support demo, or the provider may be temporarily unavailable. Real-money play is disabled. Try the verified Aviator demo to compare." to "Demo başlatmaq alınmadı. Bu oyun demonu dəstəkləməyə bilər və ya təchizatçı müvəqqəti əlçatan deyil. Real pulla oyun deaktivdir. Müqayisə üçün təsdiqlənmiş Aviator demosunu yoxlayın.",
         "Affiliate Center" to "Tərəfdaşlıq mərkəzi",
         "Baccarat" to "Bakkara",
         "Blackjack" to "Blekcek",
