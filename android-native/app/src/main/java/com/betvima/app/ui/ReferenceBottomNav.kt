@@ -60,12 +60,11 @@ internal fun selectedBottomNavigationId(state: AppState, menuOpen: Boolean): Str
 }
 
 /**
- * Fixed five-tab navigation with a compact, sliding solid-color selection pill.
+ * Fixed, compact five-destination navigation.
  *
- * Navigation stays in Scaffold.bottomBar, not the scrolling page content. Each
- * route retains its original position, icon, label, click target and semantics.
- * The selected pill is drawn BEHIND the entire item (icon + label), so there is
- * no active outline, no shifting card and no line under the selection.
+ * No colored box, pill, outline, slider, underline, or selected-tab background.
+ * The selected icon itself turns bright blue with a gentle scale/lift animation.
+ * All five hit regions remain the same size and Scaffold.bottomBar never scrolls.
  */
 @Composable
 fun ReferenceAnimatedBottomNav(
@@ -74,118 +73,88 @@ fun ReferenceAnimatedBottomNav(
     onNavigate: (String) -> Unit
 ) {
     val selected = selectedBottomNavigationId(state, menuOpen)
-    val selectedIndex = bottomDestinations.indexOfFirst { it.id == selected }
     val barBackground = if (selected == "bets") Palette.headerDark else Color(0xFF101114)
 
     CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
-        Column(
-            modifier = Modifier.fillMaxWidth().background(barBackground)
-        ) {
-            // Just a neutral one-pixel divider; never a blue outline.
+        Column(modifier = Modifier.fillMaxWidth().background(barBackground)) {
             Box(
                 Modifier.fillMaxWidth().height(1.dp)
                     .background(Color(0xFF2A2D34))
             )
-            BoxWithConstraints(
+            Row(
                 modifier = Modifier.fillMaxWidth()
                     .padding(horizontal = 4.dp, vertical = 2.dp)
-                    .height(67.dp)
+                    .height(67.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                // Slide one continuous filled tab, rather than popping five
-                // independent backgrounds. All touch targets stay stationary.
-                val slotWidth = maxWidth / bottomDestinations.size
-                val targetX = slotWidth * selectedIndex.coerceAtLeast(0) + 3.dp
-                val sliderX by animateDpAsState(
-                    targetValue = targetX,
-                    animationSpec = tween(
-                        durationMillis = 340,
-                        easing = FastOutSlowInEasing
-                    ),
-                    label = "nav182SlidingActiveTab"
-                )
-                val sliderAlpha by animateFloatAsState(
-                    targetValue = if (selectedIndex >= 0) 1f else 0f,
-                    animationSpec = tween(170),
-                    label = "nav182ActiveTabVisibility"
-                )
+                bottomDestinations.forEach { item ->
+                    val active = selected == item.id
+                    val interactions = remember(item.id) { MutableInteractionSource() }
+                    val pressed by interactions.collectIsPressedAsState()
 
-                Box(
-                    modifier = Modifier.align(Alignment.CenterStart)
-                        .offset(x = sliderX)
-                        .width(slotWidth - 6.dp)
-                        .height(59.dp)
-                        .graphicsLayer { alpha = sliderAlpha }
-                        .clip(RoundedCornerShape(15.dp))
-                        .background(
-                            Brush.horizontalGradient(
-                                colors = listOf(Color(0xFF1389F0), Color(0xFF0868D3))
+                    // Animate the icon COLOR, never a background rectangle.
+                    val iconTint by animateColorAsState(
+                        targetValue = if (active) Color(0xFF168DFF) else Color(0xFFBCC5D3),
+                        animationSpec = tween(
+                            durationMillis = 290,
+                            easing = FastOutSlowInEasing
+                        ),
+                        label = "nav183SelectedIconColor"
+                    )
+                    val captionTint by animateColorAsState(
+                        targetValue = if (active) Color(0xFFF2F7FF) else Color(0xFFB8C0CF),
+                        animationSpec = tween(240),
+                        label = "nav183CaptionColor"
+                    )
+                    val iconScale by animateFloatAsState(
+                        targetValue = if (pressed) 0.92f else if (active) 1.12f else 1f,
+                        animationSpec = spring(
+                            dampingRatio = Spring.DampingRatioNoBouncy,
+                            stiffness = Spring.StiffnessMedium
+                        ),
+                        label = "nav183IconScale"
+                    )
+                    val iconRise by animateDpAsState(
+                        targetValue = if (active) (-2).dp else 0.dp,
+                        animationSpec = tween(280, easing = FastOutSlowInEasing),
+                        label = "nav183IconLift"
+                    )
+                    Column(
+                        modifier = Modifier.weight(1f).fillMaxHeight()
+                            .clickable(
+                                interactionSource = interactions,
+                                indication = ripple(bounded = true),
+                                role = Role.Tab,
+                                onClick = { onNavigate(item.id) }
                             )
-                        )
-                )
-
-                Row(
-                    modifier = Modifier.fillMaxSize(),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    bottomDestinations.forEach { item ->
-                        val active = selected == item.id
-                        val interactions = remember(item.id) { MutableInteractionSource() }
-                        val pressed by interactions.collectIsPressedAsState()
-                        val tint by animateColorAsState(
-                            targetValue = if (active) Color.White else Color(0xFFBCC5D3),
-                            animationSpec = tween(190),
-                            label = "nav182IconTint"
-                        )
-                        val textTint by animateColorAsState(
-                            targetValue = if (active) Color.White else Color(0xFFB8C0CF),
-                            animationSpec = tween(190),
-                            label = "nav182CaptionTint"
-                        )
-                        val iconScale by animateFloatAsState(
-                            targetValue = if (pressed) .92f else if (active) 1.08f else 1f,
-                            animationSpec = spring(
-                                dampingRatio = Spring.DampingRatioNoBouncy,
-                                stiffness = Spring.StiffnessMedium
-                            ),
-                            label = "nav182IconScale"
-                        )
-
-                        Column(
-                            modifier = Modifier.weight(1f).fillMaxHeight()
-                                .clip(RoundedCornerShape(15.dp))
-                                .clickable(
-                                    interactionSource = interactions,
-                                    indication = ripple(bounded = true),
-                                    role = Role.Tab,
-                                    onClick = { onNavigate(item.id) }
-                                )
-                                .semantics { this.selected = active },
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.Center
-                        ) {
-                            Icon(
-                                imageVector = item.icon,
-                                contentDescription = tr(state.lang, item.en, item.fa),
-                                tint = tint,
-                                modifier = Modifier.size(26.dp).graphicsLayer {
+                            .semantics { this.selected = active },
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
+                    ) {
+                        Icon(
+                            imageVector = item.icon,
+                            contentDescription = tr(state.lang, item.en, item.fa),
+                            tint = iconTint,
+                            modifier = Modifier.size(26.dp)
+                                .offset(y = iconRise)
+                                .graphicsLayer {
                                     scaleX = iconScale
                                     scaleY = iconScale
                                 }
-                            )
-                            Spacer(Modifier.height(4.dp))
-                            Text(
-                                text = tr(state.lang, item.en, item.fa),
-                                fontSize = 9.5.sp,
-                                lineHeight = 12.sp,
-                                fontWeight = if (active) FontWeight.Bold else FontWeight.Medium,
-                                color = textTint,
-                                maxLines = 1,
-                                softWrap = false,
-                                overflow = TextOverflow.Ellipsis,
-                                textAlign = TextAlign.Center,
-                                modifier = Modifier.fillMaxWidth().padding(horizontal = 1.dp)
-                            )
-                        }
+                        )
+                        Spacer(Modifier.height(4.dp))
+                        Text(
+                            text = tr(state.lang, item.en, item.fa),
+                            fontSize = 9.5.sp,
+                            lineHeight = 12.sp,
+                            fontWeight = if (active) FontWeight.Bold else FontWeight.Medium,
+                            color = captionTint,
+                            maxLines = 1,
+                            softWrap = false,
+                            overflow = TextOverflow.Ellipsis,
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier.fillMaxWidth().padding(horizontal = 1.dp)
+                        )
                     }
                 }
             }
