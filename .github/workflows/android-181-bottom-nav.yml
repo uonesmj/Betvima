@@ -1,0 +1,59 @@
+name: BetVima Android 181 Premium Fixed Bottom Navigation
+
+on:
+  push:
+    branches: [feat/android-181-premium-fixed-bottom-nav-20261024]
+    paths: ['.github/workflows/android-181-bottom-nav.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate fixed original routing and premium navigation implementation
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          root = Path('android-native/app/src/main/java/com/betvima/app/ui')
+          nav = (root/'ReferenceBottomNav.kt').read_text()
+          shell = (root/'BetvimaApp.kt').read_text()
+          app = Path('android-native/app/build.gradle.kts').read_text()
+          ids = re.findall(r'BvDestination\("(menu|home|casino|bets|sports)"', nav)
+          assert ids == ['menu', 'home', 'casino', 'bets', 'sports'], ids
+          assert 'bottomBar = {' in shell
+          assert 'ReferenceBottomBar(' in shell
+          assert 'onNavigate(item.id)' in nav
+          assert 'height(83.dp)' in nav
+          assert 'Modifier.size(27.dp)' in nav
+          assert 'height(42.dp)' in nav
+          assert 'if (active)' in nav
+          assert 'versionName = "0.181.0"' in app
+          print('PASS: 5 original routes, fixed Scaffold bar, larger icons, active styling, v0.181.0')
+          PY
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Configure Android SDK
+        run: |
+          echo "ANDROID_HOME=/usr/local/lib/android/sdk" >> "$GITHUB_ENV"
+          /usr/local/lib/android/sdk/cmdline-tools/latest/bin/sdkmanager 'platforms;android-35' 'build-tools;35.0.0' || true
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.10.2'
+      - name: Compile native Android and run navigation regressions
+        working-directory: android-native
+        run: gradle --no-daemon --stacktrace :app:assembleDebug :app:testDebugUnitTest
+      - name: Publish direct-install debug APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: BetVima-Android-v0.181.0-Premium-Fixed-Bottom-Nav-APK
+          path: android-native/app/build/outputs/apk/debug/app-debug.apk
+          retention-days: 30
+          if-no-files-found: error
