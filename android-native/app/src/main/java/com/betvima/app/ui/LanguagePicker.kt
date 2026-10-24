@@ -5,6 +5,8 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -30,7 +32,9 @@ import androidx.compose.ui.window.DialogProperties
 fun LanguagePickerDialog(current: Lang, onSelect: (Lang) -> Unit, onDismiss: () -> Unit) {
     Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
         Column(Modifier.fillMaxWidth(.86f)
+            .heightIn(max = 570.dp)
             .clip(RoundedCornerShape(25.dp))
+            .verticalScroll(rememberScrollState())
             .background(Color.White)
             .padding(horizontal = 16.dp, vertical = 16.dp),
             verticalArrangement = Arrangement.spacedBy(11.dp)
