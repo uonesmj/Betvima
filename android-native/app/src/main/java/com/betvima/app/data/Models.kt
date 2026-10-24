@@ -127,6 +127,11 @@ fun money(minor: String, currency: String = "USD"): String = runCatching {
 }.getOrDefault("—")
 
 /** Inbox metadata is always server-provided; no synthetic campaign or player data. */
+data class NotificationLocalizedCopy184(
+    val title: String? = null,
+    val body: String? = null,
+    val ctaLabel: String? = null
+)
 data class UserNotification(
     val id: String,
     val eventKey: String,
@@ -136,7 +141,9 @@ data class UserNotification(
     val readAt: String?,
     val audience: String = "personal",
     val ctaLabel: String? = null,
-    val ctaHref: String? = null
+    val ctaHref: String? = null,
+    /** Optional provider/admin-translated content, keyed by supported language. */
+    val translations: Map<String, NotificationLocalizedCopy184> = emptyMap()
 )
 data class NotificationPage(
     val items: List<UserNotification>,
