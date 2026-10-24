@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Compile Russian Latin translations for BetVima native Android.
+"""Compile Russian Cyrillic translations for BetVima native Android.
 
 The input consists ONLY of app-authored, static source string literals. Never
 send personally identifiable info, server responses or payment credentials.
@@ -33,7 +33,7 @@ MAPPINGS = re.compile(QUOTED+r'\s+to\s+')
 TRANS = re.compile(r'\b(?:tr|trLive177|infoText|label87|tr87|labelFor)\(\s*[^,()]*,\s*'+QUOTED+r'\s*,')
 DIRECT = re.compile(r'\bText\(\s*(?:(?:text|value)\s*=\s*)?'+QUOTED)
 LATIN = re.compile(r'[a-zA-Z]{2,}')
-PLACEHOLDER = re.compile(r'RUKEEP(\d{3})AZ')
+PLACEHOLDER = re.compile(r'RUKEEP(\d{3})RU')
 KOTLIN_KEY_RE = re.compile(r'^\s*"((?:\\.|[^"\\])*)"\s+to\s+"((?:\\.|[^"\\])*)"')
 SOURCE_NAMES = (
     "TurkishTranslations169.kt", "Armenian172.kt",
@@ -94,14 +94,14 @@ def mask(s):
     words=[]
     def replace(m):
         words.append(m.group(0))
-        return f"RUKEEP{len(words)-1:03d}AZ"
+        return f"RUKEEP{len(words)-1:03d}RU"
     return TOKEN.sub(replace,s),words
 
 def restore(s,values):
-    s=re.sub(r'AZ\s*KEEP\s*(\d{3})\s*AZ',r'RUKEEP\1AZ',s,flags=re.I)
+    s=re.sub(r'RU\s*KEEP\s*(\d{3})\s*RU',r'RUKEEP\1RU',s,flags=re.I)
     nums=sorted(set(int(x) for x in PLACEHOLDER.findall(s)))
     if nums!=list(range(len(values))):return None
-    for i,x in enumerate(values):s=s.replace(f"RUKEEP{i:03d}AZ",x)
+    for i,x in enumerate(values):s=s.replace(f"RUKEEP{i:03d}RU",x)
     return s
 
 def translate_one(task):
