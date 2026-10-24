@@ -1,0 +1,71 @@
+name: BetVima Android 180 Russian Final QA
+
+on:
+  push:
+    branches: [feat/android-180-russian-complete-native-20261024]
+    paths:
+      - '.github/workflows/android-180-final-qa.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  final-verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - name: Audit Russian offline translation source, footer and unchanged design
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import json,re
+          base=Path('android-native/app/src/main/java/com/betvima/app/ui')
+          report=json.loads(Path('russian-180-translation-audit.json').read_text())
+          assert report['ui_keys']>=1590,report
+          assert report['footer_articles']==4 and report['footer_sections']==42,report
+          assert report['untranslated_requests']==0,report
+          data='\n'.join(p.read_text() for p in (base/'Russian180').glob('Russian180Part*.kt'))
+          keys=set(re.findall(r'^\s*"((?:\\.|[^"\\])*)"\s+to\s+"',data,re.M))
+          assert len(keys)>=1590,len(keys)
+          assert 'val lang: Lang = Lang.EN' in (base/'AppViewModel.kt').read_text()
+          assert '"ru" -> Lang.RU' in (base/'AppViewModel.kt').read_text()
+          assert '🇷🇺' in (base/'LanguagePicker.kt').read_text()
+          assert '🇷🇺' in (base/'PremiumAppFooter.kt').read_text()
+          assert '🇷🇺' in (base/'AccountSettings87.kt').read_text()
+          assert 'LocalLayoutDirection provides LayoutDirection.Ltr' in (base/'BetvimaApp.kt').read_text()
+          assert 'RussianFooter180.section' in (base/'FooterInformationSheet.kt').read_text()
+          assert 'RussianQuality180.translate' in (base/'Components.kt').read_text()
+          assert 'versionName = "0.180.0"' in Path('android-native/app/build.gradle.kts').read_text()
+          print('Russian QA PASSED: source keys=',len(keys),
+                'footer sections=',report['footer_sections'],
+                'default EN, layout LTR, language picker + flag')
+          PY
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Configure Android SDK
+        run: |
+          echo "ANDROID_HOME=/usr/local/lib/android/sdk" >> "$GITHUB_ENV"
+          /usr/local/lib/android/sdk/cmdline-tools/latest/bin/sdkmanager 'platforms;android-35' 'build-tools;35.0.0' || true
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.10.2'
+      - name: Build v0.180.0 and run native Russian test suite
+        working-directory: android-native
+        run: gradle --no-daemon --stacktrace :app:assembleDebug :app:testDebugUnitTest
+      - uses: actions/upload-artifact@v4
+        with:
+          name: BetVima-Android-v0.180.0-Russian-final-debug-APK
+          path: android-native/app/build/outputs/apk/debug/app-debug.apk
+          retention-days: 30
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: BetVima-v0.180.0-Russian-final-coverage-report
+          path: russian-180-translation-audit.json
+          retention-days: 14
+          if-no-files-found: ignore
