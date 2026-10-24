@@ -1,0 +1,62 @@
+name: BetVima Android 182 Compact Sliding Bottom Bar
+
+on:
+  push:
+    branches: [feat/android-182-compact-sliding-bottom-navigation-20261024]
+    paths: ['.github/workflows/android-182-nav.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify-and-build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify original routes, compact dimensions, no blue outline and animated slider
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          ui=Path('android-native/app/src/main/java/com/betvima/app/ui')
+          nav=(ui/'ReferenceBottomNav.kt').read_text()
+          shell=(ui/'BetvimaApp.kt').read_text()
+          primary=nav.split('fun ReferenceAnimatedBottomNav(',1)[1].split('fun ReferenceBottomBar(',1)[0]
+          ids=re.findall(r'BvDestination\("(menu|home|casino|bets|sports)"',nav)
+          assert ids==['menu','home','casino','bets','sports'],ids
+          assert '.height(67.dp)' in primary
+          assert '.height(59.dp)' in primary
+          assert 'Brush.horizontalGradient' in primary
+          assert 'nav182SlidingActiveTab' in primary
+          assert 'offset(x = sliderX)' in primary
+          assert 'selectedBottomNavigationId(state, menuOpen)' in primary
+          assert '.border(' not in primary
+          assert 'indicatorWidth' not in primary
+          assert 'onNavigate(item.id)' in primary
+          assert 'Role.Tab' in primary and 'this.selected = active' in primary
+          assert 'bottomBar = {' in shell and 'ReferenceBottomBar(' in shell
+          assert 'versionName = "0.182.0"' in Path('android-native/app/build.gradle.kts').read_text()
+          print('PASS: five original routes, 72dp fixed bar, 59dp filled sliding pill, no blue outline')
+          PY
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Configure Android SDK
+        run: |
+          echo "ANDROID_HOME=/usr/local/lib/android/sdk" >> "$GITHUB_ENV"
+          /usr/local/lib/android/sdk/cmdline-tools/latest/bin/sdkmanager 'platforms;android-35' 'build-tools;35.0.0' || true
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.10.2'
+      - name: Compile Android and run all navigation regression tests
+        working-directory: android-native
+        run: gradle --no-daemon --stacktrace :app:assembleDebug :app:testDebugUnitTest
+      - uses: actions/upload-artifact@v4
+        with:
+          name: BetVima-Android-v0.182.0-Compact-Sliding-Nav-APK
+          path: android-native/app/build/outputs/apk/debug/app-debug.apk
+          retention-days: 30
+          if-no-files-found: error
