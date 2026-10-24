@@ -49,6 +49,7 @@ private val notificationTabGray = Color(0xFF29292C)
  * data from AppViewModel; no demo messages, synthetic read receipts or balances.
  * This is an overlay, never a replacement for the active casino/sports screen.
  */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun NotificationsPopup(
     state: AppState,
