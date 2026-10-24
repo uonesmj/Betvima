@@ -1,0 +1,58 @@
+name: BetVima Android 184 Notifications Motion and Localization
+
+on:
+  push:
+    branches: [feat/android-184-notification-motion-localized-20261024]
+    paths: ['.github/workflows/android-184-notifications.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify native notification motion, three tabs and localization wiring
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          ui=Path('android-native/app/src/main/java/com/betvima/app/ui')
+          popup=(ui/'NotificationsPopup.kt').read_text()
+          bets=(ui/'PremiumMyBets.kt').read_text()
+          locale=(ui/'NotificationLocale184.kt').read_text()
+          api=Path('android-native/app/src/main/java/com/betvima/app/data/ApiClient.kt').read_text()
+          assert 'ModalBottomSheet(' in popup
+          assert 'sheetState.hide()' in popup
+          assert 'notificationTabSlide184' in popup
+          assert 'notificationCategoryContent184' in popup
+          assert 'notificationDisplayCopy184(note, lang)' in popup
+          assert 'myBetsStatusSlide184' in bets
+          assert 'tween(330' in bets
+          assert 'Russian' not in locale or 'Lang.RU' in locale
+          assert 'localizedTitles = localStrings("title")' in api
+          assert 'versionName = "0.184.0"' in Path('android-native/app/build.gradle.kts').read_text()
+          print('PASS: bottom sheet motion, three-tab selectors and dynamic locale display')
+          PY
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Configure Android SDK
+        run: |
+          echo "ANDROID_HOME=/usr/local/lib/android/sdk" >> "$GITHUB_ENV"
+          /usr/local/lib/android/sdk/cmdline-tools/latest/bin/sdkmanager 'platforms;android-35' 'build-tools;35.0.0' || true
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.10.2'
+      - name: Compile and run all native Android unit tests
+        working-directory: android-native
+        run: gradle --no-daemon --stacktrace :app:assembleDebug :app:testDebugUnitTest
+      - uses: actions/upload-artifact@v4
+        with:
+          name: BetVima-Android-v0.184.0-Notifications-Motion-Locale-APK
+          path: android-native/app/build/outputs/apk/debug/app-debug.apk
+          retention-days: 30
+          if-no-files-found: error
