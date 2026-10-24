@@ -36,6 +36,7 @@ fun tr(lang: Lang, en: String, fa: String): String = when (lang) {
     Lang.DARI -> NativeScreenshot178.translate(lang, en) ?: AfghanDari171.translate(en, fa)
     Lang.HY -> NativeScreenshot178.translate(lang, en) ?: NativeQuality176.translate(lang, en) ?: NativeDynamic176.translate(lang, en) ?: Armenian172.translate(en)
     Lang.AR -> NativeScreenshot178.translate(lang, en) ?: NativeQuality176.translate(lang, en) ?: NativeDynamic176.translate(lang, en) ?: ArabicTranslations175.translate(en)
+    Lang.AZ -> AzerbaijaniQuality179.translate(en) ?: AzerbaijaniDynamic179.translate(en) ?: AzerbaijaniTranslations179.translate(en)
 }
 
 /** Localized football statistics; does not confuse \"Home\" (team) with Home navigation. */
