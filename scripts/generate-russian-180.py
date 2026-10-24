@@ -104,8 +104,20 @@ def restore(s,values):
     for i,x in enumerate(values):s=s.replace(f"RUKEEP{i:03d}RU",x)
     return s
 
+# Avoid MT placeholder loss in brand-bearing titles; keep BetVima unchanged.
+BRAND_REVIEWED = {
+    "BETVIMA PARTNERS": "ПАРТНЁРЫ BETVIMA",
+    "SHARE BETVIMA": "ПОДЕЛИТЬСЯ BETVIMA",
+    "MY BETVIMA": "МОЙ BETVIMA",
+    "Share BetVima": "Поделиться BetVima",
+    "BETVIMA  PARTNERS": "ПАРТНЁРЫ BETVIMA",
+    "© 2026 BetVima": "© 2026 BetVima",
+}
+
 def translate_one(task):
     kind,key=task
+    if key in BRAND_REVIEWED:
+        return kind,key,BRAND_REVIEWED[key],None
     if not key.strip() or not LATIN.search(key):return (kind,key,key,None)
     if key in SKIP or (not re.search(r'[A-Z]', key) and
                        re.fullmatch(r'[a-z_0-9./-]{2,30}',key)):
