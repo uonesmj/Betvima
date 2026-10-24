@@ -1,0 +1,55 @@
+name: Publish BetVima Android 0.184.0 Direct APK
+
+on:
+  push:
+    branches: [feat/android-184-notification-motion-localized-20261024]
+    paths: ['.github/workflows/android-184-direct-release.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  release:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Get already-tested 0.184.0 Android APK
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p apk
+          gh run download 40100388494 \
+            --repo "${{ github.repository }}" \
+            --name BetVima-Android-v0.184.0-Notifications-Motion-Locale-APK \
+            --dir apk
+          test -s apk/app-debug.apk
+          mv apk/app-debug.apk apk/BetVima-Android-v0.184.0-Notifications.apk
+          unzip -t apk/BetVima-Android-v0.184.0-Notifications.apk | tail -1
+          sha256sum apk/*.apk
+      - name: Publish stable direct APK download
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag=v0.184.0-notifications-motion
+          asset=apk/BetVima-Android-v0.184.0-Notifications.apk
+          if gh release view "$tag" --repo "${{ github.repository }}" >/dev/null 2>&1; then
+            gh release upload "$tag" "$asset" --clobber --repo "${{ github.repository }}"
+          else
+            gh release create "$tag" "$asset" \
+              --repo "${{ github.repository }}" \
+              --target 89d1d75c71974ffaf3e40dcb5a473b26266282f5 \
+              --title "BetVima Android v0.184.0 – Notifications and smooth tabs" \
+              --notes "Android debug-signed APK. Verified CI run 40100388494. Smooth All/Open/Finished and notification three-tabs, sliding notification bottom sheet, dynamic notification locale including the multilingual welcome bonus." \
+              --latest=false
+          fi
+          gh release view "$tag" --repo "${{ github.repository }}" --json assets | tee release.json
+          python3 - <<'PY'
+          import json
+          x=json.load(open('release.json'))
+          asset=next(a for a in x['assets'] if a['name']=='BetVima-Android-v0.184.0-Notifications.apk')
+          assert asset['size'] == 22702567, asset
+          print('Direct APK verified:',asset['url'])
+          PY
