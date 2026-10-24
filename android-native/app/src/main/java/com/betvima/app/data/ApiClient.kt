@@ -813,7 +813,12 @@ class ApiClient {
                     readAt = notification.str("readAt").takeIf(String::isNotBlank),
                     audience = if (meta?.str("audience") == "general") "general" else "personal",
                     ctaLabel = meta?.str("ctaLabel")?.trim()?.takeIf(String::isNotEmpty),
-                    ctaHref = meta?.str("ctaHref")?.trim()?.takeIf(String::isNotEmpty)
+                    ctaHref = meta?.str("ctaHref")?.trim()?.takeIf(String::isNotEmpty),
+                    translations = parseNotificationTranslations184(
+                        notification.optJSONObject("translations")
+                            ?: meta?.optJSONObject("translations")
+                            ?: meta?.optJSONObject("localized")
+                    )
                 )
             },
             page = data.optInt("page", page),
@@ -1132,4 +1137,28 @@ class ApiClient {
         return parseSupportTicket(data.optJSONObject("ticket") ?: throw ApiFailure(502, "Ticket unavailable"))
     }
 
+}
+
+/**
+ * Strictly parse optional server-supplied translation dictionaries. Arbitrary
+ * support/admin messages are never invented, translated with fake templates,
+ * or sent to a third-party API by the mobile client.
+ */
+internal fun parseNotificationTranslations184(
+    locales: org.json.JSONObject?
+): Map<String, NotificationLocalizedCopy184> {
+    if (locales == null) return emptyMap()
+    val supported = listOf("en", "fa", "tr", "dari", "hy", "ar", "az", "ru")
+    return supported.mapNotNull { tag ->
+        val data = locales.optJSONObject(tag) ?: return@mapNotNull null
+        fun safe(key: String, max: Int): String? =
+            data.optString(key).trim().takeIf { it.isNotBlank() && it.length <= max }
+        val localized = NotificationLocalizedCopy184(
+            title = safe("title", 220),
+            body = safe("body", 6000),
+            ctaLabel = safe("ctaLabel", 100)
+        )
+        if (localized.title == null && localized.body == null && localized.ctaLabel == null) null
+        else tag to localized
+    }.toMap()
 }
