@@ -85,12 +85,12 @@ internal fun FooterInformationSheet(
                         modifier = Modifier.size(23.dp))
                 }
                 Column(Modifier.weight(1f)) {
-                    Text((AzerbaijaniFooter179.article(lang, article,  "title") ?: FooterArabic175.article(lang, article,  "title") ?: FooterArmenian173.article(lang, article,  "title") ?: FooterTurkish170.article(lang, article, "title") ?: infoText(lang, article.titleEn, article.titleFa)),
+                    Text((RussianFooter180.article(lang, article,  "title") ?: AzerbaijaniFooter179.article(lang, article,  "title") ?: FooterArabic175.article(lang, article,  "title") ?: FooterArmenian173.article(lang, article,  "title") ?: FooterTurkish170.article(lang, article, "title") ?: infoText(lang, article.titleEn, article.titleFa)),
                         color = infoInk, fontSize = 19.sp, fontWeight = FontWeight.Black,
                         maxLines = 2, lineHeight = 25.sp,
                         overflow = TextOverflow.Ellipsis)
                     Spacer(Modifier.height(3.dp))
-                    Text((AzerbaijaniFooter179.article(lang, article,  "subtitle") ?: FooterArabic175.article(lang, article,  "subtitle") ?: FooterArmenian173.article(lang, article,  "subtitle") ?: FooterTurkish170.article(lang, article, "subtitle") ?: infoText(lang, article.subtitleEn, article.subtitleFa)),
+                    Text((RussianFooter180.article(lang, article,  "subtitle") ?: AzerbaijaniFooter179.article(lang, article,  "subtitle") ?: FooterArabic175.article(lang, article,  "subtitle") ?: FooterArmenian173.article(lang, article,  "subtitle") ?: FooterTurkish170.article(lang, article, "subtitle") ?: infoText(lang, article.subtitleEn, article.subtitleFa)),
                         color = infoMuted, fontSize = 9.sp,
                         fontWeight = FontWeight.SemiBold, letterSpacing = .5.sp, maxLines = 2)
                 }
@@ -143,7 +143,7 @@ internal fun FooterInformationSheet(
                             Icon(Icons.Default.AutoAwesome, null, tint = infoMint,
                                 modifier = Modifier.size(21.dp))
                         }
-                        Text((AzerbaijaniFooter179.article(lang, article,  "summary") ?: FooterArabic175.article(lang, article,  "summary") ?: FooterArmenian173.article(lang, article,  "summary") ?: FooterTurkish170.article(lang, article, "summary") ?: infoText(lang, article.summaryEn, article.summaryFa)),
+                        Text((RussianFooter180.article(lang, article,  "summary") ?: AzerbaijaniFooter179.article(lang, article,  "summary") ?: FooterArabic175.article(lang, article,  "summary") ?: FooterArmenian173.article(lang, article,  "summary") ?: FooterTurkish170.article(lang, article, "summary") ?: infoText(lang, article.summaryEn, article.summaryFa)),
                             color = infoInk, fontSize = 13.sp, fontWeight = FontWeight.Medium,
                             lineHeight = 23.sp)
                         Row(verticalAlignment = Alignment.CenterVertically,
@@ -188,7 +188,7 @@ internal fun FooterInformationSheet(
                                             color = Color(0xFF80C7FF),
                                             fontWeight = FontWeight.ExtraBold, fontSize = 10.sp)
                                         Spacer(Modifier.width(7.dp))
-                                        Text((AzerbaijaniFooter179.section(lang, section,  true) ?: FooterArabic175.section(lang, section,  true) ?: FooterArmenian173.section(lang, section,  true) ?: FooterTurkish170.section(lang, section, true) ?: infoText(lang, section.headingEn, section.headingFa)),
+                                        Text((RussianFooter180.section(lang, section,  true) ?: AzerbaijaniFooter179.section(lang, section,  true) ?: FooterArabic175.section(lang, section,  true) ?: FooterArmenian173.section(lang, section,  true) ?: FooterTurkish170.section(lang, section, true) ?: infoText(lang, section.headingEn, section.headingFa)),
                                             color = infoInk, fontSize = 11.sp,
                                             fontWeight = FontWeight.Medium, maxLines = 1)
                                     }
@@ -234,13 +234,13 @@ internal fun FooterInformationSheet(
                                     modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp))
                             }
                             Spacer(Modifier.width(10.dp))
-                            Text((AzerbaijaniFooter179.section(lang, section,  true) ?: FooterArabic175.section(lang, section,  true) ?: FooterArmenian173.section(lang, section,  true) ?: FooterTurkish170.section(lang, section, true) ?: infoText(lang, section.headingEn, section.headingFa)),
+                            Text((RussianFooter180.section(lang, section,  true) ?: AzerbaijaniFooter179.section(lang, section,  true) ?: FooterArabic175.section(lang, section,  true) ?: FooterArmenian173.section(lang, section,  true) ?: FooterTurkish170.section(lang, section, true) ?: infoText(lang, section.headingEn, section.headingFa)),
                                 color = infoInk, fontWeight = FontWeight.Bold,
                                 fontSize = 15.sp, lineHeight = 23.sp,
                                 modifier = Modifier.weight(1f))
                         }
                         HorizontalDivider(color = Color.White.copy(alpha = .075f))
-                        Text((AzerbaijaniFooter179.section(lang, section,  false) ?: FooterArabic175.section(lang, section,  false) ?: FooterArmenian173.section(lang, section,  false) ?: FooterTurkish170.section(lang, section, false) ?: infoText(lang, section.bodyEn, section.bodyFa)),
+                        Text((RussianFooter180.section(lang, section,  false) ?: AzerbaijaniFooter179.section(lang, section,  false) ?: FooterArabic175.section(lang, section,  false) ?: FooterArmenian173.section(lang, section,  false) ?: FooterTurkish170.section(lang, section, false) ?: infoText(lang, section.bodyEn, section.bodyFa)),
                             color = Color(0xFFCCD3DE), fontSize = 12.sp, lineHeight = 23.sp)
                     }
                 }
