@@ -1,0 +1,19 @@
+name: Android 179 Azerbaijani Source Snapshot
+on:
+  push:
+    branches: [feat/android-179-azerbaijani-coverage-20261024]
+    paths: ['.github/workflows/android-179-source.yml']
+permissions: {contents: read}
+jobs:
+  source:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/upload-artifact@v4
+        with:
+          name: BetVima-179-native-source
+          path: |
+            android-native/app/src/main/
+            android-native/app/build.gradle.kts
+            scripts/android-localization-audit.py
+          retention-days: 7
