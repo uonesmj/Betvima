@@ -6,6 +6,14 @@ package com.betvima.app.ui
  */
 internal object RussianQuality180 {
     val terms: Map<String, String> = mapOf(
+        "This game has no available demo session right now. No real-money game was started. Try the confirmed Aviator demo." to "Для этой игры сейчас нет доступной демоверсии. Игра на реальные деньги не запускалась. Попробуйте подтверждённую демоверсию Aviator.",
+        "Please sign in again to start this demo." to "Чтобы запустить демоверсию, войдите снова.",
+        "The provider rejected this title's demo. No wallet funds were charged. Try another game; this request never switches to real-money play." to "Провайдер отклонил запуск демоверсии этой игры. Средства из кошелька не списаны. Попробуйте другую игру; этот запрос не переключается на игру на реальные деньги.",
+        "This title is no longer in the provider catalogue. Refresh the game list." to "Этой игры больше нет в каталоге провайдера. Обновите список игр.",
+        "Too many requests. Please retry in a moment." to "Слишком много запросов. Повторите попытку чуть позже.",
+        "The game provider is temporarily unavailable. Retry later; no real-money wager was submitted." to "Провайдер игр временно недоступен. Повторите попытку позже; ставка на реальные деньги не отправлялась.",
+        "This verified demo failed to launch. It may be a temporary connection or provider error. Please retry and report the error code if it persists." to "Не удалось запустить проверенную демоверсию. Возможно, временная ошибка соединения или провайдера. Повторите попытку; если ошибка повторится, сообщите код ошибки.",
+        "This demo launch failed. This title might not support demo, or the provider may be temporarily unavailable. Real-money play is disabled. Try the verified Aviator demo to compare." to "Не удалось запустить демоверсию. Возможно, игра не поддерживает демо или провайдер временно недоступен. Игра на реальные деньги отключена. Для проверки попробуйте подтверждённую демоверсию Aviator.",
         "Language" to "Язык",
         "Choose your preferred language" to "Выберите язык",
         "Select language" to "Выбрать язык",
