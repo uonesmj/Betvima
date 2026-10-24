@@ -1,0 +1,66 @@
+name: BetVima Android 184 Smooth Tabs and Localized Notifications
+
+on:
+  push:
+    branches: [feat/android-184-smooth-tabs-localized-notifications-20261024]
+    paths: ['.github/workflows/android-184-notifications-ui.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify shared tab animation, opening transition and locale-aware notification copy
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          base=Path('android-native/app/src/main/java/com/betvima/app/ui')
+          tabs=(base/'SmoothThreeTabs184.kt').read_text()
+          popup=(base/'NotificationsPopup.kt').read_text()
+          bets=(base/'PremiumMyBets.kt').read_text()
+          locale=(base/'NotificationLocalization184.kt').read_text()
+          api=Path('android-native/app/src/main/java/com/betvima/app/data/ApiClient.kt').read_text()
+          for marker in ['animateDpAsState', 'FastOutSlowInEasing', 'smooth184SelectedPosition',
+                         'detectHorizontalDragGestures', 'Role.Tab']:
+              assert marker in tabs, marker
+          assert 'SmoothThreeTabs184(' in bets
+          assert 'SmoothThreeTabs184(' in popup
+          assert 'notification184CategoryContent' in popup
+          assert 'slideInVertically(' in popup
+          assert 'slideOutVertically(' in popup
+          assert 'MutableTransitionState(false)' in popup
+          assert 'displayNotification184(note, lang)' in popup
+          assert 'displayNotification184(note, state.lang)' in (base/'Notifications.kt').read_text()
+          assert 'parseNotificationTranslations184' in api
+          assert '"ru" to DisplayNotification184' in locale
+          assert '"fa" to DisplayNotification184' in locale
+          assert 'notificationDestination(note.ctaHref)' in locale
+          assert 'versionName = "0.184.0"' in Path('android-native/app/build.gradle.kts').read_text()
+          assert 'bottomBar = {' in (base/'BetvimaApp.kt').read_text()
+          print('PASS: smooth three-tab status controls, notification open/close, per-locale copy, fixed bottom bar')
+          PY
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Configure Android SDK
+        run: |
+          echo "ANDROID_HOME=/usr/local/lib/android/sdk" >> "$GITHUB_ENV"
+          /usr/local/lib/android/sdk/cmdline-tools/latest/bin/sdkmanager 'platforms;android-35' 'build-tools;35.0.0' || true
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.10.2'
+      - name: Compile Android and run all native notification and navigation unit tests
+        working-directory: android-native
+        run: gradle --no-daemon --stacktrace :app:assembleDebug :app:testDebugUnitTest
+      - uses: actions/upload-artifact@v4
+        with:
+          name: BetVima-Android-v0.184.0-Smooth-Tabs-Localized-Notifications-APK
+          path: android-native/app/build/outputs/apk/debug/app-debug.apk
+          retention-days: 30
+          if-no-files-found: error
