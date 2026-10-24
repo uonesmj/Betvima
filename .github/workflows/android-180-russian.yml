@@ -1,0 +1,92 @@
+name: BetVima Android 180 Russian Complete Localisation
+
+on:
+  push:
+    branches:
+      - feat/android-180-russian-complete-native-20261024
+    paths:
+      - '.github/workflows/android-180-russian.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  translate-build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 50
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - name: Check offline Russian resource generator
+        run: python3 -m py_compile scripts/generate-russian-180.py
+      - name: Generate Russian translations for all UI text and footer pages
+        run: python3 -u scripts/generate-russian-180.py
+      - name: Verify Russian source coverage including all 42 footer sections
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import json,re
+          report=json.loads(Path('russian-180-translation-audit.json').read_text())
+          assert report['ui_keys']>=1500,report
+          assert report['footer_articles']==4,report
+          assert report['footer_sections']==42,report
+          assert report['untranslated_requests']==0,report
+          base=Path('android-native/app/src/main/java/com/betvima/app/ui/Russian180')
+          assert len(list(base.glob('Russian180Part*.kt')))>=12
+          assert (base/'RussianFooter180.kt').exists()
+          print('Russian UI keys:',report['ui_keys'],'footer articles:',
+                report['footer_articles'],'footer sections:',report['footer_sections'])
+          print('Unchanged strings needing manual review:',
+                report['identical_english'][:150])
+          PY
+      - name: Update native version 180
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('android-native/app/build.gradle.kts')
+          s=p.read_text()
+          assert 'versionCode = 179' in s
+          assert 'versionName = "0.179.0"' in s
+          p.write_text(s.replace('versionCode = 179','versionCode = 180')
+                        .replace('versionName = "0.179.0"','versionName = "0.180.0"'))
+          PY
+      - name: Commit Russian offline locale to dedicated branch
+        run: |
+          git config user.name 'betvima-russian-locale-ci'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add android-native/app/src/main/java/com/betvima/app/ui/Russian180/
+          git add android-native/app/build.gradle.kts
+          git add russian-180-translation-audit.json
+          git commit -m 'feat(android): Russian v0.180.0 UI and 42 footer sections'
+          git push origin HEAD:feat/android-180-russian-complete-native-20261024
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Configure Android SDK
+        run: |
+          echo "ANDROID_HOME=/usr/local/lib/android/sdk" >> "$GITHUB_ENV"
+          /usr/local/lib/android/sdk/cmdline-tools/latest/bin/sdkmanager 'platforms;android-35' 'build-tools;35.0.0' || true
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.10.2'
+      - name: Compile Android APK and run all unit tests
+        working-directory: android-native
+        run: gradle --no-daemon --stacktrace :app:assembleDebug :app:testDebugUnitTest
+      - uses: actions/upload-artifact@v4
+        with:
+          name: BetVima-Android-v0.180.0-Russian-direct-debug-APK
+          path: android-native/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+          retention-days: 30
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: BetVima-0.180.0-Russian-Coverage-QA
+          path: |
+            russian-180-translation-audit.json
+            russian180-errors.json
+          if-no-files-found: ignore
+          retention-days: 14
