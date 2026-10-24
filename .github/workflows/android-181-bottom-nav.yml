@@ -31,7 +31,7 @@ jobs:
           assert 'onNavigate(item.id)' in nav
           assert 'height(83.dp)' in nav
           assert 'Modifier.size(27.dp)' in nav
-          assert 'height(42.dp)' in nav
+          assert 'height = 42.dp' in nav
           assert 'if (active)' in nav
           assert 'versionName = "0.181.0"' in app
           print('PASS: 5 original routes, fixed Scaffold bar, larger icons, active styling, v0.181.0')
