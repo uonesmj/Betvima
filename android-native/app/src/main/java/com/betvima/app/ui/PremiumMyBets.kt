@@ -1,6 +1,10 @@
 package com.betvima.app.ui
 
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.fadeIn
@@ -81,36 +85,57 @@ fun PremiumMyBetsPage(state: AppState, model: AppViewModel) {
                     horizontalArrangement = Arrangement.spacedBy(6.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    // Quick status switching stays visible; every query is server-side.
-                    Row(
+                    // The same server-side filters, with a single smoothly sliding
+                    // blue selection behind all three stationary touch targets.
+                    BoxWithConstraints(
                         modifier = Modifier.weight(1f).height(43.dp)
                             .background(Color(0xFF252527), RoundedCornerShape(14.dp))
-                            .padding(3.dp),
-                        verticalAlignment = Alignment.CenterVertically
+                            .padding(3.dp)
                     ) {
-                        listOf(
-                            Triple("all", tr(state.lang, "All", "همه"), 1),
-                            Triple("open", tr(state.lang, "Open", "باز"), 1),
-                            Triple("settled", tr(state.lang, "Finished", "نهایی"), 1)
-                        ).forEach { (status, title, _) ->
-                            Surface(
-                                modifier = Modifier.weight(1f).fillMaxHeight()
-                                    .clickable {
-                                        if (filter.status != status) {
-                                            model.setBetHistoryQuery(filter.copy(status = status))
-                                        }
-                                    },
-                                shape = RoundedCornerShape(11.dp),
-                                color = if (selectedStatus == status) Palette.blue
-                                    else Color.Transparent
-                            ) {
-                                Box(contentAlignment = Alignment.Center) {
-                                    Text(title, fontSize = 11.sp, maxLines = 1,
+                        val tabs = listOf(
+                            "all" to tr(state.lang, "All", "همه"),
+                            "open" to tr(state.lang, "Open", "باز"),
+                            "settled" to tr(state.lang, "Finished", "نهایی")
+                        )
+                        val tabWidth = maxWidth / tabs.size
+                        val targetIndex = tabs.indexOfFirst { it.first == selectedStatus }
+                            .coerceAtLeast(0)
+                        val indicatorOffset by animateDpAsState(
+                            targetValue = tabWidth * targetIndex,
+                            animationSpec = tween(330, easing = FastOutSlowInEasing),
+                            label = "myBetsStatusSlide184"
+                        )
+                        Box(
+                            modifier = Modifier.offset(x = indicatorOffset)
+                                .width(tabWidth).fillMaxHeight()
+                                .background(Palette.blue, RoundedCornerShape(11.dp))
+                        )
+                        Row(Modifier.fillMaxSize()) {
+                            tabs.forEach { (status, title) ->
+                                val active = selectedStatus == status
+                                val labelColor by animateColorAsState(
+                                    targetValue = if (active) Color.White else Color(0xFFC3C4CB),
+                                    animationSpec = tween(240),
+                                    label = "myBetsStatusText184"
+                                )
+                                Box(
+                                    modifier = Modifier.weight(1f).fillMaxHeight()
+                                        .clickable {
+                                            if (filter.status != status) {
+                                                model.setBetHistoryQuery(
+                                                    filter.copy(status = status)
+                                                )
+                                            }
+                                        },
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        title, fontSize = 11.sp, maxLines = 1,
                                         overflow = TextOverflow.Ellipsis,
-                                        color = if (selectedStatus == status) Color.White
-                                            else Color(0xFFC3C4CB),
-                                        fontWeight = if (selectedStatus == status)
-                                            FontWeight.Black else FontWeight.Medium)
+                                        color = labelColor,
+                                        fontWeight = if (active) FontWeight.Black
+                                            else FontWeight.Medium
+                                    )
                                 }
                             }
                         }
