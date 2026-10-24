@@ -804,6 +804,19 @@ class ApiClient {
         return NotificationPage(
             items = data.arr("items").objects().map { notification ->
                 val meta = notification.optJSONObject("data")
+                // Explicit localizations are optional. Never forward title, body
+                // or private account data to an external translation service.
+                val translated = meta?.optJSONObject("translations")
+                    ?: notification.optJSONObject("translations")
+                fun localStrings(field: String): Map<String, String> =
+                    listOf("en", "fa", "fa-IR", "fa-AF", "prs", "dari",
+                        "tr", "tr-TR", "hy", "hy-AM", "ar", "ar-SA",
+                        "az", "az-AZ", "ru", "ru-RU").mapNotNull { language ->
+                        translated?.optJSONObject(language)
+                            ?.optString(field, "")
+                            ?.trim()?.takeIf { it.isNotBlank() && it.length <= 5000 }
+                            ?.let { language to it }
+                    }.toMap()
                 UserNotification(
                     id = notification.str("id"),
                     eventKey = notification.str("eventKey"),
@@ -813,7 +826,10 @@ class ApiClient {
                     readAt = notification.str("readAt").takeIf(String::isNotBlank),
                     audience = if (meta?.str("audience") == "general") "general" else "personal",
                     ctaLabel = meta?.str("ctaLabel")?.trim()?.takeIf(String::isNotEmpty),
-                    ctaHref = meta?.str("ctaHref")?.trim()?.takeIf(String::isNotEmpty)
+                    ctaHref = meta?.str("ctaHref")?.trim()?.takeIf(String::isNotEmpty),
+                    localizedTitles = localStrings("title"),
+                    localizedBodies = localStrings("body"),
+                    localizedCtaLabels = localStrings("ctaLabel")
                 )
             },
             page = data.optInt("page", page),
