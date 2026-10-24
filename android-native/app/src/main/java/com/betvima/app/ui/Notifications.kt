@@ -78,6 +78,7 @@ fun NotificationsPage(state: AppState, model: AppViewModel) {
                 }
             }
             items(state.notifications, key = { it.id }) { note ->
+                val copy = displayNotification184(note, state.lang)
                 Surface(
                     modifier = Modifier.fillMaxWidth().clickable(enabled = note.readAt == null) {
                         model.markNotificationRead(note.id)
@@ -96,10 +97,10 @@ fun NotificationsPage(state: AppState, model: AppViewModel) {
                         }
                         Spacer(Modifier.width(12.dp))
                         Column(Modifier.weight(1f)) {
-                            Text(note.title, color = Palette.text, fontWeight = FontWeight.Black,
+                            Text(copy.title, color = Palette.text, fontWeight = FontWeight.Black,
                                 fontSize = 13.sp)
                             Spacer(Modifier.height(5.dp))
-                            Text(note.body, color = Palette.muted, fontSize = 12.sp)
+                            Text(copy.body, color = Palette.muted, fontSize = 12.sp)
                             Spacer(Modifier.height(10.dp))
                             Text(note.createdAt.take(16).replace("T", " · "),
                                 fontSize = 10.sp, color = Palette.muted)
