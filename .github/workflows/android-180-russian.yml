@@ -1,4 +1,5 @@
 name: BetVima Android 180 Russian Complete Localisation
+# Retrigger after reviewed Russian brand titles and regression tests.
 
 on:
   push:
