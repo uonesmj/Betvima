@@ -157,6 +157,27 @@ fun NotificationsPopup(
                 NotificationCategoryTabs(category, lang) { category = it }
                 Spacer(Modifier.height(14.dp))
                 Box(Modifier.weight(1f).fillMaxWidth()) {
+                    AnimatedContent(
+                        targetState = category,
+                        modifier = Modifier.fillMaxSize(),
+                        transitionSpec = {
+                            val direction = if (targetState.ordinal > initialState.ordinal) 1 else -1
+                            (slideInHorizontally(
+                                animationSpec = tween(280, easing = FastOutSlowInEasing),
+                                initialOffsetX = { width -> direction * width / 5 }
+                            ) + fadeIn(tween(200))) togetherWith
+                                (slideOutHorizontally(
+                                    animationSpec = tween(220, easing = FastOutSlowInEasing),
+                                    targetOffsetX = { width -> -direction * width / 5 }
+                                ) + fadeOut(tween(160)))
+                        },
+                        label = "notification184CategoryContent"
+                    ) { displayedCategory ->
+                        val notices = state.notifications.filter {
+                            notificationStillVisible(it.createdAt, System.currentTimeMillis()) &&
+                                notificationMatchesCategory(it, displayedCategory)
+                        }
+                        Box(Modifier.fillMaxSize()) {
                     when {
                         !state.signedIn -> NotificationEmpty(
                             title = tr(lang, "Sign in to view notifications", "برای مشاهده اعلان‌ها وارد شوید"),
@@ -232,6 +253,8 @@ fun NotificationsPopup(
                                 }
                             }
                             item(key = "bottom-space") { Spacer(Modifier.height(20.dp)) }
+                        }
+                    }
                         }
                     }
                 }
