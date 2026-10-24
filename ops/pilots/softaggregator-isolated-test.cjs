@@ -167,6 +167,48 @@ function handleCallback(request, c) {
   saveState(state); // durability BEFORE acknowledging a transaction
   return response;
 }
+function callbackStage(request, c) {
+  let url;
+  try { url = new URL(request.url, 'http://127.0.0.1:' + PORT); }
+  catch { return 'REJECT_URL'; }
+  if (request.method !== 'GET' || url.pathname !== CALLBACK_PATH) return 'REJECT_METHOD_PATH';
+  const fields = [...url.searchParams.entries()];
+  if (!fields.length || fields.length > 24) return 'REJECT_FIELDS';
+  const names = fields.map(([name]) => name);
+  if (new Set(names).size !== names.length ||
+      fields.some(([name, value]) => !name || /[&=]/.test(name) || value.includes('&')))
+    return 'REJECT_FIELDS';
+  const sorted = fields.sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0);
+  const plain = sorted.map(([key, value]) => key + '=' + value).join('&');
+  if (!equal(hmac(c.salt, plain), request.headers['x-signature']))
+    return 'REJECT_VENDOR_HMAC';
+  if (!equal(hmac(c.edge, new URLSearchParams(sorted).toString()),
+      request.headers['x-betvima-edge-signature']))
+    return 'REJECT_EDGE_HMAC';
+  const p = url.searchParams;
+  const timestamp = p.get('timestamp') || '';
+  if (!/^\d{10}(\d{3})?$/.test(timestamp)) return 'REJECT_TIMESTAMP';
+  const millis = Number(timestamp) * (timestamp.length === 10 ? 1000 : 1);
+  if (!Number.isSafeInteger(millis) || Math.abs(Date.now() - millis) > 30000)
+    return 'REJECT_TIMESTAMP';
+  const md5 = crypto.createHash('md5').update(timestamp + c.salt).digest('hex');
+  if (!equal(md5, p.get('key'))) return 'REJECT_VENDOR_MD5';
+  const state = readState();
+  if (p.get('username') !== state.username) return 'REJECT_PLAYER';
+  if (p.get('currency') !== 'USD') return 'REJECT_CURRENCY';
+  if (!['balance', 'debit', 'credit'].includes(p.get('action')))
+    return 'REJECT_ACTION';
+  return p.get('action').toUpperCase() + '_AUTH_OK';
+}
+function traceCallback(request, c) {
+  const state = readState();
+  const stage = callbackStage(request, c);
+  state.callbackStages = state.callbackStages || {};
+  state.callbackStages[stage] = (state.callbackStages[stage] || 0) + 1;
+  state.lastCallbackStage = stage;
+  saveState(state);
+  return handleCallback(request, c);
+}
 function serve() {
   const c = config();
   const server = http.createServer((req, res) => {
@@ -179,7 +221,7 @@ function serve() {
       res.end(JSON.stringify(payload));
     };
     if (req.method === 'GET' && req.url === '/__health') return write({ ok: true });
-    try { return write(handleCallback(req, c)); }
+    try { return write(traceCallback(req, c)); }
     catch { return write(DENIED); }
   });
   server.listen(PORT, '127.0.0.1');
@@ -304,6 +346,8 @@ async function status() {
   const local = Object.values(state.transactions);
   const debit = local.filter(t => t.action === 'debit').reduce((a, t) => a + t.amount, 0);
   const credit = local.filter(t => t.action === 'credit').reduce((a, t) => a + t.amount, 0);
+  log('CALLBACK_STAGES=' + JSON.stringify(state.callbackStages || {}));
+  log('LAST_CALLBACK_STAGE=' + (state.lastCallbackStage || 'NONE'));
   log('LOCAL_SIGNED_CALLBACKS=' + local.length);
   log('LOCAL_DEBITS_CENTS=' + debit);
   log('LOCAL_CREDITS_CENTS=' + credit);
@@ -353,14 +397,101 @@ function finish() {
   log('PILOT_HISTORY_ARCHIVE=' + archive);
   log('PRODUCTION_REAL_MONEY=UNCHANGED_OFF');
 }
+function inspectExistingCallback() {
+  const c = config();
+  const state = readState();
+  const logFile = '/var/log/nginx/access.log';
+  const lines = execFileSync('tail', ['-n', '25000', logFile], {
+    encoding: 'utf8', maxBuffer: 12 * 1024 * 1024
+  }).split('\n');
+  const found = [];
+  for (const line of lines) {
+    if (!line.includes(CALLBACK_PATH)) continue;
+    const match = line.match(/"(?:GET|POST) ([^ ]+) HTTP\/[0-9.]+"/);
+    if (!match) continue;
+    let u;
+    try { u = new URL(match[1], 'http://localhost'); } catch { continue; }
+    if (u.pathname === CALLBACK_PATH && u.searchParams.get('username') === state.username)
+      found.push({ line, u });
+  }
+  log('PILOT_CALLBACK_LOG_COUNT=' + found.length);
+  if (!found.length) return;
+  const { u, line } = found[found.length - 1];
+  const p = u.searchParams;
+  const timestamp = p.get('timestamp') || '';
+  const key = p.get('key') || '';
+  const matchKey = /^\d{10}(\d{3})?$/.test(timestamp) &&
+    equal(crypto.createHash('md5').update(timestamp + c.salt).digest('hex'), key);
+  const statusMatch = line.match(/" [0-9]{3} /);
+  log('LAST_PILOT_ACTION=' + String(p.get('action') || 'NONE').slice(0, 12));
+  log('LAST_PILOT_CURRENCY_MATCH=' + (p.get('currency') === 'USD'));
+  log('LAST_PILOT_TIMESTAMP_KEY_MATCH=' + matchKey);
+  log('LAST_PILOT_HTTP=' + (statusMatch ? statusMatch[0].trim() : 'UNKNOWN'));
+  const now = Math.floor(Date.now() / 1000);
+  const probe = new URLSearchParams({
+    action: 'balance', username: state.username, currency: 'USD',
+    call_id: 'local_probe_' + now, timestamp: String(now),
+    key: crypto.createHash('md5').update(String(now) + c.salt).digest('hex')
+  });
+  const sorted = [...probe.entries()].sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0);
+  const headers = {
+    'x-signature': hmac(c.salt, sorted.map(([k, v]) => k + '=' + v).join('&')),
+    'x-betvima-edge-signature': hmac(c.edge, new URLSearchParams(sorted).toString())
+  };
+  const result = handleCallback({
+    method: 'GET', url: CALLBACK_PATH + '?' + probe.toString(), headers
+  }, c);
+  log('LOCAL_DUAL_SIGNATURE_BALANCE_TEST=' +
+    (result.error === 0 && result.balance === state.balance ? 'PASS' : 'FAIL'));
+}
+async function restartServer() {
+  config();
+  readState();
+  const m = matchLocation(fs.readFileSync(fs.realpathSync(NGINX), 'utf8'));
+  if (!m.block.includes(PILOT_PROXY)) die('CALLBACK_NOT_ROUTED_TO_PILOT');
+  if (fs.existsSync(PID_FILE)) {
+    const old = Number(fs.readFileSync(PID_FILE, 'utf8'));
+    if (Number.isSafeInteger(old) && old > 1) {
+      try { process.kill(old, 'SIGTERM'); } catch {}
+    }
+  }
+  let closed = false;
+  for (let i = 0; i < 30; i++) {
+    await new Promise(resolve => setTimeout(resolve, 200));
+    try { await fetch('http://127.0.0.1:' + PORT + '/__health',
+      { signal: AbortSignal.timeout(250) }); }
+    catch { closed = true; break; }
+  }
+  if (!closed) die('OLD_PILOT_SERVER_DID_NOT_STOP');
+  const child = spawn(process.execPath, [__filename, 'serve'], {
+    detached: true, stdio: 'ignore', env: { ...process.env, NODE_ENV: 'production' }
+  });
+  child.unref();
+  fs.writeFileSync(PID_FILE, String(child.pid), { mode: 0o600 });
+  let ready = false;
+  for (let i = 0; i < 30; i++) {
+    await new Promise(resolve => setTimeout(resolve, 200));
+    try {
+      const r = await fetch('http://127.0.0.1:' + PORT + '/__health',
+        { signal: AbortSignal.timeout(300) });
+      if (r.ok) { ready = true; break; }
+    } catch {}
+  }
+  if (!ready) die('NEW_PILOT_SERVER_FAILED');
+  log('PILOT_SERVER_RESTARTED=YES');
+  log('CURRENT_GAME_SESSION_PRESERVED=YES');
+  log('REOPEN_EXISTING_GAME_AND_RUN_STATUS');
+}
 async function main() {
   if (ROOT_UID_REQUIRED) die('RUN_AS_ROOT_VIA_SUDO');
   const cmd = process.argv[2];
   if (cmd === 'serve') return serve();
   if (cmd === 'start') return start();
   if (cmd === 'status') return status();
+  if (cmd === 'inspect') return inspectExistingCallback();
+  if (cmd === 'restart') return restartServer();
   if (cmd === 'finish') return finish();
-  die('USAGE: node softaggregator-isolated-test.cjs start|status|finish');
+  die('USAGE: node softaggregator-isolated-test.cjs start|status|inspect|restart|finish');
 }
 main().catch(err => {
   log('RESULT=FAILED');
