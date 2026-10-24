@@ -135,8 +135,6 @@ def write_chunks(entries, max_chunk=110):
     for i in range(0,len(entries),max_chunk):
         part=entries[i:i+max_chunk]
         name=f"Azerbaijani179Part{1+i//max_chunk}"
-        code="package com.betvima.app.ui\n\ninternal object "+name+" {\n"+
-             "" # replaced below
         code = ("package com.betvima.app.ui\n\ninternal object "+name+
                 " {\n    val terms: Map<String, String> = mapOf(\n"+
                 ",\n".join("        "+kotlin(k)+" to "+kotlin(v) for k,v in part)+
