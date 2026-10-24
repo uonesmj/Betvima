@@ -60,11 +60,12 @@ internal fun selectedBottomNavigationId(state: AppState, menuOpen: Boolean): Str
 }
 
 /**
- * Permanent premium bottom navigation, still mounted in Scaffold.bottomBar.
+ * Fixed five-tab navigation with a compact, sliding solid-color selection pill.
  *
- * Maintains the exact five destinations/icons and the stable equal-width
- * footprint. Icon wells have a fixed size even when a tab is selected, so
- * changing pages cannot shift neighbouring tabs or the footer.
+ * Navigation stays in Scaffold.bottomBar, not the scrolling page content. Each
+ * route retains its original position, icon, label, click target and semantics.
+ * The selected pill is drawn BEHIND the entire item (icon + label), so there is
+ * no active outline, no shifting card and no line under the selection.
  */
 @Composable
 fun ReferenceAnimatedBottomNav(
@@ -73,118 +74,118 @@ fun ReferenceAnimatedBottomNav(
     onNavigate: (String) -> Unit
 ) {
     val selected = selectedBottomNavigationId(state, menuOpen)
-    val surface = if (selected == "bets") Palette.headerDark else Color(0xFF101114)
+    val selectedIndex = bottomDestinations.indexOfFirst { it.id == selected }
+    val barBackground = if (selected == "bets") Palette.headerDark else Color(0xFF101114)
 
     CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
         Column(
-            modifier = Modifier.fillMaxWidth().background(surface)
+            modifier = Modifier.fillMaxWidth().background(barBackground)
         ) {
-            // Subtle separator from page content, not a floating card or overlay.
+            // Just a neutral one-pixel divider; never a blue outline.
             Box(
                 Modifier.fillMaxWidth().height(1.dp)
-                    .background(Color(0xFF30343C))
+                    .background(Color(0xFF2A2D34))
             )
-            Row(
+            BoxWithConstraints(
                 modifier = Modifier.fillMaxWidth()
-                    .padding(horizontal = 5.dp, vertical = 5.dp)
-                    .height(83.dp),
-                verticalAlignment = Alignment.CenterVertically
+                    .padding(horizontal = 4.dp, vertical = 2.dp)
+                    .height(67.dp)
             ) {
-                bottomDestinations.forEach { item ->
-                    val active = selected == item.id
-                    val interactions = remember(item.id) { MutableInteractionSource() }
-                    val pressed by interactions.collectIsPressedAsState()
+                // Slide one continuous filled tab, rather than popping five
+                // independent backgrounds. All touch targets stay stationary.
+                val slotWidth = maxWidth / bottomDestinations.size
+                val targetX = slotWidth * selectedIndex.coerceAtLeast(0) + 3.dp
+                val sliderX by animateDpAsState(
+                    targetValue = targetX,
+                    animationSpec = tween(
+                        durationMillis = 340,
+                        easing = FastOutSlowInEasing
+                    ),
+                    label = "nav182SlidingActiveTab"
+                )
+                val sliderAlpha by animateFloatAsState(
+                    targetValue = if (selectedIndex >= 0) 1f else 0f,
+                    animationSpec = tween(170),
+                    label = "nav182ActiveTabVisibility"
+                )
 
-                    val iconTint by animateColorAsState(
-                        targetValue = if (active) Color(0xFF299AFF) else Color(0xFFBFC6D3),
-                        animationSpec = tween(220),
-                        label = "nav181IconTint"
-                    )
-                    val captionTint by animateColorAsState(
-                        targetValue = if (active) Color(0xFF57B0FF) else Color(0xFFADB6C6),
-                        animationSpec = tween(220),
-                        label = "nav181TextTint"
-                    )
-                    val haloTop by animateColorAsState(
-                        targetValue = if (active) Color(0xFF203752) else Color.Transparent,
-                        animationSpec = tween(230),
-                        label = "nav181HaloTop"
-                    )
-                    val haloBottom by animateColorAsState(
-                        targetValue = if (active) Color(0xFF13273C) else Color.Transparent,
-                        animationSpec = tween(230),
-                        label = "nav181HaloBottom"
-                    )
-                    val stroke by animateColorAsState(
-                        targetValue = if (active) Color(0xFF345C88) else Color.Transparent,
-                        animationSpec = tween(230),
-                        label = "nav181HaloStroke"
-                    )
-                    val iconScale by animateFloatAsState(
-                        targetValue = if (pressed) 0.93f else if (active) 1.07f else 1f,
-                        animationSpec = spring(
-                            dampingRatio = Spring.DampingRatioNoBouncy,
-                            stiffness = Spring.StiffnessMedium
-                        ),
-                        label = "nav181IconScale"
-                    )
-                    val indicatorWidth by animateDpAsState(
-                        targetValue = if (active) 30.dp else 0.dp,
-                        animationSpec = tween(240),
-                        label = "nav181Indicator"
-                    )
-
-                    Column(
-                        modifier = Modifier.weight(1f).fillMaxHeight()
-                            .clip(RoundedCornerShape(15.dp))
-                            .clickable(
-                                interactionSource = interactions,
-                                indication = ripple(bounded = true),
-                                role = Role.Tab,
-                                onClick = { onNavigate(item.id) }
+                Box(
+                    modifier = Modifier.align(Alignment.CenterStart)
+                        .offset(x = sliderX)
+                        .width(slotWidth - 6.dp)
+                        .height(59.dp)
+                        .graphicsLayer { alpha = sliderAlpha }
+                        .clip(RoundedCornerShape(15.dp))
+                        .background(
+                            Brush.horizontalGradient(
+                                colors = listOf(Color(0xFF1389F0), Color(0xFF0868D3))
                             )
-                            .semantics { this.selected = active }
-                            .padding(top = 3.dp, bottom = 3.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Box(
-                            modifier = Modifier.size(width = 54.dp, height = 42.dp)
+                        )
+                )
+
+                Row(
+                    modifier = Modifier.fillMaxSize(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    bottomDestinations.forEach { item ->
+                        val active = selected == item.id
+                        val interactions = remember(item.id) { MutableInteractionSource() }
+                        val pressed by interactions.collectIsPressedAsState()
+                        val tint by animateColorAsState(
+                            targetValue = if (active) Color.White else Color(0xFFBCC5D3),
+                            animationSpec = tween(190),
+                            label = "nav182IconTint"
+                        )
+                        val textTint by animateColorAsState(
+                            targetValue = if (active) Color.White else Color(0xFFB8C0CF),
+                            animationSpec = tween(190),
+                            label = "nav182CaptionTint"
+                        )
+                        val iconScale by animateFloatAsState(
+                            targetValue = if (pressed) .92f else if (active) 1.08f else 1f,
+                            animationSpec = spring(
+                                dampingRatio = Spring.DampingRatioNoBouncy,
+                                stiffness = Spring.StiffnessMedium
+                            ),
+                            label = "nav182IconScale"
+                        )
+
+                        Column(
+                            modifier = Modifier.weight(1f).fillMaxHeight()
                                 .clip(RoundedCornerShape(15.dp))
-                                .background(Brush.verticalGradient(
-                                    colors = listOf(haloTop, haloBottom)
-                                ))
-                                .border(1.dp, stroke, RoundedCornerShape(15.dp)),
-                            contentAlignment = Alignment.Center
+                                .clickable(
+                                    interactionSource = interactions,
+                                    indication = ripple(bounded = true),
+                                    role = Role.Tab,
+                                    onClick = { onNavigate(item.id) }
+                                )
+                                .semantics { this.selected = active },
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Center
                         ) {
                             Icon(
                                 imageVector = item.icon,
                                 contentDescription = tr(state.lang, item.en, item.fa),
-                                tint = iconTint,
-                                modifier = Modifier.size(27.dp).graphicsLayer {
+                                tint = tint,
+                                modifier = Modifier.size(26.dp).graphicsLayer {
                                     scaleX = iconScale
                                     scaleY = iconScale
                                 }
                             )
+                            Spacer(Modifier.height(4.dp))
+                            Text(
+                                text = tr(state.lang, item.en, item.fa),
+                                fontSize = 9.5.sp,
+                                lineHeight = 12.sp,
+                                fontWeight = if (active) FontWeight.Bold else FontWeight.Medium,
+                                color = textTint,
+                                maxLines = 1,
+                                softWrap = false,
+                                overflow = TextOverflow.Ellipsis,
+                                textAlign = TextAlign.Center,
+                                modifier = Modifier.fillMaxWidth().padding(horizontal = 1.dp)
+                            )
                         }
-                        Text(
-                            text = tr(state.lang, item.en, item.fa),
-                            fontSize = 10.sp,
-                            lineHeight = 13.sp,
-                            fontWeight = if (active) FontWeight.Bold else FontWeight.Medium,
-                            color = captionTint,
-                            maxLines = 1,
-                            softWrap = false,
-                            overflow = TextOverflow.Ellipsis,
-                            textAlign = TextAlign.Center,
-                            modifier = Modifier.fillMaxWidth().padding(horizontal = 1.dp)
-                        )
-                        Box(
-                            modifier = Modifier.width(indicatorWidth).height(3.dp)
-                                .clip(CircleShape).background(
-                                    if (active) Palette.blue else Color.Transparent
-                                )
-                        )
                     }
                 }
             }
