@@ -176,7 +176,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             ?: throw ApiFailure(401, "Please sign in to open a game")
         // Backend rechecks test-account allowlist and wallet eligibility.
         return api.casinoLaunch(token, gameId, demo = false,
-            lang = when(language) { Lang.FA, Lang.DARI -> "fa"; Lang.TR -> "tr"; Lang.HY -> "hy"; Lang.AR -> "en"; Lang.EN -> "en" })
+            lang = when(language) { Lang.FA, Lang.DARI -> "fa"; Lang.TR -> "tr"; Lang.HY -> "hy"; Lang.AR -> "en"; Lang.AZ -> "en"; Lang.EN -> "en" })
     }
 
     suspend fun casinoDemoLaunch(gameId: String, language: Lang): String {
