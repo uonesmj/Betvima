@@ -113,6 +113,18 @@ fun BetvimaApp(model: AppViewModel) {
         isForeground = false
         if (deviceSettings87.hasPin()) pinUnlocked87 = false
     }
+    // Keep both the header and Wallet in sync with the server's confirmed ledger.
+    // Lifecycle-aware: resume triggers an immediate read, and pauses cancel polling.
+    // A payment intent is NOT proof of credit, so balances are never incremented locally.
+    LaunchedEffect(state.signedIn, isForeground) {
+        if (state.signedIn && isForeground) {
+            model.refreshWallet()
+            while (true) {
+                delay(model.walletRefreshIntervalMs())
+                model.refreshWallet()
+            }
+        }
+    }
     // Refresh unread notifications while the app is foregrounded. No mock counters.
     LaunchedEffect(state.signedIn, isForeground) {
         if (state.signedIn && isForeground) {
