@@ -112,22 +112,39 @@ export async function settleCasinoCallback(event: SignedCallback): Promise<Casin
   const userId = userIdFromUsername(event.username);
   if (!userId || !casinoRealMoneyUserAllowed(userId)) return { error: 2, balance: 0 };
   const db = getDb();
-  // Every signed callback must independently fail closed on incomplete DB
-  // migrations, even if a client/game session was opened before deployment.
-  if (!(await casinoFinancialSchemaReady(db))) return { error: 2, balance: 0 };
-  const currency = await readCasinoPlayerWallet(db, userId);
-  // Never determine the first callback's wallet from a changeable user
-  // preference. All real-money sessions bind the original wallet BEFORE
-  // getGame; no binding means no cash is allowed to move.
-  if (!currency) return { error: 2, balance: 0 };
-  // Pre-existing rounds are independently immutable. A conflict is an error.
-  const originalRound = event.roundId && event.gameId
-    ? await db.queryOne<{ wallet_currency: string }>(
+  // Read-only preflight for a normal debit: run independent validations in
+  // parallel so network RTTs do not accumulate before the financial transaction.
+  // The checks, lock order and transaction itself remain unchanged; credits,
+  // balances and rollback debits retain their existing sequential path.
+  const readOriginalRound = () => event.roundId && event.gameId
+    ? db.queryOne<{ wallet_currency: string }>(
       'select wallet_currency from nova.softaggregator_round_fx ' +
       'where user_id=$1 and round_id=$2 and game_id=$3',
       [userId, event.roundId, event.gameId],
     )
-    : null;
+    : Promise.resolve(null);
+  const normalDebit = event.action === 'debit' && !event.rollback &&
+    Boolean(event.roundId && event.gameId);
+  let schemaReady: boolean;
+  let currency: Awaited<ReturnType<typeof readCasinoPlayerWallet>>;
+  let originalRound: { wallet_currency: string } | null;
+  if (normalDebit) {
+    [schemaReady, currency, originalRound] = await Promise.all([
+      casinoFinancialSchemaReady(db),
+      readCasinoPlayerWallet(db, userId),
+      readOriginalRound(),
+    ]);
+  } else {
+    schemaReady = await casinoFinancialSchemaReady(db);
+    if (!schemaReady) return { error: 2, balance: 0 };
+    currency = await readCasinoPlayerWallet(db, userId);
+    if (!currency) return { error: 2, balance: 0 };
+    originalRound = await readOriginalRound();
+  }
+  // Every callback must fail closed on incomplete schema or missing immutable
+  // wallet binding. Reading in parallel does not relax either condition.
+  if (!schemaReady || !currency) return { error: 2, balance: 0 };
+  // Pre-existing rounds are independently immutable. A conflict is an error.
   if (originalRound && originalRound.wallet_currency !== currency)
     return { error: 2, balance: 0 };
   if (currency === 'IRT' || currency === 'IRR') {
