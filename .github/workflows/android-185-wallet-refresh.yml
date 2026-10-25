@@ -1,0 +1,58 @@
+name: BetVima Android 185 Wallet Balance Auto Refresh
+
+on:
+  push:
+    branches: ['fix/android-185-wallet-balance-auto-refresh-20261025']
+    paths:
+      - 'android-native/**'
+      - '.github/workflows/android-185-wallet-refresh.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify foreground, server-only wallet synchronization
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          base=Path('android-native/app/src/main/java/com/betvima/app')
+          app=(base/'ui/BetvimaApp.kt').read_text()
+          model=(base/'ui/AppViewModel.kt').read_text()
+          policy=(base/'data/WalletRefresh185.kt').read_text()
+          gradle=Path('android-native/app/build.gradle.kts').read_text()
+          assert 'LaunchedEffect(state.signedIn, isForeground)' in app
+          assert 'model.refreshWallet()' in app
+          assert 'delay(model.walletRefreshIntervalMs())' in app
+          assert 'walletRequest == walletRequestNumber' in model
+          assert 'generation == sessionGeneration && request == walletRequestNumber' in model
+          assert 'api.wallet(jwt)' in model
+          assert 'mergeWalletRefresh185' in policy
+          assert 'versionCode = 185' in gradle and 'versionName = "0.185.0"' in gradle
+          print('PASS: wallet balance sync is read-only, foreground-only, and stale-response safe')
+          PY
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Install Android SDK dependencies
+        run: |
+          echo "ANDROID_HOME=/usr/local/lib/android/sdk" >> "$GITHUB_ENV"
+          /usr/local/lib/android/sdk/cmdline-tools/latest/bin/sdkmanager 'platforms;android-35' 'build-tools;35.0.0' || true
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.10.2'
+      - name: Run native tests and assemble APK
+        working-directory: android-native
+        run: gradle --no-daemon --stacktrace :app:testDebugUnitTest :app:assembleDebug
+      - uses: actions/upload-artifact@v4
+        with:
+          name: BetVima-Android-v0.185.0-Wallet-Auto-Refresh-Debug-APK
+          path: android-native/app/build/outputs/apk/debug/app-debug.apk
+          retention-days: 30
+          if-no-files-found: error
