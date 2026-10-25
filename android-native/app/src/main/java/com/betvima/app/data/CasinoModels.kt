@@ -38,7 +38,7 @@ fun parseCasinoEligibility(json: JSONObject): CasinoEligibility {
         it.matches(casinoMinorPattern) && it.toLongOrNull() != null
     }
     val minimum = json.optString("minStakeUsdMinor", "").takeIf {
-        it.matches(casinoMinorPattern) && (it.toLongOrNull() ?: 0L) >= 20L
+        it.matches(casinoMinorPattern) && (it.toLongOrNull() ?: 0L) >= 10L
     }
     return CasinoEligibility(
         realMoneyEnabled = json.optBoolean("realMoneyEnabled", false) &&
