@@ -170,7 +170,12 @@ fun CasinoPremiumHome(
         "other" to tr(state.lang, "Other games", "سایر بازی‌ها")
     )
     val realEnabled = eligibility?.realMoneyEnabled == true
-    val onPlay = if (realEnabled) onReal else onDemo
+    // UI-only choice. Existing demo/cash callbacks and server authorization stay unchanged.
+    var pendingModeGame by remember { mutableStateOf<CasinoGame?>(null) }
+    val onSelectMode: (CasinoGame) -> Unit = { game ->
+        if (realEnabled && state.signedIn) pendingModeGame = game else onDemo(game)
+    }
+    val onPlay = onSelectMode
     val providerNames = (providers + allKnown.map { it.provider } + provider)
         .filter { it.isNotBlank() }.distinct().sorted()
     fun top() { scope.launch { listState.smoothBackToTop() } }
@@ -229,7 +234,7 @@ fun CasinoPremiumHome(
                         CasinoGameShelf(
                             tr(state.lang, "BetVima games", "بازی‌های بت‌ویما"),
                             Icons.Default.Casino, original, displayWidth,
-                            launching, realEnabled, onDemo, onReal
+                            launching, realEnabled, onDemo, onSelectMode
                         )
                     }
                 }
@@ -238,7 +243,7 @@ fun CasinoPremiumHome(
                         CasinoGameShelf(
                             tr(state.lang, "Explore games", "کاوش بازی‌ها"),
                             Icons.Default.AutoAwesome, chosen.asReversed(), displayWidth,
-                            launching, realEnabled, onDemo, onReal
+                            launching, realEnabled, onDemo, onSelectMode
                         )
                     }
                 }
@@ -257,7 +262,7 @@ fun CasinoPremiumHome(
                                     "table" -> Icons.Default.TableRestaurant
                                     else -> Icons.Default.Apps
                                 },
-                                matching, displayWidth, launching, realEnabled, onDemo, onReal,
+                                matching, displayWidth, launching, realEnabled, onDemo, onSelectMode,
                                 onSeeAll = { onCategory(type); top() }
                             )
                         }
@@ -279,7 +284,7 @@ fun CasinoPremiumHome(
                                 CasinoGameShelf(
                                     tr(state.lang, "BetVima games", "بازی‌های بت‌ویما"),
                                     Icons.Default.Casino, original, displayWidth,
-                                    launching, realEnabled, onDemo, onReal
+                                    launching, realEnabled, onDemo, onSelectMode
                                 )
                             }
                         }
@@ -297,7 +302,7 @@ fun CasinoPremiumHome(
                                     "mines" -> Icons.Default.Brightness5
                                     "plinko" -> Icons.Default.Grain
                                     else -> Icons.Default.Bolt
-                                }, tiles, displayWidth, launching, realEnabled, onDemo, onReal,
+                                }, tiles, displayWidth, launching, realEnabled, onDemo, onSelectMode,
                                 onSeeAll = { subCategory = key })
                         }
                     }
@@ -364,7 +369,7 @@ fun CasinoPremiumHome(
                             row.forEach { game ->
                                 Box(Modifier.weight(1f)) {
                                     CasinoCover(game, displayWidth, launching == game.id,
-                                        realEnabled, { onDemo(game) }, { onReal(game) })
+                                        realEnabled, { onDemo(game) }, { onSelectMode(game) })
                                 }
                             }
                             repeat(3 - row.size) { Spacer(Modifier.weight(1f)) }
@@ -442,6 +447,51 @@ fun CasinoPremiumHome(
                 } else CasinoShortcuts(category, state.lang) { onCategory(it); top() }
             }
         }
+    }
+    pendingModeGame?.let { game ->
+        AlertDialog(
+            onDismissRequest = { pendingModeGame = null },
+            title = {
+                Text(tr(state.lang, "Choose how to play", "حالت بازی را انتخاب کنید"),
+                    color = Color.White, fontWeight = FontWeight.Bold)
+            },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text(game.name, color = secondary, fontSize = 13.sp,
+                        maxLines = 2, overflow = TextOverflow.Ellipsis)
+                    OutlinedButton(
+                        onClick = {
+                            pendingModeGame = null
+                            onDemo(game)
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(tr(state.lang, "Play Demo", "بازی آزمایشی"),
+                            color = Color.White)
+                    }
+                    Button(
+                        onClick = {
+                            pendingModeGame = null
+                            onReal(game)
+                        },
+                        enabled = realEnabled && state.signedIn,
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = ButtonDefaults.buttonColors(containerColor = Palette.green)
+                    ) {
+                        Text(tr(state.lang, "Play for Real", "بازی با پول واقعی"),
+                            color = Color.Black)
+                    }
+                }
+            },
+            confirmButton = {},
+            dismissButton = {
+                TextButton(onClick = { pendingModeGame = null }) {
+                    Text(tr(state.lang, "Cancel", "انصراف"), color = secondary)
+                }
+            },
+            containerColor = panel,
+            shape = RoundedCornerShape(20.dp)
+        )
     }
     if (searchDialog) {
         CasinoReferenceSearch(
