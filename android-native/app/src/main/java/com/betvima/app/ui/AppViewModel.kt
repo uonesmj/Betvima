@@ -93,6 +93,10 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     private var detailRequestNumber = 0
     private var factsInFlight = false
     private var accountRequestNumber = 0
+    // Header and Wallet observe one server-owned balance. Reject out-of-order reads.
+    private var walletRequestNumber = 0
+    private var walletRefreshInFlight = false
+    private var recentWalletPaymentUntilMs = 0L
     private var quoteGeneration = 0
     private var mainBetSubmitting = false
     private var mainOddsPolling = false
@@ -615,6 +619,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         closeMatch()
         quoteGeneration++
         accountRequestNumber++
+        walletRequestNumber++
+        recentWalletPaymentUntilMs = 0L
         historyRequest++
         sessionGeneration++
         vault.clear()
@@ -648,19 +654,54 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     suspend fun walletUsdRate(): String = api.walletUsdIrrRate(walletJwt())
     suspend fun walletCreateDeposit(payload: org.json.JSONObject, idempotency: String): WalletPaymentIntent {
         if (state.value.wallet?.integrity != "ok") throw ApiFailure(409, "Wallet ledger verification required")
-        return api.createWalletDeposit(walletJwt(), payload, idempotency)
+        val intent = api.createWalletDeposit(walletJwt(), payload, idempotency)
+        // Creating an intent is not payment confirmation; only an API wallet read may update money.
+        recentWalletPaymentUntilMs = android.os.SystemClock.elapsedRealtime() + 120_000L
+        refreshWallet()
+        return intent
     }
     suspend fun walletCreateWithdrawal(payload: org.json.JSONObject, idempotency: String): WalletPaymentIntent {
         if (state.value.wallet?.integrity != "ok") throw ApiFailure(409, "Wallet ledger verification required")
-        return api.createWalletWithdrawal(walletJwt(), payload, idempotency)
+        val intent = api.createWalletWithdrawal(walletJwt(), payload, idempotency)
+        recentWalletPaymentUntilMs = android.os.SystemClock.elapsedRealtime() + 120_000L
+        refreshWallet()
+        return intent
     }
-    suspend fun walletVoucherStatus(publicId: String): WalletPaymentIntent =
-        api.voucherPaymentStatus(walletJwt(), publicId)
+    suspend fun walletVoucherStatus(publicId: String): WalletPaymentIntent {
+        val intent = api.voucherPaymentStatus(walletJwt(), publicId)
+        refreshWallet()
+        return intent
+    }
+
+    /** Poll only while the app is foregrounded (driven by BetvimaApp). */
+    fun walletRefreshIntervalMs(): Long =
+        walletRefreshDelay185(android.os.SystemClock.elapsedRealtime() < recentWalletPaymentUntilMs)
+
+    /** Lightweight, read-only balance sync: never changes wallet amounts optimistically. */
+    fun refreshWallet() = viewModelScope.launch {
+        if (!state.value.signedIn || walletRefreshInFlight) return@launch
+        walletRefreshInFlight = true
+        val generation = sessionGeneration
+        val request = ++walletRequestNumber
+        try {
+            val jwt = vault.accessToken(api)?.takeIf(String::isNotBlank) ?: return@launch
+            val latest = api.wallet(jwt)
+            if (generation == sessionGeneration && request == walletRequestNumber &&
+                state.value.signedIn) {
+                mutable.update { it.copy(wallet = mergeWalletRefresh185(it.wallet, latest)) }
+            }
+        } catch (_: Exception) {
+            // Keep the last verified balance on offline/timeouts; never display invented funds.
+        } finally {
+            walletRefreshInFlight = false
+        }
+    }
 
     fun refreshAccount() = viewModelScope.launch {
         if (!state.value.signedIn) return@launch
         val generation = sessionGeneration
         val request = ++accountRequestNumber
+        val walletRequest = ++walletRequestNumber
         mutable.update { it.copy(accountLoading = true) }
         val jwt = vault.accessToken(api)
         if (jwt.isNullOrBlank()) {
@@ -698,7 +739,9 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 !state.value.signedIn) return@supervisorScope
             mutable.update {
                 it.copy(
-                    wallet = walletResult.getOrNull() ?: it.wallet,
+                    wallet = walletResult.getOrNull()
+                        ?.takeIf { walletRequest == walletRequestNumber }
+                        ?.let { fresh -> mergeWalletRefresh185(it.wallet, fresh) } ?: it.wallet,
                     accountName = remoteName ?: it.accountName,
                     bets = betResult.getOrNull()?.items ?: it.bets,
                     betsPage = betResult.getOrNull()?.page ?: it.betsPage,
@@ -871,8 +914,9 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             val page = api.wallet(jwt, previous.page + 1)
             if (generation == sessionGeneration && state.value.signedIn) mutable.update {
                 val prior = it.wallet ?: previous
-                it.copy(wallet = page.copy(transactions =
-                    (prior.transactions + page.transactions).distinctBy { tx -> tx.id }),
+                it.copy(wallet = prior.copy(
+                    transactions = (prior.transactions + page.transactions).distinctBy { tx -> tx.id },
+                    page = page.page, hasMore = page.hasMore),
                     moreWalletLoading = false)
             }
         } catch (ex: Exception) {
