@@ -1,0 +1,47 @@
+package com.betvima.app.data
+
+import org.junit.Assert.*
+import org.junit.Test
+
+class WalletRefresh185Test {
+    private fun wallet(balance: String, page: Int = 1, currency: String = "USD",
+        transactions: List<Transaction> = emptyList(), hasMore: Boolean = false
+    ) = Wallet(
+        availableMinor = balance, balanceMinor = balance,
+        heldMinor = "0", currency = currency, integrity = "ok",
+        transactions = transactions, page = page, hasMore = hasMore
+    )
+
+    @Test fun refreshDisplaysOnlyTheLatestServerConfirmedBalance() {
+        val first = wallet("1000")
+        val fresh = wallet("3500")
+        val merged = mergeWalletRefresh185(first, fresh)
+        assertEquals("3500", merged.availableMinor)
+        assertEquals("3500", merged.balanceMinor)
+        assertEquals(1, merged.page)
+    }
+
+    @Test fun freshStatementDoesNotErasePreviouslyLoadedTransactionHistory() {
+        val earlier = Transaction("earlier", "deposit", "1000", "2026-10-20")
+        val latest = Transaction("new", "deposit", "2500", "2026-10-25")
+        val old = wallet("1000", page = 2, transactions = listOf(earlier), hasMore = true)
+        val updated = wallet("3500", page = 1, transactions = listOf(latest, earlier))
+        val merged = mergeWalletRefresh185(old, updated)
+        assertEquals("3500", merged.availableMinor)
+        assertEquals(listOf("new", "earlier"), merged.transactions.map { it.id })
+        assertEquals(2, merged.page)
+        assertTrue(merged.hasMore)
+    }
+
+    @Test fun differentCurrencyDiscardOldStatementInsteadOfMixingFunds() {
+        val old = wallet("200000", page = 3, currency = "IRR",
+            transactions = listOf(Transaction("old", "deposit", "200000", "2026-10-24")))
+        val fresh = wallet("1000", currency = "USD")
+        assertEquals(fresh, mergeWalletRefresh185(old, fresh))
+    }
+
+    @Test fun activeWalletPollCadenceIsBounded() {
+        assertEquals(5_000L, walletRefreshDelay185(true))
+        assertEquals(12_000L, walletRefreshDelay185(false))
+    }
+}
