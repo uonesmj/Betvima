@@ -90,7 +90,9 @@ fun CasinoPremiumHome(
     onRetry: () -> Unit,
     onMore: () -> Unit,
     onDemo: (CasinoGame) -> Unit,
-    onReal: (CasinoGame) -> Unit
+    onReal: (CasinoGame) -> Unit,
+    fullscreen: Boolean,
+    onFullscreenChange: (Boolean) -> Unit
 ) {
     val fa = state.lang == Lang.FA
     val scope = rememberCoroutineScope()
@@ -173,12 +175,28 @@ fun CasinoPremiumHome(
     // UI-only choice. Existing demo/cash callbacks and server authorization stay unchanged.
     var pendingModeGame by remember { mutableStateOf<CasinoGame?>(null) }
     val onSelectMode: (CasinoGame) -> Unit = { game ->
-        if (realEnabled && state.signedIn) pendingModeGame = game else onDemo(game)
+        pendingModeGame = game
     }
     val onPlay = onSelectMode
     val providerNames = (providers + allKnown.map { it.provider } + provider)
         .filter { it.isNotBlank() }.distinct().sorted()
     fun top() { scope.launch { listState.smoothBackToTop() } }
+    val detailGame = pendingModeGame
+    if (detailGame != null) {
+        CasinoGameDetail188(
+            game = detailGame,
+            lang = state.lang,
+            allowedRealMoney = realEnabled,
+            signedIn = state.signedIn,
+            launching = launching == detailGame.id,
+            fullscreen = fullscreen,
+            onFullscreenChange = onFullscreenChange,
+            onBack = { pendingModeGame = null },
+            onDemo = { onDemo(detailGame) },
+            onReal = { onReal(detailGame) }
+        )
+        return
+    }
     Box(Modifier.fillMaxSize().background(ink).nestedScroll(nestedScroll)) {
         LazyColumn(
             state = listState,
@@ -234,7 +252,7 @@ fun CasinoPremiumHome(
                         CasinoGameShelf(
                             tr(state.lang, "BetVima games", "بازی‌های بت‌ویما"),
                             Icons.Default.Casino, original, displayWidth,
-                            launching, realEnabled, onDemo, onSelectMode
+                            launching, realEnabled, onSelectMode, onSelectMode
                         )
                     }
                 }
@@ -243,7 +261,7 @@ fun CasinoPremiumHome(
                         CasinoGameShelf(
                             tr(state.lang, "Explore games", "کاوش بازی‌ها"),
                             Icons.Default.AutoAwesome, chosen.asReversed(), displayWidth,
-                            launching, realEnabled, onDemo, onSelectMode
+                            launching, realEnabled, onSelectMode, onSelectMode
                         )
                     }
                 }
@@ -262,7 +280,7 @@ fun CasinoPremiumHome(
                                     "table" -> Icons.Default.TableRestaurant
                                     else -> Icons.Default.Apps
                                 },
-                                matching, displayWidth, launching, realEnabled, onDemo, onSelectMode,
+                                matching, displayWidth, launching, realEnabled, onSelectMode, onSelectMode,
                                 onSeeAll = { onCategory(type); top() }
                             )
                         }
@@ -284,7 +302,7 @@ fun CasinoPremiumHome(
                                 CasinoGameShelf(
                                     tr(state.lang, "BetVima games", "بازی‌های بت‌ویما"),
                                     Icons.Default.Casino, original, displayWidth,
-                                    launching, realEnabled, onDemo, onSelectMode
+                                    launching, realEnabled, onSelectMode, onSelectMode
                                 )
                             }
                         }
@@ -302,7 +320,7 @@ fun CasinoPremiumHome(
                                     "mines" -> Icons.Default.Brightness5
                                     "plinko" -> Icons.Default.Grain
                                     else -> Icons.Default.Bolt
-                                }, tiles, displayWidth, launching, realEnabled, onDemo, onSelectMode,
+                                }, tiles, displayWidth, launching, realEnabled, onSelectMode, onSelectMode,
                                 onSeeAll = { subCategory = key })
                         }
                     }
@@ -369,7 +387,7 @@ fun CasinoPremiumHome(
                             row.forEach { game ->
                                 Box(Modifier.weight(1f)) {
                                     CasinoCover(game, displayWidth, launching == game.id,
-                                        realEnabled, { onDemo(game) }, { onSelectMode(game) })
+                                        realEnabled, { onSelectMode(game) }, { onSelectMode(game) })
                                 }
                             }
                             repeat(3 - row.size) { Spacer(Modifier.weight(1f)) }
@@ -447,51 +465,6 @@ fun CasinoPremiumHome(
                 } else CasinoShortcuts(category, state.lang) { onCategory(it); top() }
             }
         }
-    }
-    pendingModeGame?.let { game ->
-        AlertDialog(
-            onDismissRequest = { pendingModeGame = null },
-            title = {
-                Text(tr(state.lang, "Choose how to play", "حالت بازی را انتخاب کنید"),
-                    color = Color.White, fontWeight = FontWeight.Bold)
-            },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Text(game.name, color = secondary, fontSize = 13.sp,
-                        maxLines = 2, overflow = TextOverflow.Ellipsis)
-                    OutlinedButton(
-                        onClick = {
-                            pendingModeGame = null
-                            onDemo(game)
-                        },
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text(tr(state.lang, "Play Demo", "بازی آزمایشی"),
-                            color = Color.White)
-                    }
-                    Button(
-                        onClick = {
-                            pendingModeGame = null
-                            onReal(game)
-                        },
-                        enabled = realEnabled && state.signedIn,
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = ButtonDefaults.buttonColors(containerColor = Palette.green)
-                    ) {
-                        Text(tr(state.lang, "Play for Real", "بازی با پول واقعی"),
-                            color = Color.Black)
-                    }
-                }
-            },
-            confirmButton = {},
-            dismissButton = {
-                TextButton(onClick = { pendingModeGame = null }) {
-                    Text(tr(state.lang, "Cancel", "انصراف"), color = secondary)
-                }
-            },
-            containerColor = panel,
-            shape = RoundedCornerShape(20.dp)
-        )
     }
     if (searchDialog) {
         CasinoReferenceSearch(
@@ -748,7 +721,7 @@ private fun CasinoCarousel(games: List<CasinoGame>, lang: Lang, realEnabled: Boo
                         modifier = Modifier.casinoBounce {
                             game?.let(onPlay)
                         }) {
-                        Text(if (realEnabled) tr(lang,"Play USD","بازی دلاری") else tr(lang,"Try demo","امتحان دمو"), color = Color.Black,
+                        Text(tr(lang,"View game","مشاهده بازی"), color = Color.Black,
                             fontSize = 12.sp, fontWeight = FontWeight.Bold,
                             modifier = Modifier.padding(horizontal = 13.dp, vertical = 8.dp))
                     }
@@ -919,7 +892,7 @@ private fun CasinoFeatured(game: CasinoGame, lang: Lang, realEnabled: Boolean, o
             Text(game.name, color = Color.White, fontSize = 12.sp,
                 fontWeight = FontWeight.Bold, maxLines = 2)
             Surface(color = Color.White, shape = RoundedCornerShape(11.dp)) {
-                Text(if (realEnabled) tr(lang,"Play USD","بازی دلاری") else tr(lang,"Try demo","امتحان دمو"), color = Color.Black,
+                Text(tr(lang,"View game","مشاهده بازی"), color = Color.Black,
                     fontSize = 12.sp, fontWeight = FontWeight.Bold,
                     modifier = Modifier.padding(horizontal = 15.dp, vertical = 8.dp))
             }
