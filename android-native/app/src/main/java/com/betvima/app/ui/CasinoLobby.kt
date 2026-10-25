@@ -81,12 +81,19 @@ fun CasinoLobby(state: AppState, model: AppViewModel) {
     var pendingRealGame by remember { mutableStateOf<CasinoGame?>(null) }
     var realMoneyAcknowledged by remember { mutableStateOf(false) }
     var gameUsesRealMoney by remember { mutableStateOf(false) }
+    var gameFullscreen by remember { mutableStateOf(false) }
+    var casinoForeground by remember { mutableStateOf(true) }
     var failedRealMoneyLaunch by remember { mutableStateOf(false) }
 
     val lifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
-            if (event == Lifecycle.Event.ON_RESUME) pilotRefreshSerial++
+            if (event == Lifecycle.Event.ON_RESUME) {
+                casinoForeground = true
+                pilotRefreshSerial++
+            } else if (event == Lifecycle.Event.ON_PAUSE) {
+                casinoForeground = false
+            }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
@@ -100,6 +107,18 @@ fun CasinoLobby(state: AppState, model: AppViewModel) {
             catch (cancel: CancellationException) { throw cancel }
             catch (_: Exception) { pilot = null } // Deny by default.
             finally { eligibilityLoading = false }
+        }
+    }
+
+    // Read-only, foreground-only balance sync during real-money sessions.
+    // Never calculate amounts from WebView or change the wallet locally.
+    LaunchedEffect(sessionUrl, gameUsesRealMoney, state.signedIn, casinoForeground) {
+        if (sessionUrl != null && gameUsesRealMoney && state.signedIn && casinoForeground) {
+            model.refreshWallet()
+            while (true) {
+                delay(2_500L)
+                model.refreshWallet()
+            }
         }
     }
 
@@ -245,6 +264,7 @@ fun CasinoLobby(state: AppState, model: AppViewModel) {
         }
     }
 
+    Box(Modifier.fillMaxSize()) {
     CasinoPremiumHome(
         state = state,
         model = model,
@@ -295,10 +315,12 @@ fun CasinoLobby(state: AppState, model: AppViewModel) {
                 realMoneyAcknowledged = false
                 pendingRealGame = game
             }
-        }
+        },
+        fullscreen = gameFullscreen,
+        onFullscreenChange = { gameFullscreen = it }
     )
     sessionUrl?.let { secureUrl ->
-        CasinoGameDialog(secureUrl, state.lang, gameUsesRealMoney) {
+        CasinoGameDialog(secureUrl, state.lang, gameUsesRealMoney, gameFullscreen) {
             sessionUrl = null
             if (gameUsesRealMoney && state.signedIn) {
                 // After returning from a game, fetch the authoritative wallet
@@ -309,6 +331,7 @@ fun CasinoLobby(state: AppState, model: AppViewModel) {
             }
         }
     }
+    } // Casino lobby/player content under the existing application chrome.
     pendingRealGame?.let { game ->
         AlertDialog(
             onDismissRequest = {
@@ -509,7 +532,9 @@ private fun CasinoEmptyState(message: String, lang: Lang, failed: Boolean, retry
 
 /** Provider HTML5 sessions run inside the native Android app, not on BetVima website. */
 @Composable
-private fun CasinoGameDialog(url: String, lang: Lang, realMoney: Boolean, onClose: () -> Unit) {
+private fun CasinoGameDialog(
+    url: String, lang: Lang, realMoney: Boolean, fullscreen: Boolean, onClose: () -> Unit
+) {
     val context = LocalContext.current
     var loading by remember(url) { mutableStateOf(true) }
     var pageFailed by remember(url) { mutableStateOf(false) }
@@ -525,8 +550,7 @@ private fun CasinoGameDialog(url: String, lang: Lang, realMoney: Boolean, onClos
             view = null
         }
     }
-    Dialog(onDismissRequest = onClose,
-        properties = DialogProperties(usePlatformDefaultWidth = false)) {
+    val gameContent: @Composable () -> Unit = {
         Surface(Modifier.fillMaxSize(), color = Palette.ink) {
             Column {
                 Row(Modifier.fillMaxWidth().height(55.dp).padding(horizontal = 8.dp),
@@ -595,5 +619,13 @@ private fun CasinoGameDialog(url: String, lang: Lang, realMoney: Boolean, onClos
                 )
             }
         }
+    }
+    if (fullscreen) {
+        Dialog(onDismissRequest = onClose,
+            properties = DialogProperties(usePlatformDefaultWidth = false)) {
+            gameContent()
+        }
+    } else {
+        gameContent()
     }
 }
