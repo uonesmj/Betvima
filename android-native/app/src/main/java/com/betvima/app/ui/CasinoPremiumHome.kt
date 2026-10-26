@@ -192,7 +192,6 @@ fun CasinoPremiumHome(
             fullscreen = fullscreen,
             onFullscreenChange = onFullscreenChange,
             onBack = { pendingModeGame = null },
-            onDemo = { onDemo(detailGame) },
             onReal = { onReal(detailGame) }
         )
         return
@@ -238,8 +237,8 @@ fun CasinoPremiumHome(
                             "بازی دلاری • موجودی $" + (eligibility?.displayedUsd ?: "0.00") +
                             " • حداقل $" + (eligibility?.displayedMinimumUsd ?: "0.20"))
                     else tr(state.lang,
-                        "Real-money play is not available for this account yet • Demo available",
-                        "بازی پول واقعی هنوز برای این حساب در دسترس نیست • دمو در دسترس است"),
+                        "Real-money play is not available for this account yet",
+                        "بازی پول واقعی هنوز برای این حساب در دسترس نیست"),
                     modifier = Modifier.fillMaxWidth().clickable(enabled = !eligibilityLoading, onClick = onRetry).padding(horizontal = 18.dp),
                     color = secondary, fontSize = 11.sp, lineHeight = 16.sp
                 )
