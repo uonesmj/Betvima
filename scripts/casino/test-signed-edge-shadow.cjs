@@ -116,6 +116,7 @@ async function send(body, signature) {
   }
 
   const signed = [];
+  const signedDb = [];
   for (let i = 0; i < 3; i++) {
     const b = bodyForSyntheticProbe();
     const signature = sign(null, b, privateKey).toString('base64');
@@ -127,10 +128,16 @@ async function send(body, signature) {
         result.json.mode !== 'SHADOW_ONLY' ||
         result.json.signed_transport !== true ||
         result.json.financial_operations_enabled !== false ||
-        result.json.wallet_modified !== false) {
+        result.json.wallet_modified !== false ||
+        result.json.db_operation !== 'SELECT_1' ||
+        typeof result.json.db_query_ms !== 'number' ||
+        !Number.isFinite(result.json.db_query_ms) ||
+        result.json.db_query_ms < 0 ||
+        result.json.db_query_ms > 15_000) {
       stop('SIGNED_SHADOW_RESPONSE_NOT_EXPECTED');
     }
     signed.push(result.ms);
+    signedDb.push(result.json.db_query_ms);
   }
   const original = bodyForSyntheticProbe();
   const validSignature = sign(null, original, privateKey).toString('base64');
@@ -146,9 +153,12 @@ async function send(body, signature) {
   }
 
   console.log('SHADOW_SIGNED_TIMES_MS=' + JSON.stringify(signed));
+  console.log('SHADOW_EDGE_DB_READ_ONLY_TIMES_MS=' + JSON.stringify(signedDb));
+  console.log('SHADOW_EDGE_DB_READ_ONLY_AVG_MS=' + (signedDb.reduce((a,b) => a+b,0) / signedDb.length).toFixed(1));
   console.log('SHADOW_REGION=eu-west-1');
   console.log('SHADOW_SIGNED_TRANSPORT_VERIFIED=true');
   console.log('SHADOW_UNSIGNED_AND_TAMPERED_REJECTED=true');
+  console.log('EDGE_DB_QUERY=SELECT_1_ONLY');
   console.log('FINANCIAL_TRANSACTIONS_SENT=0');
   console.log('NGINX_CALLBACK_STILL_UNCHANGED_BY_THIS_SCRIPT=true');
   console.log('SHADOW_TRANSPORT_TEST_SUCCESS');
