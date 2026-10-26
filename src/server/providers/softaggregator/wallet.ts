@@ -113,10 +113,10 @@ export async function settleCasinoCallback(event: SignedCallback): Promise<Casin
   const userId = userIdFromUsername(event.username);
   if (!userId || !casinoRealMoneyUserAllowed(userId)) return { error: 2, balance: 0 };
   const db = getDb();
-  // Read-only preflight for a normal debit: run independent validations in
-  // parallel so network RTTs do not accumulate before the financial transaction.
-  // The checks, lock order and transaction itself remain unchanged; credits,
-  // balances and rollback debits retain their existing sequential path.
+  // For ordinary (non-rollback) Debit AND Credit, perform only independent
+  // read-only preflight checks concurrently. Each check must still succeed
+  // before any write; transaction, lock order, currency and country rules
+  // remain unchanged. Rollbacks retain the original sequential path.
   const readOriginalRound = () => event.roundId && event.gameId
     ? db.queryOne<{ wallet_currency: string }>(
       'select wallet_currency from nova.softaggregator_round_fx ' +
@@ -124,12 +124,13 @@ export async function settleCasinoCallback(event: SignedCallback): Promise<Casin
       [userId, event.roundId, event.gameId],
     )
     : Promise.resolve(null);
-  const normalDebit = event.action === 'debit' && !event.rollback &&
-    Boolean(event.roundId && event.gameId);
+  const normalFinancialCallback =
+    (event.action === 'debit' || event.action === 'credit') &&
+    !event.rollback && Boolean(event.roundId && event.gameId);
   let schemaReady: boolean;
   let currency: Awaited<ReturnType<typeof readCasinoPlayerWallet>>;
   let originalRound: { wallet_currency: string } | null;
-  if (normalDebit) {
+  if (normalFinancialCallback) {
     [schemaReady, currency, originalRound] = await Promise.all([
       casinoFinancialSchemaReady(db),
       readCasinoPlayerWallet(db, userId),
