@@ -403,7 +403,7 @@ fun CasinoLobby(state: AppState, model: AppViewModel) {
                 Column {
                     Text(if (failedRealMoneyLaunch)
                         tr(state.lang, "Game launch failed", "خطا در اجرای بازی")
-                        else tr(state.lang, "Demo launch failed", "خطا در اجرای دمو"),
+                        else tr(state.lang, "Game launch failed", "خطا در اجرای بازی"),
                         fontWeight = FontWeight.Bold)
                     Text(gameName, style = MaterialTheme.typography.titleSmall)
                 }
@@ -493,22 +493,7 @@ private fun CasinoGameCard(
                         Text(tr(lang, "Play USD", "بازی با دلار"), fontSize = 12.sp)
                     }
                 }
-                Surface(color = if (game.demoSupported) Palette.greenLight else Palette.paper,
-                    shape = RoundedCornerShape(9.dp)) {
-                    Row(Modifier.fillMaxWidth().padding(vertical = 9.dp, horizontal = 8.dp),
-                        horizontalArrangement = Arrangement.Center,
-                        verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Default.PlayArrow,
-                            null, tint = if (game.demoSupported) Palette.ink else Palette.muted,
-                            modifier = Modifier.size(17.dp))
-                        Spacer(Modifier.width(3.dp))
-                        Text(if (game.demoSupported)
-                            tr(lang, "Play demo", "بازی آزمایشی")
-                            else tr(lang, "Try demo", "امتحان دمو"),
-                            color = if (game.demoSupported) Palette.ink else Palette.muted,
-                            fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                    }
-                }
+
             }
         }
     }
@@ -560,7 +545,7 @@ private fun CasinoGameDialog(
                             tint = Color.White)
                     }
                     Text(if (realMoney) tr(lang, "Casino · USD", "کازینو · دلاری")
-                        else tr(lang, "Casino · Demo", "کازینو · آزمایشی"),
+                        else tr(lang, "Casino", "کازینو"),
                         color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.Bold,
                         modifier = Modifier.weight(1f))
                     CasinoTag("USD", Palette.gold)
