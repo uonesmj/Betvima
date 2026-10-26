@@ -195,8 +195,21 @@ export async function settleCasinoCallback(event: SignedCallback): Promise<Casin
     }
     // Follow the same advisory-lock ordering as post_wallet_entry before locking wallet row.
     await tx.query('select pg_advisory_xact_lock(hashtext($1))', ['wallet:' + userId + ':USD']);
-    const p = await getProfile(tx, userId);
-    if (!p) return { error: 2, balance: 0 };
+    // Earned ordinary credits must be payable even after country, KYC or
+    // self-exclusion changes. Previously we loaded the entire eligibility
+    // profile only to test existence; do the identical existence check with
+    // a minimal query. Debit and ALL rollback paths keep getProfile intact.
+    const ordinaryCredit = event.action === 'credit' && !event.rollback;
+    let p: ProfileRow | null = null;
+    if (ordinaryCredit) {
+      const exists = await tx.queryOne<{ found: number }>(
+        'select 1 as found from nova.profiles where id = $1', [userId],
+      );
+      if (!exists) return { error: 2, balance: 0 };
+    } else {
+      p = await getProfile(tx, userId);
+      if (!p) return { error: 2, balance: 0 };
+    }
     await tx.query(
       "insert into nova.wallets(user_id,currency,balance_minor) values ($1,'USD',0) on conflict (user_id,currency) do nothing",
       [userId],
@@ -243,7 +256,7 @@ export async function settleCasinoCallback(event: SignedCallback): Promise<Casin
       error = 2;
     } else if (isDebit &&
       (before < event.amountMinor! ||
-        (!event.rollback && (!accountCanBet(p) || p.currency !== currency || event.amountMinor! < SOFTAGGREGATOR_MIN_BET_MINOR ||
+        (!event.rollback && (!p || !accountCanBet(p) || p.currency !== currency || event.amountMinor! < SOFTAGGREGATOR_MIN_BET_MINOR ||
           !(await limitAllows(tx, userId, event.amountMinor!, p)))))) {
       error = 1;
     } else {
