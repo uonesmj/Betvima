@@ -108,11 +108,25 @@ export class PostgresDb implements Db {
     return this.query<Record<string, unknown>>(sql, values as SqlParam[], options) as Promise<T[]>;
   }
 
+  // Only SoftAggregator's ordinary debit opts into the single-timeout path.
+  // All existing transaction callers retain their previous per-query SET LOCAL.
+  async transactionForCasinoDebit<T>(fn: (tx: Db) => Promise<T>): Promise<T> {
+    return this.runTransaction(fn, true);
+  }
+
   async transaction<T>(fn: (tx: Db) => Promise<T>): Promise<T> {
+    return this.runTransaction(fn, false);
+  }
+
+  private async runTransaction<T>(fn: (tx: Db) => Promise<T>, singleTimeout: boolean): Promise<T> {
     const client = await this.pool.connect();
     try {
       await client.query('begin read write');
-      const tx = new TransactionDb(client, this.statementTimeoutMs, this.kind);
+      if (singleTimeout) {
+        // Same 15s statement timeout as the old path, set once per transaction.
+        await client.query(`set local statement_timeout = ${Math.max(1000, Math.trunc(this.statementTimeoutMs))}`);
+      }
+      const tx = new TransactionDb(client, this.statementTimeoutMs, this.kind, singleTimeout);
       const result = await fn(tx);
       await client.query('commit');
       return result;
@@ -141,14 +155,23 @@ export class PostgresDb implements Db {
 
 class TransactionDb implements Db {
   readonly kind: 'postgres' | 'supabase';
-  constructor(private client: PoolClient, private statementTimeoutMs: number, kind: 'postgres' | 'supabase') {
+  private currentTimeoutMs: number;
+
+  constructor(private client: PoolClient, private statementTimeoutMs: number, kind: 'postgres' | 'supabase', private singleTimeout = false) {
     this.kind = kind;
+    this.currentTimeoutMs = Math.max(1000, Math.trunc(statementTimeoutMs));
   }
 
   private async run<T>(sql: string, params?: SqlParam[], options?: DbQueryOptions): Promise<T[]> {
     const values = params?.map(param) ?? [];
-    const timeout = options?.timeoutMs ?? this.statementTimeoutMs;
-    await this.client.query(`set local statement_timeout = ${Math.max(1000, Math.trunc(timeout))}`);
+    const timeout = Math.max(1000, Math.trunc(options?.timeoutMs ?? this.statementTimeoutMs));
+    // A debit sets the same timeout at transaction start. Preserve custom overrides,
+    // and restore the default when the following query requests it again.
+    // All other transactions continue setting the timeout before every statement.
+    if (!this.singleTimeout || this.currentTimeoutMs !== timeout) {
+      await this.client.query(`set local statement_timeout = ${timeout}`);
+      this.currentTimeoutMs = timeout;
+    }
     const result = await this.client.query(sql, values as unknown[]);
     return result.rows as T[];
   }
