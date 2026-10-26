@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
 import type { Db } from '@/lib/ports/db';
+import { PostgresDb } from '@/server/db/postgres';
 import { getUsdIrtRate } from '@/server/providers/arzhaam/client';
 import { SOFTAGGREGATOR_MIN_BET_MINOR, type SignedCallback } from './contract';
 import {
@@ -130,7 +131,7 @@ export async function settleFiatCasinoCallback(
   );
   const freshFx = prior ? null : await quote();
 
-  return db.transaction(async (tx) => {
+  const executeTransaction = async (tx: Db): Promise<BalanceResult> => {
     await tx.query('select pg_advisory_xact_lock(hashtext($1),hashtext($2))',
       ['softaggregator-callback', event.callId!]);
     const existing = await tx.queryOne<Receipt>(
@@ -266,5 +267,10 @@ export async function settleFiatCasinoCallback(
         error === 0 ? originalCreditId : null],
     );
     return respond(error, usdBalance);
-  });
+  };
+  // Optimize only normal fiat Debit; other actions and all rollback paths
+  // keep the original transaction behavior, limits and reconciliation.
+  return event.action === 'debit' && !event.rollback && db instanceof PostgresDb
+    ? db.transactionForCasinoDebit(executeTransaction)
+    : db.transaction(executeTransaction);
 }
