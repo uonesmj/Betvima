@@ -88,7 +88,11 @@ describe('BetVima independent Ed25519 Edge shadow transport', () => {
     expect(source).toContain("financial_operations_enabled: false");
     expect(source).toContain('wallet_modified: false');
     expect(source).toContain("request.method !== 'POST'");
-    expect(source).not.toContain('SUPABASE_DB_URL');
+    expect(source).toContain("Deno.env.get('SUPABASE_DB_URL')");
+    expect([...source.matchAll(/await sql`([^`]+)`/g)].map(m => m[1])).toEqual(['SELECT 1::integer AS probe']);
+    expect(source.indexOf('await verifyBridgeShadowProbe')).toBeLessThan(source.indexOf('await sql`'));
+    expect(source).toContain('financial_operations_enabled: false');
+    expect(source).not.toMatch(/(?:await sql`|query\()\s*(?:INSERT|UPDATE|DELETE|CALL|TRUNCATE)/i);
     expect(source).not.toContain('post_wallet_entry');
     expect(source).not.toContain('softaggregator_callback_receipts');
     expect(source).not.toContain('update nova.');
