@@ -126,11 +126,14 @@ export class PostgresDb implements Db {
   private async runTransaction<T>(fn: (tx: Db) => Promise<T>, singleTimeout: boolean): Promise<T> {
     const client = await this.pool.connect();
     try {
-      await client.query('begin read write');
-      if (singleTimeout) {
-        // Same 15s statement timeout as the old path, set once per transaction.
-        await client.query(`set local statement_timeout = ${Math.max(1000, Math.trunc(this.statementTimeoutMs))}`);
-      }
+      // One PostgreSQL simple-query network round trip instead of two on the
+      // ordinary casino debit/credit path. BEGIN and SET LOCAL still execute
+      // sequentially, in the *same* server-side transaction, before any write.
+      // No change to locking, financial guards, ledger posting or rollback.
+      const beginSql = singleTimeout
+        ? `begin read write; set local statement_timeout = ${Math.max(1000, Math.trunc(this.statementTimeoutMs))}`
+        : 'begin read write';
+      await client.query(beginSql);
       const tx = new TransactionDb(client, this.statementTimeoutMs, this.kind, singleTimeout);
       const result = await fn(tx);
       await client.query('commit');
