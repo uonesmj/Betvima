@@ -117,6 +117,7 @@ async function send(body, signature) {
 
   const signed = [];
   const signedDb = [];
+  const warmDb = [];
   for (let i = 0; i < 3; i++) {
     const b = bodyForSyntheticProbe();
     const signature = sign(null, b, privateKey).toString('base64');
@@ -133,11 +134,22 @@ async function send(body, signature) {
         typeof result.json.db_query_ms !== 'number' ||
         !Number.isFinite(result.json.db_query_ms) ||
         result.json.db_query_ms < 0 ||
-        result.json.db_query_ms > 15_000) {
+        result.json.db_query_ms > 15_000 ||
+        result.json.db_first_query_ms !== result.json.db_query_ms ||
+        !Array.isArray(result.json.db_warm_query_samples_ms) ||
+        result.json.db_warm_query_samples_ms.length !== 5 ||
+        result.json.db_warm_query_samples_ms.some(
+          ms => typeof ms !== 'number' || !Number.isFinite(ms) ||
+            ms < 0 || ms > 15_000) ||
+        typeof result.json.db_warm_query_avg_ms !== 'number' ||
+        !Number.isFinite(result.json.db_warm_query_avg_ms) ||
+        result.json.db_warm_query_avg_ms < 0 ||
+        result.json.db_warm_query_avg_ms > 15_000) {
       stop('SIGNED_SHADOW_RESPONSE_NOT_EXPECTED');
     }
     signed.push(result.ms);
     signedDb.push(result.json.db_query_ms);
+    warmDb.push(result.json.db_warm_query_avg_ms);
   }
   const original = bodyForSyntheticProbe();
   const validSignature = sign(null, original, privateKey).toString('base64');
@@ -155,6 +167,11 @@ async function send(body, signature) {
   console.log('SHADOW_SIGNED_TIMES_MS=' + JSON.stringify(signed));
   console.log('SHADOW_EDGE_DB_READ_ONLY_TIMES_MS=' + JSON.stringify(signedDb));
   console.log('SHADOW_EDGE_DB_READ_ONLY_AVG_MS=' + (signedDb.reduce((a,b) => a+b,0) / signedDb.length).toFixed(1));
+  console.log('SHADOW_EDGE_DB_FIRST_QUERY_SAMPLES_MS=' + JSON.stringify(signedDb));
+  console.log('SHADOW_EDGE_DB_WARM_AVG_SAMPLES_MS=' + JSON.stringify(warmDb));
+  console.log('SHADOW_EDGE_DB_WARM_AVG_MS=' +
+    (warmDb.reduce((a,b) => a+b,0) / warmDb.length).toFixed(1));
+  console.log('SHADOW_DB_QUERIES_PER_SIGNED_INVOCATION=6');
   console.log('SHADOW_REGION=eu-west-1');
   console.log('SHADOW_SIGNED_TRANSPORT_VERIFIED=true');
   console.log('SHADOW_UNSIGNED_AND_TAMPERED_REJECTED=true');
