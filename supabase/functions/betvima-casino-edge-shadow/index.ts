@@ -3,7 +3,8 @@
  *
  * Only source-authenticated synthetic probes are accepted. The public Supabase
  * anon JWT (verify_jwt=true at deployment) alone NEVER authorizes a request.
- * Environment: BV_CASINO_BRIDGE_ED25519_SPKI_B64 (public key, NOT a secret).
+ * Public Ed25519 SPKI key pinned from the operator's existing root-owned VPS
+ * private key. It is safe to store this PUBLIC key in source control.
  *
  * This is deliberately a separate route from the existing SoftAggregator
  * callback. Production callback must stay on the Namecheap VPS:3098.
@@ -18,6 +19,12 @@ declare const Deno: {
   serve(handler: (request: Request) => Promise<Response>): void;
 };
 
+// Pinned operator-provided Ed25519 PUBLIC key. The private key never leaves
+// the existing VPS and must never be committed or sent to Supabase.
+// Rotation requires a reviewed redeploy. Rejects any other signer's key.
+const PINNED_BRIDGE_SHADOW_ED25519_SPKI_B64 =
+  'MCowBQYDK2VwAyEAZ/H+1/rAxIccH4jY+wx7PE5wgFsotby7io0m6wx77cs=';
+
 const reply = (status: number, payload: object): Response =>
   new Response(JSON.stringify(payload), {
     status,
@@ -30,8 +37,6 @@ const reply = (status: number, payload: object): Response =>
 
 Deno.serve(async (request: Request): Promise<Response> => {
   if (request.method !== 'POST') return reply(405, { error: 'METHOD_NOT_ALLOWED' });
-  const key = Deno.env.get('BV_CASINO_BRIDGE_ED25519_SPKI_B64') ?? '';
-  if (!key) return reply(503, { error: 'SHADOW_VERIFY_KEY_NOT_CONFIGURED' });
 
   const length = request.headers.get('content-length');
   if (length && (!/^\d+$/.test(length) || Number(length) > 512)) {
@@ -53,7 +58,7 @@ Deno.serve(async (request: Request): Promise<Response> => {
   const check = await verifyBridgeShadowProbe(
     body,
     request.headers.get('x-betvima-bridge-signature') ?? '',
-    key,
+    PINNED_BRIDGE_SHADOW_ED25519_SPKI_B64,
     Deno.env.get('SB_REGION') ?? '',
   );
   if (!check.ok) return reply(401, { error: check.code });
