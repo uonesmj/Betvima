@@ -45,14 +45,32 @@ Deno.serve(async (request: Request): Promise<Response> => {
   if (!(request.headers.get('content-type') ?? '').toLowerCase().startsWith('application/json')) {
     return reply(415, { error: 'CONTENT_TYPE_REQUIRED' });
   }
-  let body: Uint8Array;
+  // Stream with a strict 512-byte ceiling. Reject chunked requests without
+  // Content-Length before buffering unbounded untrusted input.
+  const reader = request.body?.getReader();
+  if (!reader) return reply(400, { error: 'BODY_UNAVAILABLE' });
+  const chunks: Uint8Array[] = [];
+  let size = 0;
   try {
-    body = new Uint8Array(await request.arrayBuffer());
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      size += value.byteLength;
+      if (size > 512) {
+        await reader.cancel().catch(() => undefined);
+        return reply(413, { error: 'PAYLOAD_TOO_LARGE' });
+      }
+      chunks.push(value);
+    }
   } catch {
     return reply(400, { error: 'BODY_UNAVAILABLE' });
   }
-  if (body.byteLength > 512 || body.byteLength === 0) {
-    return reply(413, { error: 'PAYLOAD_SIZE_INVALID' });
+  if (size === 0) return reply(400, { error: 'EMPTY_BODY' });
+  const body = new Uint8Array(size);
+  let offset = 0;
+  for (const chunk of chunks) {
+    body.set(chunk, offset);
+    offset += chunk.byteLength;
   }
 
   const check = await verifyBridgeShadowProbe(
