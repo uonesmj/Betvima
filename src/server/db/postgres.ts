@@ -108,9 +108,10 @@ export class PostgresDb implements Db {
     return this.query<Record<string, unknown>>(sql, values as SqlParam[], options) as Promise<T[]>;
   }
 
-  // Only SoftAggregator's ordinary debit opts into the single-timeout path.
-  // All existing transaction callers retain their previous per-query SET LOCAL.
-  async transactionForCasinoDebit<T>(fn: (tx: Db) => Promise<T>): Promise<T> {
+  // Only SoftAggregator's ordinary (non-rollback) debit and credit opt into
+  // the single-timeout path. Every other transaction retains per-query SET LOCAL.
+  // PostgreSQL SET LOCAL persists through writes until COMMIT or ROLLBACK.
+  async transactionForCasinoCallback<T>(fn: (tx: Db) => Promise<T>): Promise<T> {
     return this.runTransaction(fn, true);
   }
 
@@ -165,7 +166,7 @@ class TransactionDb implements Db {
   private async run<T>(sql: string, params?: SqlParam[], options?: DbQueryOptions): Promise<T[]> {
     const values = params?.map(param) ?? [];
     const timeout = Math.max(1000, Math.trunc(options?.timeoutMs ?? this.statementTimeoutMs));
-    // A debit sets the same timeout at transaction start. Preserve custom overrides,
+    // An ordinary casino debit/credit sets the same timeout at transaction start. Preserve custom overrides,
     // and restore the default when the following query requests it again.
     // All other transactions continue setting the timeout before every statement.
     if (!this.singleTimeout || this.currentTimeoutMs !== timeout) {

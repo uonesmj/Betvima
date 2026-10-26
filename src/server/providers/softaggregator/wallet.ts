@@ -278,9 +278,9 @@ export async function settleCasinoCallback(event: SignedCallback): Promise<Casin
     );
     return safeResponse(error, resultBalance);
   };
-  // No change to Credit, Balance or any rollback: only ordinary Debit uses
-  // the single-timeout transaction and its original lock/ledger ordering.
-  return normalDebit && db instanceof PostgresDb
-    ? db.transactionForCasinoDebit(executeTransaction)
+  // Ordinary Debit and Credit reuse the transaction-local timeout. Balance
+  // and every rollback retain their original path and lock/ledger ordering.
+  return (event.action === 'debit' || event.action === 'credit') && !event.rollback && db instanceof PostgresDb
+    ? db.transactionForCasinoCallback(executeTransaction)
     : db.transaction(executeTransaction);
 }
