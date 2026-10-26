@@ -54,7 +54,7 @@ def candidate_files():
         stop('ALREADY_OPTIMIZED')
 
     pg = replace_once(pg,
-        '  async transaction<T>(fn: (tx: Db) => Promise<T>): Promise<T> {\\n    const client = await this.pool.connect();',
+        '  async transaction<T>(fn: (tx: Db) => Promise<T>): Promise<T> {\n    const client = await this.pool.connect();',
         '''  // The single SET LOCAL optimization is exclusive to ordinary signed casino
   // debit/credit. All other transactions preserve their current behavior.
   async transactionForCasinoCallback<T>(fn: (tx: Db) => Promise<T>): Promise<T> {
@@ -70,7 +70,7 @@ def candidate_files():
         'TRANSACTION_ENTRY')
 
     pg = replace_once(pg,
-        "      await client.query('begin read write');\\n      const tx = new TransactionDb(client, this.statementTimeoutMs, this.kind);",
+        "      await client.query('begin read write');\n      const tx = new TransactionDb(client, this.statementTimeoutMs, this.kind);",
         """      await client.query('begin read write');
       if (singleTimeout) {
         // SET LOCAL remains in force until COMMIT/ROLLBACK, including after
@@ -106,14 +106,14 @@ def candidate_files():
 
     usd = original[FILES[1]]
     usd = replace_once(usd, "import { getDb } from '@/server/db';",
-        "import { getDb } from '@/server/db';\\nimport { PostgresDb } from '@/server/db/postgres';",
+        "import { getDb } from '@/server/db';\nimport { PostgresDb } from '@/server/db/postgres';",
         'USD_POSTGRES_IMPORT')
     usd = replace_once(usd,
         '  return db.transaction(async (tx) => {',
         '  const executeTransaction = async (tx: Db): Promise<CasinoBalanceResponse> => {',
         'USD_TRANSACTION_ENTRY')
     usd = replace_once(usd,
-        '    return safeResponse(error, resultBalance);\\n  });\\n}',
+        '    return safeResponse(error, resultBalance);\n  });\n}',
         """    return safeResponse(error, resultBalance);
   };
   // Financial rules, wallet locks, receipt and settlement statements above
@@ -127,14 +127,14 @@ def candidate_files():
 
     fiat = original[FILES[2]]
     fiat = replace_once(fiat, "import type { Db } from '@/lib/ports/db';",
-        "import type { Db } from '@/lib/ports/db';\\nimport { PostgresDb } from '@/server/db/postgres';",
+        "import type { Db } from '@/lib/ports/db';\nimport { PostgresDb } from '@/server/db/postgres';",
         'FIAT_POSTGRES_IMPORT')
     fiat = replace_once(fiat,
         '  return db.transaction(async (tx) => {',
         '  const executeTransaction = async (tx: Db): Promise<BalanceResult> => {',
         'FIAT_TRANSACTION_ENTRY')
     fiat = replace_once(fiat,
-        '    return respond(error, usdBalance);\\n  });\\n}',
+        '    return respond(error, usdBalance);\n  });\n}',
         """    return respond(error, usdBalance);
   };
   // Currency conversion, FX, limits and reconciliation above are unmodified.
