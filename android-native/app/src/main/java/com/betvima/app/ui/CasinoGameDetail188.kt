@@ -10,7 +10,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBackIosNew
 import androidx.compose.material.icons.filled.Casino
-import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -40,7 +39,6 @@ fun CasinoGameDetail188(
     fullscreen: Boolean,
     onFullscreenChange: (Boolean) -> Unit,
     onBack: () -> Unit,
-    onDemo: () -> Unit,
     onReal: () -> Unit
 ) {
     val dark = Color(0xFF141414)
@@ -139,32 +137,15 @@ fun CasinoGameDetail188(
                                 checkedTrackColor = blue,
                                 checkedThumbColor = Color.White))
                     }
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(9.dp),
-                        modifier = Modifier.fillMaxWidth()
+                    Button(
+                        onClick = onReal,
+                        enabled = signedIn && allowedRealMoney && !launching,
+                        modifier = Modifier.fillMaxWidth().height(53.dp),
+                        shape = RoundedCornerShape(14.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = blue)
                     ) {
-                        Button(
-                            onClick = onReal,
-                            enabled = signedIn && allowedRealMoney && !launching,
-                            modifier = Modifier.weight(1f).height(53.dp),
-                            shape = RoundedCornerShape(14.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = blue)
-                        ) {
-                            Text(tr(lang, "Play", "بازی واقعی"),
-                                fontSize = 15.sp, fontWeight = FontWeight.Bold)
-                        }
-                        Button(
-                            onClick = onDemo, enabled = !launching,
-                            modifier = Modifier.weight(1f).height(53.dp),
-                            shape = RoundedCornerShape(14.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF303033))
-                        ) {
-                            Icon(Icons.Default.PlayArrow, null, modifier = Modifier.size(17.dp))
-                            Spacer(Modifier.width(3.dp))
-                            Text(tr(lang, "Demo mode", "حالت دمو"),
-                                fontSize = 14.sp, fontWeight = FontWeight.Bold,
-                                maxLines = 1)
-                        }
+                        Text(tr(lang, "Play", "بازی واقعی"),
+                            fontSize = 15.sp, fontWeight = FontWeight.Bold)
                     }
                     if (launching) {
                         Spacer(Modifier.height(8.dp))
@@ -173,8 +154,8 @@ fun CasinoGameDetail188(
                     if (!allowedRealMoney) {
                         Spacer(Modifier.height(11.dp))
                         Text(
-                            tr(lang, "Real-money play is unavailable for this account. Demo can still be tried.",
-                                "بازی واقعی برای این حساب در دسترس نیست. امکان امتحان دمو وجود دارد."),
+                            tr(lang, "Real-money play is unavailable for this account.",
+                                "بازی واقعی برای این حساب در دسترس نیست."),
                             color = muted, fontSize = 11.sp, lineHeight = 16.sp
                         )
                     }
