@@ -56,6 +56,11 @@ function makeFakeDb(initial = 1000n, held = 200n) {
       if (sql.includes('from nova.softaggregator_callback_receipts')) {
         return receipts.get(String(params[0])) ?? null;
       }
+      // Ordinary credits only need to prove the profile exists; they must
+      // not be blocked by later country/KYC changes to previously earned wins.
+      if (sql.includes('select 1 as found from nova.profiles where id = $1')) {
+        return { found: 1 };
+      }
       if (sql.includes('from nova.profiles p')) {
         return {
           status: 'active', age_verified: ageVerified, kyc_status: kycStatus,
