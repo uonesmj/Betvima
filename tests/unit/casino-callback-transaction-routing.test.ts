@@ -38,8 +38,8 @@ const event = (
 
 describe('signed casino callback transaction routing', () => {
   let db: PostgresDb;
-  let fast: ReturnType<typeof vi.spyOn>;
-  let regular: ReturnType<typeof vi.spyOn>;
+  let fast: unknown;
+  let regular: unknown;
 
   beforeEach(() => {
     vi.restoreAllMocks();
