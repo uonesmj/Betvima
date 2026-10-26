@@ -13,6 +13,8 @@
 // Deno Edge requires explicit .ts URLs. Edge compilation resolves this import.
 // @ts-ignore TS5097: required by Deno's explicit TypeScript import convention
 import { verifyBridgeShadowProbe } from './verify.ts';
+// @ts-ignore Deno npm: specifier is resolved by the Edge runtime, not Next.js.
+import postgres from 'npm:postgres@3.4.5';
 
 declare const Deno: {
   env: { get(name: string): string | undefined };
@@ -24,6 +26,18 @@ declare const Deno: {
 // Rotation requires a reviewed redeploy. Rejects any other signer's key.
 const PINNED_BRIDGE_SHADOW_ED25519_SPKI_B64 =
   'MCowBQYDK2VwAyEAZ/H+1/rAxIccH4jY+wx7PE5wgFsotby7io0m6wx77cs=';
+
+// Database connectivity is used for a HARD-CODED SELECT 1 ONLY and solely
+// after authenticating a signed synthetic probe. No customer data or financial
+// tables are queried and this route cannot post ledger entries.
+const databaseUrl = Deno.env.get('SUPABASE_DB_URL') ?? '';
+const sql = databaseUrl ? postgres(databaseUrl, {
+  max: 1,
+  prepare: false,
+  ssl: 'require',
+  connect_timeout: 10,
+  idle_timeout: 60,
+}) : null;
 
 const reply = (status: number, payload: object): Response =>
   new Response(JSON.stringify(payload), {
@@ -80,7 +94,20 @@ Deno.serve(async (request: Request): Promise<Response> => {
     Deno.env.get('SB_REGION') ?? '',
   );
   if (!check.ok) return reply(401, { error: check.code });
+  if (!sql) return reply(503, { error: 'READ_ONLY_PROBE_DB_NOT_CONFIGURED' });
+  let dbMs: number;
+  try {
+    const start = performance.now();
+    const rows = await sql`SELECT 1::integer AS probe`;
+    dbMs = Math.round((performance.now() - start) * 10) / 10;
+    if (Number(rows[0]?.probe) !== 1) throw new Error('DB_PROBE_BAD_RESULT');
+  } catch {
+    // Never emit connection details, SQL errors, access tokens or wallet data.
+    return reply(503, { error: 'READ_ONLY_PROBE_DB_UNAVAILABLE' });
+  }
   return reply(200, {
+    db_query_ms: dbMs,
+    db_operation: 'SELECT_1',
     ok: true,
     signed_transport: true,
     region: 'eu-west-1',
