@@ -2,7 +2,7 @@
 """Prepare RTT4 in a fresh local release, without touching a live service.
 
 Must run as root on the existing VPS.  Uses exact fail-closed source anchors.
-Only SoftAggregator wallet.ts and the corresponding unit-test mock are edited.
+Only SoftAggregator wallet.ts, Postgres pool transport, and a unit-test mock are edited.
 Keeps .env, countries, FX, financial ledger, Nginx and PM2 untouched.
 
 After success, caller may run typecheck/tests/build in this isolated release.
@@ -18,6 +18,7 @@ import sys
 BASE = Path('/opt/nova-releases/casino-callback-rtt3-20261026')
 NEW = Path('/opt/nova-releases/casino-callback-rtt4-20261026')
 MAIN = 'src/server/providers/softaggregator/wallet.ts'
+PG = 'src/server/db/postgres.ts'
 TEST = 'tests/unit/softaggregator-wallet.test.ts'
 
 def stop(message):
@@ -41,6 +42,8 @@ def check_current():
         stop('RTT3_BASE_RELEASE_NOT_BUILT')
     if not BASE.joinpath(MAIN).is_file():
         stop('WALLET_SOURCE_MISSING')
+    if not BASE.joinpath(PG).is_file():
+        stop('POSTGRES_SOURCE_MISSING')
     if not BASE.joinpath(TEST).is_file():
         stop('UNIT_TEST_SOURCE_MISSING')
     nginx = Path('/etc/nginx/sites-enabled/betvima.com').resolve().read_text()
@@ -113,7 +116,18 @@ def transform():
         "      }\n"
         "      if (sql.includes('from nova.profiles p')) {",
         'TEST_MOCK_CREDIT_PROFILE')
-    return {MAIN: wallet, TEST: test}
+    pg = BASE.joinpath(PG).read_text()
+    pg = replace_exact(pg,
+        "      idleTimeoutMillis: 30_000,\n"
+        "      connectionTimeoutMillis: 10_000,",
+        "      // Keep remote Postgres connections warm between slot rounds.\n"
+        "      // Pool size, SQL timeout and transaction semantics are unchanged.\n"
+        "      idleTimeoutMillis: 120_000,\n"
+        "      keepAlive: true,\n"
+        "      keepAliveInitialDelayMillis: 10_000,\n"
+        "      connectionTimeoutMillis: 10_000,",
+        'POOL_KEEPALIVE')
+    return {MAIN: wallet, PG: pg, TEST: test}
 
 def main():
     check_current()
@@ -133,7 +147,7 @@ def main():
             stop('ENV_DIFF_DETECTED_' + env)
     print('RTT4_CANDIDATE_PREPARED', flush=True)
     print('RELEASE=' + str(NEW), flush=True)
-    print('SOURCE_EDITED=' + MAIN, flush=True)
+    print('SOURCE_EDITED=' + MAIN + ',' + PG, flush=True)
     print('UNIT_TEST_MOCK_EDITED=' + TEST, flush=True)
     print('NGINX_PM2_DB_COUNTRY_CURRENCY_WALLET_LEDGER_UNTOUCHED', flush=True)
 
