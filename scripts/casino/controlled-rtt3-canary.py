@@ -34,8 +34,8 @@ SOURCE_WHITELIST = {
     'server/providers/softaggregator/fiat-wallet.ts',
 }
 ROUTE_PATTERN = re.compile(
-    r'(location\\s+\\^~\\s+/api/webhooks/softaggregator\\s*\\{[^{}]*?'
-    r'\\bproxy_pass\\s+http://127\\.0\\.0\\.1:)(\\d+)(\\s*;)',
+    r'(location\s+\^~\s+/api/webhooks/softaggregator\s*\{[^{}]*?'
+    r'\bproxy_pass\s+http://127\.0\.0\.1:)(\d+)(\s*;)',
     re.S,
 )
 
@@ -97,7 +97,7 @@ def verify_candidate() -> None:
     ).stdout
     if 'ActiveState=active' not in unit:
         stop('CANDIDATE_SERVICE_INACTIVE')
-    pid = re.search(r'(?m)^MainPID=(\\d+)$', unit)
+    pid = re.search(r'(?m)^MainPID=(\d+)$', unit)
     if not pid or pid.group(1) == '0':
         stop('CANDIDATE_SERVICE_PID_MISSING')
     if Path('/proc/' + pid.group(1) + '/cwd').resolve() != NEW:
