@@ -8,7 +8,15 @@
  * This is deliberately a separate route from the existing SoftAggregator
  * callback. Production callback must stay on the Namecheap VPS:3098.
  */
+// The Next.js monorepo typechecker does not enable TypeScript extension imports;
+// Deno Edge requires explicit .ts URLs. Edge compilation resolves this import.
+// @ts-ignore TS5097: required by Deno's explicit TypeScript import convention
 import { verifyBridgeShadowProbe } from './verify.ts';
+
+declare const Deno: {
+  env: { get(name: string): string | undefined };
+  serve(handler: (request: Request) => Promise<Response>): void;
+};
 
 const reply = (status: number, payload: object): Response =>
   new Response(JSON.stringify(payload), {
