@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
-import { getDb, PostgresDb } from '@/server/db';
+import { getDb } from '@/server/db';
+import { PostgresDb } from '@/server/db/postgres';
 import type { Db } from '@/lib/ports/db';
 import { callbackResponse, SOFTAGGREGATOR_MIN_BET_MINOR, type SignedCallback, userIdFromUsername } from './contract';
 import { casinoRealMoneyUserAllowed } from './client';
