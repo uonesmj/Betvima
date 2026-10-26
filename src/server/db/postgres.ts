@@ -43,7 +43,11 @@ export class PostgresDb implements Db {
       ...config,
       max: config.max ?? 10,
       application_name: config.applicationName ?? 'nova-sportsbook',
-      idleTimeoutMillis: 30_000,
+      // Keep the remote Supabase pool connection warm across several slot
+      // rounds. Pool size, SQL timeout and transaction semantics are unchanged.
+      idleTimeoutMillis: 120_000,
+      keepAlive: true,
+      keepAliveInitialDelayMillis: 10_000,
       connectionTimeoutMillis: 10_000,
       allowExitOnIdle: true,
       statement_timeout: config.statementTimeoutMs ?? 15_000,
