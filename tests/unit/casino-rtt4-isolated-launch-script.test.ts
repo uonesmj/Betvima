@@ -1,5 +1,6 @@
 import { spawnSync } from 'node:child_process';
 import { resolve } from 'node:path';
+import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
 describe('RTT4 single-command isolated staging', () => {
@@ -10,8 +11,7 @@ describe('RTT4 single-command isolated staging', () => {
   });
 
   it('has all required read-only guards before isolated process startup', () => {
-    const fs = require('node:fs') as typeof import('node:fs');
-    const script = fs.readFileSync(resolve('scripts/casino/build-and-start-rtt4-isolated.sh'), 'utf8');
+    const script = readFileSync(resolve('scripts/casino/build-and-start-rtt4-isolated.sh'), 'utf8');
     expect(script).toContain('RTT4_SOURCE_AUDIT_PASSED');
     expect(script).toContain('LIVE_CALLBACK_CHANGED');
     expect(script).toContain('PORT_3102_IN_USE');
