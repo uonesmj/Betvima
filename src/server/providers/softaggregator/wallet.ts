@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { getDb } from '@/server/db';
+import { getDb, PostgresDb } from '@/server/db';
 import type { Db } from '@/lib/ports/db';
 import { callbackResponse, SOFTAGGREGATOR_MIN_BET_MINOR, type SignedCallback, userIdFromUsername } from './contract';
 import { casinoRealMoneyUserAllowed } from './client';
@@ -159,7 +159,7 @@ export async function settleCasinoCallback(event: SignedCallback): Promise<Casin
     return safeResponse(0, available(await walletRow(db, userId, false)));
   }
   if (!event.callId || !event.identityHash || !event.amountMinor || !event.roundId || !event.gameId) return { error: 2, balance: 0 };
-  return db.transaction(async (tx) => {
+  const executeTransaction = async (tx: Db): Promise<CasinoBalanceResponse> => {
     // Serialize concurrent retries independently from the per-wallet financial lock.
     await tx.query('select pg_advisory_xact_lock(hashtext($1), hashtext($2))', [
       'softaggregator-callback', event.callId!,
@@ -276,5 +276,10 @@ export async function settleCasinoCallback(event: SignedCallback): Promise<Casin
         error === 0 ? originalCreditCallId : null],
     );
     return safeResponse(error, resultBalance);
-  });
+  };
+  // No change to Credit, Balance or any rollback: only ordinary Debit uses
+  // the single-timeout transaction and its original lock/ledger ordering.
+  return normalDebit && db instanceof PostgresDb
+    ? db.transactionForCasinoDebit(executeTransaction)
+    : db.transaction(executeTransaction);
 }
