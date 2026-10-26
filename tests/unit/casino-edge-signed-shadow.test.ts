@@ -83,7 +83,8 @@ describe('BetVima independent Ed25519 Edge shadow transport', () => {
 
   it('does not include any wallet, casino ledger or database settlement code', () => {
     const source = readFileSync(resolve('supabase/functions/betvima-casino-edge-shadow/index.ts'), 'utf8');
-    expect(source).toContain("Deno.env.get('BV_CASINO_BRIDGE_ED25519_SPKI_B64')");
+    expect(source).toContain('MCowBQYDK2VwAyEAZ/H+1/rAxIccH4jY+wx7PE5wgFsotby7io0m6wx77cs=');
+    expect(source).not.toContain("Deno.env.get('BV_CASINO_BRIDGE_ED25519_SPKI_B64')");
     expect(source).toContain("financial_operations_enabled: false");
     expect(source).toContain('wallet_modified: false');
     expect(source).toContain("request.method !== 'POST'");
