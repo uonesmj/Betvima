@@ -270,7 +270,7 @@ export async function settleFiatCasinoCallback(
   };
   // Optimize only normal fiat Debit; other actions and all rollback paths
   // keep the original transaction behavior, limits and reconciliation.
-  return event.action === 'debit' && !event.rollback && db instanceof PostgresDb
-    ? db.transactionForCasinoDebit(executeTransaction)
+  return (event.action === 'debit' || event.action === 'credit') && !event.rollback && db instanceof PostgresDb
+    ? db.transactionForCasinoCallback(executeTransaction)
     : db.transaction(executeTransaction);
 }
