@@ -98,6 +98,35 @@ authorize real-money gaming or new markets.
     jurisdiction, licensing obligations and supplier approval; never
     remove security/KYC restrictions to speed up callbacks.
 
+
+## Refund analysis (2026-10-26 read-only follow-up)
+
+All 29 successful provider rollbacks are `action='credit', rollback=true`:
+exact reversals of previously successful debits, **not win-credit reversals**.
+The median debit-to-refund gap is 5.43 seconds, mean 8.11 seconds;
+27/29 refunds occurred within 15 seconds of the original debit.
+
+| UTC date | successful debits | successful debit refunds |
+|---|---:|---:|
+| 2026-10-24 | 53 | 28 |
+| 2026-10-25 | 85 | 0 |
+| 2026-10-26 (partial) | 29 | 1 |
+
+Nearly all refund events are concentrated on October 24, not uniformly
+reproducing. This is consistent with a transient provider/game/timeout
+failure mode, but the data DO NOT identify a root cause; correlate provider
+round history and sanitized Nginx callback timing before concluding.
+A successful, correctly recorded rollback is not necessarily a bug.
+
+## Safe cleanup after benchmark
+
+After operator completed the six-query signed benchmark, the publicly
+addressable `betvima-casino-edge-shadow` Supabase function was retired by
+replacing it with version 6 (`verify_jwt=true`, constant HTTP 410 response,
+no database connections or financial code). The source for the signed
+benchmark remains pinned in GitHub PR #335 for controlled redeployment.
+The existing production Nginx route on port 3098 was never changed.
+
 ## Next engineering decision
 
 The first query on Edge is about 133 ms, rather than 2.4 ms, and the signed
