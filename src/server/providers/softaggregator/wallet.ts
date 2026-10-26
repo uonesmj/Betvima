@@ -113,10 +113,10 @@ export async function settleCasinoCallback(event: SignedCallback): Promise<Casin
   const userId = userIdFromUsername(event.username);
   if (!userId || !casinoRealMoneyUserAllowed(userId)) return { error: 2, balance: 0 };
   const db = getDb();
-  // Read-only preflight for a normal debit: run independent validations in
-  // parallel so network RTTs do not accumulate before the financial transaction.
-  // The checks, lock order and transaction itself remain unchanged; credits,
-  // balances and rollback debits retain their existing sequential path.
+  // For ordinary (non-rollback) Debit AND Credit, perform only independent
+  // read-only preflight checks concurrently. Each check must still succeed
+  // before any write; transaction, lock order, currency and country rules
+  // remain unchanged. Rollbacks retain the original sequential path.
   const readOriginalRound = () => event.roundId && event.gameId
     ? db.queryOne<{ wallet_currency: string }>(
       'select wallet_currency from nova.softaggregator_round_fx ' +
@@ -124,12 +124,13 @@ export async function settleCasinoCallback(event: SignedCallback): Promise<Casin
       [userId, event.roundId, event.gameId],
     )
     : Promise.resolve(null);
-  const normalDebit = event.action === 'debit' && !event.rollback &&
-    Boolean(event.roundId && event.gameId);
+  const normalFinancialCallback =
+    (event.action === 'debit' || event.action === 'credit') &&
+    !event.rollback && Boolean(event.roundId && event.gameId);
   let schemaReady: boolean;
   let currency: Awaited<ReturnType<typeof readCasinoPlayerWallet>>;
   let originalRound: { wallet_currency: string } | null;
-  if (normalDebit) {
+  if (normalFinancialCallback) {
     [schemaReady, currency, originalRound] = await Promise.all([
       casinoFinancialSchemaReady(db),
       readCasinoPlayerWallet(db, userId),
@@ -194,8 +195,21 @@ export async function settleCasinoCallback(event: SignedCallback): Promise<Casin
     }
     // Follow the same advisory-lock ordering as post_wallet_entry before locking wallet row.
     await tx.query('select pg_advisory_xact_lock(hashtext($1))', ['wallet:' + userId + ':USD']);
-    const p = await getProfile(tx, userId);
-    if (!p) return { error: 2, balance: 0 };
+    // Earned ordinary credits must be payable even after country, KYC or
+    // self-exclusion changes. Previously we loaded the entire eligibility
+    // profile only to test existence; do the identical existence check with
+    // a minimal query. Debit and ALL rollback paths keep getProfile intact.
+    const ordinaryCredit = event.action === 'credit' && !event.rollback;
+    let p: ProfileRow | null = null;
+    if (ordinaryCredit) {
+      const exists = await tx.queryOne<{ found: number }>(
+        'select 1 as found from nova.profiles where id = $1', [userId],
+      );
+      if (!exists) return { error: 2, balance: 0 };
+    } else {
+      p = await getProfile(tx, userId);
+      if (!p) return { error: 2, balance: 0 };
+    }
     await tx.query(
       "insert into nova.wallets(user_id,currency,balance_minor) values ($1,'USD',0) on conflict (user_id,currency) do nothing",
       [userId],
@@ -242,7 +256,7 @@ export async function settleCasinoCallback(event: SignedCallback): Promise<Casin
       error = 2;
     } else if (isDebit &&
       (before < event.amountMinor! ||
-        (!event.rollback && (!accountCanBet(p) || p.currency !== currency || event.amountMinor! < SOFTAGGREGATOR_MIN_BET_MINOR ||
+        (!event.rollback && (!p || !accountCanBet(p) || p.currency !== currency || event.amountMinor! < SOFTAGGREGATOR_MIN_BET_MINOR ||
           !(await limitAllows(tx, userId, event.amountMinor!, p)))))) {
       error = 1;
     } else {

@@ -28,6 +28,7 @@ function makeFakeDb(initial = 1000n, held = 200n) {
   let supportApproved = true;
   let country = 'TR';
   let financialSchemaReady = true;
+  let profileExists = true;
   const receipts = new Map<string, { identity_hash: string; response_error: 0 | 1 | 2; response_balance_minor: string; action: string; wallet_amount_minor: string; round_id: string; game_id: string; amount_minor: string; reversed: boolean }>();
   const postings: Array<Record<string, unknown>> = [];
   const rounds = new Map<string, { wallet_currency: string }>();
@@ -55,6 +56,11 @@ function makeFakeDb(initial = 1000n, held = 200n) {
       }
       if (sql.includes('from nova.softaggregator_callback_receipts')) {
         return receipts.get(String(params[0])) ?? null;
+      }
+      // Ordinary credits only need to prove the profile exists; they must
+      // not be blocked by later country/KYC changes to previously earned wins.
+      if (sql.includes('select 1 as found from nova.profiles where id = $1')) {
+        return profileExists ? { found: 1 } : null;
       }
       if (sql.includes('from nova.profiles p')) {
         return {
@@ -112,7 +118,8 @@ function makeFakeDb(initial = 1000n, held = 200n) {
     setSupportApproved: (value: boolean) => { supportApproved = value; },
     setAgeVerified: (value: boolean) => { ageVerified = value; },
     setCountry: (value: string) => { country = value; },
-    setSchemaReady: (ready: boolean) => { financialSchemaReady = ready; } };
+    setSchemaReady: (ready: boolean) => { financialSchemaReady = ready; },
+    setProfileExists: (exists: boolean) => { profileExists = exists; } };
 }
 
 describe('SoftAggregator financial callback behavior (isolated DB contract)', () => {
@@ -169,6 +176,30 @@ describe('SoftAggregator financial callback behavior (isolated DB contract)', ()
     vi.mocked(getDb).mockReturnValue(t.fake as unknown as Db);
     expect((await settleCasinoCallback(identity('owed-previous-win', 'credit', 200n))).error).toBe(0);
     expect(t.postings[0]?.p_type).toBe('win_credit');
+  });
+
+  it('checks only profile existence for earned ordinary credits, not debit-only eligibility joins', async () => {
+    const t = makeFakeDb();
+    t.setSupportApproved(false);
+    t.setAgeVerified(false);
+    t.setCountry('BR');
+    vi.mocked(getDb).mockReturnValue(t.fake as unknown as Db);
+    expect((await settleCasinoCallback(identity('credit-eligibility-still-owed', 'credit', 50n))).error)
+      .toBe(0);
+    expect(t.fake.queryOne.mock.calls.some(([sql]) =>
+      String(sql).includes('from nova.profiles p'))).toBe(false);
+    expect(t.fake.queryOne.mock.calls.some(([sql]) =>
+      String(sql).includes('select 1 as found from nova.profiles where id = $1'))).toBe(true);
+  });
+
+  it('does not post an ordinary credit when the profile itself no longer exists', async () => {
+    const t = makeFakeDb();
+    t.setProfileExists(false);
+    vi.mocked(getDb).mockReturnValue(t.fake as unknown as Db);
+    expect(await settleCasinoCallback(identity('credit-missing-profile', 'credit', 50n)))
+      .toEqual({ error: 2, balance: 0 });
+    expect(t.postings).toHaveLength(0);
+    expect(t.receipts.size).toBe(0);
   });
 
   it('does not require KYC or support approval by default, but can re-enable review later', async () => {
