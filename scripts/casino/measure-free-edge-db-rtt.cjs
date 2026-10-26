@@ -1,5 +1,8 @@
 #!/usr/bin/env node
 // BetVima: read-only regional RTT test. Does not invoke any wallet/payment callback.
+// This tool runs outside Next.js. Explicit production mode is required to
+// load the same .env.production.local that the running server/build uses.
+process.env.NODE_ENV = 'production';
 const { loadEnvConfig } = require(
   require.resolve('@next/env', { paths: [process.cwd()] }),
 );
@@ -10,7 +13,10 @@ const token = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
   process.env.SUPABASE_ANON_KEY;
 
 if (!projectUrl || !token || !token.startsWith('eyJ')) {
-  console.log('STOP: PROJECT_URL_OR_LEGACY_ANON_JWT_NOT_CONFIGURED');
+  console.log('STOP: PRODUCTION_SUPABASE_PUBLIC_CONFIG_UNAVAILABLE');
+  console.log('PROJECT_URL_CONFIGURED=' + Boolean(projectUrl));
+  console.log('ANON_JWT_CONFIGURED=' + Boolean(token?.startsWith('eyJ')));
+  console.log('NO_FINANCIAL_OR_NETWORK_REQUEST_SENT');
   process.exit(1);
 }
 
