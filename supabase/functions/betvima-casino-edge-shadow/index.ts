@@ -95,18 +95,34 @@ Deno.serve(async (request: Request): Promise<Response> => {
   );
   if (!check.ok) return reply(401, { error: check.code });
   if (!sql) return reply(503, { error: 'READ_ONLY_PROBE_DB_NOT_CONFIGURED' });
-  let dbMs: number;
+  // Compare the first query (which may acquire a fresh DB connection)
+  // with the next five on the same signed Edge invocation. All are hard-coded
+  // read-only SELECT 1. No user IDs, amounts or mutable SQL are accepted.
+  let dbQuerySamplesMs: number[];
   try {
-    const start = performance.now();
-    const rows = await sql`SELECT 1::integer AS probe`;
-    dbMs = Math.round((performance.now() - start) * 10) / 10;
-    if (Number(rows[0]?.probe) !== 1) throw new Error('DB_PROBE_BAD_RESULT');
+    dbQuerySamplesMs = [];
+    for (let i = 0; i < 6; i += 1) {
+      const start = performance.now();
+      const rows = await sql`SELECT 1::integer AS probe`;
+      const elapsedMs = Math.round((performance.now() - start) * 10) / 10;
+      if (Number(rows[0]?.probe) !== 1) throw new Error('DB_PROBE_BAD_RESULT');
+      dbQuerySamplesMs.push(elapsedMs);
+    }
   } catch {
     // Never emit connection details, SQL errors, access tokens or wallet data.
     return reply(503, { error: 'READ_ONLY_PROBE_DB_UNAVAILABLE' });
   }
+  const warm = dbQuerySamplesMs.slice(1);
+  const dbWarmAvgMs = Math.round(
+    (warm.reduce((sum, ms) => sum + ms, 0) / warm.length) * 10,
+  ) / 10;
   return reply(200, {
-    db_query_ms: dbMs,
+    // Backwards compatible first-query field; may include acquiring a
+    // connection and is NOT the PostgreSQL query execution time alone.
+    db_query_ms: dbQuerySamplesMs[0],
+    db_first_query_ms: dbQuerySamplesMs[0],
+    db_warm_query_avg_ms: dbWarmAvgMs,
+    db_warm_query_samples_ms: warm,
     db_operation: 'SELECT_1',
     ok: true,
     signed_transport: true,
