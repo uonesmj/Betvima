@@ -17,13 +17,15 @@ const decisionSchema = z.object({
   reason: z.string().trim().min(8).max(500),
 });
 type Submission = {
-  id: string; user_id: string; document_type: string; document_path: string;
+  id: string; user_id: string; document_type: string; document_path: string | null;
+  evidence_source: string; external_evidence_reference: string | null;
   selfie_path: string | null; status: string; review_note: string | null;
   created_at: string; email: string | null; public_id: string;
 };
 async function getSubmission(id: string, db: Db) {
   return db.queryOne<Submission>(
-    'select k.id,k.user_id,k.document_type,k.document_path,k.selfie_path,k.status,' +
+    'select k.id,k.user_id,k.document_type,k.document_path,k.evidence_source,k.external_evidence_reference,' +
+    'k.selfie_path,k.status,' +
     'k.review_note,k.created_at::text,p.email,p.public_id from nova.kyc_submissions k ' +
     'join nova.profiles p on p.id=k.user_id where k.id=$1', [id],
   );
@@ -35,17 +37,24 @@ export const GET = withErrorHandling('admin.kyc.detail', async (ctx, request: Re
   if (!idSchema.safeParse(id).success) throw new ApiError('VALIDATION_FAILED', 'Invalid submission');
   const submission = await getSubmission(id, services.db);
   if (!submission) throw new ApiError('NOT_FOUND', 'Submission not found');
-  const storage = serviceRoleClient().storage.from(KYC_BUCKET);
-  const doc = await storage.createSignedUrl(submission.document_path, 60, { download: true });
-  if (doc.error || !doc.data?.signedUrl) throw new ApiError('SERVICE_UNAVAILABLE', 'Document unavailable');
+  const storage = submission.document_path || submission.selfie_path
+    ? serviceRoleClient().storage.from(KYC_BUCKET) : null;
+  const doc = submission.document_path
+    ? await storage!.createSignedUrl(submission.document_path, 60, { download: true }) : null;
+  if (doc?.error || (submission.document_path && !doc?.data?.signedUrl)) {
+    throw new ApiError('SERVICE_UNAVAILABLE', 'Document unavailable');
+  }
   const selfie = submission.selfie_path
-    ? await storage.createSignedUrl(submission.selfie_path, 60, { download: true }) : null;
+    ? await storage!.createSignedUrl(submission.selfie_path, 60, { download: true }) : null;
   if (selfie?.error) throw new ApiError('SERVICE_UNAVAILABLE', 'Selfie unavailable');
   return NextResponse.json({ ok: true, data: {
     id: submission.id, userId: submission.user_id, email: submission.email,
     publicId: submission.public_id, documentType: submission.document_type,
     status: submission.status, reviewNote: submission.review_note,
-    documentUrl: doc.data.signedUrl, selfieUrl: selfie?.data?.signedUrl ?? null,
+    documentUrl: doc?.data?.signedUrl ?? null, selfieUrl: selfie?.data?.signedUrl ?? null,
+    evidenceSource: submission.evidence_source,
+    externalEvidenceReference: submission.evidence_source === 'external_custody'
+      ? submission.external_evidence_reference : null,
     createdAt: submission.created_at,
   } }, { headers: { 'Cache-Control': 'private, no-store' } });
 });
