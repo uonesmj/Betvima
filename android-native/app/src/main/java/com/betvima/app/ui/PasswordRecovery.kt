@@ -59,7 +59,26 @@ internal fun PasswordRecoveryPanel(
     var busy by remember { mutableStateOf(false) }
     var sent by rememberSaveable(account) { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
-    val accent = if (account == RecoveryAccount.AFFILIATE) affiliateBlue else Palette.blue
+    val isPartnerRecovery = account == RecoveryAccount.AFFILIATE
+    val accent = if (isPartnerRecovery) affiliateBlue else Palette.blue
+    val recoveryPanel = if (isPartnerRecovery) Color(0xFF222224) else Color.White
+    val recoveryBorder = if (isPartnerRecovery) Color(0xFF41434A) else Palette.border
+    val primaryInk = if (isPartnerRecovery) Color(0xFFF5F6F8) else Palette.text
+    val secondaryInk = if (isPartnerRecovery) Color(0xFFADB3BD) else Palette.muted
+    val recoveryFieldColors = if (isPartnerRecovery) OutlinedTextFieldDefaults.colors(
+        focusedTextColor = primaryInk, unfocusedTextColor = primaryInk,
+        focusedContainerColor = Color(0xFF191B1E),
+        unfocusedContainerColor = Color(0xFF191B1E),
+        focusedBorderColor = affiliatePink,
+        unfocusedBorderColor = recoveryBorder,
+        cursorColor = affiliatePink,
+        focusedLabelColor = affiliatePink,
+        unfocusedLabelColor = secondaryInk,
+        focusedPlaceholderColor = secondaryInk,
+        unfocusedPlaceholderColor = secondaryInk,
+        focusedLeadingIconColor = affiliatePink,
+        unfocusedLeadingIconColor = affiliatePink
+    ) else OutlinedTextFieldDefaults.colors()
     val accountName = if (account == RecoveryAccount.AFFILIATE)
         tr(lang, "Affiliate account", "حساب افیلیت")
     else tr(lang, "BetVima account", "حساب بت‌ویما")
@@ -84,8 +103,8 @@ internal fun PasswordRecoveryPanel(
         }
     }
 
-    Surface(color = Color.White, shape = RoundedCornerShape(22.dp),
-        border = BorderStroke(1.dp, Palette.border),
+    Surface(color = recoveryPanel, shape = RoundedCornerShape(22.dp),
+        border = BorderStroke(1.dp, recoveryBorder),
         modifier = Modifier.fillMaxWidth()) {
         Column(Modifier.fillMaxWidth().padding(17.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -97,7 +116,7 @@ internal fun PasswordRecoveryPanel(
                 Spacer(Modifier.width(12.dp))
                 Column(Modifier.weight(1f)) {
                     Text(tr(lang, "Reset your password", "بازیابی رمز عبور"),
-                        color = Palette.text, fontWeight = FontWeight.Black, fontSize = 19.sp)
+                        color = primaryInk, fontWeight = FontWeight.Black, fontSize = 19.sp)
                     Text(accountName, color = accent, fontWeight = FontWeight.Bold,
                         fontSize = 11.sp)
                 }
@@ -105,17 +124,18 @@ internal fun PasswordRecoveryPanel(
                     modifier = Modifier.size(22.dp))
             }
             if (sent) {
-                Surface(color = Color(0xFFEAF8F2), shape = RoundedCornerShape(15.dp)) {
+                Surface(color = if (isPartnerRecovery) Color(0xFF183429)
+                        else Color(0xFFEAF8F2), shape = RoundedCornerShape(15.dp)) {
                     Column(Modifier.fillMaxWidth().padding(15.dp),
                         verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Icon(Icons.Default.MarkEmailRead, null,
                             tint = Color(0xFF12845D), modifier = Modifier.size(34.dp))
                         Text(tr(lang, "Check your email", "ایمیل خود را بررسی کنید"),
-                            fontSize = 17.sp, fontWeight = FontWeight.Black, color = Palette.text)
+                            fontSize = 17.sp, fontWeight = FontWeight.Black, color = primaryInk)
                         Text(tr(lang,
                             "If this email belongs to a BetVima account, a secure reset link has been sent. Open that email link (not the plain reset-password address) to create your new password. Check Spam as well.",
                             "اگر این ایمیل به حساب بت‌ویما تعلق داشته باشد، لینک بازیابی ارسال می‌شود. برای ساخت رمز جدید فقط لینک دریافتی در ایمیل را باز کنید؛ آدرس ساده صفحه تغییر رمز کافی نیست. پوشه اسپم را هم بررسی کنید."),
-                            color = Palette.text, fontSize = 12.sp, lineHeight = 20.sp)
+                            color = primaryInk, fontSize = 12.sp, lineHeight = 20.sp)
                     }
                 }
                 Button(onClick = onBack, modifier = Modifier.fillMaxWidth().height(50.dp),
@@ -138,7 +158,7 @@ internal fun PasswordRecoveryPanel(
                 Text(tr(lang,
                     "Enter the email address you used when registering. We will send a secure link to reset your password.",
                     "ایمیلی را که با آن ثبت‌نام کرده‌اید وارد کنید تا لینک امن تغییر رمز برایتان ارسال شود."),
-                    color = Palette.muted, fontSize = 12.sp, lineHeight = 19.sp)
+                    color = secondaryInk, fontSize = 12.sp, lineHeight = 19.sp)
                 OutlinedTextField(
                     value = email,
                     onValueChange = { email = it.trim().take(254); error = null },
@@ -147,14 +167,15 @@ internal fun PasswordRecoveryPanel(
                     leadingIcon = { Icon(Icons.Default.AlternateEmail, null) },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
                     singleLine = true, modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(14.dp)
+                    shape = RoundedCornerShape(14.dp),
+                    colors = recoveryFieldColors
                 )
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(Icons.Default.Shield, null, tint = accent,
                         modifier = Modifier.size(17.dp))
                     Spacer(Modifier.width(7.dp))
                     Text(tr(lang, "Cloudflare security verification", "تأیید امنیتی کلودفلر"),
-                        color = Palette.text, fontSize = 12.sp,
+                        color = primaryInk, fontSize = 12.sp,
                         fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
                     if (challengeError) TextButton(onClick = {
                         token = null
@@ -173,7 +194,7 @@ internal fun PasswordRecoveryPanel(
                                 CircularProgressIndicator(Modifier.size(20.dp),
                                     color = accent, strokeWidth = 2.dp)
                                 Text(tr(lang, "Loading verification…", "در حال بارگذاری تأیید…"),
-                                    color = Palette.muted, fontSize = 11.sp)
+                                    color = secondaryInk, fontSize = 11.sp)
                             } else {
                                 Text(configError.orEmpty(), color = Palette.red, fontSize = 12.sp)
                                 OutlinedButton(onClick = { configRevision++ }) {
@@ -257,7 +278,7 @@ internal fun PasswordRecoveryPanel(
                 Text(tr(lang,
                     "For your security, we never disclose whether an email is registered.",
                     "برای حفظ امنیت، وجود یا نبود حساب با این ایمیل نمایش داده نمی‌شود."),
-                    color = Palette.muted, fontSize = 10.sp,
+                    color = secondaryInk, fontSize = 10.sp,
                     textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
                 TextButton(onClick = onBack, modifier = Modifier.align(Alignment.CenterHorizontally)) {
                     Icon(Icons.Default.ArrowBack, null, tint = accent,
