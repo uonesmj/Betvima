@@ -318,8 +318,11 @@ private fun AffiliateMotionLanding(
             val active by remember { derivedStateOf { showing(8) } }
             PartnerGallery(lang, active)
         }
+        item(key = "learning") {
+            PartnerGuides196(lang)
+        }
         item(key = "signup") {
-            val active by remember { derivedStateOf { showing(9) } }
+            val active by remember { derivedStateOf { showing(10) } }
             PartnerSignup(lang, active, onGetStarted)
         }
     }
@@ -350,7 +353,8 @@ private fun PartnerHero(
             Triple(tr(lang,"Product","محصولات"),6,Icons.Default.Apps),
             Triple(tr(lang,"FAQ","سؤالات"),7,Icons.Default.ChatBubbleOutline),
             Triple(tr(lang,"Gallery","گالری"),8,Icons.Default.Collections),
-            Triple(tr(lang,"Contact","ارتباط"),9,Icons.Default.Email)
+            Triple(tr(lang,"Guides","آموزش"),9,Icons.Default.MenuBook),
+            Triple(tr(lang,"Contact","ارتباط"),10,Icons.Default.Email)
         )
         LazyRow(
             modifier = Modifier.fillMaxWidth(),
@@ -877,6 +881,76 @@ private fun PartnerGallery(lang: Lang, active: Boolean) {
                 }
             }
             Spacer(Modifier.height(12.dp))
+        }
+    }
+}
+
+/**
+ * Editorial partner education — original BetVima copy, not unverified blog
+ * traffic, payouts, partner counts, or material copied from another operator.
+ */
+@Composable
+private fun PartnerGuides196(lang: Lang) {
+    val articles = listOf(
+        Triple(
+            tr(lang,"Getting started with BetVima","شروع همکاری با بت‌ویما"),
+            tr(lang,"Create a separate partner account and request an approved campaign link.",
+                "حساب همکاری جداگانه بسازید و لینک تأییدشده کمپین دریافت کنید."),
+            Icons.Default.RocketLaunch
+        ),
+        Triple(
+            tr(lang,"Understanding the 70% RevShare","آشنایی با سهم ۷۰٪"),
+            tr(lang,"The advertised base rate applies to approved partners; your contract and verified revenue statement control actual earnings.",
+                "نرخ پایه برای همکار تأییدشده است و کمیسیون واقعی طبق قرارداد و گزارش معتبر محاسبه می‌شود."),
+            Icons.Default.Percent
+        ),
+        Triple(
+            tr(lang,"Read your partner reports","تحلیل گزارش‌های همکاری"),
+            tr(lang,"Review attributed registrations, qualified activity and approved payouts in the secure dashboard.",
+                "ثبت‌نام‌های منتسب، فعالیت واجد شرایط و تسویه‌های تأییدشده را در داشبورد ببینید."),
+            Icons.Default.QueryStats
+        )
+    )
+    var opened by rememberSaveable { mutableIntStateOf(-1) }
+    Column(
+        Modifier.fillMaxWidth().background(partnerPaper)
+            .padding(horizontal=17.dp,vertical=35.dp),
+        verticalArrangement=Arrangement.spacedBy(13.dp)
+    ) {
+        Text(tr(lang,"PARTNER KNOWLEDGE","راهنمای همکاران"),
+            color=partnerBlue,fontSize=11.sp,fontWeight=FontWeight.Black,letterSpacing=1.4.sp)
+        Text(tr(lang,"Build smarter campaigns","کمپین‌های مؤثرتری بسازید"),
+            color=partnerNight,fontWeight=FontWeight.Black,
+            fontSize=28.sp,lineHeight=34.sp)
+        articles.forEachIndexed { index,article ->
+            Surface(
+                onClick={opened=if(opened==index)-1 else index},
+                shape=RoundedCornerShape(20.dp),
+                color=Color.White,
+                border=BorderStroke(1.dp,Color(0xFFE2E7F3)),
+                modifier=Modifier.fillMaxWidth().animateContentSize()
+            ) {
+                Column(Modifier.padding(18.dp)) {
+                    Row(verticalAlignment=Alignment.CenterVertically) {
+                        Surface(color=Color(0xFFEAF0FF),shape=RoundedCornerShape(12.dp)) {
+                            Icon(article.third,null,tint=partnerBlue,
+                                modifier=Modifier.padding(11.dp).size(23.dp))
+                        }
+                        Spacer(Modifier.width(12.dp))
+                        Text(article.first,color=partnerNight,
+                            fontSize=15.sp,fontWeight=FontWeight.Black,
+                            modifier=Modifier.weight(1f))
+                        Icon(if(opened==index)Icons.Default.KeyboardArrowUp
+                            else Icons.Default.KeyboardArrowDown,null,tint=partnerBlue)
+                    }
+                    if(opened==index) {
+                        Spacer(Modifier.height(13.dp))
+                        HorizontalDivider(color=Color(0xFFE7EAF1))
+                        Spacer(Modifier.height(12.dp))
+                        Text(article.second,color=partnerMuted,fontSize=12.sp,lineHeight=19.sp)
+                    }
+                }
+            }
         }
     }
 }
