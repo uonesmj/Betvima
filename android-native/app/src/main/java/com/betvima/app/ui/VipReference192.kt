@@ -2,7 +2,6 @@ package com.betvima.app.ui
 
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.animateDpAsState
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.ui.graphics.graphicsLayer
