@@ -33,6 +33,7 @@ const SECTIONS: AdminSection[] = [
     items: [
       { href: '/admin/users', label: 'Users', icon: Users },
       { href: '/admin/kyc', label: 'Identity reviews', icon: UserCheck },
+      { href: '/admin/casino-approvals', label: 'Casino approvals', icon: Shield },
       { href: '/admin/bets', label: 'Bets', icon: ClipboardList },
       { href: '/admin/payments', label: 'Payments', icon: CreditCard },
       { href: '/admin/support', label: 'Live support', icon: Headphones },
