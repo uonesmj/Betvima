@@ -60,12 +60,14 @@ internal fun AffiliateCinematicPhoto(
     content:@Composable BoxScope.()->Unit={}
 ) {
     val context=LocalContext.current
+    val chartScene = scene == AffiliateScene.STATISTICS ||
+        scene == AffiliateScene.CHART || scene == AffiliateScene.GALLERY_INSIGHTS
     // Bitmap decoding on the Compose main thread previously blocked popup
     // entrance frames, especially on lower-end Android devices.
     val bitmap by produceState<androidx.compose.ui.graphics.ImageBitmap?>(
         initialValue = null, scene, context
     ) {
-        value = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+        value = if (chartScene) null else kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
             runCatching {
                 val preferred = "affiliate/" + scene.photo + ".webp"
                 val fallback = "affiliate/" + scene.fallbackPhoto + ".webp"
@@ -86,7 +88,13 @@ internal fun AffiliateCinematicPhoto(
         .background(Brush.linearGradient(listOf(Color(0xFF0E0E13),
             scene.accent.copy(alpha=.24f),Color(0xFF101116))))) {
         val resolvedBitmap = bitmap
-        if(resolvedBitmap!=null) {
+        if(chartScene) {
+            AffiliateAnimatedChart199(
+                active = active,
+                modifier = Modifier.fillMaxSize(),
+                compact = scene != AffiliateScene.CHART
+            )
+        } else if(resolvedBitmap!=null) {
             // One image only. The old Crop + Fit double layer repeated
             // the stadium and athletes as horizontal bands in gallery cards.
             Image(
