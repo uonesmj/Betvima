@@ -2,6 +2,7 @@
 import ast
 import json
 import pathlib
+import subprocess
 import types
 import unittest
 from unittest.mock import patch
@@ -65,10 +66,40 @@ class CatalogueNginxRouteTests(unittest.TestCase):
             with self.subTest(body=bad),patch.object(module,'cmd',return_value=bad),self.assertRaises(RuntimeError):
                 module.get_catalogue(module.UPSTREAM_URL)
 
+    def test_reload_poll_retries_transient_404_then_requires_two_successes(self):
+        transient=subprocess.CalledProcessError(
+            returncode=22,cmd=['curl'],stderr=b'HTTP 404')
+        with patch.object(module,'get_catalogue',side_effect=[
+            transient, transient, 1, transient, 2, 3, 4
+        ]) as probe,patch.object(module.time,'sleep') as sleeping:
+            self.assertEqual(module.wait_for_catalogue(
+                module.LOCAL_URL,local_tls=True,attempts=7,delay_seconds=0),4)
+            self.assertEqual(probe.call_count,7)
+            self.assertEqual(sleeping.call_count,6)
+
+    def test_reload_poll_fails_closed_when_upstream_never_becomes_ready(self):
+        transient=subprocess.CalledProcessError(returncode=22,cmd=['curl'])
+        with patch.object(module,'get_catalogue',side_effect=[
+            transient,transient,transient,transient
+        ]) as probe,patch.object(module.time,'sleep') as sleeping:
+            with self.assertRaisesRegex(RuntimeError,'CATALOGUE_HTTPS_NOT_READY'):
+                module.wait_for_catalogue(
+                    module.LOCAL_URL,local_tls=True,attempts=4,delay_seconds=0)
+            self.assertEqual(probe.call_count,4)
+            self.assertEqual(sleeping.call_count,3)
+
+    def test_reload_poll_does_not_accept_only_one_successful_response(self):
+        transient=subprocess.CalledProcessError(returncode=22,cmd=['curl'])
+        with patch.object(module,'get_catalogue',side_effect=[transient,3]) as probe,patch.object(module.time,'sleep'):
+            with self.assertRaisesRegex(RuntimeError,'CATALOGUE_HTTPS_NOT_READY'):
+                module.wait_for_catalogue(
+                    module.LOCAL_URL,local_tls=True,attempts=2,delay_seconds=0)
+            self.assertEqual(probe.call_count,2)
+
     def test_only_nginx_site_is_written_or_reloaded(self):
         self.assertIn("SITE = Path('/etc/nginx/sites-enabled/betvima.com')",SOURCE)
         self.assertIn("get_catalogue(UPSTREAM_URL)",SOURCE)
-        self.assertIn("get_catalogue(LOCAL_URL,local_tls=True)",SOURCE)
+        self.assertIn("wait_for_catalogue(LOCAL_URL,local_tls=True)",SOURCE)
         self.assertIn("atomic_write(target,original,",SOURCE)
         self.assertIn("cmd(['/usr/sbin/nginx','-t'])",SOURCE)
         self.assertNotIn("pm2(",SOURCE)
