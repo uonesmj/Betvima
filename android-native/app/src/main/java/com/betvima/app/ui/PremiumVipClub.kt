@@ -366,7 +366,7 @@ private val vipQuestions = listOf(
 )
 
 @Composable
-fun PremiumVipClubPage(state: AppState, model: AppViewModel) {
+private fun PremiumVipCashbackPlansContent(state: AppState, model: AppViewModel) {
     val lang = state.lang
     var selected by rememberSaveable { mutableIntStateOf(0) }
     var expandedFaq by rememberSaveable { mutableIntStateOf(-1) }
@@ -553,6 +553,30 @@ fun PremiumVipClubPage(state: AppState, model: AppViewModel) {
                     "Informational plan preview. No personal tier, cash balance, mission completion or automatic payout is implied. Play responsibly.",
                     "پیش‌نمایش اطلاعات پلن‌هاست؛ هیچ سطح واقعی، موجودی، مأموریت تکمیل‌شده یا پرداخت خودکاری به حساب شما نسبت داده نمی‌شود. مسئولانه بازی کنید."),
                     color = vipSecondary, fontSize = 10.sp, lineHeight = 16.sp)
+            }
+        }
+    }
+}
+
+
+/**
+ * Video-inspired VIP editorial page. The original published weekly cashback
+ * plan comparison is retained intact in a separate optional view so existing
+ * policy information stays accessible without inventing new entitlements.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun PremiumVipClubPage(state: AppState, model: AppViewModel) {
+    var showPublishedPlans by rememberSaveable { mutableStateOf(false) }
+    VipReference192Screen(state, model, onViewPlans = { showPublishedPlans = true })
+    if (showPublishedPlans) {
+        ModalBottomSheet(
+            onDismissRequest = { showPublishedPlans = false },
+            sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+            containerColor = Color(0xFF17181B)
+        ) {
+            Box(Modifier.fillMaxWidth().heightIn(max = 690.dp)) {
+                PremiumVipCashbackPlansContent(state, model)
             }
         }
     }
