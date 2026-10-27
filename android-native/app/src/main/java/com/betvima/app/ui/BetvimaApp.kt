@@ -444,10 +444,10 @@ fun BetvimaApp(model: AppViewModel) {
         if (affiliateOpen) PremiumAffiliateSheet(state, model) { affiliateOpen = false }
         if (bonusOpen) BonusPopup83(state, model) { bonusOpen = false }
         if (vipOpen) VipClubPopup82(
-            lang = state.lang,
+            state = state,
+            model = model,
             onDismiss = { vipOpen = false },
-            onSupport = { vipOpen = false; model.feature(Feature.SUPPORT) },
-            onBonuses = { vipOpen = false; model.feature(Feature.BONUSES) }
+            onSupport = { vipOpen = false; model.feature(Feature.SUPPORT) }
         )
         PremiumLoadingOverlay(initialSplash, state.lang)
         LocalPinGate87(
