@@ -7,6 +7,10 @@ import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.ui.graphics.graphicsLayer
 import kotlin.math.abs
 import androidx.compose.foundation.*
+import androidx.compose.foundation.MarqueeAnimationMode
+import androidx.compose.foundation.basicMarquee
+import androidx.compose.foundation.lazy.items
+import kotlinx.coroutines.delay
 import androidx.compose.foundation.gestures.snapping.rememberSnapFlingBehavior
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -174,47 +178,76 @@ private fun v192SwipeDistance(index: Int, listState: LazyListState): Float {
     return (abs(itemCentre - viewport) / halfView).coerceIn(0f, 1f)
 }
 
+/**
+ * The photo layer moves slower than its surrounding scroll container, while
+ * the foreground VIP manager sheet advances at full speed. This creates the
+ * independent background/foreground effect in the supplied reference.
+ */
 @Composable
 private fun V192Hero(lang: Lang, scroll: LazyListState) {
-    val parallax = if (scroll.firstVisibleItemIndex == 0)
-        scroll.firstVisibleItemScrollOffset * .14f else 0f
-    Box(Modifier.fillMaxWidth().height(396.dp)) {
-        V192Photo(v192Jet, Modifier.fillMaxSize().graphicsLayer {
-            translationY = parallax
-        })
-        Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(
-            Color(0xC8111419), Color(0x38111419), Color(0x50232935), v192Night
-        ))))
+    val backgroundTravel = if (scroll.firstVisibleItemIndex == 0)
+        (scroll.firstVisibleItemScrollOffset * .62f).coerceAtMost(230f) else 230f
+    Box(Modifier.fillMaxWidth().height(410.dp).clipToBounds()) {
+        V192Photo(v192Jet, Modifier.fillMaxWidth()
+            .height(568.dp)
+            .offset(y=(-99).dp)
+            .graphicsLayer { translationY = backgroundTravel })
+        Box(Modifier.fillMaxSize().background(Brush.verticalGradient(
+            listOf(Color(0xC8111419), Color(0x24111419),
+                Color(0x30232935), v192Night.copy(alpha=.72f)))))
         Column(Modifier.align(Alignment.TopStart)
-            .padding(start=17.dp, top=22.dp, end=12.dp)) {
-            Text(tr(lang, "VIP Club", "باشگاه VIP"),
-                color=Color.White, fontSize=38.sp, lineHeight=43.sp,
+            .padding(start=17.dp,top=22.dp,end=12.dp)) {
+            Text(tr(lang,"VIP Club","باشگاه VIP"),
+                color=Color.White,fontSize=38.sp,lineHeight=44.sp,
                 fontWeight=FontWeight.Black)
             Spacer(Modifier.height(8.dp))
-            Text(tr(lang, "What makes the BetVima\nVIP CLUB the best choice?",
+            Text(tr(lang,"What makes the BetVima\nVIP CLUB the best choice?",
                 "چه چیزی باشگاه VIP بت‌ویما را\nبه انتخابی ویژه تبدیل می‌کند؟"),
-                color=Color.White, fontSize=12.sp, lineHeight=17.sp,
+                color=Color.White,fontSize=12.sp,lineHeight=17.sp,
                 fontWeight=FontWeight.Medium)
         }
+        V195AwardsRail(lang,
+            Modifier.align(Alignment.BottomCenter)
+                .padding(bottom=53.dp))
+    }
+}
+
+/** Infinite, uninterrupted horizontal ribbon (not a static row or pager). */
+@Composable
+private fun V195AwardsRail(lang: Lang, modifier: Modifier = Modifier) {
+    val items = listOf(
+        tr(lang,"PREMIUM EXPERIENCES","تجربه‌های ممتاز"),
+        tr(lang,"BETVIMA VIP CLUB","باشگاه VIP بت‌ویما"),
+        tr(lang,"PERSONAL ASSISTANCE","خدمات اختصاصی"),
+        tr(lang,"EXCLUSIVE EXPERIENCES","تجربه‌های ویژه")
+    )
+    Box(modifier.fillMaxWidth().height(63.dp)
+        .background(Brush.verticalGradient(listOf(
+            Color(0x000C1017),Color(0xBB101317),Color(0xDD101317)
+        )))) {
         Row(
-            Modifier.align(Alignment.BottomCenter).fillMaxWidth()
-                .background(Brush.verticalGradient(listOf(Color.Transparent,
-                    v192Night.copy(alpha=.64f))))
-                .padding(start=10.dp,end=10.dp,bottom=26.dp,top=14.dp),
-            horizontalArrangement=Arrangement.spacedBy(4.dp)
+            Modifier.fillMaxSize()
+                .basicMarquee(
+                    iterations=Int.MAX_VALUE,
+                    animationMode=MarqueeAnimationMode.Immediately,
+                    repeatDelayMillis=0,
+                    initialDelayMillis=0,
+                    velocity=38.dp
+                ),
+            verticalAlignment=Alignment.CenterVertically
         ) {
-            listOf(
-                tr(lang, "PREMIUM\nEXPERIENCES", "تجربه‌های\nممتاز"),
-                tr(lang, "VIP\nACCESS", "دسترسی\nVIP"),
-                tr(lang, "BETVIMA\nREWARDS", "پاداش‌های\nبت‌ویما")
-            ).forEach { label ->
-                Row(Modifier.weight(1f), horizontalArrangement=Arrangement.Center,
-                    verticalAlignment=Alignment.CenterVertically) {
-                    Icon(Icons.Default.EmojiEvents, null, tint=Color(0xFFE1D1A4),
-                        modifier=Modifier.size(20.dp))
-                    Spacer(Modifier.width(3.dp))
-                    Text(label, color=Color.White,fontSize=8.sp,
-                        fontWeight=FontWeight.Black,lineHeight=10.sp,maxLines=2)
+            repeat(3) {
+                items.forEach { award ->
+                    Row(verticalAlignment=Alignment.CenterVertically) {
+                        Icon(Icons.Default.EmojiEvents,null,
+                            tint=Color(0xFFE1C78B),
+                            modifier=Modifier.size(24.dp))
+                        Spacer(Modifier.width(8.dp))
+                        Text(award,color=Color.White,
+                            fontSize=11.sp,lineHeight=13.sp,
+                            fontWeight=FontWeight.Black,maxLines=1)
+                        Spacer(Modifier.width(26.dp))
+                    }
                 }
             }
         }
@@ -224,6 +257,7 @@ private fun V192Hero(lang: Lang, scroll: LazyListState) {
 @Composable
 private fun V192Manager(lang: Lang) {
     Box(Modifier.fillMaxWidth().height(300.dp)
+        .clip(RoundedCornerShape(topStart=25.dp,topEnd=25.dp))
         .background(Brush.verticalGradient(listOf(Color(0xFF303C49),v192Night)))) {
         Row(Modifier.fillMaxWidth().height(252.dp).align(Alignment.BottomCenter)) {
             Box(Modifier.weight(1f).fillMaxHeight().clip(RoundedCornerShape(topStart=12.dp))) {
