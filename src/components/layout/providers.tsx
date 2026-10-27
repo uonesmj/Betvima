@@ -3,6 +3,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { DEFAULT_LOCALE, translate, type Locale } from '@/lib/i18n';
 import { getSupabaseBrowserClient } from '@/lib/supabase/browser';
+import { sessionTransportFailure, verifiedSessionEnvelope } from '@/lib/auth/session-status';
 
 interface SessionInfo {
   authenticated: boolean; authUnavailable: boolean;
@@ -38,19 +39,15 @@ export function AppProviders({ children, initialLocale = DEFAULT_LOCALE }: { chi
         signal: controller.signal,
         cache: 'no-store',
       });
-      if (!response.ok) throw new Error('SESSION_HTTP_UNAVAILABLE');
-      const payload = await response.json() as { ok?: boolean; data?: SessionInfo };
-      if (payload?.ok !== true || typeof payload?.data?.authenticated !== 'boolean'
-        || typeof payload?.data?.authUnavailable !== 'boolean') {
-        throw new Error('SESSION_INVALID_RESPONSE');
-      }
+      const payload: unknown = response.ok ? await response.json() : null;
+      const verified = verifiedSessionEnvelope<SessionInfo>(response.ok, payload);
       if (requestId !== sessionRequestRef.current) return;
-      setSession({ ...payload.data, sessionCheckFailed: false });
+      setSession({ ...verified, sessionCheckFailed: false });
     } catch {
       if (requestId !== sessionRequestRef.current) return;
       // Fail closed: no admin permissions or user identity are inferred on error.
       // Only an explicit, successful server reply may signal authUnavailable.
-      setSession({ authenticated: false, authUnavailable: false, sessionCheckFailed: true, user: null });
+      setSession(sessionTransportFailure());
     } finally {
       window.clearTimeout(timeout);
       if (requestId === sessionRequestRef.current) setSessionLoading(false);
