@@ -112,6 +112,29 @@ export function AdminShell({ children, title, actions }: { children: React.React
     return <div className="p-6"><Skeleton className="h-40 w-full" /></div>;
   }
 
+  // A failed/timed-out session HTTP request must never masquerade as
+  // permanently missing Supabase configuration. Do not reveal admin content:
+  // allow a safe retry while authentication is unverified.
+  if (session?.sessionCheckFailed) {
+    return (
+      <div className="p-6">
+        <EmptyState
+          title="Could not verify your administrator session"
+          hint="The authentication check could not complete. Your login and permissions have not been verified. Check the connection and retry."
+          action={
+            <button type="button" className="nova-btn-primary mt-2"
+              onClick={() => {
+                setChecked(false);
+                void refreshSession().finally(() => setChecked(true));
+              }}>
+              Retry secure session check
+            </button>
+          }
+        />
+      </div>
+    );
+  }
+
   if (!session?.authenticated || !session.user?.isAdmin) {
     return (
       <div className="p-6">

@@ -3,9 +3,12 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { DEFAULT_LOCALE, translate, type Locale } from '@/lib/i18n';
 import { getSupabaseBrowserClient } from '@/lib/supabase/browser';
+import { sessionTransportFailure, verifiedSessionEnvelope } from '@/lib/auth/session-status';
 
 interface SessionInfo {
   authenticated: boolean; authUnavailable: boolean;
+  /** Transport/API errors are NOT evidence that the auth backend is unconfigured. */
+  sessionCheckFailed?: boolean;
   user: { id: string; email: string | null; role: string; currency: string; locale: Locale; isAdmin: boolean; permissions: string[]; affiliateId: string | null; mfaEnrolled?: boolean; mfaLevel?: 'aal1' | 'aal2' } | null;
 }
 
@@ -27,23 +30,27 @@ export function AppProviders({ children, initialLocale = DEFAULT_LOCALE }: { chi
   const refreshSession = useCallback(async () => {
     const requestId = ++sessionRequestRef.current;
     const controller = new AbortController();
-    const timeout = window.setTimeout(() => controller.abort(), 6000);
+    // Auth session verification requires upstream Supabase + profile DB reads.
+    // A slow request must not be misreported as missing authentication config.
+    const timeout = window.setTimeout(() => controller.abort(), 15000);
     try {
       const response = await fetch('/api/v1/auth/session', {
         credentials: 'same-origin',
         signal: controller.signal,
         cache: 'no-store',
       });
-      const payload = await response.json();
+      const payload: unknown = response.ok ? await response.json() : null;
+      const verified = verifiedSessionEnvelope<SessionInfo>(response.ok, payload);
       if (requestId !== sessionRequestRef.current) return;
-      setSession(payload?.data ?? null);
+      setSession({ ...verified, sessionCheckFailed: false });
     } catch {
       if (requestId !== sessionRequestRef.current) return;
-      setSession({ authenticated: false, authUnavailable: true, user: null });
+      // Fail closed: no admin permissions or user identity are inferred on error.
+      // Only an explicit, successful server reply may signal authUnavailable.
+      setSession(sessionTransportFailure());
     } finally {
-      if (requestId !== sessionRequestRef.current) return;
-      setSessionLoading(false);
       window.clearTimeout(timeout);
+      if (requestId === sessionRequestRef.current) setSessionLoading(false);
     }
   }, []);
 
