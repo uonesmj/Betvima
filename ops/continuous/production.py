@@ -261,6 +261,32 @@ def load_callback_hmac_secret(path=pathlib.Path('/var/www/nova/.env.production')
     return matches[0]
 
 
+def resolve_active_web_upstream(route, apps):
+    """Select only the PM2-managed web process actually routed by Nginx.
+
+    Casino and other dedicated upstreams are allowed in the same vhost, but
+    never used as the web rollback target. Fail closed on missing/ambiguous web.
+    """
+    routed_ports = {int(port) for port in re.findall(
+        r'proxy_pass http://127\.0\.0\.1:(\d+);', route)}
+    if not routed_ports:
+        raise ValueError('ambiguous_current_upstream')
+    websites = []
+    for app in apps:
+        meta = app.get('pm2_env', {})
+        if not str(app.get('name', '')).startswith('nova-cd-') or meta.get('status') != 'online':
+            continue
+        try:
+            port = int(meta.get('PORT', 0) or 0)
+        except (ValueError, TypeError):
+            continue
+        if port in routed_ports:
+            websites.append((app, port))
+    if len(websites) != 1:
+        raise ValueError('active_web_not_identified')
+    return websites[0]
+
+
 def main(sha):
     global CURRENT_REVISION
     CURRENT_REVISION = sha
@@ -268,18 +294,8 @@ def main(sha):
     if os.geteuid()!=0 or not re.fullmatch('[0-9a-f]{40}',sha):raise ValueError('invalid_invocation')
     progress('preflight')
     route=ROUTE.read_text();snippet=STATIC.read_text()
-    current=set(re.findall(r'proxy_pass http://127\.0\.0\.1:(\d+);',route))
-    if len(current)!=1:raise ValueError('ambiguous_current_upstream')
-    oldport=int(next(iter(current)))
     apps=json.loads(pm2(['jlist']))
-    # Financial workers may inherit PORT from the web environment; identify
-    # the actual routed web process by its unique process name, never by port alone.
-    websites=[a for a in apps
-              if a.get('name','').startswith('nova-cd-')
-              and a.get('pm2_env',{}).get('status')=='online'
-              and int(a.get('pm2_env',{}).get('PORT',0) or 0)==oldport]
-    if len(websites)!=1:raise ValueError('active_web_not_identified')
-    old=websites[0]
+    old,oldport=resolve_active_web_upstream(route,apps)
     olddir=pathlib.Path(old['pm2_env']['pm_cwd'])
     if olddir.parent!=pathlib.Path('/opt/nova-releases'):raise ValueError('unexpected_active_release')
     values={k:str(v) for k,v in old['pm2_env'].items() if re.fullmatch('[A-Z][A-Z0-9_]*',k) and isinstance(v,(str,int))}
