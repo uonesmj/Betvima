@@ -79,6 +79,16 @@ export const POST = withErrorHandling('admin.casino_approvals.approve', async (
   if (existing.kyc_status === 'verified')
     throw new ApiError('CONFLICT', 'Identity already approved');
 
+  // Refuse to upload identity evidence if the KYC bucket was accidentally
+  // made public. A deployment must never silently downgrade ID privacy.
+  const bucket = await services.db.queryOne<{ is_private: boolean }>(
+    'select not public as is_private from storage.buckets where id=$1',
+    [KYC_BUCKET],
+  );
+  if (bucket?.is_private !== true) {
+    throw new ApiError('SERVICE_UNAVAILABLE', 'Private identity storage is not safely configured');
+  }
+
   const key = id + '/manual-telegram/' + randomUUID() + '/document.' + format.extension;
   const storage = serviceRoleClient().storage.from(KYC_BUCKET);
   const saved = await storage.upload(key, bytes, {
