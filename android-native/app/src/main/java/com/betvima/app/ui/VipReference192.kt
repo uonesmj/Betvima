@@ -381,68 +381,137 @@ private fun V192ManagerConcierge(lang: Lang) {
     }
 }
 
-@OptIn(ExperimentalFoundationApi::class)
+private data class V195Metric(
+    val value: String, val en: String, val fa: String,
+    val noteEn: String, val noteFa: String
+)
+
+/**
+ * A self-advancing vertical number reel. The inner list is not touch-scrollable:
+ * vertical swipes remain owned by the VIP page, while the number wheel moves
+ * automatically from bottom to top with native LazyList animation.
+ *
+ * Published tier thresholds are factual plan information. The requested
+ * 10,000 example is explicitly illustrative, not a claim about BetVima users,
+ * concierge fulfillment or a personal balance.
+ */
 @Composable
-private fun V192Numbers(lang: Lang) {
-    val cards = listOf(
-        Triple("05", tr(lang,"weekly cashback tiers","سطح کش‌بک هفتگی"),
-            tr(lang,"Published BetVima VIP plan comparisons",
-                "مقایسه پلن‌های اعلام‌شده VIP بت‌ویما")),
-        Triple("3–11%",tr(lang,"eligible-loss cashback rates",
-            "نرخ کش‌بک باخت واجد شرایط"),
-            tr(lang,"Rates depend on approved weekly deposit tiers",
-                "نرخ بر اساس سطح واریز هفتگی تعیین می‌شود")),
-        Triple("$2k+",tr(lang,"weekly deposits to enter the first plan",
-            "شروع نخستین سطح واریز هفتگی"),
-            tr(lang,"Personal cashback remains subject to verification",
-                "کش‌بک واقعی تابع تأیید حساب است"))
-    )
-    val slideState=rememberLazyListState()
-    val current by remember(slideState) {
-        derivedStateOf { slideState.firstVisibleItemIndex.coerceIn(0,cards.lastIndex) }
+private fun V195Numbers(lang: Lang, visible: Boolean) {
+    val metrics = remember {
+        listOf(
+            V195Metric("05", "Published weekly plans", "پنج پلن هفتگی",
+                "BetVima's published cashback bands",
+                "بر اساس پلن‌های منتشرشده کش‌بک بت‌ویما"),
+            V195Metric("3–11%", "Eligible-loss cashback rates",
+                "نرخ کش‌بک باخت واجد شرایط",
+                "Rates vary with the weekly deposit band",
+                "نرخ به سطح واریز هفتگی وابسته است"),
+            V195Metric("10,000", "Illustrative weekly loss amount (USD)",
+                "مثال فرضی مبلغ باخت هفتگی (دلار)",
+                "Visual example only — not a real member statistic",
+                "صرفاً مثال تصویری است، نه آمار واقعی اعضا"),
+            V195Metric("$2,000", "First published weekly deposit band",
+                "آستانه نخستین سطح واریز هفتگی",
+                "Threshold shown in the published cashback plans",
+                "آستانه ذکرشده در پلن‌های کش‌بک"),
+            V195Metric("$15,000", "Top published weekly deposit band",
+                "آستانه بالاترین سطح واریز هفتگی",
+                "Eligibility still requires server verification",
+                "احراز شرایط نیازمند تأیید سرور است")
+        )
     }
-    Column(Modifier.fillMaxWidth().background(v192Night)
-        .padding(top=24.dp,bottom=4.dp)) {
-        Text(tr(lang,"VIP Club by the numbers","باشگاه VIP در یک نگاه"),
-            modifier=Modifier.padding(horizontal=14.dp),
-            color=v192Text,fontSize=22.sp,fontWeight=FontWeight.Bold)
-        Spacer(Modifier.height(15.dp))
-        LazyRow(
-            state=slideState,
-            modifier=Modifier.fillMaxWidth(),
-            contentPadding=PaddingValues(horizontal=11.dp),
-            horizontalArrangement=Arrangement.spacedBy(12.dp),
-            flingBehavior=rememberSnapFlingBehavior(lazyListState=slideState)
-        ) {
-            itemsIndexed(cards) { index,card ->
-                val distance=v192SwipeDistance(index,slideState)
-                Box(Modifier.fillParentMaxWidth(.92f).height(298.dp)
-                    .graphicsLayer {
-                        scaleX=1f-distance*.045f
-                        scaleY=1f-distance*.08f
-                        translationY=distance*11.dp.toPx()
-                        alpha=1f-distance*.18f
-                    }
-                    .clip(RoundedCornerShape(18.dp))
-                    .background(Brush.linearGradient(listOf(
-                        Color.White,Color(0xFFE5E8EC),Color(0xFFF8F9FB)
-                    )))) {
-                    Column(Modifier.fillMaxSize().padding(horizontal=18.dp,vertical=25.dp),
-                        horizontalAlignment=Alignment.CenterHorizontally,
-                        verticalArrangement=Arrangement.SpaceBetween) {
-                        Text(card.third,color=Color(0xFF666D77),fontSize=11.sp,lineHeight=15.sp)
-                        Text(card.first,color=Color(0xFF222932),fontSize=70.sp,
-                            lineHeight=76.sp,fontWeight=FontWeight.Black,maxLines=1)
-                        Text(card.second,color=Color(0xFF393E46),fontSize=14.sp,
-                            lineHeight=18.sp,fontWeight=FontWeight.Bold)
-                        HorizontalDivider(color=Color(0xFFCFD4DA))
-                        Text("BETVIMA VIP",color=Color(0xFF7E8792),fontSize=10.sp,
-                            fontWeight=FontWeight.ExtraBold)
+    // The centre starts at the requested 10,000 example. The long virtual list
+    // is reset far from its boundary without an observable jump.
+    val aligned = 50_000 - (50_000 % metrics.size)
+    val initialFirst = aligned + 1
+    val reel = rememberLazyListState(initialFirstVisibleItemIndex = initialFirst)
+    LaunchedEffect(visible, reel) {
+        if (visible) {
+            while (true) {
+                delay(2750)
+                if (!reel.isScrollInProgress) {
+                    val next = reel.firstVisibleItemIndex + 1
+                    if (next > 95_000) {
+                        reel.scrollToItem(initialFirst)
+                    } else {
+                        reel.animateScrollToItem(next)
                     }
                 }
             }
         }
-        V192Dots(current,cards.size,light=false)
+    }
+    val activeIndex by remember(reel) {
+        derivedStateOf { (reel.firstVisibleItemIndex + 1) % metrics.size }
+    }
+    Column(Modifier.fillMaxWidth().background(v192Night)
+        .padding(top=24.dp,bottom=13.dp)) {
+        Text(tr(lang,"VIP Club by the numbers","باشگاه VIP در یک نگاه"),
+            modifier=Modifier.padding(horizontal=15.dp),
+            color=v192Text,fontWeight=FontWeight.Black,fontSize=22.sp)
+        Spacer(Modifier.height(14.dp))
+        Box(Modifier.fillMaxWidth().padding(horizontal=12.dp).height(393.dp)
+            .clip(RoundedCornerShape(23.dp))
+            .background(Brush.linearGradient(listOf(
+                Color.White,Color(0xFFDADFE5),Color(0xFFF6F7F9)
+            )))) {
+            LazyColumn(
+                state=reel,
+                modifier=Modifier.fillMaxSize(),
+                userScrollEnabled=false,
+                horizontalAlignment=Alignment.CenterHorizontally
+            ) {
+                items(count=100_000) { index ->
+                    val metric=metrics[index % metrics.size]
+                    val distance=v192SwipeDistance(index,reel)
+                    Box(
+                        Modifier.fillMaxWidth().height(131.dp)
+                            .graphicsLayer {
+                                val scale=1f - distance*.33f
+                                scaleX=scale
+                                scaleY=scale
+                                alpha=1f-distance*.67f
+                            },
+                        contentAlignment=Alignment.Center
+                    ) {
+                        Column(Modifier.fillMaxWidth().padding(horizontal=18.dp),
+                            horizontalAlignment=Alignment.CenterHorizontally,
+                            verticalArrangement=Arrangement.spacedBy(4.dp)) {
+                            Text(metric.value,color=Color(0xFF242A32),
+                                fontSize=57.sp,lineHeight=64.sp,
+                                fontWeight=FontWeight.Black,maxLines=1)
+                            Text(tr(lang,metric.en,metric.fa),
+                                color=Color(0xFF333B44),
+                                fontSize=12.sp,lineHeight=15.sp,
+                                fontWeight=FontWeight.SemiBold,
+                                maxLines=2,textAlign=androidx.compose.ui.text.style.TextAlign.Center)
+                            Text(tr(lang,metric.noteEn,metric.noteFa),
+                                color=Color(0xFF6B727C),
+                                fontSize=9.sp,lineHeight=12.sp,
+                                maxLines=2,textAlign=androidx.compose.ui.text.style.TextAlign.Center)
+                        }
+                    }
+                }
+            }
+            // Edge shade makes incoming/outgoing values appear to travel behind
+            // the card rather than simply jumping between three fixed labels.
+            Box(Modifier.fillMaxWidth().height(47.dp)
+                .align(Alignment.TopCenter)
+                .background(Brush.verticalGradient(listOf(
+                    Color(0xDDF3F5F7),Color.Transparent))))
+            Box(Modifier.fillMaxWidth().height(47.dp)
+                .align(Alignment.BottomCenter)
+                .background(Brush.verticalGradient(listOf(
+                    Color.Transparent,Color(0xDDF3F5F7)))))
+            Box(Modifier.align(Alignment.CenterEnd)
+                .padding(end=13.dp).width(4.dp).height(78.dp)
+                .clip(CircleShape).background(Color(0x3F777E88))) {
+                Box(Modifier.align(Alignment.TopCenter)
+                    .offset(y=(activeIndex*13).dp)
+                    .width(4.dp).height(23.dp)
+                    .clip(CircleShape).background(Color(0xFF20242A)))
+            }
+        }
+        V192Dots(activeIndex, metrics.size, light=false)
     }
 }
 
