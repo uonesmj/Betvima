@@ -30,17 +30,26 @@ import androidx.compose.ui.unit.sp
  * Ten offline WEBP images are expected under the affiliate assets directory.
  * Missing art gracefully renders a branded gradient while awaiting asset review.
  */
-internal enum class AffiliateScene(val photo:String,val accent:Color,val mark:ImageVector) {
-    HERO("hero_stadium",Color(0xFF286548),Icons.Default.SportsSoccer),
-    NUMBERS("partners",Color(0xFF2AA36A),Icons.Default.Groups),
-    ECOSYSTEM("football_team",Color(0xFF517C5B),Icons.Default.SportsSoccer),
-    MOBILE("app_showcase",Color(0xFF2AA36A),Icons.Default.Smartphone),
-    STATISTICS("analytics",Color(0xFF387C59),Icons.Default.Leaderboard),
-    GEOGRAPHY("global_stadium",Color(0xFF2AA36A),Icons.Default.Public),
-    CASINO("casino",Color(0xFF289E62),Icons.Default.Casino),
-    SPORTS("football_action",Color(0xFFB08D62),Icons.Default.SportsSoccer),
-    FAQ("players",Color(0xFF2AA36A),Icons.Default.QuestionAnswer),
-    JOIN("winning_moment",Color(0xFF337951),Icons.Default.Stars)
+internal enum class AffiliateScene(
+    val photo:String,
+    val accent:Color,
+    val mark:ImageVector,
+    val fallbackPhoto:String
+) {
+    HERO("bv_aff_hero",Color(0xFF2865EA),Icons.Default.SportsSoccer,"hero_stadium"),
+    NUMBERS("bv_aff_numbers",Color(0xFF3669F4),Icons.Default.Groups,"partners"),
+    ECOSYSTEM("bv_aff_ecosystem",Color(0xFF517CDB),Icons.Default.SportsSoccer,"football_team"),
+    MOBILE("bv_aff_mobile",Color(0xFF30CEAF),Icons.Default.Smartphone,"app_showcase"),
+    STATISTICS("bv_aff_statistics",Color(0xFF3879E6),Icons.Default.Leaderboard,"analytics"),
+    GEOGRAPHY("bv_aff_geography",Color(0xFF3B83EF),Icons.Default.Public,"global_stadium"),
+    CASINO("bv_aff_casino",Color(0xFF289E92),Icons.Default.Casino,"casino"),
+    SPORTS("bv_aff_sports",Color(0xFF6D81E2),Icons.Default.SportsSoccer,"football_action"),
+    FAQ("bv_aff_faq",Color(0xFF4A7CE6),Icons.Default.QuestionAnswer,"players"),
+    JOIN("bv_aff_join",Color(0xFF3379CA),Icons.Default.Stars,"winning_moment"),
+    GALLERY_MOBILE("bv_aff_gallery_mobile",Color(0xFF30CEAF),Icons.Default.Smartphone,"app_showcase"),
+    GALLERY_SPORTS("bv_aff_gallery_sports",Color(0xFF6D81E2),Icons.Default.SportsSoccer,"football_action"),
+    GALLERY_CASINO("bv_aff_gallery_casino",Color(0xFF289E92),Icons.Default.Casino,"casino"),
+    GALLERY_INSIGHTS("bv_aff_gallery_insights",Color(0xFF3669F4),Icons.Default.ShowChart,"analytics")
 }
 
 @Composable
@@ -57,9 +66,11 @@ internal fun AffiliateCinematicPhoto(
     ) {
         value = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
             runCatching {
-                context.assets.open("affiliate/" + scene.photo + ".webp").use {
-                    BitmapFactory.decodeStream(it)?.asImageBitmap()
-                }
+                val preferred = "affiliate/" + scene.photo + ".webp"
+                val fallback = "affiliate/" + scene.fallbackPhoto + ".webp"
+                runCatching { context.assets.open(preferred) }
+                    .getOrElse { context.assets.open(fallback) }
+                    .use { BitmapFactory.decodeStream(it)?.asImageBitmap() }
             }.getOrNull()
         }
     }
@@ -95,12 +106,12 @@ internal fun AffiliateCinematicPhoto(
                 },tint=Color.White)
         }
         Box(Modifier.fillMaxSize().background(Brush.verticalGradient(
-            0f to Color(0xFF080D17).copy(alpha=.08f),
-            .65f to Color(0xFF080D17).copy(alpha=.2f),
-            1f to Color(0xFF080D17).copy(alpha=.87f))))
+            0f to Color(0xFF080D17).copy(alpha=.04f),
+            .65f to Color(0xFF080D17).copy(alpha=.12f),
+            1f to Color(0xFF080D17).copy(alpha=.53f))))
         Box(Modifier.fillMaxWidth().height(115.dp).align(Alignment.BottomCenter)
             .background(Brush.verticalGradient(listOf(Color.Transparent,
-                Color(0xFF080D17).copy(alpha=.85f)))))
+                Color(0xFF080D17).copy(alpha=.45f)))))
         Box(Modifier.size(140.dp).align(Alignment.TopEnd)
             .graphicsLayer {
                 alpha=.1f+drift*.09f
