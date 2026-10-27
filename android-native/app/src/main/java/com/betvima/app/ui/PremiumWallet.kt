@@ -252,7 +252,7 @@ private fun WalletPaymentRow(
         "failed", "cancelled", "reversed" -> Color(0xFFFF879A)
         else -> Color(0xFFFFD488)
     }
-    val shape = RoundedCornerShape(19.dp)
+    val shape = RoundedCornerShape(16.dp)
     Surface(
         modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
         color = walletPanel, shape = shape,
@@ -268,18 +268,18 @@ private fun WalletPaymentRow(
             Box(Modifier.align(Alignment.CenterStart).width(3.dp).height(45.dp)
                 .clip(RoundedCornerShape(topEnd = 3.dp, bottomEnd = 3.dp))
                 .background(accent.copy(alpha = .77f)))
-            Row(Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 17.dp),
+            Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 10.dp),
                 verticalAlignment = Alignment.CenterVertically) {
-                Box(Modifier.size(49.dp).clip(RoundedCornerShape(15.dp))
+                Box(Modifier.size(40.dp).clip(RoundedCornerShape(13.dp))
                     .background(if (incoming) Color(0xFF10503D) else Color(0xFF173954))
-                    .border(1.dp, accent.copy(alpha = .19f), RoundedCornerShape(15.dp)),
+                    .border(1.dp, accent.copy(alpha = .19f), RoundedCornerShape(13.dp)),
                     contentAlignment = Alignment.Center) {
                     Icon(if (incoming) Icons.Default.SouthWest else Icons.Default.NorthEast,
-                        null, tint = accent, modifier = Modifier.size(23.dp))
+                        null, tint = accent, modifier = Modifier.size(20.dp))
                 }
-                Spacer(Modifier.width(12.dp))
+                Spacer(Modifier.width(10.dp))
                 Column(Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                    verticalArrangement = Arrangement.spacedBy(3.dp)) {
                     Text(if (incoming) tr(lang, "Deposit", "واریز")
                         else tr(lang, "Withdrawal", "برداشت"),
                         color = walletInk, fontSize = 13.sp, fontWeight = FontWeight.Bold)
@@ -289,7 +289,7 @@ private fun WalletPaymentRow(
                 }
                 Spacer(Modifier.width(6.dp))
                 Column(horizontalAlignment = Alignment.End,
-                    verticalArrangement = Arrangement.spacedBy(9.dp)) {
+                    verticalArrangement = Arrangement.spacedBy(5.dp)) {
                     Text((if (incoming) "+" else "−") +
                         money(payment.amountMinor, payment.currency),
                         color = if (incoming) Color(0xFF54D7A4) else Color(0xFFE1E8F0),
@@ -311,6 +311,7 @@ fun PremiumWalletPage(state: AppState, model: AppViewModel) {
     var activeSheet by rememberSaveable { mutableStateOf("") }
     var filter by rememberSaveable { mutableStateOf("all") }
     var filterOpen by remember { mutableStateOf(false) }
+    var showAllRecentPayments by rememberSaveable { mutableStateOf(false) }
     var detail by remember { mutableStateOf<WalletPaymentRecord?>(null) }
     val wallet = state.wallet
 
@@ -397,7 +398,11 @@ fun PremiumWalletPage(state: AppState, model: AppViewModel) {
                                             "withdrawal" -> tr(lang,"Withdrawals","برداشت‌ها")
                                             else -> tr(lang,"All payments","همه پرداخت‌ها")
                                         }) },
-                                        onClick = { filter = opt; filterOpen = false },
+                                        onClick = {
+                                            filter = opt
+                                            showAllRecentPayments = false
+                                            filterOpen = false
+                                        },
                                         trailingIcon = {
                                             if (filter == opt) Icon(Icons.Default.Check, null,
                                                 tint = walletBlue)
@@ -427,8 +432,57 @@ fun PremiumWalletPage(state: AppState, model: AppViewModel) {
                         }
                     }
                 }
-                items(payments.take(6), key = { it.id }) { payment ->
-                    WalletPaymentRow(payment, lang) { detail = payment }
+                if (payments.isNotEmpty()) item {
+                    val recentPayments = payments.take(6)
+                    Column(
+                        modifier = Modifier.fillMaxWidth().animateContentSize(),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        // The newest receipt is always visible; additional receipts stay collapsed.
+                        WalletPaymentRow(recentPayments.first(), lang) {
+                            detail = recentPayments.first()
+                        }
+                        if (recentPayments.size > 1) {
+                            Surface(
+                                onClick = { showAllRecentPayments = !showAllRecentPayments },
+                                modifier = Modifier.fillMaxWidth(),
+                                color = walletPanel,
+                                shape = RoundedCornerShape(13.dp),
+                                border = BorderStroke(1.dp, walletEdge)
+                            ) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth()
+                                        .padding(horizontal = 12.dp, vertical = 9.dp),
+                                    horizontalArrangement = Arrangement.Center,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        if (showAllRecentPayments)
+                                            tr(lang, "Show fewer payments", "بستن پرداخت‌های بیشتر")
+                                        else tr(lang,
+                                            "Show ${recentPayments.size - 1} more payments",
+                                            "نمایش ${recentPayments.size - 1} پرداخت دیگر"),
+                                        color = Color(0xFF70B9FF),
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.SemiBold
+                                    )
+                                    Spacer(Modifier.width(6.dp))
+                                    Icon(
+                                        if (showAllRecentPayments) Icons.Default.ExpandLess
+                                        else Icons.Default.ExpandMore,
+                                        contentDescription = null,
+                                        tint = Color(0xFF70B9FF),
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                }
+                            }
+                            if (showAllRecentPayments) {
+                                recentPayments.drop(1).forEach { payment ->
+                                    WalletPaymentRow(payment, lang) { detail = payment }
+                                }
+                            }
+                        }
+                    }
                 }
                 item {
                     TextButton(onClick = { activeSheet = "history" },
