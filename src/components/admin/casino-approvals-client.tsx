@@ -22,49 +22,35 @@ export function CasinoApprovalsClient() {
     '/api/v1/admin/casino-approvals?page=' + page + '&pageSize=25',
   );
   const [selected, setSelected] = useState<Applicant | null>(null);
-  const [document, setDocument] = useState<File | null>(null);
-  const [documentType, setDocumentType] = useState<DocumentType>('national_id');
-  const [telegramReference, setTelegramReference] = useState('');
-  const [reason, setReason] = useState('');
-  const [ageConfirmed, setAgeConfirmed] = useState(false);
-  const [identityConfirmed, setIdentityConfirmed] = useState(false);
-  const [consentConfirmed, setConsentConfirmed] = useState(false);
+  const [documentType, setDocumentType] = useState<DocumentType | ''>('');
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState('');
 
-  const reset = () => {
-    setDocument(null); setDocumentType('national_id'); setTelegramReference('');
-    setReason(''); setAgeConfirmed(false); setIdentityConfirmed(false);
-    setConsentConfirmed(false);
-  };
   const open = (item: Applicant) => {
-    setSelected(item); setNotice(''); reset();
+    setSelected(item); setNotice(''); setDocumentType('');
   };
-  const canApprove = Boolean(
-    document && telegramReference.trim().length >= 4 && reason.trim().length >= 8 &&
-    ageConfirmed && identityConfirmed && consentConfirmed,
-  );
+
   const approve = async () => {
-    if (!selected || busy || !document || !canApprove) return;
+    if (!selected || busy || !documentType) return;
     if (!window.confirm(tr(
-      'Approve verified identity and legal age for this specific user? This is an audited financial-access decision.',
-      'هویت و سن قانونی این کاربر را پس از بررسی واقعی مدارک تأیید می‌کنید؟ این اقدام ثبت و ممیزی می‌شود.',
+      'I have personally inspected this user\\'s ID outside BetVima, matched it to the account, verified legal gambling age and consent, and will retain the evidence privately using the Public ID shown. Approve?',
+      'تأیید می‌کنم مدرک این کاربر را خارج از بت‌ویما شخصاً بررسی کرده‌ام، تعلق آن به حساب و سن قانونی و رضایت کاربر را کنترل کرده‌ام و مدارک را با شناسه عمومی نشان‌داده‌شده نزد خود نگه می‌دارم. تأیید شود؟',
     ))) return;
-    const form = new FormData();
-    form.set('document', document);
-    form.set('documentType', documentType);
-    form.set('telegramReference', telegramReference.trim());
-    form.set('reason', reason.trim());
-    form.set('ageConfirmed', String(ageConfirmed));
-    form.set('identityConfirmed', String(identityConfirmed));
-    form.set('consentConfirmed', String(consentConfirmed));
+
     setBusy(true); setNotice('');
     try {
       await apiRequest('/api/v1/admin/casino-approvals/' + encodeURIComponent(selected.id), {
-        method: 'POST', body: form,
+        method: 'POST',
+        json: {
+          documentType,
+          ageConfirmed: true,
+          identityConfirmed: true,
+          consentConfirmed: true,
+          externalCustodyConfirmed: true,
+        },
       });
-      setNotice(tr('Identity approved and review recorded.', 'هویت تأیید و سابقه بررسی ثبت شد.'));
-      setSelected(null); reset();
+      setNotice(tr('Identity approval recorded. No document was uploaded.', 'تأیید هویت ثبت شد. هیچ مدرکی آپلود نشد.'));
+      setSelected(null); setDocumentType('');
       await reload();
     } catch (err) {
       setNotice(err instanceof Error ? err.message : tr('Approval failed', 'تأیید ناموفق بود'));
@@ -81,8 +67,8 @@ export function CasinoApprovalsClient() {
               <h2 className="font-bold">{tr('Casino identity approvals', 'تأیید هویت کازینو')}</h2>
               <p className="mt-1 max-w-3xl text-xs nova-muted">
                 {tr(
-                  'Newest registrations first. After you inspect a genuine ID received in Telegram, securely upload the document here and confirm age, identity and consent. No user is approved just by clicking a button.',
-                  'کاربران جدید در بالا هستند. پس از بررسی مدرک واقعی دریافتی در تلگرام، مدرک را اینجا در فضای خصوصی ثبت کرده و سن، هویت و رضایت کاربر را تأیید کنید.',
+                  'Newest registrations first. Review customer documents outside BetVima and keep them securely yourself. Approve only after checking the real ID, legal age, account ownership and customer consent. No documents are uploaded.',
+                  'کاربران جدید در بالا هستند. مدارک را در تلگرام یا آرشیو شخصی خود بررسی و نگهداری کنید. پس از تأیید واقعی هویت، سن قانونی، تعلق مدرک به حساب و رضایت کاربر، فقط دکمه تأیید را بزنید. هیچ مدرکی آپلود نمی‌شود.',
                 )}
               </p>
             </div>
@@ -165,63 +151,39 @@ export function CasinoApprovalsClient() {
       </div>
 
       {selected ? (
-        <section className="rounded-2xl border border-nova-line bg-nova-surface p-5" aria-label="Manual casino identity approval">
+        <section className="rounded-2xl border border-nova-line bg-nova-surface p-5" aria-label="External identity review">
           <div className="mb-3 flex items-center gap-2">
             <FileCheck2 className="text-nova-gold" size={23} />
-            <h3 className="font-bold">{tr('Manual review for', 'بررسی دستی کاربر')} {selected.publicId}</h3>
+            <h3 className="font-bold">{tr('Approve identity for', 'تأیید هویت کاربر')} {selected.publicId}</h3>
           </div>
           <p className="mb-4 text-xs nova-muted">
             {tr(
-              'Check the Telegram sender matches this account. Inspect the government ID and legal age. Upload a protected copy. Remove unneeded Telegram copies according to your retention policy.',
-              'ابتدا ارتباط فرستنده تلگرام با این حساب را بررسی کنید، مدرک و سن قانونی را کنترل کنید و یک نسخه در مخزن خصوصی ثبت نمایید.',
+              'Documents stay entirely with you outside BetVima. Keep the reviewed documents organized by the Public ID shown below. The approval records your admin identity and the time of review; no file, ID number or Telegram content is transferred.',
+              'مدارک کاملاً خارج از بت‌ویما و نزد خودت باقی می‌مانند. مدارک بررسی‌شده را بر اساس شناسه عمومی زیر نگه دار. فقط نام ادمین و زمان تأیید ثبت می‌شود؛ فایل یا شماره مدرک و اطلاعات تلگرام منتقل نمی‌شود.',
             )}
           </p>
+          <div className="mb-4 inline-flex rounded-lg border border-nova-line bg-nova-surface2 px-3 py-2 font-mono text-sm">
+            {selected.publicId}
+          </div>
           <div className="grid max-w-2xl gap-3">
             <label className="block text-xs">
-              {tr('Document type', 'نوع مدرک')}
+              {tr('Document inspected externally', 'نوع مدرک بررسی‌شده نزد خودت')}
               <select className="nova-input mt-1 w-full" value={documentType}
-                onChange={(e) => setDocumentType(e.target.value as DocumentType)}>
+                onChange={(e) => setDocumentType(e.target.value as DocumentType | '')}>
+                <option value="">{tr('Select actual document type', 'نوع واقعی مدرک را انتخاب کن')}</option>
                 <option value="national_id">{tr('National ID', 'کارت ملی')}</option>
                 <option value="passport">{tr('Passport', 'گذرنامه')}</option>
                 <option value="drivers_license">{tr('Driving license', 'گواهینامه')}</option>
               </select>
             </label>
-            <label className="block text-xs">
-              {tr('Reviewed document (JPEG, PNG, WEBP or PDF; maximum 8 MB)', 'مدرک بررسی‌شده (عکس یا PDF، حداکثر ۸ مگابایت)')}
-              <input type="file" accept=".jpg,.jpeg,.png,.webp,.pdf,image/jpeg,image/png,image/webp,application/pdf"
-                className="nova-input mt-1 w-full" onChange={(e) => setDocument(e.target.files?.[0] ?? null)} />
-            </label>
-            <label className="block text-xs">
-              {tr('Telegram message / review case reference', 'شناسه پیام تلگرام یا پرونده بررسی')}
-              <input className="nova-input mt-1 w-full" maxLength={160} value={telegramReference}
-                onChange={(e) => setTelegramReference(e.target.value)}
-                placeholder={tr('Reference only — do not paste sensitive chat content', 'فقط شناسه؛ اطلاعات حساس را وارد نکنید')} />
-            </label>
-            <label className="block text-xs">
-              {tr('Review justification (at least 8 characters)', 'توضیح بررسی (حداقل ۸ کاراکتر)')}
-              <textarea className="nova-input mt-1 w-full" rows={3} maxLength={500} value={reason}
-                onChange={(e) => setReason(e.target.value)} />
-            </label>
-            <label className="flex items-start gap-2 text-sm">
-              <input type="checkbox" checked={identityConfirmed} onChange={(e) => setIdentityConfirmed(e.target.checked)} />
-              {tr('I checked authenticity and matched the document to this account.', 'اصالت مدرک و تعلق آن به این حساب را بررسی کرده‌ام.')}
-            </label>
-            <label className="flex items-start gap-2 text-sm">
-              <input type="checkbox" checked={ageConfirmed} onChange={(e) => setAgeConfirmed(e.target.checked)} />
-              {tr('I verified legal gambling age from the document.', 'سن قانونی فعالیت از روی مدرک تأیید شده است.')}
-            </label>
-            <label className="flex items-start gap-2 text-sm">
-              <input type="checkbox" checked={consentConfirmed} onChange={(e) => setConsentConfirmed(e.target.checked)} />
-              {tr('I confirmed this customer consented to secure identity processing.', 'رضایت کاربر برای پردازش امن مدارک تأیید شده است.')}
-            </label>
             <div className="flex flex-wrap gap-2">
               <button type="button" className="nova-btn-primary inline-flex items-center gap-2 text-xs"
-                disabled={busy || !canApprove} onClick={() => void approve()}>
+                disabled={busy || !documentType} onClick={() => void approve()}>
                 {busy ? <Loader2 size={16} className="animate-spin" /> : <CheckCircle2 size={16} />}
-                {tr('Confirm casino identity', 'تأیید هویت کازینو')}
+                {tr('Approve casino identity', 'تأیید کازینو')}
               </button>
               <button type="button" className="nova-btn-ghost text-xs" disabled={busy}
-                onClick={() => { setSelected(null); reset(); }}>
+                onClick={() => { setSelected(null); setDocumentType(''); }}>
                 {tr('Cancel', 'لغو')}
               </button>
             </div>
