@@ -348,54 +348,68 @@ private fun V192ManagerConcierge(lang: Lang) {
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun V192Numbers(lang: Lang) {
     val cards = listOf(
-        Triple("05", tr(lang, "weekly cashback tiers", "سطح کش‌بک هفتگی"),
-            tr(lang, "Based on published BetVima plans", "بر اساس پلن‌های اعلام‌شده بت‌ویما")),
-        Triple("3–11%", tr(lang, "eligible-loss cashback rates", "درصد کش‌بک باخت واجد شرایط"),
-            tr(lang, "Rate depends on weekly deposit band", "نرخ به سطح واریز هفتگی بستگی دارد")),
-        Triple("$2k+", tr(lang, "weekly deposits for the first plan", "شروع نخستین سطح واریز هفتگی"),
-            tr(lang, "Actual credited rewards require server verification",
-                "پاداش واریزشده نیازمند تأیید سرور است"))
+        Triple("05", tr(lang,"weekly cashback tiers","سطح کش‌بک هفتگی"),
+            tr(lang,"Published BetVima VIP plan comparisons",
+                "مقایسه پلن‌های اعلام‌شده VIP بت‌ویما")),
+        Triple("3–11%",tr(lang,"eligible-loss cashback rates",
+            "نرخ کش‌بک باخت واجد شرایط"),
+            tr(lang,"Rates depend on approved weekly deposit tiers",
+                "نرخ بر اساس سطح واریز هفتگی تعیین می‌شود")),
+        Triple("$2k+",tr(lang,"weekly deposits to enter the first plan",
+            "شروع نخستین سطح واریز هفتگی"),
+            tr(lang,"Personal cashback remains subject to verification",
+                "کش‌بک واقعی تابع تأیید حساب است"))
     )
-    val listState = rememberLazyListState()
-    val current = listState.firstVisibleItemIndex.coerceIn(0, cards.lastIndex)
+    val slideState=rememberLazyListState()
+    val current by remember(slideState) {
+        derivedStateOf { slideState.firstVisibleItemIndex.coerceIn(0,cards.lastIndex) }
+    }
     Column(Modifier.fillMaxWidth().background(v192Night)
-        .padding(top = 21.dp, bottom = 8.dp)) {
-        Text(tr(lang, "VIP Club by the numbers", "باشگاه VIP در یک نگاه"),
-            modifier = Modifier.padding(horizontal = 16.dp),
-            color = v192Text, fontSize = 20.sp, fontWeight = FontWeight.Bold)
-        Spacer(Modifier.height(12.dp))
-        LazyRow(state = listState,
-            contentPadding = PaddingValues(horizontal = 10.dp),
-            horizontalArrangement = Arrangement.spacedBy(11.dp),
-            flingBehavior = rememberPremiumFlingBehavior()) {
-            itemsIndexed(cards) { _, card ->
-                Box(Modifier.fillParentMaxWidth(.94f).height(267.dp)
-                    .clip(RoundedCornerShape(19.dp))
+        .padding(top=24.dp,bottom=4.dp)) {
+        Text(tr(lang,"VIP Club by the numbers","باشگاه VIP در یک نگاه"),
+            modifier=Modifier.padding(horizontal=14.dp),
+            color=v192Text,fontSize=22.sp,fontWeight=FontWeight.Bold)
+        Spacer(Modifier.height(15.dp))
+        LazyRow(
+            state=slideState,
+            modifier=Modifier.fillMaxWidth(),
+            contentPadding=PaddingValues(horizontal=11.dp),
+            horizontalArrangement=Arrangement.spacedBy(12.dp),
+            flingBehavior=rememberSnapFlingBehavior(lazyListState=slideState)
+        ) {
+            itemsIndexed(cards) { index,card ->
+                val distance=v192SwipeDistance(index,slideState)
+                Box(Modifier.fillParentMaxWidth(.92f).height(298.dp)
+                    .graphicsLayer {
+                        scaleX=1f-distance*.045f
+                        scaleY=1f-distance*.08f
+                        translationY=distance*11.dp.toPx()
+                        alpha=1f-distance*.18f
+                    }
+                    .clip(RoundedCornerShape(18.dp))
                     .background(Brush.linearGradient(listOf(
-                        Color(0xFFFFFFFF), Color(0xFFDCE0E5), Color(0xFFF9FAFC)
+                        Color.White,Color(0xFFE5E8EC),Color(0xFFF8F9FB)
                     )))) {
-                    Column(
-                        Modifier.fillMaxSize().padding(18.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.SpaceEvenly
-                    ) {
-                        Text(card.first, color = Color(0xFF25292E),
-                            fontSize = 61.sp, lineHeight = 70.sp,
-                            fontWeight = FontWeight.Black)
-                        Text(card.second, color = Color(0xFF2B3036),
-                            fontSize = 16.sp, fontWeight = FontWeight.Bold)
-                        Text(card.third, color = Color(0xFF666B73),
-                            fontSize = 12.sp, lineHeight = 18.sp)
-                        Text("BETVIMA VIP", color = Color(0xFF959CA7),
-                            fontSize = 10.sp, fontWeight = FontWeight.Black)
+                    Column(Modifier.fillMaxSize().padding(horizontal=18.dp,vertical=25.dp),
+                        horizontalAlignment=Alignment.CenterHorizontally,
+                        verticalArrangement=Arrangement.SpaceBetween) {
+                        Text(card.third,color=Color(0xFF666D77),fontSize=11.sp,lineHeight=15.sp)
+                        Text(card.first,color=Color(0xFF222932),fontSize=70.sp,
+                            lineHeight=76.sp,fontWeight=FontWeight.Black,maxLines=1)
+                        Text(card.second,color=Color(0xFF393E46),fontSize=14.sp,
+                            lineHeight=18.sp,fontWeight=FontWeight.Bold)
+                        HorizontalDivider(color=Color(0xFFCFD4DA))
+                        Text("BETVIMA VIP",color=Color(0xFF7E8792),fontSize=10.sp,
+                            fontWeight=FontWeight.ExtraBold)
                     }
                 }
             }
         }
-        V192Dots(current, cards.size)
+        V192Dots(current,cards.size,light=false)
     }
 }
 
@@ -535,49 +549,67 @@ internal fun VipReference192Screen(
     onViewPlans: () -> Unit,
     onSupport: () -> Unit
 ) {
-    val lang = state.lang
+    val lang=state.lang
+    // The VIP modal and its chrome never scroll. Only the body owns vertical
+    // scrolling; every carousel has a separate horizontal LazyListState.
+    val verticalScroll=rememberLazyListState()
     Box(Modifier.fillMaxSize().background(v192Night)) {
         LazyColumn(
+            state=verticalScroll,
             modifier=Modifier.fillMaxSize(),
-            contentPadding=PaddingValues(bottom = 96.dp),
+            contentPadding=PaddingValues(bottom=85.dp),
             flingBehavior=rememberPremiumFlingBehavior()
         ) {
-            item(key="reference-hero") { V192Hero(lang) }
-            item(key="reference-manager") { V192Manager(lang) }
-            item(key="reference-concierge") {
-                V192ImageSlider(lang, tr(lang,"Concierge service","خدمات ویژه Concierge"),
-                    tr(lang,"Enjoy the comfort while we take care of the rest",
-                        "آسودگی با خدمات متناسب با شرایط حساب"),
-                    v192Concierge, light=true)
+            item(key="vip-hero") {
+                V192Reveal(0,verticalScroll) { V192Hero(lang,verticalScroll) }
             }
-            item(key="reference-personal") {
-                V192ImageSlider(lang,tr(lang,"A personal approach","رویکرد اختصاصی"),
-                    "",v192Personal,light=false)
+            item(key="vip-connected-manager-concierge") {
+                V192Reveal(1,verticalScroll) { V192ManagerConcierge(lang) }
             }
-            item(key="reference-gifts") {
-                V192ImageSlider(lang,tr(lang,"Exclusive gifts","هدایای ویژه"),
-                    tr(lang,"Premium experiences: illustrative concepts",
-                        "تجربه‌های لوکس؛ نمونه‌های تصویری"),
-                    v192Gifts,light=false,tall=true)
+            item(key="vip-personal-swiper") {
+                V192Reveal(2,verticalScroll) {
+                    V192ImageSlider(
+                        lang,tr(lang,"A personal approach","رویکرد اختصاصی"),
+                        tr(lang,"Illustrative premium experiences","نمونه‌های تصویری تجربیات ممتاز"),
+                        v192Personal,light=false)
+                }
             }
-            item(key="reference-numbers") { V192Numbers(lang) }
-            item(key="reference-access") { V192Access(lang,onViewPlans,onSupport) }
-            item(key="reference-faq") { V192FaqSection(lang) }
-            item(key="reference-footer") { V192Footer(lang,onSupport) }
+            item(key="vip-gift-swiper") {
+                V192Reveal(3,verticalScroll) {
+                    V192ImageSlider(
+                        lang,tr(lang,"Exclusive gifts","هدایای ویژه"),
+                        tr(lang,"Illustrative catalogue, subject to availability",
+                            "تصاویر نمونه هستند و ارائه هدایا تابع شرایط است"),
+                        v192Gifts,light=false,tall=true)
+                }
+            }
+            item(key="vip-numbers") {
+                V192Reveal(4,verticalScroll) { V192Numbers(lang) }
+            }
+            item(key="vip-access") {
+                V192Reveal(5,verticalScroll) {
+                    V192Access(lang,onViewPlans,onSupport)
+                }
+            }
+            item(key="vip-questions") {
+                V192Reveal(6,verticalScroll) { V192FaqSection(lang) }
+            }
+            item(key="vip-footer") {
+                V192Reveal(7,verticalScroll) { V192Footer(lang,onSupport) }
+            }
         }
-        Surface(
-            modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth()
-                .background(Brush.verticalGradient(listOf(
-                    Color.Transparent,v192Night.copy(alpha=.95f),v192Night)))
-                .padding(horizontal=10.dp,vertical=11.dp),
-            color=Color.Transparent
-        ) {
-            Button(onClick=onSupport,
-                modifier=Modifier.fillMaxWidth().height(44.dp),
+        Box(Modifier.align(Alignment.BottomCenter).fillMaxWidth()
+            .background(Brush.verticalGradient(listOf(
+                Color.Transparent, v192Night.copy(alpha=.98f),v192Night
+            ))).padding(horizontal=10.dp,vertical=11.dp)) {
+            Button(
+                onClick=onSupport,
+                modifier=Modifier.fillMaxWidth().height(46.dp),
                 shape=RoundedCornerShape(9.dp),
-                colors=ButtonDefaults.buttonColors(containerColor=Color.White)) {
+                colors=ButtonDefaults.buttonColors(containerColor=Color.White)
+            ) {
                 Text(tr(lang,"Migrate your VIP status","بررسی انتقال سطح VIP"),
-                    color=Color(0xFF17191B), fontSize=12.sp, fontWeight=FontWeight.Bold)
+                    color=Color(0xFF17191B),fontSize=12.sp,fontWeight=FontWeight.Black)
             }
         }
     }
