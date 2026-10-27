@@ -421,10 +421,12 @@ private fun V192Footer(lang: Lang, onSupport: () -> Unit) {
 
 @Composable
 internal fun VipReference192Screen(
-    state: AppState, model: AppViewModel, onViewPlans: () -> Unit
+    state: AppState,
+    model: AppViewModel,
+    onViewPlans: () -> Unit,
+    onSupport: () -> Unit
 ) {
     val lang = state.lang
-    val onSupport: () -> Unit = { model.feature(Feature.SUPPORT) }
     Box(Modifier.fillMaxSize().background(v192Night)) {
         LazyColumn(
             modifier=Modifier.fillMaxSize(),
