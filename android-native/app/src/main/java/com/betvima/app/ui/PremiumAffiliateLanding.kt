@@ -268,6 +268,10 @@ private fun AffiliateMotionLanding(
     onLogin: () -> Unit
 ) {
     val list = rememberLazyListState()
+    val navigationScope = rememberCoroutineScope()
+    val navigateTo: (Int) -> Unit = { item ->
+        navigationScope.launch { list.animateScrollToItem(item) }
+    }
     val showing: (Int) -> Boolean = { index ->
         list.layoutInfo.visibleItemsInfo.any { it.index == index }
     }
@@ -279,7 +283,7 @@ private fun AffiliateMotionLanding(
     ) {
         item(key = "hero") {
             val active by remember { derivedStateOf { showing(0) } }
-            PartnerHero(lang, active, onGetStarted, onLogin)
+            PartnerHero(lang, active, onGetStarted, onLogin, navigateTo)
         }
         item(key = "stats") {
             val active by remember { derivedStateOf { showing(1) } }
@@ -322,7 +326,10 @@ private fun AffiliateMotionLanding(
 }
 
 @Composable
-private fun PartnerHero(lang: Lang, active: Boolean, onGetStarted: () -> Unit, onLogin: () -> Unit) {
+private fun PartnerHero(
+    lang: Lang, active: Boolean,
+    onGetStarted: () -> Unit, onLogin: () -> Unit, onNavigate: (Int) -> Unit
+) {
     val appear by animateFloatAsState(if (active) 1f else 0f,
         animationSpec = tween(850, easing = FastOutSlowInEasing), label = "hero")
     val floatAnim = rememberInfiniteTransition(label = "hero-float")
@@ -337,7 +344,37 @@ private fun PartnerHero(lang: Lang, active: Boolean, onGetStarted: () -> Unit, o
         ).padding(horizontal = 23.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Spacer(Modifier.height(33.dp))
+        Spacer(Modifier.height(13.dp))
+        val sections = listOf(
+            Triple(tr(lang,"Features","ویژگی‌ها"),2,Icons.Default.AutoAwesome),
+            Triple(tr(lang,"Product","محصولات"),6,Icons.Default.Apps),
+            Triple(tr(lang,"FAQ","سؤالات"),7,Icons.Default.ChatBubbleOutline),
+            Triple(tr(lang,"Gallery","گالری"),8,Icons.Default.Collections),
+            Triple(tr(lang,"Contact","ارتباط"),9,Icons.Default.Email)
+        )
+        LazyRow(
+            modifier = Modifier.fillMaxWidth(),
+            contentPadding = PaddingValues(vertical=4.dp),
+            horizontalArrangement = Arrangement.spacedBy(7.dp)
+        ) {
+            items(sections) { (name, destination, symbol) ->
+                Surface(
+                    onClick={ onNavigate(destination) },
+                    color=Color(0xFF171E2C),
+                    shape=RoundedCornerShape(18.dp),
+                    border=BorderStroke(1.dp,Color(0xFF343F53))
+                ) {
+                    Row(Modifier.padding(horizontal=11.dp,vertical=9.dp),
+                        verticalAlignment=Alignment.CenterVertically) {
+                        Icon(symbol,null,tint=partnerMint,modifier=Modifier.size(13.dp))
+                        Spacer(Modifier.width(5.dp))
+                        Text(name,color=Color(0xFFEEF2FF),fontSize=10.sp,
+                            fontWeight=FontWeight.Bold)
+                    }
+                }
+            }
+        }
+        Spacer(Modifier.height(22.dp))
         Text(tr(lang, "PARTNER OFFER  /  BETVIMA", "طرح همکاری  /  BETVIMA"), fontSize = 11.sp,
             letterSpacing = 2.sp, color = partnerMint, fontWeight = FontWeight.Black)
         Spacer(Modifier.height(21.dp))
