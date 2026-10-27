@@ -30,6 +30,12 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.10.2'
+      - name: Generate original BetVima affiliate artwork
+        run: |
+          python3 -m pip install --quiet Pillow
+          python3 android-native/tools/generate_affiliate_art.py
+          test -s android-native/app/src/main/assets/affiliate/bv_aff_hero.webp
+          test -s android-native/app/src/main/assets/affiliate/bv_aff_gallery_casino.webp
       - name: Build Android and run unit tests
         working-directory: android-native
         run: gradle :app:assembleDebug :app:testDebugUnitTest --no-daemon --stacktrace
