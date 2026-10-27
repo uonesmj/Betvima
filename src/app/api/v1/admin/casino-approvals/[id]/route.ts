@@ -4,6 +4,8 @@ import { withErrorHandling, ApiError } from '@/lib/errors';
 import { withAdmin } from '@/server/http/guard';
 import { enforceRateLimit, readJson } from '@/server/http/request';
 import { casinoManualIdentityReviewSchema } from '@/server/kyc/casino-manual-review';
+import { serverEnv } from '@/server/env';
+import { isApprovedAdminOrigin } from '@/server/security/approved-admin-origin';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -29,8 +31,10 @@ export const POST = withErrorHandling('admin.casino_approvals.approve', async (
   const { id } = await params.params;
   if (!uuid.safeParse(id).success) throw new ApiError('VALIDATION_FAILED', 'Invalid user');
 
+  // Production TLS terminates at Nginx. Request.url may point at its HTTP
+  // upstream, so use the configured public origin while retaining CSRF checks.
   const origin = request.headers.get('origin');
-  if (!origin || origin !== new URL(request.url).origin) {
+  if (!isApprovedAdminOrigin(origin, serverEnv().NEXT_PUBLIC_SITE_URL)) {
     throw new ApiError('FORBIDDEN', 'Same-origin admin form required');
   }
   const body = await readJson(request, casinoManualIdentityReviewSchema, ctx);
