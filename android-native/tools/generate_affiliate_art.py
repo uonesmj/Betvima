@@ -66,8 +66,92 @@ def photo(canvas,name,rect,alpha=245,radius=16):
 def title(canvas,xy,text,size=34,color=WHITE):
     ImageDraw.Draw(canvas).text(xy,text,font=font(size),fill=(*color,255),stroke_width=0)
 
+def interface(screen, size):
+    """Offline native-style illustration of BetVima Casino or My Bets.
+    Drawn from scratch, not a copied competitor screen and not live user data.
+    """
+    w,h=size
+    im=Image.new("RGBA",(w,h),(11,14,22,255))
+    d=ImageDraw.Draw(im)
+    scale=lambda n:max(1,int(w*n/260))
+    def rect(x0,y0,x1,y1,col,rad=12,stroke=None):
+        d.rounded_rectangle((int(x0*w),int(y0*h),int(x1*w),int(y1*h)),
+            radius=scale(rad),fill=col,outline=stroke,width=max(1,scale(1)))
+    def tx(x,y,v,n=12,c=(233,240,249,255),bold=True):
+        d.text((int(x*w),int(y*h)),v,font=font(scale(n)),fill=c)
+    rect(.0,.0,1,.13,(11,14,20,255),0)
+    tx(.04,.045,"BET",15)
+    tx(.23,.045,"VIMA",15,(28,226,138,255))
+    tx(.62,.038,"USD  33.74",8)
+    rect(.66,.075,.91,.118,(0,202,116,255),5)
+    tx(.70,.083,"Deposit",8,(5,30,22,255))
+    if screen=="casino":
+        rect(.035,.17,.97,.245,(35,38,45,255),20)
+        rect(.04,.174,.34,.238,(30,132,246,255),20)
+        tx(.11,.190,"Lobby",10)
+        tx(.39,.190,"Live Casino",8)
+        tx(.76,.190,"Quick",8)
+        rect(.035,.275,.97,.495,(15,45,111,255),16,stroke=(51,111,201,255))
+        tx(.075,.305,"BV  BETVIMA CASINO",8)
+        tx(.075,.347,"Black Vigil",17)
+        tx(.075,.410,"Nocturn Play",8)
+        rect(.075,.451,.42,.484,(248,249,253,255),6)
+        tx(.10,.455,"View game",8,(20,25,34,255))
+        # Original brand illustration of arcade tiles.
+        for k in range(4):
+            x=.05+k*.225
+            rect(x,.54,x+.205,.615,(40,44,55,255),7)
+        tx(.08,.556,"Search",8)
+        tx(.52,.556,"Providers",8)
+        tx(.06,.653,"Explore games",14)
+        for k in range(3):
+            x=.05+k*.305
+            rect(x,.702,x+.285,.895,((35+k*20),45+k*8,86+k*10,255),12,
+                 stroke=(75,101,174,255))
+            d.ellipse((int((x+.07)*w),int(.75*h),
+                       int((x+.20)*w),int(.83*h)),
+                      fill=(22+k*20,144,223,255))
+            tx(x+.02,.857,["Comet Bingo","Twin Owls","The Fates"][k],7)
+        active="Casino"
+    else:
+        rect(.035,.165,.97,.225,(35,38,45,255),12)
+        tx(.06,.18,"All     Open     Won     Lost     Cashed",9)
+        for k in range(2):
+            top=.248+k*.078
+            rect(.045,top,.96,top+.067,(32,34,39,255),10,
+                 stroke=(60,66,76,255))
+            tx(.09,top+.013,"Single bet",11)
+            tx(.79,top+.013,"Lost",9,(250,170,193,255))
+        rect(.038,.421,.962,.848,(245,247,250,255),12,
+             stroke=(230,70,108,255))
+        rect(.038,.421,.962,.501,(190,35,73,255),11)
+        tx(.08,.440,"Single bet",12)
+        tx(.78,.442,"Lost",9)
+        tx(.082,.516,"Stake",8,(97,104,119,255))
+        tx(.365,.516,"Odds",8,(97,104,119,255))
+        tx(.655,.516,"Return",8,(97,104,119,255))
+        tx(.083,.548,"1.60 USD",10,(30,39,52,255))
+        tx(.365,.548,"1.85",10,(30,39,52,255))
+        tx(.675,.548,"0.00 USD",10,(188,31,73,255))
+        rect(.075,.595,.93,.764,(253,238,242,255),10,
+             stroke=(244,158,179,255))
+        tx(.105,.608,"YOUR BET",8,(150,44,82,255))
+        tx(.105,.640,"Real Salt Lake",11,(51,46,53,255))
+        tx(.105,.683,"Asian Handicap",9,(104,68,86,255))
+        tx(.105,.725,"Accepted odds 1.85",8,(188,43,83,255))
+        tx(.095,.795,"MLS   Real Salt Lake  1 - 1",8,(37,49,69,255))
+        active="My Bets"
+    rect(0,.915,1,1,(13,17,24,255),0)
+    for i,label in enumerate(["Menu","Home","Casino","My Bets","Sports"]):
+        x=.07+i*.195
+        color=(32,147,248,255) if label==active else (165,174,194,255)
+        d.ellipse((int(x*w),int(.933*h),
+                   int((x+.042)*w),int(.957*h)),fill=color)
+        tx(x-.012,.969,label,7,color)
+    return im
+
 def phone(canvas,screen,x,y,w,h,slant=0):
-    """Frame placed around an existing BetVima illustration/screenshot."""
+    """Glossy phone frame containing a BetVima UI illustration."""
     w,h=int(w),int(h)
     if w<20 or h<30:return
     case=Image.new("RGBA",(w,h),(0,0,0,0))
@@ -75,16 +159,18 @@ def phone(canvas,screen,x,y,w,h,slant=0):
     d.rounded_rectangle((0,0,w-1,h-1),radius=int(w*.13),
                         fill=(3,7,16,255),outline=(109,143,176,255),
                         width=max(2,w//80))
-    photo(case,screen,(int(w*.052),int(h*.028),int(w*.896),int(h*.94)),
-          alpha=255,radius=max(10,int(w*.09)))
+    sx,sy=int(w*.052),int(h*.028)
+    sw,sh=int(w*.896),int(h*.94)
+    screenType="casino" if screen=="casino" else "bets"
+    content=interface(screenType,(sw,sh))
+    case.alpha_composite(content,(sx,sy))
     d.rounded_rectangle((int(w*.35),int(h*.018),int(w*.65),int(h*.033)),
                         radius=6,fill=(0,5,15,255))
     if slant:case=case.rotate(slant,expand=True,resample=Image.Resampling.BICUBIC)
-    # Make phone shadow subtle enough not to obscure UI or headings.
-    sh=Image.new("RGBA",case.size,(0,0,0,0))
-    sh.putalpha(case.getchannel("A").filter(ImageFilter.GaussianBlur(12))
+    shimg=Image.new("RGBA",case.size,(0,0,0,0))
+    shimg.putalpha(case.getchannel("A").filter(ImageFilter.GaussianBlur(12))
          .point(lambda a:round(a*.55)))
-    canvas.alpha_composite(sh,(int(x)+10,int(y)+10))
+    canvas.alpha_composite(shimg,(int(x)+10,int(y)+10))
     canvas.alpha_composite(case,(int(x),int(y)))
 
 def chart(canvas):
