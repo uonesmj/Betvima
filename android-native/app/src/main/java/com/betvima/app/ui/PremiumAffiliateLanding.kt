@@ -480,7 +480,7 @@ private fun PartnerHero(
 private fun PartnerFloatLabel(title: String, sub: String, modifier: Modifier) {
     Surface(modifier = modifier.shadow(13.dp, RoundedCornerShape(19.dp)),
         color = Color.White, shape = RoundedCornerShape(19.dp),
-        border = BorderStroke(3.dp, Color(0xFFBAE6C9))) {
+        border = BorderStroke(2.dp, Color(0xFFC5CCF7))) {
         Column(Modifier.padding(horizontal = 13.dp, vertical = 10.dp)) {
             Text(title, fontSize = 20.sp, fontWeight = FontWeight.Black,
                 color = partnerNight)
@@ -516,8 +516,8 @@ private fun PartnerPhone(lang:Lang) {
             }
             Spacer(Modifier.height(10.dp))
             Box(Modifier.fillMaxWidth().height(93.dp).clip(RoundedCornerShape(12.dp))
-                .background(Brush.linearGradient(listOf(Color(0xFF134B31),
-                    Color(0xFF167443), Color(0xFF11291B))))) {
+                .background(Brush.linearGradient(listOf(Color(0xFF15275C),
+                    Color(0xFF315DFF), Color(0xFF111B45))))) {
                 Column(Modifier.align(Alignment.CenterStart).padding(11.dp)) {
                     Text("BETVIMA", color = Color(0xFFB7C5FF), fontSize = 8.sp)
                     Text(tr(lang,"Explore the game","دنیای بازی"), color = Color.White, fontSize = 14.sp,
@@ -552,38 +552,69 @@ private fun PartnerPhone(lang:Lang) {
 
 @Composable
 private fun PartnerStats(lang: Lang, active: Boolean) {
-    val count by animateIntAsState(if(active) 3 else 0,
-        animationSpec = tween(1100), label = "partner-stat")
-    Column(Modifier.fillMaxWidth().padding(horizontal = 18.dp)
-        .clip(RoundedCornerShape(34.dp))
-        .background(partnerBlue)
-        .padding(horizontal = 27.dp, vertical = 33.dp)) {
-        AffiliateCinematicPhoto(AffiliateScene.NUMBERS,
-            Modifier.fillMaxWidth().height(145.dp),active)
-        Spacer(Modifier.height(21.dp))
-        Text(tr(lang, "Your tools for partner growth",
-                "ابزارهای رشد همکاری شما"),
-            color = Color.White, fontSize = 23.sp, lineHeight = 28.sp,
-            fontWeight = FontWeight.Black)
-        Spacer(Modifier.height(24.dp))
-        listOf(
-            "$count" to tr(lang, "Product experiences", "بخش‌های محصول"),
-            "70%" to tr(lang, "Default RevShare for approved accounts", "سهم پایه حساب‌های همکاری تأییدشده"),
-            "1" to tr(lang, "Dedicated partner dashboard", "داشبورد اختصاصی")
-        ).forEachIndexed { index, pair ->
-            HorizontalDivider(color = Color.White.copy(alpha = .23f))
-            Spacer(Modifier.height(15.dp))
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(pair.first, color = Color.White, fontSize = 39.sp,
-                    fontWeight = FontWeight.Black)
-                Spacer(Modifier.width(19.dp))
-                Text(pair.second, color = Color(0xFFE8ECFF), fontSize = 14.sp,
-                    modifier = Modifier.weight(1f))
-                Icon(Icons.Default.AutoAwesome, null, tint = Color.White,
-                    modifier = Modifier.size(17.dp))
+    val count by animateIntAsState(
+        if(active) 3 else 0,
+        animationSpec=tween(940,easing=FastOutSlowInEasing),
+        label="partner-products-count"
+    )
+    val appear by animateFloatAsState(
+        if(active) 1f else 0f,
+        animationSpec=tween(770),label="partner-blue-band"
+    )
+    Column(
+        Modifier.fillMaxWidth()
+            .offset(y=(-19).dp)
+            .padding(horizontal=10.dp)
+            .graphicsLayer {
+                alpha=.55f+appear*.45f
+                translationY=(1f-appear)*30f
             }
-            Spacer(Modifier.height(if(index==2)4.dp else 16.dp))
+            .clip(RoundedCornerShape(27.dp))
+            .background(Brush.horizontalGradient(listOf(
+                Color(0xFF264AFF),Color(0xFF365FFF),Color(0xFF4568FF)
+            )))
+            .padding(horizontal=16.dp,vertical=22.dp)
+    ) {
+        Text(
+            tr(lang,
+                "Build your reach. Grow together.",
+                "مخاطبان بیشتری جذب کنید؛ با هم رشد کنیم."),
+            color=Color.White,fontSize=17.sp,
+            fontWeight=FontWeight.Black,
+            lineHeight=22.sp
+        )
+        Spacer(Modifier.height(22.dp))
+        Row(
+            Modifier.fillMaxWidth(),
+            horizontalArrangement=Arrangement.SpaceEvenly,
+            verticalAlignment=Alignment.Top
+        ) {
+            val cells=listOf(
+                Pair("70%",tr(lang,"Base\nRevShare","سهم پایه")),
+                Pair("$count",tr(lang,"BetVima\nproducts","محصولات")),
+                Pair("1",tr(lang,"Partner\ndashboard","داشبورد همکار"))
+            )
+            cells.forEachIndexed { index,item ->
+                if(index>0) {
+                    Box(Modifier.width(1.dp).height(58.dp)
+                        .background(Color.White.copy(alpha=.30f)))
+                }
+                Column(Modifier.weight(1f),horizontalAlignment=Alignment.CenterHorizontally) {
+                    Text(item.first,color=Color.White,fontSize=29.sp,
+                        fontWeight=FontWeight.Black,maxLines=1)
+                    Text(item.second,color=Color(0xFFE6EBFF),fontSize=10.sp,
+                        lineHeight=14.sp,textAlign=TextAlign.Center,
+                        fontWeight=FontWeight.Medium)
+                }
+            }
         }
+        Spacer(Modifier.height(9.dp))
+        Text(
+            tr(lang,
+                "Revenue share applies under each approved partner agreement.",
+                "محاسبه سهم درآمد مطابق قرارداد تأییدشده هر همکار است."),
+            color=Color(0xFFDDE5FF),fontSize=9.sp,lineHeight=13.sp
+        )
     }
 }
 
