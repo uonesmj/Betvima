@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { useApp } from '@/components/layout/providers';
@@ -41,6 +42,7 @@ export function UsersClient() {
           <option value="">Any KYC</option>
           {KYC.map((status) => <option key={status} value={status}>{status}</option>)}
         </select>
+        <Link href="/admin/casino-approvals" className="nova-btn-primary !py-1.5 text-xs">Casino approvals</Link>
         <button type="button" className="nova-btn-ghost !py-1.5 text-xs" onClick={() => void reload()}>Refresh</button>
       </div>
 
