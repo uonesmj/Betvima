@@ -441,16 +441,7 @@ private fun PartnerHero(
                     color=Color(0xFFE7ECFF),fontSize=11.sp)
             }
         }
-        Box(Modifier.align(Alignment.BottomEnd)
-            .padding(end=26.dp,bottom=14.dp)
-            .graphicsLayer {
-                alpha=appear
-                translationX=(1f-appear)*140f
-                translationY=floatY
-                rotationZ=(-6f)
-            }) {
-            PartnerPhone(lang)
-        }
+        // Phone images are composed within the BetVima artwork itself.
         PartnerFloatLabel(
             "70% RevShare",
             tr(lang,"For approved BetVima partners","برای همکاران تأییدشده"),
@@ -718,7 +709,7 @@ private fun PartnerChart(lang: Lang, active: Boolean) {
                     "نمودار نمایشی است؛ ارقام واقعی فقط در داشبورد احراز هویت‌شده نمایش داده می‌شوند."),
                 fontSize=11.sp,lineHeight=17.sp,color=Color(0xFFA9B6C7))
             Spacer(Modifier.height(18.dp))
-            AffiliateCinematicPhoto(AffiliateScene.STATISTICS,
+            AffiliateCinematicPhoto(AffiliateScene.CHART,
                 Modifier.fillMaxWidth().height(125.dp),active,corner=18)
             Spacer(Modifier.height(18.dp))
             Row(Modifier.fillMaxWidth().height(180.dp),
@@ -926,10 +917,10 @@ private fun PartnerGallery(lang: Lang, active: Boolean) {
                         modifier=Modifier.weight(1f)) {
                         AffiliateCinematicPhoto(
                             when(row*2+col) {
-                                0 -> AffiliateScene.MOBILE
-                                1 -> AffiliateScene.SPORTS
-                                2 -> AffiliateScene.CASINO
-                                else -> AffiliateScene.JOIN
+                                0 -> AffiliateScene.GALLERY_MOBILE
+                                1 -> AffiliateScene.GALLERY_SPORTS
+                                2 -> AffiliateScene.GALLERY_CASINO
+                                else -> AffiliateScene.GALLERY_INSIGHTS
                             },
                             Modifier.fillMaxWidth().height(183.dp),active,corner=22
                         ) {
