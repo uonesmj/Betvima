@@ -33,7 +33,7 @@ export function CasinoApprovalsClient() {
   const approve = async () => {
     if (!selected || busy || !documentType) return;
     if (!window.confirm(tr(
-      'I have personally inspected this user\\'s ID outside BetVima, matched it to the account, verified legal gambling age and consent, and will retain the evidence privately using the Public ID shown. Approve?',
+      "I have personally inspected this user's ID outside BetVima, matched it to the account, verified legal gambling age and consent, and will retain the evidence privately using the Public ID shown. Approve?",
       'تأیید می‌کنم مدرک این کاربر را خارج از بت‌ویما شخصاً بررسی کرده‌ام، تعلق آن به حساب و سن قانونی و رضایت کاربر را کنترل کرده‌ام و مدارک را با شناسه عمومی نشان‌داده‌شده نزد خود نگه می‌دارم. تأیید شود؟',
     ))) return;
 
