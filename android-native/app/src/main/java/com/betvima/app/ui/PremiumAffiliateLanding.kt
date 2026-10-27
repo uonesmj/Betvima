@@ -41,10 +41,10 @@ import kotlinx.coroutines.launch
 
 // A genuinely native, illustrated and animated Partners landing.
 // Does not embed 1win content, third-party media, or an external website.
-private val partnerNight = Color(0xFF080B0A)
-private val partnerBlue = Color(0xFF3569F6)
-private val partnerViolet = Color(0xFF172D63)
-private val partnerMint = Color(0xFF56D995)
+private val partnerNight = Color(0xFF090B12)
+private val partnerBlue = Color(0xFF315DFF)
+private val partnerViolet = Color(0xFF5442B9)
+private val partnerMint = Color(0xFF969CFF)
 private val partnerPaper = Color(0xFFF3F5FA)
 private val partnerMuted = Color(0xFF818A9D)
 private val partnerWhite = Color.White
@@ -61,6 +61,8 @@ fun PremiumAffiliateSheet(state: AppState, model: AppViewModel, onClose: () -> U
     var confirmPartnerSignOut by remember { mutableStateOf(false) }
     val partnerDrawerState = rememberDrawerState(DrawerValue.Closed)
     val partnerDrawerScope = rememberCoroutineScope()
+    val publicAffiliateScroll = rememberLazyListState()
+    val publicAffiliateScope = rememberCoroutineScope()
     var partnerNav by rememberSaveable { mutableStateOf("overview") }
     var partnerNavRevision by rememberSaveable { mutableIntStateOf(0) }
     val openRegister = {
@@ -149,6 +151,33 @@ fun PremiumAffiliateSheet(state: AppState, model: AppViewModel, onClose: () -> U
                             tint=Color.White)
                     }
                 }
+                if(!showPortal) {
+                    val links = listOf(
+                        Triple(tr(lang,"Features","ویژگی‌ها"),2,Icons.Default.AutoAwesome),
+                        Triple(tr(lang,"Product","محصولات"),6,Icons.Default.Apps),
+                        Triple(tr(lang,"FAQ","سؤالات"),7,Icons.Default.QuestionAnswer),
+                        Triple(tr(lang,"Gallery","گالری"),8,Icons.Default.Collections),
+                        Triple(tr(lang,"Contact","ارتباط"),10,Icons.Default.Email),
+                        Triple(tr(lang,"Blog","مقالات"),9,Icons.Default.MenuBook)
+                    )
+                    LazyRow(
+                        contentPadding = PaddingValues(vertical=9.dp),
+                        horizontalArrangement = Arrangement.spacedBy(18.dp)
+                    ) {
+                        items(links) { (label,index,_) ->
+                            Text(
+                                label,
+                                color=Color(0xFFD9DEEF),
+                                fontSize=12.sp,fontWeight=FontWeight.Medium,
+                                modifier=Modifier.clickable {
+                                    publicAffiliateScope.launch {
+                                        publicAffiliateScroll.animateScrollToItem(index)
+                                    }
+                                }
+                            )
+                        }
+                    }
+                }
             }
             Box(Modifier.weight(1f)) {
                 if(showPortal) {
@@ -159,7 +188,7 @@ fun PremiumAffiliateSheet(state: AppState, model: AppViewModel, onClose: () -> U
                             partnerNavRevision++
                         })
                 } else {
-                    AffiliateMotionLanding(lang,onGetStarted=openRegister,onLogin=openLogin)
+                    AffiliateMotionLanding(lang,onGetStarted=openRegister,onLogin=openLogin,list=publicAffiliateScroll)
                 }
             }
         }
@@ -265,13 +294,9 @@ fun PremiumAffiliateSheet(state: AppState, model: AppViewModel, onClose: () -> U
 private fun AffiliateMotionLanding(
     lang: Lang,
     onGetStarted: () -> Unit,
-    onLogin: () -> Unit
+    onLogin: () -> Unit,
+    list: androidx.compose.foundation.lazy.LazyListState
 ) {
-    val list = rememberLazyListState()
-    val navigationScope = rememberCoroutineScope()
-    val navigateTo: (Int) -> Unit = { item ->
-        navigationScope.launch { list.animateScrollToItem(item) }
-    }
     val showing: (Int) -> Boolean = { index ->
         list.layoutInfo.visibleItemsInfo.any { it.index == index }
     }
@@ -283,7 +308,7 @@ private fun AffiliateMotionLanding(
     ) {
         item(key = "hero") {
             val active by remember { derivedStateOf { showing(0) } }
-            PartnerHero(lang, active, onGetStarted, onLogin, navigateTo)
+            PartnerHero(lang, active, onGetStarted, onLogin)
         }
         item(key = "stats") {
             val active by remember { derivedStateOf { showing(1) } }
@@ -330,114 +355,124 @@ private fun AffiliateMotionLanding(
 
 @Composable
 private fun PartnerHero(
-    lang: Lang, active: Boolean,
-    onGetStarted: () -> Unit, onLogin: () -> Unit, onNavigate: (Int) -> Unit
+    lang: Lang,
+    active: Boolean,
+    onGetStarted: () -> Unit,
+    onLogin: () -> Unit
 ) {
-    val appear by animateFloatAsState(if (active) 1f else 0f,
-        animationSpec = tween(850, easing = FastOutSlowInEasing), label = "hero")
-    val floatAnim = rememberInfiniteTransition(label = "hero-float")
-    val floatY by floatAnim.animateFloat(
-        initialValue = 0f, targetValue = -12f,
-        animationSpec = infiniteRepeatable(tween(2600, easing = EaseInOutSine),
-            RepeatMode.Reverse), label = "float"
+    val appear by animateFloatAsState(
+        if(active) 1f else 0f,
+        animationSpec=tween(780,easing=FastOutSlowInEasing),
+        label="partner-reference-hero"
     )
-    Column(
-        Modifier.fillMaxWidth().background(
-            Brush.verticalGradient(listOf(partnerNight, Color(0xFF122017), partnerNight))
-        ).padding(horizontal = 23.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Spacer(Modifier.height(13.dp))
-        val sections = listOf(
-            Triple(tr(lang,"Features","ویژگی‌ها"),2,Icons.Default.AutoAwesome),
-            Triple(tr(lang,"Product","محصولات"),6,Icons.Default.Apps),
-            Triple(tr(lang,"FAQ","سؤالات"),7,Icons.Default.ChatBubbleOutline),
-            Triple(tr(lang,"Gallery","گالری"),8,Icons.Default.Collections),
-            Triple(tr(lang,"Guides","آموزش"),9,Icons.Default.MenuBook),
-            Triple(tr(lang,"Contact","ارتباط"),10,Icons.Default.Email)
+    val buoyancy=rememberInfiniteTransition(label="partner-hero-object")
+    val floatY by buoyancy.animateFloat(
+        initialValue=0f,targetValue=(-12f),
+        animationSpec=infiniteRepeatable(tween(2800,easing=EaseInOutSine),
+            repeatMode=RepeatMode.Reverse),label="phone-gentle-hover"
+    )
+    Box(Modifier.fillMaxWidth().height(648.dp).background(
+        Brush.verticalGradient(listOf(
+            partnerNight,Color(0xFF0C0F1C),Color(0xFF1B2031),partnerNight
+        ))
+    )) {
+        AffiliateCinematicPhoto(
+            AffiliateScene.HERO,
+            modifier=Modifier.align(Alignment.BottomCenter)
+                .fillMaxWidth().height(413.dp),
+            active=active,corner=0,showMark=false
         )
-        LazyRow(
-            modifier = Modifier.fillMaxWidth(),
-            contentPadding = PaddingValues(vertical=4.dp),
-            horizontalArrangement = Arrangement.spacedBy(7.dp)
+        Box(Modifier.fillMaxSize().background(Brush.verticalGradient(
+            listOf(partnerNight.copy(alpha=.65f),
+                Color(0xFF111427).copy(alpha=.17f),
+                Color(0xFF0B0E19).copy(alpha=.14f),
+                partnerNight.copy(alpha=.92f)
+            )
+        )))
+        Column(
+            Modifier.fillMaxWidth()
+                .align(Alignment.TopStart)
+                .padding(horizontal=23.dp,vertical=24.dp),
+            horizontalAlignment=Alignment.Start
         ) {
-            items(sections) { (name, destination, symbol) ->
-                Surface(
-                    onClick={ onNavigate(destination) },
-                    color=Color(0xFF171E2C),
-                    shape=RoundedCornerShape(18.dp),
-                    border=BorderStroke(1.dp,Color(0xFF343F53))
-                ) {
-                    Row(Modifier.padding(horizontal=11.dp,vertical=9.dp),
-                        verticalAlignment=Alignment.CenterVertically) {
-                        Icon(symbol,null,tint=partnerMint,modifier=Modifier.size(13.dp))
-                        Spacer(Modifier.width(5.dp))
-                        Text(name,color=Color(0xFFEEF2FF),fontSize=10.sp,
-                            fontWeight=FontWeight.Bold)
-                    }
+            Surface(shape=RoundedCornerShape(8.dp),
+                color=Color(0xFF1B2240),
+                border=BorderStroke(1.dp,Color(0xFF535DA0))) {
+                Text(tr(lang,"OFFER 01  •  BETVIMA","پیشنهاد ۰۱  •  BETVIMA"),
+                    modifier=Modifier.padding(horizontal=11.dp,vertical=7.dp),
+                    color=Color(0xFFC8CEFF),fontSize=11.sp,
+                    fontWeight=FontWeight.Black,letterSpacing=1.sp)
+            }
+            Spacer(Modifier.height(17.dp))
+            Text(
+                tr(lang,
+                    "A leading platform.\nA stronger partnership.",
+                    "یک پلتفرم حرفه‌ای.\nیک همکاری سودآور."),
+                color=Color.White,
+                fontSize=32.sp,
+                lineHeight=38.sp,
+                fontWeight=FontWeight.Black,
+                modifier=Modifier.graphicsLayer {
+                    alpha=appear
+                    translationY=(1f-appear)*54f
                 }
+            )
+            Spacer(Modifier.height(13.dp))
+            Text(tr(lang,
+                "Bring the right audience to BetVima and grow through transparent tracking.",
+                "مخاطبان مناسب را به بت‌ویما معرفی کنید و با رهگیری شفاف رشد کنید."),
+                color=Color(0xFFC9D1E8),fontSize=12.sp,lineHeight=18.sp)
+            Spacer(Modifier.height(19.dp))
+            Button(
+                onClick=onGetStarted,
+                shape=RoundedCornerShape(11.dp),
+                colors=ButtonDefaults.buttonColors(containerColor=partnerBlue),
+                modifier=Modifier.height(48.dp)
+            ) {
+                Text(tr(lang,"Become an affiliate","شروع همکاری"),
+                    color=Color.White,fontSize=13.sp,
+                    fontWeight=FontWeight.Black)
+                Spacer(Modifier.width(13.dp))
+                Icon(Icons.Default.ArrowForward,null,
+                    modifier=Modifier.size(17.dp),tint=Color.White)
+            }
+            TextButton(onClick=onLogin) {
+                Text(tr(lang,"Already partnered? Sign in","همکار هستید؟ ورود"),
+                    color=Color(0xFFE7ECFF),fontSize=11.sp)
             }
         }
-        Spacer(Modifier.height(22.dp))
-        Text(tr(lang, "PARTNER OFFER  /  BETVIMA", "طرح همکاری  /  BETVIMA"), fontSize = 11.sp,
-            letterSpacing = 2.sp, color = partnerMint, fontWeight = FontWeight.Black)
-        Spacer(Modifier.height(21.dp))
-        Text(tr(lang, "Grow with a premium\nSports & Casino platform",
-                "با یک پلتفرم حرفه‌ای\nورزشی و کازینو رشد کنید"),
-            color = Color.White, fontSize = 32.sp, lineHeight = 39.sp,
-            fontWeight = FontWeight.Black, textAlign = TextAlign.Center,
-            modifier = Modifier.graphicsLayer {
-                alpha = appear
-                translationY = (1f - appear) * 65f
-            })
-        Spacer(Modifier.height(12.dp))
-        Text(tr(lang, "70% default RevShare for approved affiliates",
-                "سهم پایه ۷۰٪ برای همکاران تأییدشده"),
-            color=partnerMint, fontSize=15.sp, fontWeight=FontWeight.Black,
-            textAlign=TextAlign.Center)
-        Text(tr(lang, "Your applicable rate and settlements are confirmed in your partner account.",
-                "نرخ قابل اعمال و تسویه‌ها در حساب همکاری تأیید می‌شوند."),
-            color=Color(0xFFB3BED3), fontSize=10.sp,
-            lineHeight=16.sp, textAlign=TextAlign.Center)
-        Spacer(Modifier.height(22.dp))
-        Button(onClick = onGetStarted, modifier = Modifier.fillMaxWidth().height(58.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = partnerBlue),
-            shape = RoundedCornerShape(15.dp)) {
-            Text(tr(lang, "Become an affiliate", "شروع همکاری"),
-                color = partnerWhite, fontSize = 16.sp, fontWeight = FontWeight.Bold)
-            Spacer(Modifier.width(10.dp))
-            Icon(Icons.Default.ArrowForward, null, tint = partnerWhite)
+        Box(Modifier.align(Alignment.BottomEnd)
+            .padding(end=26.dp,bottom=14.dp)
+            .graphicsLayer {
+                alpha=appear
+                translationX=(1f-appear)*140f
+                translationY=floatY
+                rotationZ=(-6f)
+            }) {
+            PartnerPhone(lang)
         }
-        Spacer(Modifier.height(18.dp))
-        TextButton(onClick = onLogin) {
-            Text(tr(lang, "Already a partner? Log in", "حساب دارید؟ ورود"),
-                color = Color(0xFFC2C9DD), fontSize = 12.sp)
-        }
-        Box(Modifier.fillMaxWidth().height(365.dp), contentAlignment = Alignment.BottomCenter) {
-            AffiliateCinematicPhoto(AffiliateScene.HERO,
-                Modifier.fillMaxSize().padding(top = 8.dp), active,
-                corner=23, showMark=false)
-            Box(Modifier.size(310.dp).align(Alignment.Center).background(
-                Brush.radialGradient(listOf(Color(0xFF3D875B).copy(alpha = .15f),
-                    Color.Transparent)), CircleShape))
-            Box(Modifier.align(Alignment.BottomCenter)
+        PartnerFloatLabel(
+            "70% RevShare",
+            tr(lang,"For approved BetVima partners","برای همکاران تأییدشده"),
+            Modifier.align(Alignment.BottomStart)
+                .padding(start=17.dp,bottom=195.dp)
                 .graphicsLayer {
-                    alpha = appear
-                    translationX = (1f - appear) * 230f
-                    translationY = floatY
-                    rotationZ = -9f
-                }) {
-                PartnerPhone(lang)
-            }
-            PartnerFloatLabel("70% RevShare",
-                tr(lang, "For approved partners", "برای همکاران تأییدشده"),
-                Modifier.align(Alignment.CenterStart).offset(y = 43.dp)
-                    .graphicsLayer { alpha = appear; translationX = (1f-appear)*-100 })
-            PartnerFloatLabel("CPA",
-                tr(lang, "On approval", "با تأیید جداگانه"),
-                Modifier.align(Alignment.BottomEnd).offset(y = (-55).dp)
-                    .graphicsLayer { alpha = appear; translationX = (1f-appear)*100 })
-        }
+                    alpha=appear
+                    translationX=(1f-appear)*(-72f)
+                    rotationZ=(-7f)
+                }
+        )
+        PartnerFloatLabel(
+            "CPA",
+            tr(lang,"Terms agreed individually","شرایط با تأیید جداگانه"),
+            Modifier.align(Alignment.BottomStart)
+                .padding(start=33.dp,bottom=94.dp)
+                .graphicsLayer {
+                    alpha=appear
+                    translationX=(1f-appear)*(-62f)
+                    rotationZ=6f
+                }
+        )
     }
 }
 
