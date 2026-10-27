@@ -14,18 +14,32 @@ constants=[node for node in nodes if isinstance(node,ast.Assign) and
                {'OLD_BLOB','NEW_BLOB','OLD','NEW'} for t in node.targets)]
 funcs=[node for node in nodes if isinstance(node,ast.FunctionDef) and
        node.name in {'git_blob','verify_resolver'}]
+public_installer=(ROOT/'install-public-health-cloudflare-agent.py').read_text()
+public_nodes=[n for n in ast.parse(public_installer).body
+              if isinstance(n,ast.Assign) and any(
+                  isinstance(t,ast.Name) and t.id=='PATCHES' for t in n.targets)]
+public_scope={}
+exec(compile(ast.Module(body=public_nodes,type_ignores=[]),
+             'public-health-constants.py','exec'),public_scope)
+prior_production=PRODUCTION
+for old,new in reversed(public_scope['PATCHES']):
+    assert prior_production.count(new)==1
+    prior_production=prior_production.replace(new,old,1)
+
 scope={'hashlib':hashlib,'re':re,'ast':ast}
 exec(compile(ast.Module(body=constants+funcs,type_ignores=[]),
              'reviewed-patch-policy.py','exec'),scope)
 
 class InstalledLegacyWebPatchTests(unittest.TestCase):
     def test_exact_reviewed_old_and_new_file_digests(self):
-        self.assertEqual(scope['git_blob'](PRODUCTION.encode()),scope['NEW_BLOB'])
-        self.assertEqual(PRODUCTION.count(scope['NEW']),1)
-        old=PRODUCTION.replace(scope['NEW'],scope['OLD'])
-        self.assertNotEqual(old,PRODUCTION)
+        # The historical legacy-name patch must still verify against its own
+        # reviewed target, even after later health-check-only modifications.
+        self.assertEqual(scope['git_blob'](prior_production.encode()),scope['NEW_BLOB'])
+        self.assertEqual(prior_production.count(scope['NEW']),1)
+        old=prior_production.replace(scope['NEW'],scope['OLD'])
+        self.assertNotEqual(old,prior_production)
         self.assertEqual(scope['git_blob'](old.encode()),scope['OLD_BLOB'])
-        self.assertEqual(old.replace(scope['OLD'],scope['NEW']),PRODUCTION)
+        self.assertEqual(old.replace(scope['OLD'],scope['NEW']),prior_production)
         scope['verify_resolver'](PRODUCTION)
 
     def test_does_not_restart_services_or_alter_nginx(self):
