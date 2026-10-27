@@ -1,6 +1,12 @@
 package com.betvima.app.ui
 
 import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.animateDpAsState
+import androidx.compose.animation.core.*
+import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.ui.graphics.graphicsLayer
+import kotlin.math.abs
 import androidx.compose.foundation.*
 import androidx.compose.foundation.gestures.snapping.rememberSnapFlingBehavior
 import androidx.compose.foundation.layout.*
@@ -41,13 +47,15 @@ private val v192Mute = Color(0xFFA8B1BD)
 private val v192Mint = Color(0xFF00D47A)
 private val v192Text = Color(0xFFF7F8FA)
 
-private const val v192Jet = "https://images.unsplash.com/photo-1704652329502-93c8cfcb2e45?auto=format&fit=crop&w=1000&q=82"
-private const val v192Luggage = "https://images.unsplash.com/photo-1766954798687-9f683c8c75be?auto=format&fit=crop&w=700&q=80"
-private const val v192Interior = "https://images.unsplash.com/photo-1758448755778-90ebf4d0f1e7?auto=format&fit=crop&w=700&q=80"
-private const val v192Car = "https://images.unsplash.com/photo-1752959814043-722bfdbc0f51?auto=format&fit=crop&w=700&q=80"
-private const val v192BlueCar = "https://images.unsplash.com/photo-1770648591920-0a8d73f9dc02?auto=format&fit=crop&w=700&q=80"
-private const val v192Yacht = "https://images.unsplash.com/photo-1755307739588-0bf45e1e1ed6?auto=format&fit=crop&w=700&q=80"
-private const val v192Watch = "https://images.unsplash.com/photo-1702865053958-71ec751c4118?auto=format&fit=crop&w=700&q=80"
+// Editorial lifestyle imagery; lazy loading with bundled local fallback.
+private const val v192Jet = "https://images.unsplash.com/photo-1540962351504-03099e0a754b?auto=format&fit=crop&w=1100&q=85"
+private const val v192Luggage = "https://images.unsplash.com/photo-1553062407-98eeb64c6a62?auto=format&fit=crop&w=750&q=83"
+private const val v192Interior = "https://images.unsplash.com/photo-1600210492486-724fe5c67fb0?auto=format&fit=crop&w=750&q=83"
+private const val v192Car = "https://images.unsplash.com/photo-1503376780353-7e6692767b70?auto=format&fit=crop&w=750&q=83"
+private const val v192BlueCar = "https://images.unsplash.com/photo-1503376780353-7e6692767b70?auto=format&fit=crop&w=750&q=83"
+private const val v192Yacht = "https://images.unsplash.com/photo-1569263979104-865ab7cd8d13?auto=format&fit=crop&w=750&q=83"
+private const val v192Watch = "https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=750&q=83"
+private const val v192Jewellery = "https://images.unsplash.com/photo-1515562141207-7a88fb7ce338?auto=format&fit=crop&w=750&q=83"
 private const val v192Man = "file:///android_asset/affiliate/people_1.webp"
 private const val v192Woman = "file:///android_asset/affiliate/people_2.webp"
 
@@ -71,21 +79,36 @@ private val v192Personal = listOf(
 )
 private val v192Gifts = listOf(
     V192Tile("Premium cars", "خودروهای ممتاز", v192BlueCar, "VIP"),
-    V192Tile("Luxury jewellery", "جواهرات لوکس", v192Watch, "VIP"),
+    V192Tile("Luxury jewellery", "جواهرات لوکس", v192Jewellery, "VIP"),
     V192Tile("Luxury watches", "ساعت‌های لوکس", v192Watch, "VIP"),
     V192Tile("Yacht experiences", "تجربه قایق‌های تفریحی", v192Yacht, "VIP")
 )
 
 @Composable
 private fun V192Photo(url: String, modifier: Modifier = Modifier) {
+    val context = LocalContext.current
+    var useOffline by remember(url) { mutableStateOf(false) }
+    val fallback = when (url) {
+        v192Man -> v192Man
+        v192Woman -> v192Woman
+        v192Jet, v192Yacht -> "file:///android_asset/affiliate/global_stadium.webp"
+        v192Car, v192BlueCar -> "file:///android_asset/affiliate/app_showcase.webp"
+        v192Watch, v192Jewellery -> "file:///android_asset/affiliate/partners.webp"
+        v192Interior -> "file:///android_asset/affiliate/winning_moment.webp"
+        else -> "file:///android_asset/affiliate/hero_stadium.webp"
+    }
     Box(modifier.background(
-        Brush.linearGradient(listOf(Color(0xFF34404B), v192Panel, Color(0xFF191C21)))
+        Brush.linearGradient(listOf(Color(0xFF495969), Color(0xFF252C36), v192Night))
     )) {
         AsyncImage(
-            model = ImageRequest.Builder(LocalContext.current).data(url).crossfade(true).build(),
+            model = ImageRequest.Builder(context)
+                .data(if (useOffline) fallback else url)
+                .crossfade(340)
+                .build(),
             contentDescription = null,
             modifier = Modifier.fillMaxSize(),
-            contentScale = ContentScale.Crop
+            contentScale = ContentScale.Crop,
+            onError = { if (!useOffline) useOffline = true }
         )
     }
 }
@@ -93,22 +116,63 @@ private fun V192Photo(url: String, modifier: Modifier = Modifier) {
 @Composable
 private fun V192Dots(current: Int, count: Int, light: Boolean = false) {
     Row(
-        Modifier.fillMaxWidth().padding(vertical = 11.dp),
+        Modifier.fillMaxWidth().padding(top = 11.dp, bottom = 10.dp),
         horizontalArrangement = Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically
     ) {
         repeat(count) { index ->
-            Box(
-                Modifier.padding(horizontal = 3.dp)
-                    .width(if (index == current) 19.dp else 7.dp)
-                    .height(3.dp)
-                    .clip(CircleShape)
-                    .background(if (index == current)
-                        (if (light) Color(0xFF101215) else Color.White)
-                        else (if (light) Color(0xFFB9BEC4) else Color(0xFF686E77)))
+            val width by animateDpAsState(
+                targetValue = if (index == current) 20.dp else 7.dp,
+                animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy),
+                label = "vip-indicator-width"
             )
+            val color by animateColorAsState(
+                targetValue = if (index == current)
+                    (if (light) Color(0xFF15181B) else Color.White)
+                else (if (light) Color(0xFFBABFC5) else Color(0xFF676C74)),
+                animationSpec = tween(230), label = "vip-indicator-color"
+            )
+            Box(Modifier.padding(horizontal = 3.dp)
+                .width(width).height(3.dp).clip(CircleShape).background(color))
         }
     }
+}
+
+/**
+ * Keeps each section's measured height intact while its contents fade and
+ * translate into view. No zero-height AnimatedVisibility items (which would
+ * otherwise make LazyColumn jump during the first layout).
+ */
+@Composable
+private fun V192Reveal(index: Int, scroll: LazyListState, content: @Composable () -> Unit) {
+    val inViewport by remember(scroll, index) {
+        derivedStateOf { scroll.layoutInfo.visibleItemsInfo.any { it.index == index } }
+    }
+    var appeared by rememberSaveable(index) { mutableStateOf(false) }
+    LaunchedEffect(inViewport) { if (inViewport) appeared = true }
+    val alpha by animateFloatAsState(
+        if (appeared) 1f else .60f,
+        animationSpec = tween(570, easing = FastOutSlowInEasing),
+        label = "vip-section-alpha"
+    )
+    val y by animateFloatAsState(
+        if (appeared) 0f else 32f,
+        animationSpec = tween(620, easing = FastOutSlowInEasing),
+        label = "vip-section-translate"
+    )
+    Box(Modifier.fillMaxWidth().graphicsLayer {
+        this.alpha = alpha
+        this.translationY = y
+    }) { content() }
+}
+
+private fun v192SwipeDistance(index: Int, listState: LazyListState): Float {
+    val info = listState.layoutInfo
+    val item = info.visibleItemsInfo.firstOrNull { it.index == index } ?: return 1f
+    val viewport = ((info.viewportStartOffset + info.viewportEndOffset) / 2f)
+    val itemCentre = item.offset + item.size / 2f
+    val halfView = ((info.viewportEndOffset - info.viewportStartOffset) / 2f).coerceAtLeast(1f)
+    return (abs(itemCentre - viewport) / halfView).coerceIn(0f, 1f)
 }
 
 @Composable
