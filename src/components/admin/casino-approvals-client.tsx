@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { CheckCircle2, FileCheck2, Loader2, ShieldCheck } from 'lucide-react';
 import { useApp } from '@/components/layout/providers';
 import { apiRequest, useApiQuery } from '@/lib/hooks/useApi';
@@ -25,6 +25,12 @@ export function CasinoApprovalsClient() {
   const [documentType, setDocumentType] = useState<DocumentType | ''>('');
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState('');
+  const dialogRef = useRef<HTMLElement>(null);
+
+  // Keep the review form in view even for large tables and narrow screens.
+  useEffect(() => {
+    if (selected) dialogRef.current?.focus();
+  }, [selected]);
 
   const open = (item: Applicant) => {
     setSelected(item); setNotice(''); setDocumentType('');
@@ -151,7 +157,11 @@ export function CasinoApprovalsClient() {
       </div>
 
       {selected ? (
-        <section className="rounded-2xl border border-nova-line bg-nova-surface p-5" aria-label="External identity review">
+        <div className="fixed inset-0 z-[180] flex items-end justify-center bg-[#030816]/85 p-2 sm:items-center sm:p-6">
+        <section ref={dialogRef} tabIndex={-1} role="dialog" aria-modal="true"
+          aria-label={tr('External identity review', 'بررسی مدارک و تأیید هویت')}
+          className="max-h-[94dvh] w-full max-w-2xl overflow-y-auto rounded-2xl border border-nova-line bg-nova-surface p-5 shadow-2xl outline-none sm:max-h-[88dvh]">
+          {notice ? <p className="mb-4 rounded-xl border border-rose-500/50 bg-rose-950/30 p-3 text-sm text-rose-200" role="alert">{notice}</p> : null}
           <div className="mb-3 flex items-center gap-2">
             <FileCheck2 className="text-nova-gold" size={23} />
             <h3 className="font-bold">{tr('Approve identity for', 'تأیید هویت کاربر')} {selected.publicId}</h3>
@@ -176,9 +186,16 @@ export function CasinoApprovalsClient() {
                 <option value="drivers_license">{tr('Driving license', 'گواهینامه')}</option>
               </select>
             </label>
+            {!documentType ? (
+              <p className="text-xs nova-muted" role="status">{tr(
+                'Choose the document type that you personally inspected to continue.',
+                'برای ادامه، نوع مدرکی را انتخاب کن که واقعاً بررسی کرده‌ای.',
+              )}</p>
+            ) : null}
             <div className="flex flex-wrap gap-2">
               <button type="button" className="nova-btn-primary inline-flex items-center gap-2 text-xs"
-                disabled={busy || !documentType} onClick={() => void approve()}>
+                disabled={busy || !documentType} onClick={() => void approve()}
+                title={!documentType ? tr('Choose the actual reviewed document type first', 'ابتدا نوع واقعی مدرک بررسی‌شده را انتخاب کن') : undefined}>
                 {busy ? <Loader2 size={16} className="animate-spin" /> : <CheckCircle2 size={16} />}
                 {tr('Approve casino identity', 'تأیید کازینو')}
               </button>
@@ -189,6 +206,7 @@ export function CasinoApprovalsClient() {
             </div>
           </div>
         </section>
+        </div>
       ) : null}
       <p className="text-xs nova-muted">
         {tr(
