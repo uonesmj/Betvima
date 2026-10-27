@@ -566,9 +566,17 @@ private fun PremiumVipCashbackPlansContent(state: AppState, model: AppViewModel)
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun PremiumVipClubPage(state: AppState, model: AppViewModel) {
+fun PremiumVipClubPage(
+    state: AppState,
+    model: AppViewModel,
+    onSupport: () -> Unit = { model.feature(Feature.SUPPORT) }
+) {
     var showPublishedPlans by rememberSaveable { mutableStateOf(false) }
-    VipReference192Screen(state, model, onViewPlans = { showPublishedPlans = true })
+    VipReference192Screen(
+        state, model,
+        onViewPlans = { showPublishedPlans = true },
+        onSupport = onSupport
+    )
     if (showPublishedPlans) {
         ModalBottomSheet(
             onDismissRequest = { showPublishedPlans = false },
