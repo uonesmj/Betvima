@@ -120,15 +120,6 @@ fun PremiumAffiliateSheet(state: AppState, model: AppViewModel, onClose: () -> U
                     .background(Color.White.copy(alpha=.25f)))
                 Spacer(Modifier.height(11.dp))
                 Row(verticalAlignment=Alignment.CenterVertically) {
-                    Box(Modifier.size(43.dp)
-                        .clip(RoundedCornerShape(13.dp))
-                        .background(Color(0xFF19382D)),
-                        contentAlignment=Alignment.Center) {
-                        Icon(painter=painterResource(com.betvima.app.R.drawable.ic_betvima_mini),
-                            contentDescription=null,tint=partnerMint,
-                            modifier=Modifier.size(27.dp))
-                    }
-                    Spacer(Modifier.width(11.dp))
                     Column(Modifier.weight(1f)) {
                         Text(tr(LocalNativeLanguage176.current, "BETVIMA  /  PARTNERS", "BETVIMA  /  PARTNERS"),
                             color=partnerMint,fontSize=10.sp,
@@ -177,10 +168,10 @@ fun PremiumAffiliateSheet(state: AppState, model: AppViewModel, onClose: () -> U
             AlertDialog(
                 onDismissRequest={confirmPartnerSignOut=false},
                 title={Text(tr(lang,"Sign out of partner account?",
-                    "از حساب همکاری خارج می‌شوید؟"))},
+                    "از حساب همکاری خارج می‌شوید؟"),color=Color(0xFFF5F6F8))},
                 text={Text(tr(lang,
                     "Only the affiliate session on this device will be cleared. Your main BetVima session and wallet are not affected.",
-                    "فقط نشست افیلیت این دستگاه پاک می‌شود. حساب اصلی و کیف پول بت‌ویما بدون تغییر می‌مانند."))},
+                    "فقط نشست افیلیت این دستگاه پاک می‌شود. حساب اصلی و کیف پول بت‌ویما بدون تغییر می‌مانند."),color=Color(0xFFADB3BC))},
                 confirmButton={
                     TextButton(onClick={
                         affiliateVault.clear()
@@ -199,7 +190,9 @@ fun PremiumAffiliateSheet(state: AppState, model: AppViewModel, onClose: () -> U
                         Text(tr(lang,"Cancel","انصراف"))
                     }
                 },
-                containerColor=Color.White
+                containerColor=Color(0xFF222224),
+                titleContentColor=Color(0xFFF5F6F8),
+                textContentColor=Color(0xFFADB3BC)
             )
         }
         if (authMode != null) {
@@ -213,15 +206,21 @@ fun PremiumAffiliateSheet(state: AppState, model: AppViewModel, onClose: () -> U
                     dismissOnClickOutside = true
                 )
             ) {
-                Surface(
-                    modifier = Modifier.fillMaxWidth(.95f)
-                        .fillMaxHeight(.88f)
-                        .imePadding(),
-                    shape = RoundedCornerShape(27.dp),
-                    color = affiliateCanvas,
-                    shadowElevation = 24.dp
+                BoxWithConstraints(
+                    modifier = Modifier.fillMaxSize().imePadding(),
+                    contentAlignment = Alignment.Center
                 ) {
-                    Column(Modifier.fillMaxSize()) {
+                    // Wrap the content instead of leaving a tall, empty white sheet.
+                    val formScrollMaxHeight = maxHeight * .75f
+                    Surface(
+                        modifier = Modifier.fillMaxWidth(.94f)
+                            .heightIn(max = maxHeight * .90f),
+                        shape = RoundedCornerShape(23.dp),
+                        color = Color(0xFF191A1D),
+                        border = BorderStroke(1.dp, Color(0xFF3A3C42)),
+                        shadowElevation = 20.dp
+                    ) {
+                        Column(Modifier.fillMaxWidth()) {
                         Row(Modifier.fillMaxWidth()
                             .background(partnerNight)
                             .padding(horizontal = 19.dp, vertical = 10.dp),
@@ -241,9 +240,10 @@ fun PremiumAffiliateSheet(state: AppState, model: AppViewModel, onClose: () -> U
                                     tr(lang,"Dismiss","بستن"),tint=Color.White)
                             }
                         }
-                        Column(Modifier.fillMaxSize()
+                        Column(Modifier.fillMaxWidth()
+                            .heightIn(max = formScrollMaxHeight)
                             .verticalScroll(rememberScrollState())
-                            .padding(16.dp)) {
+                            .padding(15.dp)) {
                             AffiliateAccessPanel(
                                 lang=lang,api=affiliateApi,vault=affiliateVault,
                                 initialRegister=authMode=="register",
@@ -252,6 +252,7 @@ fun PremiumAffiliateSheet(state: AppState, model: AppViewModel, onClose: () -> U
                                     showPortal=true
                                 }
                             )
+                        }
                         }
                     }
                 }
