@@ -274,7 +274,15 @@ def resolve_active_web_upstream(route, apps):
     websites = []
     for app in apps:
         meta = app.get('pm2_env', {})
-        if not str(app.get('name', '')).startswith('nova-cd-') or meta.get('status') != 'online':
+        # The current web release predates the nova-cd naming convention.
+        # This is its verified legacy web prefix, not a generic nova-casino
+        # wildcard: the separate casino API on 3098 must never be selected.
+        name = str(app.get('name', ''))
+        trusted_web_name = (
+            name.startswith('nova-cd-') or
+            re.fullmatch(r'nova-casino-weekly-kyc-prod-[A-Za-z0-9]{8}', name) is not None
+        )
+        if not trusted_web_name or meta.get('status') != 'online':
             continue
         try:
             port = int(meta.get('PORT', 0) or 0)
