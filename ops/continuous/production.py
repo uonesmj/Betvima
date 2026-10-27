@@ -178,15 +178,19 @@ def files_digest(directory):
     return {str(p.relative_to(directory)):hashlib.sha256(p.read_bytes()).hexdigest() for p in directory.rglob('*.sql')}
 
 def health(base,build):
+    # Cloudflare returns 403 to Python-urllib's default UA on the public site,
+    # but responds 200 to the verified curl/8.5.0 probe. Preserve all status,
+    # build-identity, ready, and unauthenticated financial guard assertions.
+    public_agent={'User-Agent':'curl/8.5.0'} if base=='https://betvima.com' else {}
     for path in ('/','/live','/sports/football','/auth/login','/wallet','/api/health/ready','/api/v1/matches?pageSize=1'):
-        req=urllib.request.Request(base+path,headers={'Host':'betvima.com','Cache-Control':'no-cache','Connection':'close'})
+        req=urllib.request.Request(base+path,headers={'Host':'betvima.com','Cache-Control':'no-cache','Connection':'close',**public_agent})
         with urllib.request.urlopen(req,timeout=25) as response:
             body=response.read(5*1024*1024)
             if response.status!=200:raise ValueError('health_failed')
             if path=='/' and build.encode() not in body:raise ValueError('identity_failed')
             if path=='/api/health/ready' and json.loads(body).get('ready') is not True:raise ValueError('not_ready')
     for path in ('/api/v1/wallet','/api/v1/bets'):
-        try:urllib.request.urlopen(urllib.request.Request(base+path,headers={'Host':'betvima.com'}),timeout=15)
+        try:urllib.request.urlopen(urllib.request.Request(base+path,headers={'Host':'betvima.com',**public_agent}),timeout=15)
         except urllib.error.HTTPError as error:
             if error.code==401:continue
         raise ValueError('financial_auth_guard_failed')
