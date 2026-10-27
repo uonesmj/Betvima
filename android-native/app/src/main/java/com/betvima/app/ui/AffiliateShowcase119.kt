@@ -30,13 +30,15 @@ import androidx.compose.ui.unit.sp
 
 // Public marketing screen only. Account figures never come from illustrations.
 // No financial ledger, authentication or registration logic lives in this file.
-private val cNight = Color(0xFF070B09)
-private val cPanel = Color(0xFF111A14)
+private val cNight = Color(0xFF111113)
+private val cPanel = Color(0xFF222224)
 private val cMint = Color(0xFF50D78E)
-private val cForest = Color(0xFF145D3B)
-private val cIvory = Color(0xFFF7FAF6)
-private val cPale = Color(0xFFE8F3EB)
-private val cSlate = Color(0xFF75857A)
+private val cForest = Color(0xFF50D78E)
+private val cIvory = Color(0xFF191A1D)
+private val cPale = Color(0xFF25272C)
+private val cSlate = Color(0xFFB0B5BE)
+private val cText = Color(0xFFF5F6F8)
+private val cLine = Color(0xFF3A3D44)
 
 @Composable
 internal fun AffiliateShowcase119(
@@ -57,37 +59,37 @@ internal fun AffiliateShowcase119(
             Affiliate119Hero(lang, fadeInStarted.value, onRegister, onLogin)
         }
         item(key="partner-hero-connected") {
-            AffiliateConnectedBridge151(lightAfter = true)
+            Spacer(Modifier.fillMaxWidth().height(12.dp).background(cNight))
         }
         item(key="partner-advantage") {
             Affiliate119Advantage(lang)
         }
         item(key="partner-advantage-connected") {
-            AffiliateConnectedBridge151(lightAfter = false)
+            Spacer(Modifier.fillMaxWidth().height(12.dp).background(cNight))
         }
         item(key="partner-categories") {
             Affiliate119Products(lang)
         }
         item(key="partner-product-connected") {
-            AffiliateConnectedBridge151(lightAfter = true)
+            Spacer(Modifier.fillMaxWidth().height(12.dp).background(cNight))
         }
         // The CTA and FAQ share one continuous light surface, preventing the
         // dark LazyColumn background from leaking through the rounded corners.
         item(key="partner-earnings-faq-connected") {
             Column(Modifier.fillMaxWidth().background(cIvory)) {
                 Affiliate119Earnings(lang, onRegister)
-                AffiliateEarningsFaqBridge153()
+                Spacer(Modifier.fillMaxWidth().height(12.dp).background(cIvory))
                 Affiliate119Faq(lang)
             }
         }
         item(key="partner-faq-connected") {
-            AffiliateConnectedBridge151(lightAfter = false)
+            Spacer(Modifier.fillMaxWidth().height(12.dp).background(cNight))
         }
         item(key="partner-final-action") {
             Affiliate119Join(lang,onRegister,onLogin)
         }
         item(key="partner-gallery-connected") {
-            AffiliateDarkCircuit151()
+            Spacer(Modifier.fillMaxWidth().height(12.dp).background(cNight))
         }
         item(key="partner-real-photo-gallery") {
             AffiliateRealPeopleGallery151(lang)
@@ -153,13 +155,13 @@ private fun Affiliate119Advantage(lang: Lang) {
         verticalArrangement=Arrangement.spacedBy(16.dp)) {
         Affiliate119Eyebrow(tr(lang,"YOUR PARTNERSHIP","همکاری شما"),cForest)
         Text(tr(lang,"Built for real growth","برای رشد واقعی طراحی شده"),
-            color=cNight,fontSize=28.sp,fontWeight=FontWeight.Black,lineHeight=34.sp)
+            color=cText,fontSize=28.sp,fontWeight=FontWeight.Black,lineHeight=34.sp)
         Text(tr(lang,
             "Share BetVima with your audience and manage commissions from one secure dashboard.",
             "بت‌ویما را به مخاطبان خود معرفی کنید و کمیسیون‌ها را از یک داشبورد امن مدیریت کنید."),
-            color=Color(0xFF526359),fontSize=12.sp,lineHeight=20.sp)
+            color=cSlate,fontSize=12.sp,lineHeight=20.sp)
         Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(22.dp))
-            .background(cNight).padding(20.dp),
+            .background(cPanel).border(1.dp,cLine,RoundedCornerShape(22.dp)).padding(20.dp),
             verticalAlignment=Alignment.CenterVertically) {
             Text("70%",color=cMint,fontSize=44.sp,fontWeight=FontWeight.Black)
             Spacer(Modifier.width(18.dp))
@@ -169,7 +171,7 @@ private fun Affiliate119Advantage(lang: Lang) {
                 Text(tr(lang,
                     "For approved accounts. Your actual rate is shown after sign-in.",
                     "برای حساب‌های تأییدشده؛ نرخ واقعی حساب پس از ورود نمایش داده می‌شود."),
-                    color=Color(0xFFB8CBC0),fontSize=11.sp,lineHeight=16.sp)
+                    color=cSlate,fontSize=11.sp,lineHeight=16.sp)
             }
         }
         Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(22.dp))
@@ -178,12 +180,12 @@ private fun Affiliate119Advantage(lang: Lang) {
                 tr(lang,"Weekly settlement","تسویه هفتگی"),
                 tr(lang,"Subject to your agreement and approved statement",
                     "مطابق قرارداد و صورت‌حساب تأییدشده"))
-            HorizontalDivider(color=Color(0xFFD3E6D9),modifier=Modifier.padding(horizontal=17.dp))
+            HorizontalDivider(color=cLine,modifier=Modifier.padding(horizontal=17.dp))
             Affiliate119BenefitRow(Icons.Default.VerifiedUser,
                 tr(lang,"Verified partner analytics","گزارش معتبر همکاری"),
                 tr(lang,"Track attributed signups and earned commission",
                     "ثبت‌نام‌های منتسب و کمیسیون کسب‌شده"))
-            HorizontalDivider(color=Color(0xFFD3E6D9),modifier=Modifier.padding(horizontal=17.dp))
+            HorizontalDivider(color=cLine,modifier=Modifier.padding(horizontal=17.dp))
             Affiliate119BenefitRow(Icons.Default.PhoneAndroid,
                 tr(lang,"Native Android workspace","پنل نیتیو اندروید"),
                 tr(lang,"Campaigns and payouts in one app",
@@ -199,14 +201,14 @@ private fun Affiliate119BenefitRow(
 ) {
     Row(Modifier.fillMaxWidth().padding(horizontal=17.dp,vertical=16.dp),
         verticalAlignment=Alignment.CenterVertically) {
-        Surface(color=Color.White,shape=RoundedCornerShape(13.dp)) {
+        Surface(color=cPanel,shape=RoundedCornerShape(13.dp)) {
             Icon(icon,null,tint=cForest,
                 modifier=Modifier.padding(11.dp).size(22.dp))
         }
         Spacer(Modifier.width(12.dp))
         Column(Modifier.weight(1f)) {
-            Text(title,color=cNight,fontSize=13.sp,fontWeight=FontWeight.Black)
-            Text(subtitle,color=Color(0xFF617B69),fontSize=11.sp,
+            Text(title,color=cText,fontSize=13.sp,fontWeight=FontWeight.Black)
+            Text(subtitle,color=cSlate,fontSize=11.sp,
                 lineHeight=16.sp)
         }
     }
@@ -281,7 +283,7 @@ private fun Affiliate119Earnings(lang:Lang,onRegister:()->Unit) {
             Affiliate119Eyebrow(tr(lang,"AFFILIATE ADVANTAGES","مزایای همکاری"),cForest)
             Text(tr(lang,"Share. Track. Grow.","معرفی، پیگیری، رشد"),
                 fontSize=28.sp,fontWeight=FontWeight.Black,
-                color=cNight,lineHeight=34.sp)
+                color=cText,lineHeight=34.sp)
         }
         Box(Modifier.fillMaxWidth().height(265.dp)
             .padding(horizontal=18.dp)
@@ -329,7 +331,7 @@ private fun Affiliate119Step(modifier:Modifier,
         verticalArrangement=Arrangement.spacedBy(7.dp)) {
         Icon(icon,null,tint=cForest,modifier=Modifier.size(23.dp))
         Text(number,color=cSlate,fontSize=10.sp,fontWeight=FontWeight.Bold)
-        Text(label,color=cNight,fontSize=11.sp,fontWeight=FontWeight.Bold,
+        Text(label,color=cText,fontSize=11.sp,fontWeight=FontWeight.Bold,
             maxLines=1,overflow=TextOverflow.Ellipsis)
     }
 }
@@ -402,7 +404,7 @@ private fun Affiliate119Faq(lang:Lang) {
         verticalArrangement=Arrangement.spacedBy(12.dp)) {
         Affiliate119Eyebrow(tr(lang, "FAQ", "پرسش‌های متداول"),cForest)
         Text(tr(lang,"Frequently asked questions","پرسش‌های متداول"),
-            color=cNight,fontSize=27.sp,fontWeight=FontWeight.Black)
+            color=cText,fontSize=27.sp,fontWeight=FontWeight.Black)
         Spacer(Modifier.height(4.dp))
         Column(Modifier.clip(RoundedCornerShape(23.dp)).background(cPale)) {
             questions.forEachIndexed { idx,q ->
@@ -410,7 +412,7 @@ private fun Affiliate119Faq(lang:Lang) {
                     Row(Modifier.fillMaxWidth().clickable { expanded=if(expanded==idx)-1 else idx }
                         .padding(horizontal=15.dp,vertical=17.dp),
                         verticalAlignment=Alignment.CenterVertically) {
-                        Text(tr(lang,q.en,q.fa),color=cNight,fontSize=13.sp,lineHeight=19.sp,
+                        Text(tr(lang,q.en,q.fa),color=cText,fontSize=13.sp,lineHeight=19.sp,
                             fontWeight=FontWeight.Bold,modifier=Modifier.weight(1f))
                         Icon(if(expanded==idx)Icons.Default.Remove else Icons.Default.Add,
                             null,tint=cForest)
@@ -420,11 +422,11 @@ private fun Affiliate119Faq(lang:Lang) {
                         enter=fadeIn(tween(190))+slideInVertically(tween(190)){ -it/8 }
                     ) {
                         Text(tr(lang,q.answerEn,q.answerFa),
-                            color=Color(0xFF466252),fontSize=12.sp,lineHeight=20.sp,
+                            color=cSlate,fontSize=12.sp,lineHeight=20.sp,
                             modifier=Modifier.padding(start=15.dp,end=15.dp,bottom=17.dp))
                     }
                     if(idx<questions.lastIndex) HorizontalDivider(
-                        color=Color(0xFFCBDDD0),
+                        color=cLine,
                         modifier=Modifier.padding(horizontal=15.dp))
                 }
             }
