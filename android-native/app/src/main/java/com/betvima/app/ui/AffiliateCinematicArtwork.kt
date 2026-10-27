@@ -41,6 +41,7 @@ internal enum class AffiliateScene(
     ECOSYSTEM("bv_aff_ecosystem",Color(0xFF517CDB),Icons.Default.SportsSoccer,"football_team"),
     MOBILE("bv_aff_mobile",Color(0xFF30CEAF),Icons.Default.Smartphone,"app_showcase"),
     STATISTICS("bv_aff_statistics",Color(0xFF3879E6),Icons.Default.Leaderboard,"analytics"),
+    CHART("bv_aff_chart",Color(0xFF3879E6),Icons.Default.ShowChart,"analytics"),
     GEOGRAPHY("bv_aff_geography",Color(0xFF3B83EF),Icons.Default.Public,"global_stadium"),
     CASINO("bv_aff_casino",Color(0xFF289E92),Icons.Default.Casino,"casino"),
     SPORTS("bv_aff_sports",Color(0xFF6D81E2),Icons.Default.SportsSoccer,"football_action"),
