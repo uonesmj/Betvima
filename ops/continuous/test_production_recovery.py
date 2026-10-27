@@ -231,6 +231,37 @@ class RoutedWebSelectionTests(unittest.TestCase):
                                 'proxy_pass http://127.0.0.1:3010;')
         self.assertIn('proxy_pass http://127.0.0.1:3098;', changed)
 
+    def test_live_legacy_web_on_3007_is_selected_not_casino_3098(self):
+        route = ('location / { proxy_pass http://127.0.0.1:3007; }\n'
+                 'location /api/casino/ { proxy_pass http://127.0.0.1:3098; }\n')
+        web = self.process('nova-casino-weekly-kyc-prod-TKiHSG0g', 3007)
+        casino = self.process('nova-casino-latency-prod-fBZdwWTK', 3098)
+        unrelated = self.process('nova-cd-219456d7a10e', 3008)
+        worker = self.process('betvima-settlement-worker', 3002)
+        chosen, port = scope['resolve_active_web_upstream'](
+            route, [worker, unrelated, casino, web])
+        self.assertIs(chosen, web)
+        self.assertEqual(port, 3007)
+
+    def test_nonmatching_casino_names_do_not_bypass_web_guard(self):
+        route = ('proxy_pass http://127.0.0.1:3007;\n'
+                 'proxy_pass http://127.0.0.1:3098;')
+        for name in ('nova-casino-latency-prod-fBZdwWTK',
+                     'nova-casino-weekly-kyc-prod-TOOLONG123',
+                     'nova-casino-weekly-kyc-prod-TKiHSG0g-injected'):
+            with self.subTest(name=name), self.assertRaisesRegex(
+                    ValueError,'active_web_not_identified'):
+                scope['resolve_active_web_upstream'](
+                    route, [self.process(name, 3098)])
+
+    def test_two_trusted_web_candidates_on_routed_ports_fail_closed(self):
+        route = ('proxy_pass http://127.0.0.1:3007;\n'
+                 'proxy_pass http://127.0.0.1:3098;')
+        with self.assertRaisesRegex(ValueError,'active_web_not_identified'):
+            scope['resolve_active_web_upstream'](route, [
+                self.process('nova-casino-weekly-kyc-prod-TKiHSG0g',3007),
+                self.process('nova-cd-other',3098)])
+
     def test_single_web_upstream_still_works(self):
         route = 'proxy_pass http://127.0.0.1:3007;'
         chosen, port = scope['resolve_active_web_upstream'](
