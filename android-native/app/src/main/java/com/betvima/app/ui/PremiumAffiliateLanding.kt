@@ -640,11 +640,16 @@ private fun PartnerFeatures(lang: Lang, active: Boolean) {
                     "آمار ورودی، لینک‌ها و کمیسیون‌های مجاز."))
         )
         cards.forEachIndexed { i, card ->
-            Surface(color = if (i == 0) Color(0xFF111828) else Color.White,
-                shape = RoundedCornerShape(27.dp),
+            val featured = i == 0
+            Surface(
+                color = if(featured) Color(0xFF111828) else Color.White,
+                shape = RoundedCornerShape(24.dp),
                 modifier = Modifier.fillMaxWidth(),
-                shadowElevation = 1.dp) {
-                Column(Modifier.padding(23.dp)) {
+                border = BorderStroke(1.dp,
+                    if(featured) Color(0xFF344466) else Color(0xFFE1E6F0)),
+                shadowElevation = 0.dp
+            ) {
+                Column(Modifier.padding(19.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(card.first, null,
                             tint = if (i==0) partnerMint else partnerBlue,
@@ -666,27 +671,8 @@ private fun PartnerFeatures(lang: Lang, active: Boolean) {
                                 0 -> AffiliateScene.ECOSYSTEM
                                 1 -> AffiliateScene.MOBILE
                                 else -> AffiliateScene.STATISTICS
-                            },Modifier.fillMaxWidth().height(180.dp),active,corner=18
+                            },Modifier.fillMaxWidth().height(178.dp),active,corner=17
                         )
-                    }
-                    if(i==0) {
-                        Spacer(Modifier.height(11.dp))
-                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
-                            Surface(color=Color(0xFF20355B),
-                                shape=RoundedCornerShape(13.dp)) {
-                                Row(Modifier.padding(15.dp),
-                                    verticalAlignment = Alignment.CenterVertically) {
-                                    Icon(Icons.Default.SportsSoccer,null,
-                                        tint=partnerMint,modifier=Modifier.size(44.dp))
-                                    Spacer(Modifier.width(20.dp))
-                                    Icon(Icons.Default.Casino,null,
-                                        tint=Color(0xFFB6E9C2),modifier=Modifier.size(44.dp))
-                                    Spacer(Modifier.width(20.dp))
-                                    Icon(Icons.Default.Smartphone,null,
-                                        tint=Color.White,modifier=Modifier.size(44.dp))
-                                }
-                            }
-                        }
                     }
                 }
             }
@@ -696,31 +682,31 @@ private fun PartnerFeatures(lang: Lang, active: Boolean) {
 
 @Composable
 private fun PartnerChart(lang: Lang, active: Boolean) {
-    val rise by animateFloatAsState(if (active) 1f else 0f,
-        animationSpec = tween(durationMillis = 1200, easing = FastOutSlowInEasing),
-        label = "affiliate-chart")
-    Column(Modifier.fillMaxWidth().background(partnerPaper).padding(17.dp)) {
-        Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(26.dp))
-            .background(Color(0xFF101625)).padding(22.dp)) {
+    Column(Modifier.fillMaxWidth().background(partnerPaper)
+        .padding(start=17.dp,end=17.dp,top=19.dp,bottom=24.dp)) {
+        Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(24.dp))
+            .background(Color(0xFF101625)).padding(19.dp)) {
             Text(tr(lang,"Statistics that move with you","آمار پویا و حرفه‌ای"),
-                fontWeight = FontWeight.Black,color=Color.White,fontSize=23.sp)
-            Spacer(Modifier.height(10.dp))
-            Text(tr(lang,"Illustrative visualisation — your actual commissions are displayed only in the authenticated dashboard.",
-                    "نمودار نمایشی است؛ ارقام واقعی فقط در داشبورد احراز هویت‌شده نمایش داده می‌شوند."),
+                fontWeight=FontWeight.Black,color=Color.White,fontSize=22.sp,
+                lineHeight=27.sp)
+            Spacer(Modifier.height(9.dp))
+            Text(tr(lang,
+                    "Animated sample only. Actual traffic and commissions appear in the signed-in partner dashboard.",
+                    "نمودار انیمیشنی نمونه است؛ ترافیک و کمیسیون واقعی فقط در داشبورد همکاری نمایش داده می‌شوند."),
                 fontSize=11.sp,lineHeight=17.sp,color=Color(0xFFA9B6C7))
-            Spacer(Modifier.height(18.dp))
-            AffiliateCinematicPhoto(AffiliateScene.CHART,
-                Modifier.fillMaxWidth().height(125.dp),active,corner=18)
-            Spacer(Modifier.height(18.dp))
-            Row(Modifier.fillMaxWidth().height(180.dp),
-                horizontalArrangement=Arrangement.spacedBy(8.dp),
-                verticalAlignment=Alignment.Bottom) {
-                listOf(.23f,.49f,.38f,.67f,.45f,.8f,.61f,1f).forEachIndexed { i, value ->
-                    Box(Modifier.weight(1f).fillMaxHeight(value*rise.coerceAtLeast(.02f))
-                        .clip(RoundedCornerShape(topStart=16.dp,topEnd=16.dp))
-                        .background(if(i==5 || i==7)partnerMint else Color(0xFF283347)))
-                }
-            }
+            Spacer(Modifier.height(17.dp))
+            // Live vector geometry: the line grows on entry and the highlighted
+            // marker moves while visible. No static chart image is used here.
+            AffiliateAnimatedChart199(
+                active=active,
+                modifier=Modifier.fillMaxWidth().height(179.dp),
+                compact=false
+            )
+            Spacer(Modifier.height(15.dp))
+            AffiliateAnimatedBars199(
+                active=active,
+                modifier=Modifier.fillMaxWidth().height(135.dp)
+            )
         }
     }
 }
@@ -756,6 +742,7 @@ private fun PartnerCoverage(lang: Lang, active: Boolean, onGetStarted: () -> Uni
 }
 
 @Composable
+@OptIn(ExperimentalFoundationApi::class)
 private fun PartnerProducts(lang: Lang, active: Boolean) {
     Column(Modifier.fillMaxWidth().background(partnerNight)
         .padding(vertical=45.dp)) {
@@ -774,8 +761,12 @@ private fun PartnerProducts(lang: Lang, active: Boolean) {
         }
         Spacer(Modifier.height(21.dp))
         val carousel=rememberLazyListState()
-        LazyRow(state=carousel,contentPadding=PaddingValues(horizontal=20.dp),
-            horizontalArrangement=Arrangement.spacedBy(13.dp)) {
+        LazyRow(
+            state=carousel,
+            contentPadding=PaddingValues(horizontal=18.dp),
+            horizontalArrangement=Arrangement.spacedBy(11.dp),
+            flingBehavior=rememberSnapFlingBehavior(lazyListState=carousel)
+        ) {
             itemsIndexed(listOf(
                 Triple(Icons.Default.Casino,"Casino","کازینو"),
                 Triple(Icons.Default.SportsSoccer,"Sports","ورزش"),
@@ -785,11 +776,14 @@ private fun PartnerProducts(lang: Lang, active: Boolean) {
                 val zoom by animateFloatAsState(if(selected)1f else .94f,
                     animationSpec=tween(400,easing=FastOutSlowInEasing),
                     label="affiliate-product-focus")
-                Surface(modifier=Modifier.width(259.dp).height(325.dp)
-                    .graphicsLayer { scaleX=zoom;scaleY=zoom },
-                    shape=RoundedCornerShape(25.dp),
-                    color=Color(0xFF171D28)) {
-                    Column(Modifier.padding(22.dp)) {
+                Surface(
+                    modifier=Modifier.fillParentMaxWidth(.86f).height(325.dp)
+                        .graphicsLayer { scaleX=zoom;scaleY=zoom },
+                    shape=RoundedCornerShape(23.dp),
+                    color=Color(0xFF171D28),
+                    border=BorderStroke(1.dp,Color(0xFF303D59))
+                ) {
+                    Column(Modifier.padding(19.dp)) {
                         Icon(icon,null,tint=partnerMint,
                             modifier=Modifier.size(34.dp))
                         Spacer(Modifier.height(11.dp))
@@ -806,7 +800,7 @@ private fun PartnerProducts(lang: Lang, active: Boolean) {
                                 "Casino" -> AffiliateScene.CASINO
                                 "Sports" -> AffiliateScene.SPORTS
                                 else -> AffiliateScene.MOBILE
-                            },Modifier.fillMaxWidth().height(148.dp),active,corner=18
+                            },Modifier.fillMaxWidth().height(148.dp),active,corner=16
                         )
                     }
                 }
