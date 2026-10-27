@@ -644,6 +644,22 @@ private fun V192Footer(lang: Lang, onSupport: () -> Unit) {
     }
 }
 
+/**
+ * The manager is a separate foreground sheet sitting above the photograph.
+ * It travels at the user's normal vertical scroll speed; the photo inside
+ * the hero compensates for that movement at 62%, yielding a parallax reveal.
+ * The white concierge section remains connected to the manager's bottom.
+ */
+@Composable
+private fun V195ConnectedIntro(lang: Lang, scroll: LazyListState) {
+    Box(Modifier.fillMaxWidth().height(926.dp)) {
+        V192Hero(lang, scroll)
+        Box(Modifier.fillMaxWidth().offset(y=360.dp)) {
+            V192ManagerConcierge(lang)
+        }
+    }
+}
+
 @Composable
 internal fun VipReference192Screen(
     state: AppState,
@@ -652,32 +668,36 @@ internal fun VipReference192Screen(
     onSupport: () -> Unit
 ) {
     val lang=state.lang
-    // The VIP modal and its chrome never scroll. Only the body owns vertical
-    // scrolling; every carousel has a separate horizontal LazyListState.
     val verticalScroll=rememberLazyListState()
+    val numbersVisible by remember(verticalScroll) {
+        derivedStateOf { verticalScroll.layoutInfo.visibleItemsInfo
+            .any { item -> item.index == 3 } }
+    }
     Box(Modifier.fillMaxSize().background(v192Night)) {
+        // Only this body scrolls. The modal header and the white bottom CTA
+        // remain in place, while each image rail has its own horizontal state.
         LazyColumn(
             state=verticalScroll,
             modifier=Modifier.fillMaxSize(),
-            contentPadding=PaddingValues(bottom=85.dp),
+            contentPadding=PaddingValues(bottom=86.dp),
             flingBehavior=rememberPremiumFlingBehavior()
         ) {
-            item(key="vip-hero") {
-                V192Reveal(0,verticalScroll) { V192Hero(lang,verticalScroll) }
-            }
-            item(key="vip-connected-manager-concierge") {
-                V192Reveal(1,verticalScroll) { V192ManagerConcierge(lang) }
+            item(key="vip-connected-opening") {
+                V192Reveal(0,verticalScroll) {
+                    V195ConnectedIntro(lang,verticalScroll)
+                }
             }
             item(key="vip-personal-swiper") {
-                V192Reveal(2,verticalScroll) {
+                V192Reveal(1,verticalScroll) {
                     V192ImageSlider(
                         lang,tr(lang,"A personal approach","رویکرد اختصاصی"),
-                        tr(lang,"Illustrative premium experiences","نمونه‌های تصویری تجربیات ممتاز"),
+                        tr(lang,"Illustrative premium experiences",
+                            "نمونه‌های تصویری تجربیات ممتاز"),
                         v192Personal,light=false)
                 }
             }
             item(key="vip-gift-swiper") {
-                V192Reveal(3,verticalScroll) {
+                V192Reveal(2,verticalScroll) {
                     V192ImageSlider(
                         lang,tr(lang,"Exclusive gifts","هدایای ویژه"),
                         tr(lang,"Illustrative catalogue, subject to availability",
@@ -685,24 +705,30 @@ internal fun VipReference192Screen(
                         v192Gifts,light=false,tall=true)
                 }
             }
-            item(key="vip-numbers") {
-                V192Reveal(4,verticalScroll) { V192Numbers(lang) }
+            item(key="vip-vertical-numbers") {
+                V192Reveal(3,verticalScroll) {
+                    V195Numbers(lang,visible=numbersVisible)
+                }
             }
             item(key="vip-access") {
-                V192Reveal(5,verticalScroll) {
+                V192Reveal(4,verticalScroll) {
                     V192Access(lang,onViewPlans,onSupport)
                 }
             }
             item(key="vip-questions") {
-                V192Reveal(6,verticalScroll) { V192FaqSection(lang) }
+                V192Reveal(5,verticalScroll) {
+                    V192FaqSection(lang)
+                }
             }
             item(key="vip-footer") {
-                V192Reveal(7,verticalScroll) { V192Footer(lang,onSupport) }
+                V192Reveal(6,verticalScroll) {
+                    V192Footer(lang,onSupport)
+                }
             }
         }
         Box(Modifier.align(Alignment.BottomCenter).fillMaxWidth()
             .background(Brush.verticalGradient(listOf(
-                Color.Transparent, v192Night.copy(alpha=.98f),v192Night
+                Color.Transparent,v192Night.copy(alpha=.98f),v192Night
             ))).padding(horizontal=10.dp,vertical=11.dp)) {
             Button(
                 onClick=onSupport,
@@ -711,7 +737,8 @@ internal fun VipReference192Screen(
                 colors=ButtonDefaults.buttonColors(containerColor=Color.White)
             ) {
                 Text(tr(lang,"Migrate your VIP status","بررسی انتقال سطح VIP"),
-                    color=Color(0xFF17191B),fontSize=12.sp,fontWeight=FontWeight.Black)
+                    color=Color(0xFF17191B),
+                    fontSize=12.sp,fontWeight=FontWeight.Black)
             }
         }
     }
