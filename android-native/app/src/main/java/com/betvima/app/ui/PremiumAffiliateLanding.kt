@@ -42,10 +42,10 @@ import kotlinx.coroutines.launch
 // A genuinely native, illustrated and animated Partners landing.
 // Does not embed 1win content, third-party media, or an external website.
 private val partnerNight = Color(0xFF080B0A)
-private val partnerBlue = Color(0xFF1FAD72)
-private val partnerViolet = Color(0xFF23543A)
+private val partnerBlue = Color(0xFF3569F6)
+private val partnerViolet = Color(0xFF172D63)
 private val partnerMint = Color(0xFF56D995)
-private val partnerPaper = Color(0xFFF3F7F3)
+private val partnerPaper = Color(0xFFF3F5FA)
 private val partnerMuted = Color(0xFF818A9D)
 private val partnerWhite = Color.White
 
@@ -159,7 +159,7 @@ fun PremiumAffiliateSheet(state: AppState, model: AppViewModel, onClose: () -> U
                             partnerNavRevision++
                         })
                 } else {
-                    AffiliateShowcase119(lang,onRegister=openRegister,onLogin=openLogin)
+                    AffiliateMotionLanding(lang,onGetStarted=openRegister,onLogin=openLogin)
                 }
             }
         }
@@ -338,18 +338,27 @@ private fun PartnerHero(lang: Lang, active: Boolean, onGetStarted: () -> Unit, o
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Spacer(Modifier.height(33.dp))
-        Text(tr(LocalNativeLanguage176.current, "BETVIMA  PARTNERS", "BETVIMA  PARTNERS"), fontSize = 11.sp,
+        Text(tr(lang, "PARTNER OFFER  /  BETVIMA", "طرح همکاری  /  BETVIMA"), fontSize = 11.sp,
             letterSpacing = 2.sp, color = partnerMint, fontWeight = FontWeight.Black)
         Spacer(Modifier.height(21.dp))
-        Text(tr(lang, "Grow together with a\npremium Sports & Casino brand",
-                "با برند ورزشی و کازینویی\nبت‌ویما رشد کنید"),
+        Text(tr(lang, "Grow with a premium\nSports & Casino platform",
+                "با یک پلتفرم حرفه‌ای\nورزشی و کازینو رشد کنید"),
             color = Color.White, fontSize = 32.sp, lineHeight = 39.sp,
             fontWeight = FontWeight.Black, textAlign = TextAlign.Center,
             modifier = Modifier.graphicsLayer {
                 alpha = appear
                 translationY = (1f - appear) * 65f
             })
-        Spacer(Modifier.height(24.dp))
+        Spacer(Modifier.height(12.dp))
+        Text(tr(lang, "70% default RevShare for approved affiliates",
+                "سهم پایه ۷۰٪ برای همکاران تأییدشده"),
+            color=partnerMint, fontSize=15.sp, fontWeight=FontWeight.Black,
+            textAlign=TextAlign.Center)
+        Text(tr(lang, "Your applicable rate and settlements are confirmed in your partner account.",
+                "نرخ قابل اعمال و تسویه‌ها در حساب همکاری تأیید می‌شوند."),
+            color=Color(0xFFB3BED3), fontSize=10.sp,
+            lineHeight=16.sp, textAlign=TextAlign.Center)
+        Spacer(Modifier.height(22.dp))
         Button(onClick = onGetStarted, modifier = Modifier.fillMaxWidth().height(58.dp),
             colors = ButtonDefaults.buttonColors(containerColor = partnerBlue),
             shape = RoundedCornerShape(15.dp)) {
@@ -379,8 +388,8 @@ private fun PartnerHero(lang: Lang, active: Boolean, onGetStarted: () -> Unit, o
                 }) {
                 PartnerPhone(lang)
             }
-            PartnerFloatLabel("RevShare",
-                tr(lang, "Agreement based", "طبق قرارداد"),
+            PartnerFloatLabel("70% RevShare",
+                tr(lang, "For approved partners", "برای همکاران تأییدشده"),
                 Modifier.align(Alignment.CenterStart).offset(y = 43.dp)
                     .graphicsLayer { alpha = appear; translationX = (1f-appear)*-100 })
             PartnerFloatLabel("CPA",
@@ -483,7 +492,7 @@ private fun PartnerStats(lang: Lang, active: Boolean) {
         Spacer(Modifier.height(24.dp))
         listOf(
             "$count" to tr(lang, "Product experiences", "بخش‌های محصول"),
-            "2" to tr(lang, "Partnership models to explore", "روش همکاری قابل بررسی"),
+            "70%" to tr(lang, "Default RevShare for approved accounts", "سهم پایه حساب‌های همکاری تأییدشده"),
             "1" to tr(lang, "Dedicated partner dashboard", "داشبورد اختصاصی")
         ).forEachIndexed { index, pair ->
             HorizontalDivider(color = Color.White.copy(alpha = .23f))
@@ -713,6 +722,10 @@ private fun PartnerProducts(lang: Lang, active: Boolean) {
 
 private data class PartnerQuestion(val en:String,val fa:String,val answerEn:String,val answerFa:String)
 private val partnerQuestions=listOf(
+    PartnerQuestion(
+        "Is the 70% revenue share available?", "آیا سهم ۷۰٪ فعال است؟",
+        "70% is the advertised default rate for approved partners. The binding rate, eligible revenue and adjustments are determined by your approved agreement and verified dashboard.",
+        "۷۰٪ نرخ پایه اعلام‌شده برای همکاران تأییدشده است. نرخ قطعی، درآمد مشمول و تعدیلات طبق قرارداد تأییدشده و داشبورد معتبر تعیین می‌شوند."),
     PartnerQuestion(
         "How do I earn with BetVima?","چطور از BetVima درآمد داشته باشم؟",
         "Register a separate partner account, share eligible referral links, and see approved commission in your dashboard.",
