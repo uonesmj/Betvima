@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { casinoManualIdentityReviewSchema } from '../../src/server/kyc/casino-manual-review';
+import { isApprovedAdminOrigin } from '../../src/server/security/approved-admin-origin';
 
 const valid = {
   documentType: 'passport',
@@ -39,6 +40,38 @@ describe('manual casino approval, external evidence custody', () => {
     expect(code).toContain("set_config('nova.user_role'");
     expect(code).toContain("audit_event");
   });
+  it('validates the operator POST against configured public origin, not proxy HTTP origin', () => {
+    expect(isApprovedAdminOrigin('https://betvima.com', 'https://betvima.com')).toBe(true);
+    expect(isApprovedAdminOrigin('https://www.betvima.com', 'https://betvima.com')).toBe(true);
+    expect(isApprovedAdminOrigin(null, 'https://betvima.com')).toBe(false);
+    for (const incoming of [
+      'http://betvima.com',
+      'http://127.0.0.1:3010',
+      'https://evil.example',
+      'https://betvima.com.evil.example',
+      'https://betvima.com:444',
+      'https://betvima.com/path',
+      'https://betvima.com@evil.example',
+      'null',
+    ]) {
+      expect(isApprovedAdminOrigin(incoming, 'https://betvima.com')).toBe(false);
+    }
+    const route = source('src/app/api/v1/admin/casino-approvals/[id]/route.ts');
+    expect(route).toContain('isApprovedAdminOrigin(origin, serverEnv().NEXT_PUBLIC_SITE_URL)');
+    expect(route).toContain("withAdmin(request, ctx, 'users.kyc')");
+    expect(route).not.toContain("origin !== new URL(request.url).origin");
+  });
+
+  it('opens the document review visibly on mobile and shows approval failures in the dialog', () => {
+    const client = source('src/components/admin/casino-approvals-client.tsx');
+    expect(client).toContain('role="dialog" aria-modal="true"');
+    expect(client).toContain("dialogRef.current?.focus()");
+    expect(client).toContain("role=\"alert\">{notice}");
+    expect(client).toContain("disabled={busy || !documentType}");
+    expect(client).toContain("window.confirm(");
+    expect(client).toContain("await apiRequest('/api/v1/admin/casino-approvals/'");
+  });
+
   it('persists a truthful external-custody record and retains earlier private-upload records', () => {
     const migration = source('supabase/migrations/0219_casino_kyc_external_custody.sql');
     expect(migration).toContain("evidence_source = 'external_custody'");
