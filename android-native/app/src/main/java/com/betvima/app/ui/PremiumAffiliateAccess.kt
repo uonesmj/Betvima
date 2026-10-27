@@ -35,6 +35,14 @@ internal val affiliateMute = Color(0xFF667C6E)
 internal val affiliateCanvas = Color(0xFFF3F7F3)
 internal val affiliateOutline = Color(0xFFE1E9E2)
 
+// Affiliate authentication matches the native dark UI; business logic is unchanged.
+private val affiliateAuthPanel = Color(0xFF222224)
+private val affiliateAuthCanvas = Color(0xFF17181B)
+private val affiliateAuthField = Color(0xFF191B1E)
+private val affiliateAuthInk = Color(0xFFF5F6F8)
+private val affiliateAuthMuted = Color(0xFFADB3BD)
+private val affiliateAuthEdge = Color(0xFF41434A)
+
 @Composable
 fun AffiliateHeroBanner(lang: Lang, authenticated: Boolean = false) {
     val shape = RoundedCornerShape(25.dp)
@@ -121,7 +129,7 @@ private fun AffiliateFormLabel(icon: ImageVector, title: String, lang: Lang, fa:
     Row(verticalAlignment=Alignment.CenterVertically) {
         Icon(icon, null, tint=affiliateBlue, modifier=Modifier.size(18.dp))
         Spacer(Modifier.width(7.dp))
-        Text(tr(lang,title,fa),color=affiliateInk,
+        Text(tr(lang,title,fa),color=affiliateAuthInk,
             fontSize=13.sp,fontWeight=FontWeight.ExtraBold)
     }
 }
@@ -157,16 +165,29 @@ fun AffiliateAccessPanel(lang: Lang, api: ApiClient, vault: SessionVault,
     val validRegister = AffiliateInputRules.validRegistration(
         email, username, password, payoutAccount
     )
-    Surface(color=Color.White,shape=RoundedCornerShape(24.dp),
-        border=BorderStroke(1.dp,affiliateOutline),shadowElevation=2.dp) {
+    val fieldColors = OutlinedTextFieldDefaults.colors(
+        focusedTextColor = affiliateAuthInk,
+        unfocusedTextColor = affiliateAuthInk,
+        focusedContainerColor = affiliateAuthField,
+        unfocusedContainerColor = affiliateAuthField,
+        cursorColor = affiliatePink,
+        focusedBorderColor = affiliatePink,
+        unfocusedBorderColor = affiliateAuthEdge,
+        focusedPlaceholderColor = affiliateAuthMuted,
+        unfocusedPlaceholderColor = affiliateAuthMuted,
+        focusedTrailingIconColor = affiliateAuthInk,
+        unfocusedTrailingIconColor = affiliateAuthMuted
+    )
+    Surface(color=affiliateAuthPanel,shape=RoundedCornerShape(21.dp),
+        border=BorderStroke(1.dp,affiliateAuthEdge),shadowElevation=0.dp) {
         Column(Modifier.fillMaxWidth().padding(17.dp),
             verticalArrangement=Arrangement.spacedBy(12.dp)) {
             Text(tr(lang,"Your partner account","حساب اختصاصی همکاری"),
-                color=affiliateInk,fontWeight=FontWeight.Black,fontSize=19.sp)
+                color=affiliateAuthInk,fontWeight=FontWeight.Black,fontSize=19.sp)
             Text(tr(lang,"Partner credentials are separate from your normal sportsbook login.",
                 "ورود به افیلیت مستقل از حساب پیش‌بینی ورزشی است."),
-                color=affiliateMute,fontSize=11.sp,lineHeight=17.sp)
-            Row(Modifier.fillMaxWidth().background(affiliateCanvas,
+                color=affiliateAuthMuted,fontSize=11.sp,lineHeight=17.sp)
+            Row(Modifier.fillMaxWidth().background(affiliateAuthCanvas,
                 RoundedCornerShape(13.dp)).padding(4.dp)) {
                 listOf(false,true).forEach { register ->
                     val active = registering == register
@@ -177,7 +198,7 @@ fun AffiliateAccessPanel(lang: Lang, api: ApiClient, vault: SessionVault,
                         Box(Modifier.padding(vertical=11.dp),contentAlignment=Alignment.Center) {
                             Text(if(register) tr(lang,"Register","ثبت‌نام")
                                 else tr(lang,"Sign in","ورود"),
-                                color=if(active)Color.White else affiliateInk,
+                                color=if(active)Color.White else affiliateAuthInk,
                                 fontWeight=FontWeight.Black,fontSize=12.sp)
                         }
                     }
@@ -189,7 +210,7 @@ fun AffiliateAccessPanel(lang: Lang, api: ApiClient, vault: SessionVault,
                     onValueChange={ username=it.lowercase().take(32) },
                     placeholder={Text("partner_name")},
                     singleLine=true,modifier=Modifier.fillMaxWidth(),
-                    shape=RoundedCornerShape(12.dp))
+                    shape=RoundedCornerShape(12.dp), colors=fieldColors)
             }
             AffiliateFormLabel(Icons.Default.AlternateEmail,
                 "Registered affiliate email",lang,"ایمیل حساب افیلیت")
@@ -198,7 +219,7 @@ fun AffiliateAccessPanel(lang: Lang, api: ApiClient, vault: SessionVault,
                 singleLine=true,modifier=Modifier.fillMaxWidth(),
                 keyboardOptions=KeyboardOptions(keyboardType=KeyboardType.Email),
                 placeholder={Text("partner@example.com")},
-                shape=RoundedCornerShape(12.dp))
+                shape=RoundedCornerShape(12.dp), colors=fieldColors)
             AffiliateFormLabel(Icons.Default.Lock,"Password",lang,"رمز عبور")
             OutlinedTextField(value=password,
                 onValueChange={password=it.take(128)},
@@ -211,18 +232,18 @@ fun AffiliateAccessPanel(lang: Lang, api: ApiClient, vault: SessionVault,
                         Icon(if(showPassword) Icons.Default.VisibilityOff
                             else Icons.Default.Visibility,null)
                     }
-                },shape=RoundedCornerShape(12.dp))
+                },shape=RoundedCornerShape(12.dp), colors=fieldColors)
             if(registering) {
                 AffiliateFormLabel(Icons.Default.AccountBalanceWallet,
                     "Payout account identifier",lang,"شناسه حساب تسویه")
                 OutlinedTextField(value=payoutAccount,
                     onValueChange={payoutAccount=it.take(120)},
                     singleLine=true,modifier=Modifier.fillMaxWidth(),
-                    shape=RoundedCornerShape(12.dp))
+                    shape=RoundedCornerShape(12.dp), colors=fieldColors)
                 Text(tr(lang,
                     "Provide the payout account identifier required by BetVima registration. You can add crypto wallets after sign-in.",
                     "شناسه حساب تسویه موردنیاز ثبت‌نام را وارد کنید. کیف پول‌های رمزارزی بعد از ورود قابل ثبت هستند."),
-                    fontSize=10.sp,lineHeight=16.sp,color=affiliateMute)
+                    fontSize=10.sp,lineHeight=16.sp,color=affiliateAuthMuted)
             }
             if(error!=null) BvInformationStrip(error.orEmpty(),
                 Icons.Default.ErrorOutline,accent=Color(0xFFE54068))
@@ -303,7 +324,7 @@ fun AffiliateAccessPanel(lang: Lang, api: ApiClient, vault: SessionVault,
             Text(tr(lang,
                 "For an existing partner username login, use the email registered to that username. Your password is verified by Supabase; the app checks affiliate authorization on the server.",
                 "برای حساب همکاری موجود، ایمیل ثبت‌شده با آن نام کاربری را وارد کنید. رمز توسط سیستم احراز هویت بررسی و مجوز افیلیت در سرور تأیید می‌شود."),
-                color=affiliateMute,fontSize=10.sp,lineHeight=16.sp)
+                color=affiliateAuthMuted,fontSize=10.sp,lineHeight=16.sp)
         }
     }
 }
