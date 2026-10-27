@@ -176,38 +176,46 @@ private fun v192SwipeDistance(index: Int, listState: LazyListState): Float {
 }
 
 @Composable
-private fun V192Hero(lang: Lang) {
-    Box(Modifier.fillMaxWidth().height(435.dp)) {
-        V192Photo(v192Jet, Modifier.fillMaxSize())
-        Box(Modifier.fillMaxSize().background(Brush.verticalGradient(
-            listOf(Color(0xDB101216), Color(0x2C13171C),
-                Color(0x38202024), v192Night)
-        )))
-        Column(Modifier.align(Alignment.TopStart).padding(start = 16.dp, top = 24.dp)) {
+private fun V192Hero(lang: Lang, scroll: LazyListState) {
+    val parallax = if (scroll.firstVisibleItemIndex == 0)
+        scroll.firstVisibleItemScrollOffset * .14f else 0f
+    Box(Modifier.fillMaxWidth().height(396.dp)) {
+        V192Photo(v192Jet, Modifier.fillMaxSize().graphicsLayer {
+            translationY = parallax
+        })
+        Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(
+            Color(0xC8111419), Color(0x38111419), Color(0x50232935), v192Night
+        ))))
+        Column(Modifier.align(Alignment.TopStart)
+            .padding(start=17.dp, top=22.dp, end=12.dp)) {
             Text(tr(lang, "VIP Club", "باشگاه VIP"),
-                color = Color.White, fontSize = 36.sp, fontWeight = FontWeight.Black)
+                color=Color.White, fontSize=38.sp, lineHeight=43.sp,
+                fontWeight=FontWeight.Black)
             Spacer(Modifier.height(8.dp))
-            Text(tr(lang, "What makes BetVima VIP CLUB\nthe best choice out there?",
-                "چرا باشگاه VIP بت‌ویما\nانتخاب متفاوتی است؟"),
-                color = Color.White, fontSize = 14.sp, lineHeight = 20.sp,
-                fontWeight = FontWeight.Medium)
+            Text(tr(lang, "What makes the BetVima\nVIP CLUB the best choice?",
+                "چه چیزی باشگاه VIP بت‌ویما را\nبه انتخابی ویژه تبدیل می‌کند؟"),
+                color=Color.White, fontSize=12.sp, lineHeight=17.sp,
+                fontWeight=FontWeight.Medium)
         }
         Row(
-            Modifier.align(Alignment.BottomCenter)
-                .fillMaxWidth().padding(horizontal = 12.dp, vertical = 27.dp),
-            horizontalArrangement = Arrangement.spacedBy(11.dp)
+            Modifier.align(Alignment.BottomCenter).fillMaxWidth()
+                .background(Brush.verticalGradient(listOf(Color.Transparent,
+                    v192Night.copy(alpha=.64f))))
+                .padding(start=10.dp,end=10.dp,bottom=26.dp,top=14.dp),
+            horizontalArrangement=Arrangement.spacedBy(4.dp)
         ) {
             listOf(
                 tr(lang, "PREMIUM\nEXPERIENCES", "تجربه‌های\nممتاز"),
                 tr(lang, "VIP\nACCESS", "دسترسی\nVIP"),
                 tr(lang, "BETVIMA\nREWARDS", "پاداش‌های\nبت‌ویما")
             ).forEach { label ->
-                Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
-                    Icon(Icons.Default.EmojiEvents, null, tint = Color(0xFFD7C8A2),
-                        modifier = Modifier.size(23.dp))
-                    Text(label, fontSize = 9.sp, lineHeight = 11.sp,
-                        color = v192Silver, fontWeight = FontWeight.Bold,
-                        maxLines = 2)
+                Row(Modifier.weight(1f), horizontalArrangement=Arrangement.Center,
+                    verticalAlignment=Alignment.CenterVertically) {
+                    Icon(Icons.Default.EmojiEvents, null, tint=Color(0xFFE1D1A4),
+                        modifier=Modifier.size(20.dp))
+                    Spacer(Modifier.width(3.dp))
+                    Text(label, color=Color.White,fontSize=8.sp,
+                        fontWeight=FontWeight.Black,lineHeight=10.sp,maxLines=2)
                 }
             }
         }
@@ -216,32 +224,45 @@ private fun V192Hero(lang: Lang) {
 
 @Composable
 private fun V192Manager(lang: Lang) {
-    Box(Modifier.fillMaxWidth().height(278.dp)
-        .background(Brush.verticalGradient(listOf(Color(0xFF333A42), v192Night)))) {
-        Row(Modifier.fillMaxSize().padding(top = 72.dp)) {
-            Box(Modifier.weight(1f).fillMaxHeight().clip(RoundedCornerShape(topStart = 13.dp))) {
+    Box(Modifier.fillMaxWidth().height(300.dp)
+        .background(Brush.verticalGradient(listOf(Color(0xFF303C49),v192Night)))) {
+        Row(Modifier.fillMaxWidth().height(252.dp).align(Alignment.BottomCenter)) {
+            Box(Modifier.weight(1f).fillMaxHeight().clip(RoundedCornerShape(topStart=12.dp))) {
                 V192Photo(v192Woman, Modifier.fillMaxSize())
                 Box(Modifier.fillMaxSize().background(Brush.verticalGradient(
-                    listOf(Color(0xFF20252B), Color.Transparent, v192Night.copy(alpha=.50f)))))
+                    listOf(Color(0xFF1D2531).copy(alpha=.65f),Color.Transparent,
+                        v192Night.copy(alpha=.45f)))))
             }
-            Box(Modifier.weight(1f).fillMaxHeight().clip(RoundedCornerShape(topEnd = 13.dp))) {
+            Box(Modifier.weight(1f).fillMaxHeight().clip(RoundedCornerShape(topEnd=12.dp))) {
                 V192Photo(v192Man, Modifier.fillMaxSize())
                 Box(Modifier.fillMaxSize().background(Brush.verticalGradient(
-                    listOf(Color(0xFF20252B), Color.Transparent, v192Night.copy(alpha=.50f)))))
+                    listOf(Color(0xFF1D2531).copy(alpha=.65f),Color.Transparent,
+                        v192Night.copy(alpha=.45f)))))
             }
         }
-        Column(Modifier.align(Alignment.TopStart).padding(17.dp)) {
-            Text(tr(lang, "VIP manager", "مدیر VIP"), color = v192Text,
-                fontSize = 23.sp, fontWeight = FontWeight.Bold)
-            Text(tr(lang, "Here to help with VIP questions\nand guide you through available benefits",
-                "راهنمای پرسش‌های VIP و\nمزایای موجود برای حساب شما"),
-                color = v192Mute, fontSize = 11.sp, lineHeight = 15.sp)
+        Column(Modifier.align(Alignment.TopStart).padding(start=16.dp,top=20.dp)) {
+            Text(tr(lang,"VIP manager","مدیر VIP"), color=Color.White,
+                fontSize=23.sp,fontWeight=FontWeight.Black)
+            Spacer(Modifier.height(4.dp))
+            Text(tr(lang,"Helps with any questions\nand is always available",
+                "راهنمای پرسش‌ها و\nمزایای احتمالی اعضا"),
+                color=v192Mute,fontSize=12.sp,lineHeight=16.sp)
         }
-        Surface(Modifier.align(Alignment.TopEnd).padding(15.dp),
-            color = Color(0xFF404950), shape = CircleShape) {
-            Text(tr(lang, "Support", "پشتیبانی"),
-                color = Color.White, modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
-                fontSize = 10.sp, fontWeight = FontWeight.Bold)
+        val infinite = rememberInfiniteTransition(label="vip-manager-live")
+        val pulse by infinite.animateFloat(
+            initialValue=.40f,targetValue=1f,
+            animationSpec=infiniteRepeatable(tween(1150),RepeatMode.Reverse),
+            label="vip-manager-pulse"
+        )
+        Row(Modifier.align(Alignment.TopEnd).padding(13.dp)
+            .background(Color(0x88454C57),RoundedCornerShape(12.dp))
+            .padding(horizontal=10.dp,vertical=6.dp),
+            verticalAlignment=Alignment.CenterVertically) {
+            Text(tr(lang, "24/7", "۲۴/۷"),color=Color.White,
+                fontWeight=FontWeight.Bold,fontSize=11.sp)
+            Spacer(Modifier.width(4.dp))
+            Box(Modifier.size(7.dp).clip(CircleShape)
+                .background(v192Mint.copy(alpha=pulse)))
         }
     }
 }
@@ -253,53 +274,77 @@ private fun V192ImageSlider(
     light: Boolean, tall: Boolean = false
 ) {
     val listState = rememberLazyListState()
-    val current = listState.firstVisibleItemIndex.coerceIn(0, tiles.lastIndex)
-    val background = if (light) Color(0xFFF1F2F2) else v192Night
-    Column(
-        Modifier.fillMaxWidth()
-            .background(background,
-                RoundedCornerShape(if (light) 24.dp else 0.dp))
-            .padding(top = 20.dp, bottom = 7.dp)
-    ) {
-        Column(Modifier.padding(horizontal = 15.dp)) {
-            Text(title, color = if (light) Color(0xFF121416) else v192Text,
-                fontSize = 21.sp, fontWeight = FontWeight.Bold)
-            if (subtitle.isNotBlank()) {
-                Text(subtitle,
-                    color = if (light) Color(0xFF60656B) else v192Mute,
-                    fontSize = 11.sp, lineHeight = 15.sp)
+    val current by remember(listState) {
+        derivedStateOf { listState.firstVisibleItemIndex.coerceIn(0,tiles.lastIndex) }
+    }
+    val shape = if (light) RoundedCornerShape(23.dp) else RoundedCornerShape(0.dp)
+    val background = if (light) Color(0xFFF6F7F8) else v192Night
+    Column(Modifier.fillMaxWidth().clip(shape).background(background)
+        .padding(top=if(light) 16.dp else 25.dp, bottom=6.dp)) {
+        Column(Modifier.padding(horizontal=15.dp)) {
+            Text(title,color=if(light)Color(0xFF171A1E) else v192Text,
+                fontSize=22.sp,fontWeight=FontWeight.Bold)
+            if(subtitle.isNotBlank()) {
+                Text(subtitle,color=if(light)Color(0xFF656A72) else v192Mute,
+                    fontSize=11.sp,lineHeight=15.sp)
             }
         }
-        Spacer(Modifier.height(13.dp))
+        Spacer(Modifier.height(14.dp))
         LazyRow(
-            state = listState,
-            modifier = Modifier.fillMaxWidth(),
-            contentPadding = PaddingValues(horizontal = 10.dp),
-            horizontalArrangement = Arrangement.spacedBy(9.dp),
-            flingBehavior = rememberSnapFlingBehavior(lazyListState = listState)
+            modifier=Modifier.fillMaxWidth(),
+            state=listState,
+            contentPadding=PaddingValues(horizontal=11.dp),
+            horizontalArrangement=Arrangement.spacedBy(9.dp),
+            flingBehavior=rememberSnapFlingBehavior(lazyListState=listState)
         ) {
-            itemsIndexed(tiles) { _, tile ->
-                Box(Modifier.width(if (tall) 232.dp else 153.dp)
-                    .height(if (tall) 275.dp else 198.dp)
-                    .clip(RoundedCornerShape(17.dp))
-                    .background(Color(0xFF555F6B))) {
-                    V192Photo(tile.image, Modifier.fillMaxSize())
+            itemsIndexed(tiles) { index,tile ->
+                val distance = v192SwipeDistance(index,listState)
+                Box(Modifier
+                    .width(if(tall) 231.dp else 151.dp)
+                    .height(if(tall) 276.dp else 195.dp)
+                    .graphicsLayer {
+                        val zoom=1f-distance*.085f
+                        scaleX=zoom;scaleY=zoom
+                        translationY=distance*10.dp.toPx()
+                        alpha=1f-distance*.13f
+                    }
+                    .clip(RoundedCornerShape(15.dp))
+                    .background(Color(0xFF3C4651))) {
+                    V192Photo(tile.image,Modifier.fillMaxSize())
                     Box(Modifier.fillMaxSize().background(Brush.verticalGradient(
-                        listOf(Color(0x9C1B222A), Color.Transparent, Color(0x33111519)))))
-                    Column(Modifier.align(Alignment.TopStart).padding(10.dp)) {
-                        if (tile.symbol.isNotBlank()) {
-                            Text(tile.symbol, color=Color.White,
-                                fontSize = 41.sp, fontWeight = FontWeight.Black)
+                        listOf(Color(0x99101922),Color.Transparent,Color(0x22111519)))))
+                    Column(Modifier.align(Alignment.TopStart).padding(11.dp)) {
+                        if(tile.symbol.isNotBlank()) {
+                            Text(tile.symbol,color=Color.White.copy(alpha=.94f),
+                                fontSize=36.sp,fontWeight=FontWeight.Black)
                         }
-                        Text(tr(lang, tile.titleEn, tile.titleFa),
-                            color = Color.White, fontSize = 12.sp, lineHeight = 16.sp,
-                            fontWeight = FontWeight.Bold, maxLines = 2,
-                            overflow = TextOverflow.Ellipsis)
+                        Text(tr(lang,tile.titleEn,tile.titleFa),color=Color.White,
+                            fontSize=12.sp,lineHeight=15.sp,fontWeight=FontWeight.Black,
+                            maxLines=3,overflow=TextOverflow.Ellipsis)
                     }
                 }
             }
         }
-        V192Dots(current, tiles.size, light = light)
+        V192Dots(current,tiles.size,light)
+    }
+}
+
+/**
+ * The white concierge surface overlaps the preceding manager portraits.
+ * Each slider captures horizontal swipes; the surrounding LazyColumn
+ * independently handles vertical gestures.
+ */
+@Composable
+private fun V192ManagerConcierge(lang: Lang) {
+    Box(Modifier.fillMaxWidth().height(566.dp)) {
+        V192Manager(lang)
+        Box(Modifier.align(Alignment.BottomCenter).fillMaxWidth()) {
+            V192ImageSlider(
+                lang,tr(lang,"Concierge service","خدمات Concierge"),
+                tr(lang,"Enjoy the comfort while we take care of the rest",
+                    "آسودگی بیشتر با خدمات ویژه، در صورت ارائه"),
+                v192Concierge,light=true)
+        }
     }
 }
 
