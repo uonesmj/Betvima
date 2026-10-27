@@ -9,14 +9,17 @@ import { casinoCountryPermitted } from './jurisdiction';
  * authorized countries. Age, current signed geo-location, self-exclusion,
  * account state and real-money feature/pilot gates remain mandatory.
  */
-export const CASINO_PRE_KYC_LIFETIME_STAKE_USD_MINOR = 1000n;
+export const CASINO_PRE_KYC_LIFETIME_STAKE_USD_MINOR = 100n;
 
 type KycPolicyProfile = { kyc_status: string; country: string | null };
 
 export function casinoPreKycPermitted(profile: KycPolicyProfile): boolean {
   // A rejected/expired identity check may never be treated as a fresh applicant.
   if (profile.kyc_status !== 'not_started' && profile.kyc_status !== 'pending') return false;
+  // Separate positive compliance attestation: this is not permission to waive
+  // age verification, sanctions/geolocation, or legally mandated KYC.
   return process.env.SOFTAGGREGATOR_PRE_KYC_ENABLED === 'true' &&
+    process.env.SOFTAGGREGATOR_PRE_KYC_LEGAL_APPROVAL === 'true' &&
     casinoCountryPermitted(profile.country) &&
     casinoCountryPermitted(profile.country, process.env.SOFTAGGREGATOR_PRE_KYC_ALLOWED_COUNTRIES);
 }
