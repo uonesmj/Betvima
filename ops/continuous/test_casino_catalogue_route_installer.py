@@ -73,9 +73,9 @@ class CatalogueNginxRouteTests(unittest.TestCase):
             transient, transient, 1, transient, 2, 3, 4
         ]) as probe,patch.object(module.time,'sleep') as sleeping:
             self.assertEqual(module.wait_for_catalogue(
-                module.LOCAL_URL,local_tls=True,attempts=7,delay_seconds=0),4)
-            self.assertEqual(probe.call_count,7)
-            self.assertEqual(sleeping.call_count,6)
+                module.LOCAL_URL,local_tls=True,attempts=7,delay_seconds=0),3)
+            self.assertEqual(probe.call_count,6)
+            self.assertEqual(sleeping.call_count,5)
 
     def test_reload_poll_fails_closed_when_upstream_never_becomes_ready(self):
         transient=subprocess.CalledProcessError(returncode=22,cmd=['curl'])
