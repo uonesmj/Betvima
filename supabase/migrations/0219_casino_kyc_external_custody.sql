@@ -10,8 +10,17 @@ alter table nova.kyc_submissions
 
 -- Explicitly distinguish externally held documents from a file in Supabase.
 -- Do not store passport numbers, document content, Telegram handles, or URLs.
-alter table nova.kyc_submissions
-  add constraint casino_kyc_evidence_custody_check check (
+-- A migration applied via the Supabase API can be encountered again by a
+-- file-based deploy. Preserve idempotence without weakening the CHECK.
+do $migration$
+begin
+  if not exists (
+    select 1 from pg_constraint
+    where conrelid = 'nova.kyc_submissions'::regclass
+      and conname = 'casino_kyc_evidence_custody_check'
+  ) then
+    alter table nova.kyc_submissions
+      add constraint casino_kyc_evidence_custody_check check (
     (evidence_source = 'private_upload'
       and document_path is not null
       and external_evidence_reference is null)
@@ -25,7 +34,10 @@ alter table nova.kyc_submissions
       and legal_age_confirmed = true
       and reviewed_by is not null
       and reviewed_at is not null)
-  );
+    );
+  end if;
+end
+$migration$;
 
 -- Identity evidence is strictly operator-only. Existing RLS/privileges remain.
 alter table nova.kyc_submissions enable row level security;
