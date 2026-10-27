@@ -15,7 +15,7 @@ from unittest.mock import Mock
 
 SOURCE=pathlib.Path(__file__).with_name('production.py').read_text()
 AST=ast.parse(SOURCE)
-NAMES={'files_digest','quarantine_failed','verify_applied_migrations','backup_connection'}
+NAMES={'files_digest','quarantine_failed','verify_applied_migrations','backup_connection','resolve_active_web_upstream'}
 NODES=[n for n in AST.body if isinstance(n,ast.FunctionDef) and n.name in NAMES]
 assert len(NODES)==len(NAMES)
 scope={'pathlib':pathlib,'re':re,'time':time,'hashlib':hashlib,
@@ -211,5 +211,58 @@ class SessionBackupConnectionTests(unittest.TestCase):
             with self.subTest(field=field),self.assertRaisesRegex(ValueError,'backup_session_pooler_required'):
                 scope['backup_connection']({'SUPABASE_DB_URL':self.VALID_URL})
             self.mock.reset_mock()
+
+class RoutedWebSelectionTests(unittest.TestCase):
+    @staticmethod
+    def process(name, port, status='online'):
+        return {'name': name, 'pm2_env': {'PORT': port, 'status': status,
+                                         'pm_cwd': '/opt/nova-releases/test'}}
+
+    def test_separate_casino_3098_and_web_3007_are_not_ambiguous(self):
+        route = ('location / { proxy_pass http://127.0.0.1:3007; }\n'
+                 'location /api/casino/ { proxy_pass http://127.0.0.1:3098; }\n')
+        web = self.process('nova-cd-active', 3007)
+        casino = self.process('betvima-casino', 3098)
+        chosen, port = scope['resolve_active_web_upstream'](route, [casino, web])
+        self.assertIs(chosen, web)
+        self.assertEqual(port, 3007)
+        # Subsequent Nginx replacement must never change the 3098 callback.
+        changed = route.replace('proxy_pass http://127.0.0.1:'+str(port)+';',
+                                'proxy_pass http://127.0.0.1:3010;')
+        self.assertIn('proxy_pass http://127.0.0.1:3098;', changed)
+
+    def test_single_web_upstream_still_works(self):
+        route = 'proxy_pass http://127.0.0.1:3007;'
+        chosen, port = scope['resolve_active_web_upstream'](
+            route, [self.process('nova-cd-active', 3007)])
+        self.assertEqual(port, 3007)
+
+    def test_fail_closed_when_only_casino_is_routed(self):
+        route = 'proxy_pass http://127.0.0.1:3098;'
+        with self.assertRaisesRegex(ValueError, 'active_web_not_identified'):
+            scope['resolve_active_web_upstream'](
+                route, [self.process('nova-cd-active', 3007),
+                        self.process('betvima-casino', 3098)])
+
+    def test_fail_closed_when_multiple_candidate_web_processes_are_routed(self):
+        route = ('proxy_pass http://127.0.0.1:3007;\n'
+                 'proxy_pass http://127.0.0.1:3008;\n'
+                 'proxy_pass http://127.0.0.1:3098;')
+        with self.assertRaisesRegex(ValueError, 'active_web_not_identified'):
+            scope['resolve_active_web_upstream'](route, [
+                self.process('nova-cd-web1', 3007),
+                self.process('nova-cd-web2', 3008),
+                self.process('betvima-casino', 3098)])
+
+    def test_fail_closed_when_no_upstream_is_configured(self):
+        with self.assertRaisesRegex(ValueError, 'ambiguous_current_upstream'):
+            scope['resolve_active_web_upstream']('location / {}', [])
+
+    def test_stopped_pm2_process_is_not_mistaken_for_current_web(self):
+        route = 'proxy_pass http://127.0.0.1:3007;'
+        with self.assertRaisesRegex(ValueError, 'active_web_not_identified'):
+            scope['resolve_active_web_upstream'](
+                route, [self.process('nova-cd-old', 3007, status='stopped')])
+
 
 if __name__=='__main__':unittest.main()
