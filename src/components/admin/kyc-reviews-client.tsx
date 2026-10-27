@@ -6,7 +6,10 @@ import { apiRequest, useApiQuery } from '@/lib/hooks/useApi';
 import { ShieldCheck, IdCard, ExternalLink, Loader2, CheckCircle2, XCircle } from 'lucide-react';
 
 type Item = { id: string; userId: string; email: string | null; publicId: string; documentType: string; status: string; createdAt: string };
-type Submission = Item & { documentUrl: string; selfieUrl: string | null; reviewNote: string | null };
+type Submission = Item & {
+  documentUrl: string | null; selfieUrl: string | null; reviewNote: string | null;
+  evidenceSource: string; externalEvidenceReference: string | null;
+};
 
 export function KycReviewsClient() {
   const [status, setStatus] = useState('pending');
@@ -85,8 +88,17 @@ export function KycReviewsClient() {
           <div className="mb-4 flex items-center gap-2"><IdCard className="text-nova-gold" size={22} /><h3 className="font-bold">Review {selected.publicId}</h3></div>
           <p className="mb-3 text-xs nova-muted">Open each document in a secure download. Verify identity, authenticity, legal age and other required checks before approving. A KYC approval does not override casino jurisdiction or operator launch controls.</p>
           <div className="mb-4 flex flex-wrap gap-3">
-            <a className="nova-btn-primary inline-flex items-center gap-2 text-xs" target="_blank" rel="noopener noreferrer"
-              href={selected.documentUrl}><ExternalLink size={14} /> Download ID</a>
+            {selected.documentUrl ? (
+              <a className="nova-btn-primary inline-flex items-center gap-2 text-xs"
+                target="_blank" rel="noopener noreferrer" href={selected.documentUrl}>
+                <ExternalLink size={14} /> Download ID
+              </a>
+            ) : (
+              <span className="text-xs nova-muted">
+                Externally retained ID — no file uploaded to BetVima.
+                {selected.externalEvidenceReference ? ' Custody reference: ' + selected.externalEvidenceReference : ''}
+              </span>
+            )}
             {selected.selfieUrl ? <a className="nova-btn-ghost inline-flex items-center gap-2 text-xs" target="_blank" rel="noopener noreferrer"
               href={selected.selfieUrl}><ExternalLink size={14} /> Download selfie</a> : null}
           </div>
