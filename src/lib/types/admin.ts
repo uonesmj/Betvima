@@ -9,7 +9,7 @@ export interface AuditLogEntry {
   correlationId: string | null; createdAt: ISODateString;
 }
 export interface AdminUserSummary {
-  id: UUID; publicId: string; email: string | null; phone: string | null; username: string | null;
+  id: UUID; publicId: string; numericId: number; email: string | null; phone: string | null; username: string | null;
   status: string; role: UserRole; kycStatus: string; balanceSummary: { currency: Currency; balanceMinor: bigint }[];
   /** Admin reporting projection: aggregated account balance expressed in USD cents. */
   usdBalanceMinor: bigint | null;
