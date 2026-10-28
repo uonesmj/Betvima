@@ -123,7 +123,7 @@ export const GET = withErrorHandling('admin.mobile.user_overview', async (
         id: row.id, title: row.title, currency: row.currency,
         amountMinor: plain(row.amount_minor), remainingMinor: plain(row.remaining_amount_minor),
         status: expired && ['active','locked'].includes(status) ? 'expired' : status,
-        active: status === 'active' && !expired,
+        active: ['active','locked'].includes(status) && !expired,
         grantedAt: iso(row.granted_at), expiresAt,
       };
     }),
