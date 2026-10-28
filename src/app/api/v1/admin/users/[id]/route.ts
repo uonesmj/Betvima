@@ -56,6 +56,12 @@ export const PATCH = withErrorHandling('admin.users.patch', async (ctx, request:
   const actorId = user.id;
   switch (body.action) {
     case 'set_status': {
+      if (user.id === id) throw new ApiError('FORBIDDEN', 'You cannot change your own administrator status');
+      const target = await services.db.queryOne<{ role: string }>(
+        "select role::text as role from nova.profiles where id=$1", [id],
+      );
+      if (!target || !['user','affiliate'].includes(target.role))
+        throw new ApiError('FORBIDDEN', 'Account status actions in this panel are for players only');
       if (!body.status) throw new ApiError('VALIDATION_FAILED', 'status is required');
       const reason = body.reason ?? 'administrative change';
       const profile = await services.users.setStatus({ userId: id, status: body.status, reason, actorId });
