@@ -842,8 +842,8 @@ public final class MainActivity extends Activity {
   },this::showMessage);
  }
  private String faBetType(String value){
-  if("single".equals(value))return "تکی";
-  if("multiple".equals(value)||"accumulator".equals(value))return "ترکیبی";
+  if("single".equalsIgnoreCase(value))return "تکی";
+  if("multiple".equalsIgnoreCase(value)||"accumulator".equalsIgnoreCase(value))return "ترکیبی";
   if("system".equals(value))return "سیستمی";
   return value;
  }
@@ -1016,26 +1016,53 @@ public final class MainActivity extends Activity {
    }).show();
  }
  private void betDetail(JSONObject item){
-  LinearLayout p=panel(body);
-  info(p,"شماره شرط",pick(item,"publicId","id"));info(p,"وضعیت",pick(item,"status"));
-  info(p,"نوع شرط",pick(item,"type"));
-  info(p,"مبلغ USD",money(item,"usdStakeMinor","stakeMinor"));
-  info(p,"برد احتمالی",money(item,"usdPotentialPayoutMinor","potentialPayoutMinor"));
-  info(p,"برد پرداخت‌شده",money(item,"usdSettledPayoutMinor","settledPayoutMinor"));
-  info(p,"شناسه کاربر",pick(item,"userId"));
-  String ownerId=item.optString("userId","");
-  if(!ownerId.isEmpty()&&!"null".equals(ownerId))addAction(p,"بازکردن پرونده همین کاربر",true,()->{
-    page="users";selectedId=ownerId;showingUserDetail=true;
-    try{
-     selected=new JSONObject().put("id",ownerId);
-     createPage("پرونده کاربر","شرط‌ها و تراکنش‌های همین کاربر");
-     userDetail(selected);
-    }catch(Exception error){showMessage("شناسه کاربر نامعتبر است.");}
+  String id=item.optString("id","");
+  LinearLayout c=panel(body);
+  info(c,"کد شرط",pick(item,"publicId","id"));
+  info(c,"وضعیت شرط",faStatus(pick(item,"status")));
+  info(c,"مبلغ شرط",amountMinor(item.optString("stakeMinor","0"),pick(item,"currency")));
+  info(c,"زمان ثبت",date(pick(item,"placedAt")));
+  String userId=item.optString("userId","");
+  if(!userId.isEmpty())addAction(c,"مشاهده پرونده و همه شرط‌های همین کاربر",true,()->openPlayerFromBet(userId));
+  requestInto("/api/v1/admin/bets/"+enc(id),data->{
+   JSONObject bet=data.optJSONObject("bet");
+   if(bet==null){centerText(body,"جزئیات شرط قابل دریافت نیست");return;}
+   LinearLayout details=sectionGroup("اطلاعات کامل این شرط","زمان، مبلغ، ضریب، برد، باخت و تسویه",true);
+   String currency=pick(bet,"currency");
+   info(details,"شناسه شرط",pick(bet,"publicId"));
+   info(details,"وضعیت",faStatus(pick(bet,"status")));
+   info(details,"نوع",faBetType(pick(bet,"type")));
+   info(details,"تاریخ و ساعت ثبت",date(pick(bet,"placedAt")));
+   info(details,"تاریخ و ساعت تسویه",date(pick(bet,"settledAt")));
+   info(details,"مبلغ شرط",amountMinor(bet.optString("stakeMinor","0"),currency));
+   info(details,"حداکثر برد احتمالی",amountMinor(bet.optString("potentialPayoutMinor","0"),currency));
+   info(details,"مبلغ پرداخت‌شده",bet.isNull("settledPayoutMinor")?"تسویه نشده":amountMinor(bet.optString("settledPayoutMinor","0"),currency));
+   info(details,"سود/زیان کاربر",bet.isNull("netResultMinor")?"تسویه نشده":amountMinor(bet.optString("netResultMinor","0"),currency));
+   info(details,"ضریب کل",formatOdds(pick(bet,"combinedOddsScaled")));
+   info(details,"منبع ثبت",faDevice(pick(bet,"source")));
+   JSONArray legs=bet.optJSONArray("legs");
+   LinearLayout choices=sectionGroup("انتخاب‌ها و مسابقات","جزئیات هر آپشن انتخاب‌شده",true);
+   if(legs!=null)for(int i=0;i<legs.length();i++){
+    JSONObject l=legs.optJSONObject(i);if(l==null)continue;
+    choices.addView(text("انتخاب "+(i+1),14,GREEN,true));
+    info(choices,"مسابقه",pick(l,"matchLabel"));
+    info(choices,"بازار",pick(l,"marketLabel"));
+    info(choices,"آپشن",pick(l,"selectionLabel"));
+    info(choices,"ضریب موقع ثبت",formatOdds(pick(l,"oddsAtPlacementScaled")));
+    info(choices,"ضریب پذیرفته‌شده",formatOdds(pick(l,"acceptedOddsScaled")));
+    info(choices,"وضعیت",faStatus(pick(l,"status")));
+    info(choices,"زمان تسویه",date(pick(l,"settledAt")));
+    divider(choices);
+   }
   });
-  requestInto("/api/v1/admin/bets/"+enc(item.optString("id")),json->{
-   JSONObject bet=json.optJSONObject("bet");
-   if(bet!=null)generic(bet,"جزئیات شرط");
-  });
+ }
+ private void openPlayerFromBet(String id){
+  page="users";selectedId=id;showingUserDetail=true;
+  try{
+   selected=new JSONObject().put("id",id);
+   createPage("پرونده کاربر","شرط‌ها و تراکنش‌های اختصاصی");
+   userDetail(selected);
+  }catch(Exception e){showMessage("شناسه کاربر نامعتبر است.");}
  }
  private void paymentDetail(JSONObject item){
   LinearLayout p=panel(body);
