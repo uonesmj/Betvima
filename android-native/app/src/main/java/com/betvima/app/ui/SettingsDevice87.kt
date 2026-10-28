@@ -15,8 +15,8 @@ import android.util.Base64
 internal class SettingsDevice87(context: Context) {
     private val app = context.applicationContext
     private val prefs = app.getSharedPreferences("bv_device_settings_87", Context.MODE_PRIVATE)
-    fun theme(): String = prefs.getString("appearance", "system") ?: "system"
-    fun setTheme(value: String) { require(value in setOf("system", "light", "dark")); prefs.edit().putString("appearance", value).apply() }
+    fun theme(): String = prefs.getString("appearance", "dark") ?: "dark"
+    fun setTheme(value: String) { require(value in setOf("system", "light", "dark")); prefs.edit().putString("appearance", value).apply(); NativeThemeState.mode = value }
     fun betAlerts(): Boolean = prefs.getBoolean("bet_alerts", true)
     fun setBetAlerts(value: Boolean) { prefs.edit().putBoolean("bet_alerts", value).apply() }
     fun appAlerts(): Boolean = prefs.getBoolean("in_app_alerts", true)

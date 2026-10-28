@@ -1,6 +1,10 @@
 package com.betvima.app
 
 import android.os.Bundle
+import android.content.res.Configuration
+import androidx.compose.runtime.SideEffect
+import com.betvima.app.ui.NativeThemeState
+import com.betvima.app.ui.SettingsDevice87
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
@@ -18,8 +22,25 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         window.setBackgroundDrawableResource(R.color.betvima_splash_background)
         WindowCompat.setDecorFitsSystemWindows(window, true)
+        NativeThemeState.mode = SettingsDevice87(this).theme()
+        NativeThemeState.systemDark =
+            (resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) ==
+                Configuration.UI_MODE_NIGHT_YES
         setContent {
-            BetvimaTheme { BetvimaApp(model) }
+            BetvimaTheme {
+                val light = NativeThemeState.isLight
+                SideEffect {
+                    WindowCompat.getInsetsController(window, window.decorView).apply {
+                        isAppearanceLightStatusBars = light
+                        isAppearanceLightNavigationBars = light
+                    }
+                    window.statusBarColor = if (light) android.graphics.Color.rgb(244, 246, 250)
+                        else android.graphics.Color.rgb(17, 17, 19)
+                    window.navigationBarColor = if (light) android.graphics.Color.rgb(244, 246, 250)
+                        else android.graphics.Color.rgb(17, 17, 19)
+                }
+                BetvimaApp(model)
+            }
         }
     }
 }
