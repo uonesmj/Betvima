@@ -18,10 +18,10 @@ interface Detail {
     role: string;
     kycStatus: string;
     balanceSummary: { currency: string; balanceMinor: string }[];
-    usdBalanceMinor: string;
-    totalStakeMinor: string;
-    totalPayoutMinor: string;
-    netResultMinor: string;
+    usdBalanceMinor: string | null;
+    totalStakeMinor: string | null;
+    totalPayoutMinor: string | null;
+    netResultMinor: string | null;
     openBets: number;
     affiliateId: string | null;
     riskScore: number | null;
@@ -29,9 +29,9 @@ interface Detail {
     lastLoginAt: string | null;
   };
   notes: { id: string; body: string; authorId: string | null; createdAt: string }[];
-  bets: { items: { id: string; publicId: string; status: string; stakeMinor: string; potentialPayoutMinor: string; usdStakeMinor: string; usdPotentialPayoutMinor: string; type: string; placedAt: string }[]; total: number };
+  bets: { items: { id: string; publicId: string; status: string; stakeMinor: string; potentialPayoutMinor: string; usdStakeMinor?: string | null; usdPotentialPayoutMinor?: string | null; currency?: string; type: string; placedAt: string }[]; total: number };
   wallet: { items: { id: string; type: string; amountMinor: string; balanceAfterMinor: string; createdAt: string; status: string }[]; total: number };
-  payments: { items: { id: string; publicId: string; direction: string; status: string; amountMinor: string; usdAmountMinor: string; createdAt: string }[]; total: number };
+  payments: { items: { id: string; publicId: string; direction: string; status: string; amountMinor: string; usdAmountMinor?: string | null; currency?: string; createdAt: string }[]; total: number };
   restrictions: { id: string; kind: string; valueMinor: string | null; isActive: boolean; effectiveFrom: string; effectiveTo: string | null; reason: string | null }[];
 }
 
@@ -153,13 +153,13 @@ export function UserDetailClient({ userId }: { userId: string }) {
       </Card>
 
       <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
-        <Stat label="Balance" value={formatMinor(wallet, 'USD', locale)} />
+        <Stat label="Balance" value={wallet === null ? (profile.balanceSummary.length ? profile.balanceSummary.map((b) => formatMinor(b.balanceMinor, b.currency, locale)).join(' · ') : '—') : formatMinor(wallet, 'USD', locale)} />
         <Stat label="Locked" value="—" />
-        <Stat label="Stake" value={formatMinor(data.summary.totalStakeMinor, 'USD', locale)} />
+        <Stat label="Stake" value={data.summary.totalStakeMinor === null ? '— (no FX)' : formatMinor(data.summary.totalStakeMinor, 'USD', locale)} />
         <Stat
           label="Net result"
-          value={formatMinor(data.summary.netResultMinor, 'USD', locale)}
-          tone={BigInt(data.summary.netResultMinor) >= 0n ? 'danger' : 'success'}
+          value={data.summary.netResultMinor === null ? '— (no FX)' : formatMinor(data.summary.netResultMinor, 'USD', locale)}
+          tone={data.summary.netResultMinor !== null && BigInt(data.summary.netResultMinor) >= 0n ? 'danger' : 'success'}
         />
       </div>
       <nav className="flex gap-1 overflow-x-auto">
@@ -222,8 +222,8 @@ export function UserDetailClient({ userId }: { userId: string }) {
                   <td className="font-mono text-xs">{bet.publicId}</td>
                   <td className="text-xs">{bet.type}</td>
                   <td><StatusPill status={bet.status} /></td>
-                  <td className="text-xs">{formatMinor(bet.usdStakeMinor, 'USD', locale)}</td>
-                  <td className="text-xs">{formatMinor(bet.usdPotentialPayoutMinor, 'USD', locale)}</td>
+                  <td className="text-xs">{formatMinor(bet.usdStakeMinor ?? bet.stakeMinor, bet.usdStakeMinor == null ? (bet.currency || 'USD') : 'USD', locale)}</td>
+                  <td className="text-xs">{formatMinor(bet.usdPotentialPayoutMinor ?? bet.potentialPayoutMinor, bet.usdPotentialPayoutMinor == null ? (bet.currency || 'USD') : 'USD', locale)}</td>
                   <td className="whitespace-nowrap text-xs nova-muted">{formatDateTime(bet.placedAt, locale)}</td>
                   <td><a className="nova-btn-ghost !px-2 !py-1 text-xs" href={`/admin/bets/${bet.id}`}>Open</a></td>
                 </tr>
@@ -264,7 +264,7 @@ export function UserDetailClient({ userId }: { userId: string }) {
                   <td className="font-mono text-xs">{intent.publicId}</td>
                   <td className="text-xs">{intent.direction}</td>
                   <td><StatusPill status={intent.status} /></td>
-                  <td className="text-xs">{formatMinor(intent.usdAmountMinor, 'USD', locale)}</td>
+                  <td className="text-xs">{formatMinor(intent.usdAmountMinor ?? intent.amountMinor, intent.usdAmountMinor == null ? (intent.currency || 'USD') : 'USD', locale)}</td>
                   <td className="whitespace-nowrap text-xs nova-muted">{formatDateTime(intent.createdAt, locale)}</td>
                 </tr>
               ))}
