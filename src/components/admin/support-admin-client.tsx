@@ -1,6 +1,7 @@
 'use client';
 
 import { FormEvent, useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
 
 type Status = 'open' | 'waiting_user' | 'waiting_support' | 'resolved' | 'closed';
 type Priority = 'low' | 'normal' | 'high' | 'urgent';
@@ -15,6 +16,7 @@ type Ticket = {
   status: Status;
   assignedTo: string | null;
   userEmail: string | null;
+  userNumericId: number | null;
   userDisplayName: string | null;
   unreadMessages: number;
   createdAt: string;
@@ -154,6 +156,7 @@ export function SupportAdminClient() {
   const [categoryFilter, setCategoryFilter] = useState('');
   const [priorityFilter, setPriorityFilter] = useState('');
   const [search, setSearch] = useState('');
+  const [matchingUsers, setMatchingUsers] = useState<{ id: string; numericId: number; email: string | null; username: string | null }[]>([]);
   const [draft, setDraft] = useState('');
   const [file, setFile] = useState<File | null>(null);
   const [assignedTo, setAssignedTo] = useState('');
@@ -168,6 +171,7 @@ export function SupportAdminClient() {
       [
         item.subject,
         item.userEmail ?? '',
+        item.userNumericId?.toString() ?? '',
         item.userDisplayName ?? '',
         item.id,
         item.userId,
@@ -182,6 +186,7 @@ export function SupportAdminClient() {
       if (statusFilter) query.set('status', statusFilter);
       if (categoryFilter) query.set('category', categoryFilter);
       if (priorityFilter) query.set('priority', priorityFilter);
+      if (search.trim()) query.set('search', search.trim());
       const data = await request<TicketListData>(`/api/v1/admin/support?${query.toString()}`);
       const next = normalizeTickets(data);
       setTickets(next);
@@ -195,6 +200,30 @@ export function SupportAdminClient() {
       setLoadingList(false);
     }
   }
+
+  // Support agents can resolve any existing player by their public-facing
+  // numeric account number or email, including users who have no open ticket.
+  // Access still passes the server-side users.view permission check.
+  useEffect(() => {
+    const q = search.trim();
+    if (q.length < 3) { setMatchingUsers([]); return; }
+    let active = true;
+    const timer = window.setTimeout(async () => {
+      try {
+        const matches = await request<{ items: { id: string; numericId: number; email: string | null; username: string | null }[] }>(
+          `/api/v1/admin/users?role=user,affiliate&pageSize=10&q=${encodeURIComponent(q)}`);
+        if (active) setMatchingUsers(matches.items ?? []);
+      } catch {
+        if (active) setMatchingUsers([]);
+      }
+    }, 350);
+    return () => { active = false; window.clearTimeout(timer); };
+  }, [search]);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => { void loadTickets(true); }, 350);
+    return () => window.clearTimeout(timer);
+  }, [search]);
 
   async function loadTicket(id: string, silent = false) {
     if (!silent) setLoadingTicket(true);
@@ -230,7 +259,7 @@ export function SupportAdminClient() {
       if (selectedId) void loadTicket(selectedId, true);
     }, 3000);
     return () => window.clearInterval(timer);
-  }, [selectedId, statusFilter, categoryFilter, priorityFilter]);
+  }, [selectedId, statusFilter, categoryFilter, priorityFilter, search]);
 
   async function updateTicket(patch: Record<string, unknown>) {
     if (!selectedId) return;
@@ -294,7 +323,7 @@ export function SupportAdminClient() {
           className="nova-input min-w-0 flex-[1_1_220px]"
           value={search}
           onChange={(event) => setSearch(event.target.value)}
-          placeholder="Search subject, email, user ID..."
+          placeholder="جست‌وجو با شناسه عددی (مثل 1100) یا ایمیل..."
         />
         <select className="nova-input !w-auto" value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>
           <option value="">All statuses</option>
@@ -310,6 +339,19 @@ export function SupportAdminClient() {
         </select>
         <button type="button" className="nova-btn-ghost" onClick={() => void loadTickets(true)}>Refresh</button>
       </div>
+      {search.trim().length >= 3 && matchingUsers.length > 0 ? (
+        <div className="rounded-xl border border-nova-primary/30 bg-[#F4FAFF] p-3">
+          <p className="mb-2 text-xs font-semibold">نتیجه جست‌وجوی کاربران — ورود به پرونده</p>
+          <div className="flex flex-wrap gap-2">
+            {matchingUsers.map((user) => (
+              <Link key={user.id} href={`/admin/users/${user.id}`}
+                className="rounded-lg border border-[#D6E3F6] bg-white px-3 py-2 text-xs hover:bg-[#EAF2FF]">
+                <strong dir="ltr">ID {user.numericId}</strong> · {user.email || user.username || 'کاربر'}
+              </Link>
+            ))}
+          </div>
+        </div>
+      ) : null}
 
       <div className="grid min-w-0 grid-cols-1 items-start gap-3 xl:min-h-[620px] xl:grid-cols-[minmax(260px,325px)_minmax(0,1fr)]">
         <section className={`${selectedId ? 'hidden xl:block' : 'block'} min-w-0 overflow-hidden rounded-xl border border-[#DEE6F0] bg-[#FFFFFF]`}>
@@ -340,7 +382,7 @@ export function SupportAdminClient() {
                     ) : null}
                   </div>
                   <div className="mt-1 flex items-center justify-between gap-2 text-[10px]">
-                    <span className="truncate text-[#6E7C91]">{item.userEmail || item.userDisplayName || item.userId}</span>
+                    <span className="truncate text-[#6E7C91]">{item.userNumericId != null ? `ID ${item.userNumericId}` : 'شناسه نامشخص'} · {item.userEmail || item.userDisplayName || '—'}</span>
                     <span className="shrink-0 text-[#6E7C91]">{formatTime(item.lastMessageAt || item.updatedAt)}</span>
                   </div>
                   <div className="mt-2 flex flex-wrap items-center gap-1.5">
@@ -374,8 +416,13 @@ export function SupportAdminClient() {
                   <div className="min-w-0">
                     <h2 data-i18n-ignore className="truncate text-base font-bold">{ticket.subject}</h2>
                     <p className="mt-1 text-[11px] text-[#6E7C91]">
-                      {ticket.userEmail || ticket.userDisplayName || ticket.userId} · {formatTime(ticket.createdAt)}
+                      {ticket.userNumericId != null ? `ID ${ticket.userNumericId}` : 'شناسه نامشخص'} · {ticket.userEmail || ticket.userDisplayName || '—'} · {formatTime(ticket.createdAt)}
                     </p>
+                  </div>
+                  <div className="mt-2">
+                    <Link href={`/admin/users/${ticket.userId}`} className="text-xs font-semibold text-[#2563EB] underline">
+                      مشاهده پرونده کاربر {ticket.userNumericId != null ? ticket.userNumericId : ''}
+                    </Link>
                   </div>
                   <div className="flex flex-wrap items-center gap-2">
                     <select
