@@ -672,7 +672,7 @@ public final class MainActivity extends Activity {
   new AlertDialog.Builder(this).setTitle("تأیید کازینو")
    .setMessage("همان صفحه تأیید هویت موجود در پنل وب باز می‌شود. تأیید مدارک و سن فقط در همان صفحه انجام می‌شود.")
    .setNegativeButton("انصراف",null).setPositiveButton("بازکردن صفحه رسمی",(d,w)->{
-     Intent intent=new Intent(Intent.ACTION_VIEW,Uri.parse(api.origin()+"/admin/casino-approvals"));
+     Intent intent=new Intent(Intent.ACTION_VIEW,Uri.parse("https://betvima.com/admin/casino-approvals"));
      startActivity(intent);
    }).show();
  }
