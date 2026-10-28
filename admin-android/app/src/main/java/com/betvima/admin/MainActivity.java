@@ -11,6 +11,8 @@ import android.graphics.Color;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.text.InputType;
 import android.text.TextUtils;
 import android.view.Gravity;
@@ -70,6 +72,12 @@ public final class MainActivity extends Activity {
  private JSONObject selected;
  private boolean loggedIn=false,loading=false,drawerOpened=false,showingUserDetail=false;
  private long lastTap=0;
+ private final Handler supportRefresh=new Handler(Looper.getMainLooper());
+ private TextView supportBadge;
+ private int unansweredTickets=0;
+ private final Runnable supportTicker=new Runnable(){@Override public void run(){
+  if(!isFinishing()&&loggedIn){refreshSupportBadge();supportRefresh.postDelayed(this,45000);}
+ }};
 
  @Override public void onCreate(Bundle savedState){
   super.onCreate(savedState);
@@ -279,6 +287,7 @@ public final class MainActivity extends Activity {
   page=next;selectedId="";query="";userPage=1;showingUserDetail=false;
   createPage(titleFor(page),"پنل مدیریت مستقل • اطلاعات سرور اصلی");
   loadPage();
+  if(loggedIn)refreshSupportBadge();
  }
  private void createPage(String title,String subtitle){
   drawerOpened=false;
@@ -307,6 +316,7 @@ public final class MainActivity extends Activity {
    LinearLayout item=col();item.setGravity(Gravity.CENTER);
    TextView ic=text(tab[1],22,page.equals(tab[0])?GREEN:MUTED,true);ic.setGravity(Gravity.CENTER);item.addView(ic);
    TextView name=text(tab[2],10,page.equals(tab[0])?GREEN:MUTED,false);name.setGravity(Gravity.CENTER);item.addView(name);
+   if("support".equals(tab[0])){supportBadge=name;updateSupportBadge();}
    nav.addView(item,new LinearLayout.LayoutParams(0,dp(53),1));item.setOnClickListener(v->showPage(tab[0]));
   }
   layout.addView(nav);
@@ -406,6 +416,54 @@ public final class MainActivity extends Activity {
    case "affiliates":list("affiliates","");break;
    case "audit":list("audit","");break;
    case "operations":operations();break;
+  }
+ }
+ private void updateSupportBadge(){
+  if(supportBadge!=null){
+   supportBadge.setText(unansweredTickets>0?"تیکت "+unansweredTickets:"تیکت");
+   supportBadge.setTextColor(unansweredTickets>0?RED:(page.equals("support")?GREEN:MUTED));
+  }
+ }
+ private void refreshSupportBadge(){
+  if(!loggedIn)return;
+  api.perform(()->api.get("/api/v1/admin/support?page=1&pageSize=100"),data->{
+   JSONObject tickets=data.optJSONObject("tickets");
+   JSONArray rows=tickets!=null?tickets.optJSONArray("items"):data.optJSONArray("tickets");
+   int count=0;
+   if(rows!=null)for(int i=0;i<rows.length();i++){
+    JSONObject ticket=rows.optJSONObject(i);
+    if(ticket!=null && !"closed".equals(ticket.optString("status")) &&
+       !"resolved".equals(ticket.optString("status")))count+=Math.max(0,ticket.optInt("unreadMessages"));
+   }
+   unansweredTickets=count;updateSupportBadge();
+  },err->{/* Keep last known badge and never clear a real pending message on transient failure. */});
+ }
+ @Override protected void onResume(){super.onResume();supportRefresh.removeCallbacks(supportTicker);supportRefresh.postDelayed(supportTicker,45000);}
+ @Override protected void onPause(){supportRefresh.removeCallbacks(supportTicker);super.onPause();}
+ private LinearLayout sectionGroup(String title,String hint,boolean expanded){
+  LinearLayout card=panel(body);
+  TextView heading=text((expanded?"▾ ":"▸ ")+title,16,FG,true);
+  card.addView(heading);space(card,6);card.addView(text(hint,11,MUTED,false));
+  LinearLayout content=col();content.setVisibility(expanded?View.VISIBLE:View.GONE);
+  space(card,10);card.addView(content);
+  heading.setOnClickListener(v->{
+   boolean open=content.getVisibility()!=View.VISIBLE;
+   content.setVisibility(open?View.VISIBLE:View.GONE);
+   heading.setText((open?"▾ ":"▸ ")+title);
+  });
+  return content;
+ }
+ private String faStatus(String value){
+  switch(value){
+   case "accepted":return "باز";case "partially_settled":return "بخشی تسویه‌شده";
+   case "manual_review":return "در انتظار بررسی";case "settled":return "تسویه‌شده";
+   case "cashed_out":return "نقدشده";case "won":return "برد";case "lost":return "باخت";
+   case "void":return "باطل";case "cancelled":return "لغوشده";case "rejected":return "ردشده";
+   case "active":return "فعال";case "suspended":return "مسدود";case "closed":return "بسته";
+   case "open":return "باز";case "waiting_support":return "منتظر پشتیبانی";
+   case "waiting_user":return "منتظر کاربر";case "resolved":return "حل‌شده";
+   case "completed":return "تکمیل‌شده";case "sent":return "ارسال‌شده";case "draft":return "پیش‌نویس";
+   default:return value==null?"—":value;
   }
  }
  private void switcher(){
@@ -985,5 +1043,5 @@ public final class MainActivity extends Activity {
   new AlertDialog.Builder(this).setMessage("از برنامه مدیریت خارج شوید؟")
    .setNegativeButton("لغو",null).setPositiveButton("خروج",(d,w)->finish()).show();
  }
- @Override protected void onDestroy(){api.destroy();super.onDestroy();}
+ @Override protected void onDestroy(){supportRefresh.removeCallbacks(supportTicker);api.destroy();super.onDestroy();}
 }
