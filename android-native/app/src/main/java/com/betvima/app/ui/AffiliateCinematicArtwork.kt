@@ -27,6 +27,23 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
+/**
+ * Eight art cards, in the order of the two native FAQ / Partner Knowledge lists.
+ * A single offline WEBP sprite avoids eight image decode requests and is cropped by
+ * exact cell bounds; each result is contained inside the existing rounded card.
+ */
+private fun affiliateCardArtIndex(scene:AffiliateScene):Int = when(scene) {
+    AffiliateScene.FAQ_REVSHARE -> 0
+    AffiliateScene.FAQ_EARNING -> 1
+    AffiliateScene.FAQ_CPA -> 2
+    AffiliateScene.FAQ_PAYOUTS -> 3
+    AffiliateScene.FAQ_STATISTICS -> 4
+    AffiliateScene.GUIDE_START -> 5
+    AffiliateScene.GUIDE_REVSHARE -> 6
+    AffiliateScene.GUIDE_REPORTING -> 7
+    else -> -1
+}
+
 /** Separate cinematic artwork and motion layers. Does not modify affiliate business rules.
  * Offline WEBP sources are bundled under the affiliate assets directory.
  * Missing art gracefully renders a branded gradient while awaiting asset review.
@@ -79,11 +96,27 @@ internal fun AffiliateCinematicPhoto(
     ) {
         value = if (chartScene) null else kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
             runCatching {
-                val preferred = "affiliate/" + scene.photo + ".webp"
-                val fallback = "affiliate/" + scene.fallbackPhoto + ".webp"
-                runCatching { context.assets.open(preferred) }
-                    .getOrElse { context.assets.open(fallback) }
-                    .use { BitmapFactory.decodeStream(it)?.asImageBitmap() }
+                val spriteIndex = affiliateCardArtIndex(scene)
+                val supplied = if(spriteIndex >= 0) runCatching {
+                    context.assets.open("affiliate/bv_aff_support_cards_203.webp").use { stream ->
+                        val sheet = BitmapFactory.decodeStream(stream)
+                            ?: error("Affiliate card image could not be decoded")
+                        val cellWidth = sheet.width / 4
+                        val cellHeight = sheet.height / 2
+                        require(cellWidth > 0 && cellHeight > 0)
+                        android.graphics.Bitmap.createBitmap(
+                            sheet, (spriteIndex % 4) * cellWidth,
+                            (spriteIndex / 4) * cellHeight, cellWidth, cellHeight
+                        ).asImageBitmap()
+                    }
+                }.getOrNull() else null
+                supplied ?: run {
+                    val preferred = "affiliate/" + scene.photo + ".webp"
+                    val fallback = "affiliate/" + scene.fallbackPhoto + ".webp"
+                    runCatching { context.assets.open(preferred) }
+                        .getOrElse { context.assets.open(fallback) }
+                        .use { BitmapFactory.decodeStream(it)?.asImageBitmap() }
+                }
             }.getOrNull()
         }
     }
@@ -118,7 +151,7 @@ internal fun AffiliateCinematicPhoto(
             Image(
                 bitmap = resolvedBitmap,
                 contentDescription = null,
-                contentScale = ContentScale.Fit,
+                contentScale = if(affiliateCardArtIndex(scene) >= 0) ContentScale.Crop else ContentScale.Fit,
                 alignment = Alignment.Center,
                 modifier = Modifier.matchParentSize().graphicsLayer {
                     alpha = .65f + .35f * entrance
