@@ -40,6 +40,7 @@ internal enum class AffiliateScene(
     NUMBERS("bv_aff_numbers",Color(0xFF3669F4),Icons.Default.Groups,"partners"),
     ECOSYSTEM("bv_aff_ecosystem",Color(0xFF517CDB),Icons.Default.SportsSoccer,"football_team"),
     MOBILE("bv_aff_mobile",Color(0xFF30CEAF),Icons.Default.Smartphone,"app_showcase"),
+    MOBILE_PRODUCT("bv_aff_mobile_product",Color(0xFF4AD8BC),Icons.Default.Smartphone,"app_showcase"),
     STATISTICS("bv_aff_statistics",Color(0xFF3879E6),Icons.Default.Leaderboard,"analytics"),
     CHART("bv_aff_chart",Color(0xFF3879E6),Icons.Default.ShowChart,"analytics"),
     GEOGRAPHY("bv_aff_geography",Color(0xFF3B83EF),Icons.Default.Public,"global_stadium"),
