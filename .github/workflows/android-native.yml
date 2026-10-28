@@ -34,6 +34,24 @@ jobs:
         run: |
           python3 -m pip install --quiet Pillow
           python3 android-native/tools/generate_affiliate_art.py
+          python3 android-native/tools/refresh_affiliate_art_201.py
+          # Prove the regenerated image bytes differ from v0.200.
+          python3 - <<'PY'
+          from pathlib import Path
+          import hashlib
+          assets=Path('android-native/app/src/main/assets/affiliate')
+          m={
+              "hero": "d1bddc969b",
+              "ecosystem": "7591424a3e",
+              "mobile": "f7cdabaa8d",
+              "casino": "e80177f5ca",
+              "sports": "e80177f5ca"
+          }
+          for name in ['hero','ecosystem','mobile','casino','sports','faq','join','gallery_mobile','gallery_sports','gallery_casino','geography']:
+              img=assets / ('bv_aff_'+name+'.webp')
+              assert img.is_file() and img.stat().st_size>10000, name
+              print(name, img.stat().st_size, hashlib.sha256(img.read_bytes()).hexdigest()[:16])
+          PY
           test -s android-native/app/src/main/assets/affiliate/bv_aff_hero.webp
           test -s android-native/app/src/main/assets/affiliate/bv_aff_gallery_casino.webp
       - name: Build Android and run unit tests
