@@ -37,6 +37,8 @@ on:
       - 'tests/unit/casino-manual-identity-review.test.ts'
       - 'tests/unit/password-recovery-link.test.ts'
       - 'src/server/adapters/postgres/notifications.ts'
+      - 'src/server/adapters/postgres/admin.ts'
+      - 'tests/unit/admin-dashboard-odds-index.test.ts'
       - 'src/components/layout/notifications-bell.tsx'
       - 'supabase/migrations/0216_in_app_notification_retention_24h.sql'
       - 'tests/unit/notification-24h-retention.test.ts'
