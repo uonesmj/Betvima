@@ -1,30 +1,27 @@
-# CFCoin Android (v0.1)
+# CFCoin Android v0.2 — independent red exchange UI
 
-A completely **independent** native Android prototype under \`cfcoin/android\` on branch \`cfcoin/android-v0.1\`. It does not change BetVima web, workers, Supabase, wallets, or production deploys.
+**Native Android:** Kotlin, Jetpack Compose, app ID com.cfcoin.exchange, Android 8.0+.
 
-## Implemented
-- Native Kotlin + Jetpack Compose, Persian (RTL), black theme with emerald accent.
-- Fixed bottom navigation: خانه، بازار، معاملات، کیف پول.
-- Global header: CFCoin, balance 0.00 USDT, notifications, support, search.
-- Home and Market: favorite, gainers, losers, price list filters, working favorites and search.
-- Trading: selection from market, illustrative chart, order-type and buy/sell UI. Order placement intentionally unavailable.
-- Wallet: zero balance and illustrative empty asset list. Deposits and withdrawals intentionally unavailable.
-- Notifications and support bottom sheets.
-- App ID: \`com.cfcoin.exchange\`, v0.1.0, min Android 8.0.
+Branch: cfcoin/binance-red-v0.2 (isolated from BetVima main and its live financial services).
 
-**No real user, exchange account, real-time market API, funds, trading, backend credentials, or Supabase connection in this build. Prices are static sample values and labelled as such.** This is a UI prototype only. Do not install it as a production financial app.
+## UI
+- Original CFCoin identity; dark charcoal + bright red design; no Binance brand assets.
+- Persistent four bottom tabs: Home / Markets / Trade / Wallet.
+- Global header: logo, hidden/visible *zero* balance, notifications, support, search.
+- Home: summary balance, add funds (preview only), quick actions, market cards.
+- Market: functional favorites, winners, losers, full price list, search.
+- Trade: spot/futures/margin/convert tabs, sample candlestick chart and order book, limit/market/stop-limit form, futures margin/leverage UI, dummy TP/SL.
+- Assets: overview, spot, futures, funding account tabs; zero balances, quick actions and empty transaction history.
+- All interactions strictly UI-only: no live feed, no authentication, no real orders, deposits, withdrawals, wallet keys, trading or brokerage logic.
+
+Market prices, order-book levels and candle chart are **hard-coded example data**, not current rates. Futures mode is strictly a visual mockup.
 
 ## Build
+Open cfcoin/android in Android Studio (Java 17, Android SDK 35) or use:
 
-Open \`cfcoin/android\` in Android Studio, use Java 17, Android SDK Platform 35 and Gradle 8.11.1:
+    gradle --no-daemon testDebugUnitTest assembleDebug
 
-\`\`\`bash
-gradle testDebugUnitTest assembleDebug
-\`\`\`
+The Android debug APK is built and stored by a GitHub Actions workflow scoped to this branch only. Its generated file is \`cfcoin/releases/CFCoin-v0.2-debug.apk\`.
 
-Output: \`app/build/outputs/apk/debug/app-debug.apk\`
-
-The branch-scoped GitHub Actions workflow \`.github/workflows/cfcoin-android.yml\` also builds and uploads the test APK (CFCoin-v0.1-debug) as a run artifact. It does not deploy any website or access Supabase.
-
-## Production safeguards
-Use a separate Supabase project and app signing identity, audited ledgers and custody, regulated payment services, server-side risk limits, complete KYC/AML, and legally permitted trading products before any money movement. Nothing in this prototype authorizes or executes trading.
+## Operational isolation
+Do not reuse BetVima's financial database, API credentials or wallet balances. A distinct Supabase project and independent back-end ledger would be needed before any real account testing. Regulatory approval, custody integration, security audit and controlled testing are required for any real-money functionality.

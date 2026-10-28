@@ -1,8 +1,8 @@
-name: CFCoin Android v0.1
+name: CFCoin Android v0.2
 on:
   push:
     branches:
-      - cfcoin/android-v0.1
+      - cfcoin/binance-red-v0.2
     paths:
       - 'cfcoin/android/**'
       - '.github/workflows/cfcoin-android.yml'
@@ -11,7 +11,7 @@ permissions:
   contents: write
 
 concurrency:
-  group: cfcoin-native-android
+  group: cfcoin-native-android-v02
   cancel-in-progress: true
 
 jobs:
@@ -39,18 +39,18 @@ jobs:
       - name: Upload debug APK
         uses: actions/upload-artifact@v4
         with:
-          name: CFCoin-v0.1-debug
+          name: CFCoin-v0.2-debug
           path: cfcoin/android/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
           retention-days: 30
       - name: Publish APK to isolated branch
         run: |
           mkdir -p cfcoin/releases
-          cp cfcoin/android/app/build/outputs/apk/debug/app-debug.apk cfcoin/releases/CFCoin-v0.1-debug.apk
+          cp cfcoin/android/app/build/outputs/apk/debug/app-debug.apk cfcoin/releases/CFCoin-v0.2-debug.apk
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add cfcoin/releases/CFCoin-v0.1-debug.apk
+          git add cfcoin/releases/CFCoin-v0.2-debug.apk
           if ! git diff --cached --quiet; then
             git commit -m "build(cfcoin): publish debug APK [skip ci]"
-            git push origin HEAD:cfcoin/android-v0.1
+            git push origin HEAD:cfcoin/binance-red-v0.2
           fi
