@@ -65,6 +65,7 @@ function mapMessage(row: Row, attachments: SupportAttachment[] = []): SupportMes
 function mapSummary(row: Row): SupportTicketSummary {
   return {
     ...mapTicket(row),
+    userNumericId: row.user_numeric_id == null ? null : int(row.user_numeric_id),
     userEmail: nullableStr(row.user_email),
     userDisplayName: nullableStr(row.user_display_name),
     unreadMessages: int(row.unread_messages),
@@ -87,7 +88,7 @@ export class PostgresSupportRepository implements SupportRepository {
     }
     values.push(pageSize, offset);
     const rows = await this.db.query<Row>(
-      `select t.*, p.email as user_email, p.display_name as user_display_name,
+      `select t.*, p.numeric_id as user_numeric_id, p.email as user_email, p.display_name as user_display_name,
               0::int as unread_messages,
               max(tm.created_at) as last_message_at,
               count(*) over() as total_count
@@ -95,7 +96,7 @@ export class PostgresSupportRepository implements SupportRepository {
          left join nova.profiles p on p.id = t.user_id
          left join public.ticket_messages tm on tm.ticket_id = t.id
         where t.user_id = $1 ${statusSql}
-        group by t.id, p.email, p.display_name
+        group by t.id, p.numeric_id, p.email, p.display_name
         order by t.updated_at desc
         limit $${values.length - 1} offset $${values.length}`,
       values,
@@ -258,13 +259,14 @@ export class PostgresSupportRepository implements SupportRepository {
     else if (filter.assignedTo) where.push(`t.assigned_to = ${add(filter.assignedTo)}`);
     if (filter.search?.trim()) {
       const q = add(`%${filter.search.trim()}%`);
-      where.push(`(t.subject ilike ${q} or p.email ilike ${q} or p.display_name ilike ${q})`);
+      const numeric = add(filter.search.trim());
+      where.push(`(t.subject ilike ${q} or p.email ilike ${q} or p.display_name ilike ${q} or p.numeric_id::text = ${numeric})`);
     }
     const whereSql = where.length ? `where ${where.join(' and ')}` : '';
     const limitParam = add(pageSize);
     const offsetParam = add(offset);
     const rows = await this.db.query<Row>(
-      `select t.*, p.email as user_email, p.display_name as user_display_name,
+      `select t.*, p.numeric_id as user_numeric_id, p.email as user_email, p.display_name as user_display_name,
               (select count(*)::int
                  from public.ticket_messages pending
                 where pending.ticket_id=t.id and pending.sender_role='user'
@@ -279,7 +281,7 @@ export class PostgresSupportRepository implements SupportRepository {
          left join nova.profiles p on p.id = t.user_id
          left join public.ticket_messages tm on tm.ticket_id = t.id
          ${whereSql}
-        group by t.id, p.email, p.display_name
+        group by t.id, p.numeric_id, p.email, p.display_name
         order by t.updated_at desc
         limit ${limitParam} offset ${offsetParam}`,
       values,
@@ -290,7 +292,7 @@ export class PostgresSupportRepository implements SupportRepository {
 
   async getForAdmin(ticketId: UUID): Promise<SupportTicketSummary | null> {
     const rows = await this.db.query<Row>(
-      `select t.*, p.email as user_email, p.display_name as user_display_name,
+      `select t.*, p.numeric_id as user_numeric_id, p.email as user_email, p.display_name as user_display_name,
               (select count(*)::int
                  from public.ticket_messages pending
                 where pending.ticket_id=t.id and pending.sender_role='user'
@@ -304,7 +306,7 @@ export class PostgresSupportRepository implements SupportRepository {
          left join nova.profiles p on p.id = t.user_id
          left join public.ticket_messages tm on tm.ticket_id = t.id
         where t.id = $1
-        group by t.id, p.email, p.display_name
+        group by t.id, p.numeric_id, p.email, p.display_name
         limit 1`,
       [ticketId],
     );
