@@ -44,6 +44,7 @@ on:
       - 'src/app/api/v1/admin/**'
       - 'src/components/admin/**'
       - 'tests/unit/admin-fx-independent.test.ts'
+      - 'tests/unit/native-admin-user-overview.test.ts'
       - 'tests/unit/admin-dashboard-odds-index.test.ts'
       - 'src/components/layout/notifications-bell.tsx'
       - 'supabase/migrations/0216_in_app_notification_retention_24h.sql'
