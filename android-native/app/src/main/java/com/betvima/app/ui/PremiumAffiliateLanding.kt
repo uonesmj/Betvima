@@ -27,6 +27,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -64,6 +65,7 @@ fun PremiumAffiliateSheet(state: AppState, model: AppViewModel, onClose: () -> U
     val partnerDrawerScope = rememberCoroutineScope()
     val publicAffiliateScroll = rememberLazyListState()
     val publicAffiliateScope = rememberCoroutineScope()
+    var publicMenuOpen by rememberSaveable { mutableStateOf(false) }
     var partnerNav by rememberSaveable { mutableStateOf("overview") }
     var partnerNavRevision by rememberSaveable { mutableIntStateOf(0) }
     val openRegister = {
@@ -143,6 +145,16 @@ fun PremiumAffiliateSheet(state: AppState, model: AppViewModel, onClose: () -> U
                         TextButton(onClick=openLogin) {
                             Text(tr(lang,"Log in","ورود"),color=Color.White)
                         }
+                        IconButton(
+                            onClick={publicMenuOpen=!publicMenuOpen},
+                            modifier=Modifier.size(46.dp)
+                                .clip(RoundedCornerShape(15.dp))
+                                .background(if(publicMenuOpen)partnerBlue else Color(0xFF292D39))
+                        ) {
+                            Icon(if(publicMenuOpen)Icons.Default.Close else Icons.Default.Menu,
+                                tr(lang,"Navigate partner sections","منوی بخش‌های همکاری"),
+                                tint=Color.White,modifier=Modifier.size(24.dp))
+                        }
                     }
                     IconButton(onClick={closeWith({})},
                         modifier=Modifier.clip(CircleShape)
@@ -153,29 +165,53 @@ fun PremiumAffiliateSheet(state: AppState, model: AppViewModel, onClose: () -> U
                     }
                 }
                 if(!showPortal) {
-                    val links = listOf(
-                        Triple(tr(lang,"Features","ویژگی‌ها"),2,Icons.Default.AutoAwesome),
-                        Triple(tr(lang,"Product","محصولات"),6,Icons.Default.Apps),
-                        Triple(tr(lang,"FAQ","سؤالات"),7,Icons.Default.QuestionAnswer),
-                        Triple(tr(lang,"Gallery","گالری"),8,Icons.Default.Collections),
-                        Triple(tr(lang,"Contact","ارتباط"),10,Icons.Default.Email),
-                        Triple(tr(lang,"Blog","مقالات"),9,Icons.Default.MenuBook)
-                    )
-                    LazyRow(
-                        contentPadding = PaddingValues(vertical=9.dp),
-                        horizontalArrangement = Arrangement.spacedBy(18.dp)
+                    AnimatedVisibility(
+                        visible=publicMenuOpen,
+                        enter=fadeIn(animationSpec=tween(210))+expandVertically(animationSpec=tween(250)),
+                        exit=fadeOut(animationSpec=tween(150))+shrinkVertically(animationSpec=tween(210))
                     ) {
-                        items(links) { (label,index,_) ->
-                            Text(
-                                label,
-                                color=Color(0xFFD9DEEF),
-                                fontSize=12.sp,fontWeight=FontWeight.Medium,
-                                modifier=Modifier.clickable {
-                                    publicAffiliateScope.launch {
-                                        publicAffiliateScroll.animateScrollToItem(index)
+                        val links = listOf(
+                            Triple(tr(lang,"Features","ویژگی‌ها"),3,Icons.Default.AutoAwesome),
+                            Triple(tr(lang,"Products","محصولات"),8,Icons.Default.Apps),
+                            Triple(tr(lang,"FAQ","سؤالات"),10,Icons.Default.QuestionAnswer),
+                            Triple(tr(lang,"Gallery","گالری"),12,Icons.Default.Collections),
+                            Triple(tr(lang,"Partner guides","راهنما"),14,Icons.Default.MenuBook),
+                            Triple(tr(lang,"Contact","ارتباط"),16,Icons.Default.Email)
+                        )
+                        Column(
+                            Modifier.fillMaxWidth().padding(top=13.dp)
+                                .clip(RoundedCornerShape(20.dp))
+                                .background(Color(0xFF191D2B))
+                                .border(BorderStroke(1.dp,Color(0xFF343B55)),
+                                    RoundedCornerShape(20.dp))
+                                .padding(10.dp),
+                            verticalArrangement=Arrangement.spacedBy(5.dp)
+                        ) {
+                            links.chunked(2).forEach { group ->
+                                Row(horizontalArrangement=Arrangement.spacedBy(6.dp)) {
+                                    group.forEach { (label,index,icon) ->
+                                        Row(
+                                            Modifier.weight(1f)
+                                                .clip(RoundedCornerShape(13.dp))
+                                                .clickable {
+                                                    publicMenuOpen=false
+                                                    publicAffiliateScope.launch {
+                                                        publicAffiliateScroll.animateScrollToItem(index)
+                                                    }
+                                                }
+                                                .background(Color(0xFF252B3C))
+                                                .padding(horizontal=10.dp,vertical=13.dp),
+                                            verticalAlignment=Alignment.CenterVertically,
+                                            horizontalArrangement=Arrangement.spacedBy(8.dp)
+                                        ) {
+                                            Icon(icon,null,tint=Color(0xFF96AEFF),
+                                                modifier=Modifier.size(18.dp))
+                                            Text(label,color=Color.White,fontSize=12.sp,
+                                                fontWeight=FontWeight.SemiBold,maxLines=1)
+                                        }
                                     }
                                 }
-                            )
+                            }
                         }
                     }
                 }
@@ -291,6 +327,27 @@ fun PremiumAffiliateSheet(state: AppState, model: AppViewModel, onClose: () -> U
     }
 }
 
+/** Two adjacent sections share this curved boundary with no detached spacer.
+ * A filled Bézier arc creates the shallow crescent transition at every contrast change.
+ */
+@Composable
+private fun PartnerCrescentSeam(top:Color,bottom:Color,reverse:Boolean=false) {
+    Canvas(Modifier.fillMaxWidth().height(43.dp).background(top)) {
+        val start=if(reverse)size.height*.18f else size.height*.72f
+        val finish=if(reverse)size.height*.76f else size.height*.14f
+        val arch=Path().apply {
+            moveTo(0f,start)
+            cubicTo(size.width*.25f,if(reverse)size.height*1.08f else -size.height*.22f,
+                size.width*.73f,if(reverse)-size.height*.18f else size.height*1.04f,
+                size.width,finish)
+            lineTo(size.width,size.height)
+            lineTo(0f,size.height)
+            close()
+        }
+        drawPath(arch,color=bottom)
+    }
+}
+
 @Composable
 private fun AffiliateMotionLanding(
     lang: Lang,
@@ -315,6 +372,9 @@ private fun AffiliateMotionLanding(
             val active by remember { derivedStateOf { showing(1) } }
             PartnerStats(lang, active)
         }
+        item(key = "seam-hero-to-features") {
+            PartnerCrescentSeam(partnerNight,partnerPaper)
+        }
         item(key = "features-heading") {
             LightHeading(lang, "FEATURES",
                 "The ecosystem behind every partnership",
@@ -332,20 +392,35 @@ private fun AffiliateMotionLanding(
             val active by remember { derivedStateOf { showing(5) } }
             PartnerCoverage(lang, active, onGetStarted)
         }
+        item(key = "seam-light-to-products") {
+            PartnerCrescentSeam(partnerPaper,partnerNight,reverse=true)
+        }
         item(key = "products") {
             val active by remember { derivedStateOf { showing(6) } }
             PartnerProducts(lang, active)
+        }
+        item(key = "seam-products-to-faq") {
+            PartnerCrescentSeam(partnerNight,partnerPaper)
         }
         item(key = "questions") {
             val active by remember { derivedStateOf { showing(7) } }
             PartnerFaq(lang, active)
         }
+        item(key = "seam-faq-to-gallery") {
+            PartnerCrescentSeam(partnerPaper,Color(0xFFFAFAFD),reverse=true)
+        }
         item(key = "gallery") {
             val active by remember { derivedStateOf { showing(8) } }
             PartnerGallery(lang, active)
         }
+        item(key = "seam-gallery-to-guides") {
+            PartnerCrescentSeam(Color(0xFFFAFAFD),partnerPaper)
+        }
         item(key = "learning") {
             PartnerGuides196(lang)
+        }
+        item(key = "seam-guides-to-signup") {
+            PartnerCrescentSeam(partnerPaper,partnerNight,reverse=true)
         }
         item(key = "signup") {
             val active by remember { derivedStateOf { showing(10) } }
@@ -396,15 +471,6 @@ private fun PartnerHero(
                 .padding(horizontal=23.dp,vertical=24.dp),
             horizontalAlignment=Alignment.Start
         ) {
-            Surface(shape=RoundedCornerShape(8.dp),
-                color=Color(0xFF1B2240),
-                border=BorderStroke(1.dp,Color(0xFF535DA0))) {
-                Text(tr(lang,"OFFER 01  •  BETVIMA","پیشنهاد ۰۱  •  BETVIMA"),
-                    modifier=Modifier.padding(horizontal=11.dp,vertical=7.dp),
-                    color=Color(0xFFC8CEFF),fontSize=11.sp,
-                    fontWeight=FontWeight.Black,letterSpacing=1.sp)
-            }
-            Spacer(Modifier.height(17.dp))
             Text(
                 tr(lang,
                     "A leading platform.\nA stronger partnership.",
