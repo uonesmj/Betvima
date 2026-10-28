@@ -1009,6 +1009,15 @@ public final class MainActivity extends Activity {
   info(p,"برد احتمالی",money(item,"usdPotentialPayoutMinor","potentialPayoutMinor"));
   info(p,"برد پرداخت‌شده",money(item,"usdSettledPayoutMinor","settledPayoutMinor"));
   info(p,"شناسه کاربر",pick(item,"userId"));
+  String ownerId=item.optString("userId","");
+  if(!ownerId.isEmpty()&&!"null".equals(ownerId))addAction(p,"بازکردن پرونده همین کاربر",true,()->{
+    page="users";selectedId=ownerId;showingUserDetail=true;
+    try{
+     selected=new JSONObject().put("id",ownerId);
+     createPage("پرونده کاربر","شرط‌ها و تراکنش‌های همین کاربر");
+     userDetail(selected);
+    }catch(Exception error){showMessage("شناسه کاربر نامعتبر است.");}
+  });
   requestInto("/api/v1/admin/bets/"+enc(item.optString("id")),json->{
    JSONObject bet=json.optJSONObject("bet");
    if(bet!=null)generic(bet,"جزئیات شرط");
@@ -1059,6 +1068,15 @@ public final class MainActivity extends Activity {
     bubble.addView(text("support".equals(msg.optString("senderRole"))?"پشتیبانی":"کاربر",11,GREEN,true));
     space(bubble,6);bubble.addView(text(pick(msg,"body"),13,FG,false));
     space(bubble,6);bubble.addView(label(date(pick(msg,"createdAt"))));
+    JSONArray attachments=msg.optJSONArray("attachments");
+    if(attachments!=null)for(int j=0;j<attachments.length();j++){
+     JSONObject attachment=attachments.optJSONObject(j);if(attachment==null)continue;
+     String attachmentId=attachment.optString("id","");
+     String filename=pick(attachment,"originalName");
+     String mime=pick(attachment,"mimeType");
+     if(!attachmentId.isEmpty())addAction(bubble,
+       "مشاهده تصویر / فایل: "+filename,false,()->openTicketAttachment(id,attachmentId,mime));
+    }
    }
    addTitle(body,"پاسخ جدید");
    LinearLayout c=panel(body);
@@ -1074,6 +1092,23 @@ public final class MainActivity extends Activity {
      }).show();
    });
   });
+ }
+ private void openTicketAttachment(String ticketId,String attachmentId,String mime){
+  api.perform(()->api.get("/api/v1/admin/support/"+enc(ticketId)+
+    "/attachments/"+enc(attachmentId)+"?format=json"),json->{
+    String raw=json.optString("url","");
+    Uri signed=Uri.parse(raw);
+    String host=signed.getHost();
+    if(!"https".equalsIgnoreCase(signed.getScheme()) || host==null ||
+       !host.equalsIgnoreCase("mqygiufkubxxxjodsycu.supabase.co")){
+      showMessage("نشانی فایل تأیید نشد. فایل خصوصی باز نمی‌شود.");return;
+    }
+    Intent view=new Intent(Intent.ACTION_VIEW,signed);
+    view.addCategory(Intent.CATEGORY_BROWSABLE);
+    try{startActivity(view);}catch(android.content.ActivityNotFoundException noBrowser){
+      showMessage("برای نمایش این فایل، مرورگر یا نمایشگر تصویر نصب کن.");
+    }
+  },this::showMessage);
  }
  private void ticketStatus(String id){
   final String[] opts={"open","waiting_user","waiting_support","resolved","closed"};
