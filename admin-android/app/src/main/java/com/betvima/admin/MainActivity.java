@@ -542,6 +542,14 @@ public final class MainActivity extends Activity {
   }
   request(path,json->{
    body.removeAllViews();
+   if(section.equals("users")){
+    LinearLayout sorting=row();
+    TextView recent=action("کاربران جدید","newest".equals(userOrder),()->{userOrder="newest";userPage=1;list("users",query);});
+    TextView previous=action("کاربران قدیمی","oldest".equals(userOrder),()->{userOrder="oldest";userPage=1;list("users",query);});
+    sorting.addView(recent,new LinearLayout.LayoutParams(0,dp(46),1));
+    sorting.addView(previous,new LinearLayout.LayoutParams(0,dp(46),1));
+    body.addView(sorting);space(body,12);
+   }
    if(section.equals("users")||section.equals("bets")||section.equals("support"))searchUi(section);
    if(section.equals("manual"))addAction(body,"＋ ثبت مسابقه جدید",true,this::manualForm);
    if(section.equals("notifications")){
@@ -594,6 +602,12 @@ public final class MainActivity extends Activity {
     }
     JSONObject record=item;String s=section;
     itemRow(name,subtitle,status,total,()->details(s,record));
+   }
+   if(section.equals("users")){
+    LinearLayout paging=row();
+    if(userPage>1)paging.addView(action("صفحه قبل",false,()->{userPage--;list("users",query);}),new LinearLayout.LayoutParams(0,dp(46),1));
+    if(arr.length()==25)paging.addView(action("صفحه بعد",false,()->{userPage++;list("users",query);}),new LinearLayout.LayoutParams(0,dp(46),1));
+    body.addView(paging);
    }
    if(section.equals("users")||section.equals("bets")||section.equals("payments"))body.addView(label(section.equals("users")?"برای دیدن شرط‌ها و کازینو، پرونده هر کاربر را باز کنید.":"برای محدود کردن نتایج از جستجو استفاده کنید."));
   });
