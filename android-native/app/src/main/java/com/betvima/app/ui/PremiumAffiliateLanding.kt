@@ -800,7 +800,7 @@ private fun PartnerProducts(lang: Lang, active: Boolean) {
                             when(en) {
                                 "Casino" -> AffiliateScene.CASINO
                                 "Sports" -> AffiliateScene.SPORTS
-                                else -> AffiliateScene.MOBILE
+                                else -> AffiliateScene.MOBILE_PRODUCT
                             },Modifier.fillMaxWidth().height(148.dp),active,corner=16
                         )
                     }
