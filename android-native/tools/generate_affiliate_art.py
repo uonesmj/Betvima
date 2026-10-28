@@ -238,6 +238,38 @@ def render(name,wh,kind,caption=None):
     elif kind=="numbers":
         photo(img,"partners",(int(w*.42),0,int(w*.58),h),alpha=140)
     elif kind=="gallery_insights":chart(img)
+    elif kind=="guide_start":
+        photo(img,"football_team",(round(w*.44),round(h*.04),round(w*.56),round(h*.92)),
+              alpha=220,radius=20)
+        phone(img,"bets",round(w*.16),round(h*.07),round(w*.30),round(h*.93),-8)
+    elif kind=="guide_revshare":
+        photo(img,"partners",(round(w*.50),0,round(w*.50),h),alpha=190)
+        d=ImageDraw.Draw(img,"RGBA")
+        d.rounded_rectangle((round(w*.08),round(h*.25),round(w*.48),round(h*.78)),
+                            radius=24,fill=(20,35,72,240),
+                            outline=(*BLUE,175),width=4)
+        title(img,(round(w*.13),round(h*.38)),"70%",round(h*.23),(180,255,228))
+    elif kind=="guide_reporting":
+        photo(img,"winning_moment",(round(w*.55),0,round(w*.45),h),alpha=130)
+        chart(img)
+    elif kind=="faq_revshare":
+        photo(img,"people_3",(round(w*.57),0,round(w*.43),h),alpha=125)
+        d=ImageDraw.Draw(img,"RGBA")
+        d.ellipse((round(w*.10),round(h*.14),round(w*.46),round(h*.85)),
+                  fill=(29,48,85,227),outline=(*NEON,175),width=5)
+        title(img,(round(w*.16),round(h*.40)),"70%",round(h*.19),(231,247,255))
+    elif kind=="faq_earning":
+        photo(img,"football_team",(round(w*.43),0,round(w*.57),h),alpha=225)
+        phone(img,"bets",round(w*.11),round(h*.13),round(w*.30),round(h*.80),8)
+    elif kind=="faq_cpa":
+        photo(img,"partners",(round(w*.38),0,round(w*.62),h),alpha=210)
+        phone(img,"bets",round(w*.11),round(h*.12),round(w*.29),round(h*.78),-9)
+    elif kind=="faq_payouts":
+        photo(img,"global_stadium",(round(w*.40),0,round(w*.60),h),alpha=164)
+        phone(img,"bets",round(w*.17),round(h*.03),round(w*.28),round(h*.91),8)
+    elif kind=="faq_statistics":
+        photo(img,"app_showcase",(round(w*.46),0,round(w*.54),h),alpha=142)
+        chart(img)
     if caption:
         title(img,(round(w*.045),round(h*.69)),caption,round(min(w,h)*.075))
     dest=ASSETS/("bv_aff_"+name+".webp")
@@ -260,6 +292,16 @@ jobs=[
  ("gallery_sports",(660,780),"sports",None),
  ("gallery_casino",(660,780),"casino",None),
  ("gallery_insights",(660,780),"gallery_insights",None),
+ # Small images are authored at ~2x the displayed size and cropped by Compose.
+ # They are unique assets, not scaled duplicates of the larger hero.
+ ("guide_start",(820,510),"guide_start",None),
+ ("guide_revshare",(820,510),"guide_revshare",None),
+ ("guide_reporting",(820,510),"guide_reporting",None),
+ ("faq_revshare",(700,530),"faq_revshare",None),
+ ("faq_earning",(700,530),"faq_earning",None),
+ ("faq_cpa",(700,530),"faq_cpa",None),
+ ("faq_payouts",(700,530),"faq_payouts",None),
+ ("faq_statistics",(700,530),"faq_statistics",None),
 ]
 if __name__=="__main__":
     for args in jobs:render(*args)
