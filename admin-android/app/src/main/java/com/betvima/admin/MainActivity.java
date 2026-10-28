@@ -780,7 +780,11 @@ public final class MainActivity extends Activity {
   dialog.show();
  }
  private void userStatus(JSONObject item){
-  String current=pick(item,"status"),next=current.equals("active")?"suspended":"active";
+  String current=pick(item,"status");
+  if("self_excluded".equals(current)||"closed".equals(current)){
+   showMessage("حساب بسته یا خودمحروم‌شده را نمی‌توان با این دکمه دوباره فعال کرد.");return;
+  }
+  String next=current.equals("active")?"suspended":"active";
   EditText why=field("دلیل تغییر وضعیت (حداقل ۸ حرف)",InputType.TYPE_CLASS_TEXT);
   LinearLayout box=col();pad(box,18);box.addView(why);
   new AlertDialog.Builder(this).setTitle("تغییر وضعیت به "+next)
