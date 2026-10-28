@@ -774,7 +774,20 @@ public final class MainActivity extends Activity {
     new JSONObject().put("userId",id).put("amountMinor",minor)
       .put("currency",selected).put("direction",directionValue)
       .put("type","admin_adjustment").put("reason",why)),
-    ok->{dialog.dismiss();showMessage("درخواست ثبت شد. برای اعمال واقعی، تأیید مدیر دوم ضروری است.");},
+    ok->{
+      dialog.dismiss();
+      JSONObject applied=ok.optJSONObject("adjustment");
+      String state=applied==null?"":applied.optString("status","");
+      if("applied".equals(state)){
+       showMessage("موجودی به‌صورت مستقیم اصلاح و در دفترکل ثبت شد.");
+       if("users".equals(page)&&id.equals(selectedId)&&selected!=null){
+        createPage("جزئیات کاربر","بروزرسانی موجودی از سرور");
+        userDetail(selected);
+       }
+      }else{
+       showMessage("درخواست ذخیره شد، ولی هنوز اعمال نشده است: "+(state.isEmpty()?"نامشخص":state));
+      }
+    },
     err->{dialog.getButton(AlertDialog.BUTTON_POSITIVE).setEnabled(true);showMessage(err);});
   }));
   dialog.show();
