@@ -491,7 +491,7 @@ public final class MainActivity extends Activity {
     JSONObject tickets=json.optJSONObject("tickets");
     arr=tickets==null?json.optJSONArray("tickets"):tickets.optJSONArray("items");
    }else arr=json.optJSONArray("items");
-   if(arr==null||arr.length()==0){centerText(body,"در این بخش اطلاعاتی ثبت نشده است.");return;}
+   if(arr==null||arr.length()==0){centerText(body,"در این بخش اطلاعاتی ثبت نشده است.");if(section.equals("users")&&userPage>1)addAction(body,"صفحه قبل",false,()->{userPage--;list("users",query);});return;}
    addTitle(body,"لیست جدیدترین موارد");
    for(int i=0;i<arr.length();i++){
     JSONObject item=arr.optJSONObject(i);if(item==null)continue;
