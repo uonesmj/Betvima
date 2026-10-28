@@ -1121,28 +1121,66 @@ public final class MainActivity extends Activity {
  private void casino(){
   request("/api/v1/admin/mobile/casino?window="+period,json->{
    body.removeAllViews();switcher();
-   LinearLayout h=hero(body);h.addView(text("CASINO / VERIFIED TRANSACTIONS",11,GREEN,true));space(h,15);
-   h.addView(text(pick(json,"totalRounds"),35,FG,true));h.addView(label("دورهای ثبت‌شده در بازه"));
-   addTitle(body,"تفکیک درآمد بر اساس ارائه‌دهنده و ارز");
+   LinearLayout h=hero(body);
+   h.addView(text("گزارش سود و زیان کازینو",17,GREEN,true));space(h,11);
+   h.addView(text(pick(json,"totalRounds"),33,FG,true));
+   h.addView(label("دورهای بازی ثبت‌شده"));
+   addTitle(body,"تفکیک ارائه‌دهنده و ارز");
    JSONArray rows=json.optJSONArray("periods");
-   if(rows==null||rows.length()==0){centerText(body,"گردش تکمیل‌شده‌ای در این بازه ثبت نشده است.");return;}
+   if(rows==null||rows.length()==0){centerText(body,"در این بازه گردش ثبت‌شده‌ای یافت نشد.");return;}
    for(int i=0;i<rows.length();i++){
     JSONObject r=rows.optJSONObject(i);if(r==null)continue;
-    LinearLayout p=panel(body);p.addView(text("slot".equals(r.optString("source"))?"اسلات داخلی":"SoftAggregator",16,FG,true));
-    space(p,12);info(p,"ارز",pick(r,"currency"));info(p,"تعداد دور",pick(r,"rounds"));
-    info(p,"گردش شرط",amountMinor(r.optString("stakeMinor","0"),pick(r,"currency")));
-    info(p,"پرداخت برد",amountMinor(r.optString("payoutMinor","0"),pick(r,"currency")));
-    info(p,"سود ناخالص",amountMinor(r.optString("netMinor","0"),pick(r,"currency")));
+    LinearLayout p=panel(body);
+    p.addView(text("internal_slots".equals(r.optString("source"))?"اسلات اختصاصی":"ارائه‌دهنده خارجی",16,FG,true));
+    String currency=pick(r,"currency");
+    info(p,"ارز",currency);
+    info(p,"دورهای بازی",pick(r,"rounds"));
+    info(p,"جمع مبالغ شرط",amountMinor(r.optString("stakeMinor","0"),currency));
+    info(p,"بردهای پرداخت‌شده",amountMinor(r.optString("payoutMinor","0"),currency));
+    info(p,"بازپرداخت لغو راند",amountMinor(r.optString("refundMinor","0"),currency));
+    info(p,"سود / زیان ناخالص سایت",amountMinor(r.optString("netSiteMinor","0"),currency));
    }
-   body.addView(label("ارزهای مختلف هرگز بدون تبدیل معتبر با یکدیگر جمع نمی‌شوند."));
+   body.addView(label("مبالغ به تفکیک ارز هستند. تراکنش ناموفق یا برگشتی به‌عنوان برد ثبت نمی‌شود."));
   });
+ }
+ private String faOperation(String key){
+  switch(key){
+   case "AFFILIATE_PAYOUT":return "پرداخت افیلیت";
+   case "LIVE_BETTING":return "شرط‌بندی زنده";
+   case "DEPOSITS":return "واریزها";
+   case "WITHDRAWALS":return "برداشت‌ها";
+   case "MAINTENANCE_MODE":return "حالت تعمیرات";
+   default:return key;
+  }
  }
  private void operations(){
   request("/api/v1/admin/operations",json->{
    body.removeAllViews();
-   addTitle(body,"وضعیت عملیات سایت");
-   generic(json,"کنترل‌ها و سرویس‌های فعال");
-   body.addView(label("برای تغییرات بحرانی سرور، تأیید مرحله‌ای و ثبت دلیل الزامی است."));
+   addTitle(body,"وضعیت سرویس‌های سایت");
+   JSONObject maintenance=json.optJSONObject("maintenance");
+   if(maintenance!=null){
+    LinearLayout p=sectionGroup("وضعیت تعمیرات","نمایش وضعیت واقعی سایت",true);
+    info(p,"وضعیت",maintenance.optBoolean("enabled")?"فعال":"غیرفعال");
+    info(p,"توضیح",pick(maintenance,"message"));
+   }
+   JSONArray rows=json.optJSONArray("operations");
+   LinearLayout panel=sectionGroup("کنترل‌های عملیاتی","نمایش مرتب فعال و غیرفعال بودن سرویس‌ها",true);
+   if(rows==null||rows.length()==0)centerText(panel,"تنظیمی ثبت نشده");
+   if(rows!=null)for(int i=0;i<rows.length();i++){
+    JSONObject op=rows.optJSONObject(i);if(op==null)continue;
+    panel.addView(text(faOperation(pick(op,"key")),14,FG,true));
+    info(panel,"وضعیت",op.optBoolean("isEnabled")?"فعال":"غیرفعال");
+    info(panel,"دلیل",pick(op,"reason"));
+    info(panel,"آخرین تغییر",date(pick(op,"updatedAt")));
+    divider(panel);
+   }
+   JSONArray guards=json.optJSONArray("killSwitches");
+   LinearLayout stopped=sectionGroup("توقف‌های اضطراری","فعال‌شدن توقف، سرویس را غیرفعال می‌کند",false);
+   if(guards!=null)for(int i=0;i<guards.length();i++){
+    JSONObject k=guards.optJSONObject(i);if(k==null)continue;
+    info(stopped,faOperation(pick(k,"key")),k.optBoolean("isActive")?"توقف فعال":"توقف غیرفعال");
+   }
+   body.addView(label("تغییر تنظیمات عملیاتی نیازمند عملیات جداگانه و ثبت دلیل است."));
   });
  }
  private void manualForm(){
