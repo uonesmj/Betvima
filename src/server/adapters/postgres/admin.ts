@@ -55,7 +55,13 @@ export class PostgresAdminRepository implements AdminRepository {
         (select count(*) from nova.settlement_jobs where status in ('queued','processing')) as settlement_backlog,
         (select count(*) from nova.webhook_receipts where not processed and received_at > now() - interval '${interval}') as failed_webhooks,
         (select count(*) from nova.affiliate_fraud_flags where status = 'open') as flagged_affiliates,
-        (select max(provider_timestamp) from nova.odds_history) as last_odds_at,
+        -- "last sync" is the last successfully ingested quote, not the largest
+        -- provider timestamp. The existing (rejected, ingested_at DESC) index
+        -- serves this in O(log N) instead of scanning the entire odds history.
+        (select ingested_at from nova.odds_history
+          where rejected = false
+          order by ingested_at desc
+          limit 1) as last_odds_at,
         (select max(settled_at) from nova.bets) as last_settlement_at`,
     );
 
