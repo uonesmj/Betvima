@@ -5,7 +5,7 @@ import { ApiError } from '@/lib/errors';
 import { pgArray, type Row, toBig, toIso, toIsoOrNull, toNum, toStr, toStrOrNull } from '@/server/db/rows';
 import { permissionsForRole } from '@/server/auth/rbac';
 import { hashSignal } from '@/server/utils/hash';
-import { convertAdminAmountToUsd, getAdminUsdRates } from '@/server/utils/admin-usd';
+import { sumAdminUsdAmounts } from '@/server/utils/admin-usd';
 
 const PROFILE_SELECT = `
   select p.*,
@@ -160,9 +160,9 @@ export class PostgresUserRepository implements UserRepository {
         username: toStrOrNull(r.username), status: toStr(r.status, 'active'), role: toStr(r.role, 'user') as UserRole,
         kycStatus: toStr(r.kyc_status, 'not_started'),
         balanceSummary,
-        usdBalanceMinor: 0n,
-        totalStakeMinor: 0n, totalPayoutMinor: 0n,
-        netResultMinor: 0n, openBets: toNum(r.open_bets),
+        usdBalanceMinor: 0n as bigint | null,
+        totalStakeMinor: 0n as bigint | null, totalPayoutMinor: 0n as bigint | null,
+        netResultMinor: 0n as bigint | null, openBets: toNum(r.open_bets),
         affiliateId: toStrOrNull(r.affiliate_id),
         riskScore: r.risk_score === null || r.risk_score === undefined ? null : toNum(r.risk_score),
         registeredAt: toIso(r.created_at), lastLoginAt: toIsoOrNull(r.last_login_at),
@@ -189,47 +189,21 @@ export class PostgresUserRepository implements UserRepository {
       return { item, row, currencies };
     });
 
-    const currencies = monetaryRows.flatMap((entry) => entry.currencies);
-    const rates = await getAdminUsdRates(currencies);
-
+    // Only actual USD may be summed into USD reports. Mixed currencies are
+    // explicitly unavailable rather than invoking external FX or fabricating USD.
     for (const { item, row } of monetaryRows) {
-      item.usdBalanceMinor = item.balanceSummary.reduce(
-        (sum, balance) => sum + convertAdminAmountToUsd(balance.balanceMinor, balance.currency, rates),
-        0n,
+      const projected = (name: string) => Array.isArray(row[name])
+        ? (row[name] as Row[]).map((value) => ({
+            currency: toStr(value.currency), amountMinor: toBig(value.amount_minor),
+          }))
+        : [];
+
+      item.usdBalanceMinor = sumAdminUsdAmounts(
+        item.balanceSummary.map((balance) => ({ currency: balance.currency, amountMinor: balance.balanceMinor })),
       );
-
-      item.totalStakeMinor = Array.isArray(row.stake_by_currency)
-        ? (row.stake_by_currency as Row[]).reduce(
-            (sum, value) => sum + convertAdminAmountToUsd(
-              toBig(value.amount_minor),
-              toStr(value.currency),
-              rates,
-            ),
-            0n,
-          )
-        : 0n;
-
-      item.totalPayoutMinor = Array.isArray(row.payout_by_currency)
-        ? (row.payout_by_currency as Row[]).reduce(
-            (sum, value) => sum + convertAdminAmountToUsd(
-              toBig(value.amount_minor),
-              toStr(value.currency),
-              rates,
-            ),
-            0n,
-          )
-        : 0n;
-
-      item.netResultMinor = Array.isArray(row.net_result_by_currency)
-        ? (row.net_result_by_currency as Row[]).reduce(
-            (sum, value) => sum + convertAdminAmountToUsd(
-              toBig(value.amount_minor),
-              toStr(value.currency),
-              rates,
-            ),
-            0n,
-          )
-        : 0n;
+      item.totalStakeMinor = sumAdminUsdAmounts(projected('stake_by_currency'));
+      item.totalPayoutMinor = sumAdminUsdAmounts(projected('payout_by_currency'));
+      item.netResultMinor = sumAdminUsdAmounts(projected('net_result_by_currency'));
     }
 
     return {
@@ -258,24 +232,22 @@ export class PostgresUserRepository implements UserRepository {
     }));
     const stakeRows = Array.isArray(row.stake_by_currency) ? row.stake_by_currency as Row[] : [];
     const payoutRows = Array.isArray(row.payout_by_currency) ? row.payout_by_currency as Row[] : [];
-    const rates = await getAdminUsdRates([
-      ...balanceSummary.map((b) => b.currency),
-      ...stakeRows.map((b) => toStr(b.currency)),
-      ...payoutRows.map((b) => toStr(b.currency)),
-    ]);
-    const usdBalanceMinor = balanceSummary.reduce(
-      (sum, balance) => sum + convertAdminAmountToUsd(balance.balanceMinor, balance.currency, rates),
-      0n,
-    );
-    const totalStakeMinor = stakeRows.reduce((sum, value) => sum + convertAdminAmountToUsd(toBig(value.amount_minor), toStr(value.currency), rates), 0n);
-    const totalPayoutMinor = payoutRows.reduce((sum, value) => sum + convertAdminAmountToUsd(toBig(value.amount_minor), toStr(value.currency), rates), 0n);
+    const usdBalanceMinor = sumAdminUsdAmounts(balanceSummary.map(
+      (balance) => ({ currency: balance.currency, amountMinor: balance.balanceMinor }),
+    ));
+    const totalStakeMinor = sumAdminUsdAmounts(stakeRows.map(
+      (value) => ({ currency: toStr(value.currency), amountMinor: toBig(value.amount_minor) }),
+    ));
+    const totalPayoutMinor = sumAdminUsdAmounts(payoutRows.map(
+      (value) => ({ currency: toStr(value.currency), amountMinor: toBig(value.amount_minor) }),
+    ));
     return {
       id: toStr(row.id), publicId: toStr(row.public_id), email: toStrOrNull(row.email), phone: toStrOrNull(row.phone),
       username: toStrOrNull(row.username), status: toStr(row.status), role: toStr(row.role) as UserRole,
       kycStatus: toStr(row.kyc_status),
       balanceSummary,
       usdBalanceMinor,
-      totalStakeMinor, totalPayoutMinor, netResultMinor: totalPayoutMinor - totalStakeMinor, openBets: toNum(row.open_bets),
+      totalStakeMinor, totalPayoutMinor, netResultMinor: totalPayoutMinor === null || totalStakeMinor === null ? null : totalPayoutMinor - totalStakeMinor, openBets: toNum(row.open_bets),
       affiliateId: null, riskScore: null, registeredAt: toIso(row.created_at), lastLoginAt: toIsoOrNull(row.last_login_at),
     };
   }
