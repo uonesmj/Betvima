@@ -37,24 +37,24 @@ export const GET = withErrorHandling('admin.bets.get', async (ctx, request: Requ
     ...bet,
     usdStakeMinor:
       betCurrency
-        ? convertAdminAmountToUsd(bet.stakeMinor, betCurrency, rates).toString()
-        : bet.stakeMinor.toString(),
+        ? convertAdminAmountToUsd(bet.stakeMinor, betCurrency, rates)?.toString() ?? null
+        : null,
     usdPotentialPayoutMinor:
       betCurrency
-        ? convertAdminAmountToUsd(bet.potentialPayoutMinor, betCurrency, rates).toString()
-        : bet.potentialPayoutMinor.toString(),
+        ? convertAdminAmountToUsd(bet.potentialPayoutMinor, betCurrency, rates)?.toString() ?? null
+        : null,
     usdSettledPayoutMinor:
       bet.settledPayoutMinor === null
         ? null
         : betCurrency
-          ? convertAdminAmountToUsd(bet.settledPayoutMinor, betCurrency, rates).toString()
-          : bet.settledPayoutMinor.toString(),
+          ? convertAdminAmountToUsd(bet.settledPayoutMinor, betCurrency, rates)?.toString() ?? null
+          : null,
     usdNetResultMinor:
       bet.netResultMinor === null
         ? null
         : betCurrency
-          ? convertAdminAmountToUsd(bet.netResultMinor, betCurrency, rates).toString()
-          : bet.netResultMinor.toString(),
+          ? convertAdminAmountToUsd(bet.netResultMinor, betCurrency, rates)?.toString() ?? null
+          : null,
   };
 
   const projectedSettlements = settlements.map((row) => {
@@ -67,11 +67,11 @@ export const GET = withErrorHandling('admin.bets.get', async (ctx, request: Requ
       usdSettledPayoutMinor:
         payoutMinor === null || !currency
           ? null
-          : convertAdminAmountToUsd(payoutMinor, currency, rates).toString(),
+          : convertAdminAmountToUsd(payoutMinor, currency, rates)?.toString() ?? null,
       usdNetUserResultMinor:
         netMinor === null || !currency
           ? null
-          : convertAdminAmountToUsd(netMinor, currency, rates).toString(),
+          : convertAdminAmountToUsd(netMinor, currency, rates)?.toString() ?? null,
     };
   });
 
