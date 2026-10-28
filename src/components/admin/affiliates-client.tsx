@@ -10,7 +10,7 @@ import { formatDateTime, formatMinor } from '@/lib/i18n';
 interface AffiliateRow {
   id: string; publicId: string; code: string; displayName: string; status: string;
   commissionModel: string; commissionRateBps: number; currency: string;
-  payableMinor: string; carryForwardMinor: string; suppressedMinor: string; usdPayableMinor: string; usdCarryForwardMinor: string; usdSuppressedMinor: string;
+  payableMinor: string; carryForwardMinor: string; suppressedMinor: string; usdPayableMinor: string | null; usdCarryForwardMinor: string | null; usdSuppressedMinor: string | null;
   lifetimeCommissionMinor: string; lifetimePaidMinor: string; depth: number;
   riskScore: number; isFraudFlagged: boolean; createdAt: string; parentAffiliateId: string | null;
 }
@@ -64,19 +64,19 @@ export function AffiliatesClient() {
               { key: 'depth', header: 'Depth', render: (row) => <span className="text-xs">{row.depth}</span> },
               {
                 key: 'payable', header: 'Payable',
-                render: (row) => <span className="whitespace-nowrap text-xs">{formatMinor(row.usdPayableMinor, 'USD', locale)}</span>,
+                render: (row) => <span className="whitespace-nowrap text-xs">{formatMinor(row.usdPayableMinor ?? row.payableMinor, row.usdPayableMinor === null ? row.currency : 'USD', locale)}</span>,
               },
               {
                 key: 'carry', header: 'Carry-forward',
                 render: (row) => (
-                  <span className={`whitespace-nowrap text-xs ${BigInt(row.usdCarryForwardMinor) < 0n ? 'text-nova-danger' : 'nova-muted'}`}>
-                    {formatMinor(row.usdCarryForwardMinor, 'USD', locale)}
+                  <span className={`whitespace-nowrap text-xs ${BigInt(row.usdCarryForwardMinor ?? row.carryForwardMinor) < 0n ? 'text-nova-danger' : 'nova-muted'}`}>
+                    {formatMinor(row.usdCarryForwardMinor ?? row.carryForwardMinor, row.usdCarryForwardMinor === null ? row.currency : 'USD', locale)}
                   </span>
                 ),
               },
               {
                 key: 'suppressed', header: 'Suppressed',
-                render: (row) => <span className="whitespace-nowrap text-xs nova-muted">{formatMinor(row.usdSuppressedMinor, 'USD', locale)}</span>,
+                render: (row) => <span className="whitespace-nowrap text-xs nova-muted">{formatMinor(row.usdSuppressedMinor ?? row.suppressedMinor, row.usdSuppressedMinor === null ? row.currency : 'USD', locale)}</span>,
               },
               { key: 'risk', header: 'Risk', render: (row) => <StatusPill status={row.isFraudFlagged ? 'flagged' : row.riskScore >= 50 ? 'warning' : 'ok'} /> },
               { key: 'created', header: 'Joined', render: (row) => <span className="whitespace-nowrap text-xs nova-muted">{formatDateTime(row.createdAt, locale)}</span> },

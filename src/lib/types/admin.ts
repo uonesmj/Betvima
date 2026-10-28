@@ -12,9 +12,9 @@ export interface AdminUserSummary {
   id: UUID; publicId: string; email: string | null; phone: string | null; username: string | null;
   status: string; role: UserRole; kycStatus: string; balanceSummary: { currency: Currency; balanceMinor: bigint }[];
   /** Admin reporting projection: aggregated account balance expressed in USD cents. */
-  usdBalanceMinor: bigint;
-  /** Admin reporting projections: all betting amounts expressed in USD cents. */
-  totalStakeMinor: bigint; totalPayoutMinor: bigint; netResultMinor: bigint; openBets: number;
+  usdBalanceMinor: bigint | null;
+  /** Null signals that at least one non-USD, nonzero amount has no verified quote. */
+  totalStakeMinor: bigint | null; totalPayoutMinor: bigint | null; netResultMinor: bigint | null; openBets: number;
   affiliateId: UUID | null; riskScore: number | null; registeredAt: ISODateString; lastLoginAt: ISODateString | null;
 }
 export interface AdminRole { key: UserRole; label: string; permissions: AdminPermission[]; isSystem: boolean; userCount: number }

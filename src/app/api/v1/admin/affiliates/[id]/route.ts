@@ -1,4 +1,4 @@
-import { convertAdminAmountToUsd, getAdminUsdRates } from '@/server/utils/admin-usd';
+import { convertAdminAmountToUsd, getAdminUsdRates, addAdminUsdAmounts } from '@/server/utils/admin-usd';
 import { z } from 'zod';
 import { withErrorHandling, jsonOk } from '@/lib/errors';
 import { ApiError } from '@/lib/errors';
@@ -42,7 +42,7 @@ export const GET = withErrorHandling('admin.affiliates.get', async (ctx, request
   ];
   const rates = await getAdminUsdRates(currencies);
   const usd = (amount: bigint, currency: string) =>
-    convertAdminAmountToUsd(amount, currency, rates).toString();
+    convertAdminAmountToUsd(amount, currency, rates)?.toString() ?? null;
 
   const projectedAffiliate = {
     ...affiliate,
@@ -83,8 +83,8 @@ export const GET = withErrorHandling('admin.affiliates.get', async (ctx, request
 
   const referralMap = new Map<string, {
     userId: string; code: string; status: string; confirmedAt: string | null;
-    usdWageredMinor: bigint; usdNetRevenueMinor: bigint; usdCommissionMinor: bigint;
-    usdDepositMinor: bigint; usdWithdrawalMinor: bigint; usdPanelShareMinor: bigint;
+    usdWageredMinor: bigint | null; usdNetRevenueMinor: bigint | null; usdCommissionMinor: bigint | null;
+    usdDepositMinor: bigint | null; usdWithdrawalMinor: bigint | null; usdPanelShareMinor: bigint | null;
   }>();
 
   for (const row of referrals.items) {
@@ -98,12 +98,12 @@ export const GET = withErrorHandling('admin.affiliates.get', async (ctx, request
     };
     const old = referralMap.get(row.userId);
     if (old) {
-      old.usdWageredMinor += c.wagered;
-      old.usdNetRevenueMinor += c.netRevenue;
-      old.usdCommissionMinor += c.commission;
-      old.usdDepositMinor += c.deposit;
-      old.usdWithdrawalMinor += c.withdrawal;
-      old.usdPanelShareMinor += c.panelShare;
+      old.usdWageredMinor = addAdminUsdAmounts(old.usdWageredMinor, c.wagered);
+      old.usdNetRevenueMinor = addAdminUsdAmounts(old.usdNetRevenueMinor, c.netRevenue);
+      old.usdCommissionMinor = addAdminUsdAmounts(old.usdCommissionMinor, c.commission);
+      old.usdDepositMinor = addAdminUsdAmounts(old.usdDepositMinor, c.deposit);
+      old.usdWithdrawalMinor = addAdminUsdAmounts(old.usdWithdrawalMinor, c.withdrawal);
+      old.usdPanelShareMinor = addAdminUsdAmounts(old.usdPanelShareMinor, c.panelShare);
     } else {
       referralMap.set(row.userId, {
         userId: row.userId, code: row.code, status: row.status, confirmedAt: row.confirmedAt,
@@ -118,12 +118,12 @@ export const GET = withErrorHandling('admin.affiliates.get', async (ctx, request
     ...referrals,
     items: Array.from(referralMap.values()).map((row) => ({
       userId: row.userId, code: row.code, status: row.status, confirmedAt: row.confirmedAt,
-      usdWageredMinor: row.usdWageredMinor.toString(),
-      usdNetRevenueMinor: row.usdNetRevenueMinor.toString(),
-      usdCommissionMinor: row.usdCommissionMinor.toString(),
-      usdDepositMinor: row.usdDepositMinor.toString(),
-      usdWithdrawalMinor: row.usdWithdrawalMinor.toString(),
-      usdPanelShareMinor: row.usdPanelShareMinor.toString(),
+      usdWageredMinor: row.usdWageredMinor?.toString() ?? null,
+      usdNetRevenueMinor: row.usdNetRevenueMinor?.toString() ?? null,
+      usdCommissionMinor: row.usdCommissionMinor?.toString() ?? null,
+      usdDepositMinor: row.usdDepositMinor?.toString() ?? null,
+      usdWithdrawalMinor: row.usdWithdrawalMinor?.toString() ?? null,
+      usdPanelShareMinor: row.usdPanelShareMinor?.toString() ?? null,
     })),
   };
 

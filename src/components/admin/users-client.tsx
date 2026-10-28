@@ -12,7 +12,7 @@ interface AdminUser {
   id: string; publicId: string; email: string | null; phone: string | null; username: string | null;
   status: string; role: string; kycStatus: string;
   balanceSummary: { currency: string; balanceMinor: string }[];
-  totalStakeMinor: string; totalPayoutMinor: string; netResultMinor: string; usdBalanceMinor: string; openBets: number;
+  totalStakeMinor: string | null; totalPayoutMinor: string | null; netResultMinor: string | null; usdBalanceMinor: string | null; openBets: number;
   riskScore: number | null; registeredAt: string; lastLoginAt: string | null;
 }
 
@@ -65,17 +65,19 @@ export function UsersClient() {
                 render: (row) => (
                   <span className="whitespace-nowrap text-xs">
                     {row.balanceSummary?.length
-                      ? formatMinor(row.usdBalanceMinor, 'USD', locale)
+                      ? row.usdBalanceMinor !== null
+                        ? formatMinor(row.usdBalanceMinor, 'USD', locale)
+                        : row.balanceSummary.map((b) => formatMinor(b.balanceMinor, b.currency, locale)).join(' · ')
                       : '—'}
                   </span>
                 ),
               },
-              { key: 'stake', header: 'Stake', render: (row) => <span className="whitespace-nowrap text-xs">{formatMinor(row.totalStakeMinor, 'USD', locale)}</span> },
+              { key: 'stake', header: 'Stake', render: (row) => <span className="whitespace-nowrap text-xs">{row.totalStakeMinor === null ? '— (no FX)' : formatMinor(row.totalStakeMinor, 'USD', locale)}</span> },
               {
                 key: 'net', header: 'Net result',
                 render: (row) => (
-                  <span className={`whitespace-nowrap text-xs ${BigInt(row.netResultMinor) >= 0n ? 'text-nova-danger' : 'text-nova-primary'}`}>
-                    {formatMinor(row.netResultMinor, 'USD', locale)}
+                  <span className={`whitespace-nowrap text-xs ${row.netResultMinor !== null && BigInt(row.netResultMinor) >= 0n ? 'text-nova-danger' : 'text-nova-primary'}`}>
+                    {row.netResultMinor === null ? '— (no FX)' : formatMinor(row.netResultMinor, 'USD', locale)}
                   </span>
                 ),
               },

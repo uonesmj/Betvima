@@ -8,7 +8,7 @@ import { apiRequest, useApiQuery } from '@/lib/hooks/useApi';
 import { formatDateTime, formatMinor } from '@/lib/i18n';
 
 interface Adjustment {
-  id: string; userId: string; userEmail?: string | null; direction: 'credit' | 'debit'; amountMinor: string; usdAmountMinor: string;
+  id: string; userId: string; userEmail?: string | null; direction: 'credit' | 'debit'; amountMinor: string; usdAmountMinor: string | null;
   currency: string; type: string; reason: string; status: string; requestedBy: string; requestedAt: string;
   approvedBy: string | null; approvedAt: string | null; decisionReason: string | null;
 }
@@ -60,7 +60,7 @@ export function AdjustmentsClient() {
                     <td className="whitespace-nowrap text-xs nova-muted">{formatDateTime(adjustment.requestedAt, locale)}</td>
                     <td className="font-mono text-[11px]">{adjustment.userEmail ?? adjustment.userId.slice(0, 8)}</td>
                     <td className={`whitespace-nowrap text-xs ${adjustment.direction === 'debit' ? 'text-nova-danger' : 'text-nova-primary'}`}>
-                      {adjustment.direction === 'debit' ? '-' : '+'}{formatMinor(adjustment.usdAmountMinor, 'USD', locale)}
+                      {adjustment.direction === 'debit' ? '-' : '+'}{formatMinor(adjustment.usdAmountMinor ?? adjustment.amountMinor, adjustment.usdAmountMinor === null ? adjustment.currency : 'USD', locale)}
                     </td>
                     <td className="text-xs">{adjustment.type}</td>
                     <td className="max-w-[18ch] truncate text-xs nova-muted" title={adjustment.reason}>{adjustment.reason}</td>

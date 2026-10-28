@@ -14,7 +14,7 @@ interface Intent {
   direction: 'deposit' | 'withdrawal';
   status: string;
   currency?: string;
-  amountMinor: string; usdAmountMinor: string; usdFeeMinor: string; usdNetAmountMinor: string;
+  amountMinor: string; usdAmountMinor: string | null; usdFeeMinor: string | null; usdNetAmountMinor: string | null;
   feeMinor: string;
   netAmountMinor: string;
   provider: string;
@@ -48,9 +48,13 @@ const REVIEWABLE_WITHDRAWAL_STATUSES = new Set([
 ]);
 
 function money(intent: Intent, field: 'amount' | 'fee' | 'net') {
-  if (field === 'amount') return formatMinor(intent.usdAmountMinor, 'USD', 'en');
-  if (field === 'fee') return formatMinor(intent.usdFeeMinor, 'USD', 'en');
-  return formatMinor(intent.usdNetAmountMinor, 'USD', 'en');
+  const usd = field === 'amount' ? intent.usdAmountMinor
+    : field === 'fee' ? intent.usdFeeMinor : intent.usdNetAmountMinor;
+  const original = field === 'amount' ? intent.amountMinor
+    : field === 'fee' ? intent.feeMinor : intent.netAmountMinor;
+  return usd !== null
+    ? formatMinor(usd, 'USD', 'en')
+    : formatMinor(original, intent.currency || 'USD', 'en');
 }
 
 export function PaymentsClient() {

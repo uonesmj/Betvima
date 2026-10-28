@@ -13,8 +13,8 @@ interface BetLeg {
 }
 interface Bet {
   id: string; publicId: string; userId: string; type: string; status: string; stakeMinor: string;
-  potentialPayoutMinor: string; settledPayoutMinor: string | null; netResultMinor: string | null;
-  usdStakeMinor: string; usdPotentialPayoutMinor: string; usdSettledPayoutMinor: string | null; usdNetResultMinor: string | null;
+  potentialPayoutMinor: string; settledPayoutMinor: string | null; netResultMinor: string | null; currency: string;
+  usdStakeMinor: string | null; usdPotentialPayoutMinor: string | null; usdSettledPayoutMinor: string | null; usdNetResultMinor: string | null;
   combinedOddsScaled: string;
   revision: number; placedAt: string; settledAt: string | null; legs: BetLeg[]; isCashoutAvailable: boolean;
 }
@@ -73,12 +73,12 @@ export function BetDetailClient({ betId }: { betId: string }) {
           <span className="ms-auto text-xs nova-muted">{formatDateTime(bet.placedAt, locale)} → {formatDateTime(bet.settledAt, locale)}</span>
         </div>
         <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
-          <Stat label="Stake" value={formatMinor(bet.usdStakeMinor, 'USD', locale)} />
+          <Stat label="Stake" value={formatMinor(bet.usdStakeMinor ?? bet.stakeMinor, bet.usdStakeMinor === null ? bet.currency : 'USD', locale)} />
           <Stat label="Odds" value={formatOddsScaled(bet.combinedOddsScaled)} />
-          <Stat label="Potential payout" value={formatMinor(bet.usdPotentialPayoutMinor, 'USD', locale)} />
+          <Stat label="Potential payout" value={formatMinor(bet.usdPotentialPayoutMinor ?? bet.potentialPayoutMinor, bet.usdPotentialPayoutMinor === null ? bet.currency : 'USD', locale)} />
           <Stat
             label="Settled payout"
-            value={bet.usdSettledPayoutMinor !== null ? formatMinor(bet.usdSettledPayoutMinor, 'USD', locale) : '—'}
+            value={bet.usdSettledPayoutMinor !== null ? formatMinor(bet.usdSettledPayoutMinor ?? bet.settledPayoutMinor!, bet.usdSettledPayoutMinor === null ? bet.currency : 'USD', locale) : '—'}
             tone={bet.netResultMinor === null ? undefined : BigInt(bet.netResultMinor) >= 0n ? 'danger' : 'success'}
           />
         </div>
@@ -151,7 +151,7 @@ export function BetDetailClient({ betId }: { betId: string }) {
                     <span className="nova-muted">{formatDateTime(settlement.createdAt, locale)}</span>
                   </div>
                   <div className="nova-muted">
-                    {settlement.statusBefore} → {settlement.statusAfter} · payout {settlement.usdSettledPayoutMinor === null ? '—' : formatMinor(settlement.usdSettledPayoutMinor, 'USD', locale)} · net {settlement.usdNetUserResultMinor === null ? '—' : formatMinor(settlement.usdNetUserResultMinor, 'USD', locale)}
+                    {settlement.statusBefore} → {settlement.statusAfter} · payout {settlement.usdSettledPayoutMinor === null ? '—' : formatMinor(settlement.usdSettledPayoutMinor ?? settlement.settledPayoutMinor!, settlement.usdSettledPayoutMinor === null ? (settlement.currency ?? bet.currency) : 'USD', locale)} · net {settlement.usdNetUserResultMinor === null ? '—' : formatMinor(settlement.usdNetUserResultMinor ?? settlement.netUserResultMinor!, settlement.usdNetUserResultMinor === null ? (settlement.currency ?? bet.currency) : 'USD', locale)}
                   </div>
                 </li>
               ))}
