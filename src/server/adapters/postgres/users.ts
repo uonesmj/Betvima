@@ -118,13 +118,13 @@ export class PostgresUserRepository implements UserRepository {
     ];
     const where = `
       where ($1::text is null or p.email ilike '%' || $1 || '%' or p.phone ilike '%' || $1 || '%'
-              or p.public_id ilike '%' || $1 || '%' or p.display_name ilike '%' || $1 || '%')
+              or p.public_id ilike '%' || $1 || '%' or p.display_name ilike '%' || $1 || '%' or p.numeric_id::text = trim($1))
         and ($2::text is null or p.status::text = $2) and ($3::text is null or p.role::text = any(string_to_array($3::text,',')))
         and ($4::text is null or p.kyc_status::text = $4)
         and ($5::uuid is null or exists (select 1 from nova.affiliates a where a.user_id = p.id and (a.id = $5 or a.parent_affiliate_id = $5)))
         and ($6::timestamptz is null or p.created_at >= $6) and ($7::timestamptz is null or p.created_at <= $7)`;
     const rows = await this.db.query<Row>(
-      `select p.id, p.public_id, p.email, p.phone, p.display_name, p.status::text as status, p.role::text as role,
+      `select p.id, p.public_id, p.numeric_id, p.email, p.phone, p.display_name, p.status::text as status, p.role::text as role,
               p.kyc_status::text as kyc_status, p.created_at, p.last_login_at,
               coalesce((select jsonb_agg(jsonb_build_object('currency', w.currency, 'balance_minor', w.balance_minor)) from nova.wallets w where w.user_id = p.id), '[]'::jsonb) as balances,
               coalesce((select jsonb_agg(jsonb_build_object('currency', x.currency, 'amount_minor', x.amount_minor))
@@ -156,7 +156,7 @@ export class PostgresUserRepository implements UserRepository {
           }))
         : [];
       return {
-        id: toStr(r.id), publicId: toStr(r.public_id), email: toStrOrNull(r.email), phone: toStrOrNull(r.phone),
+        id: toStr(r.id), publicId: toStr(r.public_id), numericId: toNum(r.numeric_id), email: toStrOrNull(r.email), phone: toStrOrNull(r.phone),
         username: toStrOrNull(r.username), status: toStr(r.status, 'active'), role: toStr(r.role, 'user') as UserRole,
         kycStatus: toStr(r.kyc_status, 'not_started'),
         balanceSummary,
@@ -217,7 +217,7 @@ export class PostgresUserRepository implements UserRepository {
     const found = result.items.find((i) => i.id === userId);
     if (found) return found;
     const row = await this.db.queryOne<Row>(
-      `select p.id, p.public_id, p.email, p.phone, p.display_name, p.status::text as status, p.role::text as role,
+      `select p.id, p.public_id, p.numeric_id, p.email, p.phone, p.display_name, p.status::text as status, p.role::text as role,
               p.kyc_status::text as kyc_status, p.created_at, p.last_login_at,
               coalesce((select jsonb_agg(jsonb_build_object('currency', x.currency, 'amount_minor', x.amount_minor)) from (select b.currency, sum(b.stake_minor) as amount_minor from nova.bets b where b.user_id = p.id group by b.currency) x), '[]'::jsonb) as stake_by_currency,
               coalesce((select jsonb_agg(jsonb_build_object('currency', x.currency, 'amount_minor', x.amount_minor)) from (select b.currency, sum(b.payout_minor) as amount_minor from nova.bets b where b.user_id = p.id and b.payout_minor is not null group by b.currency) x), '[]'::jsonb) as payout_by_currency,
@@ -242,7 +242,7 @@ export class PostgresUserRepository implements UserRepository {
       (value) => ({ currency: toStr(value.currency), amountMinor: toBig(value.amount_minor) }),
     ));
     return {
-      id: toStr(row.id), publicId: toStr(row.public_id), email: toStrOrNull(row.email), phone: toStrOrNull(row.phone),
+      id: toStr(row.id), publicId: toStr(row.public_id), numericId: toNum(row.numeric_id), email: toStrOrNull(row.email), phone: toStrOrNull(row.phone),
       username: toStrOrNull(row.username), status: toStr(row.status), role: toStr(row.role) as UserRole,
       kycStatus: toStr(row.kyc_status),
       balanceSummary,
