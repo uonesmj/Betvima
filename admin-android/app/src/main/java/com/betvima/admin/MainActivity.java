@@ -157,7 +157,7 @@ public final class MainActivity extends Activity {
   }catch(Exception ignored){return "—";}
  }
  private String money(JSONObject o,String usdKey,String fallback){
-  return cash(o.optString(usdKey,o.optString(fallback,"0")));
+  return o.isNull(usdKey)||!o.has(usdKey)?"—":cash(o.optString(usdKey,"0"));
  }
  private String amountMinor(Object value,String currency){
   try{
@@ -472,7 +472,7 @@ public final class MainActivity extends Activity {
  private void list(String section,String filter){
   String path;
   switch(section){
-   case "users":path="/api/v1/admin/users?page="+userPage+"&pageSize=25&sort="+userOrder+"&q="+enc(filter);break;
+   case "users":path="/api/v1/admin/users?page="+userPage+"&pageSize=25&sort="+userOrder+"&role=user,affiliate&q="+enc(filter);break;
    case "bets":path="/api/v1/admin/bets?page=1&pageSize=40&q="+enc(filter);break;
    case "payments":path="/api/v1/admin/payments?page=1&pageSize=40&direction="+filter;break;
    case "support":path="/api/v1/admin/support?page=1&pageSize=40&search="+enc(filter);break;
