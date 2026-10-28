@@ -32,11 +32,11 @@ import com.google.zxing.qrcode.QRCodeWriter
 import kotlinx.coroutines.launch
 import org.json.JSONObject
 
-private val ink87=Color(0xFFF6F7FA)
-private val muted87=Color(0xFFB9BEC9)
-private val accent87=Color(0xFF00D47A)
-private val panel87=Color(0xFF19191C)
-private val stroke87=Color(0xFF2C2D30)
+private val ink87: Color get() = ThemeTokens.ink
+private val muted87: Color get() = ThemeTokens.muted
+private val accent87: Color get() = ThemeTokens.accent
+private val panel87: Color get() = ThemeTokens.panel
+private val stroke87: Color get() = ThemeTokens.outline
 private fun label87(lang:Lang,en:String,fa:String)=tr(lang,en,fa)
 
 @Composable
@@ -96,7 +96,7 @@ internal fun AccountSettings87(state:AppState,model:AppViewModel) {
     val phone=profile?.str("phone").orEmpty()
     val phoneVerified=profile?.optBoolean("isPhoneVerified",false)?:false
     val lastLogin=profile?.str("lastLoginAt").orEmpty()
-    val bg=Color.Black
+    val bg=ThemeTokens.canvas
     fun open(v:String){
         when(v) {
             "password" -> showPassword88=true
@@ -232,7 +232,7 @@ internal fun AccountSettings87(state:AppState,model:AppViewModel) {
             "pin"->label87(lang,"6-digit device PIN","پین شش‌رقمی دستگاه")
             "history"->label87(lang,"Login history","سوابق ورود")
             "notification"->label87(lang,"Notification preferences","تنظیمات اعلان")
-            "appearance"->label87(lang,"Settings appearance","پس‌زمینه تنظیمات")
+            "appearance"->label87(lang,"App appearance","ظاهر برنامه")
             "proxy"->label87(lang,"Proxy configuration","تنظیم پروکسی")
             "qr"->label87(lang,"Share via QR","اشتراک با QR")
             else->label87(lang,"Account information","اطلاعات حساب")
@@ -286,17 +286,17 @@ internal fun AccountSettings87(state:AppState,model:AppViewModel) {
                         color=muted87,fontSize=11.sp)
                 }
                 "appearance"->{
-                    listOf("dark" to label87(lang,"Black","مشکی"),
-                        "system" to label87(lang,"Graphite","گرافیتی"),
-                        "light" to label87(lang,"Soft charcoal","ذغالی")).forEach{(v,title)->
+                    listOf("dark" to label87(lang,"Dark • Black","تیره • مشکی"),
+                        "light" to label87(lang,"Light • White","روشن • سفید"),
+                        "system" to label87(lang,"Follow device setting","مطابق تنظیمات گوشی")).forEach{(v,title)->
                         Row(Modifier.fillMaxWidth().clickable{appearance=v;local.setTheme(v)}.padding(7.dp),
                             verticalAlignment=Alignment.CenterVertically){
                             Text(title,modifier=Modifier.weight(1f),color=ink87)
                             RadioButton(selected=appearance==v,onClick={appearance=v;local.setTheme(v)})
                         }
                     }
-                    Text(label87(lang,"Changes Settings background; other pages have independent themes.",
-                        "پس‌زمینه تنظیمات تغییر می‌کند؛ صفحات دیگر تم مستقل دارند."),
+                    Text(label87(lang,"Applies to all app pages and is saved on this device.",
+                        "در تمام صفحات برنامه اعمال و در این دستگاه ذخیره می‌شود."),
                         color=muted87,fontSize=11.sp)
                 }
                 "proxy"->Text(label87(lang,
@@ -364,8 +364,8 @@ internal fun AccountSettings87(state:AppState,model:AppViewModel) {
                 Modifier.fillMaxWidth()
                     .clip(RoundedCornerShape(22.dp))
                     .background(Brush.linearGradient(listOf(
-                        Color(0xFF1C1D20), Color(0xFF171719), Color(0xFF171719))))
-                    .border(1.dp, Color(0xFF36383A), RoundedCornerShape(22.dp))
+                        panel87, panel87, ThemeTokens.elevated)))
+                    .border(1.dp, stroke87, RoundedCornerShape(22.dp))
             ) {
                 Column(Modifier.fillMaxWidth().padding(19.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -373,11 +373,11 @@ internal fun AccountSettings87(state:AppState,model:AppViewModel) {
                         horizontalArrangement = Arrangement.spacedBy(13.dp)) {
                         Box(Modifier.size(49.dp).clip(RoundedCornerShape(15.dp))
                             .background(Brush.linearGradient(listOf(
-                                Color(0xFF292A2C), Color(0xFF232426))))
-                            .border(1.dp, Color(0xFF3A3C3E), RoundedCornerShape(15.dp)),
+                                ThemeTokens.elevated, ThemeTokens.panel)))
+                            .border(1.dp, stroke87, RoundedCornerShape(15.dp)),
                             contentAlignment = Alignment.Center) {
                             Icon(Icons.Default.AdminPanelSettings, null,
-                                tint = Color(0xFFF2F3F4), modifier = Modifier.size(27.dp))
+                                tint = ink87, modifier = Modifier.size(27.dp))
                         }
                         Column(Modifier.weight(1f),
                             verticalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -454,8 +454,8 @@ internal fun AccountSettings87(state:AppState,model:AppViewModel) {
             item{Group87(label87(lang,"APP & PREFERENCES","برنامه و ترجیحات")){
                 Tile87(Icons.Default.NotificationsActive,label87(lang,"Notifications","اعلان‌ها"),
                     label87(lang,"Bet outcomes and app alerts","نتایج شرط و اعلان‌ها"),"next"){open("notification")}
-                Tile87(Icons.Default.Palette,label87(lang,"Background","پس‌زمینه"),
-                    when(appearance){"dark"->"Black";"light"->"Charcoal";else->"Graphite"},"next"){open("appearance")}
+                Tile87(Icons.Default.Palette,label87(lang,"App theme","تم برنامه"),
+                    when(appearance){"dark"->label87(lang,"Dark","مشکی");"light"->label87(lang,"Light","سفید");else->label87(lang,"Automatic","خودکار")},"next"){open("appearance")}
                 Tile87(Icons.Default.WifiTethering,label87(lang,"Proxy settings","تنظیمات پروکسی"),
                     label87(lang,"OS network configuration","تنظیمات سیستم"),"next"){open("proxy")}
                 Tile87(Icons.Default.Share,label87(lang,"Share BetVima","اشتراک برنامه"),"betvima.com","next"){
@@ -502,7 +502,7 @@ internal fun AccountSettings87(state:AppState,model:AppViewModel) {
         keyboardOptions=KeyboardOptions(keyboardType=if(digits)KeyboardType.NumberPassword
             else if(secret)KeyboardType.Password else KeyboardType.Text),
         colors=OutlinedTextFieldDefaults.colors(focusedBorderColor=accent87,
-            unfocusedBorderColor=Color(0xFF535761),focusedLabelColor=accent87,
+            unfocusedBorderColor=stroke87,focusedLabelColor=accent87,
             unfocusedLabelColor=muted87))
 }
 @Composable private fun Toggle87(label:String,value:Boolean,onChange:(Boolean)->Unit){
@@ -514,7 +514,7 @@ internal fun AccountSettings87(state:AppState,model:AppViewModel) {
 @Composable private fun Group87(title:String,content:@Composable ColumnScope.()->Unit){
     Column(verticalArrangement=Arrangement.spacedBy(8.dp)) {
         Text(title,modifier=Modifier.padding(start=10.dp,bottom=3.dp),
-            color=Color(0xFFBCBEC2),fontWeight=FontWeight.Black,
+            color=muted87,fontWeight=FontWeight.Black,
             fontSize=11.sp,letterSpacing=.5.sp)
         Column(Modifier.fillMaxWidth(),
             verticalArrangement=Arrangement.spacedBy(8.dp),content=content)
@@ -531,9 +531,9 @@ internal fun AccountSettings87(state:AppState,model:AppViewModel) {
         verticalAlignment=Alignment.CenterVertically
     ) {
         Box(Modifier.size(41.dp).clip(RoundedCornerShape(13.dp))
-            .background(Color(0xFF29292C)),
+            .background(ThemeTokens.elevated),
             contentAlignment=Alignment.Center){
-            Icon(icon,null,tint=Color(0xFFE8E9EA),modifier=Modifier.size(21.dp))
+            Icon(icon,null,tint=ink87,modifier=Modifier.size(21.dp))
         }
         Spacer(Modifier.width(13.dp))
         Column(Modifier.weight(1f),
@@ -546,7 +546,7 @@ internal fun AccountSettings87(state:AppState,model:AppViewModel) {
         Icon(if(suffix=="copy") Icons.Default.ContentCopy
             else if(suffix=="edit") Icons.Default.Edit
             else Icons.Default.ChevronRight,
-            null,tint=Color(0xFF999BA0),modifier=Modifier.size(20.dp))
+            null,tint=muted87,modifier=Modifier.size(20.dp))
     }
 }
 private fun createQr87(link:String):android.graphics.Bitmap?=runCatching{

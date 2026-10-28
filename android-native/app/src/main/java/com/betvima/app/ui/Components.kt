@@ -65,8 +65,8 @@ fun BrandHeader(
     userName: String? = null,
     casinoStyle: Boolean = false
 ) {
-    val headerBlack = if (casinoStyle) Color(0xFF141414) else Palette.headerDark
-    val headerGreen = Color(0xFF0BC66B)
+    val headerBlack = ThemeTokens.canvas
+    val headerGreen = ThemeTokens.accent
     // Financial values must come from the current authenticated wallet.
     // Never substitute a synthetic 0.00 or force USD/USDT.
     val currency = walletCurrency?.trim()?.takeIf { it.isNotEmpty() } ?: "—"
@@ -104,7 +104,7 @@ fun BrandHeader(
                         .padding(vertical = 10.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text("BET", color = Color.White,
+                    Text("BET", color = ThemeTokens.ink,
                         fontSize = if (compact) 17.sp else 19.sp,
                         fontWeight = FontWeight.Black,
                         letterSpacing = (-.9).sp,
@@ -131,18 +131,18 @@ fun BrandHeader(
                             Text(currency,
                                 fontSize = if (compact) 11.sp else 12.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = Color(0xFFB5B8C0),
+                                color = ThemeTokens.muted,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis)
                             Icon(Icons.Default.KeyboardArrowDown,
                                 contentDescription = tr(lang, "Wallet", "کیف پول"),
-                                tint = Color(0xFF9EA2AA),
+                                tint = ThemeTokens.muted,
                                 modifier = Modifier.size(15.dp))
                         }
                         Text(amount,
                             fontSize = if (compact) 13.sp else 15.sp,
                             fontWeight = FontWeight.Black,
-                            color = Color.White,
+                            color = ThemeTokens.ink,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis)
                     }
@@ -166,13 +166,13 @@ fun BrandHeader(
                     Box(
                         modifier = Modifier.size(43.dp)
                             .clip(RoundedCornerShape(12.dp))
-                            .background(Color(0xFF29292C))
+                            .background(ThemeTokens.elevated)
                             .clickable(onClick = onNotifications),
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(Icons.Default.Notifications,
                             contentDescription = tr(lang, "Notifications", "اعلان‌ها"),
-                            tint = Color.White, modifier = Modifier.size(22.dp))
+                            tint = ThemeTokens.ink, modifier = Modifier.size(22.dp))
                         if (unread > 0) {
                             Box(
                                 Modifier.align(Alignment.TopEnd)
@@ -180,7 +180,7 @@ fun BrandHeader(
                                     .size(12.dp)
                                     .clip(CircleShape)
                                     .background(Color(0xFFFF6330))
-                                    .border(2.dp, Color(0xFF29292C), CircleShape)
+                                    .border(2.dp, ThemeTokens.elevated, CircleShape)
                             )
                         }
                     }
@@ -201,12 +201,12 @@ fun BrandHeader(
                     Surface(
                         modifier = Modifier.width(loginWidth).height(46.dp)
                             .clickable(onClick = onAccount),
-                        color = Color(0xFF2B2B2D),
+                        color = ThemeTokens.elevated,
                         shape = RoundedCornerShape(12.dp)
                     ) {
                         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                             Text(tr(lang, "Login", "ورود"),
-                                color = Color.White,
+                                color = ThemeTokens.ink,
                                 fontSize = if (narrow) 12.sp else 13.sp,
                                 fontWeight = FontWeight.Bold,
                                 maxLines = 1,

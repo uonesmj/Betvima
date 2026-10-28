@@ -249,11 +249,11 @@ fun BetvimaApp(model: AppViewModel) {
         }) {
         Scaffold(
             containerColor = when {
-                state.feature == Feature.CASINO -> Color(0xFF141414)
+                state.feature == Feature.CASINO -> ThemeTokens.canvas
                 state.feature == Feature.SUPPORT || state.feature == Feature.PROFILE -> Palette.headerDark
                 state.feature == Feature.NONE &&
                     state.tab in setOf(Tab.BETS, Tab.WALLET, Tab.HOME, Tab.LIVE, Tab.SPORTS) -> Palette.headerDark
-                else -> Palette.paper
+                else -> ThemeTokens.canvas
             },
             topBar = {
                 Column {
@@ -460,7 +460,7 @@ fun BetvimaApp(model: AppViewModel) {
 @Composable
 private fun QuickToolbar(lang: Lang, onSports: () -> Unit, onSearch: () -> Unit,
     onBonus: () -> Unit, onVip: () -> Unit, onSupport: () -> Unit, onCasino: () -> Unit) {
-    LazyRow(Modifier.fillMaxWidth().background(Palette.ink),
+    LazyRow(Modifier.fillMaxWidth().background(ThemeTokens.canvas),
         contentPadding = PaddingValues(horizontal = 12.dp, vertical = 10.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         item { ToolbarAction(tr(lang, "Sports", "ورزش‌ها"), Icons.Default.SportsSoccer, onSports) }
@@ -480,7 +480,7 @@ private fun ToolbarAction(title: String, icon: androidx.compose.ui.graphics.vect
             verticalAlignment = Alignment.CenterVertically) {
             Icon(icon, null, tint = Palette.green, modifier = Modifier.size(15.dp))
             Spacer(Modifier.width(5.dp))
-            Text(title, color = Color.White, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+            Text(title, color = ThemeTokens.ink, fontSize = 10.sp, fontWeight = FontWeight.Bold)
         }
     }
 }

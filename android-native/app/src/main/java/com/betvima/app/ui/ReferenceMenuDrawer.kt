@@ -45,7 +45,7 @@ fun ReferenceMenuDrawer(
         label = "sportsShortcutsArrow"
     )
     ModalDrawerSheet(modifier = Modifier.width(306.dp),
-        drawerContainerColor = Color(0xFF1B1C20)) {
+        drawerContainerColor = ThemeTokens.canvas) {
         Column(Modifier.fillMaxHeight().verticalScroll(rememberScrollState(), flingBehavior = rememberPremiumFlingBehavior())) {
             Row(Modifier.fillMaxWidth().padding(19.dp),
                 verticalAlignment = Alignment.CenterVertically) {
@@ -56,21 +56,21 @@ fun ReferenceMenuDrawer(
                 }
                 Spacer(Modifier.width(11.dp))
                 Column(Modifier.weight(1f)) {
-                    Text("BETVIMA", color = Color.White,
+                    Text("BETVIMA", color = ThemeTokens.ink,
                         fontWeight = FontWeight.Black, fontSize = 19.sp)
                     Text(if (state.signedIn) tr(state.lang, "My account", "حساب من")
                         else tr(state.lang, "Guest", "مهمان"),
-                        color = Color(0xFFABB0BE), fontSize = 11.sp)
+                        color = ThemeTokens.muted, fontSize = 11.sp)
                 }
                 IconButton(onClick = dismiss) {
                     Icon(Icons.Default.Close, tr(state.lang, "Close menu", "بستن منو"),
-                        tint = Color.White)
+                        tint = ThemeTokens.ink)
                 }
             }
             Surface(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)
                 .clickable { dismiss(); openAccount() },
                 shape = RoundedCornerShape(16.dp),
-                color = Color(0xFF2D3037)) {
+                color = ThemeTokens.panel) {
                 Row(Modifier.padding(14.dp),
                     verticalAlignment = Alignment.CenterVertically) {
                     Icon(Icons.Default.AccountCircle, null, tint = Palette.green,
@@ -78,13 +78,13 @@ fun ReferenceMenuDrawer(
                     Spacer(Modifier.width(10.dp))
                     Column(Modifier.weight(1f)) {
                         Text(tr(state.lang, "Profile & account", "پروفایل و حساب"),
-                            color = Color.White, fontWeight = FontWeight.ExtraBold,
+                            color = ThemeTokens.ink, fontWeight = FontWeight.ExtraBold,
                             fontSize = 13.sp)
                         Text(tr(state.lang, "Wallet, tickets & settings",
                             "کیف‌پول، شرط‌ها و تنظیمات"),
-                            color = Color(0xFFB3B9C4), fontSize = 10.sp)
+                            color = ThemeTokens.muted, fontSize = 10.sp)
                     }
-                    Icon(Icons.Default.ChevronRight, null, tint = Color.White)
+                    Icon(Icons.Default.ChevronRight, null, tint = ThemeTokens.ink)
                 }
             }
             Spacer(Modifier.height(16.dp))
@@ -102,13 +102,13 @@ fun ReferenceMenuDrawer(
             ) {
                 Text(
                     tr(state.lang, "SPORTS & CASINO", "ورزش و کازینو"),
-                    color = Color(0xFF9CA7B9), fontSize = 10.sp,
+                    color = ThemeTokens.muted, fontSize = 10.sp,
                     fontWeight = FontWeight.Black, modifier = Modifier.weight(1f)
                 )
                 Icon(
                     Icons.Default.ExpandMore,
                     contentDescription = tr(state.lang, "Toggle sports shortcuts", "باز و بسته کردن گزینه‌های ورزشی"),
-                    tint = Color(0xFFADB5C4),
+                    tint = ThemeTokens.muted,
                     modifier = Modifier.size(20.dp).rotate(arrowRotation)
                 )
             }
@@ -137,7 +137,7 @@ fun ReferenceMenuDrawer(
                 dismiss(); model.feature(Feature.CASINO)
             }
             Spacer(Modifier.height(8.dp))
-            HorizontalDivider(color = Color.White.copy(alpha = .12f))
+            HorizontalDivider(color = ThemeTokens.outline)
             Spacer(Modifier.height(10.dp))
             DrawerGroup(tr(state.lang, "MY BETVIMA", "حساب بت‌ویما"))
             DrawerRow(tr(state.lang, "Wallet", "کیف‌پول"),
@@ -151,7 +151,7 @@ fun ReferenceMenuDrawer(
             DrawerRow(tr(state.lang, "Affiliate", "همکاری در فروش"),
                 Icons.Default.Groups) { dismiss(); openAffiliate() }
             Spacer(Modifier.height(8.dp))
-            HorizontalDivider(color = Color.White.copy(alpha = .12f))
+            HorizontalDivider(color = ThemeTokens.outline)
             Spacer(Modifier.height(10.dp))
             DrawerGroup(tr(state.lang, "HELP & SETTINGS", "راهنما و تنظیمات"))
             DrawerRow(tr(state.lang, "24/7 Support", "پشتیبانی ۲۴ ساعته"),
@@ -169,14 +169,14 @@ fun ReferenceMenuDrawer(
                 "18+ · Please play responsibly. BetVima uses server-verified results.",
                 "۱۸+ · مسئولانه بازی کنید. نتایج از سرور تأیید می‌شوند."),
                 modifier = Modifier.padding(horizontal = 20.dp, vertical = 16.dp),
-                fontSize = 10.sp, lineHeight = 16.sp, color = Color(0xFF9AA4AF))
+                fontSize = 10.sp, lineHeight = 16.sp, color = ThemeTokens.muted)
         }
     }
 }
 
 @Composable
 private fun DrawerGroup(label: String) {
-    Text(label, color = Color(0xFF9CA7B9), fontSize = 10.sp,
+    Text(label, color = ThemeTokens.muted, fontSize = 10.sp,
         fontWeight = FontWeight.Black,
         modifier = Modifier.padding(horizontal = 20.dp, vertical = 6.dp))
 }
@@ -188,13 +188,13 @@ private fun DrawerRow(label: String, icon: ImageVector, value: String = "",
         .clickable(onClick = action)
         .padding(horizontal = 20.dp, vertical = 11.dp),
         verticalAlignment = Alignment.CenterVertically) {
-        Icon(icon, null, tint = Color(0xFFADB5C4),
+        Icon(icon, null, tint = ThemeTokens.muted,
             modifier = Modifier.size(22.dp))
         Spacer(Modifier.width(14.dp))
-        Text(label, color = Color.White, fontSize = 13.sp,
+        Text(label, color = ThemeTokens.ink, fontSize = 13.sp,
             modifier = Modifier.weight(1f), fontWeight = FontWeight.Medium)
-        if (value.isNotBlank()) Text(value, color = Palette.green, fontSize = 11.sp)
+        if (value.isNotBlank()) Text(value, color = ThemeTokens.accent, fontSize = 11.sp)
         else Icon(Icons.Default.ChevronRight, null,
-            tint = Color(0xFF8792A3), modifier = Modifier.size(17.dp))
+            tint = ThemeTokens.muted, modifier = Modifier.size(17.dp))
     }
 }
