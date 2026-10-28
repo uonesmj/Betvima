@@ -1,67 +1,30 @@
-import {
-  convertSignedNativeMinorToUsdMinor,
-  getEurRate,
-  getGbpRate,
-} from '@/server/providers/navasan/client';
-import { getUsdIrtRate } from '@/server/providers/arzhaam/client';
+/**
+ * Read-only admin USD projections.
+ *
+ * Admin lists must never call a live FX vendor: their availability is independent
+ * of Arzhaam/Navasan and a quote cannot be silently substituted or invented.
+ * Original money amounts and currencies are preserved in API responses.
+ *
+ * Non-USD, nonzero amounts cannot be reported as USD without a verified
+ * conversion. Return null (unavailable), NOT 0 and NOT the original amount.
+ */
+export type AdminUsdRates = { source: 'stored-usd-only' };
 
-export type AdminUsdRates = {
-  usdIrrRate: string;
-  eurRate?: string;
-  gbpRate?: string;
-};
-
-export async function getAdminUsdRates(currencies: string[]): Promise<AdminUsdRates> {
-  const normalized = [...new Set(currencies.map((c) => c.toUpperCase()))];
-  const needsUsdRate = normalized.some((c) => c !== 'USD');
-  const needsEurRate = normalized.includes('EUR');
-  const needsGbpRate = normalized.includes('GBP');
-
-  const [usdRate, eurRate, gbpRate] = await Promise.all([
-    needsUsdRate ? getUsdIrtRate() : Promise.resolve(null),
-    needsEurRate ? getEurRate() : Promise.resolve(null),
-    needsGbpRate ? getGbpRate() : Promise.resolve(null),
-  ]);
-
-  if (needsUsdRate && !usdRate?.value) {
-    throw new Error('ADMIN_USD_RATE_UNAVAILABLE');
-  }
-  if (needsEurRate && !eurRate?.value) {
-    throw new Error('ADMIN_EUR_RATE_UNAVAILABLE');
-  }
-  if (needsGbpRate && !gbpRate?.value) {
-    throw new Error('ADMIN_GBP_RATE_UNAVAILABLE');
-  }
-
-  return {
-    usdIrrRate: usdRate?.value ?? '',
-    eurRate: eurRate?.value,
-    gbpRate: gbpRate?.value,
-  };
+/** Retained as an async API to avoid changing read-only callers. No I/O. */
+export async function getAdminUsdRates(_currencies: readonly string[]): Promise<AdminUsdRates> {
+  return { source: 'stored-usd-only' };
 }
 
 export function convertAdminAmountToUsd(
   amountMinor: bigint,
   currency: string,
-  rates: AdminUsdRates,
-): bigint {
-  const normalized = currency.toUpperCase();
+  _rates?: AdminUsdRates,
+): bigint | null {
+  if (currency.trim().toUpperCase() === 'USD' || amountMinor === 0n) return amountMinor;
+  return null;
+}
 
-  if (normalized === 'USD') return amountMinor;
-
-  if (normalized === 'IRT' || normalized === 'IRR') {
-    return convertSignedNativeMinorToUsdMinor(amountMinor, normalized, rates.usdIrrRate);
-  }
-
-  if (normalized === 'EUR') {
-    if (!rates.eurRate) throw new Error('ADMIN_EUR_RATE_UNAVAILABLE');
-    return convertSignedNativeMinorToUsdMinor(amountMinor, normalized, rates.usdIrrRate, rates.eurRate);
-  }
-
-  if (normalized === 'GBP') {
-    if (!rates.gbpRate) throw new Error('ADMIN_GBP_RATE_UNAVAILABLE');
-    return convertSignedNativeMinorToUsdMinor(amountMinor, normalized, rates.usdIrrRate, rates.gbpRate);
-  }
-
-  throw new Error(`ADMIN_UNSUPPORTED_CURRENCY:${normalized}`);
+/** Propagate unavailable conversion instead of displaying a partial USD total. */
+export function addAdminUsdAmounts(a: bigint | null, b: bigint | null): bigint | null {
+  return a === null || b === null ? null : a + b;
 }
