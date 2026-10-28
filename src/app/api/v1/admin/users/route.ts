@@ -16,6 +16,7 @@ export const GET = withErrorHandling('admin.users.list', async (ctx, request: Re
     role: (params.get('role') as never) ?? undefined,
     kycStatus: params.get('kyc') ?? undefined,
     page: intParam(params, 'page', 1, 5000), pageSize: intParam(params, 'pageSize', 25, 100),
+    sortBy: 'registered_at', sortDirection: params.get('sort') === 'oldest' ? 'asc' : 'desc',
   });
   return jsonOk(page);
 });

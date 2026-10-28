@@ -1,8 +1,9 @@
 import { z } from 'zod';
 import { withErrorHandling, jsonOk } from '@/lib/errors';
 import { ApiError } from '@/lib/errors';
-import { readJson } from '@/server/http/request';
+import { readJson, enforceRateLimit } from '@/server/http/request';
 import { withUser } from '@/server/http/guard';
+import { createServices } from '@/server/services/container';
 import { requireAdmin } from '@/server/auth/session';
 import { serviceRoleClient } from '@/server/db/supabase';
 
@@ -22,7 +23,15 @@ export const POST = withErrorHandling('admin.users.password_reset', async (ctx, 
     throw new ApiError('VALIDATION_FAILED', 'Use the normal account password flow for your own account');
   }
 
+  await enforceRateLimit(`admin:password_reset:${user.id}`, 5, 3600);
   const body = await readJson(request, schema, ctx);
+  const services = createServices();
+  const profile = await services.db.queryOne<{ role: string }>(
+    "select role::text as role from nova.profiles where id=$1", [id],
+  );
+  if (!profile || !['user','affiliate'].includes(profile.role)) {
+    throw new ApiError('FORBIDDEN', 'Only player accounts may be reset here');
+  }
   const supabase = serviceRoleClient();
 
   const { data: target, error: lookupError } = await supabase.auth.admin.getUserById(id);
@@ -38,11 +47,15 @@ export const POST = withErrorHandling('admin.users.password_reset', async (ctx, 
     throw new ApiError('INTERNAL_ERROR', 'Unable to update user password');
   }
 
+  await services.admin.writeAudit({
+    actorId: user.id, action: 'account.password_reset.admin', entityType: 'user', entityId: id,
+    reason: body.reason, correlationId: ctx.correlationId,
+    after: { passwordChanged: true },
+  });
   return jsonOk({
     success: true,
     userId: id,
     message: 'Password changed successfully',
   });
 
-  return jsonOk({ success: true });
 });
