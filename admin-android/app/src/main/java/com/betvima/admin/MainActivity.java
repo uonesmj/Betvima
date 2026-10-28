@@ -544,13 +544,21 @@ public final class MainActivity extends Activity {
    body.removeAllViews();
    if(section.equals("users")||section.equals("bets")||section.equals("support"))searchUi(section);
    if(section.equals("manual"))addAction(body,"＋ ثبت مسابقه جدید",true,this::manualForm);
+   if(section.equals("notifications")){
+    addAction(body,"＋ ارسال اعلان جدید به کاربران",true,this::notificationCompose);
+    addTitle(body,"اعلان‌های ثبت‌شده");
+   }
+   if(section.equals("support")){
+    addTitle(body,"تیکت‌های نیازمند پاسخ");
+    addAction(body,"↻ بروزرسانی پیام‌های جدید",false,()->list("support",query));
+   }
    JSONArray arr;
    if(section.equals("support")){
     JSONObject tickets=json.optJSONObject("tickets");
     arr=tickets==null?json.optJSONArray("tickets"):tickets.optJSONArray("items");
    }else arr=json.optJSONArray("items");
-   if(arr==null||arr.length()==0){centerText(body,"در این بخش اطلاعاتی ثبت نشده است.");if(section.equals("users")&&userPage>1)addAction(body,"صفحه قبل",false,()->{userPage--;list("users",query);});return;}
-   addTitle(body,"لیست جدیدترین موارد");
+   if(arr==null||arr.length()==0){centerText(body,section.equals("notifications")?"هنوز اعلانی ثبت نشده است. برای ارسال، دکمه بالا را بزنید.":"در این بخش اطلاعاتی ثبت نشده است.");if(section.equals("users")&&userPage>1)addAction(body,"صفحه قبل",false,()->{userPage--;list("users",query);});return;}
+   if(!section.equals("notifications")&&!section.equals("support"))addTitle(body,section.equals("users")?("oldest".equals(userOrder)?"کاربران قدیمی":"کاربران جدید"):"جدیدترین موارد");
    for(int i=0;i<arr.length();i++){
     JSONObject item=arr.optJSONObject(i);if(item==null)continue;
     String name="",subtitle="",total="",status=pick(item,"status");
@@ -569,14 +577,14 @@ public final class MainActivity extends Activity {
       total=money(item,"usdAmountMinor","amountMinor");break;
      case "support":
       name=pick(item,"subject");subtitle=pick(item,"userEmail","userDisplayName")+" · "+date(pick(item,"updatedAt"));
-      total=String.valueOf(item.optInt("unreadMessages",0))+" جدید";break;
+      total=item.optInt("unreadMessages",0)>0?item.optInt("unreadMessages",0)+" منتظر پاسخ":"پاسخ داده‌شده";break;
      case "manual":
       name=pick(item,"home")+" - "+pick(item,"away");
       subtitle=pick(item,"league")+" · "+date(pick(item,"scheduledAt"));
       total="بدون ضریب";break;
      case "notifications":
-      name=pick(item,"title");subtitle=pick(item,"audience")+" · "+date(pick(item,"created_at"));
-      total=pick(item,"delivered");break;
+      name=pick(item,"title");subtitle=("personal".equals(item.optString("audience"))?"شخصی":"همگانی")+" · "+date(pick(item,"created_at"));
+      total=faStatus(pick(item,"status"))+" · "+pick(item,"delivered")+" گیرنده";break;
      case "affiliates":
       name=pick(item,"username","name","id");subtitle=pick(item,"model");
       total=money(item,"usdPayableMinor","payableMinor");break;
@@ -587,7 +595,7 @@ public final class MainActivity extends Activity {
     JSONObject record=item;String s=section;
     itemRow(name,subtitle,status,total,()->details(s,record));
    }
-   if(section.equals("users")||section.equals("bets")||section.equals("payments"))body.addView(label("۴۰ مورد آخر؛ برای محدود کردن نتایج از جستجو استفاده کنید."));
+   if(section.equals("users")||section.equals("bets")||section.equals("payments"))body.addView(label(section.equals("users")?"برای دیدن شرط‌ها و کازینو، پرونده هر کاربر را باز کنید.":"برای محدود کردن نتایج از جستجو استفاده کنید."));
   });
  }
  private String enc(String s){
@@ -614,6 +622,7 @@ public final class MainActivity extends Activity {
    case "users":userDetail(item);break;
    case "bets":betDetail(item);break;
    case "support":ticketDetail(item);break;
+   case "notifications":notificationDetail(item);break;
    case "payments":paymentDetail(item);break;
    default:generic(item,"جزئیات ثبت‌شده");
   }
