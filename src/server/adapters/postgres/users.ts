@@ -119,7 +119,7 @@ export class PostgresUserRepository implements UserRepository {
     const where = `
       where ($1::text is null or p.email ilike '%' || $1 || '%' or p.phone ilike '%' || $1 || '%'
               or p.public_id ilike '%' || $1 || '%' or p.display_name ilike '%' || $1 || '%')
-        and ($2::text is null or p.status::text = $2) and ($3::text is null or p.role::text = $3)
+        and ($2::text is null or p.status::text = $2) and ($3::text is null or p.role::text = any(string_to_array($3::text,',')))
         and ($4::text is null or p.kyc_status::text = $4)
         and ($5::uuid is null or exists (select 1 from nova.affiliates a where a.user_id = p.id and (a.id = $5 or a.parent_affiliate_id = $5)))
         and ($6::timestamptz is null or p.created_at >= $6) and ($7::timestamptz is null or p.created_at <= $7)`;
