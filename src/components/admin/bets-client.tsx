@@ -8,8 +8,8 @@ import { useApiQuery } from '@/lib/hooks/useApi';
 import { formatDateTime, formatMinor, formatOddsScaled } from '@/lib/i18n';
 
 interface BetRow {
-  id: string; publicId: string; userId: string; type: string; status: string;
-  stakeMinor: string; potentialPayoutMinor: string; settledPayoutMinor: string | null; usdStakeMinor: string; usdPotentialPayoutMinor: string; usdSettledPayoutMinor: string | null; usdNetResultMinor: string | null;
+  id: string; publicId: string; userId: string; type: string; status: string; currency: string;
+  stakeMinor: string; potentialPayoutMinor: string; settledPayoutMinor: string | null; usdStakeMinor: string | null; usdPotentialPayoutMinor: string | null; usdSettledPayoutMinor: string | null; usdNetResultMinor: string | null;
   combinedOddsScaled: string; placedAt: string; settledAt: string | null;
   isLive: boolean; source: string; legs: { id: string; status: string; grade: string | null; selectionLabel: string; matchLabel: string }[];
 }
@@ -27,15 +27,19 @@ export function BetsClient() {
   const { data, loading, error, reload } = useApiQuery<{ items: BetRow[]; total: number }>(`/api/v1/admin/bets?${query.toString()}`);
 
   const open = (data?.items ?? []).filter((bet) => bet.status === 'accepted' || bet.status === 'partially_settled');
-  const staked = open.reduce((total, bet) => total + BigInt(bet.usdStakeMinor), 0n);
-  const liability = open.reduce((total, bet) => total + BigInt(bet.usdPotentialPayoutMinor), 0n);
+  const staked = open.every((bet) => bet.usdStakeMinor !== null)
+    ? open.reduce((total, bet) => total + BigInt(bet.usdStakeMinor!), 0n) : null;
+  const liability = open.every((bet) => bet.usdPotentialPayoutMinor !== null)
+    ? open.reduce((total, bet) => total + BigInt(bet.usdPotentialPayoutMinor!), 0n) : null;
+  const showAmount = (usd: string | null, native: string, currency: string) =>
+    usd !== null ? formatMinor(usd, 'USD', locale) : formatMinor(native, currency, locale);
 
   return (
     <div className="space-y-3">
       <div className="grid gap-2 sm:grid-cols-3">
         <Stat label="Bets on page" value={data?.items.length ?? 0} />
-        <Stat label="Open bet amount (page)" value={formatMinor(staked, 'USD', locale)} />
-        <Stat label="Open liability (page)" value={formatMinor(liability, 'USD', locale)} tone="warning" />
+        <Stat label="Open bet amount (page)" value={staked === null ? '— (non-USD)' : formatMinor(staked, 'USD', locale)} />
+        <Stat label="Open liability (page)" value={liability === null ? '— (non-USD)' : formatMinor(liability, 'USD', locale)} tone="warning" />
       </div>
 
       <div className="flex flex-wrap gap-2">
@@ -69,13 +73,13 @@ export function BetsClient() {
               { key: 'status', header: t('common.status'), render: (row) => <StatusPill status={row.status} /> },
               { key: 'legs', header: 'Legs', render: (row) => <span className="text-xs nova-muted">{row.legs?.length ?? 0}</span> },
               { key: 'odds', header: 'Odds', render: (row) => <span className="text-xs">{formatOddsScaled(row.combinedOddsScaled)}</span> },
-              { key: 'stake', header: 'Stake', render: (row) => <span className="whitespace-nowrap text-xs">{formatMinor(row.usdStakeMinor, 'USD', locale)}</span> },
-              { key: 'potential', header: 'Potential', render: (row) => <span className="whitespace-nowrap text-xs">{formatMinor(row.usdPotentialPayoutMinor, 'USD', locale)}</span> },
+              { key: 'stake', header: 'Stake', render: (row) => <span className="whitespace-nowrap text-xs">{showAmount(row.usdStakeMinor, row.stakeMinor, row.currency)}</span> },
+              { key: 'potential', header: 'Potential', render: (row) => <span className="whitespace-nowrap text-xs">{showAmount(row.usdPotentialPayoutMinor, row.potentialPayoutMinor, row.currency)}</span> },
               {
                 key: 'settled', header: 'Settled payout',
                 render: (row) => (
                   <span className="whitespace-nowrap text-xs">
-                    {row.usdSettledPayoutMinor === null ? '—' : formatMinor(row.usdSettledPayoutMinor, 'USD', locale)}
+                    {row.usdSettledPayoutMinor === null ? '—' : showAmount(row.usdSettledPayoutMinor, row.settledPayoutMinor!, row.currency)}
                   </span>
                 ),
               },
