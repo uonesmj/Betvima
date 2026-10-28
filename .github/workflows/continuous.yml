@@ -45,6 +45,8 @@ on:
       - 'src/components/admin/**'
       - 'tests/unit/admin-fx-independent.test.ts'
       - 'tests/unit/native-admin-user-overview.test.ts'
+      - 'tests/unit/sole-super-admin-wallet.test.ts'
+      - 'supabase/migrations/0220_admin_trusted_profile_update.sql'
       - 'tests/unit/admin-dashboard-odds-index.test.ts'
       - 'src/components/layout/notifications-bell.tsx'
       - 'supabase/migrations/0216_in_app_notification_retention_24h.sql'
