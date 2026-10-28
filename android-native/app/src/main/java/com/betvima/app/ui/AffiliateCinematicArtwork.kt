@@ -98,17 +98,17 @@ internal fun AffiliateCinematicPhoto(
             runCatching {
                 val spriteIndex = affiliateCardArtIndex(scene)
                 val supplied = if(spriteIndex >= 0) runCatching {
-                    context.assets.open("affiliate/bv_aff_support_cards_203.webp").use { stream ->
-                        val sheet = BitmapFactory.decodeStream(stream)
-                            ?: error("Affiliate card image could not be decoded")
-                        val cellWidth = sheet.width / 4
-                        val cellHeight = sheet.height / 2
-                        require(cellWidth > 0 && cellHeight > 0)
-                        android.graphics.Bitmap.createBitmap(
-                            sheet, (spriteIndex % 4) * cellWidth,
-                            (spriteIndex / 4) * cellHeight, cellWidth, cellHeight
-                        ).asImageBitmap()
-                    }
+                    val bytes = android.util.Base64.decode(
+                        AffiliateArt203.imageData, android.util.Base64.DEFAULT)
+                    val sheet = BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+                        ?: error("Bundled affiliate artwork could not be decoded")
+                    val cellWidth = sheet.width / 4
+                    val cellHeight = sheet.height / 2
+                    require(cellWidth > 0 && cellHeight > 0)
+                    android.graphics.Bitmap.createBitmap(
+                        sheet, (spriteIndex % 4) * cellWidth,
+                        (spriteIndex / 4) * cellHeight, cellWidth, cellHeight
+                    ).asImageBitmap()
                 }.getOrNull() else null
                 supplied ?: run {
                     val preferred = "affiliate/" + scene.photo + ".webp"
