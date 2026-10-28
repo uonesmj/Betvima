@@ -32,11 +32,11 @@ export const GET = withErrorHandling('admin.risk.decisions', async (ctx, request
       usdStakeMinor:
         stakeMinor === null || !currency
           ? null
-          : convertAdminAmountToUsd(stakeMinor, currency, rates).toString(),
+          : convertAdminAmountToUsd(stakeMinor, currency, rates)?.toString() ?? null,
       usdPayoutMinor:
         payoutMinor === null || !currency
           ? null
-          : convertAdminAmountToUsd(payoutMinor, currency, rates).toString(),
+          : convertAdminAmountToUsd(payoutMinor, currency, rates)?.toString() ?? null,
       ruleKey:
         Array.isArray(row.rule_ids)
           ? row.rule_ids.join(', ')
