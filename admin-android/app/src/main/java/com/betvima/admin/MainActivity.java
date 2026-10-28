@@ -780,9 +780,9 @@ public final class MainActivity extends Activity {
       String state=applied==null?"":applied.optString("status","");
       if("applied".equals(state)){
        showMessage("موجودی به‌صورت مستقیم اصلاح و در دفترکل ثبت شد.");
-       if("users".equals(page)&&id.equals(selectedId)&&selected!=null){
+       if("users".equals(page)&&id.equals(selectedId)&&MainActivity.this.selected!=null){
         createPage("جزئیات کاربر","بروزرسانی موجودی از سرور");
-        userDetail(selected);
+        userDetail(MainActivity.this.selected);
        }
       }else{
        showMessage("درخواست ذخیره شد، ولی هنوز اعمال نشده است: "+(state.isEmpty()?"نامشخص":state));
