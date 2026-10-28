@@ -60,6 +60,7 @@ class MainActivity : ComponentActivity() {
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun CFCoinApp() {
     var page by rememberSaveable { mutableIntStateOf(0) }
