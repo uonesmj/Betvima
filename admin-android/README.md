@@ -1,5 +1,5 @@
 
-# BetVima Native Admin 1.1.3 (Android)
+# BetVima Native Admin 1.2.0 (Android)
 
 Fully native Android app written in Java. No WebView, web app or HTML renderer.
 Package: `com.betvima.admin`, independent of the customer betting APK.
@@ -22,7 +22,7 @@ until a separately verified priced-market integration is implemented.
 
 ## CI / APK
 The GitHub Actions workflow builds and uploads a DEBUG installable APK as
-`BetVima-Native-Admin-v1.1.3-APK`. The eventual release requires an owner
+`BetVima-Native-Admin-v1.2.0-APK`. The eventual release requires an owner
 controlled keystore in GitHub secrets, penetration testing and production
 approval. The debug APK is for a restricted administrator test device only.
 
