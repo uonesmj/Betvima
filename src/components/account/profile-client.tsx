@@ -300,8 +300,9 @@ export function ProfileClient() {
                   </h2>
                   <div className="mt-1 flex items-center gap-1.5 text-sm text-[#687384]">
                     <IdCard className="h-4 w-4 text-[#1597FF]" />
-                    <span>ID {numericId}</span>
+                    <span>{locale === 'fa' ? 'شناسه کاربری' : 'User ID'}: <strong dir="ltr">{numericId}</strong></span>
                   </div>
+                  <p className="mt-1 text-[11px] text-[#6B7889]">{locale === 'fa' ? 'برای شناسایی در پشتیبانی همین شماره را اعلام کنید.' : 'Share this account number with support when requesting help.'}</p>
                   <div className={`mt-2 inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-bold ${
                     verified
                       ? 'bg-[#DDF8E9] text-[#0B9D55]'
