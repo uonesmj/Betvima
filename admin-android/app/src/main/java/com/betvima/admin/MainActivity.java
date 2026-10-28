@@ -636,94 +636,218 @@ public final class MainActivity extends Activity {
  private void userDetail(JSONObject item){
   String id=item.optString("id","");
   if(id.isEmpty()){showMessage("شناسه کاربر موجود نیست");return;}
-  centerText(body,"در حال دریافت جزئیات واقعی کاربر ...");
+  body.removeAllViews();
+  centerText(body,"در حال دریافت پرونده کاربر ...");
   requestInto("/api/v1/admin/mobile/user-overview/"+enc(id),json->{
-   if(!id.equals(selectedId)||!page.equals("users"))return;
+   if(!id.equals(selectedId)||!"users".equals(page))return;
    body.removeAllViews();
-   JSONObject u=json.optJSONObject("user");if(u==null){centerText(body,"اطلاعات کاربر ناقص است");return;}
-   addTitle(body,"مشخصات کاربر");
-   LinearLayout identity=panel(body);
+   JSONObject u=json.optJSONObject("user");
+   if(u==null){centerText(body,"اطلاعات کاربر ناقص است");return;}
+   addTitle(body,"پرونده کاربر");
+   LinearLayout identity=sectionGroup("هویت و وضعیت حساب","ایمیل، شناسه، ثبت‌نام و آخرین فعالیت",true);
    info(identity,"ایمیل",pick(u,"email"));
    info(identity,"شناسه عددی",pick(u,"numericId"));
    info(identity,"شناسه عمومی",pick(u,"publicId"));
    info(identity,"نام کاربری",pick(u,"username"));
    info(identity,"تاریخ ثبت‌نام",date(pick(u,"registeredAt")));
    String source=pick(u,"registrationSource");
-   info(identity,"محل ثبت‌نام",source.equals("app")?"اپلیکیشن":source.equals("web")?"وب‌سایت":"نامشخص (ثبت تاریخی)");
-   info(identity,"وضعیت حساب",pick(u,"status"));
+   info(identity,"محل ثبت‌نام",source.equals("app")?"اپلیکیشن":source.equals("web")?"وب‌سایت":"نامشخص");
+   info(identity,"وضعیت حساب",faStatus(pick(u,"status")));
    info(identity,"آخرین ورود",date(pick(u,"lastLoginAt")));
    info(identity,"آخرین فعالیت",date(pick(u,"lastSeenAt")));
-   info(identity,"نشست اخیر",u.optBoolean("recentlyActive")?"فعال در ۵ دقیقه اخیر":"فعالیت اخیر ثبت نشده");
-   info(identity,"وضعیت تایید کازینو",pick(u,"kycStatus"));
+   info(identity,"وضعیت نشست",u.optBoolean("recentlyActive")?"فعال در ۵ دقیقه اخیر":"نشست فعال اخیر مشاهده نشد");
+   info(identity,"تأیید کازینو",faStatus(pick(u,"kycStatus")));
 
    JSONArray wallets=json.optJSONArray("balances");
-   addTitle(body,"موجودی فعلی کیف پول");
-   if(wallets==null||wallets.length()==0)centerText(body,"کیف پولی ثبت نشده");
+   LinearLayout walletSection=sectionGroup("موجودی فعلی کیف پول","مبالغ در ارز واقعی حساب، بدون تبدیل تخمینی",true);
+   if(wallets==null||wallets.length()==0)centerText(walletSection,"کیف پولی ثبت نشده");
    if(wallets!=null)for(int i=0;i<wallets.length();i++){
     JSONObject w=wallets.optJSONObject(i);if(w==null)continue;
-    LinearLayout p=panel(body);String currency=pick(w,"currency");
-    info(p,"موجودی "+currency,amountMinor(w.optString("balanceMinor","0"),currency));
-    info(p,"قفل‌شده",amountMinor(w.optString("lockedMinor","0"),currency));
-    info(p,"وضعیت",w.optBoolean("frozen")?"مسدود":"فعال");
+    String currency=pick(w,"currency");
+    info(walletSection,"موجودی "+currency,amountMinor(w.optString("balanceMinor","0"),currency));
+    info(walletSection,"مبلغ قفل‌شده",amountMinor(w.optString("lockedMinor","0"),currency));
+    info(walletSection,"وضعیت",w.optBoolean("frozen")?"مسدود":"فعال");
+    divider(walletSection);
    }
 
-   addTitle(body,"جمع واریز و برداشت‌های موفق");
+   LinearLayout finance=sectionGroup("واریز و برداشت","فقط پرداخت‌های تکمیل‌شده",false);
    JSONArray pays=json.optJSONArray("paymentTotals");
-   if(pays==null||pays.length()==0)centerText(body,"تراکنش تکمیل‌شده ندارد");
+   if(pays==null||pays.length()==0)centerText(finance,"تراکنش تکمیل‌شده ندارد");
    if(pays!=null)for(int i=0;i<pays.length();i++){
     JSONObject p=pays.optJSONObject(i);if(p==null)continue;
-    LinearLayout c=panel(body);
-    info(c,p.optString("direction").equals("deposit")?"جمع شارژ":"جمع برداشت",
+    info(finance,p.optString("direction").equals("deposit")?"جمع شارژ":"جمع برداشت",
       amountMinor(p.optString("amountMinor","0"),pick(p,"currency")));
-    info(c,"تعداد تراکنش‌های موفق",pick(p,"count"));
+    info(finance,"تعداد تراکنش موفق",pick(p,"count"));
+    divider(finance);
    }
 
-   addTitle(body,"شرط‌ها، سود و زیان به تفکیک ارز");
+   LinearLayout sports=sectionGroup("شرط‌های ورزشی","همه شرط‌ها فقط برای همین کاربر، با زمان و جزئیات انتخاب",true);
    JSONArray bets=json.optJSONArray("betting");
-   if(bets==null||bets.length()==0)centerText(body,"هنوز شرطی ثبت نشده");
+   if(bets==null||bets.length()==0)centerText(sports,"هنوز شرطی ثبت نشده");
    if(bets!=null)for(int i=0;i<bets.length();i++){
     JSONObject b=bets.optJSONObject(i);if(b==null)continue;
-    LinearLayout c=panel(body);String currency=pick(b,"currency");
-    info(c,"ارز",currency);
-    info(c,"شرط‌های باز",pick(b,"openCount"));
-    info(c,"مبلغ شرط باز",amountMinor(b.optString("openStakeMinor","0"),currency));
-    info(c,"شرط‌های بسته‌شده",pick(b,"closedCount"));
-    info(c,"مبلغ شرط‌های بسته",amountMinor(b.optString("closedStakeMinor","0"),currency));
-    info(c,"سود / زیان کاربر (تسویه‌شده)",amountMinor(b.optString("customerNetMinor","0"),currency));
-    info(c,"سود / زیان سایت (تسویه‌شده)",amountMinor(b.optString("siteNetMinor","0"),currency));
+    String currency=pick(b,"currency");
+    info(sports,"شرط‌های باز · "+currency,pick(b,"openCount"));
+    info(sports,"مبلغ شرط‌های باز",amountMinor(b.optString("openStakeMinor","0"),currency));
+    info(sports,"شرط‌های بسته‌شده",pick(b,"closedCount"));
+    info(sports,"مبلغ بسته‌شده",amountMinor(b.optString("closedStakeMinor","0"),currency));
+    info(sports,"سود/زیان کاربر (تسویه‌شده)",amountMinor(b.optString("customerNetMinor","0"),currency));
+    info(sports,"سود/زیان سایت (تسویه‌شده)",amountMinor(b.optString("siteNetMinor","0"),currency));
+    divider(sports);
    }
-   LinearLayout betActions=panel(body);
-   addAction(betActions,"نمایش فهرست شرط‌های باز",false,()->showUserBets(id,true));
-   addAction(betActions,"نمایش فهرست شرط‌های بسته",false,()->showUserBets(id,false));
+   addAction(sports,"همه شرط‌های همین کاربر",true,()->userBetsPage(id,"all",1));
+   addAction(sports,"شرط‌های باز",false,()->userBetsPage(id,"open",1));
+   addAction(sports,"شرط‌های بسته و تسویه‌شده",false,()->userBetsPage(id,"closed",1));
+   LinearLayout recent=col();sports.addView(recent);
+   loadRecentUserBets(id,recent);
 
-   addTitle(body,"بونوس‌های فعال و گذشته");
+   LinearLayout casino=sectionGroup("سود و زیان کازینو","گردش واقعی، تفکیک ارائه‌دهنده و ارز",true);
+   JSONArray casinos=json.optJSONArray("casino");
+   if(casinos==null||casinos.length()==0)centerText(casino,"بازی کازینویی ثبت نشده");
+   if(casinos!=null)for(int i=0;i<casinos.length();i++){
+    JSONObject r=casinos.optJSONObject(i);if(r==null)continue;
+    String currency=pick(r,"currency");
+    casino.addView(text("internal_slots".equals(r.optString("source"))?"اسلات اختصاصی":"ارائه‌دهنده خارجی",13,GREEN,true));
+    info(casino,"ارز",currency);
+    info(casino,"دورهای قابل‌شمارش",pick(r,"rounds"));
+    info(casino,"مجموع شرط‌ها",amountMinor(r.optString("stakeMinor","0"),currency));
+    info(casino,"مجموع بردهای پرداختی",amountMinor(r.optString("payoutMinor","0"),currency));
+    info(casino,"بازگشت شرط لغوشده",amountMinor(r.optString("refundMinor","0"),currency));
+    info(casino,"سود / زیان کاربر",amountMinor(r.optString("netUserMinor","0"),currency));
+    info(casino,"سود / زیان سایت",amountMinor(r.optString("netSiteMinor","0"),currency));
+    divider(casino);
+   }
+
+   LinearLayout bonusSection=sectionGroup("بونوس‌های فعال و گذشته","مبلغ اعطا، باقی‌مانده، انقضا و وضعیت",false);
    JSONArray bonuses=json.optJSONArray("bonuses");
-   if(bonuses==null||bonuses.length()==0)centerText(body,"بونوسی ثبت نشده");
+   if(bonuses==null||bonuses.length()==0)centerText(bonusSection,"بونوسی ثبت نشده");
    if(bonuses!=null)for(boolean active:new boolean[]{true,false}){
-    addTitle(body,active?"بونوس‌های فعال":"بونوس‌های قبلی");
+    addTitle(bonusSection,active?"بونوس‌های فعال":"بونوس‌های قبلی");
     int shown=0;
     for(int i=0;i<bonuses.length();i++){
      JSONObject b=bonuses.optJSONObject(i);if(b==null||b.optBoolean("active")!=active)continue;
-     LinearLayout c=panel(body);shown++;
-     info(c,"عنوان",pick(b,"title"));
-     info(c,"وضعیت",pick(b,"status"));
-     info(c,"مبلغ",amountMinor(b.optString("amountMinor","0"),pick(b,"currency")));
-     info(c,"باقی‌مانده",amountMinor(b.optString("remainingMinor","0"),pick(b,"currency")));
-     info(c,"تاریخ اعطا",date(pick(b,"grantedAt")));
-     info(c,"انقضا",date(pick(b,"expiresAt")));
+     shown++;
+     info(bonusSection,"عنوان",pick(b,"title"));
+     info(bonusSection,"وضعیت",faStatus(pick(b,"status")));
+     info(bonusSection,"مبلغ",amountMinor(b.optString("amountMinor","0"),pick(b,"currency")));
+     info(bonusSection,"باقی‌مانده",amountMinor(b.optString("remainingMinor","0"),pick(b,"currency")));
+     info(bonusSection,"تاریخ اعطا",date(pick(b,"grantedAt")));
+     info(bonusSection,"انقضا",date(pick(b,"expiresAt")));
+     divider(bonusSection);
     }
-    if(shown==0)centerText(body,"موردی موجود نیست");
+    if(shown==0)centerText(bonusSection,"موردی موجود نیست");
    }
 
-   addTitle(body,"اقدامات مدیریتی");
-   LinearLayout actions=panel(body);
-   addAction(actions,u.optString("status").equals("active")?"مسدودسازی حساب":"فعال‌کردن حساب",false,()->userStatus(u));
-   addAction(actions,"تأیید کازینو (همان صفحه موجود سایت)",false,this::openCasinoApproval);
-   addAction(actions,"تغییر رمز عبور کاربر",false,()->resetUserPassword(id));
-   addAction(actions,"ارسال اعلان فقط به این کاربر",true,()->sendUserNotice(id));
-   addAction(actions,"درخواست افزایش یا کاهش موجودی",false,()->adjustUserWallet(id,wallets));
-   addAction(actions,"بازگشت به فهرست کاربران",false,()->showPage("users"));
+   LinearLayout actions=sectionGroup("اقدامات مدیریتی","تمام عملیات از API امن و حسابرسی عبور می‌کنند",false);
+   addAction(actions,"active".equals(u.optString("status"))?"مسدودسازی حساب":"فعال‌کردن حساب",false,()->userStatus(u));
+   addAction(actions,"تأیید کازینو (صفحه موجود سایت)",false,this::openCasinoApproval);
+   addAction(actions,"تغییر رمز کاربر",false,()->resetUserPassword(id));
+   addAction(actions,"ارسال اعلان فقط برای همین کاربر",true,()->sendUserNotice(id));
+   addAction(actions,"افزایش یا کاهش موجودی",false,()->adjustUserWallet(id,wallets));
+   addAction(body,"بازگشت به فهرست کاربران",false,()->showPage("users"));
   });
+ }
+ private void loadRecentUserBets(String userId,LinearLayout host){
+  api.perform(()->api.get("/api/v1/admin/mobile/user-bets/"+enc(userId)+"?status=all&page=1"),data->{
+   if(!"users".equals(page)||!userId.equals(selectedId))return;
+   JSONArray rows=data.optJSONArray("items");
+   if(rows==null||rows.length()==0){centerText(host,"شرطی برای این کاربر یافت نشد");return;}
+   addTitle(host,"آخرین شرط‌ها");
+   for(int i=0;i<Math.min(5,rows.length());i++){
+    JSONObject b=rows.optJSONObject(i);if(b==null)continue;
+    LinearLayout c=col();host.addView(c);
+    String title="شرط "+pick(b,"publicId")+" · "+faStatus(pick(b,"status"));
+    addAction(c,title,false,()->showBetInformation(b,c));
+    info(c,"ثبت",date(pick(b,"placedAt")));
+    info(c,"مبلغ شرط",amountMinor(b.optString("stakeMinor","0"),pick(b,"currency")));
+    divider(c);
+   }
+  },err->centerText(host,"جزئیات شرط‌ها در دسترس نیست: "+err));
+ }
+ private void userBetsPage(String id,String state,int number){
+  if(!"users".equals(page)||!id.equals(selectedId))return;
+  body.removeAllViews();
+  addTitle(body,"شرط‌های اختصاصی همین کاربر");
+  addAction(body,"بازگشت به پرونده کاربر",false,()->userDetail(selected));
+  LinearLayout filters=row();
+  for(String[] option:new String[][]{{"all","همه"},{"open","باز"},{"closed","بسته"}}){
+   TextView chip=action(option[1],option[0].equals(state),()->userBetsPage(id,option[0],1));
+   filters.addView(chip,new LinearLayout.LayoutParams(0,dp(46),1));
+  }
+  body.addView(filters);space(body,10);
+  centerText(body,"در حال دریافت شرط‌های کاربر ...");
+  api.perform(()->api.get("/api/v1/admin/mobile/user-bets/"+enc(id)+"?status="+state+"&page="+number),data->{
+   if(!"users".equals(page)||!id.equals(selectedId))return;
+   // Keep the filter strip and return action, remove only its loading label.
+   if(body.getChildCount()>3)body.removeViewAt(body.getChildCount()-1);
+   JSONArray rows=data.optJSONArray("items");
+   if(rows==null||rows.length()==0){centerText(body,"در این دسته شرطی یافت نشد");return;}
+   for(int i=0;i<rows.length();i++){
+    JSONObject b=rows.optJSONObject(i);if(b==null)continue;
+    LinearLayout c=panel(body);
+    String currency=pick(b,"currency");
+    c.addView(text("کد شرط: "+pick(b,"publicId"),14,GREEN,true));
+    info(c,"وضعیت",faStatus(pick(b,"status")));
+    info(c,"نوع شرط",faBetType(pick(b,"type")));
+    info(c,"زمان دقیق ثبت",date(pick(b,"placedAt")));
+    info(c,"زمان تسویه",date(pick(b,"settledAt")));
+    info(c,"مبلغ شرط",amountMinor(b.optString("stakeMinor","0"),currency));
+    info(c,"برد احتمالی",amountMinor(b.optString("potentialPayoutMinor","0"),currency));
+    info(c,"مبلغ تسویه واقعی",b.isNull("payoutMinor")?"تسویه نشده":amountMinor(b.optString("payoutMinor","0"),currency));
+    info(c,"ضریب کل",formatOdds(pick(b,"combinedOddsScaled")));
+    info(c,"موجودی پیش از شرط",b.isNull("balanceBeforePlacementMinor")?"ثبت نشده":amountMinor(b.optString("balanceBeforePlacementMinor"),currency));
+    info(c,"موجودی بعد از شرط",b.isNull("balanceAfterPlacementMinor")?"ثبت نشده":amountMinor(b.optString("balanceAfterPlacementMinor"),currency));
+    info(c,"محل ثبت شرط",faDevice(pick(b,"device")));
+    JSONArray legs=b.optJSONArray("legs");
+    if(legs!=null)for(int k=0;k<legs.length();k++){
+     JSONObject leg=legs.optJSONObject(k);if(leg==null)continue;
+     LinearLayout legCard=col();legCard.setBackground(bg(Color.rgb(29,35,42),0,12));pad(legCard,12);
+     LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(-1,-2);lp.topMargin=dp(8);c.addView(legCard,lp);
+     legCard.addView(text("انتخاب "+(k+1),12,GREEN,true));
+     info(legCard,"مسابقه",pick(leg,"match"));
+     info(legCard,"بازار",pick(leg,"market"));
+     info(legCard,"آپشن انتخاب‌شده",pick(leg,"selection"));
+     info(legCard,"ضریب انتخاب",formatOdds(pick(leg,"oddsScaled")));
+     info(legCard,"وضعیت انتخاب",faStatus(pick(leg,"status")));
+     info(legCard,"زمان نتیجه",date(pick(leg,"settledAt")));
+    }
+   }
+   LinearLayout pager=row();
+   if(number>1)pager.addView(action("صفحه قبل",false,()->userBetsPage(id,state,number-1)),new LinearLayout.LayoutParams(0,dp(46),1));
+   if(data.optBoolean("hasMore"))pager.addView(action("صفحه بعد",true,()->userBetsPage(id,state,number+1)),new LinearLayout.LayoutParams(0,dp(46),1));
+   body.addView(pager);
+  },this::showMessage);
+ }
+ private String faBetType(String value){
+  if("single".equals(value))return "تکی";
+  if("multiple".equals(value)||"accumulator".equals(value))return "ترکیبی";
+  if("system".equals(value))return "سیستمی";
+  return value;
+ }
+ private String faDevice(String value){
+  if("android".equals(value)||"app".equals(value))return "اپلیکیشن";
+  if("web".equals(value))return "وب‌سایت";
+  return "—".equals(value)?"ثبت نشده":value;
+ }
+ private String formatOdds(String scaled){
+  try{
+   if("—".equals(scaled))return "—";
+   return new DecimalFormat("0.00",java.text.DecimalFormatSymbols.getInstance(Locale.US)).format(
+     new BigDecimal(scaled).movePointLeft(4));
+  }catch(Exception ignore){return "—";}
+ }
+ private void showBetInformation(JSONObject bet,LinearLayout host){
+  JSONArray legs=bet.optJSONArray("legs");if(legs==null||legs.length()==0){showMessage("جزئیات انتخاب ثبت نشده");return;}
+  StringBuilder out=new StringBuilder();
+  for(int i=0;i<legs.length();i++){
+   JSONObject l=legs.optJSONObject(i);if(l==null)continue;
+   out.append("\nانتخاب ").append(i+1).append(": ").append(pick(l,"selection"));
+   out.append("\nمسابقه: ").append(pick(l,"match"));
+   out.append("\nبازار: ").append(pick(l,"market"));
+   out.append("\nضریب: ").append(formatOdds(pick(l,"oddsScaled"))).append("\n");
+  }
+  new AlertDialog.Builder(this).setTitle("انتخاب‌های شرط").setMessage(out.toString())
+   .setPositiveButton("بستن",null).show();
  }
  private void openCasinoApproval(){
   // Do not duplicate, weaken, or alter the existing web KYC approval flow.
