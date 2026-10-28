@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { ApiError, jsonOk, withErrorHandling } from '@/lib/errors';
 import { withAdmin } from '@/server/http/guard';
 import { toStr } from '@/server/db/rows';
+import { casinoFinance } from '@/server/admin/casino-finance';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -33,7 +34,7 @@ export const GET = withErrorHandling('admin.mobile.user_overview', async (
   );
   if (!profile) throw new ApiError('NOT_FOUND', 'Customer not found');
 
-  const [wallets, payments, bets, bonuses, lastActivity, registrationEvent] = await Promise.all([
+  const [wallets, payments, bets, bonuses, lastActivity, registrationEvent, casino] = await Promise.all([
     services.db.query<SqlRow>(
       `select currency, balance_minor, locked_minor, is_frozen
          from nova.wallets where user_id = $1 order by currency`, [id]),
@@ -73,6 +74,7 @@ export const GET = withErrorHandling('admin.mobile.user_overview', async (
          from nova.account_events
         where user_id=$1 and event_key in ('auth.registered','account.registered','user.registered')
         order by created_at asc limit 1`, [id]),
+    casinoFinance(services.db, id, null),
   ]);
 
   const source = toStr(registrationEvent?.source, '').toLowerCase();
@@ -115,6 +117,7 @@ export const GET = withErrorHandling('admin.mobile.user_overview', async (
         BigInt(plain(row.settled_stake_minor)) - BigInt(plain(row.settled_payout_minor))
       ).toString(),
     })),
+    casino,
     bonuses: bonuses.map((row) => {
       const expiresAt = iso(row.expires_at);
       const expired = expiresAt !== null && Date.parse(expiresAt) <= now;
