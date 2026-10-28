@@ -48,12 +48,12 @@ private val Red = Color(0xFFFF6F80)
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        window.statusBarColor = android.graphics.Color.rgb(7, 10, 13)
-        window.navigationBarColor = android.graphics.Color.rgb(18, 25, 31)
+        window.statusBarColor = android.graphics.Color.rgb(8, 13, 22)
+        window.navigationBarColor = android.graphics.Color.rgb(17, 27, 43)
         setContent {
             MaterialTheme(colorScheme = darkColorScheme(primary = Accent, background = Ink, surface = Panel)) {
                 CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
-                    CFCoinProApp()
+                    CFCoinV3App()
                 }
             }
         }

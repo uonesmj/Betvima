@@ -31,11 +31,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import java.util.Locale
 
-private val tradingBG = Color(0xFF090A0F)
-private val tradingPanel = Color(0xFF151921)
-private val tradingSurface = Color(0xFF101319)
-private val tradingBorder = Color(0xFF292F3A)
-private val tradingRed = Color(0xFFFF3E55)
+private val tradingBG = Color(0xFF080D16)
+private val tradingPanel = Color(0xFF111B2B)
+private val tradingSurface = Color(0xFF101A2A)
+private val tradingBorder = Color(0xFF26394F)
+private val tradingRed = Color(0xFFED5A72)
+private val tradingBlue = Color(0xFF2385FF)
 private val tradingGreen = Color(0xFF20C99A)
 private val tradingWhite = Color(0xFFF6F7FA)
 private val tradingGray = Color(0xFF929BAA)
@@ -180,10 +181,10 @@ fun ProTrade(
 private fun TradeChip(name: String, active: Boolean, click: () -> Unit) {
     Box(
         Modifier.clip(RoundedCornerShape(10.dp))
-            .background(if (active) tradingRed.copy(alpha = 0.17f) else tradingPanel)
-            .border(1.dp, if (active) tradingRed else tradingBorder, RoundedCornerShape(10.dp))
+            .background(if (active) tradingBlue.copy(alpha = 0.17f) else tradingPanel)
+            .border(1.dp, if (active) tradingBlue else tradingBorder, RoundedCornerShape(10.dp))
             .clickable { click() }.padding(horizontal = 12.dp, vertical = 10.dp)
-    ) { Text(name, color = if (active) tradingRed else tradingGray, fontSize = 12.sp, fontWeight = if (active) FontWeight.Bold else FontWeight.Normal) }
+    ) { Text(name, color = if (active) tradingBlue else tradingGray, fontSize = 12.sp, fontWeight = if (active) FontWeight.Bold else FontWeight.Normal) }
 }
 
 @Composable
@@ -207,7 +208,7 @@ private fun TradeNumberInput(name: String, value: String, update: (String) -> Un
         shape = RoundedCornerShape(12.dp),
         keyboardOptions = KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Decimal),
         colors = OutlinedTextFieldDefaults.colors(
-            focusedBorderColor = tradingRed, unfocusedBorderColor = tradingBorder,
+            focusedBorderColor = tradingBlue, unfocusedBorderColor = tradingBorder,
             focusedTextColor = tradingWhite, unfocusedTextColor = tradingWhite
         )
     )
@@ -306,13 +307,13 @@ fun ProWallet(modifier: Modifier, hidden: Boolean, openAction: (String) -> Unit,
         }
         Box(
             Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp))
-                .background(Brush.linearGradient(listOf(Color(0xFF702039), Color(0xFF231A26), tradingPanel)))
+                .background(Brush.linearGradient(listOf(Color(0xFF133B7A), Color(0xFF102949), tradingPanel)))
                 .padding(19.dp)
         ) {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text("مجموع دارایی (USDT)", color = Color(0xFFE4C5D0), fontSize = 12.sp)
+                Text("مجموع دارایی (USDT)", color = Color(0xFFCAE4FF), fontSize = 12.sp)
                 Text(if (hidden) "••••••" else "0.00", color = tradingWhite, fontWeight = FontWeight.Black, fontSize = 29.sp)
-                Text("سود / زیان روزانه: 0.00 (0.00%)", color = Color(0xFFE1BBC9), fontSize = 11.sp)
+                Text("سود / زیان روزانه: 0.00 (0.00%)", color = Color(0xFFB9D9F9), fontSize = 11.sp)
             }
         }
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(7.dp)) {

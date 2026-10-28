@@ -35,11 +35,11 @@ import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.launch
 import java.util.Locale
 
-private val bg = Color(0xFF090A0F)
-private val panel = Color(0xFF151921)
-private val surface = Color(0xFF101319)
-private val line = Color(0xFF292F3A)
-private val red = Color(0xFFFF3E55)
+private val bg = Color(0xFF080D16)
+private val panel = Color(0xFF111B2B)
+private val surface = Color(0xFF101A2A)
+private val line = Color(0xFF26394F)
+private val red = Color(0xFF2385FF)
 private val green = Color(0xFF20C99A)
 private val white = Color(0xFFF6F7FA)
 private val gray = Color(0xFF929BAA)
@@ -152,7 +152,7 @@ fun CFCoinProApp() {
                                     Modifier.fillMaxWidth().clip(RoundedCornerShape(11.dp)).clickable { symbol = coin.ticker; sheet = "" }
                                         .padding(9.dp), verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    CoinDot(coin.ticker)
+                                    CryptoLogo(coin.ticker)
                                     Spacer(Modifier.width(12.dp))
                                     Text(coin.ticker + "/USDT", color = white, fontWeight = FontWeight.Bold)
                                     Spacer(Modifier.weight(1f))
@@ -187,7 +187,7 @@ private fun SmallAction(icon: androidx.compose.ui.graphics.vector.ImageVector, l
 }
 
 @Composable
-private fun ProMarkets(
+fun ProMarkets(
     modifier: Modifier,
     home: Boolean,
     filter: MarketFilter,
@@ -216,17 +216,17 @@ private fun ProMarkets(
                     Spacer(Modifier.height(14.dp))
                     Box(
                         Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp))
-                            .background(Brush.linearGradient(listOf(Color(0xFF702039), Color(0xFF291A27), panel)))
-                            .border(1.dp, Color(0xFF85364B), RoundedCornerShape(20.dp))
+                            .background(Brush.linearGradient(listOf(Color(0xFF133B7A), Color(0xFF102949), panel)))
+                            .border(1.dp, Color(0xFF315A94), RoundedCornerShape(20.dp))
                             .padding(19.dp)
                     ) {
                         Column(verticalArrangement = Arrangement.spacedBy(7.dp)) {
-                            Text("ارزش کل دارایی (USDT)", color = Color(0xFFE4C7D0), fontSize = 12.sp)
+                            Text("ارزش کل دارایی (USDT)", color = Color(0xFFCAE4FF), fontSize = 12.sp)
                             Text("0.00", color = white, fontSize = 30.sp, fontWeight = FontWeight.Black)
-                            Text("سود و زیان امروز  +0.00 (0.00%)", color = Color(0xFFD3B4C0), fontSize = 11.sp)
+                            Text("سود و زیان امروز  +0.00 (0.00%)", color = Color(0xFFB9D9F9), fontSize = 11.sp)
                             Spacer(Modifier.height(10.dp))
                             Row(verticalAlignment = Alignment.CenterVertically) {
-                                Text("حساب آزمایشی", color = Color(0xFFEAC8D1), fontSize = 11.sp)
+                                Text("حساب آزمایشی", color = Color(0xFFCBE7FF), fontSize = 11.sp)
                                 Spacer(Modifier.weight(1f))
                                 Box(
                                     Modifier.background(red, RoundedCornerShape(10.dp))
@@ -237,6 +237,13 @@ private fun ProMarkets(
                         }
                     }
                 }
+            }
+            item {
+                PromoSlider(
+                    toMarket = { onAction("بازار") },
+                    toTrade = { onAction("اسپات") },
+                    toWallet = { onAction("دارایی") }
+                )
             }
             item {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(7.dp)) {
@@ -263,12 +270,12 @@ private fun ProMarkets(
                         ) {
                             Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
-                                    CoinDot(coin.ticker)
+                                    CryptoLogo(coin.ticker)
                                     Spacer(Modifier.width(6.dp))
                                     Text(coin.ticker + "/USDT", color = white, fontSize = 12.sp, fontWeight = FontWeight.Bold)
                                 }
                                 Text(coin.priceUsdt, color = white, fontWeight = FontWeight.Bold, fontSize = 19.sp)
-                                Text(percent(coin.change24h), color = if (coin.change24h >= 0) green else red, fontSize = 12.sp)
+                                Text(percent(coin.change24h), color = if (coin.change24h >= 0) green else Color(0xFFED5A72), fontSize = 12.sp)
                                 SparkChart(coin.sparkline, coin.change24h >= 0, Modifier.fillMaxWidth().height(27.dp))
                             }
                         }
@@ -305,7 +312,7 @@ private fun ProMarkets(
                     Modifier.fillMaxWidth().clickable { onTrade(coin.ticker) }.padding(horizontal = 9.dp, vertical = 12.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    CoinDot(coin.ticker)
+                    CryptoLogo(coin.ticker)
                     Spacer(Modifier.width(9.dp))
                     Column(modifier = Modifier.widthIn(min = 63.dp)) {
                         Text(coin.ticker + "/USDT", color = white, fontWeight = FontWeight.Bold, fontSize = 12.sp)
@@ -316,7 +323,7 @@ private fun ProMarkets(
                     Spacer(Modifier.width(7.dp))
                     Column(horizontalAlignment = Alignment.End) {
                         Text(coin.priceUsdt, color = white, fontWeight = FontWeight.SemiBold, fontSize = 12.sp)
-                        Text(percent(coin.change24h), color = if (coin.change24h >= 0) green else red, fontSize = 11.sp)
+                        Text(percent(coin.change24h), color = if (coin.change24h >= 0) green else Color(0xFFED5A72), fontSize = 11.sp)
                     }
                     IconButton(onClick = { onStar(coin.ticker) }, modifier = Modifier.size(31.dp)) {
                         Icon(
@@ -328,7 +335,7 @@ private fun ProMarkets(
             }
         }
         if (coins.isEmpty()) item { Text("ارزی پیدا نشد.", color = gray, modifier = Modifier.padding(25.dp)) }
-        item { DemoFootnote() }
+        item { CFCoinLegalFooter() }
     }
 }
 
