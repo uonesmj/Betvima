@@ -28,3 +28,12 @@ export function convertAdminAmountToUsd(
 export function addAdminUsdAmounts(a: bigint | null, b: bigint | null): bigint | null {
   return a === null || b === null ? null : a + b;
 }
+
+export function sumAdminUsdAmounts(
+  amounts: readonly { amountMinor: bigint; currency: string }[],
+): bigint | null {
+  return amounts.reduce<bigint | null>(
+    (sum, entry) => addAdminUsdAmounts(sum, convertAdminAmountToUsd(entry.amountMinor, entry.currency)),
+    0n,
+  );
+}
