@@ -265,7 +265,14 @@ export class PostgresSupportRepository implements SupportRepository {
     const offsetParam = add(offset);
     const rows = await this.db.query<Row>(
       `select t.*, p.email as user_email, p.display_name as user_display_name,
-              0::int as unread_messages,
+              (select count(*)::int
+                 from public.ticket_messages pending
+                where pending.ticket_id=t.id and pending.sender_role='user'
+                  and pending.created_at > coalesce(
+                    (select max(answer.created_at) from public.ticket_messages answer
+                      where answer.ticket_id=t.id and answer.sender_role='support'),
+                    t.created_at - interval '1 second')
+              ) as unread_messages,
               max(tm.created_at) as last_message_at,
               count(*) over() as total_count
          from public.tickets t
@@ -284,7 +291,14 @@ export class PostgresSupportRepository implements SupportRepository {
   async getForAdmin(ticketId: UUID): Promise<SupportTicketSummary | null> {
     const rows = await this.db.query<Row>(
       `select t.*, p.email as user_email, p.display_name as user_display_name,
-              0::int as unread_messages,
+              (select count(*)::int
+                 from public.ticket_messages pending
+                where pending.ticket_id=t.id and pending.sender_role='user'
+                  and pending.created_at > coalesce(
+                    (select max(answer.created_at) from public.ticket_messages answer
+                      where answer.ticket_id=t.id and answer.sender_role='support'),
+                    t.created_at - interval '1 second')
+              ) as unread_messages,
               max(tm.created_at) as last_message_at
          from public.tickets t
          left join nova.profiles p on p.id = t.user_id
