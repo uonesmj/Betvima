@@ -32,12 +32,12 @@ import com.betvima.app.data.*
 import java.time.Instant
 
 private val walletBlue = Color(0xFF087FF5)
-private val walletGreen = Color(0xFF00D47A)
-private val walletInk = Color(0xFFF3F4F7)
-private val walletMute = Color(0xFFA5A8B2)
-private val walletEdge = Color(0xFF39393D)
-private val walletCanvas = Palette.headerDark
-private val walletPanel = Color(0xFF222224)
+private val walletGreen: Color get() = ThemeTokens.accent
+private val walletInk: Color get() = ThemeTokens.ink
+private val walletMute: Color get() = ThemeTokens.muted
+private val walletEdge: Color get() = ThemeTokens.outline
+private val walletCanvas: Color get() = ThemeTokens.canvas
+private val walletPanel: Color get() = ThemeTokens.panel
 
 // Ticket outline follows the two inward cutouts on both sides, including its
 // bright-blue border. No overlay touches any wallet or transaction data.
@@ -260,7 +260,7 @@ private fun WalletPaymentRow(
     ) {
         Box(Modifier.fillMaxWidth()
             .background(Brush.linearGradient(listOf(
-                Color(0xFF23262B), Color(0xFF1F2227), Color(0xFF24272B)
+                walletPanel, walletPanel, ThemeTokens.elevated
             )))) {
             Box(Modifier.align(Alignment.TopEnd).offset(x = 44.dp, y = (-57).dp)
                 .size(133.dp).clip(CircleShape)
@@ -292,7 +292,7 @@ private fun WalletPaymentRow(
                     verticalArrangement = Arrangement.spacedBy(5.dp)) {
                     Text((if (incoming) "+" else "−") +
                         money(payment.amountMinor, payment.currency),
-                        color = if (incoming) Color(0xFF54D7A4) else Color(0xFFE1E8F0),
+                        color = if (incoming) ThemeTokens.accent else walletInk,
                         fontSize = 12.sp, fontWeight = FontWeight.Black,
                         maxLines = 1)
                     Text(walletStatusText(payment.status, lang),
@@ -599,7 +599,7 @@ private fun WalletHistorySheet(
                 Surface(
                     modifier = Modifier.clickable { filter = choice },
                     shape = RoundedCornerShape(10.dp),
-                    color = if (filter == choice) Color(0xFF163B63) else walletPanel,
+                    color = if (filter == choice) Palette.blue else walletPanel,
                     border = BorderStroke(1.dp,
                         if (filter == choice) walletBlue else walletEdge)
                 ) {
@@ -608,7 +608,7 @@ private fun WalletHistorySheet(
                         "debit" -> tr(lang, "Outgoing", "خروجی")
                         else -> tr(lang, "All", "همه")
                     }, modifier = Modifier.padding(horizontal = 11.dp, vertical = 9.dp),
-                        color = Color.White, fontSize = 11.sp)
+                        color = if (filter == choice) Color.White else walletInk, fontSize = 11.sp)
                 }
             }
         }

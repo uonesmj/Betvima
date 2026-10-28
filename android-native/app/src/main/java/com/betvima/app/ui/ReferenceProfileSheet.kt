@@ -40,11 +40,11 @@ internal fun profileQuickDestinations(): List<ProfileQuickDestination> =
     ProfileQuickDestination.entries.toList()
 
 private object ProfileStyle161 {
-    val canvas=Color.Black
-    val surface=Color(0xFF212124)
-    val border=Color(0xFF36383A)
-    val text=Color(0xFFF7F8F8)
-    val muted=Color(0xFFA3A9AE)
+    val canvas: Color get() = ThemeTokens.canvas
+    val surface: Color get() = ThemeTokens.panel
+    val border: Color get() = ThemeTokens.outline
+    val text: Color get() = ThemeTokens.ink
+    val muted: Color get() = ThemeTokens.muted
     val green=Color(0xFF00D47A)
     val red=Color(0xFFF18C9A)
 }
@@ -291,8 +291,8 @@ private fun ProfileQuickTile161(
     Row(
         modifier
             .clip(RoundedCornerShape(24.dp))
-            .background(Color(0xFF19191C))
-            .border(1.dp,Color(0xFF2C2D30),RoundedCornerShape(24.dp))
+            .background(ThemeTokens.panel)
+            .border(1.dp,ThemeTokens.outline,RoundedCornerShape(24.dp))
             .clickable(onClick=onClick)
             .padding(horizontal=14.dp,vertical=5.dp),
         verticalAlignment=Alignment.CenterVertically
@@ -300,10 +300,10 @@ private fun ProfileQuickTile161(
         Box(
             Modifier.size(if(compact)35.dp else 42.dp)
                 .clip(RoundedCornerShape(13.dp))
-                .background(Color(0xFF29292C)),
+                .background(ThemeTokens.elevated),
             contentAlignment=Alignment.Center
         ) {
-            Icon(icon,null,tint=Color(0xFFE8E9EA),
+            Icon(icon,null,tint=ThemeTokens.ink,
                 modifier=Modifier.size(if(compact)19.dp else 22.dp))
         }
         Spacer(Modifier.width(13.dp))

@@ -35,9 +35,9 @@ import com.betvima.app.data.odds
 import kotlinx.coroutines.delay
 
 // Match the casino/header canvas; ticket financial surfaces retain their own colors.
-private val myBetsCanvas = Palette.headerDark
-private val myBetsClosedPanel = Color(0xFF222224)
-private val myBetsClosedOutline = Color(0xFF39393D)
+private val myBetsCanvas: Color get() = ThemeTokens.canvas
+private val myBetsClosedPanel: Color get() = ThemeTokens.panel
+private val myBetsClosedOutline: Color get() = ThemeTokens.outline
 
 /**
  * Server-owned history, not a local filter over the initial 30 records.
@@ -223,14 +223,14 @@ private fun HistoryChoiceChip(
     Surface(
         modifier = modifier.height(44.dp).clickable(onClick = onClick),
         shape = RoundedCornerShape(12.dp),
-        color = if (selected) Palette.blue else Color(0xFF29292C),
+        color = if (selected) Palette.blue else ThemeTokens.elevated,
         border = BorderStroke(1.dp, if (selected) Color(0xFF55AEFF)
-            else Color(0xFF39393E))
+            else ThemeTokens.outline)
     ) {
         Box(contentAlignment = Alignment.Center, modifier = Modifier.padding(horizontal = 4.dp)) {
             Text(label, fontSize = 12.sp, fontWeight = if (selected) FontWeight.Black
                 else FontWeight.Medium, color = if (selected) Color.White
-                else Color(0xFFDDDEE4), maxLines = 1,
+                else ThemeTokens.ink, maxLines = 1,
                 overflow = TextOverflow.Ellipsis)
         }
     }
@@ -257,7 +257,7 @@ private fun PremiumHistoryFilterSheet(
     ModalBottomSheet(
         onDismissRequest = onClose,
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
-        containerColor = Color(0xFF141414),
+        containerColor = ThemeTokens.canvas,
         scrimColor = Color.Black.copy(alpha = .70f),
         shape = RoundedCornerShape(topStart = 26.dp, topEnd = 26.dp),
         dragHandle = {
@@ -277,22 +277,22 @@ private fun PremiumHistoryFilterSheet(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
                     Text(tr(lang, "Filters", "فیلترها"),
-                        color = Color.White, fontSize = 21.sp,
+                        color = ThemeTokens.ink, fontSize = 21.sp,
                         fontWeight = FontWeight.Black)
                     Spacer(Modifier.height(3.dp))
                     Text(tr(lang, "Customize your bet history",
                         "تاریخچه شرط‌ها را مطابق نیازتان تنظیم کنید"),
-                        color = Color(0xFFA1A2AA), fontSize = 11.sp)
+                        color = ThemeTokens.muted, fontSize = 11.sp)
                 }
                 IconButton(onClick = onClose) {
                     Icon(Icons.Default.Close, tr(lang, "Close", "بستن"),
-                        tint = Color(0xFFB8B9C1))
+                        tint = ThemeTokens.muted)
                 }
             }
-            HorizontalDivider(color = Color(0xFF353538), thickness = 1.dp)
+            HorizontalDivider(color = ThemeTokens.outline, thickness = 1.dp)
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(tr(lang, "Bet status", "وضعیت شرط"),
-                    color = Color.White, fontSize = 13.sp,
+                    color = ThemeTokens.ink, fontSize = 13.sp,
                     fontWeight = FontWeight.SemiBold)
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     HistoryChoiceChip(tr(lang, "All", "همه"),
@@ -311,7 +311,7 @@ private fun PremiumHistoryFilterSheet(
             }
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(tr(lang, "Bet type", "نوع شرط"),
-                    color = Color.White, fontSize = 13.sp,
+                    color = ThemeTokens.ink, fontSize = 13.sp,
                     fontWeight = FontWeight.SemiBold)
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     HistoryChoiceChip(tr(lang, "All", "همه"),
@@ -330,7 +330,7 @@ private fun PremiumHistoryFilterSheet(
             }
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(tr(lang, "Time period", "بازه زمانی"),
-                    color = Color.White, fontSize = 13.sp,
+                    color = ThemeTokens.ink, fontSize = 13.sp,
                     fontWeight = FontWeight.SemiBold)
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     HistoryChoiceChip(tr(lang, "All dates", "همه تاریخ‌ها"),
@@ -357,10 +357,10 @@ private fun PremiumHistoryFilterSheet(
                     },
                     modifier = Modifier.weight(1f).height(47.dp),
                     shape = RoundedCornerShape(13.dp),
-                    border = BorderStroke(1.dp, Color(0xFF46464B)),
+                    border = BorderStroke(1.dp, ThemeTokens.outline),
                     colors = ButtonDefaults.outlinedButtonColors(
-                        containerColor = Color(0xFF29292C),
-                        contentColor = Color.White)
+                        containerColor = ThemeTokens.elevated,
+                        contentColor = ThemeTokens.ink)
                 ) {
                     Text(tr(lang, "Reset", "بازنشانی"),
                         fontSize = 12.sp, fontWeight = FontWeight.Bold)
@@ -452,11 +452,11 @@ private fun PremiumTicket(
                 Spacer(Modifier.width(8.dp))
                 Column(Modifier.weight(1f)) {
                     Text(title, fontWeight = FontWeight.Black,
-                        fontSize = 14.sp, color = Color.White,
+                        fontSize = 14.sp, color = if (expanded) Color.White else ThemeTokens.ink,
                         maxLines = 1, overflow = TextOverflow.Ellipsis)
                     Text("ID " + bet.id.take(8).uppercase() +
                             " · " + bet.placedAt.take(16).replace("T", " "),
-                        fontSize = 10.sp, color = Color.White.copy(alpha = .72f),
+                        fontSize = 10.sp, color = if (expanded) Color.White.copy(alpha = .72f) else ThemeTokens.muted,
                         maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
                 Spacer(Modifier.width(6.dp))

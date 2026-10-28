@@ -582,10 +582,10 @@ fun LockedFeature(
     icon: androidx.compose.ui.graphics.vector.ImageVector = Icons.Default.Lock,
     onLogin: () -> Unit
 ) {
-    val panel = Color(0xFF222224)
-    val edge = Color(0xFF39393D)
-    val ink = Color(0xFFF5F6F8)
-    val secondary = Color(0xFFA8ABB5)
+    val panel = ThemeTokens.panel
+    val edge = ThemeTokens.outline
+    val ink = ThemeTokens.ink
+    val secondary = ThemeTokens.muted
     val corner = RoundedCornerShape(21.dp)
 
     Surface(
