@@ -576,42 +576,208 @@ public final class MainActivity extends Activity {
   }
  }
  private void userDetail(JSONObject item){
-  LinearLayout c=panel(body);
-  info(c,"آدرس ایمیل",pick(item,"email"));info(c,"شناسه کاربر",pick(item,"publicId"));
-  info(c,"وضعیت",pick(item,"status"));info(c,"موجودی USD",money(item,"usdBalanceMinor","usdBalanceMinor"));
-  info(c,"مجموع شرط",money(item,"totalStakeMinor","totalStakeMinor"));
-  info(c,"سود / زیان کاربر",money(item,"netResultMinor","netResultMinor"));
-  addAction(c,"تغییر وضعیت کاربر",false,()->userStatus(item));
-  requestInto("/api/v1/admin/users/"+enc(selectedId),json->{
-   JSONObject summary=json.optJSONObject("summary");if(summary!=null){
-    addTitle(body,"خلاصه حساب");
-    LinearLayout d=panel(body);info(d,"تعداد شرط باز",pick(summary,"openBets"));
-    info(d,"ارز حساب",pick(summary,"preferredCurrency","currency"));
+  String id=item.optString("id","");
+  if(id.isEmpty()){showMessage("شناسه کاربر موجود نیست");return;}
+  centerText(body,"در حال دریافت جزئیات واقعی کاربر ...");
+  requestInto("/api/v1/admin/mobile/user-overview/"+enc(id),json->{
+   if(!id.equals(selectedId)||!page.equals("users"))return;
+   body.removeAllViews();
+   JSONObject u=json.optJSONObject("user");if(u==null){centerText(body,"اطلاعات کاربر ناقص است");return;}
+   addTitle(body,"مشخصات کاربر");
+   LinearLayout identity=panel(body);
+   info(identity,"ایمیل",pick(u,"email"));
+   info(identity,"شناسه عددی",pick(u,"numericId"));
+   info(identity,"شناسه عمومی",pick(u,"publicId"));
+   info(identity,"نام کاربری",pick(u,"username"));
+   info(identity,"تاریخ ثبت‌نام",date(pick(u,"registeredAt")));
+   String source=pick(u,"registrationSource");
+   info(identity,"محل ثبت‌نام",source.equals("app")?"اپلیکیشن":source.equals("web")?"وب‌سایت":"نامشخص (ثبت تاریخی)");
+   info(identity,"وضعیت حساب",pick(u,"status"));
+   info(identity,"آخرین ورود",date(pick(u,"lastLoginAt")));
+   info(identity,"آخرین فعالیت",date(pick(u,"lastSeenAt")));
+   info(identity,"نشست اخیر",u.optBoolean("recentlyActive")?"فعال در ۵ دقیقه اخیر":"فعالیت اخیر ثبت نشده");
+   info(identity,"وضعیت تایید کازینو",pick(u,"kycStatus"));
+
+   JSONArray wallets=json.optJSONArray("balances");
+   addTitle(body,"موجودی فعلی کیف پول");
+   if(wallets==null||wallets.length()==0)centerText(body,"کیف پولی ثبت نشده");
+   if(wallets!=null)for(int i=0;i<wallets.length();i++){
+    JSONObject w=wallets.optJSONObject(i);if(w==null)continue;
+    LinearLayout p=panel(body);String currency=pick(w,"currency");
+    info(p,"موجودی "+currency,amountMinor(w.optString("balanceMinor","0"),currency));
+    info(p,"قفل‌شده",amountMinor(w.optString("lockedMinor","0"),currency));
+    info(p,"وضعیت",w.optBoolean("frozen")?"مسدود":"فعال");
    }
-   JSONObject payments=json.optJSONObject("payments");
-   if(payments!=null){
-    JSONArray records=payments.optJSONArray("items");
-    addTitle(body,"آخرین واریز و برداشت");
-    if(records!=null)for(int i=0;i<records.length();i++){
-     JSONObject record=records.optJSONObject(i);if(record==null)continue;
-     LinearLayout p=panel(body);
-     info(p,"نوع",pick(record,"direction","type"));
-     info(p,"مبلغ",amountMinor(record.optString("amountMinor","0"),pick(record,"currency")));
-     info(p,"زمان",date(pick(record,"createdAt","initiatedAt")));
+
+   addTitle(body,"جمع واریز و برداشت‌های موفق");
+   JSONArray pays=json.optJSONArray("paymentTotals");
+   if(pays==null||pays.length()==0)centerText(body,"تراکنش تکمیل‌شده ندارد");
+   if(pays!=null)for(int i=0;i<pays.length();i++){
+    JSONObject p=pays.optJSONObject(i);if(p==null)continue;
+    LinearLayout c=panel(body);
+    info(c,p.optString("direction").equals("deposit")?"جمع شارژ":"جمع برداشت",
+      amountMinor(p.optString("amountMinor","0"),pick(p,"currency")));
+    info(c,"تعداد تراکنش‌های موفق",pick(p,"count"));
+   }
+
+   addTitle(body,"شرط‌ها، سود و زیان به تفکیک ارز");
+   JSONArray bets=json.optJSONArray("betting");
+   if(bets==null||bets.length()==0)centerText(body,"هنوز شرطی ثبت نشده");
+   if(bets!=null)for(int i=0;i<bets.length();i++){
+    JSONObject b=bets.optJSONObject(i);if(b==null)continue;
+    LinearLayout c=panel(body);String currency=pick(b,"currency");
+    info(c,"ارز",currency);
+    info(c,"شرط‌های باز",pick(b,"openCount"));
+    info(c,"مبلغ شرط باز",amountMinor(b.optString("openStakeMinor","0"),currency));
+    info(c,"شرط‌های بسته‌شده",pick(b,"closedCount"));
+    info(c,"مبلغ شرط‌های بسته",amountMinor(b.optString("closedStakeMinor","0"),currency));
+    info(c,"سود / زیان کاربر (تسویه‌شده)",amountMinor(b.optString("customerNetMinor","0"),currency));
+    info(c,"سود / زیان سایت (تسویه‌شده)",amountMinor(b.optString("siteNetMinor","0"),currency));
+   }
+   LinearLayout betActions=panel(body);
+   addAction(betActions,"نمایش فهرست شرط‌های باز",false,()->showUserBets(id,true));
+   addAction(betActions,"نمایش فهرست شرط‌های بسته",false,()->showUserBets(id,false));
+
+   addTitle(body,"بونوس‌های فعال و گذشته");
+   JSONArray bonuses=json.optJSONArray("bonuses");
+   if(bonuses==null||bonuses.length()==0)centerText(body,"بونوسی ثبت نشده");
+   if(bonuses!=null)for(boolean active:new boolean[]{true,false}){
+    addTitle(body,active?"بونوس‌های فعال":"بونوس‌های قبلی");
+    int shown=0;
+    for(int i=0;i<bonuses.length();i++){
+     JSONObject b=bonuses.optJSONObject(i);if(b==null||b.optBoolean("active")!=active)continue;
+     LinearLayout c=panel(body);shown++;
+     info(c,"عنوان",pick(b,"title"));
+     info(c,"وضعیت",pick(b,"status"));
+     info(c,"مبلغ",amountMinor(b.optString("amountMinor","0"),pick(b,"currency")));
+     info(c,"باقی‌مانده",amountMinor(b.optString("remainingMinor","0"),pick(b,"currency")));
+     info(c,"تاریخ اعطا",date(pick(b,"grantedAt")));
+     info(c,"انقضا",date(pick(b,"expiresAt")));
     }
+    if(shown==0)centerText(body,"موردی موجود نیست");
+   }
+
+   addTitle(body,"اقدامات مدیریتی");
+   LinearLayout actions=panel(body);
+   addAction(actions,u.optString("status").equals("active")?"مسدودسازی حساب":"فعال‌کردن حساب",false,()->userStatus(u));
+   addAction(actions,"تأیید کازینو (همان صفحه موجود سایت)",false,this::openCasinoApproval);
+   addAction(actions,"تغییر رمز عبور کاربر",false,()->resetUserPassword(id));
+   addAction(actions,"ارسال اعلان فقط به این کاربر",true,()->sendUserNotice(id));
+   addAction(actions,"درخواست افزایش یا کاهش موجودی",false,()->adjustUserWallet(id,wallets));
+   addAction(actions,"بازگشت به فهرست کاربران",false,()->showPage("users"));
+  });
+ }
+ private void openCasinoApproval(){
+  // Do not duplicate, weaken, or alter the existing web KYC approval flow.
+  new AlertDialog.Builder(this).setTitle("تأیید کازینو")
+   .setMessage("همان صفحه تأیید هویت موجود در پنل وب باز می‌شود. تأیید مدارک و سن فقط در همان صفحه انجام می‌شود.")
+   .setNegativeButton("انصراف",null).setPositiveButton("بازکردن صفحه رسمی",(d,w)->{
+     Intent intent=new Intent(Intent.ACTION_VIEW,Uri.parse(api.origin()+"/admin/casino-approvals"));
+     startActivity(intent);
+   }).show();
+ }
+ private void showUserBets(String id,boolean open){
+  String statuses=open?"accepted,partially_settled":"settled,void,cancelled,cashed_out,rejected,reversed";
+  requestInto("/api/v1/admin/bets?page=1&pageSize=30&userId="+enc(id)+"&status="+enc(statuses),json->{
+   if(!page.equals("users")||!selectedId.equals(id))return;
+   addTitle(body,open?"آخرین شرط‌های باز":"آخرین شرط‌های بسته‌شده");
+   JSONArray items=json.optJSONArray("items");
+   if(items==null||items.length()==0){centerText(body,"شرطی در این وضعیت ثبت نشده");return;}
+   for(int i=0;i<items.length();i++){
+    JSONObject b=items.optJSONObject(i);if(b==null)continue;
+    LinearLayout c=panel(body);
+    info(c,"شماره شرط",pick(b,"publicId","id"));
+    info(c,"وضعیت",pick(b,"status"));
+    info(c,"تاریخ",date(pick(b,"placedAt")));
+    String currency=pick(b,"currency");
+    info(c,"مبلغ شرط",amountMinor(b.optString("stakeMinor","0"),currency));
+    info(c,"پرداخت تسویه",b.isNull("settledPayoutMinor")?"—":amountMinor(b.optString("settledPayoutMinor","0"),currency));
    }
   });
-  requestInto("/api/v1/admin/mobile/user-finance/"+enc(selectedId),json->{
-   addTitle(body,"جمع واریز و برداشت‌های موفق کاربر");
-   JSONArray amounts=json.optJSONArray("totals");
-   if(amounts==null||amounts.length()==0){centerText(body,"تراکنش موفقی در این دسته ثبت نشده است");return;}
-   for(int i=0;i<amounts.length();i++){
-    JSONObject a=amounts.optJSONObject(i);if(a==null)continue;
-    LinearLayout t=panel(body);
-    info(t,pick(a,"type")+" · "+pick(a,"currency"),amountMinor(a.optString("amountMinor","0"),pick(a,"currency")));
-    info(t,"تعداد",pick(a,"count"));
+ }
+ private void resetUserPassword(String id){
+  LinearLayout form=col();pad(form,12);
+  EditText pass=input(form,"رمز جدید (حداقل ۸ کاراکتر)",InputType.TYPE_CLASS_TEXT|InputType.TYPE_TEXT_VARIATION_PASSWORD);
+  EditText confirm=input(form,"تکرار رمز جدید",InputType.TYPE_CLASS_TEXT|InputType.TYPE_TEXT_VARIATION_PASSWORD);
+  EditText reason=input(form,"دلیل تغییر (حداقل ۸ کاراکتر)",InputType.TYPE_CLASS_TEXT);
+  AlertDialog dialog=new AlertDialog.Builder(this).setTitle("تغییر رمز حساب")
+    .setView(form).setNegativeButton("انصراف",null).setPositiveButton("تغییر رمز",null).create();
+  dialog.setOnShowListener(d->dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v->{
+   String p=pass.getText().toString(),c=confirm.getText().toString(),why=reason.getText().toString().trim();
+   if(p.length()<8||p.length()>128||!p.equals(c)||why.length()<8){showMessage("رمزها باید برابر و حداقل ۸ حرف باشند و دلیل تغییر معتبر باشد");return;}
+   dialog.getButton(AlertDialog.BUTTON_POSITIVE).setEnabled(false);
+   api.perform(()->api.post("/api/v1/admin/users/"+enc(id)+"/password",
+    new JSONObject().put("password",p).put("reason",why)),
+    ok->{pass.setText("");confirm.setText("");dialog.dismiss();showMessage("رمز با موفقیت تغییر کرد. عملیات ثبت حسابرسی شد.");},
+    err->{dialog.getButton(AlertDialog.BUTTON_POSITIVE).setEnabled(true);showMessage(err);});
+  }));
+  dialog.show();
+ }
+ private void sendUserNotice(String id){
+  LinearLayout form=col();pad(form,12);
+  EditText title=input(form,"عنوان اعلان",InputType.TYPE_CLASS_TEXT);
+  EditText message=input(form,"متن اعلان فقط برای این کاربر",InputType.TYPE_CLASS_TEXT|InputType.TYPE_TEXT_FLAG_MULTI_LINE);
+  message.setSingleLine(false);message.setMinLines(3);
+  AlertDialog dialog=new AlertDialog.Builder(this).setTitle("اعلان شخصی").setView(form)
+   .setNegativeButton("انصراف",null).setPositiveButton("ارسال",null).create();
+  dialog.setOnShowListener(d->dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v->{
+   String t=title.getText().toString().trim(),b=message.getText().toString().trim();
+   if(t.isEmpty()||t.length()>100||b.isEmpty()||b.length()>500){showMessage("عنوان ۱ تا ۱۰۰ و متن ۱ تا ۵۰۰ کاراکتر باشد");return;}
+   dialog.getButton(AlertDialog.BUTTON_POSITIVE).setEnabled(false);
+   api.perform(()->api.post("/api/v1/admin/notifications",
+    new JSONObject().put("audience","personal").put("targetUserId",id)
+      .put("title",t).put("body",b).put("mode","send").put("locale","fa")),
+    ok->{dialog.dismiss();showMessage("اعلان فقط به صندوق پیام همین کاربر ارسال شد.");},
+    err->{dialog.getButton(AlertDialog.BUTTON_POSITIVE).setEnabled(true);showMessage(err);});
+  }));
+  dialog.show();
+ }
+ private void adjustUserWallet(String id,JSONArray wallets){
+  if(wallets==null||wallets.length()==0){showMessage("کیف پولی برای این کاربر ثبت نشده است.");return;}
+  java.util.ArrayList<String> currencies=new java.util.ArrayList<>();
+  for(int i=0;i<wallets.length();i++){
+   JSONObject w=wallets.optJSONObject(i);if(w!=null){
+    String c=w.optString("currency","");
+    if(java.util.Arrays.asList("USD","IRT","IRR","EUR","GBP").contains(c)&&!currencies.contains(c))currencies.add(c);
    }
+  }
+  if(currencies.isEmpty()){showMessage("ارز معتبر برای تعدیل موجودی موجود نیست.");return;}
+  LinearLayout form=col();pad(form,12);
+  form.addView(label("انتخاب ارز کیف پول موجود:"));
+  Spinner currency=new Spinner(this);
+  ArrayAdapter<String> adapter=new ArrayAdapter<>(this,android.R.layout.simple_spinner_dropdown_item,currencies);
+  currency.setAdapter(adapter);form.addView(currency);
+  EditText amount=input(form,"مبلغ به واحد اصلی ارز (مثلاً 10.50)",InputType.TYPE_CLASS_NUMBER|InputType.TYPE_NUMBER_FLAG_DECIMAL);
+  EditText reason=input(form,"دلیل درخواست (حداقل ۸ کاراکتر)",InputType.TYPE_CLASS_TEXT);
+  final boolean[] credit={true};
+  TextView direction=action("نوع درخواست: افزایش موجودی",false,()->{credit[0]=!credit[0];});
+  direction.setOnClickListener(v->{
+   credit[0]=!credit[0];direction.setText(credit[0]?"نوع درخواست: افزایش موجودی":"نوع درخواست: کاهش موجودی");
   });
+  form.addView(direction);
+  form.addView(label("این درخواست به‌تنهایی پول جابه‌جا نمی‌کند؛ تأیید مدیر دوم لازم است."));
+  AlertDialog dialog=new AlertDialog.Builder(this).setTitle("درخواست تعدیل کیف پول")
+   .setView(form).setNegativeButton("انصراف",null).setPositiveButton("ثبت درخواست",null).create();
+  dialog.setOnShowListener(d->dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v->{
+   String why=reason.getText().toString().trim(),selected=(String)currency.getSelectedItem();
+   String minor;
+   try{
+    BigDecimal decimal=new BigDecimal(amount.getText().toString().trim());
+    if(decimal.signum()<=0)throw new Exception();
+    minor=decimal.movePointRight(2).toBigIntegerExact().toString();
+    if(minor.length()>19)throw new Exception();
+   }catch(Exception e){showMessage("مبلغ باید مثبت و دارای حداکثر دو رقم اعشار باشد.");return;}
+   if(why.length()<8){showMessage("دلیل درخواست حداقل ۸ کاراکتر باشد.");return;}
+   dialog.getButton(AlertDialog.BUTTON_POSITIVE).setEnabled(false);
+   String directionValue=credit[0]?"credit":"debit";
+   api.perform(()->api.post("/api/v1/admin/wallet/adjustments",
+    new JSONObject().put("userId",id).put("amountMinor",minor)
+      .put("currency",selected).put("direction",directionValue)
+      .put("type","admin_adjustment").put("reason",why)),
+    ok->{dialog.dismiss();showMessage("درخواست ثبت شد. برای اعمال واقعی، تأیید مدیر دوم ضروری است.");},
+    err->{dialog.getButton(AlertDialog.BUTTON_POSITIVE).setEnabled(true);showMessage(err);});
+  }));
+  dialog.show();
  }
  private void userStatus(JSONObject item){
   String current=pick(item,"status"),next=current.equals("active")?"suspended":"active";
@@ -624,7 +790,7 @@ public final class MainActivity extends Activity {
     String reason=why.getText().toString().trim();if(reason.length()<8){showMessage("دلیل تغییر باید حداقل ۸ حرف باشد");return;}
     api.perform(()->api.patch("/api/v1/admin/users/"+enc(item.optString("id")),
      new JSONObject().put("action","set_status").put("status",next).put("reason",reason)),
-     o->{showMessage("وضعیت با موفقیت تغییر کرد");showPage("users");},this::showMessage);
+     o->{showMessage("وضعیت حساب تغییر کرد");createPage("جزئیات کاربر","اطلاعات حساب • "+item.optString("id"));selectedId=item.optString("id");userDetail(item);},this::showMessage);
    }).show();
  }
  private void betDetail(JSONObject item){
