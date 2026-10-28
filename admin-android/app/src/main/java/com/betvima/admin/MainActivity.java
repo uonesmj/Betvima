@@ -68,7 +68,7 @@ public final class MainActivity extends Activity {
  private String page="dashboard",period="24h",query="",selectedId="",factorId="",mfaSecret="",email="",userOrder="newest";
  private int userPage=1;
  private JSONObject selected;
- private boolean loggedIn=false,loading=false,drawerOpened=false;
+ private boolean loggedIn=false,loading=false,drawerOpened=false,showingUserDetail=false;
  private long lastTap=0;
 
  @Override public void onCreate(Bundle savedState){
@@ -276,7 +276,7 @@ public final class MainActivity extends Activity {
   }
  }
  private void showPage(String next){
-  page=next;selectedId="";query="";userPage=1;
+  page=next;selectedId="";query="";userPage=1;showingUserDetail=false;
   createPage(titleFor(page),"پنل مدیریت مستقل • اطلاعات سرور اصلی");
   loadPage();
  }
@@ -550,7 +550,7 @@ public final class MainActivity extends Activity {
   panel.addView(r);panel.setOnClickListener(v->click.run());
  }
  private void details(String section,JSONObject item){
-  selected=item;selectedId=pick(item,"id");
+  selected=item;selectedId=pick(item,"id");showingUserDetail="users".equals(section);
   createPage("جزئیات "+titleFor(page),"ثبت‌شده در BetVima • "+selectedId);
   switch(section){
    case "users":userDetail(item);break;
@@ -967,6 +967,7 @@ public final class MainActivity extends Activity {
  }
  @Override public void onBackPressed(){
   if(drawerOpened){showPage(page);return;}
+  if(showingUserDetail){showingUserDetail=false;selectedId="";createPage("کاربران","فهرست کاربران • اطلاعات سرور اصلی");list("users",query);return;}
   if(loggedIn&&!page.equals("dashboard")){showPage("dashboard");return;}
   new AlertDialog.Builder(this).setMessage("از برنامه مدیریت خارج شوید؟")
    .setNegativeButton("لغو",null).setPositiveButton("خروج",(d,w)->finish()).show();
