@@ -15,5 +15,5 @@ export const GET = withErrorHandling('admin.payments.list', async (ctx, request:
     page: intParam(params, 'page', 1, 5000), pageSize: intParam(params, 'pageSize', 25, 100),
   });
   const rates = await getAdminUsdRates(page.items.map((row) => row.currency ?? 'USD'));
-  return jsonOk({ ...page, items: page.items.map((row) => { const currency = row.currency ?? 'USD'; return { ...row, usdAmountMinor: convertAdminAmountToUsd(row.amountMinor, currency, rates).toString(), usdFeeMinor: convertAdminAmountToUsd(row.feeMinor, currency, rates).toString(), usdNetAmountMinor: convertAdminAmountToUsd(row.netAmountMinor, currency, rates).toString() }; }) });
+  return jsonOk({ ...page, items: page.items.map((row) => { const currency = row.currency ?? 'USD'; return { ...row, usdAmountMinor: convertAdminAmountToUsd(row.amountMinor, currency, rates)?.toString() ?? null, usdFeeMinor: convertAdminAmountToUsd(row.feeMinor, currency, rates)?.toString() ?? null, usdNetAmountMinor: convertAdminAmountToUsd(row.netAmountMinor, currency, rates)?.toString() ?? null }; }) });
 });
