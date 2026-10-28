@@ -1082,6 +1082,42 @@ public final class MainActivity extends Activity {
     o->{showMessage("وضعیت ثبت شد");showPage("support");},this::showMessage);
   }).show();
  }
+ private void notificationDetail(JSONObject item){
+  LinearLayout card=panel(body);
+  info(card,"عنوان",pick(item,"title"));
+  info(card,"وضعیت",faStatus(pick(item,"status")));
+  info(card,"مخاطب","personal".equals(item.optString("audience"))?"کاربر خاص":"تمام کاربران فعال");
+  info(card,"تاریخ",date(pick(item,"created_at")));
+  info(card,"تحویل‌شده",pick(item,"delivered"));
+  info(card,"خوانده‌شده",pick(item,"read_count"));
+  card.addView(text(pick(item,"body"),13,FG,false));
+  addAction(body,"بازگشت به اعلان‌ها",false,()->showPage("notifications"));
+ }
+ private void notificationCompose(){
+  LinearLayout form=col();pad(form,14);
+  EditText title=input(form,"عنوان اعلان (تا ۱۰۰ کاراکتر)",InputType.TYPE_CLASS_TEXT);
+  EditText message=input(form,"متن اعلان (تا ۵۰۰ کاراکتر)",InputType.TYPE_CLASS_TEXT|InputType.TYPE_TEXT_FLAG_MULTI_LINE);
+  message.setSingleLine(false);message.setMinLines(4);
+  form.addView(label("ارسال همگانی به تمام کاربران فعال، در صندوق پیام سایت و اپ انجام می‌شود."));
+  AlertDialog dialog=new AlertDialog.Builder(this).setTitle("ارسال اعلان جدید")
+   .setView(form).setNegativeButton("انصراف",null).setPositiveButton("ارسال",null).create();
+  dialog.setOnShowListener(d->dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v->{
+   String t=title.getText().toString().trim(),b=message.getText().toString().trim();
+   if(t.isEmpty()||t.length()>100||b.isEmpty()||b.length()>500){showMessage("عنوان ۱ تا ۱۰۰ و متن ۱ تا ۵۰۰ کاراکتر باشد");return;}
+   new AlertDialog.Builder(this).setTitle("تأیید ارسال همگانی")
+    .setMessage("این پیام برای تمام کاربران فعال فرستاده شود؟")
+    .setNegativeButton("انصراف",null).setPositiveButton("ارسال قطعی",(dd,which)->{
+     dialog.getButton(AlertDialog.BUTTON_POSITIVE).setEnabled(false);
+     api.perform(()->api.post("/api/v1/admin/notifications",
+       new JSONObject().put("title",t).put("body",b).put("audience","general")
+         .put("locale","fa").put("mode","send")),
+       response->{dialog.dismiss();JSONObject saved=response.optJSONObject("campaign");
+        showMessage("ارسال ثبت شد. گیرندگان: "+(saved==null?"—":pick(saved,"recipients")));showPage("notifications");},
+       err->{dialog.getButton(AlertDialog.BUTTON_POSITIVE).setEnabled(true);showMessage(err);});
+    }).show();
+  }));
+  dialog.show();
+ }
  private void casino(){
   request("/api/v1/admin/mobile/casino?window="+period,json->{
    body.removeAllViews();switcher();
