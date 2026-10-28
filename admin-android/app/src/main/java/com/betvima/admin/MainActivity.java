@@ -557,6 +557,7 @@ public final class MainActivity extends Activity {
     addTitle(body,"اعلان‌های ثبت‌شده");
    }
    if(section.equals("support")){
+    addAction(body,"جست‌وجوی مستقیم کاربر با شناسه یا ایمیل",true,this::searchSupportUser);
     addTitle(body,"تیکت‌های نیازمند پاسخ");
     addAction(body,"↻ بروزرسانی پیام‌های جدید",false,()->list("support",query));
    }
@@ -573,7 +574,7 @@ public final class MainActivity extends Activity {
     switch(section){
      case "users":
       name=pick(item,"email","username","publicId");
-      subtitle="شناسه "+pick(item,"publicId")+" · "+date(pick(item,"registeredAt"));
+      subtitle="شناسه عددی "+pick(item,"numericId")+" · "+date(pick(item,"registeredAt"));
       total=money(item,"usdBalanceMinor","usdBalanceMinor");break;
      case "bets":
       name="شرط #"+pick(item,"publicId","id");
@@ -584,7 +585,7 @@ public final class MainActivity extends Activity {
       subtitle=pick(item,"publicId","id")+" · "+date(pick(item,"initiatedAt","createdAt"));
       total=money(item,"usdAmountMinor","amountMinor");break;
      case "support":
-      name=pick(item,"subject");subtitle=pick(item,"userEmail","userDisplayName")+" · "+date(pick(item,"updatedAt"));
+      name=pick(item,"subject");subtitle="شناسه "+pick(item,"userNumericId")+" · "+pick(item,"userEmail","userDisplayName")+" · "+date(pick(item,"updatedAt"));
       total=item.optInt("unreadMessages",0)>0?item.optInt("unreadMessages",0)+" منتظر پاسخ":"پاسخ داده‌شده";break;
      case "manual":
       name=pick(item,"home")+" - "+pick(item,"away");
@@ -631,7 +632,9 @@ public final class MainActivity extends Activity {
  }
  private void details(String section,JSONObject item){
   selected=item;selectedId=pick(item,"id");showingUserDetail="users".equals(section);
-  createPage("جزئیات "+titleFor(page),"ثبت‌شده در BetVima • "+selectedId);
+  String identity="users".equals(section)?"شناسه عددی "+pick(item,"numericId"):
+    "support".equals(section)?"شناسه عددی "+pick(item,"userNumericId"):"اطلاعات BetVima";
+  createPage("جزئیات "+titleFor(page),identity);
   switch(section){
    case "users":userDetail(item);break;
    case "bets":betDetail(item);break;
@@ -670,7 +673,6 @@ public final class MainActivity extends Activity {
    LinearLayout identity=sectionGroup("هویت و وضعیت حساب","ایمیل، شناسه، ثبت‌نام و آخرین فعالیت",true);
    info(identity,"ایمیل",pick(u,"email"));
    info(identity,"شناسه عددی",pick(u,"numericId"));
-   info(identity,"شناسه عمومی",pick(u,"publicId"));
    info(identity,"نام کاربری",pick(u,"username"));
    info(identity,"تاریخ ثبت‌نام",date(pick(u,"registeredAt")));
    String source=pick(u,"registrationSource");
@@ -1091,13 +1093,49 @@ public final class MainActivity extends Activity {
      new JSONObject().put("decision",decision).put("reason",reason)),o->{showMessage("نتیجه بررسی ثبت شد");showPage("withdrawal");},this::showMessage);
    }).show();
  }
+ private void searchSupportUser(){
+  LinearLayout form=col();pad(form,14);
+  EditText q=input(form,"شناسه عددی مثل 1100 یا ایمیل کاربر",InputType.TYPE_CLASS_TEXT);
+  new AlertDialog.Builder(this).setTitle("یافتن پرونده کاربر")
+   .setView(form).setNegativeButton("انصراف",null)
+   .setPositiveButton("جست‌وجو",(d,w)->{
+    String value=q.getText().toString().trim();
+    if(value.length()<3){showMessage("شناسه عددی یا حداقل سه حرف از ایمیل را وارد کن.");return;}
+    page="users";selectedId="";showingUserDetail=false;
+    createPage("جست‌وجوی کاربر","شناسه عددی یا ایمیل");
+    request("/api/v1/admin/users?role=user,affiliate&page=1&pageSize=20&q="+enc(value),data->{
+     body.removeAllViews();
+     addAction(body,"بازگشت به تیکت‌ها",false,()->showPage("support"));
+     JSONArray items=data.optJSONArray("items");
+     if(items==null||items.length()==0){centerText(body,"کاربری با این شناسه یا ایمیل پیدا نشد.");return;}
+     for(int i=0;i<items.length();i++){
+      JSONObject u=items.optJSONObject(i);if(u==null)continue;
+      itemRow("ID "+pick(u,"numericId"),pick(u,"email","username"),
+       faStatus(pick(u,"status")),"پرونده کاربر",()->details("users",u));
+     }
+    });
+   }).show();
+ }
  private void ticketDetail(JSONObject item){
   String id=item.optString("id");
   request("/api/v1/admin/support/"+enc(id),json->{
    body.removeAllViews();
    JSONObject ticket=json.optJSONObject("ticket");
    LinearLayout head=panel(body);
-   info(head,"موضوع",pick(ticket==null?item:ticket,"subject"));
+   JSONObject account=ticket==null?item:ticket;
+   info(head,"موضوع",pick(account,"subject"));
+   info(head,"شناسه عددی کاربر",pick(account,"userNumericId"));
+   info(head,"ایمیل کاربر",pick(account,"userEmail"));
+   String accountId=account.optString("userId","");
+   if(!accountId.isEmpty()&&!"null".equals(accountId)){
+    addAction(head,"بازکردن پرونده کاربر "+pick(account,"userNumericId"),true,()->{
+     page="users";selectedId=accountId;showingUserDetail=true;
+     try{selected=new JSONObject().put("id",accountId);
+      createPage("پرونده کاربر","شناسه عددی و اطلاعات حساب");
+      userDetail(selected);
+     }catch(Exception e){showMessage("شناسه کاربر قابل استفاده نیست.");}
+    });
+   }
    info(head,"وضعیت",pick(ticket==null?item:ticket,"status"));
    addAction(head,"تغییر وضعیت تیکت",false,()->ticketStatus(id));
    addTitle(body,"گفتگو");
