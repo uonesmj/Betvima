@@ -13,7 +13,7 @@ interface Payout {
   affiliateId: string;
   status: string;
   currency: string;
-  amountMinor: string; usdAmountMinor: string; usdPayableAtRequestMinor: string;
+  amountMinor: string; usdAmountMinor: string | null; usdPayableAtRequestMinor: string | null;
   payableAtRequestMinor: string;
   method: string | null;
   destinationMasked: string | null;
@@ -70,8 +70,8 @@ export function AffiliatePayoutsClient() {
                 <tr key={payout.id}>
                   <td className="font-mono text-xs">{payout.publicId}</td>
                   <td className="font-mono text-[11px]">{payout.affiliateId.slice(0, 8)}</td>
-                  <td className="whitespace-nowrap text-xs">{formatMinor(payout.usdAmountMinor, 'USD', locale)}</td>
-                  <td className="whitespace-nowrap text-xs nova-muted">{formatMinor(payout.usdPayableAtRequestMinor, 'USD', locale)}</td>
+                  <td className="whitespace-nowrap text-xs">{formatMinor(payout.usdAmountMinor ?? payout.amountMinor, payout.usdAmountMinor === null ? payout.currency : 'USD', locale)}</td>
+                  <td className="whitespace-nowrap text-xs nova-muted">{payout.usdPayableAtRequestMinor === null ? '— (no FX)' : formatMinor(payout.usdPayableAtRequestMinor, 'USD', locale)}</td>
                   <td className="text-xs">{payout.method ?? '—'}<div className="nova-muted">{payout.destinationMasked ?? ''}</div></td>
                   <td>
                     <StatusPill status={payout.status} />
