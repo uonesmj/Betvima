@@ -12,14 +12,14 @@ interface Affiliate {
   parentOverrideBps: number; currency: string; minPayoutMinor: string; settlementDay: number; settlementHour: number;
   settlementMinute: number; settlementTimezone: string; depth: number; path: string | null; riskScore: number;
   parentAffiliateId: string | null; isFraudFlagged: boolean;
-  payableMinor: string; carryForwardMinor: string; suppressedMinor: string; usdPayableMinor: string; usdRawMinor: string; usdCarryForwardMinor: string; usdSuppressedMinor: string;
-  lifetimeCommissionMinor: string; lifetimePaidMinor: string; lifetimeDepositsMinor: string; usdMinPayoutMinor: string; usdLifetimeCommissionMinor: string; usdLifetimePaidMinor: string; usdLifetimeDepositsMinor: string; createdAt: string;
+  payableMinor: string; carryForwardMinor: string; suppressedMinor: string; usdPayableMinor: string | null; usdRawMinor: string | null; usdCarryForwardMinor: string | null; usdSuppressedMinor: string | null;
+  lifetimeCommissionMinor: string; lifetimePaidMinor: string; lifetimeDepositsMinor: string; usdMinPayoutMinor: string | null; usdLifetimeCommissionMinor: string | null; usdLifetimePaidMinor: string | null; usdLifetimeDepositsMinor: string | null; createdAt: string;
 }
-interface Payable { payableMinor: string; rawMinor: string; carryForwardMinor: string; suppressedMinor: string; floorApplied: boolean; currency: string; usdPayableMinor: string; usdRawMinor: string; usdCarryForwardMinor: string; usdSuppressedMinor: string }
-interface LedgerRow { id: string; type: string; amountMinor: string; balanceAfterMinor?: string; usdAmountMinor: string; usdBalanceAfterMinor?: string | null; createdAt: string; description: string | null; sourceUserId: string | null }
-interface PayoutRow { id: string; publicId: string; amountMinor: string; usdAmountMinor: string; usdPayableAtRequestMinor?: string | null; status: string; requestedAt: string; method: string | null; providerReference: string | null }
+interface Payable { payableMinor: string; rawMinor: string; carryForwardMinor: string; suppressedMinor: string; floorApplied: boolean; currency: string; usdPayableMinor: string | null; usdRawMinor: string | null; usdCarryForwardMinor: string | null; usdSuppressedMinor: string }
+interface LedgerRow { id: string; type: string; amountMinor: string; balanceAfterMinor?: string; usdAmountMinor: string | null; usdBalanceAfterMinor?: string | null; createdAt: string; description: string | null; sourceUserId: string | null }
+interface PayoutRow { id: string; publicId: string; amountMinor: string; usdAmountMinor: string | null; usdPayableAtRequestMinor?: string | null; status: string; requestedAt: string; method: string | null; providerReference: string | null }
 interface Fraud { riskScore: number; signals: string[]; blocked: boolean; reviewRequired: boolean }
-interface ReferralRow { userId: string; code: string; status: string; confirmedAt: string | null; usdWageredMinor: string; usdNetRevenueMinor: string; usdCommissionMinor: string; usdDepositMinor?: string; usdWithdrawalMinor?: string; usdPanelShareMinor?: string }
+interface ReferralRow { userId: string; code: string; status: string; confirmedAt: string | null; usdWageredMinor: string | null; usdNetRevenueMinor: string | null; usdCommissionMinor: string | null; usdDepositMinor?: string; usdWithdrawalMinor?: string; usdPanelShareMinor?: string }
 
 const TABS = ['overview', 'ledger', 'payouts', 'referrals', 'terms'] as const;
 
@@ -68,17 +68,17 @@ export function AffiliateDetailClient({ affiliateId }: { affiliateId: string }) 
         </div>
         <h2 className="mt-2 text-base font-semibold">{affiliate.displayName}</h2>
         <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
-          <Stat label="Payable" value={formatMinor(data.payable.usdPayableMinor, 'USD', locale)} tone="success" />
-          <Stat label="Raw balance" value={formatMinor(data.payable.usdRawMinor, 'USD', locale)} />
+          <Stat label="Payable" value={formatMinor(data.payable.usdPayableMinor ?? data.payable.payableMinor, data.payable.usdPayableMinor === null ? data.payable.currency : 'USD', locale)} tone="success" />
+          <Stat label="Raw balance" value={formatMinor(data.payable.usdRawMinor ?? data.payable.rawMinor, data.payable.usdRawMinor === null ? data.payable.currency : 'USD', locale)} />
           <Stat
-            label="Carry-forward" value={formatMinor(data.payable.usdCarryForwardMinor, 'USD', locale)}
-            tone={BigInt(data.payable.usdCarryForwardMinor) < 0n ? 'danger' : undefined}
+            label="Carry-forward" value={formatMinor(data.payable.usdCarryForwardMinor ?? data.payable.carryForwardMinor, data.payable.usdCarryForwardMinor === null ? data.payable.currency : 'USD', locale)}
+            tone={BigInt(data.payable.usdCarryForwardMinor ?? data.payable.carryForwardMinor) < 0n ? 'danger' : undefined}
           />
-          <Stat label="Suppressed (floor)" value={formatMinor(data.payable.usdSuppressedMinor, 'USD', locale)} tone="warning" />
-          <Stat label="Lifetime commission" value={formatMinor(affiliate.usdLifetimeCommissionMinor, 'USD', locale)} />
-          <Stat label="Lifetime paid" value={formatMinor(affiliate.usdLifetimePaidMinor, 'USD', locale)} />
-          <Stat label="Total deposits" value={formatMinor(affiliate.usdLifetimeDepositsMinor, 'USD', locale)} />
-          <Stat label="Min payout" value={formatMinor(affiliate.usdMinPayoutMinor, 'USD', locale)} />
+          <Stat label="Suppressed (floor)" value={formatMinor(data.payable.usdSuppressedMinor ?? data.payable.suppressedMinor, data.payable.usdSuppressedMinor === null ? data.payable.currency : 'USD', locale)} tone="warning" />
+          <Stat label="Lifetime commission" value={formatMinor(affiliate.usdLifetimeCommissionMinor ?? affiliate.lifetimeCommissionMinor, affiliate.usdLifetimeCommissionMinor === null ? affiliate.currency : 'USD', locale)} />
+          <Stat label="Lifetime paid" value={formatMinor(affiliate.usdLifetimePaidMinor ?? affiliate.lifetimePaidMinor, affiliate.usdLifetimePaidMinor === null ? affiliate.currency : 'USD', locale)} />
+          <Stat label="Total deposits" value={formatMinor(affiliate.usdLifetimeDepositsMinor ?? affiliate.lifetimeDepositsMinor, affiliate.usdLifetimeDepositsMinor === null ? affiliate.currency : 'USD', locale)} />
+          <Stat label="Min payout" value={formatMinor(affiliate.usdMinPayoutMinor ?? affiliate.minPayoutMinor, affiliate.usdMinPayoutMinor === null ? affiliate.currency : 'USD', locale)} />
         </div>
         <p className="mt-2 text-[11px] nova-muted">
           Settlement runs day {affiliate.settlementDay} {String(affiliate.settlementHour).padStart(2, '0')}:{String(affiliate.settlementMinute).padStart(2, '0')} ({affiliate.settlementTimezone}).
@@ -130,7 +130,7 @@ export function AffiliateDetailClient({ affiliateId }: { affiliateId: string }) 
                       <td className="whitespace-nowrap text-xs nova-muted">{formatDateTime(entry.createdAt, locale)}</td>
                       <td className="text-xs">{entry.type}</td>
                       <td className={`whitespace-nowrap text-xs ${BigInt(entry.amountMinor) < 0n ? 'text-nova-danger' : 'text-nova-primary'}`}>
-                        {formatMinor(entry.usdAmountMinor, 'USD', locale)}
+                        {formatMinor(entry.usdAmountMinor ?? entry.amountMinor, entry.usdAmountMinor === null ? affiliate.currency : 'USD', locale)}
                       </td>
                       <td className="text-xs nova-muted">{entry.description ?? '—'}</td>
                     </tr>
@@ -149,7 +149,7 @@ export function AffiliateDetailClient({ affiliateId }: { affiliateId: string }) 
                   {data.payouts.items.map((payout) => (
                     <tr key={payout.id}>
                       <td className="font-mono text-xs">{payout.publicId}</td>
-                      <td className="whitespace-nowrap text-xs">{formatMinor(payout.usdAmountMinor, 'USD', locale)}</td>
+                      <td className="whitespace-nowrap text-xs">{formatMinor(payout.usdAmountMinor ?? payout.amountMinor, payout.usdAmountMinor === null ? affiliate.currency : 'USD', locale)}</td>
                       <td><StatusPill status={payout.status} /></td>
                       <td className="text-xs">{payout.method ?? '—'}</td>
                       <td className="whitespace-nowrap text-xs nova-muted">{formatDateTime(payout.requestedAt, locale)}</td>
@@ -172,9 +172,9 @@ export function AffiliateDetailClient({ affiliateId }: { affiliateId: string }) 
                       <td className="font-mono text-[11px]">{referral.userId.slice(0, 8)}</td>
                       <td><StatusPill status={referral.status} /></td>
                       <td className="whitespace-nowrap text-xs nova-muted">{formatDateTime(referral.confirmedAt, locale)}</td>
-                      <td className="whitespace-nowrap text-xs">{formatMinor(referral.usdWageredMinor, 'USD', locale)}</td>
-                      <td className="whitespace-nowrap text-xs">{formatMinor(referral.usdNetRevenueMinor, 'USD', locale)}</td>
-                      <td className="whitespace-nowrap text-xs text-nova-primary">{formatMinor(referral.usdCommissionMinor, 'USD', locale)}</td>
+                      <td className="whitespace-nowrap text-xs">{referral.usdWageredMinor === null ? '— (no FX)' : formatMinor(referral.usdWageredMinor, 'USD', locale)}</td>
+                      <td className="whitespace-nowrap text-xs">{referral.usdNetRevenueMinor === null ? '— (no FX)' : formatMinor(referral.usdNetRevenueMinor, 'USD', locale)}</td>
+                      <td className="whitespace-nowrap text-xs text-nova-primary">{referral.usdCommissionMinor === null ? '— (no FX)' : formatMinor(referral.usdCommissionMinor, 'USD', locale)}</td>
                     </tr>
                   ))}
                 </tbody>
