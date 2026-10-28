@@ -12,6 +12,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -93,7 +94,12 @@ internal fun AffiliateCinematicPhoto(
     val drift by glow.animateFloat(initialValue=0f,targetValue=1f,
         animationSpec=infiniteRepeatable(tween(5800,easing=EaseInOutSine),
             repeatMode=RepeatMode.Reverse),label="affiliate-photo-drift")
-    Box(modifier.clip(RoundedCornerShape(corner.dp))
+    // Clip at the OUTERMOST image viewport so the photograph, decorative
+    // glow, and entrance layers can never draw outside a rounded image card.
+    // All scenes keep their own aspect ratio inside this fixed viewport.
+    Box(modifier
+        .clip(RoundedCornerShape(corner.dp))
+        .clipToBounds()
         .background(Brush.linearGradient(listOf(Color(0xFF0E0E13),
             scene.accent.copy(alpha=.24f),Color(0xFF101116))))) {
         val resolvedBitmap = bitmap
@@ -104,14 +110,17 @@ internal fun AffiliateCinematicPhoto(
                 compact = scene != AffiliateScene.CHART
             )
         } else if(resolvedBitmap!=null) {
-            // One image only. The old Crop + Fit double layer repeated
-            // the stadium and athletes as horizontal bands in gallery cards.
+            // Crop used to cut off athlete faces, BetVima lettering, device
+            // mockups and other authored content in wide Product / FAQ cards.
+            // A single contained image preserves ALL of the supplied artwork
+            // on every phone aspect ratio; the branded viewport fills any
+            // unused side space without stretching or overflowing the image.
             Image(
                 bitmap = resolvedBitmap,
                 contentDescription = null,
-                contentScale = ContentScale.Crop,
+                contentScale = ContentScale.Fit,
                 alignment = Alignment.Center,
-                modifier = Modifier.fillMaxSize().graphicsLayer {
+                modifier = Modifier.matchParentSize().graphicsLayer {
                     alpha = .65f + .35f * entrance
                 }
             )
