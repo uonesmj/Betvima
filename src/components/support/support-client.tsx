@@ -58,6 +58,7 @@ export default function SupportClient({ onClose }: { onClose?: () => void }) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [startNew, setStartNew] = useState(false);
   const [name, setName] = useState('');
+  const [supportNumericId, setSupportNumericId] = useState<number | null>(null);
   const [text, setText] = useState('');
   const [file, setFile] = useState<File | null>(null);
   const [busy, setBusy] = useState(false);
@@ -81,6 +82,15 @@ export default function SupportClient({ onClose }: { onClose?: () => void }) {
 
   useEffect(() => {
     setMuted(window.localStorage.getItem('betvima:support-muted') === 'true');
+    // Only the authenticated user's own numeric identifier is returned.
+    let active = true;
+    void fetch('/api/v1/account/profile', { credentials: 'same-origin', cache: 'no-store' })
+      .then((res) => res.ok ? res.json() : null)
+      .then((result) => {
+        const numeric = result?.data?.profile?.numericId;
+        if (active && typeof numeric === 'number' && Number.isSafeInteger(numeric)) setSupportNumericId(numeric);
+      }).catch(() => {});
+    return () => { active = false; };
   }, []);
 
   const getTickets = useCallback(async (initial = false) => {
@@ -259,6 +269,7 @@ export default function SupportClient({ onClose }: { onClose?: () => void }) {
             <div className="flex items-start justify-between gap-4">
               <div><h2 className="text-[24px] font-semibold">•{copy('Online Support','پشتیبانی آنلاین')}•</h2>
                 <p className="mt-5 max-w-[500px] text-[15px] leading-6">{copy('We are ready to help you 24/7. Please enter your contact information and your question.', 'در تمام ساعات شبانه‌روز پاسخگوی شما هستیم. نام و پیام خود را وارد کنید.')}</p>
+                {supportNumericId !== null && <p className="mt-2 text-sm font-semibold">{copy('Your account ID', 'شناسه کاربری شما')}: <span dir="ltr">{supportNumericId}</span></p>}
               </div>
               <button type="button" onClick={leave} aria-label={copy('Close chat','بستن چت')} className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-[#1D3247]/60 text-white"><X size={24}/></button>
             </div>
@@ -286,6 +297,7 @@ export default function SupportClient({ onClose }: { onClose?: () => void }) {
             <div className="min-w-0 flex-1">
               <h2 className="truncate text-[20px] font-semibold">{copy('BetVima Support','پشتیبانی بت‌ویما')}</h2>
               <p className="text-[13px] text-black">•{copy('Online Support', 'پشتیبانی آنلاین')}•</p>
+              {supportNumericId !== null && <p className="text-[12px] font-semibold text-[#087FF5]">{copy('Your account ID', 'شناسه کاربری شما')}: <span dir="ltr">{supportNumericId}</span></p>}
             </div>
             <button type="button" aria-label={copy('Chat options','تنظیمات چت')} aria-expanded={menu} onClick={() => setMenu(v => !v)} className="grid h-10 w-9 place-items-center"><MoreVertical size={23}/></button>
             <button type="button" aria-label={copy('Close chat','بستن چت')} onClick={leave} className="grid h-10 w-10 place-items-center"><X size={25}/></button>

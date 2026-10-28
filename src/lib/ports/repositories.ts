@@ -353,6 +353,7 @@ export interface SupportMessage {
 }
 
 export interface SupportTicketSummary extends SupportTicket {
+  userNumericId: number | null;
   userEmail: string | null;
   userDisplayName: string | null;
   unreadMessages: number;

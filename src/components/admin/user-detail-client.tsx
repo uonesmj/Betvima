@@ -11,6 +11,7 @@ interface Detail {
   summary: {
     id: string;
     publicId: string;
+    numericId: number;
     email: string | null;
     phone: string | null;
     username: string | null;
@@ -138,7 +139,7 @@ export function UserDetailClient({ userId }: { userId: string }) {
       <ErrorNote message={null} retryLabel={t('common.retry')} />
       <Card>
         <div className="flex flex-wrap items-center gap-2">
-          <span className="font-mono text-xs">{profile.publicId}</span>
+          <span className="font-mono text-sm font-semibold">شناسه کاربر: <span dir="ltr">{profile.numericId}</span></span>
           <StatusPill status={profile.status} />
           <StatusPill status={profile.kycStatus} />
           <span className="nova-chip">{profile.role}</span>

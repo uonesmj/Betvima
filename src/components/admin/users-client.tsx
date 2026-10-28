@@ -9,7 +9,7 @@ import { useApiQuery } from '@/lib/hooks/useApi';
 import { formatDateTime, formatMinor } from '@/lib/i18n';
 
 interface AdminUser {
-  id: string; publicId: string; email: string | null; phone: string | null; username: string | null;
+  id: string; publicId: string; numericId: number; email: string | null; phone: string | null; username: string | null;
   status: string; role: string; kycStatus: string;
   balanceSummary: { currency: string; balanceMinor: string }[];
   totalStakeMinor: string | null; totalPayoutMinor: string | null; netResultMinor: string | null; usdBalanceMinor: string | null; openBets: number;
@@ -31,7 +31,7 @@ export function UsersClient() {
     <div className="space-y-3">
       <div className="flex flex-wrap gap-2">
         <input
-          className="nova-input !w-auto flex-1 sm:max-w-xs" placeholder={t('admin.searchUsers')}
+          className="nova-input !w-auto flex-1 sm:max-w-xs" placeholder="جست‌وجو با شناسه عددی (مثل 1100)، ایمیل یا نام کاربر"
           value={filters.q} onChange={(event) => setFilters({ ...filters, q: event.target.value, page: 1 })}
         />
         <select className="nova-input !w-auto !py-1.5 text-xs" value={filters.status} onChange={(e) => setFilters({ ...filters, status: e.target.value, page: 1 })}>
@@ -55,7 +55,7 @@ export function UsersClient() {
             empty="No customers match these filters."
             onRowClick={(row) => router.push(`/admin/users/${row.id}`)}
             columns={[
-              { key: 'id', header: 'Public ID', render: (row) => <span className="font-mono text-xs">{row.publicId}</span> },
+              { key: 'id', header: 'شناسه کاربر', render: (row) => <span className="font-mono text-sm font-semibold" dir="ltr">{row.numericId}</span> },
               { key: 'contact', header: 'Email / phone', render: (row) => <span className="text-xs">{row.email ?? row.phone ?? '—'}</span> },
               { key: 'status', header: t('common.status'), render: (row) => <StatusPill status={row.status} /> },
               { key: 'kyc', header: 'KYC', render: (row) => <StatusPill status={row.kycStatus} /> },
