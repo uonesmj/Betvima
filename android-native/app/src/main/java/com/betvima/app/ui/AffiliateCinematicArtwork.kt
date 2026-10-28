@@ -27,7 +27,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
 /** Separate cinematic artwork and motion layers. Does not modify affiliate business rules.
- * Ten offline WEBP images are expected under the affiliate assets directory.
+ * Offline WEBP sources are bundled under the affiliate assets directory.
  * Missing art gracefully renders a branded gradient while awaiting asset review.
  */
 internal enum class AffiliateScene(
@@ -50,7 +50,15 @@ internal enum class AffiliateScene(
     GALLERY_MOBILE("bv_aff_gallery_mobile",Color(0xFF30CEAF),Icons.Default.Smartphone,"app_showcase"),
     GALLERY_SPORTS("bv_aff_gallery_sports",Color(0xFF6D81E2),Icons.Default.SportsSoccer,"football_action"),
     GALLERY_CASINO("bv_aff_gallery_casino",Color(0xFF289E92),Icons.Default.Casino,"casino"),
-    GALLERY_INSIGHTS("bv_aff_gallery_insights",Color(0xFF3669F4),Icons.Default.ShowChart,"analytics")
+    GALLERY_INSIGHTS("bv_aff_gallery_insights",Color(0xFF3669F4),Icons.Default.ShowChart,"analytics"),
+    GUIDE_START("bv_aff_guide_start",Color(0xFF29B7EE),Icons.Default.RocketLaunch,"players"),
+    GUIDE_REVSHARE("bv_aff_guide_revshare",Color(0xFF8D74F9),Icons.Default.Percent,"partners"),
+    GUIDE_REPORTING("bv_aff_guide_reporting",Color(0xFF20D5B6),Icons.Default.QueryStats,"winning_moment"),
+    FAQ_REVSHARE("bv_aff_faq_revshare",Color(0xFF6C8EF8),Icons.Default.Percent,"people_3"),
+    FAQ_EARNING("bv_aff_faq_earning",Color(0xFF24CF96),Icons.Default.TrendingUp,"football_team"),
+    FAQ_CPA("bv_aff_faq_cpa",Color(0xFFA88BEE),Icons.Default.AccountTree,"people_1"),
+    FAQ_PAYOUTS("bv_aff_faq_payouts",Color(0xFF51D3BC),Icons.Default.Payments,"global_stadium"),
+    FAQ_STATISTICS("bv_aff_faq_statistics",Color(0xFF5A98F8),Icons.Default.BarChart,"app_showcase")
 }
 
 @Composable
