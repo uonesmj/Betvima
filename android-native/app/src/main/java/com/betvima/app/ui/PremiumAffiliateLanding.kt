@@ -866,18 +866,33 @@ private fun PartnerFaq(lang: Lang, active: Boolean) {
             }
         }
         Spacer(Modifier.height(21.dp))
+        val faqPhotos = listOf(
+            AffiliateScene.FAQ_REVSHARE,
+            AffiliateScene.FAQ_EARNING,
+            AffiliateScene.FAQ_CPA,
+            AffiliateScene.FAQ_PAYOUTS,
+            AffiliateScene.FAQ_STATISTICS
+        )
         partnerQuestions.forEachIndexed { index, question ->
             var expanded by rememberSaveable(index) { mutableStateOf(false) }
             Column(Modifier.padding(vertical=6.dp).fillMaxWidth()
                 .clip(RoundedCornerShape(19.dp))
                 .background(Color.White).animateContentSize()) {
                 Row(Modifier.fillMaxWidth().clickable { expanded=!expanded }
-                    .padding(17.dp), verticalAlignment=Alignment.CenterVertically) {
+                    .padding(horizontal=12.dp,vertical=12.dp),
+                    verticalAlignment=Alignment.CenterVertically) {
+                    // Thumbnail is clipped to the card and never owns its layout width.
+                    AffiliateCinematicPhoto(
+                        faqPhotos[index],Modifier.width(78.dp).height(68.dp),
+                        active=active,corner=13
+                    )
+                    Spacer(Modifier.width(10.dp))
                     Text(tr(lang,question.en,question.fa),
-                        color=partnerNight,fontSize=15.sp,
+                        color=partnerNight,fontSize=14.sp,lineHeight=18.sp,
                         fontWeight=FontWeight.Bold,modifier=Modifier.weight(1f))
+                    Spacer(Modifier.width(5.dp))
                     Icon(if(expanded)Icons.Default.Remove else Icons.Default.Add,
-                        null,tint=partnerBlue)
+                        null,tint=partnerBlue,modifier=Modifier.size(20.dp))
                 }
                 if(expanded) {
                     Text(tr(lang,question.answerEn,question.answerFa),
@@ -974,6 +989,11 @@ private fun PartnerGuides196(lang: Lang) {
         Text(tr(lang,"Build smarter campaigns","کمپین‌های مؤثرتری بسازید"),
             color=partnerNight,fontWeight=FontWeight.Black,
             fontSize=28.sp,lineHeight=34.sp)
+        val guidePhotos = listOf(
+            AffiliateScene.GUIDE_START,
+            AffiliateScene.GUIDE_REVSHARE,
+            AffiliateScene.GUIDE_REPORTING
+        )
         articles.forEachIndexed { index,article ->
             Surface(
                 onClick={opened=if(opened==index)-1 else index},
@@ -982,18 +1002,27 @@ private fun PartnerGuides196(lang: Lang) {
                 border=BorderStroke(1.dp,Color(0xFFE2E7F3)),
                 modifier=Modifier.fillMaxWidth().animateContentSize()
             ) {
-                Column(Modifier.padding(18.dp)) {
+                Column(Modifier.padding(12.dp)) {
                     Row(verticalAlignment=Alignment.CenterVertically) {
-                        Surface(color=Color(0xFFEAF0FF),shape=RoundedCornerShape(12.dp)) {
-                            Icon(article.third,null,tint=partnerBlue,
-                                modifier=Modifier.padding(11.dp).size(23.dp))
+                        Box(Modifier.width(94.dp).height(72.dp)
+                            .clip(RoundedCornerShape(13.dp))) {
+                            AffiliateCinematicPhoto(
+                                guidePhotos[index],
+                                Modifier.fillMaxSize(),
+                                active=true,corner=13
+                            )
+                            Icon(article.third,null,tint=Color.White,
+                                modifier=Modifier.align(Alignment.BottomStart)
+                                    .padding(7.dp).size(19.dp))
                         }
                         Spacer(Modifier.width(12.dp))
                         Text(article.first,color=partnerNight,
-                            fontSize=15.sp,fontWeight=FontWeight.Black,
+                            fontSize=14.sp,lineHeight=18.sp,
+                            fontWeight=FontWeight.Black,
                             modifier=Modifier.weight(1f))
                         Icon(if(opened==index)Icons.Default.KeyboardArrowUp
-                            else Icons.Default.KeyboardArrowDown,null,tint=partnerBlue)
+                            else Icons.Default.KeyboardArrowDown,null,
+                            tint=partnerBlue,modifier=Modifier.size(20.dp))
                     }
                     if(opened==index) {
                         Spacer(Modifier.height(13.dp))
