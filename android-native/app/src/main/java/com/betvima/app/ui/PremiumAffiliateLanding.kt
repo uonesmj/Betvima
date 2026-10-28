@@ -778,8 +778,13 @@ private fun PartnerProducts(lang: Lang, active: Boolean) {
                     animationSpec=tween(400,easing=FastOutSlowInEasing),
                     label="affiliate-product-focus")
                 Surface(
-                    modifier=Modifier.fillParentMaxWidth(.86f).height(325.dp)
-                        .graphicsLayer { scaleX=zoom;scaleY=zoom },
+                    modifier=Modifier.fillParentMaxWidth(.86f).height(358.dp)
+                        .graphicsLayer {
+                            scaleX=zoom
+                            scaleY=zoom
+                            clip=true
+                            shape=RoundedCornerShape(23.dp)
+                        },
                     shape=RoundedCornerShape(23.dp),
                     color=Color(0xFF171D28),
                     border=BorderStroke(1.dp,Color(0xFF303D59))
@@ -795,7 +800,7 @@ private fun PartnerProducts(lang: Lang, active: Boolean) {
                             "Explore BetVima products designed for discovery and mobile navigation.",
                             "محصولات بت‌ویما برای استفاده روان و راحت در موبایل."),
                             color=Color(0xFFBBC2D3),fontSize=12.sp,lineHeight=18.sp)
-                        Spacer(Modifier.height(18.dp))
+                        Spacer(Modifier.weight(1f))
                         AffiliateCinematicPhoto(
                             when(en) {
                                 "Casino" -> AffiliateScene.CASINO
