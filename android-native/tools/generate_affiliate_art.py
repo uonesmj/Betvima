@@ -224,6 +224,10 @@ def render(name,wh,kind,caption=None):
     elif kind=="mobile":
         phone(img,"app_showcase",round(w*.49),-55,round(w*.25),round(h*1.14),-8)
         phone(img,"casino",round(w*.75),-28,round(w*.20),round(h*1.05),7)
+    elif kind=="mobile_product":
+        photo(img,"hero_stadium",(int(w*.44),0,int(w*.56),h),alpha=115,radius=0)
+        phone(img,"bets",round(w*.15),round(h*.01),round(w*.36),round(h*1.01),9)
+        phone(img,"casino",round(w*.52),round(h*.04),round(w*.34),round(h*.98),-7)
     elif kind=="statistics":chart(img)
     elif kind=="geography":globe(img)
     elif kind=="casino":
@@ -281,6 +285,7 @@ jobs=[
  ("numbers",(1100,425),"numbers",None),
  ("ecosystem",(1100,570),"ecosystem",None),
  ("mobile",(1100,570),"mobile","BETVIMA APP"),
+ ("mobile_product",(760,520),"mobile_product",None),
  ("statistics",(1100,570),"statistics",None),
  ("chart",(1100,365),"statistics",None),
  ("geography",(1100,575),"geography",None),
