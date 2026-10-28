@@ -1,6 +1,8 @@
 package com.betvima.admin;
 
 import android.app.Activity;
+import android.content.Intent;
+import android.net.Uri;
 import android.app.AlertDialog;
 import android.app.DatePickerDialog;
 import android.app.TimePickerDialog;
@@ -63,7 +65,8 @@ public final class MainActivity extends Activity {
  private AdminApi api;
  private FrameLayout frame;
  private LinearLayout body;
- private String page="dashboard",period="24h",query="",selectedId="",factorId="",mfaSecret="",email="";
+ private String page="dashboard",period="24h",query="",selectedId="",factorId="",mfaSecret="",email="",userOrder="newest";
+ private int userPage=1;
  private JSONObject selected;
  private boolean loggedIn=false,loading=false,drawerOpened=false;
  private long lastTap=0;
@@ -273,7 +276,7 @@ public final class MainActivity extends Activity {
   }
  }
  private void showPage(String next){
-  page=next;selectedId="";query="";
+  page=next;selectedId="";query="";userPage=1;
   createPage(titleFor(page),"پنل مدیریت مستقل • اطلاعات سرور اصلی");
   loadPage();
  }
@@ -461,7 +464,7 @@ public final class MainActivity extends Activity {
   LinearLayout bar=row();EditText q=field("جستجو با ایمیل، شناسه یا عنوان",InputType.TYPE_CLASS_TEXT);
   q.setText(query);
   bar.addView(q,new LinearLayout.LayoutParams(0,dp(47),1));
-  TextView go=action("جستجو",true,()->{query=q.getText().toString().trim();list(section,query);});
+  TextView go=action("جستجو",true,()->{query=q.getText().toString().trim();if(section.equals("users"))userPage=1;list(section,query);});
   LinearLayout.LayoutParams bl=new LinearLayout.LayoutParams(dp(86),dp(47));bl.rightMargin=dp(8);bar.addView(go,bl);
   body.addView(bar);space(body,15);
   q.setOnEditorActionListener((v,action,event)->{query=q.getText().toString().trim();list(section,query);return true;});
@@ -469,7 +472,7 @@ public final class MainActivity extends Activity {
  private void list(String section,String filter){
   String path;
   switch(section){
-   case "users":path="/api/v1/admin/users?page=1&pageSize=40&q="+enc(filter);break;
+   case "users":path="/api/v1/admin/users?page="+userPage+"&pageSize=25&sort="+userOrder+"&q="+enc(filter);break;
    case "bets":path="/api/v1/admin/bets?page=1&pageSize=40&q="+enc(filter);break;
    case "payments":path="/api/v1/admin/payments?page=1&pageSize=40&direction="+filter;break;
    case "support":path="/api/v1/admin/support?page=1&pageSize=40&search="+enc(filter);break;
