@@ -14,7 +14,7 @@ export const GET = withErrorHandling('admin.adjustments.list', async (ctx, reque
     page: intParam(params, 'page', 1, 5000), pageSize: intParam(params, 'pageSize', 25, 100),
   });
   const rates = await getAdminUsdRates(page.items.map((row) => row.currency));
-  return jsonOk({ ...page, items: page.items.map((row) => ({ ...row, usdAmountMinor: convertAdminAmountToUsd(row.amountMinor, row.currency, rates).toString() })) });
+  return jsonOk({ ...page, items: page.items.map((row) => ({ ...row, usdAmountMinor: convertAdminAmountToUsd(row.amountMinor, row.currency, rates)?.toString() ?? null })) });
 });
 
 const schema = z.object({
