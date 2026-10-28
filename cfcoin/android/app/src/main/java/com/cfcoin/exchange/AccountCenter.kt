@@ -105,7 +105,7 @@ fun AccountCenter(
             ProfileInput("شماره موبایل ایران", mobile, { mobile = it.filter { c -> c.isDigit() }.take(11) }, Icons.Default.Phone)
             ProfileInput(
                 "رمز عبور آزمایشی (حداقل ۸ کاراکتر)", password, { password = it.take(80) },
-                Icons.Default.LockOutline, secret = !showPassword
+                Icons.Default.Lock, secret = !showPassword
             )
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Checkbox(checked = showPassword, onCheckedChange = { showPassword = it }, colors = CheckboxDefaults.colors(checkedColor = blue))
