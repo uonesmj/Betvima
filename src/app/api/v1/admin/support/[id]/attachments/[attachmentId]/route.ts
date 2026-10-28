@@ -1,4 +1,4 @@
-import { withErrorHandling, ApiError } from '@/lib/errors';
+import { withErrorHandling, ApiError, jsonOk } from '@/lib/errors';
 import { withAdmin } from '@/server/http/guard';
 import { serviceRoleClient } from '@/server/db/supabase';
 
@@ -36,6 +36,13 @@ export const GET = withErrorHandling('admin.support.attachment.download', async 
   const baseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
     if (!baseUrl) throw new Error('NEXT_PUBLIC_SUPABASE_URL is not configured');
     const redirectUrl = data.signedUrl.startsWith('http://') || data.signedUrl.startsWith('https://') ? data.signedUrl : new URL(data.signedUrl, `${baseUrl.replace(/\/$/, '')}/storage/v1/`).toString();
+    // Native admin cannot pass a Bearer token to an external browser. Return
+    // the short-lived, ticket-scoped signed URL only to an authorized viewer.
+    // Keep the existing 302 path unchanged for web admin consumers.
+    if (new URL(request.url).searchParams.get('format') === 'json') {
+      return jsonOk({ url: redirectUrl, mimeType: attachment.mimeType, fileName: attachment.originalName,
+        expiresInSeconds: 300 });
+    }
     return new Response(null, {
       status: 302,
       headers: { Location: redirectUrl },
