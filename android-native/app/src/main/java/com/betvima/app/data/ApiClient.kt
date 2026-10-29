@@ -738,6 +738,27 @@ class ApiClient {
             legs = bet.arr("legs").objects().map(::parseBetLeg)
         )
     }
+    /** Single indexed wallet-row read, with no history, payments or provider URL. */
+    suspend fun walletBalanceSnapshot217(token: String): WalletBalanceSnapshot217 {
+        val data = get("/api/v1/wallet/balance", token)
+        val wallet = data.optJSONObject("wallet") ?: throw IOException("Missing wallet balance")
+        val version = wallet.str("version", "").toLongOrNull()
+            ?: throw IOException("Invalid wallet revision")
+        require(version >= 1L)
+        val currency = wallet.str("currency", "")
+        if (currency !in setOf("USD", "IRR", "IRT", "USDT")) {
+            throw IOException("Invalid wallet currency")
+        }
+        // Money is always represented as server-sent minor-unit integers.
+        val available = wallet.str("availableMinor", "")
+        val balance = wallet.str("balanceMinor", "")
+        val held = wallet.str("heldMinor", "")
+        if (listOf(available, balance, held).any { !it.matches(Regex("[0-9]{1,30}")) }) {
+            throw IOException("Invalid wallet amount")
+        }
+        return WalletBalanceSnapshot217(available, balance, held, currency, version)
+    }
+
     suspend fun wallet(token: String, page: Int = 1): Wallet {
         require(page in 1..1000)
         // Omit currency: the first-party API uses the user's canonical account currency.
@@ -769,7 +790,7 @@ class ApiClient {
                     amountMinor = it.str("amountMinor", "0"), currency = it.str("currency"),
                     createdAt = it.str("createdAt"), failureMessage = it.str("failureMessage")
                 )
-            })
+            }, version = w.str("version", "0").toLongOrNull() ?: 0L)
     }
 
     suspend fun walletMethods(direction: String, currency: String): WalletMethodCatalogue {
