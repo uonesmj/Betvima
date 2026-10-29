@@ -1,5 +1,5 @@
 
-# BetVima Native Admin 1.2.0 (Android)
+# BetVima Native Admin 1.3.2 (Android)
 
 Fully native Android app written in Java. No WebView, web app or HTML renderer.
 Package: `com.betvima.admin`, independent of the customer betting APK.
@@ -22,7 +22,7 @@ until a separately verified priced-market integration is implemented.
 
 ## CI / APK
 The GitHub Actions workflow builds and uploads a DEBUG installable APK as
-`BetVima-Native-Admin-v1.2.0-APK`. The eventual release requires an owner
+`BetVima-Native-Admin-v1.3.2-APK`. The eventual release requires an owner
 controlled keystore in GitHub secrets, penetration testing and production
 approval. The debug APK is for a restricted administrator test device only.
 
@@ -36,3 +36,9 @@ within the client, and no certificate verification bypass is supported.
 
 ## DNS reliability
 When Android system DNS fails to resolve the main site or Supabase Auth, the native HTTPS client tries Cloudflare and Google DNS-over-HTTPS. The original hostname is retained for TLS and certificate verification. No hostname-to-IP override is permanently embedded. Resolver failures remain visible and must be repaired in Android Private DNS / network settings if all resolvers are blocked.
+
+## User-management actions (v1.3.2)
+Player dossier opens account actions by default; tap the full section header to collapse it.
+Separate add/remove-balance buttons call the existing audited admin endpoint; they cannot bypass server authorization.
+A dedicated "player tickets" view filters support results to the exact user UUID after searching their numeric ID.
+No backend, casino, sportsbook, wallet ledger, or auth security policy is modified by this release.
