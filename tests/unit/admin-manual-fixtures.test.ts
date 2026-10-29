@@ -30,7 +30,7 @@ describe('manually-entered upcoming fixtures', () => {
       marketsCount: 0,
       topMarkets: [],
     });
-    expect(result[0].participants.map(p => p.name)).toEqual(['Home FC', 'Away FC']);
+    expect(result[0]?.participants.map(p => p.name)).toEqual(['Home FC', 'Away FC']);
     expect(query).toHaveBeenCalledWith(
       expect.stringContaining("where status='scheduled'"),
       ['football'],
