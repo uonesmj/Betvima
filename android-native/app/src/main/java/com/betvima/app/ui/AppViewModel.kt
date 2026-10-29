@@ -766,11 +766,15 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                     // Safe rolling deployment: older servers might not yet have
                     // the new route. Never bypass auth failures or guess funds.
                     if (failure.code != 404) throw failure
-                    walletBalanceUnsupportedUntilMs = SystemClock.elapsedRealtime() + 60_000L
-                    full = api.wallet(jwt)
+                    walletBalanceUnsupportedUntilMs = SystemClock.elapsedRealtime() + 300_000L
+                    // Let the startup account read initialize the wallet instead
+                    // of starting an additional costly full statement in parallel.
+                    if (!(state.value.wallet == null && state.value.accountLoading))
+                        full = api.wallet(jwt)
                 }
             } else {
-                full = api.wallet(jwt)
+                if (!(state.value.wallet == null && state.value.accountLoading))
+                    full = api.wallet(jwt)
             }
             if (generation == sessionGeneration && request == walletRequestNumber &&
                 state.value.signedIn) {
@@ -779,10 +783,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 mutable.update {
                     val updated = if (confirmedSnapshot != null)
                         applyWalletBalance217(it.wallet, confirmedSnapshot)
-                    else if (confirmedFull != null && (it.wallet == null ||
-                        (confirmedFull.version.toBigIntegerOrNull() ?: java.math.BigInteger.ZERO) >=
-                        (it.wallet.version.toBigIntegerOrNull() ?: java.math.BigInteger.ZERO)))
-                        mergeWalletRefresh185(it.wallet, confirmedFull)
+                    else if (confirmedFull != null)
+                        mergeWalletFull218(it.wallet, confirmedFull)
                     else it.wallet
                     it.copy(wallet = updated)
                 }
@@ -800,7 +802,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         if (!state.value.signedIn) return@launch
         val generation = sessionGeneration
         val request = ++accountRequestNumber
-        val walletRequest = ++walletRequestNumber
+        // Full account reads must not invalidate faster confirmed header
+        // snapshots. Their order is resolved by wallet-row version instead.
         mutable.update { it.copy(accountLoading = true) }
         val jwt = vault.accessToken(api)
         if (jwt.isNullOrBlank()) {
@@ -839,8 +842,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             mutable.update {
                 it.copy(
                     wallet = walletResult.getOrNull()
-                        ?.takeIf { walletRequest == walletRequestNumber }
-                        ?.let { fresh -> mergeWalletRefresh185(it.wallet, fresh) } ?: it.wallet,
+                        ?.let { fresh -> mergeWalletFull218(it.wallet, fresh) } ?: it.wallet,
                     accountName = remoteName ?: it.accountName,
                     bets = betResult.getOrNull()?.items ?: it.bets,
                     betsPage = betResult.getOrNull()?.page ?: it.betsPage,
