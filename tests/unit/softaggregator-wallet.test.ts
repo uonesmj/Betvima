@@ -130,6 +130,47 @@ describe('SoftAggregator financial callback behavior (isolated DB contract)', ()
   });
   afterEach(() => vi.unstubAllEnvs());
 
+  it('overlaps only read-only balance profile and wallet queries, retaining fresh eligibility', async () => {
+    const t = makeFakeDb(1000n, 200n);
+    t.setKycEvidenceVerified(false);
+    vi.stubEnv('SOFTAGGREGATOR_REAL_MONEY_ENABLED', 'true');
+    vi.mocked(getDb).mockReturnValue(t.fake as unknown as Db);
+
+    const original = t.fake.queryOne.getMockImplementation()!;
+    let profileInFlight = false;
+    let walletOverlapped = false;
+    t.fake.queryOne.mockImplementation(async (sql: string, params: unknown[]) => {
+      if (sql.includes('from nova.profiles p')) {
+        profileInFlight = true;
+        try {
+          await new Promise(resolve => setTimeout(resolve, 15));
+        } finally {
+          profileInFlight = false;
+        }
+      } else if (sql.includes('from nova.wallets')) {
+        walletOverlapped = profileInFlight;
+      }
+      return original(sql, params);
+    });
+
+    const balanceEvent: SignedCallback = {
+      action: 'balance', username, currency: 'USD',
+      callId: null, amountMinor: null, roundId: null, gameId: null,
+      rollback: false, identityHash: null,
+    };
+
+    // Reading a wallet early never bypasses the eligibility gate.
+    expect(await settleCasinoCallback(balanceEvent)).toEqual({ error: 2, balance: 0 });
+    expect(walletOverlapped).toBe(true);
+    expect(t.postings).toHaveLength(0);
+    expect(t.receipts.size).toBe(0);
+
+    t.setKycEvidenceVerified(true);
+    expect(await settleCasinoCallback(balanceEvent)).toEqual({ error: 0, balance: 800 });
+    expect(t.postings).toHaveLength(0);
+    expect(t.receipts.size).toBe(0);
+  });
+
   it('refuses a signed money callback if the audited schema is incomplete', async () => {
     const t = makeFakeDb();
     t.setSchemaReady(false);
