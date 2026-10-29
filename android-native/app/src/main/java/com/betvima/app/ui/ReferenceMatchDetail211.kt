@@ -451,28 +451,28 @@ private fun DetailCompactScore211(
 @Composable
 private fun DetailModeSwitcher211(live: Boolean, fa: Boolean, onOpenStudio: () -> Unit) {
     Surface(Modifier.fillMaxWidth().padding(horizontal = 17.dp),
-        color = Color(0xFFDADDE5), shape = RoundedCornerShape(18.dp)) {
-        Row(Modifier.padding(3.dp).height(51.dp),
+        color = matchTile211, shape = RoundedCornerShape(18.dp)) {
+        Row(Modifier.padding(3.dp).height(45.dp),
             horizontalArrangement = Arrangement.spacedBy(3.dp)) {
             listOf("score", "tv", "tracker").forEach { entry ->
                 val selected = entry == "score"
                 val enabled = selected || live
                 Surface(modifier = Modifier.weight(1f)
                     .clickable(enabled = enabled && !selected, onClick = onOpenStudio),
-                    color = if (selected) Color.White else Color.Transparent,
+                    color = if (selected) matchCard211 else Color.Transparent,
                     shape = RoundedCornerShape(15.dp),
-                    shadowElevation = if (selected) 2.dp else 0.dp) {
+                    shadowElevation = if (selected) 1.dp else 0.dp) {
                     Box(contentAlignment = Alignment.Center) {
                         when (entry) {
-                            "score" -> Text("1:1", fontSize = 13.sp,
-                                fontWeight = FontWeight.Black, color = matchInk211)
+                            "score" -> Text("1:1", fontSize = 14.sp,
+                                fontWeight = FontWeight.Black, color = matchGreen211)
                             "tv" -> Icon(Icons.Default.Tv, contentDescription = "TV",
-                                tint = if (enabled) matchInk211 else Color(0xFFA1A5B1),
-                                modifier = Modifier.size(21.dp))
+                                tint = Color(0xFF53A7FF),
+                                modifier = Modifier.size(22.dp))
                             else -> Icon(Icons.Default.Sensors,
                                 contentDescription = if (fa) "زنده" else "Live",
-                                tint = if (enabled) matchInk211 else Color(0xFFA1A5B1),
-                                modifier = Modifier.size(21.dp))
+                                tint = Color(0xFFFF477A),
+                                modifier = Modifier.size(22.dp))
                         }
                     }
                 }
@@ -497,7 +497,7 @@ private fun DetailTabStrip211(
             items(detailTabs211, key = { it.key }) { tab ->
                 val isSelected = tab.key == selected
                 val background by animateColorAsState(
-                    if (isSelected) matchBlue211 else Color(0xFFDBDEE6),
+                    if (isSelected) matchBlue211 else matchTile211,
                     animationSpec = tween(210), label = "detailTab211"
                 )
                 Surface(
@@ -532,8 +532,9 @@ private fun DetailMarketCard211(
         modifier = Modifier.fillMaxWidth()
             .padding(horizontal = 15.dp, vertical = 7.dp),
         shape = RoundedCornerShape(19.dp),
-        color = Color.White,
-        border = if (focused) BorderStroke(2.dp, matchBlue211) else null
+        color = matchCard211,
+        border = if (focused) BorderStroke(2.dp, matchBlue211)
+            else BorderStroke(1.dp, matchDivider211)
     ) {
         Column {
             Row(Modifier.fillMaxWidth().clickable(onClick = toggle)
@@ -552,7 +553,7 @@ private fun DetailMarketCard211(
             }
             AnimatedVisibility(visible = expanded) {
                 Column {
-                    HorizontalDivider(color = Color(0xFFD9DBE2), thickness = 1.dp)
+                    HorizontalDivider(color = matchDivider211, thickness = 1.dp)
                     val columns = if (market.selections.size == 1) 1
                         else if (market.selections.size == 2) 2 else 3
                     if (columns == 2 && (market.key.contains("total", true) ||
@@ -610,7 +611,7 @@ private fun DetailOddTile211(
                 model.togglePick(match, market, selection, oddsCenter.x, oddsCenter.y)
             },
         shape = RoundedCornerShape(14.dp),
-        color = if (chosen) Color(0xFFDCEBFF) else matchTile211,
+        color = if (chosen) Color(0xFF13385D) else matchTile211,
         border = if (chosen) BorderStroke(2.dp, matchBlue211) else null
     ) {
         if (compactInline) {
