@@ -9,6 +9,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -41,10 +42,11 @@ import com.betvima.app.data.Market
 import com.betvima.app.data.Selection
 import com.betvima.app.data.odds
 import kotlinx.coroutines.delay
+import coil.compose.AsyncImage
 
 // Only match details use this light reference layout. No global app-theme changes.
-private val matchCanvas211 = Color(0xFFE9EAF0)
-private val matchTile211 = Color(0xFFECEEF3)
+private val matchCanvas211 = Color(0xFFE7E8ED)
+private val matchTile211 = Color(0xFFEDEEF2)
 private val matchInk211 = Color(0xFF15171B)
 private val matchMuted211 = Color(0xFF636876)
 private val matchBlue211 = Color(0xFF087BFA)
@@ -116,7 +118,8 @@ internal fun ReferenceMatchDetail211(state: AppState, model: AppViewModel) {
     var search by rememberSaveable(match.id) { mutableStateOf("") }
     var searchOpen by rememberSaveable(match.id) { mutableStateOf(false) }
     var tvOpen by rememberSaveable(match.id) { mutableStateOf(false) }
-    val scroll = rememberLazyListState()
+    val scroll = remember(match.id) { LazyListState() }
+    val tabScroll = remember(match.id) { LazyListState() }
     LaunchedEffect(match.id) {
         if (match.live && match.id.startsWith("betsapi:live:")) {
             model.refreshMatchFacts(match.id)
@@ -167,38 +170,44 @@ internal fun ReferenceMatchDetail211(state: AppState, model: AppViewModel) {
         ) {
             item(key = "match-breadcrumb") {
                 Row(
-                    Modifier.fillMaxWidth().padding(horizontal = 17.dp, vertical = 12.dp),
+                    Modifier.fillMaxWidth().height(65.dp)
+                        .padding(horizontal = 19.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     IconButton(onClick = model::closeMatch, modifier = Modifier.size(40.dp)) {
                         Icon(Icons.Default.ArrowBack, "Back", tint = matchInk211)
                     }
-                    Spacer(Modifier.width(12.dp))
-                    Text(match.league, color = matchMuted211, fontSize = 15.sp,
-                        maxLines = 1, overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.weight(1f))
-                    Text("BETVIMA", fontWeight = FontWeight.Black, fontSize = 12.sp,
-                        color = matchBlue211)
+                    Row(Modifier.weight(1f), horizontalArrangement = Arrangement.Center,
+                        verticalAlignment = Alignment.CenterVertically) {
+                        verifiedLogoUrl(match.leagueLogo)?.let { logo ->
+                            AsyncImage(model = logo, contentDescription = null,
+                                modifier = Modifier.size(22.dp))
+                            Spacer(Modifier.width(7.dp))
+                        }
+                        Text(match.league, color = matchMuted211, fontSize = 14.sp,
+                            maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    }
+                    Spacer(Modifier.width(40.dp))
                 }
             }
             item(key = "match-scoreboard") {
+                DetailModeSwitcher211(match.live, state.lang == Lang.FA) { tvOpen = true }
+                Spacer(Modifier.height(21.dp))
                 DetailLargeScore211(match, scores, clockLabel, state.lang == Lang.FA) {
                     tvOpen = true
                 }
-                Spacer(Modifier.height(10.dp))
-                DetailModeSwitcher211(match.live, state.lang == Lang.FA) { tvOpen = true }
                 if (state.detailLoading && !state.detailError) {
                     LinearProgressIndicator(Modifier.fillMaxWidth().padding(top = 8.dp),
                         color = matchBlue211)
                 }
-                Spacer(Modifier.height(16.dp))
+                Spacer(Modifier.height(17.dp))
             }
             stickyHeader(key = "match-sticky-tabs") {
                 Column(Modifier.fillMaxWidth().background(matchCanvas211)) {
                     AnimatedVisibility(visible = collapsed) {
                         DetailCompactScore211(match, scores, clockLabel)
                     }
-                    DetailTabStrip211(tab, state.lang == Lang.FA, onTab = {
+                    DetailTabStrip211(tab, state.lang == Lang.FA, listState = tabScroll, onTab = {
                         tab = it
                         // Keep the compact row in place on selection; only change market data.
                     }, searchOpen = searchOpen, onSearch = {
@@ -403,11 +412,12 @@ private fun DetailModeSwitcher211(live: Boolean, fa: Boolean, onOpenStudio: () -
 
 @Composable
 private fun DetailTabStrip211(
-    selected: String, fa: Boolean, onTab: (String) -> Unit,
+    selected: String, fa: Boolean, listState: LazyListState, onTab: (String) -> Unit,
     searchOpen: Boolean, onSearch: () -> Unit
 ) {
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         LazyRow(
+            state = listState,
             modifier = Modifier.weight(1f),
             contentPadding = PaddingValues(start = 15.dp, end = 5.dp, top = 6.dp, bottom = 8.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
