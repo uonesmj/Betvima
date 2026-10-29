@@ -8,6 +8,19 @@ import { AsyncLocalStorage } from 'node:async_hooks';
 type Duration = { count: number; totalMs: number; maxMs: number };
 type Trace = { phases: Record<string, Duration> };
 const context = new AsyncLocalStorage<Trace>();
+const transport = new AsyncLocalStorage<boolean>();
+
+// Only signed ordinary Debit/Credit opt into transport-level optimization.
+// Eligibility, policy and accounting functions are deliberately not touched.
+export async function withCasinoSignedTransport<T>(
+  action: 'balance' | 'debit' | 'credit', rollback: boolean, fn: () => Promise<T>,
+): Promise<T> {
+  if ((action !== 'debit' && action !== 'credit') || rollback) return fn();
+  return transport.run(true, fn);
+}
+export function isCasinoSignedTransport(): boolean {
+  return transport.getStore() === true;
+}
 const ms = () => Number(process.hrtime.bigint()) / 1_000_000;
 const round = (value: number) => Math.round(value * 10) / 10;
 
