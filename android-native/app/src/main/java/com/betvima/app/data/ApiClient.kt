@@ -1013,21 +1013,29 @@ class ApiClient {
             SupportThreadMessage(
                 id = it.str("id"), body = it.str("body"),
                 senderRole = it.str("senderRole"), createdAt = it.str("createdAt"),
+                readAt = it.str("readAt").takeIf(String::isNotBlank),
                 attachments = it.arr("attachments").objects()
                     .map { a -> a.str("originalName") }.filter(String::isNotBlank),
                 attachmentDetails = supportAttachmentDetails(it)
             )
         }
-        return SupportConversation(parseSupportTicket(ticket), messages)
+        return SupportConversation(parseSupportTicket(ticket), messages,
+            supportOnline = data.optBoolean("supportOnline", false))
     }
     private fun parseSupportMessage(m: JSONObject): SupportThreadMessage =
         SupportThreadMessage(
             id = m.str("id"), body = m.str("body"),
             senderRole = m.str("senderRole"), createdAt = m.str("createdAt"),
+            readAt = m.str("readAt").takeIf(String::isNotBlank),
             attachments = m.arr("attachments").objects()
                 .map { it.str("originalName") }.filter(String::isNotBlank),
             attachmentDetails = supportAttachmentDetails(m)
         )
+
+    suspend fun markSupportRead(token: String, ticketId: String) {
+        require(Regex("[a-fA-F0-9-]{36}").matches(ticketId))
+        post("/api/v1/support/" + ticketId + "/read", JSONObject(), token)
+    }
 
     suspend fun sendSupportMessage(token: String, ticketId: String, text: String): SupportThreadMessage {
         require(Regex("[a-fA-F0-9-]{36}").matches(ticketId))

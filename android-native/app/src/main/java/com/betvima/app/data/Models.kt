@@ -169,9 +169,11 @@ data class SupportAttachment(
 data class SupportThreadMessage(
     val id: String, val body: String, val senderRole: String, val createdAt: String,
     val attachments: List<String> = emptyList(),
-    val attachmentDetails: List<SupportAttachment> = emptyList()
+    val attachmentDetails: List<SupportAttachment> = emptyList(),
+    val readAt: String? = null
 )
 data class SupportConversation(
-    val ticket: SupportTicket, val messages: List<SupportThreadMessage>
+    val ticket: SupportTicket, val messages: List<SupportThreadMessage>,
+    val supportOnline: Boolean = false
 )
 
