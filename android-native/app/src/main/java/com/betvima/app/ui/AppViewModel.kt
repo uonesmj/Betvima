@@ -101,6 +101,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     // Header and Wallet observe one server-owned balance. Reject out-of-order reads.
     private var walletRequestNumber = 0
     private var walletRefreshInFlight = false
+    private var casinoBalanceRefreshInFlight = false
     // A short compatibility window if a server revision lacks /wallet/balance.
     private var walletBalanceUnsupportedUntilMs = 0L
     private var recentWalletPaymentUntilMs = 0L
@@ -744,11 +745,46 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         walletRefreshDelay185(android.os.SystemClock.elapsedRealtime() < recentWalletPaymentUntilMs)
 
     /**
-     * Hotfix 218: restore the known-working authenticated wallet statement path.
-     * The v217 lightweight endpoint was incorrectly used by every screen.
-     * This fallback is intentionally global until server deployment and
-     * on-device reconciliation of the lightweight balance endpoint are verified.
+     * Preserve the known-working full statement path for ordinary account,
+     * wallet and payment screens. Casino uses the isolated read-only snapshot
+     * above, with a timed fallback to this path on server errors.
      */
+    /**
+     * Fast read-only balance path used ONLY while a real-money casino game is open.
+     * The wallet row and its monotonic version come from the server, never from
+     * WebView spins or optimistic arithmetic. The full statement path remains
+     * responsible for transactions, payments, and ledger integrity.
+     */
+    fun refreshCasinoBalance() {
+        if (!state.value.signedIn || casinoBalanceRefreshInFlight ||
+            SystemClock.elapsedRealtime() < walletBalanceUnsupportedUntilMs) return
+        casinoBalanceRefreshInFlight = true
+        val generation = sessionGeneration
+        viewModelScope.launch {
+            try {
+                val jwt = vault.accessToken(api)?.takeIf(String::isNotBlank) ?: return@launch
+                val confirmed = api.walletBalance217(jwt)
+                if (generation == sessionGeneration && state.value.signedIn) {
+                    mutable.update { current ->
+                        current.copy(wallet = applyWalletBalance217(current.wallet, confirmed))
+                    }
+                }
+            } catch (cancel: kotlinx.coroutines.CancellationException) {
+                throw cancel
+            } catch (failure: Exception) {
+                // Some deployments may temporarily lack the lightweight route.
+                // Avoid a request storm; the global full-wallet polling remains
+                // active and the displayed confirmed balance is retained.
+                if (generation == sessionGeneration) {
+                    walletBalanceUnsupportedUntilMs = SystemClock.elapsedRealtime() +
+                        if ((failure as? ApiFailure)?.code in setOf(404, 501)) 60_000L else 12_000L
+                }
+            } finally {
+                casinoBalanceRefreshInFlight = false
+            }
+        }
+    }
+
     fun refreshWallet() = viewModelScope.launch {
         if (!state.value.signedIn || walletRefreshInFlight) return@launch
         walletRefreshInFlight = true
