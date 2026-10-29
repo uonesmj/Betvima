@@ -125,7 +125,9 @@ jobs:
           assert 'never infer it from Spin' in balance
           assert 'if (previous == null) {' in balance
           assert 'mergeWalletFull218(previous: Wallet?, server: Wallet)' in balance
-          assert 'mergeWalletFull218(it.wallet, fresh)' in vm
+          assert 'mergeWalletFull218(it.wallet, full)' in vm
+          assert 'Publish verified wallet before unrelated bets/bonuses/profile finish.' in vm
+          assert vm.index('walletResult.getOrNull()?.let { full ->') < vm.index('val betResult = bets.await()')
           assert 'mergeWalletFull218(it.wallet, confirmedFull)' in vm
           assert 'val walletRequest = ++walletRequestNumber' not in vm
           assert '.takeIf { walletRequest == walletRequestNumber }' not in vm
