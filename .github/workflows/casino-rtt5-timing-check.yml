@@ -9,6 +9,7 @@ on:
       - 'src/app/api/webhooks/softaggregator/route.ts'
       - 'ops/cloudflare/softaggregator-callback-worker.js'
       - 'tests/unit/casino-callback-perf-trace.test.ts'
+      - 'tests/unit/casino-debit-single-timeout.test.ts'
       - '.github/workflows/casino-rtt5-timing-check.yml'
   workflow_dispatch:
 
