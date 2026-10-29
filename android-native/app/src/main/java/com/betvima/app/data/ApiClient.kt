@@ -615,6 +615,13 @@ class ApiClient {
      * through the site's provider proxy, NEVER the legacy local UUID endpoint.
      */
     suspend fun detail(id: String): Match {
+        if (manualCatalogueFixture(id)) {
+            // Manual entries only exist in the public catalogue. Never resolve
+            // them through the wager-grade local UUID or Bet365 price endpoints.
+            return synchronized(fixtureLock) { fixtureCache[id] }
+                ?.copy(markets = emptyList(), marketsCount = 0, bettingAvailable = false)
+                ?: throw ApiFailure(404, "Refresh the upcoming list to view this manual fixture")
+        }
         val ref = bet365Ref(id)
         if (ref != null) {
             val match = synchronized(fixtureLock) { fixtureCache[id] }
