@@ -116,7 +116,7 @@ fun CasinoLobby(state: AppState, model: AppViewModel) {
         if (sessionUrl != null && gameUsesRealMoney && state.signedIn && casinoForeground) {
             model.refreshWallet()
             while (true) {
-                delay(2_500L)
+                delay(com.betvima.app.data.casinoWalletPollInterval217(true))
                 model.refreshWallet()
             }
         }
