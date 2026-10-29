@@ -48,9 +48,8 @@ describe('SoftAggregator signed callback scoped transaction timeout', () => {
       await tx.query('select 2');
       await tx.query('select 3');
     });
-    expect(fake.calls.filter(sql => sql.startsWith('set local statement_timeout'))).toEqual([
-      'set local statement_timeout = 15000',
-    ]);
+    expect(fake.calls.filter(sql => sql.startsWith('set local statement_timeout'))).toEqual([]);
+    expect(fake.calls.at(0)).toBe('begin read write; set local statement_timeout = 15000');
     expect(fake.calls.at(-1)).toBe('commit');
     expect(fake.release).toHaveBeenCalledOnce();
   });
@@ -61,8 +60,8 @@ describe('SoftAggregator signed callback scoped transaction timeout', () => {
       await tx.query('select 1', [], { timeoutMs: 3000 });
       await tx.query('select 2');
     });
+    expect(fake.calls.at(0)).toBe('begin read write; set local statement_timeout = 15000');
     expect(fake.calls.filter(sql => sql.startsWith('set local statement_timeout'))).toEqual([
-      'set local statement_timeout = 15000',
       'set local statement_timeout = 3000',
       'set local statement_timeout = 15000',
     ]);
@@ -77,9 +76,8 @@ describe('SoftAggregator signed callback scoped transaction timeout', () => {
       await tx.rpc('post_wallet_entry', { p_user_id: 'x', p_amount_minor: '-10' });
       await tx.query('insert into nova.softaggregator_callback_receipts(call_id) values ($1)', ['abc']);
     });
-    expect(fake.calls.filter(sql => sql.startsWith('set local statement_timeout'))).toEqual([
-      'set local statement_timeout = 15000',
-    ]);
+    expect(fake.calls.filter(sql => sql.startsWith('set local statement_timeout'))).toEqual([]);
+    expect(fake.calls.at(0)).toBe('begin read write; set local statement_timeout = 15000');
     expect(fake.calls.at(-1)).toBe('commit');
   });
 
