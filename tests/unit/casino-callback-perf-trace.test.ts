@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   casinoSqlLabel, measureCasinoDb, traceCasinoCallback,
+  isCasinoSignedTransport, withCasinoSignedTransport,
 } from '@/server/providers/softaggregator/perf-trace';
 
 afterEach(() => vi.unstubAllEnvs());
@@ -57,6 +58,18 @@ describe('isolated, opt-in callback timings', () => {
       expect(logged.outcome).toBe('failed');
       expect(JSON.stringify(logged)).not.toContain('DB_TIMEOUT');
     } finally { logger.mockRestore(); }
+  });
+
+  it('optimizes only ordinary signed debit or credit, never balance or rollback', async () => {
+    expect(isCasinoSignedTransport()).toBe(false);
+    for (const action of ['balance', 'debit', 'credit'] as const) {
+      for (const rollback of [false, true]) {
+        const enabled = await withCasinoSignedTransport(action, rollback, async () =>
+          isCasinoSignedTransport());
+        expect(enabled).toBe(action !== 'balance' && !rollback);
+        expect(isCasinoSignedTransport()).toBe(false);
+      }
+    }
   });
 
   it('uses only static labels for SQL text', () => {
