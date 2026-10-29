@@ -35,7 +35,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.betvima.app.data.AppState
 import com.betvima.app.data.LiveMatchFacts
 import com.betvima.app.data.Match
 import com.betvima.app.data.Market
