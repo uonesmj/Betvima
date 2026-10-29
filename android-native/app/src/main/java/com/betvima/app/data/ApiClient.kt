@@ -619,7 +619,7 @@ class ApiClient {
             // Manual entries only exist in the public catalogue. Never resolve
             // them through the wager-grade local UUID or Bet365 price endpoints.
             return synchronized(fixtureLock) { fixtureCache[id] }
-                ?.copy(markets = emptyList(), marketsCount = 0, bettingAvailable = false)
+                ?.copy(bettingAvailable = false)
                 ?: throw ApiFailure(404, "Refresh the upcoming list to view this manual fixture")
         }
         val ref = bet365Ref(id)
