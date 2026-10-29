@@ -115,7 +115,7 @@ jobs:
           assert 'BetVimaCasinoPerf' in api and 'elapsedMs=' in api
           balance=(Path('android-native/app/src/main/java/com/betvima/app/data/WalletBalance217.kt')).read_text()
           assert 'walletBalance217(jwt)' in vm
-          assert 'applyWalletBalance217(it.wallet, confirmedSnapshot)' in vm
+          assert 'applyWalletSnapshot218(it.wallet, confirmedSnapshot)' in vm
           assert 'walletBalanceUnsupportedUntilMs' in vm
           assert 'casinoWalletRefreshIntervalMs217()' in lobby
           assert 'model.refreshWallet()' in lobby
