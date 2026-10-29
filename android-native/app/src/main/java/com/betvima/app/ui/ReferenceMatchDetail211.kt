@@ -517,13 +517,29 @@ private fun DetailMarketCard211(
                     HorizontalDivider(color = Color(0xFFD9DBE2), thickness = 1.dp)
                     val columns = if (market.selections.size == 1) 1
                         else if (market.selections.size == 2) 2 else 3
+                    if (columns == 2 && (market.key.contains("total", true) ||
+                            market.key.contains("over", true) ||
+                            market.name.contains("total", true))) {
+                        Row(Modifier.fillMaxWidth().padding(horizontal = 17.dp, vertical = 8.dp)) {
+                            market.selections.take(2).forEach { selection ->
+                                val kind = when {
+                                    selection.name.contains("under", true) -> "Under"
+                                    selection.name.contains("over", true) -> "Over"
+                                    else -> ""
+                                }
+                                Text(kind, color = matchMuted211, fontSize = 12.sp,
+                                    textAlign = TextAlign.Center,
+                                    modifier = Modifier.weight(1f))
+                            }
+                        }
+                    }
                     market.selections.chunked(columns).forEach { chunk ->
                         Row(Modifier.fillMaxWidth()
                             .padding(horizontal = 8.dp, vertical = 4.dp),
                             horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                             chunk.forEach { selection ->
                                 DetailOddTile211(match, market, selection, state, model,
-                                    Modifier.weight(1f))
+                                    Modifier.weight(1f), compactInline = columns < 3)
                             }
                             repeat(columns - chunk.size) {
                                 Spacer(Modifier.weight(1f))
@@ -540,7 +556,8 @@ private fun DetailMarketCard211(
 @Composable
 private fun DetailOddTile211(
     match: Match, market: Market, selection: Selection,
-    state: AppState, model: AppViewModel, modifier: Modifier
+    state: AppState, model: AppViewModel, modifier: Modifier,
+    compactInline: Boolean
 ) {
     val enabled = match.bettingAvailable && market.available &&
         selection.available && (!match.live || state.liveEnabled)
@@ -549,7 +566,7 @@ private fun DetailOddTile211(
     val title = NativeMarketLabels176.selection(state.lang,
         selection.label(false), selection.label(true))
     Surface(
-        modifier = modifier.heightIn(min = 75.dp)
+        modifier = modifier.heightIn(min = if (compactInline) 58.dp else 89.dp)
             .onGloballyPositioned { oddsCenter = it.boundsInWindow().center }
             .clickable(enabled = enabled) {
                 model.togglePick(match, market, selection, oddsCenter.x, oddsCenter.y)
@@ -558,17 +575,32 @@ private fun DetailOddTile211(
         color = if (chosen) Color(0xFFDCEBFF) else matchTile211,
         border = if (chosen) BorderStroke(2.dp, matchBlue211) else null
     ) {
-        Column(Modifier.fillMaxWidth().padding(horizontal = 7.dp, vertical = 10.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.SpaceBetween) {
-            Text(title, color = matchInk211, fontSize = 12.sp,
-                lineHeight = 16.sp, maxLines = 3,
-                textAlign = TextAlign.Center, overflow = TextOverflow.Ellipsis)
-            Spacer(Modifier.height(9.dp))
-            Text(odds(selection.oddsScaled),
-                color = if (chosen) matchBlue211 else matchInk211,
-                fontSize = 17.sp, fontWeight = FontWeight.Black,
-                textAlign = TextAlign.Center, maxLines = 1)
+        if (compactInline) {
+            Row(Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 10.dp),
+                verticalAlignment = Alignment.CenterVertically) {
+                Text(title, color = matchInk211, fontSize = 12.sp,
+                    lineHeight = 16.sp, maxLines = 2, textAlign = TextAlign.Start,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f))
+                Spacer(Modifier.width(6.dp))
+                Text(odds(selection.oddsScaled),
+                    color = if (chosen) matchBlue211 else matchInk211,
+                    fontSize = 16.sp, fontWeight = FontWeight.Black,
+                    textAlign = TextAlign.End, maxLines = 1)
+            }
+        } else {
+            Column(Modifier.fillMaxWidth().padding(horizontal = 5.dp, vertical = 11.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.SpaceBetween) {
+                Text(title, color = matchInk211, fontSize = 12.sp,
+                    lineHeight = 16.sp, maxLines = 3,
+                    textAlign = TextAlign.Center, overflow = TextOverflow.Ellipsis)
+                Spacer(Modifier.height(12.dp))
+                Text(odds(selection.oddsScaled),
+                    color = if (chosen) matchBlue211 else matchInk211,
+                    fontSize = 18.sp, fontWeight = FontWeight.Black,
+                    textAlign = TextAlign.Center, maxLines = 1)
+            }
         }
     }
 }
