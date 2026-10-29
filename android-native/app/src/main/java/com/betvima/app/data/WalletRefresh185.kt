@@ -5,6 +5,11 @@ package com.betvima.app.data
  * Preserve older loaded history pages, but never keep their stale summary balances.
  */
 fun mergeWalletRefresh185(previous: Wallet?, server: Wallet): Wallet {
+    // Never let an older full statement overwrite a newer atomic balance read.
+    if (previous != null && previous.currency == server.currency &&
+        previous.version > 0L && server.version > 0L && server.version < previous.version) {
+        return previous
+    }
     if (previous == null || previous.currency != server.currency || previous.page <= 1) return server
     return server.copy(
         transactions = (server.transactions + previous.transactions).distinctBy { it.id },
