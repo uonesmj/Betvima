@@ -264,7 +264,7 @@ fun CasinoLobby(state: AppState, model: AppViewModel) {
         }
     }
 
-    Box(Modifier.fillMaxSize()) {
+    Box(Modifier.fillMaxSize().background(ChromeTokens.black)) {
     CasinoPremiumHome(
         state = state,
         model = model,
