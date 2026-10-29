@@ -40,6 +40,42 @@ class WalletRefresh185Test {
         assertEquals(fresh, mergeWalletRefresh185(old, fresh))
     }
 
+    @Test fun fastBalanceOnlyChangesVerifiedMoneyAndPreservesHistory() {
+        val transaction = Transaction("receipt", "bet_debit", "-50", "2026-10-29")
+        val previous = wallet("2000", page = 2,
+            transactions = listOf(transaction), hasMore = true)
+            .copy(heldMinor = "100", integrity = "ok", version = 10)
+        val snap = WalletBalanceSnapshot217("1850","1950","100","USD",11)
+        val merged = mergeWalletBalanceSnapshot217(previous, snap)
+        assertEquals("1850", merged.availableMinor)
+        assertEquals("1950", merged.balanceMinor)
+        assertEquals("100", merged.heldMinor)
+        assertEquals(11, merged.version)
+        assertEquals("ok", merged.integrity)
+        assertEquals(2, merged.page)
+        assertEquals(listOf("receipt"), merged.transactions.map { it.id })
+        assertTrue(merged.hasMore)
+    }
+
+    @Test fun versionGuardRejectsStaleOrWrongCurrencySnapshots() {
+        val current = wallet("1500").copy(version=42)
+        assertEquals(current, mergeWalletBalanceSnapshot217(current,
+            WalletBalanceSnapshot217("800","800","0","USD",41)))
+        assertEquals(current, mergeWalletBalanceSnapshot217(current,
+            WalletBalanceSnapshot217("800","800","0","IRR",43)))
+    }
+
+    @Test fun versionGuardRejectsStaleFullWalletStatement() {
+        val current = wallet("900").copy(version=50)
+        val stale = wallet("2000").copy(version=49)
+        assertEquals(current, mergeWalletRefresh185(current, stale))
+    }
+
+    @Test fun casinoBalancePollIsBoundedToForegroundPlay() {
+        assertEquals(1_200L, casinoWalletPollInterval217(true))
+        assertEquals(2_500L, casinoWalletPollInterval217(false))
+    }
+
     @Test fun activeWalletPollCadenceIsBounded() {
         assertEquals(5_000L, walletRefreshDelay185(true))
         assertEquals(12_000L, walletRefreshDelay185(false))
