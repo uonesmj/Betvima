@@ -830,6 +830,14 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             val bonuses = async { runCatching { api.bonuses(jwt) } }
             val profile = async { runCatching { api.get("/api/v1/account/profile", jwt) } }
             val walletResult = wallet.await()
+            // Publish verified wallet before unrelated bets/bonuses/profile finish.
+            // They can be slow; header balance must not wait for them.
+            if (sessionGeneration == generation && request == accountRequestNumber &&
+                state.value.signedIn) {
+                walletResult.getOrNull()?.let { full ->
+                    mutable.update { it.copy(wallet = mergeWalletFull218(it.wallet, full)) }
+                }
+            }
             val betResult = bets.await()
             val bonusResult = bonuses.await()
             val remoteProfile = profile.await().getOrNull()?.optJSONObject("profile")
@@ -841,8 +849,6 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 !state.value.signedIn) return@supervisorScope
             mutable.update {
                 it.copy(
-                    wallet = walletResult.getOrNull()
-                        ?.let { fresh -> mergeWalletFull218(it.wallet, fresh) } ?: it.wallet,
                     accountName = remoteName ?: it.accountName,
                     bets = betResult.getOrNull()?.items ?: it.bets,
                     betsPage = betResult.getOrNull()?.page ?: it.betsPage,
