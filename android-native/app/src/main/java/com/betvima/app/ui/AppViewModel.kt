@@ -7,6 +7,7 @@ import com.betvima.app.data.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Deferred
@@ -749,7 +750,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
      * statement. Coalesce overlapping calls; schedule one follow-up after an in-flight
      * read rather than waiting for the next 1.2s game tick. No optimistic money.
      */
-    fun refreshWallet() = viewModelScope.launch {
+    fun refreshWallet(): Job = viewModelScope.launch {
         if (!state.value.signedIn) return@launch
         if (walletRefreshInFlight) {
             walletRefreshPending = true
