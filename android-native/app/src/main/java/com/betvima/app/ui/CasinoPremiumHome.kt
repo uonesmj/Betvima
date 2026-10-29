@@ -707,7 +707,7 @@ private fun CasinoCarousel(games: List<CasinoGame>, lang: Lang, realEnabled: Boo
                     listOf(Color(0xFF092766), Color(0xFF1661C5), Color(0xFF212A69))))
                 .clickable(enabled = game != null) { if (game != null) onPlay(game) }) {
                 if (game?.imageUrl != null) {
-                    AsyncImage(game.imageUrl, game.name,
+                    AsyncImage(casinoArtwork216(game.imageUrl, 900, 540), game.name,
                         modifier = Modifier.align(Alignment.CenterEnd)
                             .fillMaxHeight().fillMaxWidth(.7f),
                         contentScale = ContentScale.Crop)
@@ -844,7 +844,7 @@ private fun CasinoCover(
                 RoundedCornerShape(13.dp))
             .casinoBounce(if (realEnabled) onReal else onDemo)) {
             if (game.imageUrl != null) {
-                AsyncImage(game.imageUrl, game.name, modifier = Modifier.fillMaxSize(),
+                AsyncImage(casinoArtwork216(game.imageUrl, 450, 620), game.name, modifier = Modifier.fillMaxSize(),
                     contentScale = ContentScale.Crop)
             } else {
                 Text(game.name, color = Color.White, fontSize = 13.sp,
@@ -893,7 +893,7 @@ private fun CasinoFeatured(game: CasinoGame, lang: Lang, realEnabled: Boolean, o
             listOf(Color(0xFF174DF4), Color(0xFF426DFA))))
         .clickable(onClick = onPlay)) {
         if (game.imageUrl != null) {
-            AsyncImage(game.imageUrl, game.name,
+            AsyncImage(casinoArtwork216(game.imageUrl, 820, 480), game.name,
                 modifier = Modifier.fillMaxHeight().fillMaxWidth(.48f)
                     .align(Alignment.CenterEnd), contentScale = ContentScale.Crop)
         }
