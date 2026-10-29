@@ -463,7 +463,7 @@ private fun CasinoGameCard(
                 contentAlignment = Alignment.Center) {
                 if (!game.imageUrl.isNullOrBlank()) {
                     AsyncImage(
-                        model = game.imageUrl, contentDescription = game.name,
+                        model = casinoArtwork216(game.imageUrl, 480, 600), contentDescription = game.name,
                         modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop
                     )
                 } else {
