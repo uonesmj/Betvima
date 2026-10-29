@@ -191,4 +191,30 @@ class Bet365SportsAdapterTest {
         assertEquals(2, bet365UpcomingPageLimit(JSONObject().put("pageCount", 80), 2))
         assertTrue(bet365CataloguePath("upcoming", "football", 2).endsWith("page=2"))
     }
+
+    @Test fun manualFixturesAreReadOnlyAndNeverMasqueradeAsVendorOdds() {
+        val manualId = "manual:07b61b42-aeb9-4610-ba14-3b2ba55b3bcd"
+        val manual = JSONObject(fixture.toString())
+            .put("id", manualId)
+            .put("isLive", false)
+            .put("scheduledAt", "2026-10-29T10:25:00.207Z")
+            .put("marketsCount", 999)
+            .put("topMarkets", JSONArray().put(JSONObject()
+                .put("id", "fake-selection")
+                .put("name", "Not a real wager")
+                .put("selections", JSONArray())))
+        val result = parseBet365Catalogue(JSONObject()
+            .put("source", BET365_SOURCE)
+            .put("matches", JSONArray().put(manual).put(fixture)))
+        assertEquals(2, result.size)
+        assertEquals(manualId, result.first().id)
+        assertEquals(0, result.first().marketsCount)
+        assertTrue(result.first().markets.isEmpty())
+        assertFalse(result.first().bettingAvailable)
+        assertNull(bet365Ref(manualId))
+        assertTrue(manualCatalogueFixture(manualId))
+        assertFalse(manualCatalogueFixture("manual:not-a-uuid"))
+        assertFalse(manualCatalogueFixture("d8cdd006-144c-4f53-b374-7d20a8c35f51"))
+    }
+
 }
