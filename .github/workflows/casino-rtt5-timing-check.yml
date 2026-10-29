@@ -7,6 +7,7 @@ on:
       - 'src/server/db/postgres.ts'
       - 'src/server/providers/softaggregator/perf-trace.ts'
       - 'src/app/api/webhooks/softaggregator/route.ts'
+      - 'ops/cloudflare/softaggregator-callback-worker.js'
       - 'tests/unit/casino-callback-perf-trace.test.ts'
       - '.github/workflows/casino-rtt5-timing-check.yml'
   workflow_dispatch:
@@ -35,6 +36,7 @@ jobs:
             tests/unit/casino-debit-single-timeout.test.ts \
             tests/unit/casino-callback-transaction-routing.test.ts \
             tests/unit/casino-db-pool-keepalive.test.ts
+      - run: node --check ops/cloudflare/softaggregator-callback-worker.js
       - run: npm run typecheck
       - name: Financial and policy source unchanged from callback RTT4
         run: |
