@@ -49,7 +49,7 @@ import kotlinx.coroutines.launch
 import coil.compose.AsyncImage
 
 // Only match details use this light reference layout. No global app-theme changes.
-private val matchCanvas211 = Color(0xFF111216)
+private val matchCanvas211 = ChromeTokens.black
 private val matchTile211 = Color(0xFF292C33)
 private val matchInk211 = Color(0xFFF5F6FA)
 private val matchMuted211 = Color(0xFFA3A7B2)
@@ -305,7 +305,8 @@ internal fun ReferenceMatchDetail211(state: AppState, model: AppViewModel) {
             item(key = "match-footer") {
                 PremiumAppFooter(
                     state = state, model = model,
-                    onBackToTop = { scrollScope.launch { scroll.animateScrollToItem(0) } }
+                    onBackToTop = { scrollScope.launch { scroll.animateScrollToItem(0) } },
+                    seamlessBackground = true
                 )
             }
         }
