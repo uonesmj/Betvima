@@ -38,6 +38,24 @@ function trace(stage) {
   console.info('softaggregator.callback.edge', stage);
 }
 
+// Optional timing around the existing origin fetch. No changes to routing,
+ // allowlists, cryptographic signatures or response/error semantics.
+async function fetchOriginTimed(request, enabled) {
+  if (!enabled) return fetch(request);
+  const started = Date.now();
+  let outcome = 'failed';
+  try {
+    const response = await fetch(request);
+    outcome = response.ok ? 'http_ok' : 'http_error';
+    return response;
+  } finally {
+    console.info(JSON.stringify({
+      event: 'casino.callback.edge.latency', outcome,
+      origin_ms: Math.max(0, Date.now() - started),
+    }));
+  }
+}
+
 function exactIpAllowed(ip, configured) {
   if (typeof ip !== 'string' || !/^[a-fA-F0-9:.]{3,45}$/.test(ip) ||
       typeof configured !== 'string' || configured.length > 1024) return false;
@@ -129,9 +147,9 @@ export default {
         'cache-control': 'no-store',
       });
       try {
-        const response = await fetch(new Request(origin, {
+        const response = await fetchOriginTimed(new Request(origin, {
           method: 'GET', headers: safeHeaders, redirect: 'manual',
-        }));
+        }), env.SOFTAGGREGATOR_CALLBACK_PERF_TRACE === 'true');
         // The provider expects HTTP 200 with a JSON body on business errors.
         // Do not forward a redirect or upstream HTML error as a valid callback.
         if (response.status !== 200 ||
@@ -151,6 +169,7 @@ export default {
 
     // Existing active-zone route remains unchanged.
     trace('active_zone_forwarded');
-    return fetch(new Request(request, { headers }));
+    return fetchOriginTimed(new Request(request, { headers }),
+      env.SOFTAGGREGATOR_CALLBACK_PERF_TRACE === 'true');
   },
 };
