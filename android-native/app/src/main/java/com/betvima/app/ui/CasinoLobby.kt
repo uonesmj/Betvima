@@ -116,9 +116,9 @@ fun CasinoLobby(state: AppState, model: AppViewModel) {
         if (sessionUrl != null && gameUsesRealMoney && state.signedIn && casinoForeground) {
             model.refreshWallet()
             while (true) {
-                // Only confirmed server balances, never a local Spin deduction.
-                // The tiny balance endpoint makes the faster cadence practical.
-                delay(model.casinoWalletRefreshIntervalMs217())
+                // Safe rollback: full wallet refresh remains server-authoritative.
+                // 2.5s cadence was verified on v216; never infer debits from Spin.
+                delay(2_500L)
                 model.refreshWallet()
             }
         }
