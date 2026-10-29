@@ -510,7 +510,7 @@ public final class MainActivity extends Activity {
    metric(right,"واریز دوره",cash(w.optString("deposits24hMinor","0")),"حجم پرداخت");
    metric(left,"برداشت دوره",cash(w.optString("withdrawals24hMinor","0")),"در انتظار: "+w.optString("pendingWithdrawals","—"));
    addTitle(body,"دسترسی سریع");
-   for(String[] link:new String[][]{{"users","مدیریت کاربران","حساب، وضعیت و تراکنش‌ها"},{"support","صندوق پشتیبانی","پاسخ تیکت‌های کاربران"},{"manual","افزودن بازی دستی","مسابقات بدون مارکت"},{"casino","حسابداری کازینو","گزارش به تفکیک ارز"}})
+   for(String[] link:new String[][]{{"users","مدیریت کاربران","حساب، وضعیت و تراکنش‌ها"},{"support","صندوق پشتیبانی","پاسخ تیکت‌های کاربران"},{"manual","افزودن بازی دستی","مدیریت مسابقه و آپشن‌های دستی"},{"casino","حسابداری کازینو","گزارش به تفکیک ارز"}})
     menuRow(body,link[1],link[2],()->showPage(link[0]));
    LinearLayout c=panel(body);c.addView(text("وضعیت سود کازینو",14,FG,true));
    space(c,10);c.addView(label("به تفکیک ارز و ارائه‌دهنده • بدون جمع‌زدن ارزهای متفاوت"));
@@ -596,7 +596,7 @@ public final class MainActivity extends Activity {
      case "manual":
       name=pick(item,"home")+" - "+pick(item,"away");
       subtitle=pick(item,"league")+" · "+date(pick(item,"scheduledAt"));
-      total="بدون ضریب";break;
+      total="بازارهای دستی";break;
      case "notifications":
       name=pick(item,"title");subtitle=("personal".equals(item.optString("audience"))?"شخصی":"همگانی")+" · "+date(pick(item,"created_at"));
       total=faStatus(pick(item,"status"))+" · "+pick(item,"delivered")+" گیرنده";break;
@@ -647,6 +647,7 @@ public final class MainActivity extends Activity {
    case "support":ticketDetail(item);break;
    case "notifications":notificationDetail(item);break;
    case "payments":paymentDetail(item);break;
+   case "manual":manualMarketDetail(item);break;
    default:generic(item,"جزئیات ثبت‌شده");
   }
  }
@@ -1370,7 +1371,7 @@ public final class MainActivity extends Activity {
    },when.get(Calendar.YEAR),when.get(Calendar.MONTH),when.get(Calendar.DAY_OF_MONTH)).show();
   });
   space(p,14);
-  p.addView(label("در نسخه اولیه بازی بدون ضریب ثبت می‌شود و شرط‌پذیر نیست."));
+  p.addView(label("پس از ثبت مسابقه، از جزئیات آن آپشن‌ها و ضرایب را تعریف کنید. شرط واقعی فعلاً غیرفعال است."));
   addAction(p,"ذخیره مسابقه دستی",true,()->{
    String leagueName=league.getText().toString().trim(),host=home.getText().toString().trim(),visitor=away.getText().toString().trim();
    if(leagueName.length()<2||host.length()<2||visitor.length()<2||host.equalsIgnoreCase(visitor)){
@@ -1378,7 +1379,7 @@ public final class MainActivity extends Activity {
    }
    if(when.getTimeInMillis()<System.currentTimeMillis()+60000){showMessage("زمان شروع باید در آینده باشد");return;}
    new AlertDialog.Builder(this).setTitle("ثبت بازی دستی")
-    .setMessage(host+" - "+visitor+"\n\nبدون مارکت و بدون امکان ثبت شرط ذخیره شود؟")
+    .setMessage(host+" - "+visitor+"\n\nپس از ذخیره می‌توانید آپشن‌ها را به آن اضافه کنید. شرط واقعی فعال نیست.")
     .setNegativeButton("انصراف",null).setPositiveButton("تأیید",(d,w)->{
      api.perform(()->api.post("/api/v1/admin/mobile/manual-matches",
       new JSONObject().put("sport",sports[sport.getSelectedItemPosition()])
