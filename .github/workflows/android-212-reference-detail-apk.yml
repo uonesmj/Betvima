@@ -1,0 +1,111 @@
+name: BetVima Android 212 Match Detail Parity APK
+on:
+  push:
+    branches:
+      - feat/android-212-reference-detail-parity-20261029
+    paths:
+      - 'android-native/**'
+      - '.github/workflows/android-212-reference-detail-apk.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  verify-and-publish:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - name: Confirm appearance is propagated without backend changes
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          base=Path('android-native/app/src/main/java/com/betvima/app/ui')
+          theme=(base/'Theme.kt').read_text()
+          settings=(base/'SettingsDevice87.kt').read_text()
+          app=(base/'AccountSettings87.kt').read_text()
+          assert 'NativeThemeState.isLight' in theme
+          assert 'NativeThemeState.mode = value' in settings
+          assert 'local.setTheme(v)' in app
+          assert 'other pages have independent themes' not in app
+          chrome=(base/'Components.kt').read_text()
+          nav=(base/'ReferenceBottomNav.kt').read_text()
+          activity=Path('android-native/app/src/main/java/com/betvima/app/MainActivity.kt').read_text()
+          profile=(base/'ReferenceProfileSheet.kt').read_text()
+          bets=(base/'PremiumMyBets.kt').read_text()
+          assert 'val headerBlack = ChromeTokens.black' in chrome
+          assert 'val barBackground = ChromeTokens.black' in nav
+          assert 'color=ChromeTokens.ink' in profile
+          assert 'tint = if (expanded) Color.White else ThemeTokens.ink' in bets
+          assert 'isAppearanceLightStatusBars = false' in activity
+          support=(base/'SupportMessenger.kt').read_text()
+          api=Path('android-native/app/src/main/java/com/betvima/app/data/ApiClient.kt').read_text()
+          assert 'supportDisplayName206(ticket.id)' in support
+          assert 'animateItem(' in support
+          assert 'navigationBarsPadding()' in support
+          assert 'Icons.Default.DoneAll' in support
+          assert 'TextToSpeech' in support
+          assert 'markSupportRead' in api
+          ticket=(base/'BetTrackingUi.kt').read_text()
+          wins=(base/'WinTicketSparklers.kt').read_text()
+          profile=(base/'ReferenceProfileSheet.kt').read_text()
+          settings_ui=(base/'AccountSettings87.kt').read_text()
+          assert 'publicBetLegStatus207(result)' in ticket
+          assert 'rememberInfiniteTransition' in wins
+          assert 'drawRoundRect(' not in wins, 'Animated gold border must remain fully removed'
+          assert 'Continuous travelling gleam on the green winning outline' not in wins
+          assert 'repeat(66)' in wins, 'Keep inner celebration particles'
+          assert 'WIN_TICKET_INTRO_MS_207' in wins
+          assert 'Modifier.matchParentSize()' in bets
+          assert 'if (keyboardVisible) 14 else 42' in support
+          assert 'fontWeight=FontWeight.Black,maxLines=1' in profile
+          assert 'fontWeight=FontWeight.Black' in settings_ui
+          gradle=Path('android-native/app/build.gradle.kts').read_text()
+          assert 'versionCode = 212' in gradle and 'versionName = "0.212.0"' in gradle
+          adapter=Path('android-native/app/src/main/java/com/betvima/app/data/Bet365SportsAdapter.kt').read_text()
+          assert 'manualCatalogueFixturePattern' in adapter
+          assert 'market.copy(' in adapter and 'status = "suspended"' in adapter
+          assert 'bettingAvailable = false' in adapter
+          assert 'manualCatalogueFixture(id)' in api
+          detail=(base/'ReferenceMatchDetail211.kt').read_text()
+          assert 'DetailModeSwitcher211(match.live' in detail
+          assert detail.index('DetailModeSwitcher211(match.live') < detail.index('DetailLargeScore211(match, scores')
+          assert 'state = listState' in detail and 'remember(match.id) { LazyListState() }' in detail
+          assert 'DetailCompactScore211(match, scores, clockLabel)' in detail
+          assert 'stickyHeader(key = "match-sticky-tabs")' in detail
+          assert 'match.bettingAvailable && market.available' in detail
+          assert 'compactInline = columns < 3' in detail
+          print('PASS: match detail reference layout, pinned score, and preview-only wagering safety')
+          PY
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Configure Android SDK
+        run: |
+          echo "ANDROID_HOME=/usr/local/lib/android/sdk" >> "$GITHUB_ENV"
+          /usr/local/lib/android/sdk/cmdline-tools/latest/bin/sdkmanager 'platforms;android-35' 'build-tools;35.0.0' || true
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.10.2'
+      - name: Compile and run all unit tests
+        working-directory: android-native
+        run: gradle --no-daemon --stacktrace :app:assembleDebug :app:testDebugUnitTest
+      - uses: actions/upload-artifact@v4
+        with:
+          name: BetVima-Android-v0.212.0-Match-Parity-DEBUG
+          path: android-native/app/build/outputs/apk/debug/app-debug.apk
+          retention-days: 30
+          if-no-files-found: error
+      - name: Publish direct APK link (debug test only)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          tag="android-v0.212.0-match-parity-debug-20261029"
+          apk="BetVima-Android-v0.212.0-Match-Parity-DEBUG.apk"
+          cp android-native/app/build/outputs/apk/debug/app-debug.apk "$apk"
+          gh release create "$tag" "$apk" --target "$GITHUB_SHA" \
+            --prerelease --title "BetVima Android v0.212.0 - Reference Match Details (debug)" \
+            --notes "Preview/debug build only; NOT production signed. May require removing an existing release-signed app before installation. Refines native match details to align reference structure: centered league, modes before scoreboard, compact pinned team/score header, per-match tab scroll state, and denser market odds tiles. Does not invent missing markets. No backend or betting authorization changes. No additional wager buttons, internal bet ids, or settlement paths. Native app frontend only; backend catalogue feed is deployed independently. Debug-signed."
