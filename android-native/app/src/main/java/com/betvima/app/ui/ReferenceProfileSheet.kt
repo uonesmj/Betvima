@@ -311,10 +311,11 @@ private fun ProfileQuickTile161(
             verticalArrangement=Arrangement.Center) {
             Text(name,color=ProfileStyle161.text,
                 fontSize=if(compact)12.sp else 13.sp,
-                fontWeight=FontWeight.Bold,maxLines=1,
+                fontWeight=FontWeight.Black,maxLines=1,
                 overflow=TextOverflow.Ellipsis)
             Text(subtitle,color=ProfileStyle161.muted,
                 fontSize=if(compact)9.sp else 10.sp,
+                fontWeight=FontWeight.SemiBold,
                 maxLines=1,overflow=TextOverflow.Ellipsis)
         }
         Icon(Icons.Default.ChevronRight,null,

@@ -5,6 +5,10 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
@@ -479,7 +483,13 @@ private fun PremiumTicket(
                     tint = if (expanded) Color.White else ThemeTokens.ink
                 )
             }
-            AnimatedVisibility(visible = expanded) {
+            AnimatedVisibility(
+                visible = expanded,
+                enter = expandVertically(animationSpec = tween(460, easing = FastOutSlowInEasing)) +
+                    fadeIn(animationSpec = tween(420)),
+                exit = shrinkVertically(animationSpec = tween(310, easing = FastOutSlowInEasing)) +
+                    fadeOut(animationSpec = tween(250))
+            ) {
                 Column {
                     Row(
                         Modifier.fillMaxWidth().padding(start = 11.dp, end = 11.dp,
@@ -606,11 +616,12 @@ private fun PremiumTicket(
         color = myBetsCanvas,
         shape = RoundedCornerShape(topStart = 9.dp, topEnd = 9.dp)
     ) {}
-    // Overlay does not intercept taps; it only paints above the ticket for ~1s.
+    // Continuous, noninteractive celebration only while a server-confirmed winning
+    // ticket is expanded; motion stops immediately when the card closes.
     if (expanded && confirmedWin) {
         WinTicketSparklers(
             replay = winReplay,
-            modifier = Modifier.align(Alignment.TopCenter).fillMaxWidth().height(115.dp)
+            modifier = Modifier.matchParentSize()
         )
     }
     }

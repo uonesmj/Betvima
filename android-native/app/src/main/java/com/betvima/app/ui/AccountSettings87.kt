@@ -482,7 +482,7 @@ internal fun AccountSettings87(state:AppState,model:AppViewModel) {
                     Icon(Icons.Default.Logout,null,tint=ink87)
                     Spacer(Modifier.width(9.dp))
                     Text(label87(lang,"Sign out","خروج از حساب"),color=ink87,
-                        fontWeight=FontWeight.Bold)
+                        fontWeight=FontWeight.Black)
                 }
             }
             item{Text(label87(lang,
@@ -507,7 +507,8 @@ internal fun AccountSettings87(state:AppState,model:AppViewModel) {
 }
 @Composable private fun Toggle87(label:String,value:Boolean,onChange:(Boolean)->Unit){
     Row(verticalAlignment=Alignment.CenterVertically){
-        Text(label,modifier=Modifier.weight(1f),color=ink87,fontSize=12.sp)
+        Text(label,modifier=Modifier.weight(1f),color=ink87,fontSize=12.sp,
+            fontWeight=FontWeight.Bold)
         Switch(value,onChange)
     }
 }
@@ -538,9 +539,9 @@ internal fun AccountSettings87(state:AppState,model:AppViewModel) {
         Spacer(Modifier.width(13.dp))
         Column(Modifier.weight(1f),
             verticalArrangement=Arrangement.spacedBy(3.dp)){
-            Text(title,color=ink87,fontSize=13.sp,fontWeight=FontWeight.Bold,
+            Text(title,color=ink87,fontSize=13.sp,fontWeight=FontWeight.Black,
                 maxLines=2,overflow=TextOverflow.Ellipsis)
-            Text(subtitle,color=muted87,fontSize=10.sp,maxLines=2,
+            Text(subtitle,color=muted87,fontSize=10.sp,fontWeight=FontWeight.SemiBold,maxLines=2,
                 overflow=TextOverflow.Ellipsis)
         }
         Icon(if(suffix=="copy") Icons.Default.ContentCopy

@@ -119,7 +119,7 @@ private fun messengerActive(ticket: SupportTicket): Boolean = supportActive(tick
 // Layout invariants for compact bubbles and safe navigation on gesture devices.
 internal fun supportChatBubbleCapDp(viewportDp: Int): Float = viewportDp * .76f
 internal fun supportChatBottomClearanceDp(keyboardVisible: Boolean): Int =
-    if (keyboardVisible) 6 else 8
+    if (keyboardVisible) 14 else 42
 
 @Composable
 private fun MessengerIcon(
@@ -668,7 +668,7 @@ fun SupportMessenger(
                         Text(tr(lang,"Start a new chat","شروع گفت‌وگوی جدید"),color=messengerBlue)
                     }
                 }
-                // Keep the composer and send icon above the Android gesture area.
+                // Independent bottom gap: Android 15 gesture bar must never overlay the editor.
                 Spacer(Modifier.fillMaxWidth().height(bottomClearance))
             }
         }

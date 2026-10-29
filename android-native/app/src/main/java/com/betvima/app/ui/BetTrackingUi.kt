@@ -50,6 +50,13 @@ internal fun ticketResultColor(bet: Bet): Color = when (bet.status.lowercase()) 
     else -> Palette.blue
 }
 
+/** Display only bettor-facing settlement statuses; hide internal provider/feed codes. */
+internal fun publicBetLegStatus207(raw: String): Boolean = raw.uppercase() in setOf(
+    "WON", "WIN", "LOST", "LOSS", "LOSE", "VOID", "REFUNDED", "HALF_WON",
+    "HALF_LOST", "PENDING", "OPEN", "ACCEPTED", "MANUAL_REVIEW",
+    "PENDING_REVIEW", "SETTLED", "CASHED_OUT"
+)
+
 internal fun legResultLabel(raw: String, lang: Lang): String = when(raw.uppercase()) {
     "WON", "WIN" -> tr(lang,"Won","برد")
     "LOST", "LOSS", "LOSE" -> tr(lang,"Lost","باخت")
@@ -285,11 +292,13 @@ private fun TicketSelectionSpotlight(
                             fontWeight = FontWeight.Black,
                             modifier = Modifier.padding(horizontal = 8.dp, vertical = if (compact) 4.dp else 7.dp))
                     }
-                    Surface(color = outcomeColor.copy(alpha = .10f),
-                        shape = RoundedCornerShape(9.dp)) {
-                        Text(legResultLabel(result, lang), color = outcomeColor,
-                            fontSize = 10.sp, fontWeight = FontWeight.Bold,
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = if (compact) 4.dp else 7.dp))
+                    if (publicBetLegStatus207(result)) {
+                        Surface(color = outcomeColor.copy(alpha = .10f),
+                            shape = RoundedCornerShape(9.dp)) {
+                            Text(legResultLabel(result, lang), color = outcomeColor,
+                                fontSize = 10.sp, fontWeight = FontWeight.Bold,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = if (compact) 4.dp else 7.dp))
+                        }
                     }
                 }
             }
