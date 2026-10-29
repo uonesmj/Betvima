@@ -116,6 +116,10 @@ jobs:
           tag="android-v0.213.0-dark-match-footer-debug-20261029"
           apk="BetVima-Android-v0.213.0-Dark-Match-Footer-DEBUG.apk"
           cp android-native/app/build/outputs/apk/debug/app-debug.apk "$apk"
-          gh release create "$tag" "$apk" --target "$GITHUB_SHA" \
-            --prerelease --title "BetVima Android v0.213.0 - Dark Match + Footer (debug)" \
-            --notes "Preview/debug build only; NOT production signed. May require removing an existing release-signed app before installation. Uses a compact black BetVima match-detail design with green/blue/pink section icons, smaller center score panel, original full BetVima information/footer accordions and functional back-to-top. Does not invent missing markets. No backend or betting authorization changes. No additional wager buttons, internal bet ids, or settlement paths. Native app frontend only; backend catalogue feed is deployed independently. Debug-signed."
+          if gh release view "$tag" >/dev/null 2>&1; then
+            gh release upload "$tag" "$apk" --clobber
+          else
+            gh release create "$tag" "$apk" --target "$GITHUB_SHA" \
+              --prerelease --title "BetVima Android v0.213.0 - Dark Match + Footer (debug)" \
+              --notes "Preview/debug build only; NOT production signed. May require removing an existing release-signed app before installation. Uses a compact black BetVima match-detail design with green/blue/pink section icons, smaller center score panel, original full BetVima information/footer accordions and functional back-to-top. Does not invent missing markets. No backend or betting authorization changes. No additional wager buttons, internal bet ids, or settlement paths. Native app frontend only; backend catalogue feed is deployed independently. Debug-signed."
+          fi
