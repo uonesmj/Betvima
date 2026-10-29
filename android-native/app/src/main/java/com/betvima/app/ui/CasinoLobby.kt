@@ -223,22 +223,26 @@ fun CasinoLobby(state: AppState, model: AppViewModel) {
             listOfNotNull(provider.takeIf(String::isNotBlank)))
             .filter(String::isNotBlank).distinct()
     }
-    // Each shelf is populated from the real SoftAggregator catalogue via BetVima's API.
-    // We request a first page for the major category tabs so they are not empty
-    // simply because the global first page happens to contain mostly slots.
+    // First paint uses the primary catalogue immediately. The top two shelves
+    // load after a short defer; lower shelves and deeper live pages only after
+    // the user scrolls. No unnecessary search/provider showcase requests.
     var categoryShowcase by remember { mutableStateOf<Map<String, List<CasinoGame>>>(emptyMap()) }
-    LaunchedEffect(category, provider, debouncedQuery, refreshSerial) {
+    var expandShowcase by remember(category, provider, debouncedQuery) { mutableStateOf(false) }
+    LaunchedEffect(category, provider, debouncedQuery, refreshSerial, expandShowcase) {
         if (provider.isBlank() && debouncedQuery.isBlank()) {
             val types = when (category) {
                 "live" -> listOf("live")
                 "crash", "instant" -> listOf("crash", "instant")
-                else -> listOf("slots", "live", "instant", "crash", "table")
+                "" -> if (expandShowcase) listOf("slots", "live", "instant", "crash", "table")
+                      else listOf("slots", "live")
+                else -> emptyList()
             }
-            val pages = when (category) {
+            val pages = if (expandShowcase) when (category) {
                 "live" -> 4
                 "crash", "instant" -> 3
                 else -> 1
-            }
+            } else 1
+            if (!expandShowcase) delay(220)
             categoryShowcase = coroutineScope {
                 val jobs = types.map { type ->
                     async {
@@ -303,12 +307,15 @@ fun CasinoLobby(state: AppState, model: AppViewModel) {
             games = emptyList()
         },
         onRetry = {
+            model.invalidateCasinoCatalogue()
+            categoryShowcase = emptyMap()
             pilotRefreshSerial++
             page = 1
             games = emptyList()
             refreshSerial++
         },
         onMore = { if (!loading && hasMore) page++ },
+        onExploreMore = { expandShowcase = true },
         onDemo = { game -> tryDemo(game.id, game.name, game.demoSupported) },
         onReal = { game ->
             if (pilot?.realMoneyEnabled == true && state.signedIn) {
