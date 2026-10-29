@@ -189,7 +189,9 @@ fun CasinoLobby(state: AppState, model: AppViewModel) {
         delay(330)
         debouncedQuery = query.trim()
     }
-    LaunchedEffect(category, provider, debouncedQuery, page, refreshSerial) {
+    LaunchedEffect(category, provider, debouncedQuery, page, refreshSerial, sessionUrl) {
+        // Do not fetch or rebuild catalogue while the game owns the screen.
+        if (sessionUrl != null) return@LaunchedEffect
         loading = true
         error = null
         try {
@@ -230,7 +232,9 @@ fun CasinoLobby(state: AppState, model: AppViewModel) {
     // the user scrolls. No unnecessary search/provider showcase requests.
     var categoryShowcase by remember { mutableStateOf<Map<String, List<CasinoGame>>>(emptyMap()) }
     var expandShowcase by remember(category, provider, debouncedQuery) { mutableStateOf(false) }
-    LaunchedEffect(category, provider, debouncedQuery, refreshSerial, expandShowcase) {
+    LaunchedEffect(category, provider, debouncedQuery, refreshSerial, expandShowcase, sessionUrl) {
+        // A running HTML5 slot needs the renderer, not off-screen catalogue requests.
+        if (sessionUrl != null) return@LaunchedEffect
         if (provider.isBlank() && debouncedQuery.isBlank()) {
             val loadPlan = casinoLoadPlan216(
                 category, provider, debouncedQuery, expandShowcase
@@ -264,6 +268,10 @@ fun CasinoLobby(state: AppState, model: AppViewModel) {
     }
 
     Box(Modifier.fillMaxSize().background(ChromeTokens.black)) {
+    // Unmount the heavy gallery while a game WebView is active.
+    // Otherwise its image shelves, snapping lists and graphics layers still
+    // compete for GPU/CPU even though the user cannot see them behind the game.
+    if (sessionUrl == null) {
     CasinoPremiumHome(
         state = state,
         model = model,
@@ -321,6 +329,7 @@ fun CasinoLobby(state: AppState, model: AppViewModel) {
         fullscreen = gameFullscreen,
         onFullscreenChange = { gameFullscreen = it }
     )
+    }
     sessionUrl?.let { secureUrl ->
         CasinoGameDialog(secureUrl, state.lang, gameUsesRealMoney, gameFullscreen) {
             sessionUrl = null
@@ -580,6 +589,11 @@ private fun CasinoGameDialog(
                                 ): Boolean = request.url.scheme != "https"
                                 override fun onPageFinished(view: WebView, url: String) {
                                     loading = false
+                                    // Do not log the session URL, DOM, cookies or bets.
+                                    if (com.betvima.app.BuildConfig.DEBUG) {
+                                        android.util.Log.d("BetVimaCasinoRender",
+                                            "webview_hw_accelerated=" + view.isHardwareAccelerated)
+                                    }
                                 }
                                 override fun onReceivedHttpError(
                                     view: WebView,
