@@ -1,0 +1,84 @@
+name: BetVima Android 206 Support Messenger UX APK
+on:
+  push:
+    branches:
+      - fix/android-206-support-motion-audio-receipts-20261029
+    paths:
+      - 'android-native/**'
+      - '.github/workflows/android-206-support-messenger-apk.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  verify-and-publish:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - name: Confirm appearance is propagated without backend changes
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          base=Path('android-native/app/src/main/java/com/betvima/app/ui')
+          theme=(base/'Theme.kt').read_text()
+          settings=(base/'SettingsDevice87.kt').read_text()
+          app=(base/'AccountSettings87.kt').read_text()
+          assert 'NativeThemeState.isLight' in theme
+          assert 'NativeThemeState.mode = value' in settings
+          assert 'local.setTheme(v)' in app
+          assert 'other pages have independent themes' not in app
+          chrome=(base/'Components.kt').read_text()
+          nav=(base/'ReferenceBottomNav.kt').read_text()
+          activity=Path('android-native/app/src/main/java/com/betvima/app/MainActivity.kt').read_text()
+          profile=(base/'ReferenceProfileSheet.kt').read_text()
+          bets=(base/'PremiumMyBets.kt').read_text()
+          assert 'val headerBlack = ChromeTokens.black' in chrome
+          assert 'val barBackground = ChromeTokens.black' in nav
+          assert 'color=ChromeTokens.ink' in profile
+          assert 'tint = if (expanded) Color.White else ThemeTokens.ink' in bets
+          assert 'isAppearanceLightStatusBars = false' in activity
+          support=(base/'SupportMessenger.kt').read_text()
+          api=Path('android-native/app/src/main/java/com/betvima/app/data/ApiClient.kt').read_text()
+          assert 'supportDisplayName206(ticket.id)' in support
+          assert 'animateItem(' in support
+          assert 'navigationBarsPadding()' in support
+          assert 'Icons.Default.DoneAll' in support
+          assert 'TextToSpeech' in support
+          assert 'markSupportRead' in api
+          gradle=Path('android-native/app/build.gradle.kts').read_text()
+          assert 'versionCode = 206' in gradle and 'versionName = "0.206.0"' in gradle
+          print('PASS: theme state, persistence, selection, and release version')
+          PY
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Configure Android SDK
+        run: |
+          echo "ANDROID_HOME=/usr/local/lib/android/sdk" >> "$GITHUB_ENV"
+          /usr/local/lib/android/sdk/cmdline-tools/latest/bin/sdkmanager 'platforms;android-35' 'build-tools;35.0.0' || true
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.10.2'
+      - name: Compile and run all unit tests
+        working-directory: android-native
+        run: gradle --no-daemon --stacktrace :app:assembleDebug :app:testDebugUnitTest
+      - uses: actions/upload-artifact@v4
+        with:
+          name: BetVima-Android-v0.206.0-Support-Messenger-DEBUG
+          path: android-native/app/build/outputs/apk/debug/app-debug.apk
+          retention-days: 30
+          if-no-files-found: error
+      - name: Publish direct APK link (debug test only)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          tag="android-v0.206.0-support-chat-debug-20261029"
+          apk="BetVima-Android-v0.206.0-Support-Messenger-DEBUG.apk"
+          cp android-native/app/build/outputs/apk/debug/app-debug.apk "$apk"
+          gh release create "$tag" "$apk" --target "$GITHUB_SHA" \
+            --prerelease --title "BetVima Android v0.206.0 - Animated Support Chat (debug)" \
+            --notes "Preview/debug build only; NOT production signed. May require removing an existing release-signed app before installation. Support chat animated message rows, compact bottom composer, separate incoming/outgoing sound switches, speak-aloud messages, stable agent nickname and server-backed read/online status when API deployed. Debug signed only."
