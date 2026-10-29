@@ -25,6 +25,8 @@ import coil.compose.AsyncImage
 import com.betvima.app.data.CasinoGame
 import com.betvima.app.data.casinoCategoryLabel
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 
 private val casinoCardInk95 = Color(0xFF202832)
 private val casinoCardMuted95 = Color(0xFF798592)
@@ -51,21 +53,20 @@ fun CasinoHomeCarousel95(lang: Lang, model: AppViewModel, onViewAll: () -> Unit)
 
     LaunchedEffect(refreshSerial) {
         loading = true
-        // Load each vertical separately: the first general catalogue page may
-        // consist entirely of slots, hiding all live-dealer games.
-        val live = try {
-            model.casinoGames(1, "live", "", "").games.take(4)
-        } catch (cancel: CancellationException) {
-            throw cancel
-        } catch (_: Exception) {
-            emptyList()
-        }
-        val slots = try {
-            model.casinoGames(1, "slots", "", "").games.take(4)
-        } catch (cancel: CancellationException) {
-            throw cancel
-        } catch (_: Exception) {
-            emptyList()
+        // Run live-dealer and slot reads concurrently. The ViewModel shares
+        // short-lived catalogue entries with Casino so navigation can reuse them.
+        val (live, slots) = coroutineScope {
+            val liveJob = async {
+                try { model.casinoGames(1, "live", "", "").games.take(4) }
+                catch (cancel: CancellationException) { throw cancel }
+                catch (_: Exception) { emptyList() }
+            }
+            val slotsJob = async {
+                try { model.casinoGames(1, "slots", "", "").games.take(4) }
+                catch (cancel: CancellationException) { throw cancel }
+                catch (_: Exception) { emptyList() }
+            }
+            liveJob.await() to slotsJob.await()
         }
         // Live dealer games appear first, then slots. Never insert dummy games.
         games = (live + slots).distinctBy { it.id }
