@@ -196,7 +196,7 @@ fun CasinoPremiumHome(
         )
         return
     }
-    Box(Modifier.fillMaxSize().background(ink).nestedScroll(nestedScroll)) {
+    Box(Modifier.fillMaxSize().background(ChromeTokens.black).nestedScroll(nestedScroll)) {
         LazyColumn(
             state = listState,
             modifier = Modifier.fillMaxSize(),
@@ -441,7 +441,8 @@ fun CasinoPremiumHome(
                 }
             }
             item(key = "casino-site-footer") {
-                PremiumAppFooter(state, model, onBackToTop = ::top)
+                PremiumAppFooter(state, model, onBackToTop = ::top,
+                    seamlessBackground = true)
             }
         }
         // Search controls hide on downward scroll and return only on reverse scroll.
@@ -450,7 +451,7 @@ fun CasinoPremiumHome(
             modifier = Modifier.align(Alignment.TopCenter),
             enter = fadeIn(), exit = fadeOut()
         ) {
-            Column(Modifier.fillMaxWidth().background(ink)
+            Column(Modifier.fillMaxWidth().background(ChromeTokens.black)
                 .padding(top = 6.dp, bottom = 8.dp)) {
                 CasinoSearch("", state.lang, {
                     openProviders = false; searchDialog = true
