@@ -8,6 +8,7 @@ on:
       - 'src/server/providers/softaggregator/perf-trace.ts'
       - 'src/app/api/webhooks/softaggregator/route.ts'
       - 'ops/cloudflare/softaggregator-callback-worker.js'
+      - 'ops/casino/stage-live-3098-transport-20261030.py'
       - 'tests/unit/casino-callback-perf-trace.test.ts'
       - 'tests/unit/casino-debit-single-timeout.test.ts'
       - '.github/workflows/casino-rtt5-timing-check.yml'
@@ -37,6 +38,15 @@ jobs:
             tests/unit/casino-debit-single-timeout.test.ts \
             tests/unit/casino-callback-transaction-routing.test.ts \
             tests/unit/casino-db-pool-keepalive.test.ts
+      - name: Validate fail-closed live overlay staging script syntax
+        run: python3 -m py_compile ops/casino/stage-live-3098-transport-20261030.py
+      - name: Refuse to patch when active source is unavailable
+        run: |
+          if python3 ops/casino/stage-live-3098-transport-20261030.py >/tmp/stage-result.log 2>&1; then
+            echo 'ERROR: unrecognized LIVE should not stage on CI'
+            exit 1
+          fi
+          grep -q 'REFUSED: source releases missing' /tmp/stage-result.log
       - run: node --check ops/cloudflare/softaggregator-callback-worker.js
       - run: npm run typecheck
       - name: Financial and policy source unchanged from callback RTT4
