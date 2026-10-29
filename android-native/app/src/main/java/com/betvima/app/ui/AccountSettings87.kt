@@ -381,7 +381,7 @@ internal fun AccountSettings87(state:AppState,model:AppViewModel) {
                         }
                         Column(Modifier.weight(1f),
                             verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                            Text(tr(LocalNativeLanguage176.current, "BETVIMA / ACCOUNT", "BETVIMA / ACCOUNT"), color = Color(0xFFB9BEC9),
+                            Text(tr(LocalNativeLanguage176.current, "BETVIMA / ACCOUNT", "BETVIMA / ACCOUNT"), color = muted87,
                                 fontSize = 10.sp, fontWeight = FontWeight.Black,
                                 letterSpacing = .8.sp)
                             Text(label87(lang,"Settings & Security","تنظیمات و امنیت"),
@@ -391,7 +391,7 @@ internal fun AccountSettings87(state:AppState,model:AppViewModel) {
                         Icon(Icons.Default.VerifiedUser, null,
                             tint = Color(0xFF7ED8BA), modifier = Modifier.size(19.dp))
                     }
-                    HorizontalDivider(color = Color(0xFF34404D))
+                    HorizontalDivider(color = stroke87)
                     Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
                         Text(name, color = ink87, fontSize = 16.sp,
                             fontWeight = FontWeight.Bold)
@@ -404,8 +404,8 @@ internal fun AccountSettings87(state:AppState,model:AppViewModel) {
                             .background(if(status=="active")Color(0xFF4ADFB4)
                                 else Color(0xFFFFB77C)))
                         Text(label87(lang,"Account status: ","وضعیت حساب: ")+status,
-                            color = if(status=="active") Color(0xFF93EAC6)
-                                else Color(0xFFFFC99A),
+                            color = if (status == "active") accent87
+                                else if (NativeThemeState.isLight) Color(0xFFAC5520) else Color(0xFFFFC99A),
                             fontWeight = FontWeight.Bold, fontSize = 11.sp)
                     }
                 }

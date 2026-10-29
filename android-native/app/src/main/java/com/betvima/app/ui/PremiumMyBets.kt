@@ -476,7 +476,7 @@ private fun PremiumTicket(
                     tr(lang, if (expanded) "Collapse ticket" else "Expand ticket",
                         if (expanded) "بستن بلیت" else "بازکردن بلیت"),
                     modifier = Modifier.padding(start = 4.dp).size(20.dp),
-                    tint = Color.White
+                    tint = if (expanded) Color.White else ThemeTokens.ink
                 )
             }
             AnimatedVisibility(visible = expanded) {

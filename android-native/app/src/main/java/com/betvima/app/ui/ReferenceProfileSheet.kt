@@ -176,7 +176,7 @@ fun ReferenceProfileSheet(state: AppState, model: AppViewModel, onClose: () -> U
                         }
                         Text(state.wallet?.let{ money(it.availableMinor,it.currency) }
                                 ?: tr(state.lang,"Unavailable","نامشخص"),
-                            color=ProfileStyle161.text,
+                            color=ChromeTokens.ink,
                             fontSize=if(compressed)26.sp else 31.sp,
                             fontWeight=FontWeight.Black,maxLines=1,
                             overflow=TextOverflow.Ellipsis)
@@ -242,11 +242,11 @@ fun ReferenceProfileSheet(state: AppState, model: AppViewModel, onClose: () -> U
                 ) {
                     Row(Modifier.fillMaxSize(),verticalAlignment=Alignment.CenterVertically,
                         horizontalArrangement=Arrangement.Center) {
-                        Icon(Icons.Default.Logout,null,tint=ProfileStyle161.text,
+                        Icon(Icons.Default.Logout,null,tint=ChromeTokens.ink,
                             modifier=Modifier.size(18.dp))
                         Spacer(Modifier.width(8.dp))
                         Text(tr(state.lang,"Sign out","خروج از حساب"),
-                            color=ProfileStyle161.text,fontWeight=FontWeight.Bold,
+                            color=ChromeTokens.ink,fontWeight=FontWeight.Bold,
                             fontSize=12.sp)
                     }
                 }

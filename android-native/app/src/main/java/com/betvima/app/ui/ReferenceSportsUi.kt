@@ -600,7 +600,7 @@ private fun TournamentShortcut(
         Spacer(Modifier.height(7.dp))
         Text(label, fontWeight = FontWeight.Bold,
             fontSize = 11.sp, lineHeight = 14.sp, maxLines = 2,
-            textAlign = TextAlign.Center, color = Palette.text,
+            textAlign = TextAlign.Center, color = ThemeTokens.ink,
             overflow = TextOverflow.Ellipsis)
     }
 }

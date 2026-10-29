@@ -83,7 +83,7 @@ fun SportsRibbon(selected: String, lang: Lang, showEsports: Boolean = true,
                 }
                 Text(label, fontSize = 10.sp, fontWeight =
                     if (active) FontWeight.ExtraBold else FontWeight.Medium,
-                    color = if (active) Palette.ink else Palette.muted,
+                    color = if (active) ThemeTokens.ink else ThemeTokens.muted,
                     modifier = Modifier.padding(top = 7.dp),
                     maxLines = 1)
             }
