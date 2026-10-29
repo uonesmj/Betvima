@@ -11,6 +11,11 @@ import org.json.JSONObject
  */
 internal const val BET365_SOURCE = "betsapi_bet365"
 internal val bet365FixturePattern = Regex("^betsapi:(live|upcoming):([0-9]{1,4}):([0-9]{1,16})$")
+internal val manualCatalogueFixturePattern = Regex(
+    "^manual:[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+)
+internal fun manualCatalogueFixture(id: String): Boolean =
+    manualCatalogueFixturePattern.matches(id)
 internal val bet365PrimarySports = listOf(
     "football", "basketball", "tennis", "volleyball", "ice-hockey", "cricket", "handball"
 )
@@ -68,8 +73,17 @@ internal fun parseBet365Catalogue(data: JSONObject): List<Match> {
         throw ApiFailure(503, "Bet365 fixture feed unavailable")
     return data.arr("matches").objects().mapNotNull { json ->
         val id = json.str("id")
-        if (bet365Ref(id) == null) return@mapNotNull null
-        parseMatch(json).copy(bettingAvailable = false)
+        if (bet365Ref(id) == null && !manualCatalogueFixture(id)) return@mapNotNull null
+        if (manualCatalogueFixture(id)) {
+            // Ignore any market payload on a manual catalogue entry:
+            // there is no accepted odds version, financial settlement or wager route.
+            parseMatch(json, org.json.JSONArray()).copy(
+                marketsCount = 0,
+                bettingAvailable = false
+            )
+        } else {
+            parseMatch(json).copy(bettingAvailable = false)
+        }
     }
 }
 
