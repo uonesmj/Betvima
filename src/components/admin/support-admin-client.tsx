@@ -231,6 +231,9 @@ export function SupportAdminClient() {
       const data = await request<TicketDetailData>(`/api/v1/admin/support/${id}`);
       setTicket(data.ticket ?? null);
       setMessages(data.messages ?? []);
+      if (document.visibilityState === 'visible') {
+        void request(`/api/v1/admin/support/${id}/read`, { method: 'POST' }).catch(() => {});
+      }
       setAssignedTo(data.ticket?.assignedTo ?? '');
       setError(null);
     } catch (cause) {
@@ -252,6 +255,17 @@ export function SupportAdminClient() {
     }
     void loadTicket(selectedId);
   }, [selectedId]);
+
+  useEffect(() => {
+    const heartbeat = () => {
+      if (document.visibilityState === 'visible')
+        void request('/api/v1/admin/support/presence', { method: 'POST' }).catch(() => {});
+    };
+    heartbeat();
+    const timer = window.setInterval(heartbeat, 20000);
+    document.addEventListener('visibilitychange', heartbeat);
+    return () => { window.clearInterval(timer); document.removeEventListener('visibilitychange', heartbeat); };
+  }, []);
 
   useEffect(() => {
     const timer = window.setInterval(() => {
@@ -492,7 +506,7 @@ export function SupportAdminClient() {
                             </a>
                           );
                         })}
-                        <div className="mt-1 text-[9px] text-[#6E7C91]">{formatTime(message.createdAt)}</div>
+                        <div className="mt-1 flex items-center justify-end gap-1 text-[9px] text-[#6E7C91]">{message.senderRole === 'support' ? (message.readAt ? '✓✓ Read' : '✓ Sent') : null} {formatTime(message.createdAt)}</div>
                       </div>
                     </div>
                   ))
