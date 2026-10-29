@@ -47,7 +47,7 @@ jobs:
             echo 'ERROR: script should fail closed outside the VPS'
             exit 1
           fi
-          grep -q 'REFUSED: active release or overlay missing' /tmp/candidate-check.log
+          grep -Eq 'REFUSED: (run from root shell|active release or overlay missing)' /tmp/candidate-check.log
       - name: Validate fail-closed live overlay staging script syntax
         run: python3 -m py_compile ops/casino/stage-live-3098-transport-20261030.py
       - name: Refuse to patch when active source is unavailable
