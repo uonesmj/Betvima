@@ -17,10 +17,15 @@ verify_hash() {
 }
 [[ "$(id -u)" == 0 ]] || die "run from root shell"
 [[ -d "$LIVE" && -d "$OVERLAY" ]] || die "active release or overlay missing"
-[[ ! -e "$CAND" && ! -L "$CAND" ]] || die "candidate path already exists"
+if [[ -e "$CAND" || -L "$CAND" ]]; then
+  [[ -d "$CAND" && ! -L "$CAND" ]] || die "existing candidate is not a regular directory"
+  REUSE_CANDIDATE=1
+else
+  REUSE_CANDIDATE=0
+fi
 [[ -f "$LIVE/package.json" && -f "$LIVE/tsconfig.json" ]] || die "active build configuration absent"
 [[ -d "$LIVE/node_modules" ]] || die "active node_modules absent"
-[[ -x "$LIVE/node_modules/.bin/tsc" ]] || die "local TypeScript binary missing"
+[[ -f "$LIVE/node_modules/typescript/lib/tsc.js" ]] || die "real TypeScript compiler missing; .bin/tsc may be a broken wrapper"
 [[ -f "$LIVE/.next/BUILD_ID" ]] || die "current active build missing"
 verify_hash "$LIVE/src/server/db/postgres.ts" \
   3d66c5724ff67ebdbc160ca56fb05e1597ebf38f48a7d01b3482bccae01916a3
@@ -39,20 +44,33 @@ PID=$(ss -ltnpH | sed -n '/:3098[[:space:]]/s/.*pid=\([0-9]\+\).*/\1/p' | head -
 [[ "$(readlink -f "/proc/$PID/cwd")" == "$LIVE" ]] || die "3098 release changed"
 
 echo "SAFE_PRECHECK_PASSED"
-mkdir -m 0700 "$CAND"
-# Copy the active release except generated build and dependencies.
-# Node modules are linked only for TypeScript reading; no install/build scripts
-# are executed, and all production files remain unchanged.
-tar -C "$LIVE" --exclude='./.next' --exclude='./node_modules' \
-  --exclude='./.git' -cf - . | tar -C "$CAND" -xf -
-ln -s "$LIVE/node_modules" "$CAND/node_modules"
-for file in \
-  src/server/db/postgres.ts \
-  src/app/api/webhooks/softaggregator/route.ts \
-  src/server/providers/softaggregator/perf-trace.ts
-do
-  cp "$OVERLAY/$file" "$CAND/$file"
-done
+if [[ "$REUSE_CANDIDATE" == 0 ]]; then
+  mkdir -m 0700 "$CAND"
+  # Copy the active source once; never overwrite an existing candidate.
+  tar -C "$LIVE" --exclude='./.next' --exclude='./node_modules' \
+    --exclude='./.git' -cf - . | tar -C "$CAND" -xf -
+  ln -s "$LIVE/node_modules" "$CAND/node_modules"
+  for file in \
+    src/server/db/postgres.ts \
+    src/app/api/webhooks/softaggregator/route.ts \
+    src/server/providers/softaggregator/perf-trace.ts
+  do
+    cp "$OVERLAY/$file" "$CAND/$file"
+  done
+else
+  echo "REUSE_EXISTING_CANDIDATE_WITHOUT_MODIFICATION"
+  [[ -L "$CAND/node_modules" ]] || die "existing candidate node_modules is not a symlink"
+  [[ "$(readlink -f "$CAND/node_modules")" == "$(readlink -f "$LIVE/node_modules")" ]] ||
+    die "existing candidate uses unexpected dependencies"
+  for file in \
+    src/server/db/postgres.ts \
+    src/app/api/webhooks/softaggregator/route.ts \
+    src/server/providers/softaggregator/perf-trace.ts
+  do
+    [[ -f "$CAND/$file" && "$(hash "$CAND/$file")" == "$(hash "$OVERLAY/$file")" ]] ||
+      die "candidate overlay mismatch: $file"
+  done
+fi
 
 # Exhaustively compare every src/ file to the active release.
 # No changes except the two transport/route files and one added trace module.
@@ -84,9 +102,10 @@ print('WALLET_FIAT_JURISDICTION_UNCHANGED')
 PY
 
 # Typechecking only: no next build, migrations, service launch or real bets.
+# Invoke the real TypeScript JS file, not the potentially broken .bin/tsc shim.
 echo "TYPECHECK_RUNNING"
 if (cd "$CAND" && NEXT_TELEMETRY_DISABLED=1 \
-   "$CAND/node_modules/.bin/tsc" --noEmit --incremental false); then
+   node "$LIVE/node_modules/typescript/lib/tsc.js" --noEmit --incremental false); then
   echo "TYPECHECK_PASS"
   echo "ISOLATED_CANDIDATE_READY=$CAND"
   echo "PRODUCTION_UNCHANGED_3098"
