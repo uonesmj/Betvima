@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { validateCallback, verifyCallbackEdgeSignature, verifySupplierCallbackSignature } from '@/server/providers/softaggregator/contract';
 import { casinoRealMoneyEnabled } from '@/server/providers/softaggregator/client';
 import { settleCasinoCallback } from '@/server/providers/softaggregator/wallet';
+import { traceCasinoCallback } from '@/server/providers/softaggregator/perf-trace';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -64,7 +65,8 @@ export async function GET(request: Request) {
   );
   if (!event) return reply(2);
   try {
-    const result = await settleCasinoCallback(event);
+    const result = await traceCasinoCallback(event.action, event.rollback,
+      () => settleCasinoCallback(event));
     return reply(result.error, result.balance);
   } catch (err) {
     // Never acknowledge a failed database transaction as successful.
