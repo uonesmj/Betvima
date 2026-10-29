@@ -315,75 +315,84 @@ private fun DetailLargeScore211(
     match: Match, score: Pair<String, String>, clock: String,
     fa: Boolean, onOpenStudio: () -> Unit
 ) {
-    Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
-        Row(
-            Modifier.fillMaxWidth().heightIn(min = 130.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Column(Modifier.weight(1f),
-                horizontalAlignment = Alignment.Start) {
-                TeamBadge(match.home, 55)
-                Spacer(Modifier.height(10.dp))
-                Text(match.home.name, fontSize = 14.sp, lineHeight = 19.sp,
-                    fontWeight = FontWeight.Bold, color = matchInk211,
-                    maxLines = 3, overflow = TextOverflow.Ellipsis,
-                    textAlign = TextAlign.Start)
+    Surface(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp),
+        color = matchCard211, shape = RoundedCornerShape(20.dp),
+        border = BorderStroke(1.dp, matchDivider211)
+    ) {
+        Column(Modifier.padding(horizontal = 13.dp, vertical = 13.dp)) {
+            Row(
+                Modifier.fillMaxWidth().heightIn(min = 111.dp),
+                horizontalArrangement = Arrangement.spacedBy(7.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(Modifier.weight(1f), horizontalAlignment = Alignment.Start) {
+                    TeamBadge(match.home, 49)
+                    Spacer(Modifier.height(7.dp))
+                    Text(match.home.name, fontSize = 13.sp, lineHeight = 17.sp,
+                        fontWeight = FontWeight.Bold, color = matchInk211,
+                        maxLines = 3, overflow = TextOverflow.Ellipsis,
+                        textAlign = TextAlign.Start)
+                }
+                Column(Modifier.width(112.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                    Surface(
+                        color = matchTile211, shape = RoundedCornerShape(14.dp),
+                        border = BorderStroke(1.dp, if (match.live)
+                            matchGreen211.copy(alpha = .48f) else matchDivider211)
+                    ) {
+                        Row(Modifier.padding(horizontal = 10.dp, vertical = 9.dp),
+                            horizontalArrangement = Arrangement.spacedBy(7.dp),
+                            verticalAlignment = Alignment.CenterVertically) {
+                            Text(score.first, fontSize = 24.sp, fontWeight = FontWeight.Black,
+                                color = matchInk211, textAlign = TextAlign.Center,
+                                modifier = Modifier.weight(1f))
+                            Text(":", color = matchMuted211, fontSize = 20.sp)
+                            Text(score.second, fontSize = 24.sp, fontWeight = FontWeight.Black,
+                                color = matchInk211, textAlign = TextAlign.Center,
+                                modifier = Modifier.weight(1f))
+                        }
+                    }
+                    Spacer(Modifier.height(8.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        if (match.live) {
+                            Icon(Icons.Default.Sensors, contentDescription = null,
+                                tint = Color(0xFFFF477A), modifier = Modifier.size(13.dp))
+                            Spacer(Modifier.width(4.dp))
+                        }
+                        Text(if (match.live) clock else if (fa) "شروع نشده" else "Upcoming",
+                            fontSize = 11.sp,
+                            color = if (match.live) Color(0xFFFF648C) else matchMuted211,
+                            fontWeight = FontWeight.SemiBold, maxLines = 1)
+                    }
+                }
+                Column(Modifier.weight(1f), horizontalAlignment = Alignment.End) {
+                    TeamBadge(match.away, 49)
+                    Spacer(Modifier.height(7.dp))
+                    Text(match.away.name, fontSize = 13.sp, lineHeight = 17.sp,
+                        fontWeight = FontWeight.Bold, color = matchInk211,
+                        maxLines = 3, overflow = TextOverflow.Ellipsis,
+                        textAlign = TextAlign.End)
+                }
             }
-            Column(Modifier.width(86.dp),
-                horizontalAlignment = Alignment.CenterHorizontally) {
-                Surface(color = Color(0xFF858C9C),
-                    shape = RoundedCornerShape(11.dp)) {
-                    Text(score.first + ":" + score.second,
-                        fontSize = 23.sp, fontWeight = FontWeight.Black,
-                        color = Color.White, textAlign = TextAlign.Center,
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 9.dp))
+            if (match.live) {
+                HorizontalDivider(Modifier.padding(top = 12.dp, bottom = 9.dp),
+                    color = matchDivider211, thickness = 1.dp)
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    Text(match.home.name, fontSize = 12.sp, fontWeight = FontWeight.Medium,
+                        color = matchMuted211, modifier = Modifier.weight(1f),
+                        maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text(score.first + " : " + score.second,
+                        fontSize = 14.sp, fontWeight = FontWeight.Bold, color = matchInk211)
+                    Spacer(Modifier.width(10.dp))
+                    Text(match.away.name, fontSize = 12.sp, fontWeight = FontWeight.Medium,
+                        color = matchMuted211, modifier = Modifier.weight(1f),
+                        textAlign = TextAlign.End,
+                        maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
                 Spacer(Modifier.height(7.dp))
-                Text(if (match.live) clock else if (fa) "شروع نشده" else "Upcoming",
-                    fontSize = 11.sp, color = matchMuted211,
-                    fontWeight = FontWeight.Medium, textAlign = TextAlign.Center,
-                    maxLines = 1)
-            }
-            Column(Modifier.weight(1f),
-                horizontalAlignment = Alignment.End) {
-                TeamBadge(match.away, 55)
-                Spacer(Modifier.height(10.dp))
-                Text(match.away.name, fontSize = 14.sp, lineHeight = 19.sp,
-                    fontWeight = FontWeight.Bold, color = matchInk211,
-                    maxLines = 3, overflow = TextOverflow.Ellipsis,
-                    textAlign = TextAlign.End)
-            }
-        }
-        if (match.live) {
-            Spacer(Modifier.height(18.dp))
-            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Default.Sensors, contentDescription = null,
-                    tint = Color(0xFFE11D71), modifier = Modifier.size(17.dp))
-                Spacer(Modifier.width(5.dp))
-                Text(clock, fontSize = 12.sp, color = matchMuted211)
-                Spacer(Modifier.weight(1f))
                 Text(if (fa) "نمایش زنده" else "Live match",
-                    fontSize = 12.sp, color = matchMuted211,
-                    modifier = Modifier.clickable(onClick = onOpenStudio))
-            }
-            Spacer(Modifier.height(9.dp))
-            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(5.dp)) {
-                    Text(match.home.name, color = matchInk211,
-                        fontSize = 14.sp, fontWeight = FontWeight.SemiBold,
-                        maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    Text(match.away.name, color = matchInk211,
-                        fontSize = 14.sp, fontWeight = FontWeight.SemiBold,
-                        maxLines = 1, overflow = TextOverflow.Ellipsis)
-                }
-                Column(horizontalAlignment = Alignment.End,
-                    verticalArrangement = Arrangement.spacedBy(5.dp)) {
-                    Text(score.first, color = matchInk211,
-                        fontSize = 14.sp, fontWeight = FontWeight.Bold)
-                    Text(score.second, color = matchInk211,
-                        fontSize = 14.sp, fontWeight = FontWeight.Bold)
-                }
+                    fontSize = 11.sp, color = matchBlue211,
+                    modifier = Modifier.align(Alignment.End).clickable(onClick = onOpenStudio))
             }
         }
     }
@@ -417,7 +426,7 @@ private fun DetailCompactScore211(
             verticalArrangement = Arrangement.spacedBy(5.dp),
             horizontalAlignment = Alignment.CenterHorizontally) {
             listOf(score.first, score.second).forEach { number ->
-                Surface(color = Color(0xFFD8DAE2),
+                Surface(color = matchTile211,
                     shape = RoundedCornerShape(8.dp)) {
                     Text(number, fontSize = 14.sp, fontWeight = FontWeight.Black,
                         color = matchInk211, textAlign = TextAlign.Center,
