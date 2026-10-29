@@ -774,13 +774,15 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             }
             if (generation == sessionGeneration && request == walletRequestNumber &&
                 state.value.signedIn) {
+                val confirmedSnapshot = snapshot
+                val confirmedFull = full
                 mutable.update {
-                    val updated = if (snapshot != null)
-                        applyWalletBalance217(it.wallet, snapshot)
-                    else if (full != null && (it.wallet == null ||
-                        (full.version.toBigIntegerOrNull() ?: java.math.BigInteger.ZERO) >=
+                    val updated = if (confirmedSnapshot != null)
+                        applyWalletBalance217(it.wallet, confirmedSnapshot)
+                    else if (confirmedFull != null && (it.wallet == null ||
+                        (confirmedFull.version.toBigIntegerOrNull() ?: java.math.BigInteger.ZERO) >=
                         (it.wallet.version.toBigIntegerOrNull() ?: java.math.BigInteger.ZERO)))
-                        mergeWalletRefresh185(it.wallet, full)
+                        mergeWalletRefresh185(it.wallet, confirmedFull)
                     else it.wallet
                     it.copy(wallet = updated)
                 }
