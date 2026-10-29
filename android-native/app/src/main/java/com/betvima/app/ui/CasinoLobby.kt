@@ -111,16 +111,15 @@ fun CasinoLobby(state: AppState, model: AppViewModel) {
         }
     }
 
-    // Read-only, foreground-only balance sync during real-money sessions.
-    // Never calculate amounts from WebView or change the wallet locally.
+    // A verified wallet-row read does not compete with the full payment
+    // statement query. Keep the casino renderer foregrounded and never infer
+    // money from provider animations or JavaScript WebView callbacks.
     LaunchedEffect(sessionUrl, gameUsesRealMoney, state.signedIn, casinoForeground) {
         if (sessionUrl != null && gameUsesRealMoney && state.signedIn && casinoForeground) {
-            model.refreshWallet()
+            model.refreshCasinoBalance()
             while (true) {
-                // Server-owned wallet reads only. Stable v216 cadence avoids
-                // flooding the heavy statement endpoint before backend rollout.
-                delay(2_500L)
-                model.refreshWallet()
+                delay(com.betvima.app.data.casinoWalletPollDelay217())
+                model.refreshCasinoBalance()
             }
         }
     }
@@ -342,6 +341,7 @@ fun CasinoLobby(state: AppState, model: AppViewModel) {
                 // balance again. Never change the displayed balance locally.
                 pilot = null
                 pilotRefreshSerial++
+                model.refreshCasinoBalance()
                 model.refreshAccount()
             }
         }
