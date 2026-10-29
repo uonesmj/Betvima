@@ -73,13 +73,13 @@ fun ReferenceAnimatedBottomNav(
     onNavigate: (String) -> Unit
 ) {
     val selected = selectedBottomNavigationId(state, menuOpen)
-    val barBackground = ThemeTokens.canvas
+    val barBackground = ChromeTokens.black
 
     CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
         Column(modifier = Modifier.fillMaxWidth().background(barBackground)) {
             Box(
                 Modifier.fillMaxWidth().height(1.dp)
-                    .background(ThemeTokens.outline)
+                    .background(ChromeTokens.outline)
             )
             Row(
                 modifier = Modifier.fillMaxWidth()
@@ -94,7 +94,7 @@ fun ReferenceAnimatedBottomNav(
 
                     // Animate the icon COLOR, never a background rectangle.
                     val iconTint by animateColorAsState(
-                        targetValue = if (active) Palette.blue else ThemeTokens.muted,
+                        targetValue = if (active) ChromeTokens.active else ChromeTokens.muted,
                         animationSpec = tween(
                             durationMillis = 290,
                             easing = FastOutSlowInEasing
@@ -102,7 +102,7 @@ fun ReferenceAnimatedBottomNav(
                         label = "nav183SelectedIconColor"
                     )
                     val captionTint by animateColorAsState(
-                        targetValue = if (active) (if (NativeThemeState.isLight) Color(0xFF005EAA) else Color(0xFFF2F7FF)) else ThemeTokens.muted,
+                        targetValue = if (active) ChromeTokens.ink else ChromeTokens.muted,
                         animationSpec = tween(240),
                         label = "nav183CaptionColor"
                     )

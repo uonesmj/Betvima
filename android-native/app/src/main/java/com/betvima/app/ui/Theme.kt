@@ -17,6 +17,17 @@ internal object NativeThemeState {
     val isLight: Boolean get() = mode == "light" || (mode == "system" && !systemDark)
 }
 
+/** The app shell stays black in dark, light and system modes. */
+internal object ChromeTokens {
+    val black = Color(0xFF101114)
+    val panel = Color(0xFF25272B)
+    val outline = Color(0xFF383B42)
+    val ink = Color(0xFFF5F7FA)
+    val muted = Color(0xFFACB5C2)
+    val active = Color(0xFF3EA2FF)
+    val green = Color(0xFF00D47A)
+}
+
 internal object ThemeTokens {
     val canvas: Color get() = if (NativeThemeState.isLight) Color(0xFFF4F6FA) else Color(0xFF111113)
     val panel: Color get() = if (NativeThemeState.isLight) Color.White else Color(0xFF222224)

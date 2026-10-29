@@ -65,8 +65,8 @@ fun BrandHeader(
     userName: String? = null,
     casinoStyle: Boolean = false
 ) {
-    val headerBlack = ThemeTokens.canvas
-    val headerGreen = ThemeTokens.accent
+    val headerBlack = ChromeTokens.black
+    val headerGreen = ChromeTokens.green
     // Financial values must come from the current authenticated wallet.
     // Never substitute a synthetic 0.00 or force USD/USDT.
     val currency = walletCurrency?.trim()?.takeIf { it.isNotEmpty() } ?: "—"
@@ -104,7 +104,7 @@ fun BrandHeader(
                         .padding(vertical = 10.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text("BET", color = ThemeTokens.ink,
+                    Text("BET", color = ChromeTokens.ink,
                         fontSize = if (compact) 17.sp else 19.sp,
                         fontWeight = FontWeight.Black,
                         letterSpacing = (-.9).sp,
@@ -131,18 +131,18 @@ fun BrandHeader(
                             Text(currency,
                                 fontSize = if (compact) 11.sp else 12.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = ThemeTokens.muted,
+                                color = ChromeTokens.muted,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis)
                             Icon(Icons.Default.KeyboardArrowDown,
                                 contentDescription = tr(lang, "Wallet", "کیف پول"),
-                                tint = ThemeTokens.muted,
+                                tint = ChromeTokens.muted,
                                 modifier = Modifier.size(15.dp))
                         }
                         Text(amount,
                             fontSize = if (compact) 13.sp else 15.sp,
                             fontWeight = FontWeight.Black,
-                            color = ThemeTokens.ink,
+                            color = ChromeTokens.ink,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis)
                     }
@@ -166,13 +166,13 @@ fun BrandHeader(
                     Box(
                         modifier = Modifier.size(43.dp)
                             .clip(RoundedCornerShape(12.dp))
-                            .background(ThemeTokens.elevated)
+                            .background(ChromeTokens.panel)
                             .clickable(onClick = onNotifications),
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(Icons.Default.Notifications,
                             contentDescription = tr(lang, "Notifications", "اعلان‌ها"),
-                            tint = ThemeTokens.ink, modifier = Modifier.size(22.dp))
+                            tint = ChromeTokens.ink, modifier = Modifier.size(22.dp))
                         if (unread > 0) {
                             Box(
                                 Modifier.align(Alignment.TopEnd)
@@ -180,7 +180,7 @@ fun BrandHeader(
                                     .size(12.dp)
                                     .clip(CircleShape)
                                     .background(Color(0xFFFF6330))
-                                    .border(2.dp, ThemeTokens.elevated, CircleShape)
+                                    .border(2.dp, ChromeTokens.panel, CircleShape)
                             )
                         }
                     }
@@ -201,12 +201,12 @@ fun BrandHeader(
                     Surface(
                         modifier = Modifier.width(loginWidth).height(46.dp)
                             .clickable(onClick = onAccount),
-                        color = ThemeTokens.elevated,
+                        color = ChromeTokens.panel,
                         shape = RoundedCornerShape(12.dp)
                     ) {
                         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                             Text(tr(lang, "Login", "ورود"),
-                                color = ThemeTokens.ink,
+                                color = ChromeTokens.ink,
                                 fontSize = if (narrow) 12.sp else 13.sp,
                                 fontWeight = FontWeight.Bold,
                                 maxLines = 1,
@@ -244,9 +244,9 @@ fun SectionHeading(title: String, subtitle: String? = null, action: String? = nu
                 Box(Modifier.width(4.dp).height(19.dp).clip(CircleShape).background(Palette.green))
                 Spacer(Modifier.width(9.dp))
                 Text(title, fontWeight = FontWeight.Black, fontSize = 17.sp,
-                    color = Palette.text, maxLines = 2, lineHeight = 22.sp)
+                    color = ThemeTokens.ink, maxLines = 2, lineHeight = 22.sp)
             }
-            if (subtitle != null) Text(subtitle, color = Palette.muted,
+            if (subtitle != null) Text(subtitle, color = ThemeTokens.muted,
                 fontSize = 11.sp, lineHeight = 16.sp,
                 modifier = Modifier.padding(start = 13.dp, top = 4.dp))
         }

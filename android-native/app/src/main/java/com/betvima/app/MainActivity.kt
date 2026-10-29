@@ -28,16 +28,13 @@ class MainActivity : ComponentActivity() {
                 Configuration.UI_MODE_NIGHT_YES
         setContent {
             BetvimaTheme {
-                val light = NativeThemeState.isLight
                 SideEffect {
                     WindowCompat.getInsetsController(window, window.decorView).apply {
-                        isAppearanceLightStatusBars = light
-                        isAppearanceLightNavigationBars = light
+                        isAppearanceLightStatusBars = false
+                        isAppearanceLightNavigationBars = false
                     }
-                    window.statusBarColor = if (light) android.graphics.Color.rgb(244, 246, 250)
-                        else android.graphics.Color.rgb(17, 17, 19)
-                    window.navigationBarColor = if (light) android.graphics.Color.rgb(244, 246, 250)
-                        else android.graphics.Color.rgb(17, 17, 19)
+                    window.statusBarColor = android.graphics.Color.rgb(16, 17, 20)
+                    window.navigationBarColor = android.graphics.Color.rgb(16, 17, 20)
                 }
                 BetvimaApp(model)
             }
