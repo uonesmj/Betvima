@@ -1336,6 +1336,147 @@ public final class MainActivity extends Activity {
    body.addView(label("تغییر تنظیمات عملیاتی نیازمند عملیات جداگانه و ثبت دلیل است."));
   });
  }
+
+ private String manualMarketPath(JSONObject match){
+  return "/api/v1/admin/mobile/manual-matches/"+enc(match.optString("id"))+"/markets";
+ }
+ private void manualMarketDetail(JSONObject match){
+  createPage("آپشن‌ها و ضرایب",pick(match,"home")+" - "+pick(match,"away"));
+  LinearLayout info=panel(body);
+  info(info,"مسابقه",pick(match,"home")+" - "+pick(match,"away"));
+  info(info,"شروع",date(pick(match,"scheduledAt")));
+  info.addView(label("ضریب‌ها صرفاً نمایشی هستند؛ اتصال ثبت شرط و تسویه غیرفعال می‌ماند."));
+  addAction(body,"＋ تعریف بازار و ضریب",true,()->manualMarketEdit(match,null));
+  addAction(body,"← بازگشت به فهرست",false,()->showPage("manual"));
+  LinearLayout marketBox=sectionGroup("بازارهای مسابقه","نسخه‌دار و قابل تعلیق",true);
+  centerText(marketBox,"دریافت آپشن‌ها ...");
+  api.perform(()->api.get(manualMarketPath(match)),response->{
+   marketBox.removeAllViews();
+   JSONArray markets=response.optJSONArray("items");
+   if(markets==null||markets.length()==0){centerText(marketBox,"هنوز بازاری ثبت نشده است.");return;}
+   for(int i=0;i<markets.length();i++){
+    JSONObject m=markets.optJSONObject(i);if(m==null)continue;
+    LinearLayout card=col();pad(card,12);card.setBackground(bg(Color.rgb(28,33,41),0,12));
+    LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(-1,-2);lp.bottomMargin=dp(12);
+    marketBox.addView(card,lp);
+    card.addView(text(pick(m,"title"),15,GREEN,true));
+    info(card,"کد",pick(m,"marketKey"));
+    info(card,"وضعیت","visible".equals(m.optString("status"))?"نمایشی":faStatus(m.optString("status")));
+    JSONArray choices=m.optJSONArray("selections");
+    if(choices!=null)for(int j=0;j<choices.length();j++){
+     JSONObject c=choices.optJSONObject(j);if(c!=null)info(card,c.optString("label"),c.optString("decimal"));
+    }
+    addAction(card,"ویرایش آپشن‌ها و ضرایب",false,()->manualMarketEdit(match,m));
+    if(!"visible".equals(m.optString("status")))
+     addAction(card,"نمایش به کاربران",false,()->manualMarketState(match,m,"visible"));
+    if(!"suspended".equals(m.optString("status")))
+     addAction(card,"تعلیق بازار",false,()->manualMarketState(match,m,"suspended"));
+    if(!"draft".equals(m.optString("status")))
+     addAction(card,"ذخیره به‌صورت پیش‌نویس",false,()->manualMarketState(match,m,"draft"));
+   }
+  },e->{marketBox.removeAllViews();centerText(marketBox,"خطا: "+e);
+   addAction(marketBox,"تلاش دوباره",false,()->manualMarketDetail(match));});
+ }
+ private void manualMarketState(JSONObject fixture,JSONObject market,String status){
+  new AlertDialog.Builder(this).setTitle("وضعیت بازار")
+   .setMessage("تغییر وضعیت به "+status+"؟ این کار شرط واقعی را فعال نمی‌کند.")
+   .setNegativeButton("انصراف",null).setPositiveButton("تأیید",(d,w)->{
+    api.perform(()->api.patch(manualMarketPath(fixture),
+      new JSONObject().put("marketKey",market.optString("marketKey"))
+       .put("expectedVersion",market.optInt("version")).put("status",status)),
+     data->{showMessage("وضعیت ثبت شد");manualMarketDetail(fixture);},this::showMessage);
+   }).show();
+ }
+ private void manualMarketEdit(JSONObject fixture,JSONObject existing){
+  boolean editing=existing!=null;
+  createPage(editing?"ویرایش ضرایب":"تعریف آپشن جدید",pick(fixture,"home")+" - "+pick(fixture,"away"));
+  LinearLayout p=panel(body);
+  String[][] types={
+    {"h2h","نتیجه نهایی 1X2","1","X","2"},
+    {"double_chance","شانس دوبرابر","1X","12","X2"},
+    {"btts","گل‌زنی هر دو تیم","Yes","No",""},
+    {"total_goals_2_5","مجموع گل 2.5","Over 2.5","Under 2.5",""},
+    {"total_goals_3_5","مجموع گل 3.5","Over 3.5","Under 3.5",""},
+    {"corners_9_5","کرنر 9.5","Over 9.5","Under 9.5",""},
+    {"cards_4_5","کارت 4.5","Over 4.5","Under 4.5",""},
+    {"handicap_home_1_5","هندیکپ میزبان -1.5","Home -1.5","Away +1.5",""},
+    {"custom","بازار سفارشی","آپشن ۱","آپشن ۲",""}
+  };
+  String[] names=new String[types.length];for(int i=0;i<types.length;i++)names[i]=types[i][1];
+  Spinner spinner=new Spinner(this);
+  spinner.setAdapter(new ArrayAdapter<>(this,android.R.layout.simple_spinner_dropdown_item,names));
+  p.addView(label("نوع بازار"));p.addView(spinner);
+  EditText key=input(p,"شناسه لاتین بازار",InputType.TYPE_CLASS_TEXT);
+  EditText title=input(p,"عنوان بازار",InputType.TYPE_CLASS_TEXT);
+  EditText line=input(p,"لاین اختیاری (مثلاً 2.5)",InputType.TYPE_CLASS_NUMBER|InputType.TYPE_NUMBER_FLAG_DECIMAL|InputType.TYPE_NUMBER_FLAG_SIGNED);
+  EditText[] labels=new EditText[3],odds=new EditText[3];
+  for(int i=0;i<3;i++){
+   labels[i]=input(p,"نام آپشن "+(i+1),InputType.TYPE_CLASS_TEXT);
+   odds[i]=input(p,"ضریب "+(i+1)+" (مثلاً 2.10)",InputType.TYPE_CLASS_NUMBER|InputType.TYPE_NUMBER_FLAG_DECIMAL);
+  }
+  if(editing){
+   key.setText(existing.optString("marketKey"));key.setEnabled(false);
+   title.setText(existing.optString("title"));
+   if(!existing.isNull("line"))line.setText(existing.optString("line"));
+   JSONArray arr=existing.optJSONArray("selections");
+   if(arr!=null)for(int i=0;i<Math.min(3,arr.length());i++){
+    JSONObject c=arr.optJSONObject(i);
+    if(c!=null){labels[i].setText(c.optString("label"));odds[i].setText(c.optString("decimal"));}
+   }
+   spinner.setEnabled(false);
+  }else{
+   spinner.setOnItemSelectedListener(new android.widget.AdapterView.OnItemSelectedListener(){
+    @Override public void onNothingSelected(android.widget.AdapterView<?> view){}
+    @Override public void onItemSelected(android.widget.AdapterView<?> view,View child,int index,long id){
+     String[] t=types[index];key.setText("custom".equals(t[0])?"custom_new":t[0]);
+     title.setText(t[1]);
+     for(int i=0;i<3;i++){labels[i].setText(t[i+2]);odds[i].setText("");}
+     line.setText(t[0].contains("2_5")?"2.5":t[0].contains("3_5")?"3.5":
+      t[0].contains("9_5")?"9.5":t[0].contains("4_5")?"4.5":
+      t[0].contains("handicap")?"-1.5":"");
+    }
+   });
+  }
+  p.addView(label("ضرایب بین ۱.۰۱ تا ۱۰۰۰؛ بازار جدید ابتدا پیش‌نویس می‌شود."));
+  addAction(p,"ذخیره آپشن‌ها",true,()->{
+   String code=key.getText().toString().trim(),name=title.getText().toString().trim();
+   if(!code.matches("[a-z][a-z0-9_-]{1,63}")||name.length()<2||name.length()>120){
+    showMessage("کد و نام بازار را بررسی کن.");return;
+   }
+   JSONArray selections=new JSONArray();
+   for(int i=0;i<3;i++){
+    String label=labels[i].getText().toString().trim(),price=odds[i].getText().toString().trim();
+    if(label.isEmpty()&&price.isEmpty())continue;
+    double d;
+    try{d=Double.parseDouble(price);}catch(Exception ex){showMessage("ضریب "+(i+1)+" نامعتبر است");return;}
+    if(label.isEmpty()||!Double.isFinite(d)||d<1.01||d>1000){
+     showMessage("آپشن و ضریب باید معتبر باشند.");return;
+    }
+    try{selections.put(new JSONObject().put("label",label).put("decimal",price));}
+    catch(Exception ignored){return;}
+   }
+   if(selections.length()<2){showMessage("حداقل دو آپشن با ضریب لازم است.");return;}
+   String raw=line.getText().toString().trim();Double lineValue=null;
+   if(!raw.isEmpty())try{lineValue=Double.valueOf(raw);
+    if(!Double.isFinite(lineValue)||Math.abs(lineValue)>100)throw new Exception();
+   }catch(Exception ex){showMessage("لاین نامعتبر است");return;}
+   final Double finalLine=lineValue;
+   new AlertDialog.Builder(this).setTitle("تأیید ذخیره بازار")
+    .setMessage("این ضرایب فقط نمایش داده می‌شوند و شرط واقعی ثبت نمی‌شود.")
+    .setNegativeButton("لغو",null).setPositiveButton("ثبت",(dialog,which)->{
+     api.perform(()->{
+      JSONObject body=new JSONObject().put("marketKey",code).put("title",name)
+       .put("line",finalLine==null?JSONObject.NULL:finalLine)
+       .put("selections",selections)
+       .put("status",editing?existing.optString("status","draft"):"draft")
+       .put("expectedVersion",editing?existing.optInt("version"):JSONObject.NULL);
+      return api.post(manualMarketPath(fixture),body);
+     },result->{showMessage("آپشن و ضریب ذخیره شد");manualMarketDetail(fixture);},this::showMessage);
+    }).show();
+  });
+  addAction(body,"← بازگشت به جزئیات بازی",false,()->manualMarketDetail(fixture));
+ }
+
  private void manualForm(){
   createPage("مسابقه جدید","افزودن مستقل به فهرست سایت و اپ کاربران");
   LinearLayout p=panel(body);
