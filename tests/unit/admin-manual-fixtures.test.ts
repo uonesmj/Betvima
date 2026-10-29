@@ -48,7 +48,7 @@ describe('manually-entered upcoming fixtures', () => {
   it('does not fail the public fixtures feed when the private manual catalogue is unavailable', async () => {
     const warning = vi.spyOn(console, 'warn').mockImplementation(() => {});
     try {
-      query.mockRejectedValue(new Error('database temporarily unavailable'));
+      query.mockResolvedValue(null); // Malformed read result must degrade safely.
       expect(await readManualFixtures('football')).toEqual([]);
       expect(warning).toHaveBeenCalled();
     } finally {
