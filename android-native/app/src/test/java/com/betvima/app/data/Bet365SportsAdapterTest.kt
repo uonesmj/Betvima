@@ -217,4 +217,29 @@ class Bet365SportsAdapterTest {
         assertFalse(manualCatalogueFixture("d8cdd006-144c-4f53-b374-7d20a8c35f51"))
     }
 
+
+    @Test fun manualVisibleMarketPricesStaySuspendedAndReadOnly() {
+        val id="manual:07b61b42-aeb9-4610-ba14-3b2ba55b3bcd"
+        val preview=JSONObject(fixture.toString())
+            .put("id",id)
+            .put("isBettingAvailable",true)
+            .put("marketsCount",1)
+            .put("topMarkets",JSONArray().put(JSONObject()
+                .put("id","manual-preview:11111111-1111-4111-8111-111111111111")
+                .put("key","manual_preview_h2h")
+                .put("name","Fulltime")
+                .put("status","open")
+                .put("selections",JSONArray().put(JSONObject()
+                    .put("id","manual-preview:11111111-1111-4111-8111-111111111111:0")
+                    .put("name","1").put("oddsScaled","21000")
+                    .put("status","open"))))
+        val match=parseBet365Catalogue(JSONObject()
+            .put("source",BET365_SOURCE).put("matches",JSONArray().put(preview))).single()
+        assertEquals(1,match.marketsCount)
+        assertFalse(match.bettingAvailable)
+        assertEquals("suspended",match.markets.single().status)
+        assertEquals("21000",match.markets.single().selections.single().oddsScaled)
+        assertEquals("suspended",match.markets.single().selections.single().status)
+    }
+
 }
