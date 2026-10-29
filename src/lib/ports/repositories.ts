@@ -349,6 +349,7 @@ export interface SupportMessage {
   senderRole: 'user' | 'support' | 'system';
   body: string;
   createdAt: ISODateString;
+  readAt: ISODateString | null;
   attachments: SupportAttachment[];
 }
 
@@ -368,6 +369,9 @@ export interface SupportRepository extends Repository {
   }): Promise<Paginated<SupportTicketSummary>>;
   getForUser(ticketId: UUID, userId: UUID): Promise<SupportTicket | null>;
   listMessages(ticketId: UUID, userId?: UUID): Promise<SupportMessage[]>;
+  markMessagesRead(ticketId: UUID, role: 'user' | 'support', viewerId: UUID): Promise<number>;
+  touchAgentPresence(agentId: UUID): Promise<void>;
+  isAgentOnline(): Promise<boolean>;
   createTicket(input: {
     userId: UUID;
     subject: string;
