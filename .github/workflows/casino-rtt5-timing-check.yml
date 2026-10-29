@@ -1,0 +1,102 @@
+name: Casino Callback RTT5 Read-Only Latency Verification
+on:
+  push:
+    branches:
+      - fix/casino-callback-rtt5-timing-20261030
+    paths:
+      - 'src/server/db/postgres.ts'
+      - 'src/server/providers/softaggregator/perf-trace.ts'
+      - 'src/app/api/webhooks/softaggregator/route.ts'
+      - 'ops/cloudflare/softaggregator-callback-worker.js'
+      - 'ops/casino/stage-live-3098-transport-20261030.py'
+      - 'ops/casino/typecheck-live-3098-candidate-20261030.sh'
+      - 'ops/casino/live-3098-rtt5-3118-auto-rollback-canary-20261030.py'
+      - 'ops/casino/live-3098-rtt5-3118-auto-rollback-retry10m-20261030.py'
+      - 'ops/casino/benchmark-readonly-pooler-rtt-20261030.py'
+      - 'tests/unit/casino-callback-perf-trace.test.ts'
+      - 'tests/unit/casino-debit-single-timeout.test.ts'
+      - '.github/workflows/casino-rtt5-timing-check.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify-no-financial-change:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - name: Unit regressions for signature, settlement, DB and perf safety
+        run: |
+          npx vitest run \
+            tests/unit/casino-callback-perf-trace.test.ts \
+            tests/unit/softaggregator-webhook-route.test.ts \
+            tests/unit/softaggregator-wallet.test.ts \
+            tests/unit/softaggregator-fiat-wallet.test.ts \
+            tests/unit/casino-debit-single-timeout.test.ts \
+            tests/unit/casino-callback-transaction-routing.test.ts \
+            tests/unit/casino-db-pool-keepalive.test.ts
+      - name: Syntax and fail-closed safety check for live canary
+        run: |
+          python3 -m py_compile ops/casino/live-3098-rtt5-3118-auto-rollback-canary-20261030.py
+          if python3 ops/casino/live-3098-rtt5-3118-auto-rollback-canary-20261030.py start >/tmp/canary-check.log 2>&1; then
+            echo 'ERROR: live pilot must refuse to run outside the authorized VPS'
+            exit 1
+          fi
+          grep -q 'REFUSED:' /tmp/canary-check.log
+      - name: Syntax and fail-closed checks for 10-minute retest
+        run: |
+          python3 -m py_compile ops/casino/live-3098-rtt5-3118-auto-rollback-retry10m-20261030.py
+          if python3 ops/casino/live-3098-rtt5-3118-auto-rollback-retry10m-20261030.py start >/tmp/canary10-check.log 2>&1; then
+            echo 'ERROR: retry pilot must fail closed outside authorized VPS'
+            exit 1
+          fi
+          grep -q 'REFUSED:' /tmp/canary10-check.log
+      - name: Validate read-only production pooler RTT diagnostic
+        run: |
+          python3 -m py_compile ops/casino/benchmark-readonly-pooler-rtt-20261030.py
+          if python3 ops/casino/benchmark-readonly-pooler-rtt-20261030.py >/tmp/read-only-rtt-check.log 2>&1; then
+            echo 'ERROR: diagnostic must fail closed outside authorized production VPS'
+            exit 1
+          fi
+          grep -q 'STOP:' /tmp/read-only-rtt-check.log
+      - name: Check isolated 3098 candidate syntax
+        run: bash -n ops/casino/typecheck-live-3098-candidate-20261030.sh
+      - name: Refuse candidate build if live release unavailable
+        run: |
+          if bash ops/casino/typecheck-live-3098-candidate-20261030.sh >/tmp/candidate-check.log 2>&1; then
+            echo 'ERROR: script should fail closed outside the VPS'
+            exit 1
+          fi
+          grep -Eq 'REFUSED: (run from root shell|active release or overlay missing)' /tmp/candidate-check.log
+      - name: Validate fail-closed live overlay staging script syntax
+        run: python3 -m py_compile ops/casino/stage-live-3098-transport-20261030.py
+      - name: Refuse to patch when active source is unavailable
+        run: |
+          if python3 ops/casino/stage-live-3098-transport-20261030.py >/tmp/stage-result.log 2>&1; then
+            echo 'ERROR: unrecognized LIVE should not stage on CI'
+            exit 1
+          fi
+          grep -q 'REFUSED: source releases missing' /tmp/stage-result.log
+      - run: node --check ops/cloudflare/softaggregator-callback-worker.js
+      - run: npm run typecheck
+      - name: Financial and policy source unchanged from callback RTT4
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('src/server/providers/softaggregator/perf-trace.ts').read_text()
+          route = Path('src/app/api/webhooks/softaggregator/route.ts').read_text()
+          assert "SOFTAGGREGATOR_CALLBACK_PERF_TRACE !== 'true'" in p
+          assert "traceCasinoCallback(event.action, event.rollback," in route
+          assert 'settleCasinoCallback(event)' in route
+          assert 'verifySupplierCallbackSignature' in route
+          assert 'validateCallback(' in route
+          assert 'SOFTAGGREGATOR_CALLBACK_EDGE_READY' not in p
+          print('PASS: opt-in timing only; financial callbacks and signature validation unchanged')
+          PY

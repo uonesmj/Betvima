@@ -1,6 +1,7 @@
 import { Pool, type PoolClient, type PoolConfig } from 'pg';
 import type { Db, DbQueryOptions, SqlParam } from '@/lib/ports/db';
 import { param } from './rows';
+import { casinoSqlLabel, measureCasinoDb } from '@/server/providers/softaggregator/perf-trace';
 
 /** Marker for a raw SQL expression in an RPC argument (used to pass an explicit NULL). */
 export interface RawSql { readonly __rawSql: string }
@@ -65,7 +66,8 @@ export class PostgresDb implements Db {
 
   async query<T = Record<string, unknown>>(sql: string, params?: SqlParam[], options?: DbQueryOptions): Promise<T[]> {
     const [values, timeout] = this.options(params, options);
-    const result = await this.pool.query(sql, values as unknown[]);
+    const result = await measureCasinoDb(casinoSqlLabel(sql), () =>
+      this.pool.query(sql, values as unknown[]));
     return result.rows as T[];
   }
 
@@ -124,19 +126,22 @@ export class PostgresDb implements Db {
   }
 
   private async runTransaction<T>(fn: (tx: Db) => Promise<T>, singleTimeout: boolean): Promise<T> {
-    const client = await this.pool.connect();
+    const client = await measureCasinoDb('db.pool.acquire', () => this.pool.connect());
     try {
-      await client.query('begin read write');
-      if (singleTimeout) {
-        // Same 15s statement timeout as the old path, set once per transaction.
-        await client.query(`set local statement_timeout = ${Math.max(1000, Math.trunc(this.statementTimeoutMs))}`);
-      }
+      // For ordinary (non-rollback) casino debit/credit only: PostgreSQL's
+      // simple query protocol executes BEGIN and SET LOCAL in sequence in the
+      // same transaction, saving one remote round-trip without changing the
+      // server-side statement timeout, ledger, locks or rollback behavior.
+      const beginSql = singleTimeout
+        ? `begin read write; set local statement_timeout = ${Math.max(1000, Math.trunc(this.statementTimeoutMs))}`
+        : 'begin read write';
+      await measureCasinoDb('db.transaction.begin', () => client.query(beginSql));
       const tx = new TransactionDb(client, this.statementTimeoutMs, this.kind, singleTimeout);
       const result = await fn(tx);
-      await client.query('commit');
+      await measureCasinoDb('db.transaction.commit', () => client.query('commit'));
       return result;
     } catch (error) {
-      await client.query('rollback').catch(() => undefined);
+      await measureCasinoDb('db.transaction.rollback', () => client.query('rollback')).catch(() => undefined);
       throw error;
     } finally {
       client.release();
@@ -174,10 +179,11 @@ class TransactionDb implements Db {
     // and restore the default when the following query requests it again.
     // All other transactions continue setting the timeout before every statement.
     if (!this.singleTimeout || this.currentTimeoutMs !== timeout) {
-      await this.client.query(`set local statement_timeout = ${timeout}`);
+      await measureCasinoDb('db.transaction.timeout', () => this.client.query(`set local statement_timeout = ${timeout}`));
       this.currentTimeoutMs = timeout;
     }
-    const result = await this.client.query(sql, values as unknown[]);
+    const result = await measureCasinoDb(casinoSqlLabel(sql), () =>
+      this.client.query(sql, values as unknown[]));
     return result.rows as T[];
   }
 
