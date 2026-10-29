@@ -11,5 +11,5 @@ export function supportOperatorName(ticketId: string): string {
   for (let index = 0; index < ticketId.length; index++) {
     hash = Math.imul(hash ^ ticketId.charCodeAt(index), 16777619);
   }
-  return names[(hash >>> 0) % names.length];
+  return names[(hash >>> 0) % names.length] ?? 'Olivia';
 }
