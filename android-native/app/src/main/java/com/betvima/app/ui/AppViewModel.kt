@@ -101,6 +101,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     // Header and Wallet observe one server-owned balance. Reject out-of-order reads.
     private var walletRequestNumber = 0
     private var walletRefreshInFlight = false
+    private var walletRefreshPending = false
+    private var walletBalanceLegacyUntilMs = 0L
     private var recentWalletPaymentUntilMs = 0L
     private var quoteGeneration = 0
     private var mainBetSubmitting = false
@@ -683,6 +685,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         quoteGeneration++
         accountRequestNumber++
         walletRequestNumber++
+        walletRefreshPending = false
+        walletBalanceLegacyUntilMs = 0L
         recentWalletPaymentUntilMs = 0L
         historyRequest++
         sessionGeneration++
@@ -740,23 +744,61 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     fun walletRefreshIntervalMs(): Long =
         walletRefreshDelay185(android.os.SystemClock.elapsedRealtime() < recentWalletPaymentUntilMs)
 
-    /** Lightweight, read-only balance sync: never changes wallet amounts optimistically. */
+    /**
+     * The header reads a single authoritative DB row instead of a full paginated
+     * statement. Coalesce overlapping calls; schedule one follow-up after an in-flight
+     * read rather than waiting for the next 1.2s game tick. No optimistic money.
+     */
     fun refreshWallet() = viewModelScope.launch {
-        if (!state.value.signedIn || walletRefreshInFlight) return@launch
+        if (!state.value.signedIn) return@launch
+        if (walletRefreshInFlight) {
+            walletRefreshPending = true
+            return@launch
+        }
         walletRefreshInFlight = true
         val generation = sessionGeneration
         val request = ++walletRequestNumber
         try {
             val jwt = vault.accessToken(api)?.takeIf(String::isNotBlank) ?: return@launch
-            val latest = api.wallet(jwt)
+            val previous = state.value.wallet
+            var fullWallet: Wallet? = null
+            var snapshot: WalletBalanceSnapshot217? = null
+            val now = SystemClock.elapsedRealtime()
+            if (previous == null || now < walletBalanceLegacyUntilMs) {
+                fullWallet = api.wallet(jwt)
+            } else {
+                try {
+                    snapshot = api.walletBalanceSnapshot217(jwt)
+                } catch (failure: ApiFailure) {
+                    if (failure.code != 404 && failure.code != 405) throw failure
+                    // Production may be one rollout behind the app. Retry lightweight
+                    // endpoint later, but do not repeatedly issue double HTTP requests.
+                    walletBalanceLegacyUntilMs = SystemClock.elapsedRealtime() + 300_000L
+                    fullWallet = api.wallet(jwt)
+                }
+            }
             if (generation == sessionGeneration && request == walletRequestNumber &&
                 state.value.signedIn) {
-                mutable.update { it.copy(wallet = mergeWalletRefresh185(it.wallet, latest)) }
+                val newest = fullWallet
+                val verified = snapshot
+                mutable.update { current ->
+                    val updated = when {
+                        newest != null -> mergeWalletRefresh185(current.wallet, newest)
+                        verified != null && current.wallet != null ->
+                            mergeWalletBalanceSnapshot217(current.wallet, verified)
+                        else -> current.wallet
+                    }
+                    current.copy(wallet = updated)
+                }
             }
         } catch (_: Exception) {
-            // Keep the last verified balance on offline/timeouts; never display invented funds.
+            // Keep the last verified balance on offline/timeouts; no invented funds.
         } finally {
             walletRefreshInFlight = false
+            if (walletRefreshPending) {
+                walletRefreshPending = false
+                if (generation == sessionGeneration && state.value.signedIn) refreshWallet()
+            }
         }
     }
 
