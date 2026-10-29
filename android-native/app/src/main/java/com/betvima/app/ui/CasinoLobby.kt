@@ -21,6 +21,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
@@ -267,11 +268,13 @@ fun CasinoLobby(state: AppState, model: AppViewModel) {
         }
     }
 
+    val galleryState218 = rememberSaveableStateHolder()
     Box(Modifier.fillMaxSize().background(ChromeTokens.black)) {
     // Unmount the heavy gallery while a game WebView is active.
     // Otherwise its image shelves, snapping lists and graphics layers still
     // compete for GPU/CPU even though the user cannot see them behind the game.
     if (sessionUrl == null) {
+    galleryState218.SaveableStateProvider("casino-lobby") {
     CasinoPremiumHome(
         state = state,
         model = model,
@@ -329,6 +332,7 @@ fun CasinoLobby(state: AppState, model: AppViewModel) {
         fullscreen = gameFullscreen,
         onFullscreenChange = { gameFullscreen = it }
     )
+    } // Saveable state provider preserves shelf scroll position when game closes.
     }
     sessionUrl?.let { secureUrl ->
         CasinoGameDialog(secureUrl, state.lang, gameUsesRealMoney, gameFullscreen) {
