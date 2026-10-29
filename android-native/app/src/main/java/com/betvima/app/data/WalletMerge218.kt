@@ -14,8 +14,10 @@ fun applyWalletSnapshot218(previous: Wallet?, confirmed: WalletBalance217): Wall
         currency = confirmed.currency, integrity = "unknown",
         transactions = emptyList(), version = "0"
     )
-    // The 217 parser and version/balance consistency validation are reused.
-    return applyWalletBalance217(emptyServerView, confirmed)
+    // Reuse the 217 version/balance validation. A rejected snapshot returns
+    // its input object unchanged; never leak that temporary zero as real funds.
+    val verified = applyWalletBalance217(emptyServerView, confirmed)
+    return if (verified === emptyServerView) null else verified
 }
 
 /**
