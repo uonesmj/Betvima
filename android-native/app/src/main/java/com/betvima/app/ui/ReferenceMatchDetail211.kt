@@ -7,6 +7,7 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
@@ -27,6 +28,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
@@ -198,7 +200,7 @@ internal fun ReferenceMatchDetail211(state: AppState, model: AppViewModel) {
             }
             item(key = "match-scoreboard") {
                 DetailModeSwitcher211(match.live, state.lang == Lang.FA) { tvOpen = true }
-                Spacer(Modifier.height(10.dp))
+                Spacer(Modifier.height(6.dp))
                 DetailLargeScore211(match, scores, clockLabel, state.lang == Lang.FA) {
                     tvOpen = true
                 }
@@ -206,7 +208,7 @@ internal fun ReferenceMatchDetail211(state: AppState, model: AppViewModel) {
                     LinearProgressIndicator(Modifier.fillMaxWidth().padding(top = 8.dp),
                         color = matchBlue211)
                 }
-                Spacer(Modifier.height(9.dp))
+                Spacer(Modifier.height(8.dp))
             }
             stickyHeader(key = "match-sticky-tabs") {
                 Column(Modifier.fillMaxWidth().background(matchCanvas211)) {
@@ -315,85 +317,77 @@ private fun DetailLargeScore211(
     match: Match, score: Pair<String, String>, clock: String,
     fa: Boolean, onOpenStudio: () -> Unit
 ) {
-    Surface(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp),
-        color = matchCard211, shape = RoundedCornerShape(20.dp),
-        border = BorderStroke(1.dp, matchDivider211)
-    ) {
-        Column(Modifier.padding(horizontal = 13.dp, vertical = 13.dp)) {
-            Row(
-                Modifier.fillMaxWidth().heightIn(min = 111.dp),
-                horizontalArrangement = Arrangement.spacedBy(7.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column(Modifier.weight(1f), horizontalAlignment = Alignment.Start) {
-                    TeamBadge(match.home, 49)
-                    Spacer(Modifier.height(7.dp))
-                    Text(match.home.name, fontSize = 13.sp, lineHeight = 17.sp,
-                        fontWeight = FontWeight.Bold, color = matchInk211,
-                        maxLines = 3, overflow = TextOverflow.Ellipsis,
-                        textAlign = TextAlign.Start)
-                }
-                Column(Modifier.width(112.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                    Surface(
-                        color = matchTile211, shape = RoundedCornerShape(14.dp),
-                        border = BorderStroke(1.dp, if (match.live)
-                            matchGreen211.copy(alpha = .48f) else matchDivider211)
-                    ) {
-                        Row(Modifier.padding(horizontal = 10.dp, vertical = 9.dp),
-                            horizontalArrangement = Arrangement.spacedBy(7.dp),
-                            verticalAlignment = Alignment.CenterVertically) {
-                            Text(score.first, fontSize = 24.sp, fontWeight = FontWeight.Black,
-                                color = matchInk211, textAlign = TextAlign.Center,
-                                modifier = Modifier.weight(1f))
-                            Text(":", color = matchMuted211, fontSize = 20.sp)
-                            Text(score.second, fontSize = 24.sp, fontWeight = FontWeight.Black,
-                                color = matchInk211, textAlign = TextAlign.Center,
-                                modifier = Modifier.weight(1f))
-                        }
-                    }
-                    Spacer(Modifier.height(8.dp))
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        if (match.live) {
-                            Icon(Icons.Default.Sensors, contentDescription = null,
-                                tint = Color(0xFFFF477A), modifier = Modifier.size(13.dp))
-                            Spacer(Modifier.width(4.dp))
-                        }
-                        Text(if (match.live) clock else if (fa) "شروع نشده" else "Upcoming",
-                            fontSize = 11.sp,
-                            color = if (match.live) Color(0xFFFF648C) else matchMuted211,
-                            fontWeight = FontWeight.SemiBold, maxLines = 1)
-                    }
-                }
-                Column(Modifier.weight(1f), horizontalAlignment = Alignment.End) {
-                    TeamBadge(match.away, 49)
-                    Spacer(Modifier.height(7.dp))
-                    Text(match.away.name, fontSize = 13.sp, lineHeight = 17.sp,
-                        fontWeight = FontWeight.Bold, color = matchInk211,
-                        maxLines = 3, overflow = TextOverflow.Ellipsis,
-                        textAlign = TextAlign.End)
-                }
+    // Reference-style open scoreboard: badges and club names sit directly
+    // on the match canvas, without a surrounding card or outline.
+    Column(Modifier.fillMaxWidth().padding(horizontal = 17.dp, vertical = 5.dp)) {
+        Row(
+            Modifier.fillMaxWidth().heightIn(min = 104.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(Modifier.weight(1f), horizontalAlignment = Alignment.Start) {
+                TeamBadge(match.home, 49)
+                Spacer(Modifier.height(8.dp))
+                Text(match.home.name, fontSize = 13.sp, lineHeight = 17.sp,
+                    fontWeight = FontWeight.Bold, color = matchInk211,
+                    maxLines = 3, overflow = TextOverflow.Ellipsis,
+                    textAlign = TextAlign.Start)
             }
-            if (match.live) {
-                HorizontalDivider(Modifier.padding(top = 12.dp, bottom = 9.dp),
-                    color = matchDivider211, thickness = 1.dp)
-                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                    Text(match.home.name, fontSize = 12.sp, fontWeight = FontWeight.Medium,
-                        color = matchMuted211, modifier = Modifier.weight(1f),
-                        maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    Text(score.first + " : " + score.second,
-                        fontSize = 14.sp, fontWeight = FontWeight.Bold, color = matchInk211)
-                    Spacer(Modifier.width(10.dp))
-                    Text(match.away.name, fontSize = 12.sp, fontWeight = FontWeight.Medium,
-                        color = matchMuted211, modifier = Modifier.weight(1f),
-                        textAlign = TextAlign.End,
-                        maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Column(Modifier.width(106.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                Surface(color = matchTile211, shape = RoundedCornerShape(13.dp),
+                    border = BorderStroke(1.dp, if (match.live)
+                        matchGreen211.copy(alpha = .45f) else matchDivider211)) {
+                    Row(Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+                        Text(score.first, fontSize = 24.sp,
+                            fontWeight = FontWeight.Black, color = matchInk211,
+                            textAlign = TextAlign.Center, modifier = Modifier.weight(1f))
+                        Text(":", color = matchMuted211, fontSize = 19.sp)
+                        Text(score.second, fontSize = 24.sp,
+                            fontWeight = FontWeight.Black, color = matchInk211,
+                            textAlign = TextAlign.Center, modifier = Modifier.weight(1f))
+                    }
                 }
                 Spacer(Modifier.height(7.dp))
-                Text(if (fa) "نمایش زنده" else "Live match",
-                    fontSize = 11.sp, color = matchBlue211,
-                    modifier = Modifier.align(Alignment.End).clickable(onClick = onOpenStudio))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    if (match.live) {
+                        Icon(Icons.Default.Sensors, contentDescription = null,
+                            tint = Color(0xFFFF477A), modifier = Modifier.size(13.dp))
+                        Spacer(Modifier.width(4.dp))
+                    }
+                    Text(if (match.live) clock else if (fa) "شروع نشده" else "Upcoming",
+                        fontSize = 11.sp, color = if (match.live) Color(0xFFFF648C)
+                            else matchMuted211, fontWeight = FontWeight.SemiBold,
+                        maxLines = 1)
+                }
             }
+            Column(Modifier.weight(1f), horizontalAlignment = Alignment.End) {
+                TeamBadge(match.away, 49)
+                Spacer(Modifier.height(8.dp))
+                Text(match.away.name, fontSize = 13.sp, lineHeight = 17.sp,
+                    fontWeight = FontWeight.Bold, color = matchInk211,
+                    maxLines = 3, overflow = TextOverflow.Ellipsis,
+                    textAlign = TextAlign.End)
+            }
+        }
+        if (match.live) {
+            Spacer(Modifier.height(8.dp))
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Text(match.home.name, fontSize = 12.sp, color = matchMuted211,
+                    maxLines = 1, overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f))
+                Text(score.first + " : " + score.second,
+                    fontSize = 14.sp, fontWeight = FontWeight.Bold, color = matchInk211)
+                Spacer(Modifier.width(8.dp))
+                Text(match.away.name, fontSize = 12.sp, color = matchMuted211,
+                    textAlign = TextAlign.End,
+                    maxLines = 1, overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f))
+            }
+            Text(if (fa) "نمایش زنده" else "Live match", fontSize = 11.sp,
+                color = matchBlue211,
+                modifier = Modifier.align(Alignment.End).clickable(onClick = onOpenStudio))
         }
     }
 }
@@ -450,31 +444,39 @@ private fun DetailCompactScore211(
 
 @Composable
 private fun DetailModeSwitcher211(live: Boolean, fa: Boolean, onOpenStudio: () -> Unit) {
-    Surface(Modifier.fillMaxWidth().padding(horizontal = 17.dp),
-        color = matchTile211, shape = RoundedCornerShape(18.dp)) {
-        Row(Modifier.padding(3.dp).height(45.dp),
-            horizontalArrangement = Arrangement.spacedBy(3.dp)) {
-            listOf("score", "tv", "tracker").forEach { entry ->
-                val selected = entry == "score"
-                val enabled = selected || live
-                Surface(modifier = Modifier.weight(1f)
-                    .clickable(enabled = enabled && !selected, onClick = onOpenStudio),
-                    color = if (selected) matchCard211 else Color.Transparent,
-                    shape = RoundedCornerShape(15.dp),
-                    shadowElevation = if (selected) 1.dp else 0.dp) {
-                    Box(contentAlignment = Alignment.Center) {
-                        when (entry) {
-                            "score" -> Text("1:1", fontSize = 14.sp,
-                                fontWeight = FontWeight.Black, color = matchGreen211)
-                            "tv" -> Icon(Icons.Default.Tv, contentDescription = "TV",
-                                tint = Color(0xFF53A7FF),
-                                modifier = Modifier.size(22.dp))
-                            else -> Icon(Icons.Default.Sensors,
-                                contentDescription = if (fa) "زنده" else "Live",
-                                tint = Color(0xFFFF477A),
-                                modifier = Modifier.size(22.dp))
-                        }
-                    }
+    // All three pills fill the full 36dp bar. No extra empty height or
+    // rectangular pressed-state ripple behind the colored indicators.
+    val outer = RoundedCornerShape(15.dp)
+    Row(
+        Modifier.fillMaxWidth()
+            .padding(horizontal = 16.dp)
+            .height(39.dp).clip(outer)
+            .background(matchTile211).padding(3.dp),
+        horizontalArrangement = Arrangement.spacedBy(3.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        listOf("score", "tv", "tracker").forEach { entry ->
+            val selected = entry == "score"
+            val enabled = selected || live
+            val pill = RoundedCornerShape(12.dp)
+            val interaction = remember { MutableInteractionSource() }
+            Box(
+                Modifier.weight(1f).fillMaxHeight()
+                    .clip(pill)
+                    .background(if (selected) matchCard211 else Color.Transparent)
+                    .clickable(enabled = enabled && !selected,
+                        interactionSource = interaction, indication = null,
+                        onClick = onOpenStudio),
+                contentAlignment = Alignment.Center
+            ) {
+                when (entry) {
+                    "score" -> Text("1:1", fontSize = 14.sp,
+                        fontWeight = FontWeight.Black, color = matchGreen211)
+                    "tv" -> Icon(Icons.Default.Tv, contentDescription = "TV",
+                        tint = Color(0xFF53A7FF), modifier = Modifier.size(21.dp))
+                    else -> Icon(Icons.Default.Sensors,
+                        contentDescription = if (fa) "زنده" else "Live",
+                        tint = Color(0xFFFF477A), modifier = Modifier.size(21.dp))
                 }
             }
         }
@@ -504,7 +506,11 @@ private fun DetailTabStrip211(
                     color = background,
                     shape = RoundedCornerShape(28.dp),
                     modifier = Modifier.heightIn(min = 44.dp)
-                        .clickable { onTab(tab.key) }
+                        .clip(RoundedCornerShape(28.dp))
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null
+                        ) { onTab(tab.key) }
                 ) {
                     Box(Modifier.padding(horizontal = 17.dp, vertical = 12.dp),
                         contentAlignment = Alignment.Center) {
