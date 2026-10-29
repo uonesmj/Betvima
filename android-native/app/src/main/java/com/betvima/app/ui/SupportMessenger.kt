@@ -2,16 +2,19 @@ package com.betvima.app.ui
 
 import android.media.AudioManager
 import android.media.ToneGenerator
+import android.speech.tts.TextToSpeech
 import android.net.Uri
 import android.provider.OpenableColumns
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.animateItem
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -48,6 +51,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.util.Locale
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -103,12 +107,20 @@ internal fun supportAttachmentErrorMessage(status: Int?, lang: Lang): String =
             "آپلود رد شد. گفتگو را تازه‌سازی کنید یا با پشتیبانی تماس بگیرید.")
     }
 
+private val supportDisplayNames206 = listOf("Olivia", "Amelia", "Sophia", "Charlotte", "Mia",
+    "Emma", "Isabella", "Grace", "James", "Daniel", "Ethan", "Noah", "Oliver", "Liam",
+    "Lucas", "Henry")
+internal fun supportDisplayName206(ticketId: String): String {
+    var hash = 0x811c9dc5.toInt()
+    ticketId.forEach { hash = (hash xor it.code) * 16777619 }
+    return supportDisplayNames206[((hash.toLong() and 0xffffffffL) % supportDisplayNames206.size).toInt()]
+}
 private fun messengerActive(ticket: SupportTicket): Boolean = supportActive(ticket.status)
 
 // Layout invariants for compact bubbles and safe navigation on gesture devices.
 internal fun supportChatBubbleCapDp(viewportDp: Int): Float = viewportDp * .76f
 internal fun supportChatBottomClearanceDp(keyboardVisible: Boolean): Int =
-    if (keyboardVisible) 8 else 32
+    if (keyboardVisible) 6 else 8
 
 @Composable
 private fun MessengerIcon(
@@ -146,6 +158,29 @@ fun SupportMessenger(
     // Android 15 gesture navigation can draw over a fullscreen Dialog's bottom edge.
     // Reserve a real layout slot instead of only relying on the window inset report.
     val bottomClearance = supportChatBottomClearanceDp(keyboardVisible).dp
+    val pulseTransition = rememberInfiniteTransition(label = "supportAgentPulse206")
+    val onlinePulse by pulseTransition.animateFloat(
+        initialValue = .48f, targetValue = 1f,
+        animationSpec = infiniteRepeatable(tween(880), RepeatMode.Reverse),
+        label = "onlinePresenceAlpha206")
+    var supportOnline by remember { mutableStateOf(false) }
+    var incomingSound by remember { mutableStateOf(prefs.getBoolean("incoming_sound", true)) }
+    var outgoingSound by remember { mutableStateOf(prefs.getBoolean("outgoing_sound", true)) }
+    var speaker by remember { mutableStateOf<TextToSpeech?>(null) }
+    var speakerReady by remember { mutableStateOf(false) }
+    DisposableEffect(context) {
+        val tts = TextToSpeech(context) { result -> speakerReady = result == TextToSpeech.SUCCESS }
+        speaker = tts
+        onDispose { tts.stop(); tts.shutdown(); speaker = null }
+    }
+    fun playMessage(body: String) {
+        val engine = speaker ?: return
+        if (!speakerReady || body.isBlank()) return
+        runCatching {
+            engine.language = if (body.any { it.code in 0x0600..0x06FF }) Locale("fa") else Locale.US
+            engine.speak(body.take(2500), TextToSpeech.QUEUE_FLUSH, null, "support_message_206")
+        }
+    }
     var tickets by remember { mutableStateOf<List<SupportTicket>>(emptyList()) }
     var chosen by remember { mutableStateOf<SupportTicket?>(null) }
     var messages by remember { mutableStateOf<List<SupportThreadMessage>>(emptyList()) }
@@ -257,13 +292,17 @@ fun SupportMessenger(
                 chosen = result.ticket
                 val latestSupport = result.messages.lastOrNull { it.senderRole == "support" }?.id
                 if (lastSupportId != null && latestSupport != null &&
-                    lastSupportId != latestSupport && !muted) {
+                    lastSupportId != latestSupport && incomingSound && !muted) {
                     val player = ToneGenerator(AudioManager.STREAM_NOTIFICATION, 40)
                     try { player.startTone(ToneGenerator.TONE_PROP_BEEP, 130); delay(150) }
                     finally { player.release() }
                 }
                 lastSupportId = latestSupport
                 messages = result.messages.distinctBy { it.id }
+                supportOnline = result.supportOnline
+                if (result.messages.any { it.senderRole == "support" && it.readAt == null }) {
+                    runCatching { api.markSupportRead(token(), id) }
+                }
                 error = null
             } catch (ex: Exception) {
                 if (messages.isEmpty()) error = ex.message ?: "Unable to load messages"
@@ -272,8 +311,13 @@ fun SupportMessenger(
         }
     }
 
-    LaunchedEffect(messages.size, currentId) {
-        if (messages.isNotEmpty()) listState.animateScrollToItem(messages.lastIndex + 1)
+    LaunchedEffect(messages.lastOrNull()?.id, currentId) {
+        if (messages.isNotEmpty()) {
+            delay(75)
+            val bottomItem = messages.size + 1 +
+                if (messages.any { it.senderRole == "support" }) 1 else 0
+            listState.animateScrollToItem(bottomItem)
+        }
     }
 
     LaunchedEffect(currentId, state.notifications) {
@@ -301,6 +345,12 @@ fun SupportMessenger(
             // A successful POST response is the upload acknowledgement. Show the
             // message immediately even if the subsequent conversation GET fails.
             if (messages.none { it.id == acknowledged.id }) messages = messages + acknowledged
+            if (outgoingSound && !muted) runCatching {
+                val tone = ToneGenerator(AudioManager.STREAM_NOTIFICATION, 28)
+                tone.startTone(ToneGenerator.TONE_PROP_ACK, 80)
+                delay(95)
+                tone.release()
+            }
             draft = ""; file = null; emojiOpen = false
             attachmentPhase = SupportAttachmentPhase.READY
             try {
@@ -382,7 +432,7 @@ fun SupportMessenger(
     ) {
         Column(
             Modifier.fillMaxSize().background(messengerPaper)
-                .statusBarsPadding().imePadding()
+                .statusBarsPadding().imePadding().navigationBarsPadding()
         ) {
             if (!state.signedIn) {
                 Row(Modifier.fillMaxWidth().padding(18.dp),
@@ -460,10 +510,18 @@ fun SupportMessenger(
                     }
                     Spacer(Modifier.width(12.dp))
                     Column(Modifier.weight(1f)) {
-                        Text(tr(lang,"BetVima Support","پشتیبانی بت‌ویما"),
-                            color=messengerInk,fontSize=20.sp,fontWeight=FontWeight.SemiBold)
-                        Text("•"+tr(lang,"Online Support","پشتیبانی آنلاین")+"•",
-                            color=messengerInk,fontSize=12.sp)
+                        Text(supportDisplayName206(ticket.id) + " · BetVima Support",
+                            color=messengerInk,fontSize=18.sp,fontWeight=FontWeight.SemiBold,
+                            maxLines=1,overflow=TextOverflow.Ellipsis)
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Box(Modifier.size(8.dp).clip(CircleShape)
+                                .background(if (supportOnline) Color(0xFF00D47A).copy(alpha = onlinePulse)
+                                    else Color(0xFF7B808B)))
+                            Spacer(Modifier.width(6.dp))
+                            Text(if (supportOnline) tr(lang, "Support online", "پشتیبان آنلاین است")
+                                else tr(lang, "Support offline", "پشتیبان آفلاین است"),
+                                color=messengerMuted,fontSize=12.sp)
+                        }
                     }
                     Box {
                         MessengerIcon(Icons.Default.MoreVert, tr(lang,"Options","گزینه‌ها"),{menuOpen=true})
@@ -475,6 +533,16 @@ fun SupportMessenger(
                                     if (muted) "فعال کردن صدا" else "خاموش کردن صدا"),color=messengerInk)},
                                 onClick={muted=!muted;prefs.edit().putBoolean("muted",muted).apply();menuOpen=false},
                                 leadingIcon={Icon(if(muted) Icons.Default.VolumeOff else Icons.Default.VolumeUp,null)}
+                            )
+                            DropdownMenuItem(
+                                text={Text(tr(lang,"Incoming message sound","صدای پیام دریافتی"),color=messengerInk)},
+                                onClick={incomingSound=!incomingSound;prefs.edit().putBoolean("incoming_sound",incomingSound).apply();menuOpen=false},
+                                leadingIcon={Icon(if(incomingSound) Icons.Default.VolumeUp else Icons.Default.VolumeOff,null)}
+                            )
+                            DropdownMenuItem(
+                                text={Text(tr(lang,"Outgoing message sound","صدای پیام ارسالی"),color=messengerInk)},
+                                onClick={outgoingSound=!outgoingSound;prefs.edit().putBoolean("outgoing_sound",outgoingSound).apply();menuOpen=false},
+                                leadingIcon={Icon(if(outgoingSound) Icons.Default.VolumeUp else Icons.Default.VolumeOff,null)}
                             )
                             DropdownMenuItem(
                                 text={Text(tr(lang,"Rate the manager","امتیاز به پشتیبان"),color=messengerInk)},
@@ -500,7 +568,7 @@ fun SupportMessenger(
                     modifier=Modifier.weight(1f).fillMaxWidth(),
                     state=listState,
                     contentPadding=PaddingValues(horizontal=16.dp,vertical=15.dp),
-                    verticalArrangement=Arrangement.spacedBy(16.dp)
+                    verticalArrangement=Arrangement.spacedBy(12.dp, Alignment.Bottom)
                 ) {
                     item {
                         Box(Modifier.fillMaxWidth(),contentAlignment=Alignment.Center) {
@@ -516,7 +584,11 @@ fun SupportMessenger(
                     }
                     items(messages,key={it.id}) { message ->
                         val mine=message.senderRole == "user"
-                        Row(Modifier.fillMaxWidth(),
+                        Row(Modifier.fillMaxWidth().animateItem(
+                            fadeInSpec = tween(260),
+                            placementSpec = spring(stiffness = Spring.StiffnessLow),
+                            fadeOutSpec = tween(180)
+                        ),
                             horizontalArrangement=if(mine) Arrangement.End else Arrangement.Start) {
                             Column(
                                 Modifier.widthIn(min = 108.dp, max = bubbleMaxWidth)
@@ -551,8 +623,23 @@ fun SupportMessenger(
                                 Row(Modifier.align(Alignment.End),
                                     horizontalArrangement=Arrangement.End,
                                     verticalAlignment=Alignment.CenterVertically) {
-                                    if (mine) Icon(Icons.Default.Check,null,
-                                        tint=Color.White.copy(alpha=.8f),modifier=Modifier.size(13.dp))
+                                    if (mine) Icon(
+                                        if (message.readAt != null) Icons.Default.DoneAll else Icons.Default.Check,
+                                        tr(lang, if (message.readAt != null) "Read" else "Sent",
+                                            if (message.readAt != null) "خوانده‌شده" else "ارسال‌شده"),
+                                        tint=if(message.readAt != null) Color(0xFFB3FFD1)
+                                            else Color.White.copy(alpha=.8f),
+                                        modifier=Modifier.size(15.dp))
+                                    if (message.body.isNotBlank()) {
+                                        IconButton(onClick = { playMessage(message.body) },
+                                            enabled = speakerReady, modifier = Modifier.size(28.dp)) {
+                                            Icon(Icons.Default.VolumeUp,
+                                                tr(lang, "Play message", "پخش صوتی پیام"),
+                                                tint = if (mine) Color.White.copy(alpha = .88f)
+                                                    else messengerMuted,
+                                                modifier = Modifier.size(16.dp))
+                                        }
+                                    }
                                     Text(chatTime(message.createdAt),
                                         color=if(mine) Color.White.copy(alpha=.75f) else messengerMuted,
                                         fontSize=11.sp)
@@ -560,7 +647,7 @@ fun SupportMessenger(
                             }
                         }
                     }
-                    item { Spacer(Modifier.height(4.dp)) }
+                    item { Spacer(Modifier.height(2.dp)) }
                 }
                 if (error != null) Row(Modifier.fillMaxWidth().padding(horizontal=18.dp),
                     verticalAlignment=Alignment.CenterVertically) {

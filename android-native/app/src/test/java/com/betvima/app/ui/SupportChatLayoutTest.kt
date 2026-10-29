@@ -18,7 +18,7 @@ class SupportChatLayoutTest {
     }
 
     @Test fun composerReservesRealSpaceForGestureBarButNotFullSpaceForKeyboard() {
-        assertEquals(32, supportChatBottomClearanceDp(false))
-        assertEquals(8, supportChatBottomClearanceDp(true))
+        assertEquals(8, supportChatBottomClearanceDp(false))
+        assertEquals(6, supportChatBottomClearanceDp(true))
     }
 }
