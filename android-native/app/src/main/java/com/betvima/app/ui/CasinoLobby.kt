@@ -134,6 +134,7 @@ fun CasinoLobby(state: AppState, model: AppViewModel) {
             try {
                 val url = model.casinoRealMoneyLaunch(game.id, state.lang)
                 gameUsesRealMoney = true
+                model.markCasinoWalletReconcile218()
                 sessionUrl = url
             } catch (cancel: CancellationException) {
                 throw cancel
@@ -329,7 +330,11 @@ fun CasinoLobby(state: AppState, model: AppViewModel) {
                 // balance again. Never change the displayed balance locally.
                 pilot = null
                 pilotRefreshSerial++
+                model.markCasinoWalletReconcile218()
+                // Read the latest confirmed row immediately on exit; the full
+                // account summary continues independently and cannot overwrite it.
                 model.refreshAccount()
+                model.refreshWallet()
             }
         }
     }
