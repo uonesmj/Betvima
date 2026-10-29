@@ -128,12 +128,14 @@ export class PostgresDb implements Db {
   private async runTransaction<T>(fn: (tx: Db) => Promise<T>, singleTimeout: boolean): Promise<T> {
     const client = await measureCasinoDb('db.pool.acquire', () => this.pool.connect());
     try {
-      await measureCasinoDb('db.transaction.begin', () => client.query('begin read write'));
-      if (singleTimeout) {
-        // Same 15s statement timeout as the old path, set once per transaction.
-        await measureCasinoDb('db.transaction.timeout', () =>
-          client.query(`set local statement_timeout = ${Math.max(1000, Math.trunc(this.statementTimeoutMs))}`));
-      }
+      // For ordinary (non-rollback) casino debit/credit only: PostgreSQL's
+      // simple query protocol executes BEGIN and SET LOCAL in sequence in the
+      // same transaction, saving one remote round-trip without changing the
+      // server-side statement timeout, ledger, locks or rollback behavior.
+      const beginSql = singleTimeout
+        ? `begin read write; set local statement_timeout = ${Math.max(1000, Math.trunc(this.statementTimeoutMs))}`
+        : 'begin read write';
+      await measureCasinoDb('db.transaction.begin', () => client.query(beginSql));
       const tx = new TransactionDb(client, this.statementTimeoutMs, this.kind, singleTimeout);
       const result = await fn(tx);
       await measureCasinoDb('db.transaction.commit', () => client.query('commit'));
