@@ -40,6 +40,31 @@ class WalletRefresh185Test {
         assertEquals(fresh, mergeWalletRefresh185(old, fresh))
     }
 
+    @Test fun slowStatementCannotUndoNewerCasinoDebit() {
+        val confirmed = wallet("9829").copy(version = "12")
+        val slowStatement = wallet("9849", transactions =
+            listOf(Transaction("new", "spin", "-20", "2026-10-29"))).copy(version = "11")
+        val merged = mergeWalletRefresh185(confirmed, slowStatement)
+        assertEquals("9829", merged.availableMinor)
+        assertEquals("9829", merged.balanceMinor)
+        assertEquals("12", merged.version)
+        assertEquals("new", merged.transactions.single().id)
+    }
+
+    @Test fun laterVersionReplacesCasinoSnapshotCorrectly() {
+        val confirmed = wallet("9829").copy(version = "12")
+        val updated = wallet("9851").copy(version = "13")
+        val merged = mergeWalletRefresh185(confirmed, updated)
+        assertEquals("9851", merged.availableMinor)
+        assertEquals("13", merged.version)
+    }
+
+    @Test fun wrongCurrencyDoesNotCarryStaleCasinoBalance() {
+        val previous = wallet("9829", currency = "USD").copy(version = "12")
+        val server = wallet("400000", currency = "IRR").copy(version = "4")
+        assertEquals(server, mergeWalletRefresh185(previous, server))
+    }
+
     @Test fun activeWalletPollCadenceIsBounded() {
         assertEquals(5_000L, walletRefreshDelay185(true))
         assertEquals(12_000L, walletRefreshDelay185(false))
