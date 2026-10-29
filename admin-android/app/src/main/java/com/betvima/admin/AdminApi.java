@@ -126,8 +126,8 @@ public final class AdminApi {
    .header("Cache-Control","no-store");
   if(bearer!=null&&!bearer.isEmpty())request.header("Authorization","Bearer "+bearer);
   if(apikey!=null&&!apikey.isEmpty())request.header("apikey",apikey);
-  // Existing financial endpoint requires an idempotency key. The request
-  // still only queues an adjustment: server enforces dual approval.
+  // Every financial adjustment request carries its own idempotency key.
+  // The server enforces sole-super-admin MFA, ledger integrity and audit.
   if("POST".equals(method) &&
      url.equals(serverOrigin+"/api/v1/admin/wallet/adjustments"))
    request.header("Idempotency-Key",java.util.UUID.randomUUID().toString());
