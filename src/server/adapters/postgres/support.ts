@@ -58,6 +58,7 @@ function mapMessage(row: Row, attachments: SupportAttachment[] = []): SupportMes
     senderRole: str(row.sender_role) as SupportMessage['senderRole'],
     body: str(row.body),
     createdAt: iso(row.created_at),
+    readAt: row.read_at == null ? null : iso(row.read_at),
     attachments,
   };
 }
@@ -141,6 +142,41 @@ export class PostgresSupportRepository implements SupportRepository {
       attachmentsByMessage.set(attachment.messageId, list);
     }
     return rows.map((row) => mapMessage(row, attachmentsByMessage.get(str(row.id)) ?? []));
+  }
+
+  async markMessagesRead(ticketId: UUID, role: 'user' | 'support', viewerId: UUID): Promise<number> {
+    // A player may only acknowledge their own conversation. Agents require
+    // support.view permission at the HTTP boundary; never trust a client role.
+    const whereOwner = role === 'user'
+      ? 'and exists (select 1 from public.tickets t where t.id = tm.ticket_id and t.user_id = $3)'
+      : '';
+    const rows = await this.db.query<Row>(
+      `update public.ticket_messages tm set read_at = now()
+         where tm.ticket_id = $1 and tm.sender_role = $2 and tm.read_at is null
+           ${whereOwner}
+       returning tm.id`,
+      role === 'user' ? [ticketId, 'support', viewerId] : [ticketId, 'user'],
+    );
+    return rows.length;
+  }
+
+  async touchAgentPresence(agentId: UUID): Promise<void> {
+    await this.db.query(
+      `insert into public.support_agent_presence (agent_id, last_seen)
+       values ($1, now())
+       on conflict (agent_id) do update set last_seen = excluded.last_seen`,
+      [agentId],
+    );
+  }
+
+  async isAgentOnline(): Promise<boolean> {
+    const rows = await this.db.query<Row>(
+      `select exists (
+          select 1 from public.support_agent_presence
+          where last_seen > now() - interval '55 seconds'
+        ) as online`, [],
+    );
+    return rows[0]?.online === true;
   }
 
   async createTicket(input: {

@@ -34,7 +34,6 @@ export const GET = withErrorHandling('admin.support.get', async (
   if (!ticket) throw new ApiError('NOT_FOUND', 'Support ticket not found.');
 
   const messages = await services.support.listMessages(id);
-
   return jsonOk({ ticket, messages });
 });
 

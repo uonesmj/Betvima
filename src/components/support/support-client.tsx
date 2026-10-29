@@ -2,14 +2,23 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Bell, Check, ChevronLeft, FileText, Headphones, MoreVertical, Paperclip, Send, Smile, Star, Volume2, VolumeX, X } from 'lucide-react';
+import { Bell, Check, CheckCheck, ChevronLeft, FileText, Headphones, MoreVertical, Paperclip, Send, Smile, Star, Volume2, VolumeX, X } from 'lucide-react';
 import { useApp } from '@/components/layout/providers';
 
 type Status = 'open' | 'waiting_user' | 'waiting_support' | 'resolved' | 'closed';
 type Ticket = { id: string; subject: string; status: Status; createdAt: string; updatedAt: string; unreadMessages: number };
 type Attachment = { id: string; originalName: string; mimeType: string; sizeBytes: number };
-type Message = { id: string; senderRole: 'user' | 'support' | 'system'; body: string; createdAt: string; attachments: Attachment[] };
-type Response = { ticket?: Ticket; tickets?: { items?: Ticket[] } | Ticket[]; messages?: Message[]; message?: string };
+type Message = { id: string; senderRole: 'user' | 'support' | 'system'; body: string; createdAt: string; readAt?: string | null; attachments: Attachment[] };
+type Response = { ticket?: Ticket; tickets?: { items?: Ticket[] } | Ticket[]; messages?: Message[]; message?: string; supportOnline?: boolean };
+const operatorName = (ticketId: string) => {
+  const names = ['Olivia', 'Amelia', 'Sophia', 'Charlotte', 'Mia', 'Emma', 'Isabella', 'Grace',
+    'James', 'Daniel', 'Ethan', 'Noah', 'Oliver', 'Liam', 'Lucas', 'Henry'];
+  let hash = 2166136261;
+  for (let i = 0; i < ticketId.length; i++) {
+    hash = Math.imul(hash ^ ticketId.charCodeAt(i), 16777619);
+  }
+  return names[(hash >>> 0) % names.length];
+};
 const active = (ticket: Ticket) => !['closed', 'resolved'].includes(ticket.status);
 const allowed = 'image/jpeg,image/png,image/webp,application/pdf';
 const emojis = ['😊', '🙂', '❤️', '👍', '🙏', '✅', '😢', '🤝', '🎉', '💙'];
@@ -56,6 +65,7 @@ export default function SupportClient({ onClose }: { onClose?: () => void }) {
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [selected, setSelected] = useState<Ticket | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
+  const [supportOnline, setSupportOnline] = useState(false);
   const [startNew, setStartNew] = useState(false);
   const [name, setName] = useState('');
   const [supportNumericId, setSupportNumericId] = useState<number | null>(null);
@@ -135,6 +145,12 @@ export default function SupportClient({ onClose }: { onClose?: () => void }) {
       const data = await supportRequest('/api/v1/support/' + encodeURIComponent(ticketId));
       if (ticketOnScreen.current !== ticketId) return;
       if (data.ticket) setSelected(current => current?.id === ticketId ? data.ticket! : current);
+      setSupportOnline(data.supportOnline === true);
+      if (document.visibilityState === 'visible') {
+        void fetch('/api/v1/support/' + encodeURIComponent(ticketId) + '/read', {
+          method: 'POST', credentials: 'same-origin', cache: 'no-store',
+        }).catch(() => {});
+      }
       if (first) lastSupportMessage.current = null;
       const last = (data.messages || []).filter(item => item.senderRole === 'support').at(-1)?.id || null;
       if (!first && last && lastSupportMessage.current && last !== lastSupportMessage.current &&
@@ -177,6 +193,14 @@ export default function SupportClient({ onClose }: { onClose?: () => void }) {
     return () => window.removeEventListener('keydown', onKey);
   });
 
+  function speak(body: string) {
+    if (!body.trim() || !('speechSynthesis' in window)) return;
+    window.speechSynthesis.cancel();
+    const speech = new SpeechSynthesisUtterance(body.slice(0, 2500));
+    speech.lang = /[\u0600-\u06ff]/.test(body) ? 'fa-IR' : 'en-US';
+    speech.rate = 0.96;
+    window.speechSynthesis.speak(speech);
+  }
   function leave() { if (onClose) onClose(); else router.push('/'); }
   function toggleSound() {
     setMuted(current => {
@@ -263,6 +287,7 @@ export default function SupportClient({ onClose }: { onClose?: () => void }) {
   const isIntro = !conversation;
   return (
     <div className="relative flex h-full min-h-0 w-full flex-col overflow-hidden bg-[#FAFAFB] text-[#17191E]" dir={fa ? 'rtl' : 'ltr'}>
+      <style>{`@keyframes supportMessageArrival { from { opacity:0; transform:translateY(15px) scale(.96) } to { opacity:1; transform:translateY(0) scale(1) } } @media (prefers-reduced-motion: reduce) { .support-message { animation:none !important } }`}</style>
       {isIntro ? (
         <>
           <div className="relative shrink-0 bg-gradient-to-br from-[#516A83] to-[#273C50] px-6 pb-7 pt-[max(32px,env(safe-area-inset-top))] text-white sm:px-10">
@@ -295,8 +320,8 @@ export default function SupportClient({ onClose }: { onClose?: () => void }) {
           <header className="flex min-h-[104px] shrink-0 items-center gap-3 border-b border-[#EEEEF0] bg-[#FAFAFB] px-5 pt-[env(safe-area-inset-top)] sm:px-8">
             <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-gradient-to-tr from-[#1464D7] to-[#82B9FC] text-sm font-black text-white">BV</span>
             <div className="min-w-0 flex-1">
-              <h2 className="truncate text-[20px] font-semibold">{copy('BetVima Support','پشتیبانی بت‌ویما')}</h2>
-              <p className="text-[13px] text-black">•{copy('Online Support', 'پشتیبانی آنلاین')}•</p>
+              <h2 className="truncate text-[20px] font-semibold">{operatorName(selected!.id)} · {copy('BetVima Support','پشتیبانی بت‌ویما')}</h2>
+              <p className="flex items-center gap-2 text-[13px] text-[#455367]"><span aria-label={supportOnline ? 'Online' : 'Offline'} className={'h-2.5 w-2.5 rounded-full ' + (supportOnline ? 'bg-emerald-500 animate-pulse' : 'bg-slate-400')}/>{supportOnline ? copy('Support is online','پشتیبان آنلاین است') : copy('Support offline','پشتیبان آفلاین است')}</p>
               {supportNumericId !== null && <p className="text-[12px] font-semibold text-[#087FF5]">{copy('Your account ID', 'شناسه کاربری شما')}: <span dir="ltr">{supportNumericId}</span></p>}
             </div>
             <button type="button" aria-label={copy('Chat options','تنظیمات چت')} aria-expanded={menu} onClick={() => setMenu(v => !v)} className="grid h-10 w-9 place-items-center"><MoreVertical size={23}/></button>
@@ -313,14 +338,14 @@ export default function SupportClient({ onClose }: { onClose?: () => void }) {
             {messages.some(message => message.senderRole === 'support') && <p className="py-2 text-center text-xs text-[#AFB0B4]">{copy('A support manager joined the chat','پشتیبان به گفت‌وگو پیوست')}</p>}
             {messages.map(message => {
               const mine = message.senderRole === 'user';
-              return <div key={message.id} className={'flex ' + (mine ? 'justify-end' : 'justify-start')}>
+              return <div key={message.id} style={{ animation: 'supportMessageArrival 320ms cubic-bezier(.16,1,.3,1) both' }} className={'flex ' + (mine ? 'justify-end' : 'justify-start')}>
                 <div className={'relative max-w-[83%] rounded-[22px] px-5 py-3 text-[16px] leading-6 shadow-sm sm:max-w-[65%] ' + (mine ? 'rounded-br-[5px] bg-[#087FF5] text-white' : 'rounded-bl-[5px] bg-[#EEEEEF] text-[#191A1C]')}>
                   {message.body && <div className="whitespace-pre-wrap break-words" dir="auto">{message.body}</div>}
                   {(message.attachments || []).map(attachment => {
                     const url = '/api/v1/support/' + selected.id + '/attachments/' + attachment.id;
                     return <a key={attachment.id} href={url} target="_blank" rel="noopener noreferrer" className={'mt-2 flex items-center gap-2 break-all rounded-xl px-2 py-2 text-xs underline ' + (mine ? 'bg-white/10' : 'bg-white/70')}><FileText size={16}/>{attachment.originalName}</a>;
                   })}
-                  <div className={'mt-1 flex items-center justify-end gap-1 text-[11px] ' + (mine ? 'text-blue-100' : 'text-[#737780]')}>{mine && <Check size={13}/>}<span>{clock(message.createdAt, fa)}</span></div>
+                  <div className={'mt-1 flex items-center justify-end gap-1 text-[11px] ' + (mine ? 'text-blue-100' : 'text-[#737780]')}>{mine && (message.readAt ? <CheckCheck size={14} aria-label={copy('Read','خوانده شد')}/> : <Check size={13} aria-label={copy('Sent','ارسال شد')}/>)}<span>{clock(message.createdAt, fa)}</span><button type="button" onClick={() => speak(message.body)} disabled={!message.body.trim()} aria-label={copy('Play message','پخش پیام')} className="ml-1 rounded-full p-1 hover:bg-white/20 disabled:opacity-40"><Volume2 size={15}/></button></div>
                 </div>
               </div>;
             })}

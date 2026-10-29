@@ -17,5 +17,6 @@ export const GET = withErrorHandling('support.get', async (
 
   const messages = await services.support.listMessages(id, user.id);
 
-  return jsonOk({ ticket, messages });
+  const supportOnline = await services.support.isAgentOnline();
+  return jsonOk({ ticket, messages, supportOnline });
 });
