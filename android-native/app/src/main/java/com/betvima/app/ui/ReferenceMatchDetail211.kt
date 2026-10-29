@@ -20,6 +20,7 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.InfoOutlined
 import androidx.compose.material.icons.filled.Sensors
 import androidx.compose.material.icons.filled.Tv
 import androidx.compose.material3.*
@@ -42,14 +43,18 @@ import com.betvima.app.data.Market
 import com.betvima.app.data.Selection
 import com.betvima.app.data.odds
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import coil.compose.AsyncImage
 
 // Only match details use this light reference layout. No global app-theme changes.
-private val matchCanvas211 = Color(0xFFE7E8ED)
-private val matchTile211 = Color(0xFFEDEEF2)
-private val matchInk211 = Color(0xFF15171B)
-private val matchMuted211 = Color(0xFF636876)
+private val matchCanvas211 = Color(0xFF111216)
+private val matchTile211 = Color(0xFF292C33)
+private val matchInk211 = Color(0xFFF5F6FA)
+private val matchMuted211 = Color(0xFFA3A7B2)
 private val matchBlue211 = Color(0xFF087BFA)
+private val matchCard211 = Color(0xFF1B1E24)
+private val matchDivider211 = Color(0xFF343943)
+private val matchGreen211 = Color(0xFF00D47A)
 
 private data class DetailTab211(val key: String, val english: String, val persian: String)
 
@@ -119,6 +124,7 @@ internal fun ReferenceMatchDetail211(state: AppState, model: AppViewModel) {
     var searchOpen by rememberSaveable(match.id) { mutableStateOf(false) }
     var tvOpen by rememberSaveable(match.id) { mutableStateOf(false) }
     val scroll = remember(match.id) { LazyListState() }
+    val scrollScope = rememberCoroutineScope()
     val tabScroll = remember(match.id) { LazyListState() }
     LaunchedEffect(match.id) {
         if (match.live && match.id.startsWith("betsapi:live:")) {
@@ -170,7 +176,7 @@ internal fun ReferenceMatchDetail211(state: AppState, model: AppViewModel) {
         ) {
             item(key = "match-breadcrumb") {
                 Row(
-                    Modifier.fillMaxWidth().height(65.dp)
+                    Modifier.fillMaxWidth().height(52.dp)
                         .padding(horizontal = 19.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
@@ -192,7 +198,7 @@ internal fun ReferenceMatchDetail211(state: AppState, model: AppViewModel) {
             }
             item(key = "match-scoreboard") {
                 DetailModeSwitcher211(match.live, state.lang == Lang.FA) { tvOpen = true }
-                Spacer(Modifier.height(21.dp))
+                Spacer(Modifier.height(10.dp))
                 DetailLargeScore211(match, scores, clockLabel, state.lang == Lang.FA) {
                     tvOpen = true
                 }
@@ -200,12 +206,14 @@ internal fun ReferenceMatchDetail211(state: AppState, model: AppViewModel) {
                     LinearProgressIndicator(Modifier.fillMaxWidth().padding(top = 8.dp),
                         color = matchBlue211)
                 }
-                Spacer(Modifier.height(17.dp))
+                Spacer(Modifier.height(9.dp))
             }
             stickyHeader(key = "match-sticky-tabs") {
                 Column(Modifier.fillMaxWidth().background(matchCanvas211)) {
                     AnimatedVisibility(visible = collapsed) {
-                        DetailCompactScore211(match, scores, clockLabel)
+                        Surface(color = matchCard211) {
+                            DetailCompactScore211(match, scores, clockLabel)
+                        }
                     }
                     DetailTabStrip211(tab, state.lang == Lang.FA, listState = tabScroll, onTab = {
                         tab = it
@@ -219,6 +227,15 @@ internal fun ReferenceMatchDetail211(state: AppState, model: AppViewModel) {
                             modifier = Modifier.fillMaxWidth()
                                 .padding(horizontal = 16.dp, vertical = 6.dp),
                             singleLine = true, shape = RoundedCornerShape(13.dp),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedTextColor = matchInk211,
+                                unfocusedTextColor = matchInk211,
+                                cursorColor = matchBlue211,
+                                focusedBorderColor = matchBlue211,
+                                unfocusedBorderColor = matchDivider211,
+                                focusedPlaceholderColor = matchMuted211,
+                                unfocusedPlaceholderColor = matchMuted211
+                            ),
                             placeholder = {
                                 Text(tr(state.lang, "Search markets", "جست‌وجوی بازار"),
                                     fontSize = 12.sp)
@@ -228,20 +245,20 @@ internal fun ReferenceMatchDetail211(state: AppState, model: AppViewModel) {
                                 }
                             })
                     }
-                    HorizontalDivider(thickness = 1.dp, color = Color(0xFFD4D7DE))
+                    HorizontalDivider(thickness = 1.dp, color = matchDivider211)
                 }
             }
             if (state.detailError) item(key = "match-market-fetch-error") {
                 Surface(
                     modifier = Modifier.fillMaxWidth().padding(14.dp),
-                    color = Color(0xFFFFF5DF),
+                    color = Color(0xFF342A1E),
                     shape = RoundedCornerShape(14.dp)
                 ) {
                     Row(Modifier.padding(13.dp), verticalAlignment = Alignment.CenterVertically) {
                         Text(tr(state.lang,
                             "Latest markets are unavailable. Retry.",
                             "دریافت ضرایب جدید ناموفق بود؛ دوباره تلاش کنید."),
-                            color = Color(0xFF71531D), fontSize = 12.sp,
+                            color = Color(0xFFF9CA79), fontSize = 12.sp,
                             modifier = Modifier.weight(1f))
                         TextButton(onClick = { model.openMatch(match.id) }) {
                             Text(tr(state.lang,"Retry","تلاش مجدد"))
@@ -250,12 +267,23 @@ internal fun ReferenceMatchDetail211(state: AppState, model: AppViewModel) {
                 }
             }
             if (matches.isEmpty()) item(key = "match-no-markets") {
-                Box(Modifier.fillMaxWidth().padding(22.dp),
-                    contentAlignment = Alignment.Center) {
-                    Text(tr(state.lang,
-                        "No markets available for this match.",
-                        "هنوز بازاری برای این مسابقه در دسترس نیست."),
-                        fontSize = 13.sp, color = matchMuted211, textAlign = TextAlign.Center)
+                Surface(
+                    modifier = Modifier.fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 14.dp),
+                    color = matchCard211, shape = RoundedCornerShape(18.dp),
+                    border = BorderStroke(1.dp, matchDivider211)
+                ) {
+                    Row(Modifier.padding(horizontal = 17.dp, vertical = 18.dp),
+                        verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Default.InfoOutlined, contentDescription = null,
+                            tint = matchBlue211, modifier = Modifier.size(22.dp))
+                        Spacer(Modifier.width(12.dp))
+                        Text(tr(state.lang,
+                            "No markets available for this match.",
+                            "هنوز بازاری برای این مسابقه در دسترس نیست."),
+                            fontSize = 13.sp, color = matchMuted211,
+                            modifier = Modifier.weight(1f), lineHeight = 19.sp)
+                    }
                 }
             }
             items(matches, key = { "detail-market-" + it.id }) { market ->
@@ -272,10 +300,11 @@ internal fun ReferenceMatchDetail211(state: AppState, model: AppViewModel) {
                     focused = market.id == focusId
                 )
             }
-            item(key = "match-responsible-note") {
-                Box(Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
-                    ResponsibleNote(state.lang)
-                }
+            item(key = "match-footer") {
+                PremiumAppFooter(
+                    state = state, model = model,
+                    onBackToTop = { scrollScope.launch { scroll.animateScrollToItem(0) } }
+                )
             }
         }
     }
