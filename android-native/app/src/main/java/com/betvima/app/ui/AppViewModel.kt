@@ -814,7 +814,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         if (!state.value.signedIn) return@launch
         val generation = sessionGeneration
         val request = ++accountRequestNumber
-        val walletRequest = ++walletRequestNumber
+        // Do not invalidate a faster confirmed header read while the heavy
+        // account statement loads; mergeWalletServer218 guards row versions.
         mutable.update { it.copy(accountLoading = true) }
         val jwt = vault.accessToken(api)
         if (jwt.isNullOrBlank()) {
