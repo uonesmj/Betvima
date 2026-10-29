@@ -1,11 +1,12 @@
-name: Casino Callback RTT5 Read-Only Latency Verification
+name: Casino Callback RTT6 Zero-Cost Read-Only Optimization
 on:
   push:
     branches:
-      - fix/casino-callback-rtt5-timing-20261030
+      - fix/casino-callback-rtt6-zero-cost-20261030
     paths:
       - 'src/server/db/postgres.ts'
       - 'src/server/providers/softaggregator/perf-trace.ts'
+      - 'src/server/providers/softaggregator/wallet.ts'
       - 'src/app/api/webhooks/softaggregator/route.ts'
       - 'ops/cloudflare/softaggregator-callback-worker.js'
       - 'ops/casino/stage-live-3098-transport-20261030.py'
@@ -15,6 +16,7 @@ on:
       - 'ops/casino/benchmark-readonly-pooler-rtt-20261030.py'
       - 'tests/unit/casino-callback-perf-trace.test.ts'
       - 'tests/unit/casino-debit-single-timeout.test.ts'
+      - 'tests/unit/softaggregator-wallet.test.ts'
       - '.github/workflows/casino-rtt5-timing-check.yml'
   workflow_dispatch:
 
