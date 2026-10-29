@@ -11,6 +11,7 @@ on:
       - 'ops/casino/stage-live-3098-transport-20261030.py'
       - 'ops/casino/typecheck-live-3098-candidate-20261030.sh'
       - 'ops/casino/live-3098-rtt5-3118-auto-rollback-canary-20261030.py'
+      - 'ops/casino/live-3098-rtt5-3118-auto-rollback-retry10m-20261030.py'
       - 'tests/unit/casino-callback-perf-trace.test.ts'
       - 'tests/unit/casino-debit-single-timeout.test.ts'
       - '.github/workflows/casino-rtt5-timing-check.yml'
@@ -48,6 +49,14 @@ jobs:
             exit 1
           fi
           grep -q 'REFUSED:' /tmp/canary-check.log
+      - name: Syntax and fail-closed checks for 10-minute retest
+        run: |
+          python3 -m py_compile ops/casino/live-3098-rtt5-3118-auto-rollback-retry10m-20261030.py
+          if python3 ops/casino/live-3098-rtt5-3118-auto-rollback-retry10m-20261030.py start >/tmp/canary10-check.log 2>&1; then
+            echo 'ERROR: retry pilot must fail closed outside authorized VPS'
+            exit 1
+          fi
+          grep -q 'REFUSED:' /tmp/canary10-check.log
       - name: Check isolated 3098 candidate syntax
         run: bash -n ops/casino/typecheck-live-3098-candidate-20261030.sh
       - name: Refuse candidate build if live release unavailable
