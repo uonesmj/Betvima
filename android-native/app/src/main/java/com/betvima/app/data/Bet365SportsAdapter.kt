@@ -77,10 +77,18 @@ internal fun parseBet365Catalogue(data: JSONObject): List<Match> {
         if (manualCatalogueFixture(id)) {
             // Ignore any market payload on a manual catalogue entry:
             // there is no accepted odds version, financial settlement or wager route.
-            parseMatch(json, org.json.JSONArray()).copy(
-                marketsCount = 0,
-                bettingAvailable = false
-            )
+            // Manual preview ids are never UUID wager ids. Keep all selections
+            // suspended and reject any un-namespaced data from this catalogue.
+            val parsed = parseMatch(json)
+            val previews = parsed.markets.filter { it.id.startsWith("manual-preview:") }
+                .map { market -> market.copy(
+                    status = "suspended",
+                    selections = market.selections
+                        .filter { it.id.startsWith("manual-preview:") }
+                        .map { it.copy(status = "suspended") }
+                ) }
+            parsed.copy(markets = previews, marketsCount = previews.size,
+                bettingAvailable = false)
         } else {
             parseMatch(json).copy(bettingAvailable = false)
         }
