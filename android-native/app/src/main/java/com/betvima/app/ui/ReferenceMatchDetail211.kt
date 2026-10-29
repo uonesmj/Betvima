@@ -286,55 +286,75 @@ private fun DetailLargeScore211(
     match: Match, score: Pair<String, String>, clock: String,
     fa: Boolean, onOpenStudio: () -> Unit
 ) {
-    Column(Modifier.fillMaxWidth().padding(horizontal = 22.dp)) {
-        Row(Modifier.fillMaxWidth().heightIn(min = 122.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically) {
-            Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
+    Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
+        Row(
+            Modifier.fillMaxWidth().heightIn(min = 130.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(Modifier.weight(1f),
+                horizontalAlignment = Alignment.Start) {
                 TeamBadge(match.home, 55)
                 Spacer(Modifier.height(10.dp))
                 Text(match.home.name, fontSize = 14.sp, lineHeight = 19.sp,
-                    fontWeight = FontWeight.Bold, color = matchInk211, maxLines = 3,
-                    overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center)
+                    fontWeight = FontWeight.Bold, color = matchInk211,
+                    maxLines = 3, overflow = TextOverflow.Ellipsis,
+                    textAlign = TextAlign.Start)
             }
-            Column(Modifier.width(100.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                Row(verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Text(score.first, fontSize = 32.sp, fontWeight = FontWeight.Black,
-                        color = Color.White,
-                        modifier = Modifier.background(Color(0xFF858B9B),
-                            RoundedCornerShape(10.dp)).padding(horizontal = 8.dp, vertical = 3.dp))
-                    Text(":", fontSize = 24.sp, color = Color(0xFF828895))
-                    Text(score.second, fontSize = 32.sp, fontWeight = FontWeight.Black,
-                        color = Color.White,
-                        modifier = Modifier.background(Color(0xFF858B9B),
-                            RoundedCornerShape(10.dp)).padding(horizontal = 8.dp, vertical = 3.dp))
+            Column(Modifier.width(86.dp),
+                horizontalAlignment = Alignment.CenterHorizontally) {
+                Surface(color = Color(0xFF858C9C),
+                    shape = RoundedCornerShape(11.dp)) {
+                    Text(score.first + ":" + score.second,
+                        fontSize = 23.sp, fontWeight = FontWeight.Black,
+                        color = Color.White, textAlign = TextAlign.Center,
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 9.dp))
                 }
-                Spacer(Modifier.height(8.dp))
-                Text(if (match.live) clock else if (fa) "پیش از شروع" else "Upcoming",
-                    fontSize = 11.sp, color = if (match.live) Color(0xFFE11D71) else matchMuted211,
-                    fontWeight = FontWeight.Medium, maxLines = 2,
-                    textAlign = TextAlign.Center)
+                Spacer(Modifier.height(7.dp))
+                Text(if (match.live) clock else if (fa) "شروع نشده" else "Upcoming",
+                    fontSize = 11.sp, color = matchMuted211,
+                    fontWeight = FontWeight.Medium, textAlign = TextAlign.Center,
+                    maxLines = 1)
             }
-            Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
+            Column(Modifier.weight(1f),
+                horizontalAlignment = Alignment.End) {
                 TeamBadge(match.away, 55)
                 Spacer(Modifier.height(10.dp))
                 Text(match.away.name, fontSize = 14.sp, lineHeight = 19.sp,
-                    fontWeight = FontWeight.Bold, color = matchInk211, maxLines = 3,
-                    overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center)
+                    fontWeight = FontWeight.Bold, color = matchInk211,
+                    maxLines = 3, overflow = TextOverflow.Ellipsis,
+                    textAlign = TextAlign.End)
             }
         }
         if (match.live) {
-            Spacer(Modifier.height(12.dp))
+            Spacer(Modifier.height(18.dp))
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Default.Sensors, null, tint = Color(0xFFDC196A),
-                    modifier = Modifier.size(17.dp))
+                Icon(Icons.Default.Sensors, contentDescription = null,
+                    tint = Color(0xFFE11D71), modifier = Modifier.size(17.dp))
                 Spacer(Modifier.width(5.dp))
                 Text(clock, fontSize = 12.sp, color = matchMuted211)
                 Spacer(Modifier.weight(1f))
-                Text(if (fa) "نمایش زنده" else "Live tracker",
-                    color = matchBlue211, fontSize = 12.sp,
+                Text(if (fa) "نمایش زنده" else "Live match",
+                    fontSize = 12.sp, color = matchMuted211,
                     modifier = Modifier.clickable(onClick = onOpenStudio))
+            }
+            Spacer(Modifier.height(9.dp))
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                    Text(match.home.name, color = matchInk211,
+                        fontSize = 14.sp, fontWeight = FontWeight.SemiBold,
+                        maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text(match.away.name, color = matchInk211,
+                        fontSize = 14.sp, fontWeight = FontWeight.SemiBold,
+                        maxLines = 1, overflow = TextOverflow.Ellipsis)
+                }
+                Column(horizontalAlignment = Alignment.End,
+                    verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                    Text(score.first, color = matchInk211,
+                        fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                    Text(score.second, color = matchInk211,
+                        fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                }
             }
         }
     }
@@ -344,38 +364,46 @@ private fun DetailLargeScore211(
 private fun DetailCompactScore211(
     match: Match, score: Pair<String, String>, clock: String
 ) {
-    Row(Modifier.fillMaxWidth().padding(start = 14.dp, end = 14.dp, top = 7.dp, bottom = 7.dp),
+    Row(Modifier.fillMaxWidth()
+        .padding(start = 16.dp, end = 16.dp, top = 9.dp, bottom = 9.dp),
         verticalAlignment = Alignment.CenterVertically) {
-        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(5.dp)) {
+        Column(Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                TeamBadge(match.home, 25)
+                TeamBadge(match.home, 24)
                 Spacer(Modifier.width(7.dp))
-                Text(match.home.name, color = matchInk211, fontWeight = FontWeight.Bold,
-                    fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(match.home.name, color = matchInk211,
+                    fontWeight = FontWeight.Bold, fontSize = 13.sp,
+                    maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
             Row(verticalAlignment = Alignment.CenterVertically) {
-                TeamBadge(match.away, 25)
+                TeamBadge(match.away, 24)
                 Spacer(Modifier.width(7.dp))
-                Text(match.away.name, color = matchInk211, fontWeight = FontWeight.Bold,
-                    fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(match.away.name, color = matchInk211,
+                    fontWeight = FontWeight.Bold, fontSize = 13.sp,
+                    maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
         }
-        Column(Modifier.padding(horizontal = 10.dp),
-            verticalArrangement = Arrangement.spacedBy(6.dp),
+        Column(Modifier.padding(start = 9.dp, end = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(5.dp),
             horizontalAlignment = Alignment.CenterHorizontally) {
             listOf(score.first, score.second).forEach { number ->
-                Text(number, color = matchInk211, fontWeight = FontWeight.Black,
-                    fontSize = 13.sp, textAlign = TextAlign.Center,
-                    modifier = Modifier.background(Color(0xFFDDE0E7),
-                        RoundedCornerShape(7.dp))
-                        .defaultMinSize(minWidth = 29.dp).padding(vertical = 4.dp))
+                Surface(color = Color(0xFFD8DAE2),
+                    shape = RoundedCornerShape(8.dp)) {
+                    Text(number, fontSize = 14.sp, fontWeight = FontWeight.Black,
+                        color = matchInk211, textAlign = TextAlign.Center,
+                        modifier = Modifier.defaultMinSize(minWidth = 26.dp)
+                            .padding(vertical = 3.dp))
+                }
             }
         }
-        Column(horizontalAlignment = Alignment.End,
-            verticalArrangement = Arrangement.spacedBy(9.dp)) {
-            if (match.live) Icon(Icons.Default.Sensors, null,
-                tint = Color(0xFFE81E68), modifier = Modifier.size(20.dp))
-            else Text("PRE", color = matchMuted211, fontSize = 10.sp)
+        Column(Modifier.widthIn(min = 63.dp),
+            horizontalAlignment = Alignment.End,
+            verticalArrangement = Arrangement.spacedBy(7.dp)) {
+            if (match.live) {
+                Icon(Icons.Default.Sensors, contentDescription = null,
+                    tint = Color(0xFFE11D71), modifier = Modifier.size(19.dp))
+            }
             Text(if (match.live) clock else "Upcoming",
                 color = matchMuted211, fontSize = 11.sp, maxLines = 1)
         }
@@ -384,25 +412,30 @@ private fun DetailCompactScore211(
 
 @Composable
 private fun DetailModeSwitcher211(live: Boolean, fa: Boolean, onOpenStudio: () -> Unit) {
-    Surface(Modifier.fillMaxWidth().padding(horizontal = 22.dp),
+    Surface(Modifier.fillMaxWidth().padding(horizontal = 17.dp),
         color = Color(0xFFDADDE5), shape = RoundedCornerShape(18.dp)) {
-        Row(Modifier.padding(3.dp).height(49.dp),
+        Row(Modifier.padding(3.dp).height(51.dp),
             horizontalArrangement = Arrangement.spacedBy(3.dp)) {
-            listOf("score", "tv", "tracker").forEach { item ->
-                val active = item == "score"
-                val enabled = active || live
+            listOf("score", "tv", "tracker").forEach { entry ->
+                val selected = entry == "score"
+                val enabled = selected || live
                 Surface(modifier = Modifier.weight(1f)
-                    .clickable(enabled = enabled && !active, onClick = onOpenStudio),
-                    color = if (active) Color.White else Color.Transparent,
-                    shape = RoundedCornerShape(14.dp),
-                    shadowElevation = if (active) 2.dp else 0.dp) {
+                    .clickable(enabled = enabled && !selected, onClick = onOpenStudio),
+                    color = if (selected) Color.White else Color.Transparent,
+                    shape = RoundedCornerShape(15.dp),
+                    shadowElevation = if (selected) 2.dp else 0.dp) {
                     Box(contentAlignment = Alignment.Center) {
-                        Text(when (item) {
-                            "score" -> "1:1"
-                            "tv" -> "TV"
-                            else -> if (fa) "زنده" else "LIVE"
-                        }, fontWeight = FontWeight.Black, fontSize = 13.sp,
-                            color = if (enabled) matchInk211 else Color(0xFFA4A9B4))
+                        when (entry) {
+                            "score" -> Text("1:1", fontSize = 13.sp,
+                                fontWeight = FontWeight.Black, color = matchInk211)
+                            "tv" -> Icon(Icons.Default.Tv, contentDescription = "TV",
+                                tint = if (enabled) matchInk211 else Color(0xFFA1A5B1),
+                                modifier = Modifier.size(21.dp))
+                            else -> Icon(Icons.Default.Sensors,
+                                contentDescription = if (fa) "زنده" else "Live",
+                                tint = if (enabled) matchInk211 else Color(0xFFA1A5B1),
+                                modifier = Modifier.size(21.dp))
+                        }
                     }
                 }
             }
