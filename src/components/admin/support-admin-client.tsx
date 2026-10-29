@@ -44,6 +44,7 @@ type Message = {
   senderRole: 'user' | 'support' | 'system';
   body: string;
   createdAt: string;
+  readAt?: string | null;
   attachments: Attachment[];
 };
 

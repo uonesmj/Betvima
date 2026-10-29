@@ -349,7 +349,7 @@ export interface SupportMessage {
   senderRole: 'user' | 'support' | 'system';
   body: string;
   createdAt: ISODateString;
-  readAt: ISODateString | null;
+  readAt?: ISODateString | null;
   attachments: SupportAttachment[];
 }
 
