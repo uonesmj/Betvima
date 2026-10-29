@@ -139,7 +139,19 @@ describe('SoftAggregator financial callback behavior (isolated DB contract)', ()
     const original = t.fake.queryOne.getMockImplementation()!;
     let profileInFlight = false;
     let walletOverlapped = false;
+    let schemaInFlight = false;
+    let bindingOverlapped = false;
     t.fake.queryOne.mockImplementation(async (sql: string, params: unknown[]) => {
+      if (sql.includes('as ready') && sql.includes('sa_unique_reversed_credit')) {
+        schemaInFlight = true;
+        try {
+          await new Promise(resolve => setTimeout(resolve, 15));
+        } finally {
+          schemaInFlight = false;
+        }
+      } else if (sql.includes('from nova.softaggregator_player_wallet_bindings')) {
+        bindingOverlapped = schemaInFlight;
+      }
       if (sql.includes('from nova.profiles p')) {
         profileInFlight = true;
         try {
@@ -162,6 +174,7 @@ describe('SoftAggregator financial callback behavior (isolated DB contract)', ()
     // Reading a wallet early never bypasses the eligibility gate.
     expect(await settleCasinoCallback(balanceEvent)).toEqual({ error: 2, balance: 0 });
     expect(walletOverlapped).toBe(true);
+    expect(bindingOverlapped).toBe(true);
     expect(t.postings).toHaveLength(0);
     expect(t.receipts.size).toBe(0);
 
