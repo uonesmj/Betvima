@@ -442,11 +442,17 @@ public final class MainActivity extends Activity {
  @Override protected void onPause(){supportRefresh.removeCallbacks(supportTicker);super.onPause();}
  private LinearLayout sectionGroup(String title,String hint,boolean expanded){
   LinearLayout card=panel(body);
+  LinearLayout header=col();
+  header.setPadding(dp(2),dp(5),dp(2),dp(8));
   TextView heading=text((expanded?"▾ ":"▸ ")+title,16,FG,true);
-  card.addView(heading);space(card,6);card.addView(text(hint,11,MUTED,false));
+  header.addView(heading);space(header,6);header.addView(text(hint,11,MUTED,false));
+  card.addView(header);
   LinearLayout content=col();content.setVisibility(expanded?View.VISIBLE:View.GONE);
   space(card,10);card.addView(content);
-  heading.setOnClickListener(v->{
+  header.setContentDescription("باز یا بسته کردن "+title);
+  header.setFocusable(true);
+  header.setClickable(true);
+  header.setOnClickListener(v->{
    boolean open=content.getVisibility()!=View.VISIBLE;
    content.setVisibility(open?View.VISIBLE:View.GONE);
    heading.setText((open?"▾ ":"▸ ")+title);
@@ -763,13 +769,50 @@ public final class MainActivity extends Activity {
     if(shown==0)centerText(bonusSection,"موردی موجود نیست");
    }
 
-   LinearLayout actions=sectionGroup("اقدامات مدیریتی","تمام عملیات از API امن و حسابرسی عبور می‌کنند",false);
+   LinearLayout actions=sectionGroup("اقدامات مدیریتی","مدیریت این کاربر؛ همه عملیات با احراز هویت و ثبت حسابرسی",true);
    addAction(actions,"active".equals(u.optString("status"))?"مسدودسازی حساب":"فعال‌کردن حساب",false,()->userStatus(u));
-   addAction(actions,"تأیید کازینو (صفحه موجود سایت)",false,this::openCasinoApproval);
+   addAction(actions,"افزایش موجودی کیف پول",true,()->adjustUserWallet(id,wallets,true));
+   addAction(actions,"کاهش موجودی کیف پول",false,()->adjustUserWallet(id,wallets,false));
+   addAction(actions,"تیکت‌های همین کاربر",false,()->userTicketsPage(id,u.optString("numericId",""),1));
+   addAction(actions,"ارسال اعلان فقط برای همین کاربر",false,()->sendUserNotice(id));
    addAction(actions,"تغییر رمز کاربر",false,()->resetUserPassword(id));
-   addAction(actions,"ارسال اعلان فقط برای همین کاربر",true,()->sendUserNotice(id));
-   addAction(actions,"افزایش یا کاهش موجودی",false,()->adjustUserWallet(id,wallets));
+   addAction(actions,"تأیید کازینو (صفحه موجود سایت)",false,this::openCasinoApproval);
    addAction(body,"بازگشت به فهرست کاربران",false,()->showPage("users"));
+  });
+ }
+ private void userTicketsPage(String userId,String numericId,int ticketPage){
+  if(numericId==null||!numericId.matches("[0-9]+")){
+   showMessage("شناسه عددی این کاربر در دسترس نیست.");return;
+  }
+  page="support";showingUserDetail=false;selectedId="";
+  createPage("تیکت‌های همین کاربر","شناسه کاربری "+numericId);
+  request("/api/v1/admin/support?page="+ticketPage+"&pageSize=100&search="+enc(numericId),data->{
+   body.removeAllViews();
+   addAction(body,"بازگشت به پرونده کاربر",false,()->{
+    try{
+     JSONObject target=new JSONObject().put("id",userId);
+     page="users";selectedId=userId;showingUserDetail=true;selected=target;
+     createPage("پرونده کاربر","شناسه عددی "+numericId);
+     userDetail(target);
+    }catch(Exception err){showMessage("بازگشت به پرونده کاربر ممکن نشد.");}
+   });
+   JSONObject tickets=data.optJSONObject("tickets");
+   JSONArray records=tickets==null?null:tickets.optJSONArray("items");
+   int shown=0;
+   if(records!=null)for(int i=0;i<records.length();i++){
+    JSONObject ticket=records.optJSONObject(i);
+    if(ticket==null||!userId.equals(ticket.optString("userId","")))continue;
+    shown++;
+    String ticketTitle=pick(ticket,"subject");
+    String ticketStatus=faStatus(pick(ticket,"status"));
+    String ticketTime=date(pick(ticket,"updatedAt","createdAt"));
+    itemRow(ticketTitle,"شناسه "+numericId+" · "+ticketTime,ticketStatus,
+     ticket.optInt("unreadMessages",0)>0?"در انتظار پاسخ":"مشاهده",()->details("support",ticket));
+   }
+   if(shown==0)centerText(body,"در این صفحه تیکتی برای این کاربر ثبت نشده است.");
+   if(ticketPage>1)addAction(body,"صفحه قبل",false,()->userTicketsPage(userId,numericId,ticketPage-1));
+   if(tickets!=null&&tickets.optBoolean("hasMore",false))
+    addAction(body,"صفحه بعد",false,()->userTicketsPage(userId,numericId,ticketPage+1));
   });
  }
  private void loadRecentUserBets(String userId,LinearLayout host){
@@ -939,7 +982,7 @@ public final class MainActivity extends Activity {
   }));
   dialog.show();
  }
- private void adjustUserWallet(String id,JSONArray wallets){
+ private void adjustUserWallet(String id,JSONArray wallets,boolean credit){
   if(wallets==null||wallets.length()==0){showMessage("کیف پولی برای این کاربر ثبت نشده است.");return;}
   java.util.ArrayList<String> currencies=new java.util.ArrayList<>();
   for(int i=0;i<wallets.length();i++){
@@ -956,15 +999,10 @@ public final class MainActivity extends Activity {
   currency.setAdapter(adapter);form.addView(currency);
   EditText amount=input(form,"مبلغ به واحد اصلی ارز (مثلاً 10.50)",InputType.TYPE_CLASS_NUMBER|InputType.TYPE_NUMBER_FLAG_DECIMAL);
   EditText reason=input(form,"دلیل درخواست (حداقل ۸ کاراکتر)",InputType.TYPE_CLASS_TEXT);
-  final boolean[] credit={true};
-  TextView direction=action("نوع درخواست: افزایش موجودی",false,()->{credit[0]=!credit[0];});
-  direction.setOnClickListener(v->{
-   credit[0]=!credit[0];direction.setText(credit[0]?"نوع درخواست: افزایش موجودی":"نوع درخواست: کاهش موجودی");
-  });
-  form.addView(direction);
-  form.addView(label("این درخواست به‌تنهایی پول جابه‌جا نمی‌کند؛ تأیید مدیر دوم لازم است."));
-  AlertDialog dialog=new AlertDialog.Builder(this).setTitle("درخواست تعدیل کیف پول")
-   .setView(form).setNegativeButton("انصراف",null).setPositiveButton("ثبت درخواست",null).create();
+  form.addView(label(credit?"نوع عملیات: افزایش موجودی":"نوع عملیات: کاهش موجودی"));
+  form.addView(label("عملیات فقط پس از تأیید مجوز Super Admin در سرور و ثبت حسابرسی اجرا می‌شود. نتیجه قطعی از پاسخ API مشخص است."));
+  AlertDialog dialog=new AlertDialog.Builder(this).setTitle(credit?"افزایش موجودی کیف پول":"کاهش موجودی کیف پول")
+   .setView(form).setNegativeButton("انصراف",null).setPositiveButton("ثبت عملیات",null).create();
   dialog.setOnShowListener(d->dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v->{
    String why=reason.getText().toString().trim(),selected=(String)currency.getSelectedItem();
    String minor;
@@ -976,7 +1014,7 @@ public final class MainActivity extends Activity {
    }catch(Exception e){showMessage("مبلغ باید مثبت و دارای حداکثر دو رقم اعشار باشد.");return;}
    if(why.length()<8){showMessage("دلیل درخواست حداقل ۸ کاراکتر باشد.");return;}
    dialog.getButton(AlertDialog.BUTTON_POSITIVE).setEnabled(false);
-   String directionValue=credit[0]?"credit":"debit";
+   String directionValue=credit?"credit":"debit";
    api.perform(()->api.post("/api/v1/admin/wallet/adjustments",
     new JSONObject().put("userId",id).put("amountMinor",minor)
       .put("currency",selected).put("direction",directionValue)
