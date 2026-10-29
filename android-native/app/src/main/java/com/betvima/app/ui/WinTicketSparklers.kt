@@ -13,7 +13,6 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -71,21 +70,9 @@ internal fun WinTicketSparklers(replay: Int, modifier: Modifier = Modifier) {
         drawCircle(brush = halo, radius = w * .67f,
             center = Offset(w * .52f, h * .10f))
 
-        // Continuous travelling gleam on the green winning outline.
-        drawRoundRect(
-            brush = Brush.linearGradient(
-                colors = listOf(
-                    mint.copy(alpha = .25f),
-                    golden.copy(alpha = .52f + .22f * softPulse),
-                    pearl.copy(alpha = .36f),
-                    mint.copy(alpha = .20f)
-                ),
-                start = Offset(w * (loop - .23f), 0f),
-                end = Offset(w * (loop + .64f), h * .55f)
-            ),
-            cornerRadius = CornerRadius(18.dp.toPx()),
-            style = Stroke(width = 2.1.dp.toPx())
-        )
+        // No yellow/gold perimeter: the original green ticket border is owned
+        // by PremiumTicket. Only particles and inner glow belong in this overlay.
+        // Keeping this canvas border-free avoids the unwanted gold double outline.
 
         // 66 light motes; stable spatial seeds, slow drifting and elegant fades.
         repeat(66) { i ->
