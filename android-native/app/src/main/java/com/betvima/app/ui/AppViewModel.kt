@@ -8,6 +8,11 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.Deferred
+import kotlinx.coroutines.Dispatchers
+import android.os.SystemClock
+import android.util.Log
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
@@ -107,6 +112,25 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     private val ticketLookupFailures = mutableSetOf<String>()
     private val ticketLookupInFlight = mutableSetOf<String>()
     private val ticketLookupSemaphore = Semaphore(2)
+    // Public game metadata only: no tokens, player balances or launch/session URLs.
+    // Short, bounded in-memory cache survives Home <-> Casino navigation in this VM.
+    private data class CasinoListKey(val page: Int, val category: String,
+        val query: String, val provider: String)
+    private data class CasinoListEntry(val savedAtMs: Long, val page: CasinoPage)
+    private val casinoCatalogLock = Any()
+    private val casinoCatalog = LinkedHashMap<CasinoListKey, CasinoListEntry>()
+    private val casinoCatalogInflight = mutableMapOf<CasinoListKey, Deferred<CasinoPage>>()
+    private var casinoCatalogGeneration = 0L
+    private val casinoCatalogTtlMs = 90_000L
+    private val casinoCatalogMaxEntries = 28
+
+    fun invalidateCasinoCatalogue() {
+        synchronized(casinoCatalogLock) {
+            casinoCatalogGeneration++
+            casinoCatalog.clear()
+            casinoCatalogInflight.clear()
+        }
+    }
     private val mutable = MutableStateFlow(AppState(
         signedIn = vault.signedIn(),
         lang = when (preferences.getString("language", "en")) { "fa" -> Lang.FA; "tr" -> Lang.TR; "prs" -> Lang.DARI; "hy" -> Lang.HY; "ar" -> Lang.AR; "az" -> Lang.AZ; "ru" -> Lang.RU; else -> Lang.EN }
@@ -166,8 +190,47 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         if (feature == Feature.NOTIFICATIONS && state.value.signedIn) refreshNotifications()
     }
     /** Casino is a native screen; the server owns the provider credentials and wallet. */
-    suspend fun casinoGames(page: Int, category: String, query: String, provider: String): CasinoPage =
-        api.casinoGames(page, category, query, provider)
+    suspend fun casinoGames(page: Int, category: String, query: String, provider: String): CasinoPage {
+        val key = CasinoListKey(page, category, query.trim(), provider)
+        val now = SystemClock.elapsedRealtime()
+        val deferred: Deferred<CasinoPage>
+        synchronized(casinoCatalogLock) {
+            val cached = casinoCatalog[key]
+            if (cached != null && now - cached.savedAtMs < casinoCatalogTtlMs) {
+                Log.d("BetVimaCasinoPerf", "catalogue cache-hit category=" +
+                    category.ifBlank { "all" } + " page=" + page)
+                return cached.page
+            }
+            val generation = casinoCatalogGeneration
+            deferred = casinoCatalogInflight[key] ?: viewModelScope.async(
+                Dispatchers.IO, start = CoroutineStart.LAZY
+            ) {
+                val started = SystemClock.elapsedRealtime()
+                try {
+                    val result = api.casinoGames(page, category, key.query, provider)
+                    synchronized(casinoCatalogLock) {
+                        if (casinoCatalogGeneration == generation) {
+                            casinoCatalog[key] = CasinoListEntry(SystemClock.elapsedRealtime(), result)
+                            while (casinoCatalog.size > casinoCatalogMaxEntries) {
+                                casinoCatalog.remove(casinoCatalog.keys.first())
+                            }
+                        }
+                    }
+                    Log.d("BetVimaCasinoPerf", "catalogue loaded category=" +
+                        category.ifBlank { "all" } + " page=" + page +
+                        " elapsedMs=" + (SystemClock.elapsedRealtime() - started) +
+                        " items=" + result.games.size)
+                    result
+                } finally {
+                    synchronized(casinoCatalogLock) {
+                        if (casinoCatalogGeneration == generation) casinoCatalogInflight.remove(key)
+                    }
+                }
+            }.also { casinoCatalogInflight[key] = it }
+        }
+        deferred.start()
+        return deferred.await()
+    }
 
     suspend fun casinoEligibility(): com.betvima.app.data.CasinoEligibility {
         val token = vault.accessToken(api)?.takeIf(String::isNotBlank)
