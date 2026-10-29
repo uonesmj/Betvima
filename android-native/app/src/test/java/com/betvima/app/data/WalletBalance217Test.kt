@@ -50,8 +50,44 @@ class WalletBalance217Test {
             snapshot("not-a-number")))
     }
 
-    @Test fun unknownWalletIsNotCreatedFromUnverifiedHistory() {
-        assertNull(applyWalletBalance217(null, snapshot("12000")))
+    @Test fun firstVerifiedSnapshotPopulatesHeaderBeforeFullStatement() {
+        val boot = applyWalletBalance217(null, snapshot("12000", version = "27"))!!
+        assertEquals("12000", boot.availableMinor)
+        assertEquals("27", boot.version)
+        assertEquals("unknown", boot.integrity)
+        assertTrue(boot.transactions.isEmpty())
+        // The full integrity check is required before financial operations.
+        assertNotEquals("ok", boot.integrity)
+    }
+
+    @Test fun slowInitialStatementCannotUndoNewerSpinBalance() {
+        val header = applyWalletBalance217(null, snapshot("9750", version = "9"))!!
+        val staleFull = wallet(balance = "10000", version = "7")
+        val merged = mergeWalletFull218(header, staleFull)
+        assertEquals("9750", merged.availableMinor)
+        assertEquals("9", merged.version)
+        assertEquals("ok", merged.integrity)
+        assertEquals(staleFull.transactions, merged.transactions)
+    }
+
+    @Test fun fullAccountReadAfterBootstrapRestoresAuthoritativeIntegrityAndHistory() {
+        val header = applyWalletBalance217(null, snapshot("9750", version = "9"))!!
+        val full = wallet(balance = "9500", version = "10")
+        val merged = mergeWalletFull218(header, full)
+        assertEquals("9500", merged.availableMinor)
+        assertEquals("10", merged.version)
+        assertEquals("ok", merged.integrity)
+        assertEquals(full.transactions, merged.transactions)
+    }
+
+    @Test fun sameCurrencyNewerFullReadAlwaysWins() {
+        val oldHeader = wallet(balance = "9750", version = "9")
+        val updatedFull = wallet(balance = "9600", version = "11")
+        assertEquals("9600", mergeWalletFull218(oldHeader, updatedFull).availableMinor)
+    }
+
+    @Test fun firstInvalidSnapshotDoesNotInventBalance() {
+        assertNull(applyWalletBalance217(null, snapshot("12000", balance = "10000")))
     }
 
     @Test fun realMoneyCadenceIsBounded() {
