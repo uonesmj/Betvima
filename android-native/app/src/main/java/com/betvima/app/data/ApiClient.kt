@@ -738,6 +738,23 @@ class ApiClient {
             legs = bet.arr("legs").objects().map(::parseBetLeg)
         )
     }
+    /** Minimal private, no-store wallet row. No statement, payments, provider keys or spins. */
+    suspend fun walletBalance217(token: String): WalletBalance217 {
+        val data = get("/api/v1/wallet/balance", token)
+        val wallet = data.optJSONObject("wallet") ?: throw java.io.IOException("Missing wallet snapshot")
+        val amountPattern = Regex("^[0-9]{1,24}$")
+        val available = wallet.str("availableMinor")
+        val balance = wallet.str("balanceMinor")
+        val held = wallet.str("heldMinor")
+        val version = wallet.str("version")
+        val currency = wallet.str("currency")
+        if (!listOf(available, balance, held, version).all { amountPattern.matches(it) } ||
+            currency !in setOf("USD", "IRT", "IRR", "USDT")) {
+            throw java.io.IOException("Invalid wallet balance snapshot")
+        }
+        return WalletBalance217(available, balance, held, currency, version)
+    }
+
     suspend fun wallet(token: String, page: Int = 1): Wallet {
         require(page in 1..1000)
         // Omit currency: the first-party API uses the user's canonical account currency.
@@ -769,7 +786,7 @@ class ApiClient {
                     amountMinor = it.str("amountMinor", "0"), currency = it.str("currency"),
                     createdAt = it.str("createdAt"), failureMessage = it.str("failureMessage")
                 )
-            })
+            }, version = w.str("version", "0"))
     }
 
     suspend fun walletMethods(direction: String, currency: String): WalletMethodCatalogue {
