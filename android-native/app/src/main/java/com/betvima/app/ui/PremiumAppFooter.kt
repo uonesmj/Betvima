@@ -58,8 +58,8 @@ private val footerMuted = Color(0xFF9FA3AF)
 fun PremiumAppFooter(
     state: AppState,
     model: AppViewModel,
-    onBackToTop: () -> Unit,
-    seamlessBackground: Boolean = false
+    seamlessBackground: Boolean = false,
+    onBackToTop: () -> Unit
 ) {
     var informationOpen by rememberSaveable { mutableStateOf(false) }
     var informationPage by rememberSaveable { mutableStateOf<String?>(null) }
