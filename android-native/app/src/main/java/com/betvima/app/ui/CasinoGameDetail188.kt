@@ -47,7 +47,7 @@ fun CasinoGameDetail188(
     val muted = Color(0xFFB1B1BA)
     val blue = Color(0xFF0C7EFA)
 
-    BoxWithConstraints(Modifier.fillMaxSize().background(dark)) {
+    BoxWithConstraints(Modifier.fillMaxSize().background(ChromeTokens.black)) {
         val compact = maxHeight < 680.dp
         Column(
             modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState())
