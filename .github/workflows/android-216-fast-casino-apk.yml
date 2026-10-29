@@ -123,8 +123,8 @@ jobs:
             endpoint="https://betvima.com/api/v1/casino/games?page=1&limit=40"
             if [ "$category" != all ]; then endpoint="$endpoint&category=$category"; fi
             echo "Catalogue timing category=$category"
-            curl -sS --connect-timeout 6 --max-time 15 --output /dev/null \\
-              --write-out 'http=%{http_code} dns=%{time_namelookup}s connect=%{time_connect}s first_byte=%{time_starttransfer}s total=%{time_total}s\\n' \\
+            curl -sS --connect-timeout 6 --max-time 15 --output /dev/null \
+              --write-out 'http=%{http_code} dns=%{time_namelookup}s connect=%{time_connect}s first_byte=%{time_starttransfer}s total=%{time_total}s\n' \
               "$endpoint" || echo "Probe unavailable (network/CDN/API blocked)"
           done
       - uses: actions/setup-java@v4
