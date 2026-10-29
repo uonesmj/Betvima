@@ -1,0 +1,172 @@
+name: BetVima Android 218 Stable Wallet Header APK
+on:
+  push:
+    branches:
+      - hotfix/android-218-restore-header-wallet-20261029
+    paths:
+      - 'android-native/**'
+      - '.github/workflows/android-218-wallet-header-hotfix-apk.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  verify-and-publish:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - name: Confirm appearance is propagated without backend changes
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          base=Path('android-native/app/src/main/java/com/betvima/app/ui')
+          theme=(base/'Theme.kt').read_text()
+          settings=(base/'SettingsDevice87.kt').read_text()
+          app=(base/'AccountSettings87.kt').read_text()
+          assert 'NativeThemeState.isLight' in theme
+          assert 'NativeThemeState.mode = value' in settings
+          assert 'local.setTheme(v)' in app
+          assert 'other pages have independent themes' not in app
+          chrome=(base/'Components.kt').read_text()
+          nav=(base/'ReferenceBottomNav.kt').read_text()
+          activity=Path('android-native/app/src/main/java/com/betvima/app/MainActivity.kt').read_text()
+          profile=(base/'ReferenceProfileSheet.kt').read_text()
+          bets=(base/'PremiumMyBets.kt').read_text()
+          assert 'val headerBlack = ChromeTokens.black' in chrome
+          assert 'val barBackground = ChromeTokens.black' in nav
+          assert 'color=ChromeTokens.ink' in profile
+          assert 'tint = if (expanded) Color.White else ThemeTokens.ink' in bets
+          assert 'isAppearanceLightStatusBars = false' in activity
+          support=(base/'SupportMessenger.kt').read_text()
+          api=Path('android-native/app/src/main/java/com/betvima/app/data/ApiClient.kt').read_text()
+          assert 'supportDisplayName206(ticket.id)' in support
+          assert 'animateItem(' in support
+          assert 'navigationBarsPadding()' in support
+          assert 'Icons.Default.DoneAll' in support
+          assert 'TextToSpeech' in support
+          assert 'markSupportRead' in api
+          ticket=(base/'BetTrackingUi.kt').read_text()
+          wins=(base/'WinTicketSparklers.kt').read_text()
+          profile=(base/'ReferenceProfileSheet.kt').read_text()
+          settings_ui=(base/'AccountSettings87.kt').read_text()
+          assert 'publicBetLegStatus207(result)' in ticket
+          assert 'rememberInfiniteTransition' in wins
+          assert 'drawRoundRect(' not in wins, 'Animated gold border must remain fully removed'
+          assert 'Continuous travelling gleam on the green winning outline' not in wins
+          assert 'repeat(66)' in wins, 'Keep inner celebration particles'
+          assert 'WIN_TICKET_INTRO_MS_207' in wins
+          assert 'Modifier.matchParentSize()' in bets
+          assert 'if (keyboardVisible) 14 else 42' in support
+          assert 'fontWeight=FontWeight.Black,maxLines=1' in profile
+          assert 'fontWeight=FontWeight.Black' in settings_ui
+          gradle=Path('android-native/app/build.gradle.kts').read_text()
+          assert 'versionCode = 218' in gradle and 'versionName = "0.218.0"' in gradle
+          adapter=Path('android-native/app/src/main/java/com/betvima/app/data/Bet365SportsAdapter.kt').read_text()
+          assert 'manualCatalogueFixturePattern' in adapter
+          assert 'market.copy(' in adapter and 'status = "suspended"' in adapter
+          assert 'bettingAvailable = false' in adapter
+          assert 'manualCatalogueFixture(id)' in api
+          detail=(base/'ReferenceMatchDetail211.kt').read_text()
+          assert 'DetailModeSwitcher211(match.live' in detail
+          assert detail.index('DetailModeSwitcher211(match.live') < detail.index('DetailLargeScore211(match, scores')
+          assert 'state = listState' in detail and 'remember(match.id) { LazyListState() }' in detail
+          assert 'DetailCompactScore211(match, scores, clockLabel)' in detail
+          assert 'stickyHeader(key = "match-sticky-tabs")' in detail
+          assert 'match.bettingAvailable && market.available' in detail
+          assert 'compactInline = columns < 3' in detail
+          assert 'PremiumAppFooter(' in detail and 'onBackToTop' in detail
+          assert 'matchCanvas211 = ChromeTokens.black' in detail
+          casino=(base/'CasinoPremiumHome.kt').read_text()
+          lobby=(base/'CasinoLobby.kt').read_text()
+          game=(base/'CasinoGameDetail188.kt').read_text()
+          footer=(base/'PremiumAppFooter.kt').read_text()
+          assert 'Box(Modifier.fillMaxSize().background(ChromeTokens.black).nestedScroll(nestedScroll))' in casino
+          assert 'Column(Modifier.fillMaxWidth().background(ChromeTokens.black)' in casino
+          assert 'Box(Modifier.fillMaxSize().background(ChromeTokens.black))' in lobby
+          assert 'BoxWithConstraints(Modifier.fillMaxSize().background(ChromeTokens.black))' in game
+          assert 'seamlessBackground = true' in casino
+          assert 'seamlessBackground = true' in detail
+          assert 'if (seamlessBackground) listOf(ChromeTokens.black, ChromeTokens.black)' in footer
+          assert 'matchCard211 = Color(0xFF1B1E24)' in detail
+          assert 'matchGreen211 = Color(0xFF00D47A)' in detail
+          assert 'tint = Color(0xFF53A7FF)' in detail
+          assert 'tint = Color(0xFFFF477A)' in detail
+          assert 'Column(Modifier.fillMaxWidth().padding(horizontal = 17.dp, vertical = 5.dp))' in detail
+          assert 'Modifier.fillMaxWidth()' in detail and '.height(39.dp).clip(outer)' in detail
+          assert 'interactionSource = remember { MutableInteractionSource() }' in detail
+          assert 'indication = null' in detail
+          assert 'PremiumAppFooter(' in detail
+          assert 'DetailCompactScore211(match, scores, clockLabel)' in detail
+          assert 'val enabled = match.bettingAvailable && market.available' in detail
+
+          home=(base/'CasinoHomeCarousel95.kt').read_text()
+          vm=(base/'AppViewModel.kt').read_text()
+          request=(base/'CasinoArtworkRequest216.kt').read_text()
+          api=(Path('android-native/app/src/main/java/com/betvima/app/data/ApiClient.kt')).read_text()
+          lobby=(base/'CasinoLobby.kt').read_text()
+          assert 'val (live, slots) = coroutineScope {' in home and 'liveJob.await() to slotsJob.await()' in home
+          assert 'casinoCatalogTtlMs = 90_000L' in vm
+          assert 'casinoCatalogInflight' in vm and 'CasinoListEntry' in vm
+          assert 'casinoLoadPlan216(' in lobby and 'expandShowcase' in lobby
+          assert 'snapshotFlow { listState.firstVisibleItemIndex }' in casino
+          assert 'ImageRequest.Builder(context)' in request and '.size(widthPx, heightPx)' in request
+          assert 'BetVimaCasinoPerf' in api and 'elapsedMs=' in api
+          balance=(Path('android-native/app/src/main/java/com/betvima/app/data/WalletBalance217.kt')).read_text()
+          assert 'val latest = api.wallet(jwt)' in vm
+          assert 'mergeWalletRefresh185(it.wallet, latest)' in vm
+          assert 'delay(2_500L)' in lobby
+          assert 'casinoWalletRefreshIntervalMs217()' not in lobby
+          assert 'walletBalance217(jwt)' not in vm
+          assert '/api/v1/wallet/balance' in api, 'Harmless uncalled compatibility method may remain'
+          print('PASS: restored v216 wallet polling outside and inside casino; no financial writes')
+          print('PASS: parallel home, bounded TTL/inflight cache, lazy categories, Coil resize and latency metrics')
+          print('PASS: prior match/visual safeguards remain in place')
+          PY
+      - name: Read-only casino API latency probe
+        continue-on-error: true
+        run: |
+          for category in all slots live; do
+            endpoint="https://betvima.com/api/v1/casino/games?page=1&limit=40"
+            if [ "$category" != all ]; then endpoint="$endpoint&category=$category"; fi
+            echo "Catalogue timing category=$category"
+            curl -sS --connect-timeout 6 --max-time 15 --output /dev/null \
+              --write-out 'http=%{http_code} dns=%{time_namelookup}s connect=%{time_connect}s first_byte=%{time_starttransfer}s total=%{time_total}s\n' \
+              "$endpoint" || echo "Probe unavailable (network/CDN/API blocked)"
+          done
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Configure Android SDK
+        run: |
+          echo "ANDROID_HOME=/usr/local/lib/android/sdk" >> "$GITHUB_ENV"
+          /usr/local/lib/android/sdk/cmdline-tools/latest/bin/sdkmanager 'platforms;android-35' 'build-tools;35.0.0' || true
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.10.2'
+      - name: Compile and run all unit tests
+        working-directory: android-native
+        run: gradle --no-daemon --stacktrace :app:assembleDebug :app:testDebugUnitTest
+      - uses: actions/upload-artifact@v4
+        with:
+          name: BetVima-Android-v0.218.0-Wallet-Header-Hotfix-DEBUG
+          path: android-native/app/build/outputs/apk/debug/app-debug.apk
+          retention-days: 30
+          if-no-files-found: error
+      - name: Publish direct APK link (debug test only)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          tag="android-v0.218.0-wallet-header-hotfix-debug-20261029"
+          apk="BetVima-Android-v0.218.0-Wallet-Header-Hotfix-DEBUG.apk"
+          cp android-native/app/build/outputs/apk/debug/app-debug.apk "$apk"
+          if gh release view "$tag" >/dev/null 2>&1; then
+            gh release upload "$tag" "$apk" --clobber
+          else
+            gh release create "$tag" "$apk" --target "$GITHUB_SHA" \
+              --prerelease --title "BetVima Android v0.218.0 - Stable Wallet Header (debug)" \
+              --notes "Preview/debug build only; NOT production signed. May require removing an existing release-signed app before installation. Uses a compact black BetVima match-detail design with green/blue/pink section icons, unified header/body/footer background only; no financial mutations or optimistic balance deduction; lightweight authenticated wallet reads, original full BetVima information/footer accordions and functional back-to-top. Does not invent missing markets. No backend or betting authorization changes. No additional wager buttons, internal bet ids, or settlement paths. Native app frontend only; backend catalogue feed is deployed independently. Debug-signed."
+          fi
