@@ -20,7 +20,7 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.InfoOutlined
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Sensors
 import androidx.compose.material.icons.filled.Tv
 import androidx.compose.material3.*
@@ -275,7 +275,7 @@ internal fun ReferenceMatchDetail211(state: AppState, model: AppViewModel) {
                 ) {
                     Row(Modifier.padding(horizontal = 17.dp, vertical = 18.dp),
                         verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Default.InfoOutlined, contentDescription = null,
+                        Icon(Icons.Default.Info, contentDescription = null,
                             tint = matchBlue211, modifier = Modifier.size(22.dp))
                         Spacer(Modifier.width(12.dp))
                         Text(tr(state.lang,
