@@ -130,7 +130,11 @@ export async function settleCasinoCallback(event: SignedCallback): Promise<Casin
   let schemaReady: boolean;
   let currency: Awaited<ReturnType<typeof readCasinoPlayerWallet>>;
   let originalRound: { wallet_currency: string } | null;
-  if (normalFinancialCallback) {
+  // Balance is also strictly read-only; overlap its independent schema,
+  // binding and (if present) immutable round lookups. Rollbacks retain the
+  // prior sequential path and fresh checks are never cached.
+  const parallelReadOnlyPreflight = normalFinancialCallback || event.action === 'balance';
+  if (parallelReadOnlyPreflight) {
     [schemaReady, currency, originalRound] = await Promise.all([
       casinoFinancialSchemaReady(db),
       readCasinoPlayerWallet(db, userId),
