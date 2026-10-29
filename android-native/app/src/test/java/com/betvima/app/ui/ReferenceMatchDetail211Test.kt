@@ -24,7 +24,7 @@ class ReferenceMatchDetail211Test {
             market("cards","Total cards")
         )
         assertEquals(input, matchDetailFilter211(input,"all",""))
-        assertEquals(listOf("total_goals","first_half_total","cards"),
+        assertEquals(listOf("total_goals","first_half_total","corners","cards"),
             matchDetailFilter211(input,"total","").map { it.key })
         assertEquals(listOf("first_half_total"),
             matchDetailFilter211(input,"halves","").map { it.key })
