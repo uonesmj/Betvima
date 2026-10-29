@@ -7,7 +7,7 @@ class SupportMessageMotion206Test {
     assertEquals(supportDisplayName206(ticket),supportDisplayName206(ticket))
   }
   @Test fun composerClearanceIsCompact() {
-    assertTrue(supportChatBottomClearanceDp(false)<=10)
-    assertTrue(supportChatBottomClearanceDp(true)<=10)
+    assertTrue(supportChatBottomClearanceDp(false) >= 38)
+    assertTrue(supportChatBottomClearanceDp(true) >= 12)
   }
 }
