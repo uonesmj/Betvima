@@ -111,6 +111,14 @@ class ApiClient {
     // Money-mutating POSTs must never be automatically replayed by OkHttp.
     private val financialClient = client.newBuilder()
         .retryOnConnectionFailure(false).build()
+    // Header balance only: fail quickly on a slow network instead of allowing
+    // one read to block verified updates for tens of seconds.
+    private val walletBalanceClient218 = client.newBuilder()
+        .connectTimeout(5, TimeUnit.SECONDS)
+        .readTimeout(6, TimeUnit.SECONDS)
+        .callTimeout(8, TimeUnit.SECONDS)
+        .retryOnConnectionFailure(false)
+        .build()
     // The casino launch endpoint may check the catalogue, create the provider
     // player and request a session URL sequentially. The generic 20s deadline
     // can expire before a valid Demo URL arrives. Never apply this to money POSTs.
@@ -236,6 +244,8 @@ class ApiClient {
             if (body != null) builder.method(verb, body.toString().toRequestBody(jsonType))
             else if (emptyPost) builder.post(ByteArray(0).toRequestBody(null))
             (if (casinoDemo) casinoDemoClient
+             else if (path == "/api/v1/wallet/balance" && body == null)
+                 walletBalanceClient218
              else if (idempotencyKey == null && !emptyPost) client
              else financialClient)
                 .newCall(builder.build()).execute().use(::apiJson)
