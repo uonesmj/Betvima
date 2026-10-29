@@ -104,6 +104,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     // A short compatibility window if a server revision lacks /wallet/balance.
     private var walletBalanceUnsupportedUntilMs = 0L
     private var recentWalletPaymentUntilMs = 0L
+    private var recentCasinoWalletUntilMs218 = 0L
     private var quoteGeneration = 0
     private var mainBetSubmitting = false
     private var mainOddsPolling = false
@@ -686,6 +687,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         accountRequestNumber++
         walletRequestNumber++
         walletBalanceUnsupportedUntilMs = 0L
+        recentCasinoWalletUntilMs218 = 0L
         recentWalletPaymentUntilMs = 0L
         historyRequest++
         sessionGeneration++
@@ -739,9 +741,21 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         return intent
     }
 
-    /** Poll only while the app is foregrounded (driven by BetvimaApp). */
-    fun walletRefreshIntervalMs(): Long =
-        walletRefreshDelay185(android.os.SystemClock.elapsedRealtime() < recentWalletPaymentUntilMs)
+    /** The casino can be dismissed while the last provider round is completing.
+     *  Keep refreshing the confirmed server balance briefly across ALL screens. */
+    fun markCasinoWalletReconcile218() {
+        if (state.value.signedIn) {
+            recentCasinoWalletUntilMs218 = SystemClock.elapsedRealtime() + 90_000L
+        }
+    }
+
+    /** Poll only in the foreground, at a bounded cadence in every tab. */
+    fun walletRefreshIntervalMs(): Long {
+        val now = SystemClock.elapsedRealtime()
+        val recentCasino = now < recentCasinoWalletUntilMs218
+        return if (recentCasino && now < walletBalanceUnsupportedUntilMs) 5_000L
+        else walletRefreshDelay218(recentCasino, now < recentWalletPaymentUntilMs)
+    }
 
     /** Active casino: read only the server-confirmed wallet row, not its full statement. */
     fun casinoWalletRefreshIntervalMs217(): Long =
@@ -778,11 +792,11 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 val confirmedFull = full
                 mutable.update {
                     val updated = if (confirmedSnapshot != null)
-                        applyWalletBalance217(it.wallet, confirmedSnapshot)
+                        applyWalletSnapshot218(it.wallet, confirmedSnapshot)
                     else if (confirmedFull != null && (it.wallet == null ||
                         (confirmedFull.version.toBigIntegerOrNull() ?: java.math.BigInteger.ZERO) >=
                         (it.wallet.version.toBigIntegerOrNull() ?: java.math.BigInteger.ZERO)))
-                        mergeWalletRefresh185(it.wallet, confirmedFull)
+                        mergeWalletServer218(it.wallet, confirmedFull)
                     else it.wallet
                     it.copy(wallet = updated)
                 }
@@ -838,9 +852,10 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 !state.value.signedIn) return@supervisorScope
             mutable.update {
                 it.copy(
+                    // The account statement may complete after a fast header
+                    // snapshot. Version guards, not arrival order, decide funds.
                     wallet = walletResult.getOrNull()
-                        ?.takeIf { walletRequest == walletRequestNumber }
-                        ?.let { fresh -> mergeWalletRefresh185(it.wallet, fresh) } ?: it.wallet,
+                        ?.let { fresh -> mergeWalletServer218(it.wallet, fresh) } ?: it.wallet,
                     accountName = remoteName ?: it.accountName,
                     bets = betResult.getOrNull()?.items ?: it.bets,
                     betsPage = betResult.getOrNull()?.page ?: it.betsPage,
