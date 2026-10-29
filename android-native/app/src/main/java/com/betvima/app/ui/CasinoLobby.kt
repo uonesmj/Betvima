@@ -230,18 +230,11 @@ fun CasinoLobby(state: AppState, model: AppViewModel) {
     var expandShowcase by remember(category, provider, debouncedQuery) { mutableStateOf(false) }
     LaunchedEffect(category, provider, debouncedQuery, refreshSerial, expandShowcase) {
         if (provider.isBlank() && debouncedQuery.isBlank()) {
-            val types = when (category) {
-                "live" -> listOf("live")
-                "crash", "instant" -> listOf("crash", "instant")
-                "" -> if (expandShowcase) listOf("slots", "live", "instant", "crash", "table")
-                      else listOf("slots", "live")
-                else -> emptyList()
-            }
-            val pages = if (expandShowcase) when (category) {
-                "live" -> 4
-                "crash", "instant" -> 3
-                else -> 1
-            } else 1
+            val loadPlan = casinoLoadPlan216(
+                category, provider, debouncedQuery, expandShowcase
+            )
+            val types = loadPlan.categories
+            val pages = loadPlan.pages
             if (!expandShowcase) delay(220)
             categoryShowcase = coroutineScope {
                 val jobs = types.map { type ->
