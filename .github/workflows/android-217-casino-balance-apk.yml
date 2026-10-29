@@ -122,7 +122,7 @@ jobs:
           assert '/api/v1/wallet/balance' in api
           assert 'newVersion < oldVersion' in balance
           assert 'confirmed.currency != previous.currency' in balance
-          assert 'Never infer it from Spin' in balance
+          assert 'never infer it from Spin' in balance
           print('PASS: server-authoritative fast header polling, monotonic version and fallback checks')
           print('PASS: parallel home, bounded TTL/inflight cache, lazy categories, Coil resize and latency metrics')
           print('PASS: prior match/visual safeguards remain in place')
