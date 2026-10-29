@@ -1,0 +1,38 @@
+name: Wallet Balance Fast Read Checks
+on:
+  push:
+    branches:
+      - fix/wallet-balance-read-fast-20261029
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  checks:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - name: Verify balance snapshots, financial regressions and types
+        run: |
+          npm run test:unit
+          npm run typecheck
+      - name: Validate no financial writes in new route
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          code=Path('src/app/api/v1/wallet/balance/route.ts').read_text()
+          query=Path('src/server/wallet/balance-snapshot.ts').read_text()
+          assert "withUser(request, ctx)" in code
+          assert "user.currency" in code and "user.id" in code
+          assert "Cache-Control" in code and "no-store" in code
+          assert "nova.wallets" in query and "limit 1" in query
+          assert "wallet_transactions" not in query
+          assert "payments." not in query
+          assert not any(x in query.lower() for x in ("insert into", "delete from", "update nova"))
+          print('PASS: no monetary mutation; authenticated canonical wallet row only')
+          PY
