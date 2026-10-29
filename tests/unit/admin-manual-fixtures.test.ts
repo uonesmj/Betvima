@@ -9,14 +9,14 @@ describe('manually-entered upcoming fixtures', () => {
   beforeEach(() => query.mockReset());
 
   it('exposes catalogue-only records without a price, market, or provider event identifier', async () => {
-    query.mockResolvedValue([{
+    query.mockResolvedValueOnce([{
       id: '11111111-1111-4111-8111-111111111111',
       sport: 'football',
       league: 'Test League',
       home: 'Home FC',
       away: 'Away FC',
       scheduled_at: '2026-12-01T14:00:00Z',
-    }]);
+    }]).mockResolvedValueOnce([]);
 
     const result = await readManualFixtures('football', 25);
     expect(result).toHaveLength(1);
@@ -54,5 +54,38 @@ describe('manually-entered upcoming fixtures', () => {
     } finally {
       warning.mockRestore();
     }
+  });
+
+  it('keeps manual odds preview suspended and separate from wager-grade identities',async()=>{
+    query.mockResolvedValueOnce([{
+      id:'11111111-1111-4111-8111-111111111111',sport:'football',league:'Iran',
+      home:'Esteghlal',away:'Persepolis',scheduled_at:'2026-12-01T14:00:00Z',
+    }]).mockResolvedValueOnce([{
+      fixture_id:'11111111-1111-4111-8111-111111111111',
+      id:'22222222-2222-4222-8222-222222222222',
+      market_key:'h2h',title:'Fulltime',version:2,
+      selections:[{label:'1',decimal:'2.10'},{label:'X',decimal:'3.25'},{label:'2',decimal:'4.00'}],
+    }]);
+    const games=await readManualFixtures('football');
+    expect(games[0]?.marketsCount).toBe(1);
+    expect(games[0]?.isBettingAvailable).toBe(false);
+    expect(games[0]?.topMarkets[0]?.id.startsWith('manual-preview:')).toBe(true);
+    expect(games[0]?.topMarkets[0]?.status).toBe('suspended');
+    expect(games[0]?.topMarkets[0]?.selections.map(s=>s.oddsScaled))
+      .toEqual(['21000','32500','40000']);
+    expect(games[0]?.topMarkets[0]?.selections.every(s=>s.status==='suspended')).toBe(true);
+  });
+  it('preserves fixtures while market-preview table is being deployed',async()=>{
+    const warning=vi.spyOn(console,'warn').mockImplementation(()=>{});
+    try {
+      query.mockResolvedValueOnce([{
+        id:'11111111-1111-4111-8111-111111111111',
+        sport:'football',league:'Test',home:'Home',away:'Away',
+        scheduled_at:'2026-12-01T14:00:00Z',
+      }]).mockRejectedValueOnce(new Error('relation does not exist'));
+      const games=await readManualFixtures('football');
+      expect(games).toHaveLength(1);
+      expect(games[0]?.topMarkets).toEqual([]);
+    }finally{warning.mockRestore();}
   });
 });
