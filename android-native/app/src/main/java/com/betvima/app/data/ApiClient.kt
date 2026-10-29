@@ -16,6 +16,8 @@ import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.coroutines.supervisorScope
 import kotlinx.coroutines.withContext
 import okhttp3.MediaType.Companion.toMediaType
+import android.os.SystemClock
+import android.util.Log
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
@@ -409,17 +411,31 @@ class ApiClient {
             if (query.isNotBlank()) append("&q=" + URLEncoder.encode(query.trim(), "UTF-8"))
             if (provider.isNotEmpty()) append("&provider=" + URLEncoder.encode(provider, "UTF-8"))
         }
-        // Retry transient connectivity/provider failures only. Never retry auth, disabled
-        // casino (503 CASINO_DISABLED), or other deliberate availability gates.
+        // App-side catalogue timing identifies slow network/API responses.
+        // Log only endpoint type, duration, count and HTTP failure code; never
+        // query text, provider credential, user token or game/session URL.
+        val startedMs = SystemClock.elapsedRealtime()
         for (attempt in 0..2) {
             try {
-                return parseCasinoPage(get(route))
+                val result = parseCasinoPage(get(route))
+                Log.i("BetVimaCasinoPerf",
+                    "catalogue http category=" + category.ifBlank { "all" } +
+                    " page=" + page + " attempts=" + (attempt + 1) +
+                    " elapsedMs=" + (SystemClock.elapsedRealtime() - startedMs) +
+                    " games=" + result.games.size)
+                return result
             } catch (cancel: kotlinx.coroutines.CancellationException) {
                 throw cancel
             } catch (failure: IOException) {
                 val status = (failure as? ApiFailure)?.code
                 val transient = status == null || status == 502 || status == 504 || status == 429
-                if (!transient || attempt == 2) throw failure
+                if (!transient || attempt == 2) {
+                    Log.w("BetVimaCasinoPerf",
+                        "catalogue failed category=" + category.ifBlank { "all" } +
+                        " http=" + (status ?: 0) +
+                        " elapsedMs=" + (SystemClock.elapsedRealtime() - startedMs))
+                    throw failure
+                }
                 kotlinx.coroutines.delay(400L * (attempt + 1))
             }
         }
