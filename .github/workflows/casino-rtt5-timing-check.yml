@@ -10,6 +10,7 @@ on:
       - 'src/app/api/webhooks/softaggregator/route.ts'
       - 'ops/cloudflare/softaggregator-callback-worker.js'
       - 'ops/casino/stage-live-3098-transport-20261030.py'
+      - 'ops/casino/stage-live-rtt6-balance-readonly-20261030.py'
       - 'ops/casino/typecheck-live-3098-candidate-20261030.sh'
       - 'ops/casino/live-3098-rtt5-3118-auto-rollback-canary-20261030.py'
       - 'ops/casino/live-3098-rtt5-3118-auto-rollback-retry10m-20261030.py'
@@ -68,6 +69,14 @@ jobs:
             exit 1
           fi
           grep -q 'STOP:' /tmp/read-only-rtt-check.log
+      - name: Verify fail-closed RTT6 live balance staging
+        run: |
+          python3 -m py_compile ops/casino/stage-live-rtt6-balance-readonly-20261030.py
+          if python3 ops/casino/stage-live-rtt6-balance-readonly-20261030.py >/tmp/rtt6-staging.log 2>&1; then
+            echo 'ERROR: stage must refuse without an audited live VPS'
+            exit 1
+          fi
+          grep -q 'REFUSED:' /tmp/rtt6-staging.log
       - name: Check isolated 3098 candidate syntax
         run: bash -n ops/casino/typecheck-live-3098-candidate-20261030.sh
       - name: Refuse candidate build if live release unavailable
