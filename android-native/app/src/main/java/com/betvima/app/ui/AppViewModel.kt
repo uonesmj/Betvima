@@ -743,11 +743,12 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     fun walletRefreshIntervalMs(): Long =
         walletRefreshDelay185(android.os.SystemClock.elapsedRealtime() < recentWalletPaymentUntilMs)
 
-    /** Active casino: read only the server-confirmed wallet row, not its full statement. */
-    fun casinoWalletRefreshIntervalMs217(): Long =
-        if (SystemClock.elapsedRealtime() < walletBalanceUnsupportedUntilMs) 5_000L
-        else casinoWalletPollDelay217()
-
+    /**
+     * Hotfix 218: restore the known-working authenticated wallet statement path.
+     * The v217 lightweight endpoint was incorrectly used by every screen.
+     * This fallback is intentionally global until server deployment and
+     * on-device reconciliation of the lightweight balance endpoint are verified.
+     */
     fun refreshWallet() = viewModelScope.launch {
         if (!state.value.signedIn || walletRefreshInFlight) return@launch
         walletRefreshInFlight = true
@@ -755,42 +756,15 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         val request = ++walletRequestNumber
         try {
             val jwt = vault.accessToken(api)?.takeIf(String::isNotBlank) ?: return@launch
-            val lightweight = SystemClock.elapsedRealtime() >= walletBalanceUnsupportedUntilMs
-            var snapshot: WalletBalance217? = null
-            var full: Wallet? = null
-            if (lightweight) {
-                try {
-                    snapshot = api.walletBalance217(jwt)
-                    walletBalanceUnsupportedUntilMs = 0L
-                } catch (failure: ApiFailure) {
-                    // Safe rolling deployment: older servers might not yet have
-                    // the new route. Never bypass auth failures or guess funds.
-                    if (failure.code != 404) throw failure
-                    walletBalanceUnsupportedUntilMs = SystemClock.elapsedRealtime() + 60_000L
-                    full = api.wallet(jwt)
-                }
-            } else {
-                full = api.wallet(jwt)
-            }
+            val latest = api.wallet(jwt)
             if (generation == sessionGeneration && request == walletRequestNumber &&
                 state.value.signedIn) {
-                val confirmedSnapshot = snapshot
-                val confirmedFull = full
-                mutable.update {
-                    val updated = if (confirmedSnapshot != null)
-                        applyWalletBalance217(it.wallet, confirmedSnapshot)
-                    else if (confirmedFull != null && (it.wallet == null ||
-                        (confirmedFull.version.toBigIntegerOrNull() ?: java.math.BigInteger.ZERO) >=
-                        (it.wallet.version.toBigIntegerOrNull() ?: java.math.BigInteger.ZERO)))
-                        mergeWalletRefresh185(it.wallet, confirmedFull)
-                    else it.wallet
-                    it.copy(wallet = updated)
-                }
+                mutable.update { it.copy(wallet = mergeWalletRefresh185(it.wallet, latest)) }
             }
         } catch (cancel: kotlinx.coroutines.CancellationException) {
             throw cancel
         } catch (_: Exception) {
-            // Keep the last verified balance on offline/timeouts; never display invented funds.
+            // Display only confirmed server data; never invent or locally debit funds.
         } finally {
             walletRefreshInFlight = false
         }
