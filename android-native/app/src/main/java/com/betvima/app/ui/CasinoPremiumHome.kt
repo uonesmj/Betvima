@@ -58,6 +58,7 @@ import com.betvima.app.data.CasinoReferenceGroup
 import com.betvima.app.data.belongsToCasinoReferenceGroup
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.collectLatest
 import kotlin.math.abs
 
 private val ink = Color(0xFF141414)
@@ -89,6 +90,7 @@ fun CasinoPremiumHome(
     onQuery: (String) -> Unit,
     onRetry: () -> Unit,
     onMore: () -> Unit,
+    onExploreMore: () -> Unit,
     onDemo: (CasinoGame) -> Unit,
     onReal: (CasinoGame) -> Unit,
     fullscreen: Boolean,
@@ -97,6 +99,16 @@ fun CasinoPremiumHome(
     val fa = state.lang == Lang.FA
     val scope = rememberCoroutineScope()
     val listState = rememberLazyListState()
+    // Only request extra category shelves after the user actually scrolls
+    // toward them. The main catalogue and hero always render first.
+    LaunchedEffect(listState, category, provider, query) {
+        if (provider.isBlank() && query.isBlank() &&
+            category in setOf("", "live", "crash", "instant")) {
+            snapshotFlow { listState.firstVisibleItemIndex }.collectLatest { index ->
+                if (index >= 2) onExploreMore()
+            }
+        }
+    }
     var searchDialog by remember { mutableStateOf(false) }
     var openProviders by remember { mutableStateOf(false) }
     var subCategory by rememberSaveable(category) { mutableStateOf("") }
