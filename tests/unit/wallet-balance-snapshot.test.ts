@@ -13,11 +13,11 @@ describe('lightweight wallet balance query', () => {
     expect(await readWalletBalanceSnapshot(db,
       '11111111-1111-4111-8111-111111111111', 'USD')).toEqual(snapshot);
     expect(queryOne).toHaveBeenCalledTimes(1);
-    expect(queryOne.mock.calls[0][0]).toContain('from nova.wallets');
-    expect(queryOne.mock.calls[0][0]).not.toContain('wallet_transactions');
-    expect(queryOne.mock.calls[0][0]).not.toContain('payments');
-    expect(queryOne.mock.calls[0][0]).toContain('greatest(balance_minor-locked_minor, 0)');
-    expect(queryOne.mock.calls[0][1]).toEqual([
+    expect(queryOne.mock.calls[0]![0]).toContain('from nova.wallets');
+    expect(queryOne.mock.calls[0]![0]).not.toContain('wallet_transactions');
+    expect(queryOne.mock.calls[0]![0]).not.toContain('payments');
+    expect(queryOne.mock.calls[0]![0]).toContain('greatest(balance_minor-locked_minor, 0)');
+    expect(queryOne.mock.calls[0]![1]).toEqual([
       '11111111-1111-4111-8111-111111111111', 'USD'
     ]);
   });
