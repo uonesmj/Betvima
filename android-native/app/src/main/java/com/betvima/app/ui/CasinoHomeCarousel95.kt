@@ -138,7 +138,7 @@ private fun CasinoHomeGameCard95(game: CasinoGame, lang: Lang, onOpen: () -> Uni
             ) {
                 if (game.imageUrl != null && !imageFailed) {
                     AsyncImage(
-                        model = game.imageUrl,
+                        model = casinoArtwork216(game.imageUrl, 650, 520),
                         contentDescription = game.name,
                         contentScale = ContentScale.Crop,
                         onError = { imageFailed = true },
