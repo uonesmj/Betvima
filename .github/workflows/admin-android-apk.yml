@@ -11,7 +11,7 @@ on:
       - '.github/workflows/admin-android-apk.yml'
   workflow_dispatch:
 permissions:
-  contents: read
+  contents: write
 jobs:
   build-admin-apk:
     runs-on: ubuntu-latest
@@ -53,3 +53,19 @@ jobs:
           path: admin-android/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
           retention-days: 30
+      - name: Publish standalone Admin APK direct download (debug)
+        if: github.event_name == 'push' && github.ref == 'refs/heads/codex/admin-native-android-v1-20261021'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          tag="betvima-admin-v1.3.3-direct-debug-20261029"
+          apk="BetVima-Admin-v1.3.3-DEBUG.apk"
+          cp admin-android/app/build/outputs/apk/debug/app-debug.apk "$apk"
+          if gh release view "$tag" >/dev/null 2>&1; then
+            gh release upload "$tag" "$apk" --clobber
+          else
+            gh release create "$tag" "$apk" --target "$GITHUB_SHA" --prerelease \
+              --title "BetVima Native Admin v1.3.3 (debug)" \
+              --notes "Native Android admin with manual-match market and odds preview editor. Debug-signed build for testing. No customer wallet or settlement changes. If updating an APK signed with another key, Android may require removal of the old admin app before installing."
+          fi
