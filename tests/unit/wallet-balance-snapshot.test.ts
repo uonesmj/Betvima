@@ -30,8 +30,7 @@ describe('lightweight wallet balance query', () => {
   });
 
   it('propagates read errors without guessing a balance', async () => {
-    const db = { queryOne: vi.fn().mockRejectedValue(new Error('database offline')) }
-      as unknown as Db;
+    const db = { queryOne: vi.fn().mockRejectedValue(new Error('database offline')) } as unknown as Db;
     await expect(readWalletBalanceSnapshot(db, 'user', 'USD'))
       .rejects.toThrow('database offline');
   });
