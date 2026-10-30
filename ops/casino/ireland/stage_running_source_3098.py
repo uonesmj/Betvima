@@ -94,7 +94,7 @@ if __name__=='__main__':
             manifest[rel]=data_sha
         report={'mode':'STAGING_ONLY_NO_LIVE_ROUTE_CHANGE','build_id':BUILD,
                 'allowed_changed_source':[R,W], 'file_sha256':manifest,
-                'contains_secrets':False,'financial_requests_sent':0}
+                'secret_filename_exclusions_applied':True, 'compiled_bundle_secret_audit':'REQUIRED_BEFORE_TRANSFER','financial_requests_sent':0}
         data=json.dumps(report,sort_keys=True).encode('utf-8')
         item=tarfile.TarInfo('IRELAND_SOURCE_MANIFEST.json')
         item.size=len(data);item.mode=0o600
@@ -108,5 +108,6 @@ if __name__=='__main__':
     print('PRIVATE_ARCHIVE_PATH='+str(archive))
     print('PRIVATE_ARCHIVE_SHA256='+sha(archive))
     print('BUNDLED_FILES='+str(len(manifest)))
-    print('SECRETS_EXCLUDED=true')
+    print('ENV_KEY_CERT_AND_CREDENTIAL_FILENAMES_EXCLUDED=true')
+    print('COMPILED_BUNDLE_MANUAL_SECRET_REVIEW_REQUIRED=true')
     print('DO_NOT_UPLOAD_ARCHIVE_TO_GITHUB_OR_PUBLIC_STORAGE')
