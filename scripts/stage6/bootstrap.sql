@@ -1,0 +1,9 @@
+\set ON_ERROR_STOP on
+DO $verify$
+BEGIN
+ IF current_database() <> 'betvima_stage6' THEN RAISE EXCEPTION 'STAGE6_WRONG_DATABASE'; END IF;
+ IF to_regclass('nova.profiles') IS NOT NULL THEN RAISE EXCEPTION 'STAGE6_REFUSE_RECREATE_PROFILES'; END IF;
+END;
+$verify$;
+CREATE TABLE nova.profiles(id uuid PRIMARY KEY);
+SELECT 'STAGE6_SYNTHETIC_IDENTITY_BOOTSTRAP_OK' AS result;
