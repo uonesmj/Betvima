@@ -73,3 +73,29 @@ Committed `scripts/stage17/create_private_nova_schema_only_archive_v3.cjs`, JS s
 3. Existing archiver guards unchanged: PostgreSQL 17+ pg_dump/pg_restore pair, read-only transaction with bounded lock wait, `-Fc --schema-only -n nova` into private root 0700 directory/0600 file, no table data TOC, count exactly 97 NOVA tables, cleanup after failed archive. No package installs or modifications to port 3098.
 
 **Do not use `pg_restore` against production, rebase/reset existing Irish branch, bypass KYC/geo/age controls, or claim that standalone PostgreSQL can reproduce Supabase auth/RLS/extensions without a managed compatible baseline.**
+
+## Stage17 operator third attempt — transaction pooler identified (2026-10-30 ~22:55 UTC)
+
+Operator ran v3 in `STAGE17_PROBE_ONLY=1` mode. Exact redacted output:
+- `STAGE17_SELECTED_PG_DUMP_CLIENT_MAJOR=17`
+- `STAGE17_DATABASE_ROUTE_CLASS=POOLER`
+- `STAGE17_DATABASE_PORT_CLASS=TRANSACTION_POOLER`
+- `STAGE17_READONLY_CONNECT_PROBE=FAIL`
+- `STAGE17_READONLY_CONNECT_PROBE_CATEGORY=ERROR_UNCATEGORIZED`
+- `STAGE17_ABORT=READONLY_CONNECT_PROBE_FAILED`
+
+Thus the system had been attempting native `pg_dump` over Supabase **transaction-pooling port 6543**. Major-version mismatch is ruled out (`pg_dump 17.11` vs production server 17.6). The failure likely involves connection routing or unsupported startup settings, but the sanitized error does **not** prove which parameter failed. Do not modify persistent production 3098 `DATABASE_URL` or process environment to fix a backup tool.
+
+Supabase official documentation recommends **direct connection for `pg_dump`** and states **session pooler 5432** is appropriate for persistent clients, whereas transaction mode 6543 lacks per-session behavior. Source: https://supabase.com/docs/guides/database/connecting-to-postgres . Direct PostgreSQL endpoint may be IPv6-only, so the tool first tests a safe same-host session pooler route rather than inventing any new hostname/project/user/database.
+
+### Safe v4 archiver — source committed, VPS run NOT YET VERIFIED
+`scripts/stage17/create_private_nova_schema_only_archive_v4.cjs`:
+
+1. Reads existing 3098 live DB settings in a temporary root-owned process; validates pinned original Supabase **production** project ref; **never writes these settings back**.
+2. Requires the existing endpoint to be a pooler on port **6543**. Only derives **same hostname / same username / same database**, changing **the child process's port to 5432** for a Supabase **session pooler**. No other route is attempted.
+3. Makes a bounded, `-w` noninteractive, `SELECT 1` read-only probe on 5432 with existing `PGOPTIONS`. If that fails, retries `SELECT 1` with **PGOPTIONS omitted only in the temporary child process**. Fails closed if both fail and prints only categorized failure codes; no raw stderr/host/login secrets.
+4. `STAGE17_PROBE_ONLY=1` stops after probe (no pg_dump). When the probe succeeds, the normal invocation attempts the exact same session route to export `pg_dump -Fc --schema-only -n nova`; no customer rows, no auth/storage dump, no migration, no writes to production DB.
+5. Verifies private 0700 directory, 0600 file, `pg_restore --list` contains no data records and exactly 97 NOVA table definitions. Deletes any failed partial archive. Source JS syntax checked but **not operator-executed** at time of commit.
+6. If the session route fails, do not brute-force credentials/ports or install a new database server; inspect specific sanitized failure and select supported safe alternative with explicit scope.
+
+**DO NOT declare Stage17 archive successful until real operator stdout prints `STAGE17_SCHEMA_ONLY_ARCHIVE=PASS`.** Existing production registration, geo, age, KYC, deposit, withdrawal and 3098 remain unchanged.
