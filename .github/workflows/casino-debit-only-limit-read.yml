@@ -6,6 +6,10 @@ on:
     paths:
       - 'src/server/providers/softaggregator/wallet.ts'
       - 'tests/unit/softaggregator-wallet.test.ts'
+      - 'ops/casino/stage-live-debit-only-limit-read-20261030.py'
+      - 'ops/casino/build-live-debit-only-isolated-20261030.py'
+      - 'ops/casino/smoke-live-debit-only-isolated-3125-20261030.py'
+      - 'ops/casino/test-debit-only-stage-invariant-20261030.py'
       - '.github/workflows/casino-debit-only-limit-read.yml'
   workflow_dispatch:
 
@@ -23,6 +27,25 @@ jobs:
           node-version: '22'
           cache: npm
       - run: npm ci --ignore-scripts
+      - name: Validate Debit-only staging and isolated tools
+        run: |
+          python3 -m py_compile \
+            ops/casino/stage-live-debit-only-limit-read-20261030.py \
+            ops/casino/build-live-debit-only-isolated-20261030.py \
+            ops/casino/smoke-live-debit-only-isolated-3125-20261030.py \
+            ops/casino/test-debit-only-stage-invariant-20261030.py
+          python3 ops/casino/test-debit-only-stage-invariant-20261030.py
+          for tool in \
+            ops/casino/stage-live-debit-only-limit-read-20261030.py \
+            ops/casino/build-live-debit-only-isolated-20261030.py \
+            ops/casino/smoke-live-debit-only-isolated-3125-20261030.py
+          do
+            if python3 "$tool" >/tmp/debit-only-fail-closed.txt 2>&1; then
+              echo "ERROR: tooling must refuse away from pinned VPS"
+              exit 1
+            fi
+            grep -q 'REFUSED:' /tmp/debit-only-fail-closed.txt
+          done
       - name: Debit regression, receipt idempotency, credit and rollback unchanged
         run: |
           npx vitest run \
