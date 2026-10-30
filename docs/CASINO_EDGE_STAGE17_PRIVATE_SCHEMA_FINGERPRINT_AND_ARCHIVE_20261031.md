@@ -147,3 +147,27 @@ STAGE17_NET_DIAGNOSTIC_FINISHED=true
 `scripts/stage17/probe_pooler_tls_handshake_readonly.cjs` distinguishes PostgreSQL protocol SSLRequest acceptance (`S` versus `N`), Node TLS handshake with **certificate validation enabled**, and specific classified libpq failures on same-host ports 6543 and 5432. At most one authenticated SELECT 1 per route, no data rows other than literal 1, no pg_dump, no migrations, no writable DB calls. It outputs only enums, negotiated TLS protocol name, and presence/absence of the default libpq root CA file; never raw stderr, usernames, host/IP, DSN, password, or certificate identity. Does **NOT** alter production SSL settings or Node process. No operator results yet; do not mark Stage17 archive as completed.
 
 **Stage17 schema archive still PENDING.** All old casino behaviour (geo, age, KYC, deposits/withdrawals, registration, wallets) and port 3098 remain unchanged.
+
+## Stage17 TLS certificate root cause and safe v5 recovery
+
+Operator ran pinned TLS diagnostics: both Supavisor ports accept PostgreSQL SSLRequest (`S`) but fail certificate validation in Node's verified handshake; v3 reported:
+```text
+STAGE17_TLS_LIBPQ_DEFAULT_ROOT_CERT_PRESENT=false
+STAGE17_TLS_LIBPQ_SSLMODE_CLASS=VERIFY-FULL
+STAGE17_TLS_TRANSACTION_6543_SSL_REQUEST=S
+STAGE17_TLS_TRANSACTION_6543_TLS_HANDSHAKE=CERTIFICATE_VALIDATION
+STAGE17_TLS_SESSION_5432_SSL_REQUEST=S
+STAGE17_TLS_SESSION_5432_TLS_HANDSHAKE=CERTIFICATE_VALIDATION
+STAGE17_TLS_PRODUCTION_SQL_WRITES=0
+STAGE17_TLS_LIVE_3098_CHANGED=false
+```
+No local `/root/.postgresql/root.crt` was found. **Root cause strongly points to missing/unpropagated trusted CA**. Existing Stage17 v1–v4 code parsed `sslmode` from the active production URI but **discarded `sslrootcert` URI parameter** when transferring to child `pg_dump/psql` subprocesses; do not blame the database service or alter live server SSL configuration. No certificate content or production connection secrets were requested or revealed.
+
+Added **`scripts/stage17/create_private_nova_schema_only_archive_v5.cjs`** (JS syntax parsed, NOT yet operator-run):
+- Child-only `PGSSLMODE=verify-full`, and `PGSSLROOTCERT` from explicit `STAGE17_CA_PATH`, original URL's `sslrootcert` parameter, active process `PGSSLROOTCERT`, or a private `/root/betvima-stage5/supabase-prod-ca.crt` file. If none exists, fallback **only to PostgreSQL 17 system CA trust store (`sslrootcert=system`), still with full certificate and hostname validation**, never to SSL `require`, `prefer` or `disable`.
+- Child probes pinned same-host Session Pooler port 5432 with a harmless SELECT 1, including alternate test without PGOPTIONS (but **never** without CA validation). Fails closed if neither verifies. No live process env updates, zero production DB writes, no provider callbacks or user data reads.
+- Once probe passes, optional invocation exports **schema-only custom archive** to root-private 0700 directory, 0600 file, verifies no TABLE DATA and exactly 97 NOVA tables in TOC, and deletes unsuccessful partial backup. Do **not** upload archive containing proprietary function definitions to GitHub/chat.
+- If `sslrootcert=system` is not trusted, obtain the authentic **project-specific CA certificate** from the authenticated [Supabase Dashboard → Database → Settings → SSL Configuration → Download Certificate](https://supabase.com/dashboard/project/mqygiufkubxxxjodsycu/database/settings), privately transfer the certificate to `/root/betvima-stage5/supabase-prod-ca.crt` and rerun v5 with `STAGE17_CA_PATH=/root/betvima-stage5/supabase-prod-ca.crt`. Never fetch trust anchors from the unverified database TLS endpoint and never disable verification or rotate production credentials to work around diagnostic failure.
+- Docs: https://supabase.com/docs/guides/database/psql and https://www.postgresql.org/docs/17/libpq-connect.html#LIBPQ-CONNECT-SSLROOTCERT
+
+**Verified Stage17 schema archive: STILL PENDING user-side v5 output.** Neither new Supabase development branch nor new VPS needed at present; existing Irish branch remains isolated.
