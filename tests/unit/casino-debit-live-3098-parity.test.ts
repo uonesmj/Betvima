@@ -13,7 +13,8 @@ const profile: LiveDebitProfile = {
   loss_limit_daily_minor: null, loss_limit_weekly_minor: null,
 };
 const wallet = { balance_minor: '500', locked_minor: '100', is_frozen: false };
-const baseline = () => liveUsdDebitGate(20n, 'USD', wallet, profile, null);
+const usage = { day_stake: '0', day_loss: '0', week_loss: '0' };
+const baseline = () => liveUsdDebitGate(20n, 'USD', wallet, profile, usage);
 const limit = (overrides: Partial<LiveDebitProfile>) => ({ ...profile, ...overrides });
 
 describe('INERT exact 3098 ordinary USD Debit gates (no financial routing)', () => {
@@ -21,7 +22,7 @@ describe('INERT exact 3098 ordinary USD Debit gates (no financial routing)', () 
     expect(LIVE_DEBIT_MIN_BET_MINOR).toBe(10n);
     expect(LIVE_DEBIT_MAX_CALLBACK_MINOR).toBe(1_000_000_000_000n);
     expect(liveUsdDebitGate(9n, 'USD', wallet, profile, null).error).toBe(1);
-    expect(liveUsdDebitGate(10n, 'USD', wallet, profile, null).error).toBe(0);
+    expect(liveUsdDebitGate(10n, 'USD', wallet, profile, usage).error).toBe(0);
   });
   it('returns exact available balance, never total balance, for candidate Debit', () => {
     expect(baseline()).toEqual({ error: 0, balance_minor: 400n, allowed: true });
@@ -55,12 +56,16 @@ describe('INERT exact 3098 ordinary USD Debit gates (no financial routing)', () 
   it('enforces immediate per-bet max even when all rolling limits are null', () => {
     const p = limit({ max_stake_per_bet_minor: '30' });
     expect(liveNeedsLimitUsage(p)).toBe(false);
-    expect(livePersonalLimitsAllow(30n, p, null)).toBe(true);
-    expect(livePersonalLimitsAllow(31n, p, null)).toBe(false);
+    expect(livePersonalLimitsAllow(30n, p, usage)).toBe(true);
+    expect(livePersonalLimitsAllow(31n, p, usage)).toBe(false);
   });
-  it('uses no fixed pilot caps on live 3098; null rolling limits need no DB aggregation', () => {
+  it('keeps no fixed pilot caps but always requires the mandatory live DB usage read', () => {
     expect(liveNeedsLimitUsage(profile)).toBe(false);
-    expect(livePersonalLimitsAllow(101n, profile, null)).toBe(true);
+    expect(livePersonalLimitsAllow(101n, profile, usage)).toBe(true);
+    // Even with all rolling limits NULL, 3098 queries wallet_transactions;
+    // a failed read prevents a new debit.
+    expect(livePersonalLimitsAllow(101n, profile, null)).toBe(false);
+    expect(liveUsdDebitGate(20n, 'USD', wallet, profile, null).error).toBe(1);
   });
   it('fails closed without wallet transaction usage when any rolling limit is set', () => {
     for (const key of [
@@ -100,7 +105,7 @@ describe('INERT exact 3098 ordinary USD Debit gates (no financial routing)', () 
   });
   it('does not allow zero/negative amount and rejects signed oversize in gate', () => {
     expect(livePersonalLimitsAllow(0n,profile,null)).toBe(false);
-    expect(liveUsdDebitGate(0n, 'USD', wallet, profile, null).error).toBe(1);
+    expect(liveUsdDebitGate(0n, 'USD', wallet, profile, usage).error).toBe(1);
     expect(liveUsdDebitGate(LIVE_DEBIT_MAX_CALLBACK_MINOR + 1n, 'USD', wallet, profile, null).error)
       .toBe(1);
   });
