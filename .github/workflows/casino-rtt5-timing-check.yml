@@ -11,6 +11,7 @@ on:
       - 'ops/cloudflare/softaggregator-callback-worker.js'
       - 'ops/casino/stage-live-3098-transport-20261030.py'
       - 'ops/casino/stage-live-rtt6-balance-readonly-20261030.py'
+      - 'ops/casino/build-live-rtt6-isolated-20261030.py'
       - 'ops/casino/typecheck-live-3098-candidate-20261030.sh'
       - 'ops/casino/live-3098-rtt5-3118-auto-rollback-canary-20261030.py'
       - 'ops/casino/live-3098-rtt5-3118-auto-rollback-retry10m-20261030.py'
@@ -77,6 +78,14 @@ jobs:
             exit 1
           fi
           grep -q 'REFUSED:' /tmp/rtt6-staging.log
+      - name: Verify RTT6 isolated build refuses unauthorized environments
+        run: |
+          python3 -m py_compile ops/casino/build-live-rtt6-isolated-20261030.py
+          if python3 ops/casino/build-live-rtt6-isolated-20261030.py >/tmp/rtt6-build-check.log 2>&1; then
+            echo 'ERROR: isolated builder must refuse without audited VPS'
+            exit 1
+          fi
+          grep -q 'REFUSED:' /tmp/rtt6-build-check.log
       - name: Check isolated 3098 candidate syntax
         run: bash -n ops/casino/typecheck-live-3098-candidate-20261030.sh
       - name: Refuse candidate build if live release unavailable
