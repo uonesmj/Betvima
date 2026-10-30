@@ -58,3 +58,18 @@ Added `scripts/stage17/create_private_nova_schema_only_archive_v2.cjs`:
 - Source syntax was parsed; **not run on operator VPS yet**.
 
 Next: run v2. If no 17+ local client, the user can install only a compatible PostgreSQL CLIENT package after verifying package availability/repositories and system change policy; avoid blindly installing/upgrading database server/Ubuntu or touching live 3098. No remote schema archive is currently verified.
+
+## Stage17 operator second pg_dump attempt — client compatible, root failure unclassified (2026-10-30 ~22:51 UTC)
+
+Operator output:
+- `/usr/lib/postgresql/17/bin/pg_dump --version` = **17.11**; `/usr/bin/pg_dump` = **17.11**. Direct Supabase project version previously verified 17.6. **Client/server major mismatch ruled out**.
+- `STAGE17_SELECTED_PG_DUMP_CLIENT_MAJOR=17`, `STAGE17_ABORT=PG_DUMP_UNKNOWN_REDACTED`. Since v2 intentionally did not log raw `pg_dump` stderr, this classification cannot identify whether the failure came from the pooler (startup parameters), auth/TLS, source read permissions, SQL, or the subprocess itself. Do not claim schema archived.
+- No archive success marker, no production writes or restart. This is **two failed pg_dump attempts**, so run a **read-only connection-only diagnostic first** rather than immediately retrying the same dump command.
+
+### Stage17 v3 diagnosed-safe probe prepared, not yet operator executed
+Committed `scripts/stage17/create_private_nova_schema_only_archive_v3.cjs`, JS syntax parsed:
+1. `STAGE17_PROBE_ONLY=1 node ...` selects the pinned production connection from the current 3098 process (same strict project ref check), then runs a single `psql --no-psqlrc -At -c 'SELECT 1'` under the same 12-second timeout, read-only `PGOPTIONS`, and prints **only success or sanitized failure category**. No pg_dump, archive, DDL, provider or customer records.
+2. If probe succeeds, separately run the normal v3 archive. On failure, v3 prints pg_dump numeric exit status, signal enum, stderr length *band*, SHA256 prefix, sanitized category and a **single** same-target `SELECT 1` read-only connection probe. Raw stderr, host, user, DSN, password and source SQL are **never logged**. No credential files committed to GitHub.
+3. Existing archiver guards unchanged: PostgreSQL 17+ pg_dump/pg_restore pair, read-only transaction with bounded lock wait, `-Fc --schema-only -n nova` into private root 0700 directory/0600 file, no table data TOC, count exactly 97 NOVA tables, cleanup after failed archive. No package installs or modifications to port 3098.
+
+**Do not use `pg_restore` against production, rebase/reset existing Irish branch, bypass KYC/geo/age controls, or claim that standalone PostgreSQL can reproduce Supabase auth/RLS/extensions without a managed compatible baseline.**
