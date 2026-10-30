@@ -2,7 +2,7 @@ name: BetVima Android 222 Lost Spider Debug APK
 on:
   push:
     branches:
-      - fix/android-222-lost-spider-sports-affiliate-20261031
+      - feat/android-222-lost-ticket-spider-once-20261031
     paths:
       - 'android-native/**'
       - '.github/workflows/android-222-lost-spider-apk.yml'
