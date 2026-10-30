@@ -27,36 +27,36 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 
-/** Compact language dialog, without country flags or excess empty space. */
+/** Dark native locale picker with accessible contrast and persistent selection. */
 @Composable
 fun LanguagePickerDialog(current: Lang, onSelect: (Lang) -> Unit, onDismiss: () -> Unit) {
     Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
-        Column(Modifier.fillMaxWidth(.86f)
-            .heightIn(max = 570.dp)
-            .clip(RoundedCornerShape(25.dp))
+        Column(Modifier.fillMaxWidth(.91f)
+            .heightIn(max = 610.dp)
+            .clip(RoundedCornerShape(26.dp))
             .verticalScroll(rememberScrollState())
-            .background(Color.White)
-            .padding(horizontal = 16.dp, vertical = 16.dp),
+            .background(Brush.verticalGradient(listOf(Color(0xFF1D2230), Color(0xFF11141B))))
+            .padding(horizontal = 17.dp, vertical = 18.dp),
             verticalArrangement = Arrangement.spacedBy(11.dp)
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Box(Modifier.size(38.dp)
                     .clip(RoundedCornerShape(12.dp))
-                    .background(Brush.linearGradient(listOf(Color(0xFFDBF9EB),
-                        Color(0xFFE9F2FF)))), contentAlignment = Alignment.Center) {
-                    Icon(Icons.Default.Language, null, tint = Color(0xFF007F52),
+                    .background(Brush.linearGradient(listOf(Color(0xFF163F3B),
+                        Color(0xFF163454)))), contentAlignment = Alignment.Center) {
+                    Icon(Icons.Default.Language, null, tint = Color(0xFF20D9A4),
                         modifier = Modifier.size(23.dp))
                 }
                 Spacer(Modifier.width(10.dp))
                 Column(Modifier.weight(1f)) {
                     Text(tr(current, "Language", "زبان"),
-                        color = Color(0xFF1C2430), fontWeight = FontWeight.Black, fontSize = 18.sp)
+                        color = Color(0xFFF8FAFF), fontWeight = FontWeight.Black, fontSize = 18.sp)
                     Text(tr(current, "Choose your preferred language", "زبان مورد نظر را انتخاب کنید"),
-                        color = Color(0xFF687481), fontSize = 10.sp)
+                        color = Color(0xFFBBC5D4), fontSize = 10.sp)
                 }
                 IconButton(onClick = onDismiss, modifier = Modifier.size(35.dp)) {
                     Icon(Icons.Default.Close,
-                        tr(current,"Close","بستن"), tint = Color(0xFF87919F),
+                        tr(current,"Close","بستن"), tint = Color(0xFFD4DCEC),
                         modifier = Modifier.size(19.dp))
                 }
             }
@@ -118,7 +118,7 @@ private fun CompactLocaleOption(
     selected: Boolean, onClick: () -> Unit
 ) {
     val fill by animateColorAsState(
-        if (selected) Color(0xFFE9FBF2) else Color(0xFFF5F7FA),
+        if (selected) Color(0xFF123D36) else Color(0xFF232833),
         animationSpec = tween(180), label = "compactLocaleFill")
     Surface(
         modifier = Modifier.fillMaxWidth()
@@ -126,24 +126,24 @@ private fun CompactLocaleOption(
             .clickable(onClick = onClick),
         color = fill, shape = RoundedCornerShape(15.dp),
         border = BorderStroke(if (selected) 1.3.dp else 1.dp,
-            if (selected) Color(0xFF04BF76) else Color(0xFFE5E9EE))
+            if (selected) Color(0xFF20D9A4) else Color(0xFF424958))
     ) {
-        Row(Modifier.heightIn(min = 58.dp).padding(horizontal = 12.dp, vertical = 8.dp),
+        Row(Modifier.heightIn(min = 64.dp).padding(horizontal = 13.dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically) {
             Box(Modifier.size(35.dp).clip(RoundedCornerShape(10.dp))
-                .background(if(selected) Color(0xFFD0F3E3) else Color.White),
+                .background(if(selected) Color(0xFF174D43) else Color(0xFF313744)),
                 contentAlignment = Alignment.Center) {
-                Text(symbol, color = if (selected) Color(0xFF007F52) else Color(0xFF516071),
+                Text(symbol, color = if (selected) Color(0xFF007F52) else Color(0xFFCDDAE9),
                     fontSize = 12.sp, fontWeight = FontWeight.Black)
             }
             Spacer(Modifier.width(11.dp))
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Text(title, color = Color(0xFF192632),
+                Text(title, color = Color(0xFFF7FAFF),
                     fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                Text(subtitle, color = Color(0xFF6C7985), fontSize = 10.sp)
+                Text(subtitle, color = Color(0xFFB5C0D0), fontSize = 10.sp)
             }
             if (selected) Box(Modifier.size(24.dp).clip(CircleShape)
-                .background(Color(0xFF00BC76)), contentAlignment = Alignment.Center) {
+                .background(Color(0xFF00C991)), contentAlignment = Alignment.Center) {
                 Icon(Icons.Default.Check, null, tint = Color.White,
                     modifier = Modifier.size(16.dp))
             }
