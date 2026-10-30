@@ -29,6 +29,7 @@ function makeFakeDb(initial = 1000n, held = 200n) {
   let country = 'TR';
   let financialSchemaReady = true;
   let profileExists = true;
+  let walletExists = true;
   let dailyPersonalStakeLimit: string | null = null;
   const receipts = new Map<string, { identity_hash: string; response_error: 0 | 1 | 2; response_balance_minor: string; action: string; wallet_amount_minor: string; round_id: string; game_id: string; amount_minor: string; reversed: boolean }>();
   const postings: Array<Record<string, unknown>> = [];
@@ -75,7 +76,7 @@ function makeFakeDb(initial = 1000n, held = 200n) {
         };
       }
       if (sql.includes('from nova.wallets')) {
-        return { balance_minor: balance.toString(), locked_minor: held.toString(), is_frozen: false };
+        return walletExists ? { balance_minor: balance.toString(), locked_minor: held.toString(), is_frozen: false } : null;
       }
       if (sql.includes('from nova.wallet_transactions')) {
         return { day_stake: '0', day_loss: '0', week_loss: '0' };
@@ -83,6 +84,7 @@ function makeFakeDb(initial = 1000n, held = 200n) {
       throw new Error('Unexpected query: ' + sql);
     }),
     query: vi.fn(async (sql: string, params: unknown[]) => {
+      if (sql.includes('insert into nova.wallets')) walletExists = true;
       if (sql.includes('insert into nova.softaggregator_round_fx')) {
         rounds.set(String(params[1]) + ':' + String(params[2]), { wallet_currency: 'USD' });
       }
@@ -121,7 +123,8 @@ function makeFakeDb(initial = 1000n, held = 200n) {
     setCountry: (value: string) => { country = value; },
     setSchemaReady: (ready: boolean) => { financialSchemaReady = ready; },
     setProfileExists: (exists: boolean) => { profileExists = exists; },
-    setDailyStakeLimit: (limit: string | null) => { dailyPersonalStakeLimit = limit; } };
+    setDailyStakeLimit: (limit: string | null) => { dailyPersonalStakeLimit = limit; },
+    setWalletExists: (exists: boolean) => { walletExists = exists; } };
 }
 
 describe('SoftAggregator financial callback behavior (isolated DB contract)', () => {
@@ -168,6 +171,20 @@ describe('SoftAggregator financial callback behavior (isolated DB contract)', ()
     expect(t.fake.queryOne.mock.calls.filter(([sql]) =>
       String(sql).includes('from nova.wallets') &&
       String(sql).includes('for update'))).toHaveLength(1);
+    expect(t.postings).toHaveLength(1);
+  });
+
+  it('Debit retains insert-and-relock fallback when the USD wallet is missing', async () => {
+    const t = makeFakeDb();
+    t.setWalletExists(false);
+    vi.mocked(getDb).mockReturnValue(t.fake as unknown as Db);
+    expect((await settleCasinoCallback(identity('debit-missing-wallet-fallback', 'debit', 20n))).error)
+      .toBe(0);
+    expect(t.fake.query.mock.calls.filter(([sql]) =>
+      String(sql).includes('insert into nova.wallets'))).toHaveLength(1);
+    expect(t.fake.queryOne.mock.calls.filter(([sql]) =>
+      String(sql).includes('from nova.wallets') &&
+      String(sql).includes('for update'))).toHaveLength(2);
     expect(t.postings).toHaveLength(1);
   });
 
