@@ -1,0 +1,32 @@
+name: Casino Debit Ireland Edge Canary
+on:
+  push:
+    branches:
+      - feature/casino-debit-edge-eu-canary-20261030
+    paths:
+      - 'supabase/functions/betvima-debit-eu-canary/**'
+      - 'tests/unit/casino-debit-eu-canary.test.ts'
+      - 'scripts/casino/test-debit-eu-canary-from-vps-20261030.cjs'
+      - '.github/workflows/casino-debit-edge-eu-canary.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify-standalone-readonly-canary:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - name: Verify operator canary client syntax
+        run: node --check scripts/casino/test-debit-eu-canary-from-vps-20261030.cjs
+      - name: Verify Edge canary cryptography and strict read-only
+        run: npx vitest run tests/unit/casino-debit-eu-canary.test.ts
+      - name: Check Next.js monorepo TS regression
+        run: npm run typecheck
