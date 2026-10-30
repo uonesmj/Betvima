@@ -5,6 +5,7 @@ on:
     paths:
       - 'ops/casino/stage-live-rtt7-safe-preflight-20261030.py'
       - 'ops/casino/build-live-rtt7-isolated-20261030.py'
+      - 'ops/casino/smoke-live-rtt7-isolated-3120-20261030.py'
       - '.github/workflows/casino-rtt7-zero-cost-verify.yml'
   workflow_dispatch:
 
@@ -24,8 +25,8 @@ jobs:
       - run: npm ci --ignore-scripts
       - name: Verify both scripts fail closed outside the audited VPS
         run: |
-          python3 -m py_compile ops/casino/stage-live-rtt7-safe-preflight-20261030.py ops/casino/build-live-rtt7-isolated-20261030.py
-          for file in ops/casino/stage-live-rtt7-safe-preflight-20261030.py ops/casino/build-live-rtt7-isolated-20261030.py; do
+          python3 -m py_compile ops/casino/stage-live-rtt7-safe-preflight-20261030.py ops/casino/build-live-rtt7-isolated-20261030.py ops/casino/smoke-live-rtt7-isolated-3120-20261030.py
+          for file in ops/casino/stage-live-rtt7-safe-preflight-20261030.py ops/casino/build-live-rtt7-isolated-20261030.py ops/casino/smoke-live-rtt7-isolated-3120-20261030.py; do
             if python3 "$file" > /tmp/rtt7-check.txt 2>&1; then
               echo "ERROR: $file unexpectedly executed in CI"
               exit 1
