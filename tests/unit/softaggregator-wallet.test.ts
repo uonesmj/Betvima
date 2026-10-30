@@ -158,6 +158,31 @@ describe('SoftAggregator financial callback behavior (isolated DB contract)', ()
     expect(t.postings).toHaveLength(1);
   });
 
+  it('existing-wallet Debit never performs redundant wallet INSERT', async () => {
+    const t = makeFakeDb();
+    vi.mocked(getDb).mockReturnValue(t.fake as unknown as Db);
+    expect((await settleCasinoCallback(identity('debit-no-insert', 'debit', 20n))).error)
+      .toBe(0);
+    expect(t.fake.query.mock.calls.filter(([sql]) =>
+      String(sql).includes('insert into nova.wallets'))).toHaveLength(0);
+    expect(t.fake.queryOne.mock.calls.filter(([sql]) =>
+      String(sql).includes('from nova.wallets') &&
+      String(sql).includes('for update'))).toHaveLength(1);
+    expect(t.postings).toHaveLength(1);
+  });
+
+  it('ordinary Credit retains the insert-then-row-lock flow', async () => {
+    const t = makeFakeDb();
+    vi.mocked(getDb).mockReturnValue(t.fake as unknown as Db);
+    expect((await settleCasinoCallback(identity('credit-original-insert', 'credit', 20n))).error)
+      .toBe(0);
+    expect(t.fake.query.mock.calls.filter(([sql]) =>
+      String(sql).includes('insert into nova.wallets'))).toHaveLength(1);
+    expect(t.fake.queryOne.mock.calls.filter(([sql]) =>
+      String(sql).includes('from nova.wallets') &&
+      String(sql).includes('for update'))).toHaveLength(1);
+  });
+
   it('Debit still queries wallet history when a personal aggregate limit exists', async () => {
     const t = makeFakeDb();
     t.setDailyStakeLimit('50');
