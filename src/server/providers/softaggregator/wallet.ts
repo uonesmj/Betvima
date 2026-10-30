@@ -90,6 +90,13 @@ function safeResponse(error: 0 | 1 | 2, value: bigint): CasinoBalanceResponse {
 async function limitAllows(db: Db, userId: string, amount: bigint, p: ProfileRow): Promise<boolean> {
   if (!(await pilotCasinoDebitPermitted(db, userId, amount))) return false;
   if (p.max_stake_per_bet_minor !== null && amount > BigInt(p.max_stake_per_bet_minor)) return false;
+  // Debit-only: the independent pilot wagering caps above remain mandatory.
+  // Without a user-configured aggregate limit, the wallet history scan cannot
+  // affect eligibility. Avoid one remote SQL round-trip in that exact case.
+  // Credit, Balance and every rollback do not invoke this helper.
+  if (p.max_stake_per_day_minor === null &&
+      p.loss_limit_daily_minor === null &&
+      p.loss_limit_weekly_minor === null) return true;
   const sql = [
     "select coalesce(sum(case when type = 'bet_debit' and created_at >= date_trunc('day', now() at time zone 'UTC') at time zone 'UTC'",
     "then -amount_minor else 0 end),0)::text as day_stake,",
