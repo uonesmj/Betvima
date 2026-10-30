@@ -130,7 +130,11 @@ export async function settleCasinoCallback(event: SignedCallback): Promise<Casin
   let schemaReady: boolean;
   let currency: Awaited<ReturnType<typeof readCasinoPlayerWallet>>;
   let originalRound: { wallet_currency: string } | null;
-  if (normalFinancialCallback) {
+  // Balance is also strictly read-only; overlap its independent schema,
+  // binding and (if present) immutable round lookups. Rollbacks retain the
+  // prior sequential path and fresh checks are never cached.
+  const parallelReadOnlyPreflight = normalFinancialCallback || event.action === 'balance';
+  if (parallelReadOnlyPreflight) {
     [schemaReady, currency, originalRound] = await Promise.all([
       casinoFinancialSchemaReady(db),
       readCasinoPlayerWallet(db, userId),
@@ -156,9 +160,15 @@ export async function settleCasinoCallback(event: SignedCallback): Promise<Casin
   }
   if (currency !== 'USD') return { error: 2, balance: 0 };
   if (event.action === 'balance') {
-    const p = await getProfile(db, userId);
+    // Independent, READ-ONLY queries can share the network wait; never issue
+    // or return a balance before the full fresh eligibility check succeeds.
+    // No cache, no DB writes, no changes to debit/credit or rollback paths.
+    const [p, wallet] = await Promise.all([
+      getProfile(db, userId),
+      walletRow(db, userId, false),
+    ]);
     if (!p || !accountCanBet(p)) return { error: 2, balance: 0 };
-    return safeResponse(0, available(await walletRow(db, userId, false)));
+    return safeResponse(0, available(wallet));
   }
   if (!event.callId || !event.identityHash || !event.amountMinor || !event.roundId || !event.gameId) return { error: 2, balance: 0 };
   const executeTransaction = async (tx: Db): Promise<CasinoBalanceResponse> => {

@@ -1,0 +1,49 @@
+name: Casino RTT7 Safe Read Only Preflight
+on:
+  push:
+    branches: [fix/casino-callback-rtt6-zero-cost-20261030]
+    paths:
+      - 'ops/casino/stage-live-rtt7-safe-preflight-20261030.py'
+      - 'ops/casino/build-live-rtt7-isolated-20261030.py'
+      - 'ops/casino/smoke-live-rtt7-isolated-3120-20261030.py'
+      - 'ops/casino/compare-rtt7-readonly-balance-loopback-20261030.py'
+      - '.github/workflows/casino-rtt7-zero-cost-verify.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  safe-readonly-preflight:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - name: Verify both scripts fail closed outside the audited VPS
+        run: |
+          python3 -m py_compile ops/casino/stage-live-rtt7-safe-preflight-20261030.py ops/casino/build-live-rtt7-isolated-20261030.py ops/casino/smoke-live-rtt7-isolated-3120-20261030.py
+          for file in ops/casino/stage-live-rtt7-safe-preflight-20261030.py ops/casino/build-live-rtt7-isolated-20261030.py ops/casino/smoke-live-rtt7-isolated-3120-20261030.py; do
+            if python3 "$file" > /tmp/rtt7-check.txt 2>&1; then
+              echo "ERROR: $file unexpectedly executed in CI"
+              exit 1
+            fi
+            grep -q 'REFUSED:' /tmp/rtt7-check.txt
+          done
+      - name: Verify only read-only balance comparison is possible
+        run: |
+          python3 -m py_compile ops/casino/compare-rtt7-readonly-balance-loopback-20261030.py
+          if python3 ops/casino/compare-rtt7-readonly-balance-loopback-20261030.py > /tmp/rtt7-balance-compare.log 2>&1; then
+            echo 'ERROR: benchmark must refuse outside audited VPS'
+            exit 1
+          fi
+          grep -q 'REFUSED:' /tmp/rtt7-balance-compare.log
+          grep -q "'action':'balance'" ops/casino/compare-rtt7-readonly-balance-loopback-20261030.py
+      - name: Wallet, signed callback, fiat, KYC and DB regressions
+        run: |
+          npx vitest run tests/unit/softaggregator-wallet.test.ts tests/unit/softaggregator-fiat-wallet.test.ts tests/unit/casino-callback-transaction-routing.test.ts tests/unit/softaggregator-webhook-route.test.ts tests/unit/casino-debit-single-timeout.test.ts
+      - run: npm run typecheck
