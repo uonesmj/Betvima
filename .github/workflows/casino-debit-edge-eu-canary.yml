@@ -7,6 +7,8 @@ on:
       - 'supabase/functions/betvima-debit-eu-canary/**'
       - 'tests/unit/casino-debit-eu-bridge-contract.test.ts'
       - 'tests/unit/casino-debit-live-3098-parity.test.ts'
+      - 'ops/casino/stage-live-debit-v3-wallet-only-20261030.py'
+      - 'ops/casino/test-stage-live-debit-v3-wallet-only-20261030.py'
       - 'tests/unit/casino-debit-eu-canary.test.ts'
       - 'scripts/casino/test-debit-eu-canary-from-vps-20261030.cjs'
       - '.github/workflows/casino-debit-edge-eu-canary.yml'
@@ -28,6 +30,10 @@ jobs:
       - run: npm ci --ignore-scripts
       - name: Verify operator canary client syntax
         run: node --check scripts/casino/test-debit-eu-canary-from-vps-20261030.cjs
+      - name: Verify exact running-source debit-only optimizer refuses policy edits
+        run: |
+          python3 -m py_compile ops/casino/stage-live-debit-v3-wallet-only-20261030.py ops/casino/test-stage-live-debit-v3-wallet-only-20261030.py
+          python3 ops/casino/test-stage-live-debit-v3-wallet-only-20261030.py
       - name: Verify Edge canary cryptography and strict read-only
         run: npx vitest run tests/unit/casino-debit-eu-canary.test.ts tests/unit/casino-debit-eu-bridge-contract.test.ts tests/unit/casino-debit-live-3098-parity.test.ts
       - name: Check Next.js monorepo TS regression
