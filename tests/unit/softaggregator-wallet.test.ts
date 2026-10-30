@@ -29,6 +29,7 @@ function makeFakeDb(initial = 1000n, held = 200n) {
   let country = 'TR';
   let financialSchemaReady = true;
   let profileExists = true;
+  let walletExists = true;
   const receipts = new Map<string, { identity_hash: string; response_error: 0 | 1 | 2; response_balance_minor: string; action: string; wallet_amount_minor: string; round_id: string; game_id: string; amount_minor: string; reversed: boolean }>();
   const postings: Array<Record<string, unknown>> = [];
   const rounds = new Map<string, { wallet_currency: string }>();
@@ -74,7 +75,7 @@ function makeFakeDb(initial = 1000n, held = 200n) {
         };
       }
       if (sql.includes('from nova.wallets')) {
-        return { balance_minor: balance.toString(), locked_minor: held.toString(), is_frozen: false };
+        return walletExists ? { balance_minor: balance.toString(), locked_minor: held.toString(), is_frozen: false } : null;
       }
       if (sql.includes('from nova.wallet_transactions')) {
         return { day_stake: '0', day_loss: '0', week_loss: '0' };
@@ -82,6 +83,9 @@ function makeFakeDb(initial = 1000n, held = 200n) {
       throw new Error('Unexpected query: ' + sql);
     }),
     query: vi.fn(async (sql: string, params: unknown[]) => {
+      if (sql.includes('insert into nova.wallets')) {
+        if (!walletExists) { walletExists = true; balance = 0n; }
+      }
       if (sql.includes('insert into nova.softaggregator_round_fx')) {
         rounds.set(String(params[1]) + ':' + String(params[2]), { wallet_currency: 'USD' });
       }
@@ -119,7 +123,8 @@ function makeFakeDb(initial = 1000n, held = 200n) {
     setAgeVerified: (value: boolean) => { ageVerified = value; },
     setCountry: (value: string) => { country = value; },
     setSchemaReady: (ready: boolean) => { financialSchemaReady = ready; },
-    setProfileExists: (exists: boolean) => { profileExists = exists; } };
+    setProfileExists: (exists: boolean) => { profileExists = exists; },
+    setWalletExists: (exists: boolean) => { walletExists = exists; if (!exists) balance = 0n; } };
 }
 
 describe('SoftAggregator financial callback behavior (isolated DB contract)', () => {
@@ -300,6 +305,45 @@ describe('SoftAggregator financial callback behavior (isolated DB contract)', ()
     t.setBinding('IRT');
     expect((await settleCasinoCallback(identity('contradicting-credit', 'credit', 250n))).error).toBe(2);
     expect(t.postings).toHaveLength(1);
+  });
+
+  it('skips redundant wallet creation SQL when a funded wallet already exists', async () => {
+    const t = makeFakeDb(1000n, 200n);
+    vi.mocked(getDb).mockReturnValue(t.fake as unknown as Db);
+    expect(await settleCasinoCallback(identity('wallet-fastpath-debit', 'debit', 100n)))
+      .toEqual({ error: 0, balance: 700 });
+    expect(await settleCasinoCallback(identity('wallet-fastpath-credit', 'credit', 150n)))
+      .toEqual({ error: 0, balance: 850 });
+    expect(t.fake.query.mock.calls.filter(([sql]) =>
+      String(sql).includes('insert into nova.wallets'))).toHaveLength(0);
+    expect(t.fake.queryOne.mock.calls.filter(([sql]) =>
+      String(sql).includes('from nova.wallets') && String(sql).includes('for update'))).toHaveLength(2);
+  });
+
+  it('creates and locks a genuinely missing wallet before posting an owed win', async () => {
+    const t = makeFakeDb();
+    t.setWalletExists(false);
+    vi.mocked(getDb).mockReturnValue(t.fake as unknown as Db);
+    const callback = identity('wallet-missing-credit', 'credit', 50n);
+    expect(await settleCasinoCallback(callback)).toEqual({ error: 0, balance: 50 });
+    expect(t.fake.query.mock.calls.filter(([sql]) =>
+      String(sql).includes('insert into nova.wallets'))).toHaveLength(1);
+    expect(t.fake.queryOne.mock.calls.filter(([sql]) =>
+      String(sql).includes('from nova.wallets') && String(sql).includes('for update'))).toHaveLength(2);
+    expect(await settleCasinoCallback(callback)).toEqual({ error: 0, balance: 50 });
+    expect(t.postings).toHaveLength(1);
+  });
+
+  it('does not create wallets or pay money for missing profiles', async () => {
+    const t = makeFakeDb();
+    t.setWalletExists(false);
+    t.setProfileExists(false);
+    vi.mocked(getDb).mockReturnValue(t.fake as unknown as Db);
+    expect(await settleCasinoCallback(identity('missing-profile-no-wallet', 'credit', 50n)))
+      .toEqual({ error: 2, balance: 0 });
+    expect(t.fake.query.mock.calls.filter(([sql]) =>
+      String(sql).includes('insert into nova.wallets'))).toHaveLength(0);
+    expect(t.postings).toHaveLength(0);
   });
 
   it('debits available funds and replays the same transaction exactly once', async () => {
