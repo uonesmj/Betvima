@@ -56,7 +56,7 @@ for unchanged in (
     if (TEST/unchanged).read_bytes() != (LIVE/unchanged).read_bytes():
         refuse('non-Debit source modified')
 nginx=run('nginx','-T')
-if nginx.returncode or re.search(r'\b3126\b',nginx.stdout):
+if nginx.returncode or re.search(r'\b3127\b',nginx.stdout):
     refuse('nginx invalid or candidate port publicly routed')
 with socket.socket() as sock:
     try:
