@@ -26,10 +26,10 @@ import com.betvima.app.data.Match
 import java.time.Instant
 import kotlinx.coroutines.launch
 
-private val pickerWhite = Color(0xFFFFFFFF)
-private val pickerInk = Color(0xFF20232B)
-private val pickerGray = Color(0xFFEEF0F4)
-private val pickerMuted = Color(0xFF687080)
+private val pickerWhite = Color(0xFF111216)
+private val pickerInk = Color(0xFFF5F7FC)
+private val pickerGray = Color(0xFF252931)
+private val pickerMuted = Color(0xFFB0BAC9)
 private val pickerBlue = Color(0xFF087FFA)
 
 private fun tournamentSportEmoji(key: String): String = when (key) {
@@ -174,7 +174,7 @@ fun PremiumTournamentSheet(
             ) {
                 IconButton(onClick = back, modifier = Modifier.size(38.dp)) {
                     Icon(Icons.Default.ChevronLeft,
-                        tr(lang, "Back", "بازگشت"), tint = Color(0xFF8A8F99),
+                        tr(lang, "Back", "بازگشت"), tint = Color(0xFFC0CAD8),
                         modifier = Modifier.size(27.dp))
                 }
                 Spacer(Modifier.width(6.dp))
@@ -193,7 +193,7 @@ fun PremiumTournamentSheet(
                 }
                 IconButton(onClick = dismiss, modifier = Modifier.size(38.dp)) {
                     Icon(Icons.Default.Close, tr(lang, "Close", "بستن"),
-                        tint = Color(0xFF8A8F99), modifier = Modifier.size(25.dp))
+                        tint = Color(0xFFC0CAD8), modifier = Modifier.size(25.dp))
                 }
             }
 
@@ -261,7 +261,7 @@ fun PremiumTournamentSheet(
                     shape = RoundedCornerShape(16.dp),
                     leadingIcon = {
                         Icon(Icons.Default.Search, null,
-                            tint = Color(0xFF8791A1))
+                            tint = Color(0xFFB5C5D8))
                     },
                     placeholder = {
                         Text(tr(lang, "Search sports, countries or leagues",
@@ -443,7 +443,7 @@ private fun TournamentPickerRow(
                 color = pickerMuted, fontSize = 13.sp)
             Spacer(Modifier.width(6.dp))
             Icon(Icons.Default.ChevronRight, null,
-                tint = Color(0xFF626875),
+                tint = Color(0xFFB5C5D8),
                 modifier = Modifier.size(21.dp))
         }
     }
