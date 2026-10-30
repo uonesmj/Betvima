@@ -29,9 +29,16 @@ export async function verifyDebitEuCanary(
   const signature = decodeB64(signatureB64, 256);
   if (!spki) return reject('PINNED_PUBLIC_KEY_INVALID');
   if (!signature || signature.length !== 64) return reject('INVALID_SIGNATURE_FORMAT');
+  // Node 22 + Deno TS both require ArrayBuffer-backed cryptographic inputs.
+  // Copy bytes rather than passing potentially shared ArrayBufferLike views.
+  const asBuffer = (input: Uint8Array): ArrayBuffer => {
+    const out = new ArrayBuffer(input.byteLength);
+    new Uint8Array(out).set(input);
+    return out;
+  };
   try {
-    const key = await crypto.subtle.importKey('spki', spki, { name: 'Ed25519' }, false, ['verify']);
-    if (!await crypto.subtle.verify('Ed25519', key, signature, bytes)) {
+    const key = await crypto.subtle.importKey('spki', asBuffer(spki), { name: 'Ed25519' }, false, ['verify']);
+    if (!await crypto.subtle.verify('Ed25519', key, asBuffer(signature), asBuffer(bytes))) {
       return reject('INVALID_SIGNATURE');
     }
   } catch {
