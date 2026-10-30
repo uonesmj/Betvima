@@ -36,3 +36,10 @@ Operator ran original `stage8b-signed-preload.cjs` and `run_signed_real_branch_f
 V2 fix in the draft PR: `scripts/stage8b/stage8b-signed-preload-v2.cjs` now intercepts Node `node:https.request`/`.get` as well as global `fetch`, matches exact host and Stage7 synthetic path with URL parsing, redirects **only that canary test** to isolated-branch endpoint; strips production-origin authorization/apiKey/Host headers while retaining signed Ed25519 body/signature. Safe result parser emits only a small whitelist of staged finance E2E/network/DB timings, no user identity/amount/secret. JS parser check PASS. Runner `scripts/stage8b/run_signed_real_branch_finance_v2.sh` refuses missing signer, wrong Podman isolation, and requires at least one verified response. It ignores the old Stage7 checker exit code when determining financial success. Status: **v2 prepared, remote operator execution pending**.
 
 Real user spin latency still completely unverified. No production finance or 3098 changes. Hourly staging billing continues.
+
+## V2 operator run — transport still not intercepted (2026-10-30 UTC)
+- `SIGNER_ENDPOINT_STAGE7_FOUND=true`, `SIGNER_FETCH_PRESENT=true`, `SIGNER_HTTPS_REQUEST_PRESENT=false`, `SIGNER_NODE_HTTPS_IMPORT_PRESENT=false`.
+- `ORIGINAL_STAGE7_CHECKER_EXIT_CODE=0` but `STAGE8B_TRANSPORT_HOOK_MATCHES=0`, `STAGE8B_TRANSPORT_VALID=0`, `STAGE8B_SIGNED_E2E=NOT_VERIFIED`.
+- Independent Supabase Edge logs in the operator's test window had **8 HTTP 200 + 4 HTTP 401** on the existing Stage7 production *synthetic read-only* canary, **zero** on the isolated branch Stage8B financial Edge function. Existing Stage7 signer ran twice, no v2 target invocation.
+- **Root cause not yet identified**: it may be URL/query construction or an imported/aliased fetch transport. Do not claim v2 successfully routed. Next step is read-only static source/URL-shape diagnostics of the existing VPS client. Do not expose Ed25519 private key, credentials, authorization headers, or raw callback payloads.
+- The isolated staging branch continues hourly billing and the staging SQL synthetic wallet remains unchanged; avoid repeated blind routing attempts.
