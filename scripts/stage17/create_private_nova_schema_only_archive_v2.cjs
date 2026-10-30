@@ -90,7 +90,7 @@ function commandExists(p){
 function getMajor(bin,tool){
  const out=cp.spawnSync(bin,['--version'],{encoding:'utf8',timeout:6000,maxBuffer:4096});
  if(out.status!==0)return null;
- const match=(out.stdout||'').match(/(\d+)(?:\.\d+)?\s*$/);
+ const match=(out.stdout||'').match(/\(PostgreSQL\)\s*(\d+)(?:\.\d+)?/i);
  return match?Number(match[1]):null;
 }
 function resolveMatchingClientPair(){
