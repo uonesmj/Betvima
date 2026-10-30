@@ -66,6 +66,7 @@ async function postgresSslHandshake(host,port){
     secure=tls.connect({socket:tcp,servername:host,rejectUnauthorized:true,minVersion:'TLSv1.2'});
     secure.once('secureConnect',()=>finish({request:'S',handshake:secure.authorized?'VERIFIED':'UNVERIFIED',version:secure.getProtocol()}));
     secure.once('error',e=>finish({request:'S',handshake:category(e)}));
+    tcp.resume();
   });
   tcp.once('close',()=>{if(!secure)finish({request:'SOCKET_CLOSED',handshake:'NOT_STARTED'})});
  });
