@@ -5,7 +5,7 @@ on:
       - feat/android-222-lost-ticket-spider-once-20261031
     paths:
       - 'android-native/**'
-      - '.github/workflows/android-222-lost-spider-apk.yml'
+      - '.github/workflows/android-222-loss-spider-apk.yml'
   workflow_dispatch:
 
 permissions:
