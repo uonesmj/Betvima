@@ -13,7 +13,7 @@ FIELD="\n  private stage10AppliedTimeoutSql: string | null = null;\n"
 pattern=(r"(?mi)^([ \t]*)await[ \t]+this\.client\.query[ \t]*\([ \t]*"
          r"(<BT>set[ \t]+local[ \t]+statement_timeout[ \t]*=[ \t]*"
          r"<D>[^<BT>\r\n]+}<BT>)[ \t]*\)[ \t]*;[ \t]*$")
-pattern=pattern.replace("<BT>",chr(96)).replace("<D>",chr(36)+"{")
+pattern=pattern.replace("<BT>",chr(96)).replace("<D>",chr(92)+chr(36)+"{")
 RX=re.compile(pattern)
 def short(b):return hashlib.sha256(b).hexdigest()[:12]
 def main():
