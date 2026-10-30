@@ -12,6 +12,7 @@ if(!source || !fs.existsSync(source)) throw Error('STAGE10_CANDIDATE_TS_FILE_REQ
 let ts;
 for (const guess of ['typescript',
  '/opt/nova-releases/casino-3098-eligible-fallback-HU6Rbl/node_modules/typescript',
+ path.join(path.dirname(path.dirname(process.execPath)),'lib/node_modules/typescript'),
  '/usr/local/lib/node_modules/typescript']){
  try{ts=require(guess);break}catch{}
 }
