@@ -25,6 +25,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.layout.boundsInRoot
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -403,6 +406,10 @@ private fun PremiumTicket(
     val lang = state.lang
     var showAllPicks by rememberSaveable(bet.id) { mutableStateOf(false) }
     var winReplay by rememberSaveable(bet.id) { mutableIntStateOf(0) }
+    var lossReplay by rememberSaveable(bet.id) { mutableIntStateOf(0) }
+    var completedLossReplay by rememberSaveable(bet.id) { mutableIntStateOf(-1) }
+    var cardOriginInRoot by remember(bet.id) { mutableStateOf<Offset?>(null) }
+    var badgeCenterInRoot by remember(bet.id) { mutableStateOf<Offset?>(null) }
     val accent = ticketResultColor(bet)
     val confirmedWin = bet.isSettled && accent == Palette.green
     val confirmedLoss = bet.isSettled && accent == Palette.red
@@ -418,7 +425,10 @@ private fun PremiumTicket(
     val expandedFrame = if (confirmedLoss) lostRed else green
     val ink = Color(0xFF14243A)
     val muted = Color(0xFF77889A)
-    Box(Modifier.fillMaxWidth()) {
+    Box(Modifier.fillMaxWidth().onGloballyPositioned { coordinates ->
+        val origin = coordinates.boundsInRoot().topLeft
+        if (cardOriginInRoot != origin) cardOriginInRoot = origin
+    }) {
     Surface(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 3.dp),
         shape = RoundedCornerShape(18.dp),
@@ -440,6 +450,7 @@ private fun PremiumTicket(
                         )
                     ).clickable {
                         if (!expanded && confirmedWin) winReplay++
+                        if (!expanded && confirmedLoss) lossReplay++
                         onToggle()
                     }
                     .padding(horizontal = 11.dp, vertical = 9.dp),
@@ -465,6 +476,12 @@ private fun PremiumTicket(
                 }
                 Spacer(Modifier.width(6.dp))
                 Surface(
+                    modifier = Modifier.onGloballyPositioned { coordinates ->
+                        if (confirmedLoss) {
+                            val center = coordinates.boundsInRoot().center
+                            if (badgeCenterInRoot != center) badgeCenterInRoot = center
+                        }
+                    },
                     shape = RoundedCornerShape(10.dp),
                     color = if (accent == Palette.green)
                         Color(0xFFD8FAEA) else if (accent == Palette.red)
@@ -622,6 +639,19 @@ private fun PremiumTicket(
         WinTicketSparklers(
             replay = winReplay,
             modifier = Modifier.matchParentSize()
+        )
+    }
+    // One traversal per opening of a confirmed lost ticket. A saved completion
+    // marker prevents replay after lazy-list recycling or unrelated recomposition.
+    if (expanded && confirmedLoss && completedLossReplay != lossReplay) {
+        val target = badgeCenterInRoot?.let { badge ->
+            cardOriginInRoot?.let { origin -> badge - origin }
+        }
+        LossTicketSpider222(
+            replay = lossReplay,
+            badgeTarget = target,
+            modifier = Modifier.matchParentSize(),
+            onComplete = { completedLossReplay = lossReplay }
         )
     }
     }
