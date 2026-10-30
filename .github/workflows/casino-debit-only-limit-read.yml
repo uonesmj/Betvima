@@ -1,0 +1,34 @@
+name: Casino Debit Only Limit Read
+on:
+  push:
+    branches:
+      - fix/casino-debit-only-limit-read-20261030
+    paths:
+      - 'src/server/providers/softaggregator/wallet.ts'
+      - 'tests/unit/softaggregator-wallet.test.ts'
+      - '.github/workflows/casino-debit-only-limit-read.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  debit-only:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - name: Debit regression, receipt idempotency, credit and rollback unchanged
+        run: |
+          npx vitest run \
+            tests/unit/softaggregator-wallet.test.ts \
+            tests/unit/softaggregator-fiat-wallet.test.ts \
+            tests/unit/casino-callback-transaction-routing.test.ts \
+            tests/unit/softaggregator-webhook-route.test.ts \
+            tests/unit/casino-debit-single-timeout.test.ts
+      - run: npm run typecheck
