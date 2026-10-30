@@ -5,6 +5,7 @@ on:
       - feature/casino-debit-edge-eu-canary-20261030
     paths:
       - 'supabase/functions/betvima-debit-eu-canary/**'
+      - 'tests/unit/casino-debit-eu-bridge-contract.test.ts'
       - 'tests/unit/casino-debit-eu-canary.test.ts'
       - 'scripts/casino/test-debit-eu-canary-from-vps-20261030.cjs'
       - '.github/workflows/casino-debit-edge-eu-canary.yml'
@@ -27,6 +28,6 @@ jobs:
       - name: Verify operator canary client syntax
         run: node --check scripts/casino/test-debit-eu-canary-from-vps-20261030.cjs
       - name: Verify Edge canary cryptography and strict read-only
-        run: npx vitest run tests/unit/casino-debit-eu-canary.test.ts
+        run: npx vitest run tests/unit/casino-debit-eu-canary.test.ts tests/unit/casino-debit-eu-bridge-contract.test.ts
       - name: Check Next.js monorepo TS regression
         run: npm run typecheck
