@@ -120,3 +120,30 @@ New GitHub-only diagnostic: `scripts/stage17/probe_pooler_network_and_sql_readon
 - If both ports' TCP probes fail, investigate VPS outbound/network egress/DNS. If both TCP connect but psql fails, investigate independently the SQL auth/startup protocol and configuration. If 6543 `SELECT 1` passes but 5432 fails, determine availability of same-host session pooler or a supported direct (IPv6) endpoint rather than editing the active application's transaction URI.
 
 Official Supabase guidance for `pg_dump`: https://supabase.com/docs/guides/database/connecting-to-postgres (direct preferred, session pooler for session-bound clients).
+
+## Stage17 operator TCP vs libpq results — both TCP ports PASS, SQL labeled TLS_ERROR
+
+Operator ran `scripts/stage17/probe_pooler_network_and_sql_readonly.cjs` on VPS. Verified (only benign metadata output):
+
+```text
+STAGE17_NET_DNS_IPV4_PRESENT=true
+STAGE17_NET_DNS_IPV6_PRESENT=false
+STAGE17_NET_TRANSACTION_6543_TCP=PASS
+STAGE17_NET_SESSION_5432_TCP=PASS
+STAGE17_NET_TRANSACTION_6543_SELECT1=FAIL
+STAGE17_NET_TRANSACTION_6543_ERROR_CATEGORY=TLS_ERROR
+STAGE17_NET_SESSION_5432_SELECT1=FAIL
+STAGE17_NET_SESSION_5432_ERROR_CATEGORY=TLS_ERROR
+STAGE17_NET_DB_SQL_WRITES=0
+STAGE17_NET_LIVE_3098_CHANGED=false
+STAGE17_NET_DIAGNOSTIC_FINISHED=true
+```
+
+- **Network port blocking for 6543/5432 is ruled out**: both accept TCP. No proof that the PostgreSQL SSLRequest or TLS negotiation completed. The previous broad `TLS_ERROR` classifier matches any libpq stderr including 'SSL SYSCALL error' or early EOF, so it cannot distinguish TLS certificate validation from early connection closure, unsupported SSL, or protocol error. Do **not** change production SSL enforcement or disable certificate verification. Do not rotate production credentials from these results.
+- Separate read-only Supavisor logs for 2026-10-30 22:51–23:20 UTC had normal authenticated transaction-mode service connections, **no app-name-marked operator probes or session-mode records** in the queried interval; not enough to identify the failure point.
+- Supabase documentation: `pg_dump` prefers direct connection for PostgreSQL native commands, or Session pooler for session-bound operations. TLS trust and certificate validation procedures are documented at https://supabase.com/docs/guides/database/psql and https://supabase.com/docs/guides/platform/ssl-enforcement .
+
+### Safer Stage17 network diagnosis — created and syntax-checked, not yet VPS-executed
+`scripts/stage17/probe_pooler_tls_handshake_readonly.cjs` distinguishes PostgreSQL protocol SSLRequest acceptance (`S` versus `N`), Node TLS handshake with **certificate validation enabled**, and specific classified libpq failures on same-host ports 6543 and 5432. At most one authenticated SELECT 1 per route, no data rows other than literal 1, no pg_dump, no migrations, no writable DB calls. It outputs only enums, negotiated TLS protocol name, and presence/absence of the default libpq root CA file; never raw stderr, usernames, host/IP, DSN, password, or certificate identity. Does **NOT** alter production SSL settings or Node process. No operator results yet; do not mark Stage17 archive as completed.
+
+**Stage17 schema archive still PENDING.** All old casino behaviour (geo, age, KYC, deposits/withdrawals, registration, wallets) and port 3098 remain unchanged.
