@@ -197,6 +197,26 @@ function main(){
  if(!fs.statSync(ROOT).isDirectory()||fs.lstatSync(ROOT).isSymbolicLink())
     abort('WORK_ROOT_NOT_SAFE');
  const env=envForDump();
+ // Operators may run a connection-only probe first to avoid retrying pg_dump
+ // when the issue is credentials, TLS or connection-pool startup options.
+ if(process.env.STAGE17_PROBE_ONLY==='1'){
+   const psql=path.join(path.dirname(client.dump),'psql');
+   if(!commandExists(psql)||getMajor(psql,'psql')<17)
+     abort('READONLY_CONNECT_PROBE_NO_PSQL17_CLIENT');
+   const probe=cp.spawnSync(psql,
+     ['--no-psqlrc','--no-align','--tuples-only','--command','SELECT 1'],{
+       env,encoding:'utf8',timeout:12000,maxBuffer:65536
+     });
+   if(probe.status!==0||probe.stdout.trim()!=='1'){
+     MSG('READONLY_CONNECT_PROBE=FAIL');
+     MSG('READONLY_CONNECT_PROBE_CATEGORY='+classifyPgDumpFailure(probe.stderr,probe));
+     abort('READONLY_CONNECT_PROBE_FAILED');
+   }
+   MSG('READONLY_CONNECT_PROBE=PASS');
+   MSG('PRODUCTION_SQL_WRITES=0');
+   MSG('ACTIVE_CASINO_3098_CHANGED=false');
+   return;
+ }
  const dir=fs.mkdtempSync(path.join(ROOT,'stage17-schema-only.'));
  fs.chmodSync(dir,0o700);
  const archive=path.join(dir,'private-nova-schema-only.dump');
