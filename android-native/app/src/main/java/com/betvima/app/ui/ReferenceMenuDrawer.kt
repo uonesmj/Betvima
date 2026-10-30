@@ -161,8 +161,8 @@ fun ReferenceMenuDrawer(
                 dismiss(); openNotifications()
             }
             DrawerRow(tr(state.lang, "Language", "زبان"),
-                Icons.Default.Language, when(state.lang) { Lang.FA -> "🇮🇷 فارسی"; Lang.TR -> "🇹🇷 Türkçe"; Lang.DARI -> "🇦🇫 دری"; Lang.HY -> "🇦🇲 Հայերեն"; Lang.AR -> "🇸🇦 العربية"; Lang.AZ -> "🇦🇿 Azərbaycan dili"; Lang.RU -> "🇷🇺 Русский"; Lang.EN -> "🇬🇧 English" }) {
-                dismiss(); openLanguage()
+                Icons.Default.Language, when(state.lang) { Lang.FA -> "🇮🇷 فارسی"; Lang.TR -> "🇹🇷 Türkçe"; Lang.DARI -> "🇦🇫 دری"; Lang.HY -> "🇦🇲 Հայերեն"; Lang.AR -> "🇸🇦 العربية"; Lang.AZ -> "🇦🇿 Azərbaycan dili"; Lang.RU -> "🇷🇺 Русский"; Lang.EN -> "🇬🇧 English" }, Icons.Default.Settings) {
+                openLanguage()
             }
             Spacer(Modifier.height(15.dp))
             Text(tr(state.lang,
@@ -183,7 +183,7 @@ private fun DrawerGroup(label: String) {
 
 @Composable
 private fun DrawerRow(label: String, icon: ImageVector, value: String = "",
-    action: () -> Unit) {
+    trailingIcon: ImageVector? = null, action: () -> Unit) {
     Row(Modifier.fillMaxWidth().heightIn(min = 49.dp)
         .clickable(onClick = action)
         .padding(horizontal = 20.dp, vertical = 11.dp),
@@ -193,8 +193,16 @@ private fun DrawerRow(label: String, icon: ImageVector, value: String = "",
         Spacer(Modifier.width(14.dp))
         Text(label, color = ThemeTokens.ink, fontSize = 13.sp,
             modifier = Modifier.weight(1f), fontWeight = FontWeight.Medium)
-        if (value.isNotBlank()) Text(value, color = ThemeTokens.accent, fontSize = 11.sp)
-        else Icon(Icons.Default.ChevronRight, null,
+        if (value.isNotBlank()) {
+            Text(value, color = ThemeTokens.accent, fontSize = 10.sp, maxLines = 1)
+            if (trailingIcon != null) {
+                Spacer(Modifier.width(9.dp))
+                Surface(shape = RoundedCornerShape(9.dp), color = ThemeTokens.accent.copy(alpha = .12f)) {
+                    Icon(trailingIcon, null, tint = ThemeTokens.accent,
+                        modifier = Modifier.padding(6.dp).size(15.dp))
+                }
+            }
+        } else Icon(Icons.Default.ChevronRight, null,
             tint = ThemeTokens.muted, modifier = Modifier.size(17.dp))
     }
 }
