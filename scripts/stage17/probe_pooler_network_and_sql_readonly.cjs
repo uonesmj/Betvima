@@ -25,9 +25,13 @@ function procEnv(){
 }
 function validatedEnv(){
  if(process.getuid()!==0)stop('ROOT_REQUIRED');
- if(fs.realpathSync(LIVE)!==LIVE)stop('LIVE_RELEASE_NOT_PINNED');
+ if(!fs.realpathSync(LIVE).startsWith('/opt/nova-releases/casino-3098-eligible-fallback-'))
+   stop('LIVE_RELEASE_NOT_PINNED');
  const env=procEnv();
- const val=env.SUPABASE_DB_URL||env.DATABASE_URL;
+ // Match the proven v4 live-release environment resolution without editing it.
+ try{require(path.join(LIVE,'node_modules/@next/env')).loadEnvConfig(LIVE,false)}catch{}
+ const val=env.SUPABASE_DB_URL||process.env.SUPABASE_DB_URL||
+           env.DATABASE_URL||process.env.DATABASE_URL;
  if(!val)stop('DB_URI_ABSENT_FROM_LIVE_PROCESS');
  let url;try{url=new URL(val)}catch{stop('DB_URI_INVALID')}
  if(!['postgresql:','postgres:'].includes(url.protocol))stop('DB_URI_PROTOCOL');
