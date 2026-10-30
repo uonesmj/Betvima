@@ -32,8 +32,7 @@ jobs:
           assert (m.LIVE/m.W).as_posix() in [str(x) for x in m.EXPECTED]
           assert (m.V4/m.R).as_posix() in [str(x) for x in m.EXPECTED]
           assert (m.LIVE/m.W).as_posix() in [str(x) for x in m.EXPECTED]
-          assert "PRIVATE_ARCHIVE_SHA256" in s and "SECRETS_EXCLUDED" in s
-          assert "NO_PRODUCTION_NGINX_OR_FINANCIAL_CHANGES" not in s or True
+          assert "PRIVATE_ARCHIVE_SHA256" in s and "COMPILED_BUNDLE_MANUAL_SECRET_REVIEW_REQUIRED" in s
           assert "pg_advisory_xact_lock" not in s
           assert "post_wallet_entry" not in s
           print('IRELAND_SOURCE_ONLY_PINS_PASS')
