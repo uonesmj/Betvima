@@ -63,3 +63,19 @@ Independently queried production read-only `extensions.pg_stat_statements` (aggr
 A further fingerprint-pinned **read-only** callsite map `scripts/stage10/map_live_callback_phase_calls_readonly.py` was created. It prints only trusted internal await identifiers and code line numbers from the already-fingerprinted 3098 source, never source content or credentials. It does not change code, traffic, financial ledgers or game sessions. Requires operator VPS execution before preparing any candidate release phase timers.
 
 Next: prepare an entirely separate deployment candidate with time-profiles for post-auth callback phases and compare same authentic supplier-origin signed requests with reconciliation and rollbacks, after legality and schema parity checks. **No live wallet/test-account spin or cutover yet.**
+
+## Operator Stage10 pinned callsite map — VERIFIED (2026-10-30 21:16 UTC)
+
+Read-only pinned scanner completed with `STAGE10_SOURCE_FINGERPRINTS=ALL_MATCH`, `STAGE10_PORT_3098=LISTENING`, and **zero financial writes, callback calls, or production changes**.
+
+- `postgres.ts`: 15 `await` tokens across the whole file, including the source locations `this.pool.connect` line 116, `this.pool.query` line 68, and six `client.query` usages (118,121,124,165,168,226). These counts are **per source file**, not proof of calls per Spin.
+- `wallet.ts`: 27 `await` tokens including 13 DB-classified, 5 auth-classified, 5 wallet-binding-classified, one `Promise.all` construct. Relevant source locations: `readCasinoPlayerWallet` lines 55/123/129; `getProfile` lines 22/47/146/185; `pilotCasinoDebitPermitted` line 79; `readOriginalRound` lines 124/131; `tx.query` lines 153/166/176/184/187/254.
+- `fiat-wallet.ts`: 22 `await` tokens, 13 DB-classified, 5 auth, one external-FX classified. `getUsdIrtRate` is called at line **69**; `Promise.all` at 82; `tx.query` lines 125/136/153/169/171/247; `pilotCasinoDebitPermitted` line 217.
+- `route.ts` (hash `fca89762e8ff`): one `await` to `withCasinoCallbackTimeoutReuse` at line 68, as a delegating route wrapper.
+- Active same original three content hashes already documented; no automatic migration, restart, or cutover.
+
+**Independent cumulative `pg_stat_statements`:** Wallet RPC mean 6.03ms across 830 recorded calls (observations since 2026-09-25), while production median `debit` Nginx request is 4894ms. The app's remote DB connection acquire ~934ms and warm SQL roundtrip ~148ms on previously witnessed benchmark. Network serializations, connection reuse and FX provider latency are **plausible**, not individually measured. Need *per-phase real callback tracing* rather than changing wallet invariants by guess.
+
+New next static source check **`scripts/stage10/inspect_live_fx_pool_path_readonly.py`** discovers the live `getUsdIrtRate` implementation path and HTTP/cache/timeout **tokens**, PostgreSQL connection pooling configuration **presence**, and phase-labelled await line numbers. It pins source file hashes and never exposes source contents, raw queries, tokens, secrets or accounts. The verifier is **not a live timing sample**.
+
+Real play/Spin Stage10 remains blocked by isolated branch's failed automatic migrations, lack of authenticated provider-origin proof and independently reconciled provider history, security/eligibility requirements, and unreviewed callback phase instrumentation. No permission to infer a guaranteed 1-second Spin.
