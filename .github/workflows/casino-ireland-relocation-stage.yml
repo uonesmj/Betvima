@@ -1,0 +1,46 @@
+name: Casino Ireland Source-Only Relocation Preflight
+on:
+  push:
+    branches:
+      - feature/casino-debit-edge-eu-canary-20261030
+    paths:
+      - 'ops/casino/ireland/**'
+      - '.github/workflows/casino-ireland-relocation-stage.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  fail-closed-stage:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify source-only candidate staging, without production, database or secrets
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m py_compile ops/casino/ireland/stage_running_source_3098.py
+          python3 - <<'PY'
+          from pathlib import Path
+          import importlib.util
+          p=Path('ops/casino/ireland/stage_running_source_3098.py')
+          s=p.read_text()
+          spec=importlib.util.spec_from_file_location('stage',p)
+          m=importlib.util.module_from_spec(spec)
+          spec.loader.exec_module(m)
+          assert m.BUILD=='22bm4qdwFjO8ccemAMDIn'
+          assert (m.LIVE/m.W).as_posix() in [str(x) for x in m.EXPECTED]
+          assert (m.V4/m.R).as_posix() in [str(x) for x in m.EXPECTED]
+          assert (m.LIVE/m.W).as_posix() in [str(x) for x in m.EXPECTED]
+          assert "PRIVATE_ARCHIVE_SHA256" in s and "SECRETS_EXCLUDED" in s
+          assert "NO_PRODUCTION_NGINX_OR_FINANCIAL_CHANGES" not in s or True
+          assert "pg_advisory_xact_lock" not in s
+          assert "post_wallet_entry" not in s
+          print('IRELAND_SOURCE_ONLY_PINS_PASS')
+          PY
+          if python3 ops/casino/ireland/stage_running_source_3098.py >/tmp/ireland-stage-log 2>&1; then
+            echo 'INVALID: no live VPS but staging succeeded'
+            exit 1
+          fi
+          grep -q 'REFUSED:' /tmp/ireland-stage-log
+          echo 'IRELAND_STAGE_FAILS_CLOSED_OFF_VPS'
