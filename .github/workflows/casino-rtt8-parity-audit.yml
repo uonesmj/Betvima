@@ -1,0 +1,47 @@
+name: Casino RTT8 Source Parity Audit
+on:
+  push:
+    branches:
+      - fix/casino-rtt8-wallet-fastpath-20261030
+    paths:
+      - 'ops/casino/audit-rtt8-canonical-source-20261030.py'
+      - 'ops/casino/stage-rtt8-canonical-source-20261030.py'
+      - 'ops/casino/build-rtt8-canonical-isolated-20261030.py'
+      - 'ops/casino/smoke-rtt8-canonical-isolated-3124-20261030.py'
+      - '.github/workflows/casino-rtt8-parity-audit.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  fail-closed-source-check:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify audit is syntax-valid and refuses outside pinned VPS
+        run: |
+          python3 -m py_compile ops/casino/audit-rtt8-canonical-source-20261030.py
+          if python3 ops/casino/audit-rtt8-canonical-source-20261030.py >/tmp/casino-audit.txt 2>&1; then
+            echo 'Unexpected audit success outside pinned VPS'
+            exit 1
+          fi
+          grep -q 'REFUSED:' /tmp/casino-audit.txt
+          grep -q 'READ_ONLY_AUDIT=TRUE' ops/casino/audit-rtt8-canonical-source-20261030.py
+      - name: Verify canonical candidate tools fail closed outside audited VPS
+        run: |
+          python3 -m py_compile \
+            ops/casino/stage-rtt8-canonical-source-20261030.py \
+            ops/casino/build-rtt8-canonical-isolated-20261030.py \
+            ops/casino/smoke-rtt8-canonical-isolated-3124-20261030.py
+          for tool in \
+            ops/casino/stage-rtt8-canonical-source-20261030.py \
+            ops/casino/build-rtt8-canonical-isolated-20261030.py \
+            ops/casino/smoke-rtt8-canonical-isolated-3124-20261030.py
+          do
+            if python3 "$tool" >/tmp/canonical-fail-closed.txt 2>&1; then
+              echo "Unsafe candidate tool execution outside pinned VPS"
+              exit 1
+            fi
+            grep -q 'REFUSED:' /tmp/canonical-fail-closed.txt
+          done
+

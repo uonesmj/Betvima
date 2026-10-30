@@ -220,11 +220,19 @@ export async function settleCasinoCallback(event: SignedCallback): Promise<Casin
       p = await getProfile(tx, userId);
       if (!p) return { error: 2, balance: 0 };
     }
-    await tx.query(
-      "insert into nova.wallets(user_id,currency,balance_minor) values ($1,'USD',0) on conflict (user_id,currency) do nothing",
-      [userId],
-    );
-    const w = await walletRow(tx, userId, true);
+    // Existing wallets dominate signed casino rounds. Avoid an unnecessary
+    // INSERT ... ON CONFLICT network trip on that path. The advisory wallet
+    // lock has already been taken, and SELECT FOR UPDATE remains mandatory.
+    // For a genuinely absent wallet, preserve the original create-then-lock
+    // behavior (including all following checks and ledger posting semantics).
+    let w = await walletRow(tx, userId, true);
+    if (!w) {
+      await tx.query(
+        "insert into nova.wallets(user_id,currency,balance_minor) values ($1,'USD',0) on conflict (user_id,currency) do nothing",
+        [userId],
+      );
+      w = await walletRow(tx, userId, true);
+    }
     if (!w) throw new Error('CASINO_WALLET_NOT_FOUND');
     const before = available(w);
     const isDebit = event.action === 'debit';
