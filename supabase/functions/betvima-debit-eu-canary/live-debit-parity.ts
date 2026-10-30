@@ -57,6 +57,7 @@ export function liveAccountCanBet(profile: LiveDebitProfile): boolean {
     !profile.restricted;
 }
 
+/** Informational only: NEVER use this to skip the mandatory live SQL usage read. */
 export function liveNeedsLimitUsage(profile: LiveDebitProfile): boolean {
   return profile.max_stake_per_day_minor !== null ||
     profile.loss_limit_daily_minor !== null ||
@@ -75,7 +76,9 @@ export function livePersonalLimitsAllow(
     if (amount <= 0n) return false;
     if (profile.max_stake_per_bet_minor !== null &&
         amount > strictInt(profile.max_stake_per_bet_minor)) return false;
-    if (!liveNeedsLimitUsage(profile)) return true;
+    // Exact running 3098 behavior: limitAllows() ALWAYS queries
+    // wallet_transactions, even if all rolling caps are null. A database
+    // outage/null aggregate row must deny a wager, not silently waive checks.
     if (!usage) return false;
     if (profile.max_stake_per_day_minor !== null &&
         strictInt(usage.day_stake) + amount >
