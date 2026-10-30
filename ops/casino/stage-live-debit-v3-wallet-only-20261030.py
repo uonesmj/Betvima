@@ -66,7 +66,7 @@ if __name__ == '__main__':
     if DEST.exists() or DEST.is_symlink(): refuse('staging destination exists')
     if LIVE.is_symlink() or not LIVE.is_dir(): refuse('pinned release missing')
     result = subprocess.run(['ss', '-ltnpH'], capture_output=True, text=True, timeout=8)
-    pids = re.findall(r':3098\\s+[^\\n]*?pid=(\\d+)', result.stdout)
+    pids = re.findall(r':3098\s+[^\n]*?pid=(\d+)', result.stdout)
     if result.returncode or len(pids) != 1:
         refuse('cannot pin active production process')
     if Path('/proc/' + pids[0] + '/cwd').resolve() != LIVE:
