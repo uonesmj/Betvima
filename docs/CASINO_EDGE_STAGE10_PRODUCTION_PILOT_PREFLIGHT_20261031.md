@@ -122,3 +122,13 @@ Because actual 3098 deployed `postgres.ts` SHA12 `3d66c5724ff6` differs from the
 - Builder script source was reviewed against the equivalent unmodified `main` PostgreSQL adapter shape, and its two-hunk inverse was independently checked with an in-memory source transformation. It still requires **VPS operator execution and actual live hash confirmation**; do not claim successful shadow build before receiving its stdout.
 
 No branch migration repair, provider-authorized actual-money round, provider history reconciliation or legal gating is completed by this step. PR remains **DRAFT**; 3098 unchanged; Irish staging branch hourly billing continues.
+
+## Stage10 first live-shadow builder FAIL CLOSED; v2 preparation (2026-10-31)
+
+User ran the exact-source shadow builder (initial version); after Python and Node syntax checks it stopped at `STAGE10_ABORT=EXPECTED_RUN_BODY_MISMATCH`. This means active release `postgres.ts` matched the previously pinned file hash, but the function's source formatting/SQL statement pair did not match the very strict literal of the first builder. No shadow was created by that invocation, tests did not run, and the live 3098 source and database were not changed.
+
+A revised shadow-builder `scripts/stage10/build_live_adapter_shadow_candidate_v2.py` checks the identical **known actual live SHA12** and isolates only `TransactionDb.run`. It matches a single existing SQL `SET LOCAL statement_timeout` await under formatting variants while preserving the exact original SQL template, adds one private per-transaction SQL-command cache field, and validates an *exact two-location inverse* of the transformation before writing `/root/betvima-stage5/stage10-timeout-candidate/live-shadow/postgres.ts`. It fails closed if it cannot find the one isolated SET or the expected query call. Nothing is changed on the active release.
+
+The in-memory mock harness has been updated to recognize the string-equivalent timeout cache marker `stage10AppliedTimeoutSql` in addition to its original numeric marker. The harness still checks eight functional behaviours against mocked `pg` only: SQL bindings, transaction commits, changed timeout, explicit SET invalidation, rollback on failure, cache isolation between transactions, and unmodified nontransaction query path.
+
+**STATUS: v2 builder GitHub source ready, operator execution not yet reported; NO claim of shadow pass, CI pass, speedup of real Spin or cutover.** Staging branch remains billed; migration parity and vendor-origin testing incomplete.
