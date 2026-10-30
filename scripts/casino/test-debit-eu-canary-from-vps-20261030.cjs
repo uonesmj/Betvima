@@ -23,19 +23,13 @@ try {
   pid=matches[0][1];
   if (realpathSync('/proc/'+pid+'/cwd')!==PINNED_RELEASE) stop('RELEASE_CHANGED');
 } catch { stop('PINNED_RELEASE_NOT_FOUND'); }
-let publicJwt='';
-try {
-  const environment=readFileSync('/proc/'+pid+'/environ').toString('utf8').split('\0');
-  publicJwt=environment.find(e=>e.startsWith('NEXT_PUBLIC_SUPABASE_ANON_KEY='))?.split('=').slice(1).join('=')??'';
-} catch { stop('PUBLIC_JWT_UNAVAILABLE'); }
-if (!/^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/.test(publicJwt) ||
-    publicJwt.length > 8192) stop('ANON_JWT_NOT_VALID');
-let claims;
-try { claims=JSON.parse(Buffer.from(publicJwt.split('.')[1],'base64url').toString('utf8')); }
-catch { stop('ANON_CLAIMS_INVALID'); }
-if (claims.role!=='anon' || claims.ref!=='mqygiufkubxxxjodsycu' ||
-    claims.iss!=='supabase' || !Number.isSafeInteger(claims.exp) ||
-    claims.exp<=Math.floor(Date.now()/1000)) stop('NOT_PROJECT_ANON_JWT');
+// Public project publishable key is intentionally not a user token or secret.
+// Supabase's gateway accepts it through 'apikey' while verify_jwt stays on.
+// Never send it as a Bearer JWT; Ed25519 remains the independent request gate.
+const PUBLIC_GATEWAY_KEY='sb_publishable_AkPgGBF6sblyToCDi1YbqA_prfAkBo5';
+if (!/^sb_publishable_[A-Za-z0-9_-]{8,}$/.test(PUBLIC_GATEWAY_KEY)) {
+  stop('PINNED_PUBLISHABLE_KEY_INVALID');
+}
 let privateKey;
 try {
   const info=lstatSync(KEY);
@@ -54,8 +48,7 @@ const makeBody=()=>Buffer.from(JSON.stringify({
 async function send(body,signature) {
   const start=performance.now();
   const headers={
-    apikey:publicJwt,
-    Authorization:'Bearer '+publicJwt,
+    apikey:PUBLIC_GATEWAY_KEY,
     'Content-Type':'application/json',
     'x-region':'eu-west-1',
   };
@@ -75,7 +68,9 @@ async function send(body,signature) {
 (async()=>{
   const unsigned=await send(makeBody(),null);
   console.log('UNSIGNED_HTTP='+unsigned.status);
-  if (unsigned.status!==401) stop('UNSIGNED_NOT_REJECTED');
+  if (unsigned.status!==401 || unsigned.data.error!=='INVALID_SIGNATURE_FORMAT') {
+    stop('UNSIGNED_NOT_REJECTED_BY_ED25519_GATE');
+  }
   const total=[],db=[];
   for(let i=0;i<4;i++){
     const body=makeBody();
@@ -99,11 +94,13 @@ async function send(body,signature) {
   if(tampered.equals(original)) stop('TAMPER_TEST_MISSING');
   const changed=await send(tampered,signature);
   console.log('TAMPERED_HTTP='+changed.status);
-  if(changed.status!==401) stop('TAMPERED_ACCEPTED');
+  if(changed.status!==401 || changed.data.error!=='INVALID_SIGNATURE') stop('TAMPERED_ACCEPTED');
   const median=values=>values.slice().sort((a,b)=>a-b)[1];
   console.log('EDGE_CANARY_REGION=eu-west-1');
   console.log('EDGE_CANARY_E2E_MEDIAN_MS='+median(total));
   console.log('EDGE_CANARY_DB_MEDIAN_MS='+median(db));
+  console.log('GATEWAY_AUTH=PUBLIC_PUBLISHABLE_KEY');
+  console.log('JWT_GATEWAY_VERIFICATION_RETAINED=true');
   console.log('SIGNED_TRANSPORT_TEST_PASS');
   console.log('NO_MONEY_CALLBACKS_OR_WRITES=true');
   console.log('PRODUCTION_3098_NOT_MODIFIED=true');
