@@ -89,7 +89,7 @@ try:
     ):
         if (LIVE/unchanged).read_bytes()!=(DEST/unchanged).read_bytes():
             refuse('non-Debit source differs: '+unchanged)
-    subprocess.run(['chown','-R','-h',f'{user.pw_uid}:{user.p_gid}',str(DEST)],check=True)
+    subprocess.run(['chown','-R','-h',f'{user.pw_uid}:{user.pw_gid}',str(DEST)],check=True)
     print('DEBIT_V2_ISOLATED_SOURCE_READY',flush=True)
     tsc=subprocess.run(
         ['/usr/bin/node',str(DEP/'node_modules/typescript/lib/tsc.js'),'--noEmit'],
