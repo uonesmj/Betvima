@@ -210,8 +210,12 @@ internal fun AffiliateReveal(
     visible:Boolean,delayMillis:Int=0,modifier:Modifier=Modifier,
     content:@Composable ()->Unit
 ) {
-    val entrance by animateFloatAsState(if(visible)1f else 0f,
-        animationSpec=tween(durationMillis=760,delayMillis=delayMillis,
+    // LazyColumn recycles off-screen sections. Once a photo enters composition,
+    // never hide it again because a scroll-index observer changes value.
+    var revealed by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) { revealed = true }
+    val entrance by animateFloatAsState(if(revealed)1f else 0f,
+        animationSpec=tween(durationMillis=530,delayMillis=delayMillis,
             easing=FastOutSlowInEasing),label="affiliate-scroll-reveal")
     Box(modifier.graphicsLayer {
         alpha=entrance.coerceIn(0f,1f);translationY=(1f-entrance)*55f
