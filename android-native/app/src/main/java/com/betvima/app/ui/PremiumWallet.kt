@@ -168,7 +168,7 @@ private fun WalletSummary(state: AppState, wallet: Wallet) {
                                 else Color(0xFFFFCD6B)))
                         Spacer(Modifier.width(7.dp))
                         Text(
-                            tr(lang,"AVAILABLE BALANCE","موجودی قابل استفاده"),
+                            tr(lang,"AVAILABLE / WITHDRAWAL REQUESTS","قابل استفاده / درخواست برداشت"),
                             color = Color(0xFFC0D7EE), fontSize = 10.sp,
                             fontWeight = FontWeight.Bold, letterSpacing = 1.sp
                         )
@@ -178,12 +178,20 @@ private fun WalletSummary(state: AppState, wallet: Wallet) {
                         fontWeight = FontWeight.Black, maxLines = 1,
                         overflow = TextOverflow.Ellipsis)
                 }
+                // Active tickets are a separately labelled, potentially paginated
+                // read. Never infer the amount withdrawable from ticket stakes.
+                val activeTickets = state.bets.filter { bet ->
+                    !bet.isSettled && bet.currency.equals(wallet.currency, ignoreCase = true)
+                }
+                val activeStakeMinor = activeTickets.fold(java.math.BigInteger.ZERO) { total, bet ->
+                    total + (bet.stakeMinor.toBigIntegerOrNull() ?: java.math.BigInteger.ZERO)
+                }
                 Row(horizontalArrangement = Arrangement.spacedBy(9.dp)) {
                     listOf(
-                        Triple(Icons.Default.AccountBalanceWallet,
-                            tr(lang, "Total balance", "کل موجودی"), wallet.balanceMinor),
                         Triple(Icons.Default.Lock,
-                            tr(lang, "Reserved", "موجودی مسدود"), wallet.heldMinor)
+                            tr(lang, "Reserved / held", "مسدود / رزروشده"), wallet.heldMinor),
+                        Triple(Icons.Default.ReceiptLong,
+                            tr(lang, "Active bets (loaded)", "شرط‌های باز (بارگذاری‌شده)"), activeStakeMinor.toString())
                     ).forEach { (icon, label, minor) ->
                         Surface(
                             color = Color.White.copy(alpha = .105f),
@@ -207,6 +215,18 @@ private fun WalletSummary(state: AppState, wallet: Wallet) {
                         }
                     }
                 }
+                Text(
+                    tr(lang, "Ledger total (available + held): ", "کل موجودی دفترکل (قابل استفاده + مسدود): ") +
+                        money(wallet.balanceMinor, wallet.currency),
+                    color = Color(0xFFE6F3FF), fontSize = 11.sp,
+                    fontWeight = FontWeight.SemiBold
+                )
+                Text(
+                    tr(lang,
+                        "Withdrawal requests use available funds, subject to server approval. Active bets show only loaded tickets; amounts may overlap held funds.",
+                        "درخواست برداشت از موجودی قابل استفاده و با تأیید سرور انجام می‌شود. شرط‌های باز فقط موارد بارگذاری‌شده‌اند و ممکن است با مبلغ مسدود هم‌پوشانی داشته باشند."),
+                    color = Color(0xFFC0D7EE), fontSize = 10.sp, lineHeight = 15.sp
+                )
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier.fillMaxWidth()
