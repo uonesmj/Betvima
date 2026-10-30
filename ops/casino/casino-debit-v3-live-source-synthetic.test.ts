@@ -54,7 +54,7 @@ function mockDb(exists = true) {
       if (sql.includes('from nova.profiles p')) return profile;
       if (sql.includes('from nova.wallets')) {
         if (!walletExists) return null;
-        return { balance_minor: balance.toString(), locked_minor: '200', is_frozen: false };
+        return { balance_minor: balance.toString(), locked_minor: exists ? '200' : '0', is_frozen: false };
       }
       if (sql.includes('from nova.wallet_transactions')) {
         usageQueryCount++;
@@ -134,6 +134,7 @@ describe('EXACT V3 source: isolated ordinary Debit financial behavior with in-me
     expect(test.stats()).toEqual({
       walletInsertCount: 1, ledgerCallCount: 0,
       receiptInsertCount: 1, usageQueryCount: 0,
+    // A newly created wallet starts with both balance and locked funds at zero.
     });
   });
 
