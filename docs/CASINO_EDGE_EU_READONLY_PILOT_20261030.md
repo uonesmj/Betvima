@@ -55,3 +55,11 @@ From the signed diagnostic script running on the existing VPS (all 32 accepted, 
 - New Supabase function: `betvima-eu-casino-stage3-readiness`, deployed ACTIVE v1, `verify_jwt=true`. Extends independently signed EU canary with **read-only preliminary** financial schema metadata checks; contains no wallet writes and accepts no provider callbacks. Source committed in this draft PR.
 - Independent read-only Supabase SQL checks confirmed receipts/rounds/bindings tables, both rollback indexes, four mandatory triggers, six validated receipt constraints, RLS on all three financial tables, valid unique rollback indexes, and no direct public/authenticated financial writes.
 - Still **not** a real debit latency benchmark or cutover. Require independent staging DB, replay/idempotency/rollback tests, current external dependencies, compliance review and a signed provider integration acceptance before changing any production traffic.
+
+## Stage 3 signed readiness invocation — verified 2026-10-30
+- Original VPS signer invoked `betvima-eu-casino-stage3-readiness` four times with `EXIT_CODE=0`.
+- Every accepted response returned `financial_schema_metadata_ready=true` with `financial_operations_enabled=false`.
+- Caller-observed median E2E **489 ms**; median DB probe **152.7 ms**.
+- Independently checked Supabase Edge logs: **4 HTTP 200**, **2 HTTP 401**, all served in `eu-west-1`; average logged successful Edge execution **566.2 ms**. Rejected 401s are consistent with the canary's intentional invalid-signature checks.
+- No live provider callback routing, user balances, database financial writes, deployment switches, or existing casino 3098 files were modified.
+- Next gate: audit source of the live runtime's `src/server/env.ts`, `src/server/providers/arzhaam/client.ts` and separately deployed trusted provider-edge Worker before sandbox money callbacks. The similarly named files in GitHub main cannot be assumed identical to the running release.
