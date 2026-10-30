@@ -438,7 +438,7 @@ fun BetvimaApp(model: AppViewModel) {
         if (accountOpen) ReferenceProfileSheet(state, model) { accountOpen = false }
         if (languageOpen) LanguagePickerDialog(
             state.lang,
-            onSelect = { selected -> model.setLanguage(selected); languageOpen = false },
+            onSelect = { selected -> model.setLanguage(selected) },
             onDismiss = { languageOpen = false }
         )
         if (affiliateOpen) PremiumAffiliateSheet(state, model) { affiliateOpen = false }
