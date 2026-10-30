@@ -12,6 +12,8 @@ on:
       - 'ops/casino/build-live-debit-v3-isolated-20261030.py'
       - 'ops/casino/smoke-live-debit-v3-isolated-3127-20261030.py'
       - 'ops/casino/live-debit-v3-3127-3min-auto-rollback-20261030.py'
+      - 'ops/casino/stage-live-v4-debit-timing-only-20261030.py'
+      - 'ops/casino/build-live-debit-v4-isolated-20261030.py'
       - 'tests/unit/casino-debit-eu-canary.test.ts'
       - 'scripts/casino/test-debit-eu-canary-from-vps-20261030.cjs'
       - '.github/workflows/casino-debit-edge-eu-canary.yml'
@@ -46,6 +48,35 @@ jobs:
             fi
             grep -q 'REFUSED:' /tmp/debit-v3-fail-closed.txt
           done
+      - name: Verify signed-only Debit V4 logging has no settlement side-effects
+        run: |
+          python3 -m py_compile ops/casino/stage-live-v4-debit-timing-only-20261030.py ops/casino/build-live-debit-v4-isolated-20261030.py
+          python3 - <<'PY'
+          from importlib.util import module_from_spec, spec_from_file_location
+          from pathlib import Path
+          p=Path('ops/casino/stage-live-v4-debit-timing-only-20261030.py')
+          spec=spec_from_file_location('v4',p)
+          mod=module_from_spec(spec)
+          spec.loader.exec_module(mod)
+          src="if (!verifySupplierCallbackSignature(url, request.headers.get('x-signature'), salt))" + "\\n"
+          src+="if (!event) return reply(2);"+"\\n"
+          src+=mod.BEFORE
+          new=mod.patch(src)
+          assert new.replace(mod.AFTER,mod.BEFORE,1)==src
+          assert new.count("event.action === 'debit' && !event.rollback") == 1
+          assert new.count('casino.debit.v4.settlement_latency') == 1
+          assert new.count('settleCasinoCallback(event)') == 1
+          assert "process.env.SOFTAGGREGATOR_DEBIT_V4_TIMING === 'true'" in new
+          assert 'username' not in mod.AFTER and 'amountMinor' not in mod.AFTER
+          assert 'return reply(result.error, result.balance);' in new
+          assert 'return reply(2);' in new
+          print('V4_INERT_SIGNED_DEBIT_TIMING_CONTRACT_PASS')
+          PY
+          if python3 ops/casino/build-live-debit-v4-isolated-20261030.py >/tmp/v4-fail-closed.txt 2>&1; then
+            echo "INVALID: build must refuse outside the authorized VPS"
+            exit 1
+          fi
+          grep -q 'REFUSED:' /tmp/v4-fail-closed.txt
       - name: Validate V3 three-minute live callback canary preconditions and safe rollback source
         run: |
           python3 - <<'PY'
