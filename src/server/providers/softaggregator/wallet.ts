@@ -217,11 +217,19 @@ export async function settleCasinoCallback(event: SignedCallback): Promise<Casin
       p = await getProfile(tx, userId);
       if (!p) return { error: 2, balance: 0 };
     }
-    await tx.query(
-      "insert into nova.wallets(user_id,currency,balance_minor) values ($1,'USD',0) on conflict (user_id,currency) do nothing",
-      [userId],
-    );
-    const w = await walletRow(tx, userId, true);
+    // Debit-only fast path: keep the wallet advisory lock and SELECT FOR
+    // UPDATE. An existing USD wallet does not need INSERT ON CONFLICT.
+    // Credit and every rollback still perform the original insert-then-read.
+    let w = event.action === 'debit' && !event.rollback
+      ? await walletRow(tx, userId, true)
+      : null;
+    if (!w) {
+      await tx.query(
+        "insert into nova.wallets(user_id,currency,balance_minor) values ($1,'USD',0) on conflict (user_id,currency) do nothing",
+        [userId],
+      );
+      w = await walletRow(tx, userId, true);
+    }
     if (!w) throw new Error('CASINO_WALLET_NOT_FOUND');
     const before = available(w);
     const isDebit = event.action === 'debit';
