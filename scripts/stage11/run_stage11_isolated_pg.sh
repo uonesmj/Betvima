@@ -74,6 +74,8 @@ done
 [[ "$ready" == true ]] || { echo 'STAGE11_ABORT=TEMP_POSTGRES_NOT_READY'; exit 2; }
 echo "STAGE11_UNIX_SOCKET_READY=true"
 echo "===== LIVE SOURCE VS SHADOW POSTGRES INTEGRATION ====="
-node "$CLIENT" "$SOCKET"
+# Bound entire test so any Postgres driver regression cannot leave a
+# temporary database behind or keep the operator terminal waiting.
+timeout --signal=TERM --kill-after=10s 110s node "$CLIENT" "$SOCKET"
 echo "STAGE11_PRODUCTION_PORT_3098_UNCHANGED=true"
 echo "===== STAGE11 FINISHED ====="
