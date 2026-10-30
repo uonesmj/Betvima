@@ -147,6 +147,7 @@ fun PremiumAffiliateSheet(state: AppState, model: AppViewModel, onClose: () -> U
                         TextButton(onClick=openLogin) {
                             Text(tr(lang,"Log in","ورود"),color=Color.White)
                         }
+                        Spacer(Modifier.width(10.dp))
                         IconButton(
                             onClick={publicMenuOpen=!publicMenuOpen},
                             modifier=Modifier.size(46.dp)
@@ -158,6 +159,7 @@ fun PremiumAffiliateSheet(state: AppState, model: AppViewModel, onClose: () -> U
                                 tint=Color.White,modifier=Modifier.size(24.dp))
                         }
                     }
+                    Spacer(Modifier.width(12.dp))
                     IconButton(onClick={closeWith({})},
                         modifier=Modifier.clip(CircleShape)
                             .background(Color.White.copy(alpha=.1f))) {
@@ -383,36 +385,36 @@ private fun AffiliateMotionLanding(
                 "یک اکوسیستم برای رشد همکاری")
         }
         item(key = "features") {
-            val active by remember { derivedStateOf { showing(3) } }
+            val active by remember { derivedStateOf { showing(4) } }
             PartnerFeatures(lang, active)
         }
         item(key = "chart") {
-            val active by remember { derivedStateOf { showing(4) } }
+            val active by remember { derivedStateOf { showing(5) } }
             PartnerChart(lang, active)
         }
         item(key = "coverage") {
-            val active by remember { derivedStateOf { showing(5) } }
+            val active by remember { derivedStateOf { showing(6) } }
             PartnerCoverage(lang, active, onGetStarted)
         }
         item(key = "seam-light-to-products") {
             PartnerCrescentSeam(partnerPaper,partnerNight,reverse=true)
         }
         item(key = "products") {
-            val active by remember { derivedStateOf { showing(6) } }
+            val active by remember { derivedStateOf { showing(8) } }
             PartnerProducts(lang, active)
         }
         item(key = "seam-products-to-faq") {
             PartnerCrescentSeam(partnerNight,partnerPaper)
         }
         item(key = "questions") {
-            val active by remember { derivedStateOf { showing(7) } }
+            val active by remember { derivedStateOf { showing(10) } }
             PartnerFaq(lang, active)
         }
         item(key = "seam-faq-to-gallery") {
             PartnerCrescentSeam(partnerPaper,Color(0xFFFAFAFD),reverse=true)
         }
         item(key = "gallery") {
-            val active by remember { derivedStateOf { showing(8) } }
+            val active by remember { derivedStateOf { showing(12) } }
             PartnerGallery(lang, active)
         }
         item(key = "seam-gallery-to-guides") {
@@ -425,7 +427,7 @@ private fun AffiliateMotionLanding(
             PartnerCrescentSeam(partnerPaper,partnerNight,reverse=true)
         }
         item(key = "signup") {
-            val active by remember { derivedStateOf { showing(10) } }
+            val active by remember { derivedStateOf { showing(16) } }
             PartnerSignup(lang, active, onGetStarted)
         }
     }
