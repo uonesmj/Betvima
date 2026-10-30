@@ -111,7 +111,7 @@ export function liveUsdDebitGate(
     if (before < 0n) return { error: 2, balance_minor: 0n, allowed: false };
     // Live wallet.ts returns error=2 for frozen wallet; other Debit
     // eligibility failures are error=1 with the available balance.
-    if (wallet.is_frozen) return { error: 2, balance_minor: before, allowed: false };
+    if (wallet.is_frozen) return { error: 2, balance_minor: 0n, allowed: false };
     const allowed = amount >= LIVE_DEBIT_MIN_BET_MINOR &&
       amount <= LIVE_DEBIT_MAX_CALLBACK_MINOR &&
       before >= amount &&
