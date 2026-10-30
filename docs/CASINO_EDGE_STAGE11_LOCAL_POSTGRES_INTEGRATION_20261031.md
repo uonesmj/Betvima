@@ -27,3 +27,15 @@ Only report **`STAGE11_REAL_POSTGRES_INTEGRATION=PASS`** if both original and sh
 - Do not promote GitHub PR #370 or alter port 3098. A passing Stage11 adapter-only integration test still does NOT prove player Spin <1 sec or eligibility for real-money operation.
 
 **Stage11 actual operator stdout is needed before marking this integration step complete.**
+
+## Operator run 1: PostgreSQL socket ready, JS harness blocked before SQL results (2026-10-31)
+
+Operator reported `STAGE11_ACTIVE_SOURCE_HASH_GUARD=PASS`, `STAGE11_SHADOW_SOURCE_HASH_GUARD=PASS`, `STAGE11_CONTAINER_NETWORK=NONE`, `STAGE11_PUBLIC_PORTS=0`, `STAGE11_UNIX_SOCKET_READY=true`, `STAGE11_POSTGRES_TRANSPORT=PRIVATE_UNIX_SOCKET`, `STAGE11_SHADOW_HASH12=e02a19a9f3bf`. **No PASS/failure from actual SQL assertions and no post-run cleanup marker yet**; transcript ended before shell prompt.
+
+Root cause in Stage11 test harness code (not app): `SocketPool extends pg.Pool` overrode `async connect()` while `Pool.query()` internally invokes `connect(callback)`. The promise-only override ignored that callback and could leave the first `CREATE TABLE` query stuck indefinitely. This is a **harness bug**, not evidence that any production request hung.
+
+Fix committed in Stage11 runner JS: preserve native `pg.Pool.connect` completely, register `this.on('connect', client => …)` to validate/record only allowlisted SQL. Emit `STAGE11_SQL_PHASE=ORIGINAL_START` and `STAGE11_SQL_PHASE=SHADOW_START` markers to locate progress. Shell runner now bounds child JS runtime with `timeout --signal=TERM --kill-after=10s 110s` and refuses a second launch if a previous `betvima-stage11-pg-*` container still exists. Existing EXIT trap removes only the runner-owned temporary container and socket; production 3098 untouched.
+
+**Rerun only after prior session exits** (Ctrl+C if still hung). Verify post-run marker `STAGE11_TEMP_CONTAINER_REMOVED=true`. If a prior isolated container remains, stop and inspect it; do not silently delete other workloads.
+
+**Stage11 real PostgreSQL regression outcome remains PENDING** until the corrected operator run prints the original/shadow set counts and `STAGE11_REAL_POSTGRES_INTEGRATION=PASS`. Do not claim success yet.
