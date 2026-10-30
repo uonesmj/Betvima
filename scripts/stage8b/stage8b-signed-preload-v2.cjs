@@ -70,20 +70,20 @@ function safeReport(status, body, ms) {
 }
 function captureResponse(req, start) {
   req.once('response',res=>{
-    const oldEmit=res.emit;
+    const oldPush=res.push;
     let chunks=[],total=0;
-    res.emit=function(evt,...args){
-      if(evt==='data'&&args[0]&&total<65536){
-        const v=Buffer.from(args[0]);
+    res.push=function(chunk,...args){
+      if(chunk && total<65536){
+        const v=Buffer.from(chunk);
         total+=v.length;
         if(total<=65536)chunks.push(v);
       }
-      if(evt==='end'){
-        safeReport(res.statusCode,Buffer.concat(chunks).toString('utf8'),
-          Math.round((performance.now()-start)*10)/10);
-      }
-      return oldEmit.call(this,evt,...args);
+      return oldPush.call(this,chunk,...args);
     };
+    res.once('end',()=>{
+      safeReport(res.statusCode,Buffer.concat(chunks).toString('utf8'),
+        Math.round((performance.now()-start)*10)/10);
+    });
   });
 }
 function parseHref(a) {
