@@ -22,7 +22,8 @@ if(!ts){
 }
 const code=fs.readFileSync(source,'utf8');
 if(!code.includes('private appliedStatementTimeoutMs: number | null = null') ||
-   !code.includes('this.appliedStatementTimeoutMs !== timeout')) {
+   !(code.includes('this.appliedStatementTimeoutMs !== timeout') ||
+     code.includes('this.appliedStatementTimeoutMs !== nextStatementTimeoutMs'))) {
  console.log('STAGE10_TEST=BLOCKED_CANDIDATE_GUARD_FAILED');
  process.exit(2);
 }
