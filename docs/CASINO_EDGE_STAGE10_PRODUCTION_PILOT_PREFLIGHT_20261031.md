@@ -42,3 +42,24 @@ Supabase read-only security linter on production reported one **ERROR** for `pub
 5. Only after approved gates: propose a capped, explicitly authorized single-user test (existing caps $1 per stake, $5/day stake, $3/day net loss and $5/week net loss) with manual stop/revert criteria, current-and-candidate identical user flow timings. Do not promise Spin <=1s from synthetic results.
 
 **No production files, environment variables, DNS, Cloudflare Worker, Nginx routing, casino process, balances, or real users were changed by this Stage10 preflight.**
+
+## User-run read-only actual 3098 source fingerprint inspection (2026-10-30 21:08+ UTC)
+
+Operator completed `scripts/stage10/inspect_live_casino_callback_readonly.py`; the real casino listener on port 3098 **matches** `/opt/nova-releases/casino-3098-eligible-fallback-HU6Rbl`. Both deployed and prior RTT4 release are present, but the source for `src/server/db/postgres.ts` (SHA12 `3d66c5724ff6`), `src/server/providers/softaggregator/wallet.ts` (`9df555a7e3f0`), and `fiat-wallet.ts` (`242410f73f8a`) differs from the RTT4 candidate. This rules out an unsafe blind candidate switch.
+
+Source static analysis shows:
+- DB adapter `postgres.ts`: 15 `await`, 11 database-like awaits.
+- `wallet.ts`: 27 `await`, including `casinoFinancialSchemaReady`, `getProfile`, `db.queryOne`, `readCasinoPlayerWallet`, `bindCasinoPlayerWallet`, `pilotCasinoDebitPermitted`, `readOriginalRound`, `tx.query`, `tx.queryOne`, `tx.rpc`. They are not all necessarily on a single callback path.
+- `fiat-wallet.ts`: 22 `await`, including `getUsdIrtRate`, `readProfile`, `db.queryOne`, `quote`, `tx.query`, `tx.queryOne`, `readWallet`, `pilotCasinoDebitPermitted`, `limitsAllow`, `tx.rpc`.
+- Callback HTTP route `route.ts` is the same as RTT4 candidate and only awaits `withCasinoCallbackTimeoutReuse`. Therefore investigation should focus on the transitive handler/finance path, not assume the route wrapper itself is the bottleneck.
+- Prior live release did **not include** the GitHub-repository balance snapshot module or wallet balance API path checked by inspector; the header component source exists and is identical to previous RTT4 candidate. This matters when diagnosing game wallet vs header refresh; cannot attribute header lag to a feature that is not deployed.
+
+Independently queried production read-only `extensions.pg_stat_statements` (aggregate since **2026-09-25 18:55 UTC**, not single-Spin trace):
+- Wallet RPC normalized shapes: 830 calls, weighted mean execution **6.03ms**, maximum **74.44ms**. Callback receipt statements: 1178 calls, mean **0.75ms**, maximum 82.33ms; FX-round statements: 1130 calls mean 0.15ms.
+- Wallet table query shapes: 65,796 calls, weighted mean **4.45ms**. Profile-related query shapes: 87,432 calls, weighted mean **38.30ms**, some historical pathological outliers; classification is regex only and may include unrelated application traffic.
+- Point-in-time `pg_stat_activity`: 1 active, 8 idle, 0 idle-in-transaction, 0 lock waiters, 0 IO waiters, 0 active queries >2s. This is a single snapshot, not proof of no intermittent waits.
+- These numbers, together with Stage9 VPS→remote PostgreSQL `SELECT 1` RTT ~148ms, suggest connection setup and multiple serial round trips are plausible primary suspects, but **do not prove** the precise source of 4–11s real provider callback latency. In particular, `getUsdIrtRate` is a plausible external FX dependency for fiat-wallet paths. Never remove HMAC checks, financial guardrails, wallet transaction atomicity or provider confirmation to optimize latency.
+
+A further fingerprint-pinned **read-only** callsite map `scripts/stage10/map_live_callback_phase_calls_readonly.py` was created. It prints only trusted internal await identifiers and code line numbers from the already-fingerprinted 3098 source, never source content or credentials. It does not change code, traffic, financial ledgers or game sessions. Requires operator VPS execution before preparing any candidate release phase timers.
+
+Next: prepare an entirely separate deployment candidate with time-profiles for post-auth callback phases and compare same authentic supplier-origin signed requests with reconciliation and rollbacks, after legality and schema parity checks. **No live wallet/test-account spin or cutover yet.**
