@@ -56,6 +56,7 @@ allow = (
     'SUPABASE_DB_URL', 'DATABASE_URL', 'DB_DRIVER',
     'PGHOST', 'PGPORT', 'PGUSER', 'PGPASSWORD', 'PGDATABASE',
     'PGSSLMODE', 'PGSSLROOTCERT', 'PGAPPNAME',
+    'NODE_EXTRA_CA_CERTS',
     'SOFTAGGREGATOR_TEST_USER_ID',
 )
 env = {key: live_env[key] for key in allow if key in live_env}
@@ -66,6 +67,10 @@ env['SOFTAGGREGATOR_TEST_USER_ID'] = pilot
 env['PG_DIA_MODULE'] = str(DEPS)
 env['NODE_ENV'] = 'production'
 env['NODE_TLS_REJECT_UNAUTHORIZED'] = '1'
+ca_path = env.get('NODE_EXTRA_CA_CERTS')
+if ca_path and not Path(ca_path).is_file():
+    refuse('configured trusted CA bundle cannot be found')
+print('TRUSTED_CA_BUNDLE_CONFIGURED=' + str(bool(ca_path)).upper(), flush=True)
 
 node = r"""
 'use strict';
@@ -91,6 +96,20 @@ if (process.env.SUPABASE_DB_URL || process.env.DATABASE_URL) {
   config.database = process.env.PGDATABASE || 'postgres';
 }
 const pool = new Pool(config);
+let phase = 'pool.connect';
+const safeErrorCodes = new Set([
+  'SELF_SIGNED_CERT_IN_CHAIN', 'UNABLE_TO_VERIFY_LEAF_SIGNATURE',
+  'DEPTH_ZERO_SELF_SIGNED_CERT', 'CERT_HAS_EXPIRED',
+  'ERR_TLS_CERT_ALTNAME_INVALID', 'UNABLE_TO_GET_ISSUER_CERT_LOCALLY',
+  'ECONNREFUSED','ETIMEDOUT','EHOSTUNREACH','ENOTFOUND','EAI_AGAIN',
+  '28P01','28000','3D000','42501','53300','57P03','57014'
+]);
+function safeErrorCategory(err) {
+  const code = err && err.code;
+  if (typeof code==='string' && safeErrorCodes.has(code)) return code;
+  // Do not print arbitrary database or server-provided messages/codes.
+  return 'UNCLASSIFIED';
+}
 function stats(label, values) {
   if (!values.length) return;
   const s = values.slice().sort((a,b)=>a-b);
@@ -110,35 +129,46 @@ async function measure(client, label, sql, args, rounds) {
   stats(label,values);
 }
 async function main() {
+  phase = 'pool.connect';
   const start=performance.now();
   const client = await pool.connect();
   console.log('DB_COLD_CONNECT_MS='+(performance.now()-start).toFixed(1));
   try {
+    phase = 'begin.readonly';
     await client.query('BEGIN READ ONLY');
     try {
+      phase = 'select.ping';
       await client.query('SELECT 1');
       console.log('DB_TRANSACTION_MODE=READ_ONLY');
+      phase = 'select.rtt';
       await measure(client,'db.network_roundtrip_select1',
         'SELECT 1 AS ok',[],12);
+      phase = 'select.schema';
       await measure(client,'db.schema_catalogue_probe',
         "SELECT to_regclass('nova.softaggregator_callback_receipts') IS NOT NULL AS ok",[],5);
       if (UUID.test(userId)) {
         console.log('APPROVED_PILOT_AVAILABLE=TRUE');
+        phase = 'select.wallet_binding';
         await measure(client,'db.wallet_binding',
           'SELECT wallet_currency FROM nova.softaggregator_player_wallet_bindings WHERE user_id=$1',
           [userId],5);
+        phase = 'select.wallet';
         await measure(client,'db.wallet',
           "SELECT balance_minor::text, locked_minor::text, is_frozen FROM nova.wallets WHERE user_id=$1 AND currency='USD'",
           [userId],5);
+        phase = 'select.profile_limits';
         await measure(client,'db.profile_limits',
           "SELECT p.status, l.max_stake_per_day_minor FROM nova.profiles p LEFT JOIN nova.user_limits l ON l.user_id=p.id AND l.currency='USD' WHERE p.id=$1",
           [userId],4);
+        phase = 'select.receipt';
         await measure(client,'db.receipt_no_match',
           'SELECT identity_hash FROM nova.softaggregator_callback_receipts WHERE call_id=$1',
           ['bv-readonly-no-matching-callback-20261030'],5);
+        phase = 'select.round';
         await measure(client,'db.round_no_match',
           'SELECT wallet_currency FROM nova.softaggregator_round_fx WHERE user_id=$1 AND round_id=$2 AND game_id=$3',
           [userId,'bv-readonly-no-matching-round-20261030','bv-readonly-no-matching-game'],5);
+        phase = 'select.pilot_caps';
         await measure(client,'db.pilot_receipts_aggregate',
           "SELECT coalesce(sum(CASE WHEN action='debit' AND rollback=false AND created_at >= date_trunc('day',now() at time zone 'UTC') at time zone 'UTC' THEN amount_minor ELSE 0 END),0)::text AS daily_stake FROM nova.softaggregator_callback_receipts WHERE user_id=$1 AND response_error=0 AND action IN ('debit','credit')",
           [userId],3);
@@ -146,6 +176,7 @@ async function main() {
         console.log('APPROVED_PILOT_AVAILABLE=FALSE');
       }
     } finally {
+      phase = 'rollback.readonly';
       await client.query('ROLLBACK');
     }
   } finally {
@@ -156,6 +187,8 @@ main().then(async()=>{
   console.log('DIAGNOSTIC_SUCCESS_READ_ONLY=TRUE');
   await pool.end();
 }).catch(async err=>{
+  console.log('DIAGNOSTIC_FAILED_PHASE='+phase);
+  console.log('DIAGNOSTIC_FAILED_CATEGORY='+safeErrorCategory(err));
   console.log('DIAGNOSTIC_FAILED_ERROR_CLASS='+(err && err.constructor ? err.constructor.name : 'unknown'));
   // Never print error text, database URL, SQL, account IDs or balance amounts.
   try {await pool.end();} catch {}
