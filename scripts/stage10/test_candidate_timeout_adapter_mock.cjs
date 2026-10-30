@@ -21,9 +21,14 @@ if(!ts){
  process.exit(2);
 }
 const code=fs.readFileSync(source,'utf8');
-if(!code.includes('private appliedStatementTimeoutMs: number | null = null') ||
-   !(code.includes('this.appliedStatementTimeoutMs !== timeout') ||
-     code.includes('this.appliedStatementTimeoutMs !== nextStatementTimeoutMs'))) {
+const numericCache =
+  code.includes('private appliedStatementTimeoutMs: number | null = null') &&
+  (code.includes('this.appliedStatementTimeoutMs !== timeout') ||
+   code.includes('this.appliedStatementTimeoutMs !== nextStatementTimeoutMs'));
+const sqlCache =
+  code.includes('private stage10AppliedTimeoutSql: string | null = null') &&
+  code.includes('this.stage10AppliedTimeoutSql !== stage10TimeoutSql');
+if(!(numericCache || sqlCache)) {
  console.log('STAGE10_TEST=BLOCKED_CANDIDATE_GUARD_FAILED');
  process.exit(2);
 }
