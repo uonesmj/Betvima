@@ -28,3 +28,11 @@
 
 ## Billing cleanup
 Branch continues to incur approximately $0.01344 per hour until stopped/deleted. When finished and no longer needed, confirm with owner and delete branch `qrirgzvxpjhhwvyazvpn` after saving nonsecret test metrics. Never delete the primary project.
+
+## Stage8B first VPS attempt — NOT VERIFIED; transport shim v2 (2026-10-30)
+
+Operator ran original `stage8b-signed-preload.cjs` and `run_signed_real_branch_finance.sh`: `ORIGINAL_STAGE7_CHECKER_EXIT_CODE=0`, `STAGE8B_SIGNED_E2E=NOT_VERIFIED`. This exit 0 means the old Stage7 caller likely ran, **not that any Stage8B finance request succeeded**. Direct Supabase **isolated-branch** Edge invocation logs from the reported test window contained **zero requests** for `betvima-eu-casino-stage8b-real-finance`. Independent branch SQL shows still 5 wallet journal records including seed, 4 synthetic receipts, wallet balance 1000, **zero additional financial rows** since the known manual PostgreSQL test.
+
+V2 fix in the draft PR: `scripts/stage8b/stage8b-signed-preload-v2.cjs` now intercepts Node `node:https.request`/`.get` as well as global `fetch`, matches exact host and Stage7 synthetic path with URL parsing, redirects **only that canary test** to isolated-branch endpoint; strips production-origin authorization/apiKey/Host headers while retaining signed Ed25519 body/signature. Safe result parser emits only a small whitelist of staged finance E2E/network/DB timings, no user identity/amount/secret. JS parser check PASS. Runner `scripts/stage8b/run_signed_real_branch_finance_v2.sh` refuses missing signer, wrong Podman isolation, and requires at least one verified response. It ignores the old Stage7 checker exit code when determining financial success. Status: **v2 prepared, remote operator execution pending**.
+
+Real user spin latency still completely unverified. No production finance or 3098 changes. Hourly staging billing continues.
