@@ -99,3 +99,24 @@ Supabase official documentation recommends **direct connection for `pg_dump`** a
 6. If the session route fails, do not brute-force credentials/ports or install a new database server; inspect specific sanitized failure and select supported safe alternative with explicit scope.
 
 **DO NOT declare Stage17 archive successful until real operator stdout prints `STAGE17_SCHEMA_ONLY_ARCHIVE=PASS`.** Existing production registration, geo, age, KYC, deposit, withdrawal and 3098 remain unchanged.
+
+## Stage17 fourth operator attempt: 5432 Session Pooler could not complete SELECT 1
+
+Operator executed v4 in `STAGE17_PROBE_ONLY=1` mode, providing:
+- Original active database URL resolves to same Supabase project Transaction Pooler 6543.
+- `SESSION_PROBE_SERVER_READONLY_STARTUP=FAIL`, sanitized `ERROR_UNCATEGORIZED`.
+- `SESSION_PROBE_NO_STARTUP_OPTIONS=FAIL`, sanitized `ERROR_UNCATEGORIZED`.
+- `STAGE17_ABORT=NO_WORKING_SESSION_POOLER_ROUTE`.
+
+Both candidate child connections failed, even without PGOPTIONS. **No schema archive created, no dump or server code changes attempted.** The failure does **not** establish credential or networking cause; stderr was deliberately redacted. Root cause investigation should NOT re-run equivalent `pg_dump` or alter the live site's pooler credentials.
+
+Production Supabase `supavisor_logs` inspected read-only for 2026-10-30 22:55–23:05 UTC: many normal, successful transaction-mode app connections; no session-mode connection observed from that known VPS IP in queried window. Absence of logged session authentication is consistent with but **does not prove** connection routing failure.
+
+New GitHub-only diagnostic: `scripts/stage17/probe_pooler_network_and_sql_readonly.cjs`:
+- Uses exactly the v4 validated original database hostname/user/database from the active 3098 process, without writing or revealing secrets; never derives an alternative hostname and does NOT change production configuration.
+- Performs only DNS family flags (IPv4/IPv6), bounded TCP socket checks on the existing 6543 and same-host 5432, then at most 3 `SELECT 1` calls via installed psql 17; one of them checks whether optional read-only startup PGOPTIONS are accepted. Never performs any `pg_dump`, dump extraction, migrations, data reads or writes.
+- Prints sanitized network classifications and SQL error categories. Does NOT print host, IP, user, password, PostgreSQL stdout beyond validated literal `1`, or raw stderr. Version and environment are validated before network probes.
+- Script was checked for JavaScript syntax and committed only to draft PR, **not yet executed on VPS**. Do not report that network connectivity or schema snapshot succeeded until operator runs it.
+- If both ports' TCP probes fail, investigate VPS outbound/network egress/DNS. If both TCP connect but psql fails, investigate independently the SQL auth/startup protocol and configuration. If 6543 `SELECT 1` passes but 5432 fails, determine availability of same-host session pooler or a supported direct (IPv6) endpoint rather than editing the active application's transaction URI.
+
+Official Supabase guidance for `pg_dump`: https://supabase.com/docs/guides/database/connecting-to-postgres (direct preferred, session pooler for session-bound clients).
