@@ -24,7 +24,7 @@ def fail(why): raise SystemExit('REFUSED: '+why)
 def sha(p): return hashlib.sha256(p.read_bytes()).hexdigest()
 def pid():
     o=subprocess.run(['ss','-ltnpH'],capture_output=True,text=True,timeout=8)
-    p=re.findall(r':3098\\s+[^\\n]*?pid=(\\d+)',o.stdout)
+    p=re.findall(r':3098\s+[^\n]*?pid=(\d+)',o.stdout)
     if o.returncode or len(p)!=1 or Path('/proc/'+p[0]+'/cwd').resolve()!=LIVE:
         fail('live 3098 PID/release no longer pinned')
     return p[0]
@@ -41,7 +41,7 @@ def private(p):
     return (any(x in SKIP or x.startswith('.env') for x in parts)
         or p.name.endswith(EXT)
         or p.name in ('id_rsa','id_ed25519')
-        or re.match(r'^credentials[.\\-]',p.name,re.I) is not None)
+        or re.match(r'^credentials[.\-]',p.name,re.I) is not None)
 
 if __name__=='__main__':
     if os.geteuid()!=0: fail('root required')
