@@ -66,7 +66,7 @@ describe('Ireland Debit edge non-financial canary', () => {
       code.indexOf('await sql`SELECT'),
     );
     const statements = [...code.matchAll(/await sql`([^\`]+)`/g)]
-      .map(match => match[1]);
+      .map(match => match[1] ?? '');
     expect(statements).toHaveLength(8);
     for (const statement of statements) {
       expect(statement.trim()).toMatch(/^SELECT /);
