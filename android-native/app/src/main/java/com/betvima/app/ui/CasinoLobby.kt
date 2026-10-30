@@ -349,6 +349,10 @@ fun CasinoLobby(state: AppState, model: AppViewModel) {
     } // Casino lobby/player content under the existing application chrome.
     pendingRealGame?.let { game ->
         AlertDialog(
+            containerColor = Color(0xFF24262C),
+            titleContentColor = Color(0xFFFAFBFF),
+            textContentColor = Color(0xFFE4EAF4),
+            iconContentColor = Palette.green,
             onDismissRequest = {
                 pendingRealGame = null
                 realMoneyAcknowledged = false
@@ -359,7 +363,7 @@ fun CasinoLobby(state: AppState, model: AppViewModel) {
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     Text(game.name, fontWeight = FontWeight.Bold,
-                        color = Palette.text, fontSize = 15.sp)
+                        color = Color(0xFFF7FAFF), fontSize = 15.sp)
                     Text(tr(state.lang,
                         "This is real-money gambling. Game amounts are USD; bets and winnings " +
                             "settle in your " + (pilot?.walletCurrency ?: "USD") +
@@ -369,18 +373,21 @@ fun CasinoLobby(state: AppState, model: AppViewModel) {
                             "در کیف پول " + (pilot?.walletCurrency ?: "USD") +
                             " تسویه می‌شوند. حداقل شرط معمول: " +
                             (pilot?.displayedMinimumUsd ?: "0.20") + " دلار."),
-                        color = Palette.text, fontSize = 13.sp, lineHeight = 21.sp)
+                        color = Color(0xFFF3F6FC), fontSize = 13.sp, lineHeight = 21.sp)
                     Text(tr(state.lang,
                         "You can lose money. Only eligible adults in authorized locations " +
                             "can play. Server-side limits, KYC and wallet controls apply.",
                         "احتمال از دست‌دادن پول وجود دارد. فقط کاربران بزرگسال و تأییدشده " +
                             "در مناطق مجاز می‌توانند بازی کنند. محدودیت‌ها و کنترل کیف پول در سرور اعمال می‌شود."),
-                        color = Palette.muted, fontSize = 12.sp, lineHeight = 19.sp)
+                        color = Color(0xFFBAC6D8), fontSize = 12.sp, lineHeight = 19.sp)
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Checkbox(
                             checked = realMoneyAcknowledged,
                             onCheckedChange = { realMoneyAcknowledged = it },
-                            colors = CheckboxDefaults.colors(checkedColor = Palette.green)
+                            colors = CheckboxDefaults.colors(
+                                checkedColor = Palette.green,
+                                uncheckedColor = Color(0xFFD8E3F0),
+                                checkmarkColor = Color(0xFF101216))
                         )
                         Text(tr(state.lang,
                             "I understand this is a real-money game and game amounts are in USD.",
@@ -388,14 +395,19 @@ fun CasinoLobby(state: AppState, model: AppViewModel) {
                             modifier = Modifier.weight(1f).clickable {
                                 realMoneyAcknowledged = !realMoneyAcknowledged
                             },
-                            color = Palette.text, fontSize = 12.sp, lineHeight = 19.sp)
+                            color = Color(0xFFE7EFFA), fontSize = 12.sp, lineHeight = 19.sp)
                     }
                 }
             },
             confirmButton = {
                 Button(
                     onClick = { launchWithRealWallet(game) },
-                    enabled = realMoneyAcknowledged && launching == null
+                    enabled = realMoneyAcknowledged && launching == null,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFF087FF5),
+                        contentColor = Color.White,
+                        disabledContainerColor = Color(0xFF434852),
+                        disabledContentColor = Color(0xFFDBE1EC))
                 ) {
                     Text(tr(state.lang, "Open real-money game", "ورود به بازی با پول واقعی"))
                 }
@@ -405,7 +417,7 @@ fun CasinoLobby(state: AppState, model: AppViewModel) {
                     pendingRealGame = null
                     realMoneyAcknowledged = false
                 }) {
-                    Text(tr(state.lang, "Cancel", "انصراف"))
+                    Text(tr(state.lang, "Cancel", "انصراف"), color = Color(0xFF8CECC6))
                 }
             }
         )
