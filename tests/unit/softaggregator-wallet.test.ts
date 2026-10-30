@@ -29,6 +29,7 @@ function makeFakeDb(initial = 1000n, held = 200n) {
   let country = 'TR';
   let financialSchemaReady = true;
   let profileExists = true;
+  let dailyPersonalStakeLimit: string | null = null;
   const receipts = new Map<string, { identity_hash: string; response_error: 0 | 1 | 2; response_balance_minor: string; action: string; wallet_amount_minor: string; round_id: string; game_id: string; amount_minor: string; reversed: boolean }>();
   const postings: Array<Record<string, unknown>> = [];
   const rounds = new Map<string, { wallet_currency: string }>();
@@ -69,7 +70,7 @@ function makeFakeDb(initial = 1000n, held = 200n) {
           support_approved: supportApproved,
           country, currency: preferredCurrency,
           self_excluded: false, restricted: false,
-          max_stake_per_bet_minor: null, max_stake_per_day_minor: null,
+          max_stake_per_bet_minor: null, max_stake_per_day_minor: dailyPersonalStakeLimit,
           loss_limit_daily_minor: null, loss_limit_weekly_minor: null,
         };
       }
@@ -119,7 +120,8 @@ function makeFakeDb(initial = 1000n, held = 200n) {
     setAgeVerified: (value: boolean) => { ageVerified = value; },
     setCountry: (value: string) => { country = value; },
     setSchemaReady: (ready: boolean) => { financialSchemaReady = ready; },
-    setProfileExists: (exists: boolean) => { profileExists = exists; } };
+    setProfileExists: (exists: boolean) => { profileExists = exists; },
+    setDailyStakeLimit: (limit: string | null) => { dailyPersonalStakeLimit = limit; } };
 }
 
 describe('SoftAggregator financial callback behavior (isolated DB contract)', () => {
@@ -138,6 +140,44 @@ describe('SoftAggregator financial callback behavior (isolated DB contract)', ()
       .toEqual({ error: 2, balance: 0 });
     expect(t.postings).toHaveLength(0);
     expect(t.receipts.size).toBe(0);
+  });
+
+  it('Debit's optional wallet history aggregate is skipped without personal aggregate limits', async () => {
+    const t = makeFakeDb();
+    vi.mocked(getDb).mockReturnValue(t.fake as unknown as Db);
+    const callback = identity('debit-without-personal-limits', 'debit', 20n);
+    expect(await settleCasinoCallback(callback)).toEqual({ error: 0, balance: 780 });
+    // No user-specific aggregate limits exist, but wallet lock, receipt and
+    // posting remain mandatory. The separate pilot cap guard still runs.
+    expect(t.fake.queryOne.mock.calls.filter(([sql]) =>
+      String(sql).includes('from nova.wallet_transactions'))).toHaveLength(0);
+    expect(t.fake.query.mock.calls.some(([sql]) =>
+      String(sql).includes('pg_advisory_xact_lock'))).toBe(true);
+    expect(t.postings).toHaveLength(1);
+    expect(await settleCasinoCallback(callback)).toEqual({ error: 0, balance: 780 });
+    expect(t.postings).toHaveLength(1);
+  });
+
+  it('Debit still queries wallet history when a personal aggregate limit exists', async () => {
+    const t = makeFakeDb();
+    t.setDailyStakeLimit('50');
+    vi.mocked(getDb).mockReturnValue(t.fake as unknown as Db);
+    expect(await settleCasinoCallback(identity('debit-personal-limit', 'debit', 20n)))
+      .toEqual({ error: 0, balance: 780 });
+    expect(t.fake.queryOne.mock.calls.filter(([sql]) =>
+      String(sql).includes('from nova.wallet_transactions'))).toHaveLength(1);
+    expect(t.postings).toHaveLength(1);
+  });
+
+  it('Debit rejects a stake above a personal aggregate limit without posting', async () => {
+    const t = makeFakeDb();
+    t.setDailyStakeLimit('10');
+    vi.mocked(getDb).mockReturnValue(t.fake as unknown as Db);
+    expect((await settleCasinoCallback(identity('debit-over-personal-limit', 'debit', 20n))).error)
+      .toBe(1);
+    expect(t.fake.queryOne.mock.calls.filter(([sql]) =>
+      String(sql).includes('from nova.wallet_transactions'))).toHaveLength(1);
+    expect(t.postings).toHaveLength(0);
   });
 
   it('requires admin-reviewed KYC evidence before cash launch and fresh USD debit', async () => {
