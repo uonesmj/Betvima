@@ -7,6 +7,7 @@ on:
       - 'tests/unit/softaggregator-wallet.test.ts'
       - 'ops/casino/stage-live-rtt8-wallet-fastpath-20261030.py'
       - 'ops/casino/build-live-rtt8-isolated-20261030.py'
+      - 'ops/casino/smoke-live-rtt8-isolated-3123-20261030.py'
       - '.github/workflows/casino-rtt8-wallet-fastpath.yml'
   workflow_dispatch:
 
@@ -26,8 +27,8 @@ jobs:
       - run: npm ci --ignore-scripts
       - name: Verify audited RTT8 staging/build scripts fail closed outside VPS
         run: |
-          python3 -m py_compile ops/casino/stage-live-rtt8-wallet-fastpath-20261030.py ops/casino/build-live-rtt8-isolated-20261030.py
-          for f in ops/casino/stage-live-rtt8-wallet-fastpath-20261030.py ops/casino/build-live-rtt8-isolated-20261030.py; do
+          python3 -m py_compile ops/casino/stage-live-rtt8-wallet-fastpath-20261030.py ops/casino/build-live-rtt8-isolated-20261030.py ops/casino/smoke-live-rtt8-isolated-3123-20261030.py
+          for f in ops/casino/stage-live-rtt8-wallet-fastpath-20261030.py ops/casino/build-live-rtt8-isolated-20261030.py ops/casino/smoke-live-rtt8-isolated-3123-20261030.py; do
             if python3 "$f" >/tmp/rtt8-failclosed.log 2>&1; then
               echo "ERROR: script must refuse outside audited production VPS"
               exit 1
