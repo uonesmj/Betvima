@@ -39,3 +39,22 @@ Audited SQL committed to `scripts/stage17/nova_schema_metadata_fingerprints_read
 Until the operator runs the archiver with `STAGE17_SCHEMA_ONLY_ARCHIVE=PASS`, the private schema snapshot is **NOT COMPLETED**. Afterward, test restore into a fresh *private/offline and Supabase-compatible* sandbox, verify all 97 tables, 96 routines, 45 triggers, 87 RLS policies, 67 privileged functions and exact function signatures; do not connect real funds/providers. Current synthetic branch remains only 23 tables and `MIGRATIONS_FAILED`.
 
 Official Supabase troubleshooting: https://supabase.com/docs/guides/deployment/branching/troubleshooting and CLI dump notes https://supabase.com/docs/reference/cli/supabase-db-dump .
+
+## Stage17 operator first archiver attempt failed closed (2026-10-30 22:21+ UTC)
+
+Operator fetched `create_private_nova_schema_only_archive.cjs`, passed `node --check`, and the archiver reached `STAGE17_MODE=SCHEMA_ONLY_PRIVATE_BACKUP` before terminating with `STAGE17_ABORT=PG_DUMP_FAILED_OR_CLIENT_VERSION_MISMATCH`. No successful private archive was reported. The first version intentionally withheld all raw `pg_dump` stderr to avoid leaking connection strings; this error was therefore **not diagnostic enough to attribute the failure**.
+
+Independent Supabase read-only SQL verified:
+- Active **production** server PostgreSQL **17.6** (`server_version_num=170006`).
+- Irish isolated preview PostgreSQL **17.11** (`server_version_num=170011`).
+
+A `pg_dump` client older than 17 would refuse a PostgreSQL 17 server, a **credible but unconfirmed** explanation until operator checks VPS client version. The exact error might instead be SSL, connectivity, read privilege, startup PGOPTIONS or another issue.
+
+Added `scripts/stage17/create_private_nova_schema_only_archive_v2.cjs`:
+- Selects only an installed **matching pg_dump/pg_restore client pair with major >=17**, prioritizing `/usr/lib/postgresql/17/bin`, then 18/19, then `/usr/bin`. Reads version by the explicit `(PostgreSQL) 17.x` marker, not a packaging suffix.
+- Does **not** install packages, alter production, or perform a migration/restore.
+- Fails closed with `STAGE17_ABORT=POSTGRESQL_17_CLIENT_REQUIRED` and a list of **client major version numbers only** when incompatible. Other `pg_dump` errors are mapped to safe categories (AUTHENTICATION_REJECTED, CONNECTION_UNAVAILABLE, READ_PERMISSION_DENIED, QUERY_FAILED, etc.) without showing raw stderr or credentials.
+- Retains pinned production project check, strict read-only `PGOPTIONS`, root-private 0700 directory and 0600 archive, zero data TOC test, exactly 97 expected NOVA tables, and cleanup of partial archive upon failure.
+- Source syntax was parsed; **not run on operator VPS yet**.
+
+Next: run v2. If no 17+ local client, the user can install only a compatible PostgreSQL CLIENT package after verifying package availability/repositories and system change policy; avoid blindly installing/upgrading database server/Ubuntu or touching live 3098. No remote schema archive is currently verified.
