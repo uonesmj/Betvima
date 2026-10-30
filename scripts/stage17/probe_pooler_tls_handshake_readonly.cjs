@@ -101,6 +101,10 @@ function psqlSelect(env,port){
 (async()=>{
  log('MODE','SSL_REQUEST_TLS_AND_SELECT1_READONLY');
  const {host,env}=connection();
+ // libpq with sslmode=require may verify an existing root.crt implicitly.
+ // Report ONLY presence, never its path, content, or identity.
+ log('LIBPQ_DEFAULT_ROOT_CERT_PRESENT',fs.existsSync('/root/.postgresql/root.crt'));
+ log('LIBPQ_SSLMODE_CLASS',new Set(['require','verify-full','verify-ca']).has(env.PGSSLMODE)?env.PGSSLMODE.toUpperCase():'OTHER');
  for(const port of [6543,5432]){
    const label=port===6543?'TRANSACTION_6543':'SESSION_5432';
    const ssl=await postgresSslHandshake(host,port);
