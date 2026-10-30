@@ -35,3 +35,13 @@ Supabase Pro includes **2,000,000 Edge Function invocations per billing period**
 - https://supabase.com/docs/guides/platform/manage-your-usage/edge-function-invocations
 - `docs/SOFTAGGREGATOR_CALLBACK_TRUSTED_EDGE.md`
 - `docs/CASINO_REAL_MONEY_RELEASE_GATE_20261016.md`
+
+## Verified 32-invocation baseline (2026-10-30)
+From the signed diagnostic script running on the existing VPS (all 32 accepted, no financial writes):
+- Full caller-to-Edge E2E: median **505.0 ms**, mean **605.4 ms**, p95 **1165.8 ms**, maximum **2222.4 ms**; **29/32 <1000 ms**.
+- All nine static SELECT probes combined: median **164.2 ms**, mean **155.5 ms**, p95 **216.4 ms**.
+- Sequential six read shapes, 20 detailed samples: median **25.8 ms**, mean **26.5 ms**, p95 **33.0 ms**.
+- One batched equivalent SELECT, 20 detailed samples: median **5.1 ms**, mean **5.0 ms**, p95 **5.6 ms**.
+- Supabase Edge logs in the benchmark window recorded **33 HTTP 200** (32 new + 1 earlier test), and **17 HTTP 401** (consistent with included negative authentication checks), all tagged `eu-west-1`.
+- These values do **NOT** measure an actual provider debit, player balance mutation, ledger commit, contention, retry, or the reel's start time. It would be incorrect to substitute these values for measured production settlement latency.
+- **Decision:** proceed to *staged* signed financial callback parity testing only. Do not route live supplier callbacks to Edge. The actual active VPS release source must be imported and audited before implementing parity, since GitHub main lacks the current production handler.
