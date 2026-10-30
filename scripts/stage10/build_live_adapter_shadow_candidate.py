@@ -73,7 +73,7 @@ def main():
     patched = (before + CL + "\n" + FIELD +
                ctor + FIRST + run.replace(OLD,NEW) + NEXT + after_run)
     # Prove exact, exhaustive, two-location inverse of every source modification.
-    if patched.replace("\n"+FIELD,"\n",1).replace(NEW,OLD,1)!=code:
+    if patched.replace("\n"+FIELD,"",1).replace(NEW,OLD,1)!=code:
         print("STAGE10_ABORT=UNEXPECTED_ADDITIONAL_DIFF")
         return 2
     if OUTDIR.is_symlink() or (OUT.exists() and (OUT.is_symlink() or not OUT.is_file())):
