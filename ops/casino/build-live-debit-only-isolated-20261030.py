@@ -51,6 +51,14 @@ import importlib.util
 helper = Path('/root/stage-live-debit-only-limit-read-20261030.py')
 if not helper.is_file():
     refuse('original audited staging helper missing')
+# Never import a mutable/root-local staging helper without its exact audited
+# Git blob: that import executes Python as root.
+raw_helper = helper.read_bytes()
+git_blob = hashlib.sha1(
+    ('blob ' + str(len(raw_helper)) + '\0').encode() + raw_helper
+).hexdigest()
+if git_blob != '292f4da6f75c0f50a4c585a7643b0550f6b80761':
+    refuse('staging helper does not match audited Git blob')
 spec = importlib.util.spec_from_file_location('debit_stage', helper)
 if spec is None or spec.loader is None:
     refuse('cannot import staging helper')
