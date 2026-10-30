@@ -41,13 +41,13 @@ fetch() {
 }
 fetch "$BASE/bootstrap.sql" "$DIR/bootstrap.sql"
 fetch "$BASE/financial_invariants.sql" "$DIR/financial_invariants.sql"
-for f in "\${FILES[@]}"; do
+for f in "${FILES[@]}"; do
   fetch "$MIG_BASE/$f" "$DIR/$f"
 done
 echo '===== STAGING BOOTSTRAP ====='
 podman exec -i "$NAME" psql -X -U stage5_owner -d "$DB" -v ON_ERROR_STOP=1 < "$DIR/bootstrap.sql"
 echo '===== ORIGINAL CASINO MIGRATIONS 0208..0212 ====='
-for f in "\${FILES[@]}"; do
+for f in "${FILES[@]}"; do
   echo "APPLY_STAGING_ONLY=$f"
   podman exec -i "$NAME" psql -X -U stage5_owner -d "$DB" -v ON_ERROR_STOP=1 -q < "$DIR/$f"
 done
