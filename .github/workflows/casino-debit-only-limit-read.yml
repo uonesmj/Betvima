@@ -13,6 +13,7 @@ on:
       - 'ops/casino/stage-live-debit-only-v2-wallet-20261030.py'
       - 'ops/casino/build-live-debit-only-v2-isolated-20261030.py'
       - 'ops/casino/smoke-live-debit-only-v2-isolated-3126-20261030.py'
+      - 'ops/casino/test-debit-only-v2-stage-invariant-20261030.py'
       - '.github/workflows/casino-debit-only-limit-read.yml'
   workflow_dispatch:
 
@@ -39,8 +40,10 @@ jobs:
             ops/casino/test-debit-only-stage-invariant-20261030.py \
             ops/casino/stage-live-debit-only-v2-wallet-20261030.py \
             ops/casino/build-live-debit-only-v2-isolated-20261030.py \
-            ops/casino/smoke-live-debit-only-v2-isolated-3126-20261030.py
+            ops/casino/smoke-live-debit-only-v2-isolated-3126-20261030.py \
+            ops/casino/test-debit-only-v2-stage-invariant-20261030.py
           python3 ops/casino/test-debit-only-stage-invariant-20261030.py
+          python3 ops/casino/test-debit-only-v2-stage-invariant-20261030.py
           for tool in \
             ops/casino/stage-live-debit-only-limit-read-20261030.py \
             ops/casino/build-live-debit-only-isolated-20261030.py \
