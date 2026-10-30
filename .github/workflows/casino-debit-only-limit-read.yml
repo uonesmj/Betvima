@@ -46,6 +46,23 @@ jobs:
             ops/casino/diagnose-debit-db-rtt-readonly-20261030.py
           python3 ops/casino/test-debit-only-stage-invariant-20261030.py
           python3 ops/casino/test-debit-only-v2-stage-invariant-20261030.py
+          python3 - <<'PY'
+          import ast
+          import subprocess
+          from pathlib import Path
+          path = Path('ops/casino/diagnose-debit-db-rtt-readonly-20261030.py')
+          module = ast.parse(path.read_text())
+          source = next(
+              ast.literal_eval(node.value)
+              for node in module.body
+              if isinstance(node, ast.Assign)
+              and any(isinstance(target, ast.Name) and target.id == 'node' for target in node.targets)
+          )
+          result = subprocess.run(['node', '--check'], input=source, text=True, capture_output=True)
+          if result.returncode:
+              raise SystemExit('EMBEDDED_READONLY_DIAGNOSTIC_JS_SYNTAX_FAILED')
+          print('EMBEDDED_READONLY_DIAGNOSTIC_JS_SYNTAX_PASS')
+          PY
           for tool in \
             ops/casino/stage-live-debit-only-limit-read-20261030.py \
             ops/casino/build-live-debit-only-isolated-20261030.py \
