@@ -110,3 +110,15 @@ Operator ran read-only `scripts/stage10/measure_pg_set_local_wire_overhead_reado
 - User downloaded candidate and ran `node --check` on `test-timeout.cjs`; failed immediately with CommonJS `SyntaxError: Identifier 'module' has already been declared` at `const module={exports:{}};`. **No regression tests actually ran**, no database was contacted, and the active 3098 release was unaffected.
 - Fixed test harness by renaming local mock container to `compiledModule` on branch (commit `69c46edb6133cf6ca77baf9658b55b0efbea0d71`). Revalidated source under a synthetic CommonJS wrapper (`new Function('require','module','exports',...)`) without syntax errors; this is **syntax validation only**, not a claim of passing runtime regression tests. User should download this pinned revision and rerun `node --check` then in-memory mock test.
 - Candidate `src/server/db/postgres.ts` is still NOT deployed. Production `SET LOCAL` overhead result remains independently proven; no financial optimizations are live.
+
+## Stage10 mock regression PASSED, shadow candidate preparation (2026-10-31)
+
+Operator reran the corrected CommonJS mock harness locally on VPS: `STAGE10_CANDIDATE_MOCK_REGRESSION=PASS`, with all eight invariants passing (same timeout de-duped, commit, SQL bindings, timeout overrides+reset, explicit SQL setting invalidation, rollback on failure, isolated per-transaction cache, unchanged nontransaction query). `STAGE10_MOCK_NO_REAL_DB=true`; `STAGE10_MOCK_NO_REAL_MONEY=true`. This is **in-memory mock only**, not proof the live 3098 adapter or actual supplier-origin callbacks have changed.
+
+Because actual 3098 deployed `postgres.ts` SHA12 `3d66c5724ff6` differs from the GitHub adapter, next safe step is to build a **private shadow copy of actual active 3098 source**, not overwrite it. Added `scripts/stage10/build_live_adapter_shadow_candidate.py`:
+- Refuses to modify/read unexpected source; requires exact observed live hash, expected `TransactionDb.run` text, and verifies a strict reversible two-hunk diff only.
+- Generates `/root/betvima-stage5/stage10-timeout-candidate/live-shadow/postgres.ts` with the timeout de-dupe; unchanged live release untouched; no application process reload or provider calls.
+- Shadow copy is tested using the already-passing mock harness; the harness guard now recognizes equivalent local timeout name `nextStatementTimeoutMs`.
+- Builder script source was reviewed against the equivalent unmodified `main` PostgreSQL adapter shape, and its two-hunk inverse was independently checked with an in-memory source transformation. It still requires **VPS operator execution and actual live hash confirmation**; do not claim successful shadow build before receiving its stdout.
+
+No branch migration repair, provider-authorized actual-money round, provider history reconciliation or legal gating is completed by this step. PR remains **DRAFT**; 3098 unchanged; Irish staging branch hourly billing continues.
