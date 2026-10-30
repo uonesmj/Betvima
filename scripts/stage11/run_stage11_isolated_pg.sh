@@ -36,6 +36,10 @@ IMAGE="$(podman inspect betvima-stage5-pg --format '{{.ImageName}}')"
 podman image exists "$IMAGE" ||
    { echo 'STAGE11_ABORT=LOCAL_POSTGRES_IMAGE_NOT_FOUND'; exit 2; }
 node --check "$CLIENT"
+if podman ps -a --format '{{.Names}}' | grep -Eq '^betvima-stage11-pg-'; then
+  echo 'STAGE11_ABORT=PREVIOUS_STAGE11_CONTAINER_PRESENT'
+  exit 2
+fi
 python3 - "$LIVE/src/server/db/postgres.ts" "$TEST/live-shadow/postgres.ts" <<'PY'
 import hashlib,sys
 for p,expected,kind in zip(sys.argv[1:],("3d66c5724ff6","e02a19a9f3bf"),("ACTIVE","SHADOW")):
