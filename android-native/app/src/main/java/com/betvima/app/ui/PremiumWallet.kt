@@ -206,7 +206,7 @@ private fun WalletSummary(state: AppState, wallet: Wallet) {
                                         modifier = Modifier.size(14.dp))
                                     Spacer(Modifier.width(5.dp))
                                     Text(label, fontSize = 10.sp,
-                                        color = Color(0xFFC0D7EE), maxLines = 1)
+                                        color = Color(0xFFC0D7EE), maxLines = 2, lineHeight = 13.sp)
                                 }
                                 Text(money(minor, wallet.currency), color = Color.White,
                                     fontSize = 12.sp, fontWeight = FontWeight.Black,
