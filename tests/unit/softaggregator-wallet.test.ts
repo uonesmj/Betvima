@@ -124,7 +124,7 @@ function makeFakeDb(initial = 1000n, held = 200n) {
     setCountry: (value: string) => { country = value; },
     setSchemaReady: (ready: boolean) => { financialSchemaReady = ready; },
     setProfileExists: (exists: boolean) => { profileExists = exists; },
-    setWalletExists: (exists: boolean) => { walletExists = exists; if (!exists) balance = 0n; } };
+    setWalletExists: (exists: boolean) => { walletExists = exists; if (!exists) { balance = 0n; held = 0n; } } };
 }
 
 describe('SoftAggregator financial callback behavior (isolated DB contract)', () => {
