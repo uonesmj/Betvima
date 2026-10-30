@@ -1,0 +1,89 @@
+name: Casino Debit Only Limit Read
+on:
+  push:
+    branches:
+      - fix/casino-debit-only-limit-read-20261030
+    paths:
+      - 'src/server/providers/softaggregator/wallet.ts'
+      - 'tests/unit/softaggregator-wallet.test.ts'
+      - 'ops/casino/stage-live-debit-only-limit-read-20261030.py'
+      - 'ops/casino/build-live-debit-only-isolated-20261030.py'
+      - 'ops/casino/smoke-live-debit-only-isolated-3125-20261030.py'
+      - 'ops/casino/test-debit-only-stage-invariant-20261030.py'
+      - 'ops/casino/stage-live-debit-only-v2-wallet-20261030.py'
+      - 'ops/casino/build-live-debit-only-v2-isolated-20261030.py'
+      - 'ops/casino/smoke-live-debit-only-v2-isolated-3126-20261030.py'
+      - 'ops/casino/test-debit-only-v2-stage-invariant-20261030.py'
+      - 'ops/casino/diagnose-debit-db-rtt-readonly-20261030.py'
+      - '.github/workflows/casino-debit-only-limit-read.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  debit-only:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - name: Validate Debit-only staging and isolated tools
+        run: |
+          python3 -m py_compile \
+            ops/casino/stage-live-debit-only-limit-read-20261030.py \
+            ops/casino/build-live-debit-only-isolated-20261030.py \
+            ops/casino/smoke-live-debit-only-isolated-3125-20261030.py \
+            ops/casino/test-debit-only-stage-invariant-20261030.py \
+            ops/casino/stage-live-debit-only-v2-wallet-20261030.py \
+            ops/casino/build-live-debit-only-v2-isolated-20261030.py \
+            ops/casino/smoke-live-debit-only-v2-isolated-3126-20261030.py \
+            ops/casino/test-debit-only-v2-stage-invariant-20261030.py \
+            ops/casino/diagnose-debit-db-rtt-readonly-20261030.py
+          python3 ops/casino/test-debit-only-stage-invariant-20261030.py
+          python3 ops/casino/test-debit-only-v2-stage-invariant-20261030.py
+          python3 - <<'PY'
+          import ast
+          import subprocess
+          from pathlib import Path
+          path = Path('ops/casino/diagnose-debit-db-rtt-readonly-20261030.py')
+          module = ast.parse(path.read_text())
+          source = next(
+              ast.literal_eval(node.value)
+              for node in module.body
+              if isinstance(node, ast.Assign)
+              and any(isinstance(target, ast.Name) and target.id == 'node' for target in node.targets)
+          )
+          result = subprocess.run(['node', '--check'], input=source, text=True, capture_output=True)
+          if result.returncode:
+              raise SystemExit('EMBEDDED_READONLY_DIAGNOSTIC_JS_SYNTAX_FAILED')
+          print('EMBEDDED_READONLY_DIAGNOSTIC_JS_SYNTAX_PASS')
+          PY
+          for tool in \
+            ops/casino/stage-live-debit-only-limit-read-20261030.py \
+            ops/casino/build-live-debit-only-isolated-20261030.py \
+            ops/casino/smoke-live-debit-only-isolated-3125-20261030.py \
+            ops/casino/stage-live-debit-only-v2-wallet-20261030.py \
+            ops/casino/build-live-debit-only-v2-isolated-20261030.py \
+            ops/casino/smoke-live-debit-only-v2-isolated-3126-20261030.py \
+            ops/casino/diagnose-debit-db-rtt-readonly-20261030.py
+          do
+            if python3 "$tool" >/tmp/debit-only-fail-closed.txt 2>&1; then
+              echo "ERROR: tooling must refuse away from pinned VPS"
+              exit 1
+            fi
+            grep -q 'REFUSED:' /tmp/debit-only-fail-closed.txt
+          done
+      - name: Debit regression, receipt idempotency, credit and rollback unchanged
+        run: |
+          npx vitest run \
+            tests/unit/softaggregator-wallet.test.ts \
+            tests/unit/softaggregator-fiat-wallet.test.ts \
+            tests/unit/casino-callback-transaction-routing.test.ts \
+            tests/unit/softaggregator-webhook-route.test.ts \
+            tests/unit/casino-debit-single-timeout.test.ts
+      - run: npm run typecheck

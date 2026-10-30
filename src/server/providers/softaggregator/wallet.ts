@@ -90,6 +90,13 @@ function safeResponse(error: 0 | 1 | 2, value: bigint): CasinoBalanceResponse {
 async function limitAllows(db: Db, userId: string, amount: bigint, p: ProfileRow): Promise<boolean> {
   if (!(await pilotCasinoDebitPermitted(db, userId, amount))) return false;
   if (p.max_stake_per_bet_minor !== null && amount > BigInt(p.max_stake_per_bet_minor)) return false;
+  // Debit-only: the independent pilot wagering caps above remain mandatory.
+  // Without a user-configured aggregate limit, the wallet history scan cannot
+  // affect eligibility. Avoid one remote SQL round-trip in that exact case.
+  // Credit, Balance and every rollback do not invoke this helper.
+  if (p.max_stake_per_day_minor === null &&
+      p.loss_limit_daily_minor === null &&
+      p.loss_limit_weekly_minor === null) return true;
   const sql = [
     "select coalesce(sum(case when type = 'bet_debit' and created_at >= date_trunc('day', now() at time zone 'UTC') at time zone 'UTC'",
     "then -amount_minor else 0 end),0)::text as day_stake,",
@@ -210,11 +217,19 @@ export async function settleCasinoCallback(event: SignedCallback): Promise<Casin
       p = await getProfile(tx, userId);
       if (!p) return { error: 2, balance: 0 };
     }
-    await tx.query(
-      "insert into nova.wallets(user_id,currency,balance_minor) values ($1,'USD',0) on conflict (user_id,currency) do nothing",
-      [userId],
-    );
-    const w = await walletRow(tx, userId, true);
+    // Debit-only fast path: keep the wallet advisory lock and SELECT FOR
+    // UPDATE. An existing USD wallet does not need INSERT ON CONFLICT.
+    // Credit and every rollback still perform the original insert-then-read.
+    let w = event.action === 'debit' && !event.rollback
+      ? await walletRow(tx, userId, true)
+      : null;
+    if (!w) {
+      await tx.query(
+        "insert into nova.wallets(user_id,currency,balance_minor) values ($1,'USD',0) on conflict (user_id,currency) do nothing",
+        [userId],
+      );
+      w = await walletRow(tx, userId, true);
+    }
     if (!w) throw new Error('CASINO_WALLET_NOT_FOUND');
     const before = available(w);
     const isDebit = event.action === 'debit';
