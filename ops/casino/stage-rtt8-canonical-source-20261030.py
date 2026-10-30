@@ -61,7 +61,7 @@ def section(text, start, end):
 
 # These two sections, and ONLY these sections, can differ from the already
 # smoke-tested isolated RTT8 candidate. They are pinned to the exact tested blob.
-pre_start = '  const db = getDb();\n'
+pre_start = 'export async function settleCasinoCallback(event: SignedCallback): Promise<CasinoBalanceResponse> {\n'
 pre_end = '  if (!schemaReady || !currency) return { error: 2, balance: 0 };\n'
 credit_start = '    // Follow the same advisory-lock ordering as post_wallet_entry before locking wallet row.\n'
 credit_end = '    // Existing wallets dominate signed casino rounds. Avoid an unnecessary\n'
