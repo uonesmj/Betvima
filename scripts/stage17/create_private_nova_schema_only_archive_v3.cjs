@@ -197,6 +197,11 @@ function main(){
  if(!fs.statSync(ROOT).isDirectory()||fs.lstatSync(ROOT).isSymbolicLink())
     abort('WORK_ROOT_NOT_SAFE');
  const env=envForDump();
+ // Safe endpoint CLASS only, never reveal host/IP/username/password.
+ const host=String(env.PGHOST||'').toLowerCase();
+ const port=String(env.PGPORT||'');
+ MSG('DATABASE_ROUTE_CLASS='+(host.includes('pooler')?'POOLER':host.startsWith('db.')?'DIRECT':'OTHER_PINNED'));
+ MSG('DATABASE_PORT_CLASS='+(port==='6543'?'TRANSACTION_POOLER':port==='5432'?'SESSION_OR_DIRECT':'OTHER'));
  // Operators may run a connection-only probe first to avoid retrying pg_dump
  // when the issue is credentials, TLS or connection-pool startup options.
  if(process.env.STAGE17_PROBE_ONLY==='1'){
