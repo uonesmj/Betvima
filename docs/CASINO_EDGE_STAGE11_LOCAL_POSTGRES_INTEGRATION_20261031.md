@@ -39,3 +39,21 @@ Fix committed in Stage11 runner JS: preserve native `pg.Pool.connect` completely
 **Rerun only after prior session exits** (Ctrl+C if still hung). Verify post-run marker `STAGE11_TEMP_CONTAINER_REMOVED=true`. If a prior isolated container remains, stop and inspect it; do not silently delete other workloads.
 
 **Stage11 real PostgreSQL regression outcome remains PENDING** until the corrected operator run prints the original/shadow set counts and `STAGE11_REAL_POSTGRES_INTEGRATION=PASS`. Do not claim success yet.
+
+## Operator Stage11 real PostgreSQL outcome — PASS (2026-10-30 22:21 UTC)
+
+Operator executed corrected Stage11 container runner in the VPS and supplied terminal transcript. **Stage11 integration PASSED** with actual isolated Postgres, both pinned source guards passing, network mode `none`, no published ports and private UNIX socket. Original and patched shadow both completed:
+- Commit boundaries: PASS
+- SQL test INSERT/SELECT COMMIT and timeout override/restore: PASS
+- Rollback atomicity: PASS
+- Server-side timeout cancellation: PASS
+- `STAGE11_ORIGINAL_SET_LOCAL_FOR_6_QUERIES=6`
+- `STAGE11_SHADOW_SET_LOCAL_FOR_6_QUERIES=1`
+- `STAGE11_CASE_SET_LOCAL_DEDUPED_REAL_POSTGRES=PASS`
+- `STAGE11_REAL_POSTGRES_INTEGRATION=PASS`
+- `STAGE11_PRODUCTION_DATABASE_CONNECTED=false`, `STAGE11_LIVE_WALLET_OPERATIONS=0`, `STAGE11_LIVE_3098_UNCHANGED=true`
+- `STAGE11_TEMP_CONTAINER_REMOVED=true`
+
+**Measured scope:** 5 of 6 repeated timeout-setting commands removed in this *six-query* synthetic transaction (83.3% reduction in count). The prior 145.9ms VPS→production PG RTT for a SET LOCAL is a separate read-only measurement. Do not multiply that number into a guaranteed user Spin speed gain or assume each real debit runs 6 DB statements. There was no production deployment nor provider callback. Next investigate independent longer-latency phases, preserve current registration, deposit, withdrawal, geo, age and KYC behavior unchanged; finish staging parity/round provenance review before considering any live routing.
+
+Stage11 now verified COMPLETE within its defined isolated adapter test scope, while Stage10 real-money roll-out remains gated.
