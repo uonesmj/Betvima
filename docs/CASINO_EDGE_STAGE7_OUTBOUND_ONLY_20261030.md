@@ -23,3 +23,12 @@ For later bidirectional synthetic money tests, use a separate Supabase staging p
 ## Safety guarantees
 
 No changes to Supabase production financial rows; no live casino `3098` or Nginx updates; no external HTTP port exposed; no provider callbacks, wallets, credits, debits, or automatic deployments from PR #370. Remote VPS verification is **pending** until operator runs the signed probe.
+
+## Stage 7 operator-signed remote verification: PASS (2026-10-30)
+- VPS command: `STAGE6_LOCAL_PROOF=PASS`, `STAGING_NETWORK=none`, `STAGE7_EXIT_CODE=0`.
+- All four signed requests: `STAGE7_FX_CHECKS=32/32` and `STAGE3_SCHEMA_READY=true`.
+- `EDGE_CANARY_REGION=eu-west-1`, `EDGE_CANARY_E2E_MEDIAN_MS=503.5`, `EDGE_CANARY_DB_MEDIAN_MS=159.1`.
+- `STAGE7_OUTBOUND_SIGNED_BRIDGE=PASS`, `STAGE7_EDGE_FINANCIAL_RPC_ENABLED=false`, `STAGE7_LOCAL_DB_REMOTE_ACCESS=false`, `NO_MONEY_CALLBACKS_OR_WRITES=true`.
+- Independently checked Supabase Edge function logs (19:30–21:00 UTC Oct 30): **4 HTTP 200**, **2 HTTP 401**, all in `eu-west-1`. Mean successful platform execution **503.5 ms** (four requests).
+- **Stage 7 concludes here**. This proves only signed outbound transport plus the pre-existing independent local Stage 6 ledger assertions. The sandbox PostgreSQL is disconnected; no Edge-to-database financial invocation happened.
+- Gate for Stage 8: a separately authorized staging-only signed reverse relay or independent staging Supabase project, with no live wallet credentials, no public database ports, strict replay protection, test-only fixed scripts, and an external supplier ingress audit before any production cutover.
