@@ -51,10 +51,9 @@ function adapter(source,tag){
   constructor(config){
    super({...config,host:SOCK,port:5432,user:'postgres',database:'postgres',
      password:undefined,ssl:false,max:1,connectionTimeoutMillis:5000});
-  }
-  async connect(){
-   const client=await super.connect();
-   if(!client.__stage11Wrapped){
+   // pg's Pool.query uses a callback to Pool.connect; never override connect.
+   this.on('connect',(client)=>{
+    if(client.__stage11Wrapped)return;
     const actualQuery=client.query.bind(client);
     client.query=(...args)=>{
      const sql=String(args[0]).trim();
@@ -64,9 +63,9 @@ function adapter(source,tag){
      return actualQuery(...args);
     };
     client.__stage11Wrapped=true;
-   }
-   return client;
+   });
   }
+
  }
  const m={exports:{}};
  const safeRequire=id=>{
@@ -140,7 +139,9 @@ async function run(source,label){
 (async()=>{
  console.log('STAGE11_POSTGRES_TRANSPORT=PRIVATE_UNIX_SOCKET');
  console.log('STAGE11_SHADOW_HASH12=e02a19a9f3bf');
+ console.log('STAGE11_SQL_PHASE=ORIGINAL_START');
  const before=await run(original,'original');
+ console.log('STAGE11_SQL_PHASE=SHADOW_START');
  const after=await run(shadow,'shadow');
  console.log('STAGE11_ORIGINAL_SET_LOCAL_FOR_6_QUERIES='+before);
  console.log('STAGE11_SHADOW_SET_LOCAL_FOR_6_QUERIES='+after);
