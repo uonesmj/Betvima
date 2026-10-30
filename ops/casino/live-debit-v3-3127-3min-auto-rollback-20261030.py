@@ -2,8 +2,9 @@
 """Fail-closed, 3-minute V3 ordinary-Debit-optimized callback canary (3098->3127).
 Starts audited candidate on loopback, pre-checks unsigned requests, schedules
 automatic rollback BEFORE the Nginx change. Never changes financial/geo/KYC
-code, DB data, SSL settings, site routes or other ports.
-Only start/revert actions; manual revert:
+code, wallet policies, SSL settings, other site routes or ports. User spins
+are real financial transactions, and are NOT reverted by routing rollback.
+Only start/revert/watch actions; manual revert:
   sudo python3 /root/betvima-debit-v3-canary-watchdog-20261030.py revert
 """
 from __future__ import annotations
@@ -95,6 +96,30 @@ def revert():
         refuse('callback changed independently, refusing to overwrite it')
     stop_candidate()
 
+def watch():
+    # Independent local health watcher: revert early if the test service exits.
+    # The three-minute systemd timer remains the main automatic rollback.
+    for _ in range(135):
+        time.sleep(2)
+        try:
+            _, _, port = current()
+            if port == OLD_PORT:
+                return
+            if port != NEW_PORT:
+                return  # Other operator changed routing; do not interfere.
+            pid = int(PIDFILE.read_text().strip())
+            if not Path(f'/proc/{pid}/cwd').resolve() == CAND:
+                revert()
+                return
+            with socket.create_connection(('127.0.0.1', NEW_PORT), timeout=2):
+                pass
+        except Exception:
+            try:
+                revert()
+            except Exception:
+                pass  # systemd auto-revert still scheduled and active
+            return
+
 def live_pid():
     s = run(['ss', '-ltnpH'])
     if s.returncode != 0: refuse('cannot identify production PID')
@@ -179,7 +204,7 @@ def start():
                 'betvima-debit-v3-autorevert-20261030' not in line):
             refuse('another BetVima rollback timer is active')
     nginx = run(['nginx', '-T'], timeout=20)
-    if nginx.returncode != 0 or re.search(r'\b3118\b', nginx.stdout):
+    if nginx.returncode != 0 or re.search(r'\b3127\b', nginx.stdout):
         refuse('candidate port already referenced by nginx or nginx -T failed')
     with socket.socket() as sock:
         try: sock.bind(('127.0.0.1', NEW_PORT))
@@ -227,6 +252,14 @@ def start():
         if live_pid() != pid: refuse('production 3098 process changed')
         if current()[0] != initial: refuse('nginx configuration changed')
         switch(OLD_PORT, NEW_PORT)
+        # This observer uses no credentials or database privileges.
+        with (ROOT / 'watcher.log').open('wb') as monitor_output:
+            os.chmod(ROOT / 'watcher.log', 0o600)
+            subprocess.Popen(
+                ['/usr/bin/python3', str(WATCHDOG), 'watch'],
+                stdout=monitor_output, stderr=subprocess.STDOUT,
+                start_new_session=True,
+            )
     except BaseException:
         # Timer was registered before any route change. If switching itself
         # succeeded and a later step failed, restore 3098 first.
@@ -244,8 +277,9 @@ def start():
     print('NO_LIMIT_GEO_KYC_PAYMENT_LEDGER_OR_RECEIPT_CHANGES', flush=True)
 
 if __name__ == '__main__':
-    if len(sys.argv) != 2 or sys.argv[1] not in ('start', 'revert'):
+    if len(sys.argv) != 2 or sys.argv[1] not in ('start', 'revert', 'watch'):
         refuse('use: start | revert')
     if os.geteuid() != 0: refuse('root required')
     if sys.argv[1] == 'start': start()
+    elif sys.argv[1] == 'watch': watch()
     else: revert()
