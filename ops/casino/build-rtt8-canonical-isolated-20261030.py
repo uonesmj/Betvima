@@ -27,7 +27,7 @@ if any(not x.is_dir() or x.is_symlink() for x in (LIVE,BASE,DEP,STAGE)):
 if sha(LIVE/REL)!=LIVE_SHA or sha(BASE/REL)!=BASE_SHA:
     fail('wallet baseline changed')
 if (BASE/'.next/BUILD_ID').read_text().strip()!='ISgbMW3GwdrfM7TbI0z9P':
-    fail('RTT6 baseline build differs')
+    fail('RTT8 baseline build differs')
 if not (DEP/'node_modules/typescript/lib/tsc.js').is_file() or \
    not (DEP/'node_modules/next/dist/bin/next').is_file():
     fail('isolate dependencies missing')
@@ -37,7 +37,7 @@ if (DEP/'node_modules').is_symlink():
 source=(BASE/REL).read_text()
 desired=(STAGE/REL).read_text()
 def blob_hash(data):
-    return hashlib.sha1(('blob ' + str(len(data)) + '\\0').encode() + data).hexdigest()
+    return hashlib.sha1(('blob ' + str(len(data)) + '\0').encode() + data).hexdigest()
 CANONICAL_BLOB='55abc91fdc2238def50d7883a47659948e84a53c'
 if blob_hash(desired.encode())!=CANONICAL_BLOB:
     fail('staged source differs from CI-tested canonical Git blob')
