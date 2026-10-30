@@ -71,7 +71,7 @@ def main():
         print("STAGE10_ABORT=EXPECTED_RUN_BODY_MISMATCH")
         return 2
     patched = (before + CL + "\n" + FIELD +
-               ctor.lstrip("\n") + FIRST + run.replace(OLD,NEW) + NEXT + after_run)
+               ctor + FIRST + run.replace(OLD,NEW) + NEXT + after_run)
     # Prove exact, exhaustive, two-location inverse of every source modification.
     if patched.replace("\n"+FIELD,"\n",1).replace(NEW,OLD,1)!=code:
         print("STAGE10_ABORT=UNEXPECTED_ADDITIONAL_DIFF")
