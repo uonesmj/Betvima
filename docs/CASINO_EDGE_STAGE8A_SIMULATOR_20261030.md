@@ -21,3 +21,15 @@ New function `betvima-eu-casino-stage8-simulator` ACTIVE v1, `verify_jwt=true`, 
 To complete Stage8B, provision a truly isolated Supabase staging branch/project (cost consent required; no existing branch other than main currently) or design and audit a signed outbound reverse RPC relay that only accepts fixed synthetic test calls and never exposes production wallet credentials, service-role keys or PostgreSQL network ports. Reject replay, preserve transaction/receipt atomicity and audit provider ingress Worker separately.
 
 Keep PR 370 draft. Do not route SoftAggregator production callbacks to Stage8 and do not alter casino port 3098.
+
+## Verified operator run — PASS (2026-10-30)
+
+The user supplied terminal confirmation from the VPS:
+- `STAGE8_LOCAL_REAL_WALLET_RPC_PROOF=PASS` while `STAGING_NETWORK_MODE=none`.
+- All four valid Edge responses passed `STAGE8_FX_CHECKS=32/32` and `STAGE3_SCHEMA_READY=true`.
+- `STAGE8_SYNTHETIC_EDGE_SIMULATION=PASS`, `STAGE8_16_IN_MEMORY_FINANCIAL_SCENARIOS=PASS`.
+- `EDGE_CANARY_REGION=eu-west-1`, synthetic caller E2E median **502.1 ms**, DB read probe median **155.3 ms**.
+- `STAGE8_REAL_EDGE_WALLET_RPC_EXECUTED=false`, `STAGE8_STAGING_DATABASE_DIRECTLY_ACCESSIBLE=false`, `NO_MONEY_CALLBACKS_OR_WRITES=true`, `PRODUCTION_CASINO_3098_UNCHANGED=true`.
+- Independently verified Supabase function logs: four HTTP 200, two HTTP 401; both in eu-west-1; mean successful platform execution 481 ms for four requests. These are **not live financial throughput measurements**.
+
+Stage8A status: **PASS**. Stage8B status: **BLOCKED/PENDING** a separate isolated writable staging project or rigorously reviewed reverse bridge. Do not record Stage8 financial E2E as complete.
