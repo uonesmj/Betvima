@@ -142,7 +142,7 @@ describe('SoftAggregator financial callback behavior (isolated DB contract)', ()
     expect(t.receipts.size).toBe(0);
   });
 
-  it('Debit's optional wallet history aggregate is skipped without personal aggregate limits', async () => {
+  it('Debit skips the optional wallet history aggregate without personal limits', async () => {
     const t = makeFakeDb();
     vi.mocked(getDb).mockReturnValue(t.fake as unknown as Db);
     const callback = identity('debit-without-personal-limits', 'debit', 20n);
