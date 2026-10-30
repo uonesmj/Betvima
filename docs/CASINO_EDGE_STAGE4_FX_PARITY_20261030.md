@@ -25,3 +25,10 @@
 5. Reconcile provider history, security review, compliance/supplier approval, traffic cutover controls, and rollback plan.
 
 **No changes to production port 3098, Nginx, casino wallet DB records, Edge signing secrets or supplier callback routing.**
+
+## Signed remote Stage 4 verification — passed, 2026-10-30
+- User ran VPS signed canary, four valid synthetic calls: `EXIT_CODE=0`, `STAGE4_FX_CHECKS=32/32` on every call, `STAGE3_SCHEMA_READY=true`, `NO_MONEY_CALLBACKS_OR_WRITES=true`.
+- Caller E2E median **724.2 ms**, database work median **158.4 ms**. These values are *not* debit, credit, rollback or reel-start latency.
+- Independently confirmed Supabase logs in `eu-west-1`: **4 HTTP 200**, **2 HTTP 401** (negative auth checks), mean successful function execution **612 ms**, P95 execution **749 ms** (tiny sample).
+- The connected Supabase organization currently exposes only **one** project: `mqygiufkubxxxjodsycu` (BetVima production). Do not create synthetic player wallets or write financial staging transactions to this database. Staging needs a separate project or an isolated local database with no production credentials.
+- No further latency-only probes are required before beginning staging. Next priority: obtain independently deployed active provider ingress Worker source and provision isolated test database, then implement and verify atomic financial callback parity **before** any live cutover.
