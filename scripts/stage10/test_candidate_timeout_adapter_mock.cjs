@@ -49,14 +49,14 @@ class FakePool {
  on(){return this}
  async end(){}
 }
-const module={exports:{}};
+const compiledModule={exports:{}};
 const stubRequire=id=>{
  if(id==='pg')return {Pool:FakePool};
  if(id==='./rows')return {param:x=>x};
  throw Error('UNEXPECTED_IMPORT_'+id);
 };
-new Function('require','module','exports',output.outputText)(stubRequire,module,module.exports);
-const {PostgresDb}=module.exports;
+new Function('require','module','exports',output.outputText)(stubRequire,compiledModule,compiledModule.exports);
+const {PostgresDb}=compiledModule.exports;
 const sql=()=>calls.map(x=>x.sql);
 function reset(){calls.length=0;release.length=0;failing=false}
 function check(cond,label){assert.ok(cond,label);console.log('STAGE10_CASE_'+label+'=PASS')}
