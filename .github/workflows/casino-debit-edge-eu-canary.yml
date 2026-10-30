@@ -11,6 +11,7 @@ on:
       - 'ops/casino/test-stage-live-debit-v3-wallet-only-20261030.py'
       - 'ops/casino/build-live-debit-v3-isolated-20261030.py'
       - 'ops/casino/smoke-live-debit-v3-isolated-3127-20261030.py'
+      - 'ops/casino/live-debit-v3-3127-3min-auto-rollback-20261030.py'
       - 'tests/unit/casino-debit-eu-canary.test.ts'
       - 'scripts/casino/test-debit-eu-canary-from-vps-20261030.cjs'
       - '.github/workflows/casino-debit-edge-eu-canary.yml'
@@ -37,6 +38,7 @@ jobs:
           python3 -m py_compile ops/casino/stage-live-debit-v3-wallet-only-20261030.py ops/casino/test-stage-live-debit-v3-wallet-only-20261030.py
           python3 ops/casino/test-stage-live-debit-v3-wallet-only-20261030.py
           python3 -m py_compile ops/casino/build-live-debit-v3-isolated-20261030.py ops/casino/smoke-live-debit-v3-isolated-3127-20261030.py
+          python3 -m py_compile ops/casino/live-debit-v3-3127-3min-auto-rollback-20261030.py
           for cmd in ops/casino/build-live-debit-v3-isolated-20261030.py ops/casino/smoke-live-debit-v3-isolated-3127-20261030.py; do
             if python3 "$cmd" >/tmp/debit-v3-fail-closed.txt 2>&1; then
               echo "INVALID: candidate script must refuse outside pinned VPS"
@@ -44,6 +46,37 @@ jobs:
             fi
             grep -q 'REFUSED:' /tmp/debit-v3-fail-closed.txt
           done
+      - name: Validate V3 three-minute live callback canary preconditions and safe rollback source
+        run: |
+          python3 - <<'PY'
+          from importlib.util import module_from_spec, spec_from_file_location
+          from pathlib import Path
+          p = Path('ops/casino/live-debit-v3-3127-3min-auto-rollback-20261030.py')
+          spec = spec_from_file_location('v3', p)
+          m = module_from_spec(spec)
+          spec.loader.exec_module(m)
+          sample = '''server {
+            location ^~ /api/webhooks/softaggregator {
+              proxy_pass http://127.0.0.1:3098;
+              proxy_set_header Host $host;
+            }
+          }'''
+          matches = list(m.PATTERN.finditer(sample))
+          assert len(matches) == 1 and matches[0].group(2) == '3098'
+          changed = sample[:matches[0].start(2)] + '3127' + sample[matches[0].end(2):]
+          newmatches = list(m.PATTERN.finditer(changed))
+          assert len(newmatches) == 1 and newmatches[0].group(2) == '3127'
+          restored = changed[:newmatches[0].start(2)] + '3098' + changed[newmatches[0].end(2):]
+          assert restored == sample
+          s = p.read_text()
+          assert "'--on-active=3m'" in s
+          assert 'betvima-debit-v3-autorevert-20261030' in s
+          assert 'SOFTAGGREGATOR_CALLBACK_PERF_TRACE' in s
+          assert "current()[0] != initial" in s
+          assert 'if original != candidate:' in s
+          assert "if nginx.returncode != 0 or re.search(r'\\b3127\\b', nginx.stdout):" in s
+          print('V3_LIVE_CANARY_FAIL_CLOSED_RESTORE_SOURCE_OK')
+          PY
       - name: Verify Edge canary cryptography and strict read-only
         run: npx vitest run tests/unit/casino-debit-eu-canary.test.ts tests/unit/casino-debit-eu-bridge-contract.test.ts tests/unit/casino-debit-live-3098-parity.test.ts
       - name: Check Next.js monorepo TS regression
