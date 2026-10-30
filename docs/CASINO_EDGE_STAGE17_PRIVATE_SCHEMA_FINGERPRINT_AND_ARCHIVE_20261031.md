@@ -171,3 +171,30 @@ Added **`scripts/stage17/create_private_nova_schema_only_archive_v5.cjs`** (JS s
 - Docs: https://supabase.com/docs/guides/database/psql and https://www.postgresql.org/docs/17/libpq-connect.html#LIBPQ-CONNECT-SSLROOTCERT
 
 **Verified Stage17 schema archive: STILL PENDING user-side v5 output.** Neither new Supabase development branch nor new VPS needed at present; existing Irish branch remains isolated.
+
+## Operator v5 outcome — verify-full CA trust not configured (2026-10-30 ~23:11 UTC)
+
+Actual operator output from `create_private_nova_schema_only_archive_v5.cjs`:
+```text
+STAGE17_SELECTED_PG_DUMP_CLIENT_MAJOR=17
+STAGE17_TLS_TRUST_SOURCE=SYSTEM_TRUST_STORE
+STAGE17_TLS_CERTIFICATE_VALIDATION=VERIFY_FULL_REQUIRED
+STAGE17_DATABASE_ROUTE_CLASS=POOLER
+STAGE17_DATABASE_PORT_CLASS=TRANSACTION_POOLER
+STAGE17_SESSION_PROBE_SERVER_READONLY_STARTUP=FAIL
+STAGE17_SESSION_PROBE_SERVER_READONLY_STARTUP_CATEGORY=CERTIFICATE_VALIDATION_FAILED
+STAGE17_SESSION_PROBE_NO_STARTUP_OPTIONS=FAIL
+STAGE17_SESSION_PROBE_NO_STARTUP_OPTIONS_CATEGORY=CERTIFICATE_VALIDATION_FAILED
+STAGE17_ABORT=NO_WORKING_SESSION_POOLER_ROUTE
+```
+
+Interpretation: v5 did not find a configured URI `sslrootcert`, `PGSSLROOTCERT` or private project CA file; chose system trust store. The server presents SSL but that trust set **does not validate its certificate chain/hostname**. Root cause identified for backup client's failure: **CA trust bootstrap absent**. This does NOT mean live Node pg library is broken; it uses independent connection/TLS options and normal app pooler connections are seen authenticated in Supavisor logs.
+
+### Operator gate — authenticated Supabase-issued CA is required; no automatic insecure extraction
+- Download the authentic project's *Server root certificate* in authenticated Supabase Dashboard → Database → Settings → SSL Configuration, see https://supabase.com/docs/guides/database/psql .
+- Privately transfer PEM certificate (not password or private key) onto VPS at `/root/betvima-stage5/supabase-prod-ca.crt` or another restricted absolute path. The downloader must know the source from authenticated dashboard, **not an unverified live TLS endpoint**, arbitrary GitHub URL or web result. User may use SFTP or paste PEM into a root-only editor in terminal.
+- Verify certificate file is non-empty X.509 PEM, not expired, 0600, and contains **no private key**. The leaf server's trust anchors and hostname will be checked only during `PGSSLMODE=verify-full`.
+- Rerun ONLY v5 `STAGE17_PROBE_ONLY=1` with `STAGE17_CA_PATH` set to exact verified CA path. If `STAGE17_READONLY_CONNECT_PROBE=PASS`, run v5 full archive with the same CA. No more retries before a verified CA file exists. If hostname validation still fails, inspect SAN/expected pooler hostname and authentic certificate provenance without disabling `verify-full`.
+- CA is *public trust material*, but do not upload private schema archive, SQL source, DB credentials or KYC data to chats or GitHub. The archived source remains private on VPS.
+
+**Still pending:** no schema-only archive success marker; original live casino, registration, geo, age, KYC, deposits, withdrawals and port 3098 unchanged. No migration/restore applied.
