@@ -166,7 +166,7 @@ class TransactionDb implements Db {
       // A caller may explicitly change the transaction-local SQL settings.
       // Invalidate the cache before any subsequent statement. Never cache
       // across client leases or transaction boundaries.
-      if (/\\b(?:set|reset)\\s+(?:local\\s+|session\\s+)?statement_timeout\\b|\\bset_config\\s*\\(/i.test(sql)) {
+      if (/\b(?:set|reset)\s+(?:local\s+|session\s+)?statement_timeout\b|\bset_config\s*\(/i.test(sql)) {
         this.appliedStatementTimeoutMs = null;
       }
     }
