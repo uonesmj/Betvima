@@ -25,3 +25,7 @@ The mock wallet ledger entries are inserted in test SQL, **not** posted by the a
 
 ## Rollback / cleanup
 Stop and inspect on errors; do not delete `betvima-stage5-pg` or its volume without an explicit operator decision. No production data is accessed by these scripts.
+
+## Verified execution on the isolated VPS staging container (2026-10-30)
+
+Operator terminal output confirmed `betvima_stage5`, `NETWORK_MODE=none`, successful installation of original 0208..0212, `STAGE5_FINANCIAL_INVARIANTS_PASS`, `STAGE5_CONSTRAINT_TESTS_COMPLETED=true`, `SYNTHETIC_TEST_ROWS_ROLLED_BACK=true`, and `FINISHED=true`. Positive synthetic ledger/receipt scenarios and all nine deliberately-invalid database mutation scenarios behaved as expected. This proves only the SQL receipt/FX constraints. Next test must use **real** `nova.post_wallet_entry` RPC with concurrent sessions in a **separate** isolated stage6 database; stage5's synthetic wallet table is not compatible with the real RPC.
