@@ -88,7 +88,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          tag="android-v0.224.0-grounded-spider-win-glow-debug-20261031"
+          tag="android-v0.224.0-natural-spider-debug-20261031"
           apk="BetVima-Android-v0.224.0-Natural-Spider-Alternating-Entrances-DEBUG.apk"
           cp android-native/app/build/outputs/apk/debug/app-debug.apk "$apk"
           if gh release view "$tag" >/dev/null 2>&1; then
