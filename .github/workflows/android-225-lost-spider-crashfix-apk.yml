@@ -52,15 +52,15 @@ jobs:
           assert 'drawLine(' in spider and 'for (leg in 0 until 4)' in spider
           assert 'Path().apply' not in spider
           assert 'expanded && confirmedLoss && completedLossReplay != lossReplay' in ticket
-          assert 'routeVariant = Math.floorMod(lossReplay + bet.id.hashCode()' in ticket
+          assert 'routeVariant = lossSpiderEntryIndex225(lossReplay, bet.id.hashCode())' in ticket
           assert 'LOSS_SPIDER_ROUTE_COUNT_224' in spider
           assert 'Transparent overlay' in spider and 'drawPath(' not in spider
           win = (p / 'WinTicketSparklers.kt').read_text()
           assert 'repeat(4) { burst ->' in win
           assert 'winBurstPhase223' in win
           assert 'repeat(38) { i ->' in win
-          assert 'LaunchedEffect(expanded, confirmedLoss)' in ticket
-          assert 'if (expanded && confirmedLoss) lossReplay++' in ticket
+          assert 'LaunchedEffect(expanded, confirmedLoss)' not in ticket
+          assert 'if (!expanded && confirmedLoss) lossReplay++' in ticket
           assert 'badge - origin' in ticket
           assert 'expanded && confirmedWin' in ticket
           print('PASS: native UI and lost-ticket one-shot animation checks')
