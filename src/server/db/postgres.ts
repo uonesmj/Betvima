@@ -141,16 +141,35 @@ export class PostgresDb implements Db {
 
 class TransactionDb implements Db {
   readonly kind: 'postgres' | 'supabase';
+
+  // One transaction owns one leased PoolClient. SET LOCAL survives until
+  // COMMIT/ROLLBACK; do not pay an additional network RTT for the same timeout.
+  // Start unknown (not the pool default): always establish the first timeout.
+  // The instance is discarded at the transaction boundary.
+  private appliedStatementTimeoutMs: number | null = null;
+
   constructor(private client: PoolClient, private statementTimeoutMs: number, kind: 'postgres' | 'supabase') {
     this.kind = kind;
   }
 
   private async run<T>(sql: string, params?: SqlParam[], options?: DbQueryOptions): Promise<T[]> {
     const values = params?.map(param) ?? [];
-    const timeout = options?.timeoutMs ?? this.statementTimeoutMs;
-    await this.client.query(`set local statement_timeout = ${Math.max(1000, Math.trunc(timeout))}`);
-    const result = await this.client.query(sql, values as unknown[]);
-    return result.rows as T[];
+    const timeout = Math.max(1000, Math.trunc(options?.timeoutMs ?? this.statementTimeoutMs));
+    if (this.appliedStatementTimeoutMs !== timeout) {
+      await this.client.query(`set local statement_timeout = ${timeout}`);
+      this.appliedStatementTimeoutMs = timeout;
+    }
+    try {
+      const result = await this.client.query(sql, values as unknown[]);
+      return result.rows as T[];
+    } finally {
+      // A caller may explicitly change the transaction-local SQL settings.
+      // Invalidate the cache before any subsequent statement. Never cache
+      // across client leases or transaction boundaries.
+      if (/\b(?:set|reset)\s+(?:local\s+|session\s+)?statement_timeout\b|\bset_config\s*\(|\brollback\s+to\b|\bsavepoint\b/i.test(sql)) {
+        this.appliedStatementTimeoutMs = null;
+      }
+    }
   }
 
   query<T = Record<string, unknown>>(sql: string, params?: SqlParam[], options?: DbQueryOptions): Promise<T[]> {
