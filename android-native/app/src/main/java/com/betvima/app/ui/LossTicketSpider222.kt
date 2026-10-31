@@ -6,6 +6,13 @@ import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
@@ -190,100 +197,122 @@ internal fun LossTicketSpider222(
     onComplete: () -> Unit
 ) {
     val progress = remember { Animatable(0f) }
-    // The photo provides anatomical face/abdomen detail. Legs are generated
-    // live by eight stance/swing IK rigs, not a sequence of painted frames.
-    val bodyPhoto = ImageBitmap.imageResource(id = R.drawable.spider_realistic_226)
+    val sourcePhoto = ImageBitmap.imageResource(id = R.drawable.spider_realistic_226)
     val density = LocalDensity.current
     val dp = with(density) { 1.dp.toPx() }
+    var layoutSize by remember { mutableStateOf(IntSize.Zero) }
+
+    // Cache the 48-sample arc map across frames. The prior version rebuilt all
+    // 48 samples inside every draw, introducing visible traversal micro-stutter.
+    val path = remember(layoutSize, badgeTarget, routeVariant, dp) {
+        val chip = badgeTarget
+        if (chip == null || layoutSize.width < 110 || layoutSize.height < 95) null
+        else {
+            val w = layoutSize.width.toFloat()
+            val h = layoutSize.height.toFloat()
+            val route = ((routeVariant % LOSS_SPIDER_ROUTE_COUNT_224) +
+                LOSS_SPIDER_ROUTE_COUNT_224) % LOSS_SPIDER_ROUTE_COUNT_224
+            val start = lossSpiderStart224(route, w, h)
+            val end = lossSpiderBadgeEntry224(chip, route, dp)
+            SpiderArcPath230(start, end, w, h)
+        }
+    }
 
     LaunchedEffect(replay, badgeTarget != null) {
         if (badgeTarget == null) return@LaunchedEffect
         progress.snapTo(0f)
         delay(LOSS_SPIDER_DELAY_MS_222)
-        progress.animateTo(
-            1f, tween(durationMillis = LOSS_SPIDER_DURATION_MS_222, easing = LinearEasing)
-        )
+        progress.animateTo(1f,
+            tween(durationMillis = LOSS_SPIDER_DURATION_MS_222, easing = LinearEasing))
         onComplete()
     }
 
-    Canvas(modifier) {
-        val badge = badgeTarget ?: return@Canvas
-        val width = size.width
-        val height = size.height
-        if (width < 110f || height < 95f) return@Canvas
-        val time = progress.value
-        if (time >= 1f) return@Canvas
-        val route = spiderRoute226(routeVariant)
-        val start = lossSpiderStart224(route, width, height)
-        val end = lossSpiderBadgeEntry224(badge, route, dp)
-        val travel = spiderWalkingDistance228(time)
-        val arc = SpiderArcPath230(start, end, width, height)
-        val distance = arc.distanceAt(travel)
-        val center = arc.position(distance)
-        val forward = arc.heading(distance)
+    Canvas(modifier.onSizeChanged { next ->
+        if (layoutSize != next) layoutSize = next
+    }) {
+        val arc = path ?: return@Canvas
+        val t = progress.value
+        if (t >= 1f) return@Canvas
+        val travel = arc.distanceAt(spiderWalkingDistance228(t))
+        val center = arc.position(travel)
+        val forward = arc.heading(travel)
         val normal = Offset(-forward.y, forward.x)
-        val angle = (atan2(forward.y.toDouble(), forward.x.toDouble()) * 180.0 /
-            PI).toFloat() + 90f
-        val cycle = distance / (SPIDER_STEP_LENGTH_DP_230 * dp) * 2f * PI.toFloat()
-        val bob = .24f * dp * sin(cycle.toDouble()).toFloat()
+        val phase = travel / (SPIDER_STEP_LENGTH_DP_231 * dp) * 2f * PI.toFloat()
+        val bob = .16f * dp * sin(phase.toDouble()).toFloat()
         val body = center + normal * bob
-        val entering = ((time - .89f) / .11f).coerceIn(0f, 1f)
-        val shrink = 1f - entering * .72f
-        val opacity = (1f - entering * entering).coerceIn(0f, 1f)
 
-        // Eight high-contrast, individually planted articulated legs. The
-        // final toe remains motionless through stance even while the body
-        // advances: this is what eliminates the former skating motion.
+        val entry = ((t - .90f) / .10f).coerceIn(0f, 1f)
+        val shrink = 1f - .78f * entry
+        val alpha = (1f - entry * entry).coerceIn(0f, 1f)
+        val size = SPIDER_SIZE_MULTIPLIER_231 * shrink
+        val black = Color(0xFF111316).copy(alpha = alpha)
+        val rim = Color(0xFF66696C).copy(alpha = alpha * .63f)
+
+        // Four pairs radiate away from the thorax at different axial angles,
+        // and the feet remain planted in world/card coordinates during stance.
         for (leg in 0 until 8) {
             val row = leg % 4
             val side = if (leg < 4) -1f else 1f
-            val hipF = floatArrayOf(11f, 3f, -5f, -12f)[row] * dp
-            val root = body + forward * hipF + normal * (side * 3.8f * dp * shrink)
-            val foot = spiderFoot230(leg, distance, arc, dp)
-            // As the spider disappears into Lost, feet converge naturally.
-            val toe = body + (foot - body) * shrink
-            val first = root + normal * (side * 6.2f * dp * shrink) +
-                forward * ((1.5f - row) * 1.2f * dp)
-            val knee = spiderKnee230(first, toe, normal * side, dp * shrink)
-            val ankle = knee + (toe - knee) * .78f
-            val black = Color(0xFF101114).copy(alpha = opacity)
-            val sheen = Color(0xFF535963).copy(alpha = opacity * .77f)
-            drawLine(black, root, first, strokeWidth = 2.25f * dp * shrink,
+            val outward = normal * side
+            val f = floatArrayOf(12f, 3.6f, -6f, -14f)[row]
+            val hip = body + forward * (f * dp * size) +
+                outward * (3.5f * dp * size)
+            val worldFoot = spiderFoot231(leg, travel, arc, dp)
+            // Only shrink feet when the animal actually enters Lost.
+            val toe = body + (worldFoot - body) * shrink
+            val coxa = hip + outward * (6.8f * dp * size) +
+                forward * ((1.5f - row) * 1.3f * dp * size)
+            val knee = spiderJoint231(
+                coxa, toe, forward, outward, row, dp * size
+            )
+            val ankle = knee + (toe - knee) * .72f
+            val width = (1.0f + (if (row == 1 || row == 2) .2f else 0f)) * dp * size
+            drawLine(black, hip, coxa, strokeWidth = width * 1.60f,
                 cap = StrokeCap.Round)
-            drawLine(sheen, root, first, strokeWidth = .62f * dp * shrink,
+            drawLine(rim, hip, coxa, strokeWidth = width * .37f,
                 cap = StrokeCap.Round)
-            drawLine(black, first, knee, strokeWidth = 2.65f * dp * shrink,
+            drawLine(black, coxa, knee, strokeWidth = width * 2.05f,
                 cap = StrokeCap.Round)
-            drawLine(sheen, first, knee, strokeWidth = .85f * dp * shrink,
+            drawLine(rim, coxa, knee, strokeWidth = width * .42f,
                 cap = StrokeCap.Round)
-            drawLine(black, knee, ankle, strokeWidth = 2.1f * dp * shrink,
+            drawLine(black, knee, ankle, strokeWidth = width * 1.58f,
                 cap = StrokeCap.Round)
-            drawLine(sheen, knee, ankle, strokeWidth = .57f * dp * shrink,
+            drawLine(black, ankle, toe, strokeWidth = width * .86f,
                 cap = StrokeCap.Round)
-            drawLine(black, ankle, toe, strokeWidth = 1.35f * dp * shrink,
-                cap = StrokeCap.Round)
-            drawCircle(Color(0xFF25292D).copy(alpha = opacity),
-                radius = 1.35f * dp * shrink, center = knee)
-            drawCircle(Color(0xFF141619).copy(alpha = opacity),
-                radius = .7f * dp * shrink, center = toe)
+            drawCircle(black, radius = .78f * dp * size, center = knee)
         }
 
-        // Overlay the real photographic head and abdomen (central crop of the
-        // original transparent image). No rectangular background is drawn.
-        // Source photo faces toward lower-left, hence anatomical correction.
-        rotate(degrees = angle - 135f, pivot = body) {
-            val dstWidth = (34f * dp * SPIDER_SIZE_MULTIPLIER_230 * shrink).roundToInt().coerceAtLeast(1)
-            val dstHeight = (39f * dp * SPIDER_SIZE_MULTIPLIER_230 * shrink).roundToInt().coerceAtLeast(1)
-            drawImage(
-                image = bodyPhoto,
-                srcOffset = IntOffset(51, 14),
-                srcSize = IntSize(74, 82),
-                dstOffset = IntOffset((body.x - dstWidth / 2f).roundToInt(),
-                    (body.y - dstHeight / 2f).roundToInt()),
-                dstSize = IntSize(dstWidth, dstHeight),
-                alpha = opacity,
-                filterQuality = FilterQuality.Medium
-            )
+        // The old full-photo crop still contained eight legs, causing sixteen
+        // overlaid legs. Clip it to a head+abdomen silhouette before drawing:
+        // only the photographic torso survives; the rig provides the limbs.
+        val rotation = (atan2(forward.y.toDouble(), forward.x.toDouble()) *
+            180.0 / PI).toFloat() + 90f
+        rotate(degrees = rotation - 135f, pivot = body) {
+            val top = body.y - 12f * dp * size
+            val bottom = body.y + 13f * dp * size
+            val torsoMask = Path().apply {
+                addOval(Rect(body.x - 10f * dp * size, top,
+                    body.x + 10f * dp * size, body.y + 4f * dp * size))
+                addOval(Rect(body.x - 7.3f * dp * size,
+                    body.y - 4f * dp * size,
+                    body.x + 7.3f * dp * size, bottom))
+            }
+            clipPath(torsoMask) {
+                val w = (28f * dp * size).roundToInt().coerceAtLeast(1)
+                val h = (31f * dp * size).roundToInt().coerceAtLeast(1)
+                drawImage(
+                    image = sourcePhoto,
+                    srcOffset = IntOffset(58, 10),
+                    srcSize = IntSize(69, 88),
+                    dstOffset = IntOffset(
+                        (body.x - w / 2f).roundToInt(),
+                        (body.y - h / 2f).roundToInt()
+                    ),
+                    dstSize = IntSize(w, h),
+                    alpha = alpha,
+                    filterQuality = FilterQuality.Medium
+                )
+            }
         }
     }
 }
