@@ -1,0 +1,35 @@
+name: Generate 228 articulated spider photo sprite
+on:
+  push:
+    branches:
+      - feat/android-228-articulated-footplant-spider-20261031
+    paths:
+      - 'android-native/scripts/generate_spider_walk_228.py'
+      - '.github/workflows/android-228-generate-spider.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  produce-sprite:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install Pillow
+        run: pip install --disable-pip-version-check Pillow==11.3.0
+      - name: Generate 48-frame sprite
+        run: python android-native/scripts/generate_spider_walk_228.py
+      - name: Commit actual generated WebP sprite to feature branch
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add android-native/app/src/main/res/drawable/spider_walk_cycle_228.webp
+          git diff --cached --quiet && exit 0
+          git commit -m "assets(android): publish transparent 48-frame articulated spider sprite"
+          git push origin HEAD:feat/android-228-articulated-footplant-spider-20261031
