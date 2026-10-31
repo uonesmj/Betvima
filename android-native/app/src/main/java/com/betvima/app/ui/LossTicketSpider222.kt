@@ -9,14 +9,21 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.StrokeCap
+import android.graphics.BitmapFactory
+import android.util.Base64
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.drawscope.rotate
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.IntSize
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
 import kotlin.math.PI
 import kotlin.math.abs
 import kotlin.math.cos
 import kotlin.math.hypot
+import kotlin.math.atan2
+import kotlin.math.roundToInt
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.sin
@@ -112,6 +119,11 @@ internal fun lossSpiderPoint222(
     )
 }
 
+/**
+ * A photoreal, background-free alpha WebP spider replaces the basic vector
+ * geometry. The small asset is decoded once per composition and only its
+ * transformed pixels are painted. No additional background or vector body.
+ */
 @Composable
 internal fun LossTicketSpider222(
     replay: Int,
@@ -120,119 +132,82 @@ internal fun LossTicketSpider222(
     modifier: Modifier = Modifier,
     onComplete: () -> Unit
 ) {
-    // Known-working segment renderer: no complex Path building on the UI thread.
+    val context = LocalContext.current.applicationContext
+    val spiderImage = remember(context) {
+        runCatching {
+            val encoded = context.assets.open("betvima_spider_photo226.webp.base64")
+                .bufferedReader().use { it.readText() }
+            val bytes = Base64.decode(encoded, Base64.DEFAULT)
+            BitmapFactory.decodeByteArray(bytes, 0, bytes.size)?.asImageBitmap()
+        }.getOrNull()
+    }
     val progress = remember { Animatable(0f) }
     LaunchedEffect(replay, badgeTarget != null) {
         if (badgeTarget == null) return@LaunchedEffect
         progress.snapTo(0f)
         delay(LOSS_SPIDER_DELAY_MS_222)
-        progress.animateTo(1f, tween(LOSS_SPIDER_DURATION_MS_222, easing = LinearEasing))
+        progress.animateTo(
+            1f, tween(durationMillis = LOSS_SPIDER_DURATION_MS_222, easing = LinearEasing)
+        )
         onComplete()
     }
 
     Canvas(modifier) {
+        val photo = spiderImage ?: return@Canvas
         val target = badgeTarget ?: return@Canvas
-        val w = size.width
-        val h = size.height
-        if (w < 60f || h < 70f) return@Canvas
+        val width = size.width
+        val height = size.height
+        if (width < 60f || height < 70f) return@Canvas
         val t = progress.value
         if (t >= 1f) return@Canvas
 
-        // All entrances and Lost badge destinations come from measured card bounds.
-        val n = spiderRoute225(routeVariant)
-        val margin = min(38.dp.toPx(), w * .11f)
-        val initial = lossSpiderStart224(n, w, h)
-        val start = Offset(if (n % 2 == 0) margin else w - margin, initial.y)
-        val end = lossSpiderBadgeEntry224(target, n, 1.dp.toPx()).let { badge ->
-            Offset(badge.x.coerceIn(32.dp.toPx(), w - 18.dp.toPx()),
-                badge.y.coerceIn(16.dp.toPx(), h - 40.dp.toPx()))
+        val route = spiderRoute225(routeVariant)
+        val sideMargin = min(38.dp.toPx(), width * .11f)
+        val origin = lossSpiderStart224(route, width, height).let { p ->
+            Offset(if (route % 2 == 0) sideMargin else width - sideMargin, p.y)
         }
-        val contact = lossSpiderPoint222(start, end, w, h, t)
-        val before = lossSpiderPoint222(start, end, w, h, (t - .003f).coerceAtLeast(0f))
-        val after = lossSpiderPoint222(start, end, w, h, (t + .003f).coerceAtMost(1f))
-        val delta = after - before
-        val length = hypot(delta.x.toDouble(), delta.y.toDouble()).toFloat().coerceAtLeast(.001f)
-        val fx = delta.x / length
-        val fy = delta.y / length
-        val sideX = -fy
-        val sideY = fx
-        val scaleOut = ((t - .88f) / .12f).coerceIn(0f, 1f)
-        val alpha = (1f - scaleOut * scaleOut).coerceIn(0f, 1f)
-        val unit = 10.5.dp.toPx() * (1f - scaleOut * .65f)
-        val gait = t * 23f * PI.toFloat()
-        val step = sin(gait.toDouble()).toFloat()
-        val bodyLift = (0.65f + .35f * step) * .55.dp.toPx()
-        val center = Offset(contact.x - sideX * bodyLift, contact.y - sideY * bodyLift)
-
-        fun local(forward: Float, lateral: Float): Offset =
-            Offset(center.x + fx * forward + sideX * lateral,
-                center.y + fy * forward + sideY * lateral)
-
-        val black = Color(0xFF090B0E)
-        val darkGraphite = Color(0xFF202328)
-        val glint = Color(0xFF9EA7B5)
-
-        // Transparent overlay; only spider body and legs are drawn.
-        // Legs alternate in diagonal pairs. Each has a fixed knee geometry,
-        // an independently stepping foot and two articulated dark segments.
-        for (side in listOf(-1f, 1f)) {
-            for (leg in 0 until 4) {
-                val row = 1.35f - leg * .9f
-                val phase = gait + leg * 1.46f + if (side > 0f) PI.toFloat() else 0f
-                val swing = sin(phase.toDouble()).toFloat()
-                val footLift = kotlin.math.max(0f, cos(phase.toDouble()).toFloat()) * .16f
-                val root = local(unit * row * .36f, unit * side * .34f)
-                val joint = local(
-                    unit * (row * .79f + swing * .13f),
-                    unit * side * (1.00f + .08f * leg)
-                )
-                val foot = local(
-                    unit * (row * 1.12f + swing * .29f),
-                    unit * side * (1.72f + .11f * kotlin.math.abs(row) - footLift)
-                )
-                drawLine(
-                    glint.copy(alpha = alpha * .66f),
-                    root, joint, strokeWidth = 3.9.dp.toPx() * (unit / 10.5.dp.toPx()),
-                    cap = StrokeCap.Round
-                )
-                drawLine(
-                    black.copy(alpha = alpha),
-                    root, joint, strokeWidth = 2.6.dp.toPx() * (unit / 10.5.dp.toPx()),
-                    cap = StrokeCap.Round
-                )
-                drawLine(
-                    glint.copy(alpha = alpha * .65f),
-                    joint, foot, strokeWidth = 3.6.dp.toPx() * (unit / 10.5.dp.toPx()),
-                    cap = StrokeCap.Round
-                )
-                drawLine(
-                    darkGraphite.copy(alpha = alpha),
-                    joint, foot, strokeWidth = 2.5.dp.toPx() * (unit / 10.5.dp.toPx()),
-                    cap = StrokeCap.Round
-                )
-                drawCircle(
-                    black.copy(alpha = alpha), center = foot,
-                    radius = 1.6.dp.toPx() * (unit / 10.5.dp.toPx())
-                )
-            }
+        val destination = lossSpiderBadgeEntry224(target, route, 1.dp.toPx()).let {
+            Offset(it.x.coerceIn(32.dp.toPx(), width - 18.dp.toPx()),
+                it.y.coerceIn(16.dp.toPx(), height - 40.dp.toPx()))
         }
+        val position = lossSpiderPoint222(origin, destination, width, height, t)
+        val before = lossSpiderPoint222(origin, destination, width, height,
+            (t - .003f).coerceAtLeast(0f))
+        val after = lossSpiderPoint222(origin, destination, width, height,
+            (t + .003f).coerceAtMost(1f))
+        val direction = after - before
+        val length = hypot(direction.x.toDouble(), direction.y.toDouble())
+            .toFloat().coerceAtLeast(.001f)
+        val dx = direction.x / length
+        val dy = direction.y / length
 
-        val abdomen = local(-unit * .50f, 0f)
-        val head = local(unit * .60f, 0f)
-        drawCircle(glint.copy(alpha = alpha * .90f), unit * .94f, abdomen)
-        drawCircle(black.copy(alpha = alpha), unit * .83f, abdomen)
-        drawCircle(darkGraphite.copy(alpha = alpha), unit * .48f, head)
-        drawCircle(black.copy(alpha = alpha), unit * .54f, head)
-        drawCircle(glint.copy(alpha = alpha * .57f),
-            unit * .22f, local(-unit * .65f, -unit * .20f))
-        for (side in listOf(-1f, 1f)) {
-            drawCircle(
-                Color(0xFFE2E6ED).copy(alpha = alpha * .93f),
-                radius = unit * .095f,
-                center = local(unit * .91f, side * unit * .20f)
+        // Gentle scuttle: small footfall sway, never floating above the ticket.
+        val gait = t * 25f * PI.toFloat()
+        val sway = sin(gait.toDouble()).toFloat()
+        val contact = Offset(
+            position.x - dy * sway * .65.dp.toPx(),
+            position.y + dx * sway * .65.dp.toPx()
+        )
+        val vanish = ((t - .905f) / .095f).coerceIn(0f, 1f)
+        val opacity = (1f - vanish * vanish).coerceIn(0f, 1f)
+        val spriteWidth = (58.dp.toPx() * (1f - vanish * .68f))
+            .roundToInt().coerceAtLeast(1)
+        val spriteHeight = (spriteWidth * photo.height.toFloat() / photo.width)
+            .roundToInt().coerceAtLeast(1)
+
+        // The source photo's face points down (+Y), hence the 90-degree offset.
+        val facing = Math.toDegrees(atan2(dy.toDouble(), dx.toDouble()))
+            .toFloat() - 90f + sway * 2.6f
+        rotate(degrees = facing, pivot = contact) {
+            drawImage(
+                image = photo,
+                dstOffset = IntOffset(
+                    (contact.x - spriteWidth / 2f).roundToInt(),
+                    (contact.y - spriteHeight / 2f).roundToInt()
+                ),
+                dstSize = IntSize(spriteWidth, spriteHeight),
+                alpha = opacity
             )
         }
-
-
     }
 }
