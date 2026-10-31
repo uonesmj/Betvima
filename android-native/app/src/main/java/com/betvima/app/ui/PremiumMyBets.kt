@@ -408,16 +408,16 @@ private fun PremiumTicket(
     var winReplay by rememberSaveable(bet.id) { mutableIntStateOf(0) }
     var lossReplay by rememberSaveable(bet.id) { mutableIntStateOf(0) }
     var completedLossReplay by rememberSaveable(bet.id) { mutableIntStateOf(-1) }
-    // Trigger on every true opening (including the first automatically opened
-    // ticket), rather than only clicks on the ticket title.
-    LaunchedEffect(expanded, confirmedLoss) {
-        if (expanded && confirmedLoss) lossReplay++
-    }
     var cardOriginInRoot by remember(bet.id) { mutableStateOf<Offset?>(null) }
     var badgeCenterInRoot by remember(bet.id) { mutableStateOf<Offset?>(null) }
     val accent = ticketResultColor(bet)
     val confirmedWin = bet.isSettled && accent == Palette.green
     val confirmedLoss = bet.isSettled && accent == Palette.red
+    // Trigger on every true opening (including the first automatically opened
+    // ticket), rather than only clicks on the ticket title.
+    LaunchedEffect(expanded, confirmedLoss) {
+        if (expanded && confirmedLoss) lossReplay++
+    }
     val isMix = bet.type.equals("MULTIPLE", ignoreCase = true) || bet.legs > 1
     val title = if (isMix)
         tr(lang, "Mix bet", "شرط میکس") + " (" + bet.legs + " " +
