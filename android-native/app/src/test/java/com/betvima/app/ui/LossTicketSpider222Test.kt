@@ -50,11 +50,22 @@ class LossTicketSpider222Test {
         }
     }
 
+    @Test fun sourceFrameAdvancesThroughAllSixteenLegPoses() {
+        assertEquals(16, SPIDER_WALK_FRAME_COUNT_227)
+        assertEquals(224, SPIDER_WALK_FRAME_WIDTH_227)
+        assertEquals(176, SPIDER_WALK_FRAME_HEIGHT_227)
+        val poses = (0..1000).map { spiderWalkFrame227(it / 1000f) }.toSet()
+        assertEquals("Every walking foot pose must become visible", 16, poses.size)
+        assertTrue("The spider must not be a single translating image",
+            spiderWalkFrame227(.025f) != spiderWalkFrame227(.075f))
+        assertEquals(0, spiderWalkFrame227(0f))
+    }
+
     @Test fun safeRouteCounterAndSinglePlayTime() {
         assertEquals(6, LOSS_SPIDER_ROUTE_COUNT_224)
-        assertEquals(340L, LOSS_SPIDER_DELAY_MS_222)
-        assertEquals(3200, LOSS_SPIDER_DURATION_MS_222)
-        assertEquals(3540L, LOSS_SPIDER_TOTAL_MS_222)
+        assertEquals(380L, LOSS_SPIDER_DELAY_MS_222)
+        assertEquals(3900, LOSS_SPIDER_DURATION_MS_222)
+        assertEquals(4280L, LOSS_SPIDER_TOTAL_MS_222)
         assertTrue(lossSpiderEntryIndex225(1, Int.MIN_VALUE) in 0..5)
         assertTrue(lossSpiderEntryIndex225(1, Int.MAX_VALUE) in 0..5)
         assertNotEquals(lossSpiderEntryIndex225(1, 417),
