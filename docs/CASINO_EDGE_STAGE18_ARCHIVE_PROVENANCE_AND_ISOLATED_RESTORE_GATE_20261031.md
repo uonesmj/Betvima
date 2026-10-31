@@ -71,3 +71,29 @@ Added `scripts/stage18/run_pg17_schema_restore_offline_sandbox.sh`. It:
 Known caveat: this is a **baseline compatibility experiment**, *not* proof that full Supabase-managed Auth/RLS/extensions functionality or eligibility is identical. The archive excludes managed auth/storage schemas; one NOVA FK refers to auth, and extension schemas/functions may not exist in a bare PostgreSQL image. Do not fabricate auth.users or alter production controls to bypass errors.
 
 Script was committed, not yet executed on the owner VPS. Stage18B only passes upon actual owner output `STAGE18B_OFFLINE_RESTORE_EXPERIMENT=PASS`, and **FULL_SUPABASE_SECURITY_PARITY still requires independent checks**. Local syntax check is included in operator command (`bash -n`). Existing old casino unchanged; PR stays DRAFT.
+
+## Stage18B operator first attempt — PostgreSQL 17 image/version gate blocked safely
+
+On 2026-10-31, user ran initial `run_pg17_schema_restore_offline_sandbox.sh` on VPS. Actual output:
+
+```text
+STAGE18B_CONTAINER_NETWORK=NONE
+STAGE18B_PUBLIC_PORTS=0
+STAGE18B_TARGET=THROWAWAY_LOCAL_POSTGRES
+STAGE18B_ABORT=POSTGRES17_REQUIRED
+STAGE18B_TEMP_CONTAINER_REMOVED=true
+STAGE18B_LIVE_3098_CHANGED=false
+```
+
+The existing reference image came from old `betvima-stage5-pg` container and was NOT previously verified to be Postgres 17. The original script also ran a `podman exec ... postgres -V` check immediately after starting a new container **before readiness**, so the failure could be from an **older cached image or a startup race**. **Do not assert which without source server version evidence.** This error occurs before the archive was copied, and no restore was performed.
+
+New v2 script `scripts/stage18/run_pg17_schema_restore_offline_sandbox_v2.sh`:
+
+1. Checks the locally cached reference image version via throwaway network-none `podman run --rm --pull=never --entrypoint postgres <image> -V` (no database boot).
+2. If the reference image is not proven PG17, selects the official Docker Hub `docker.io/library/postgres:17.11-bookworm`, pulls only this official image into local Podman cache if missing (no archive/DB credentials involved), and independently checks the exact executable version before any schema archive is copied. Official tag verified at https://hub.docker.com/_/postgres/tags .
+3. New Postgres sandbox is still `--network none`, `--pull=never`, no published TCP ports, separate transient UNIX socket. It waits for `pg_isready` to confirm startup **before** checking running `postgres -V`, preventing race-based false `POSTGRES17_REQUIRED`.
+4. Keeps exact archive SHA256 and protected path guard, bounded memory/CPU/timeout, local `pg_restore --single-transaction --schema-only`, only synthesized local DB and automatic container/temporary file removal. No production SQL read/writes and absolutely no changes to live 3098 or user, wallet, age, KYC, geo, payments.
+5. Full Supabase dependencies (managed `auth`, extensions, roles and policies) may still block a plain Postgres restore. This is accurately reported as `BASELINE_RESTORE=BLOCKED`, not falsely as a complete new casino.
+6. v2 is committed to DRAFT PR; user must run and report outcome. Operator Bash syntax check is included in the supplied command.
+
+**Stage18B remains NOT VERIFIED**, while Stage18A archive integrity remains PASS. There is no reason to alter the original private schema backup.
