@@ -107,3 +107,57 @@ internal fun spiderKnee230(
         perpendicular.y * outward.y >= 0f) 1f else -1f
     return hip + direction * projected + perpendicular * (side * lift)
 }
+
+
+/** New top-down anatomical geometry. Planting is measured in card coordinates;
+ * all four leg pairs have distinct forward reaches and lateral spreads.
+ */
+internal const val SPIDER_STEP_LENGTH_DP_231 = 12.5f
+internal const val SPIDER_SIZE_MULTIPLIER_231 = .74f
+
+internal fun spiderFoot231(
+    leg: Int, distance: Float, path: SpiderArcPath230, dp: Float
+): Offset {
+    require(leg in 0..7)
+    val row = leg % 4
+    val side = if (leg < 4) -1f else 1f
+    val phases = floatArrayOf(0f, .53f, .22f, .77f, .53f, 0f, .77f, .22f)
+    val offset = phases[leg]
+    val step = SPIDER_STEP_LENGTH_DP_231 * dp
+    val cycle = distance.coerceAtLeast(0f) / step + offset
+    val index = floor(cycle.toDouble()).toInt()
+    val phase = cycle - index
+    fun anchor(n: Int): Offset {
+        val d = (n - offset + .38f) * step
+        val center = path.position(d)
+        val tangent = path.heading(d)
+        val normal = Offset(-tangent.y, tangent.x)
+        val axial = floatArrayOf(19f, 6.5f, -8f, -20f)[row] * dp
+        val spread = floatArrayOf(24f, 31f, 31f, 25f)[row] * dp
+        return center + tangent * axial + normal * (side * spread)
+    }
+    val planted = anchor(index)
+    if (phase <= .67f) return planted
+    val next = anchor(index + 1)
+    val swing = ((phase - .67f) / .33f).coerceIn(0f, 1f)
+    val smooth = swing * swing * (3f - 2f * swing)
+    // Small projected swing arc, but never pull a foot across the centerline.
+    val normal = path.heading(distance).let { Offset(-it.y, it.x) }
+    val lift = sin((swing * PI).toDouble()).toFloat() * 1.25f * dp
+    return planted * (1f - smooth) + next * smooth -
+        normal * (side * lift)
+}
+
+/** A consistent, visibly outward-bent femur/tibia rather than the previous
+ * fixed 14/16dp bones, which folded across the body when the path curved.
+ */
+internal fun spiderJoint231(
+    hip: Offset, foot: Offset, forward: Offset, sideNormal: Offset,
+    row: Int, dp: Float
+): Offset {
+    val reach = (foot - hip).getDistance()
+    val outward = (4.8f + (if (row == 1 || row == 2) 2.1f else 0f)) * dp
+    val bend = forward * ((1.5f - row) * 1.7f * dp)
+    return hip + (foot - hip) * .48f + sideNormal * outward + bend *
+        (reach / (27f * dp)).coerceIn(.70f, 1.40f)
+}
