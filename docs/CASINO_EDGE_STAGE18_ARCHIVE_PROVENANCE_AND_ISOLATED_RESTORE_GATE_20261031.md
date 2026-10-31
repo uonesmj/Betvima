@@ -32,3 +32,42 @@ A bare PostgreSQL container therefore **cannot claim full Supabase-equivalent re
 
 ### Isolation and freeze statement
 The original casino server port 3098, login/registration, deposits/withdrawals, wallet, geo/age/KYC, access controls, and provider callbacks are completely unchanged. Current PR #370 remains **DRAFT** and must not be merged/deployed until sandbox validation and separate authorized release review.
+
+## Stage18A completed — exact user VPS output
+
+Operator ran `scripts/stage18/verify_private_nova_schema_archive_offline.cjs` with original SHA and private archive. **Actual observed stdout:**
+
+```text
+STAGE18_MODE=OFFLINE_SCHEMA_ARCHIVE_VALIDATION
+STAGE18_SHA256=PASS
+STAGE18_ARCHIVE_CUSTOM_TABLES=97
+STAGE18_ARCHIVE_TRIGGERS=45
+STAGE18_ARCHIVE_RLS_POLICIES=87
+STAGE18_ARCHIVE_FUNCTIONS=96
+STAGE18_ARCHIVE_INDEXES_EXPLICIT=132
+STAGE18_ARCHIVE_SEQUENCES=6
+STAGE18_ARCHIVE_VIEWS=5
+STAGE18_ARCHIVE_DATA_RECORDS=0
+STAGE18_ARCHIVE_DECOMPRESSION=PASS
+STAGE18_POSTGRESQL_NETWORK_CONNECTIONS=0
+STAGE18_PRODUCTION_DB_SQL_WRITES=0
+STAGE18_LIVE_3098_CHANGED=false
+STAGE18_STAGE18A_ARCHIVE_MANIFEST=PASS
+```
+
+Stage18A is **PASS**. 132 explicit `INDEX` archive objects vs 288 indexed objects in catalog is expected because primary/unique constraint index objects are represented under constraints, not all as independently created indexes.
+
+## Stage18B experimental isolated restoration script — committed, VPS execution pending
+
+Added `scripts/stage18/run_pg17_schema_restore_offline_sandbox.sh`. It:
+
+1. Refuses execution unless root, the previously used `betvima-stage5-pg` reference container is confirmed `--network none`, an already cached Postgres image is available, and the exact archive private path, permissions and SHA256 match the Stage17/18A output. Does **not** create a new paid server/project or pull a network image.
+2. Creates a **new disposable Podman container** with `--network none`, no published TCP ports, a private UNIX socket, memory/CPU/pid limits, PostgreSQL major version 17, and a new empty local database `stage18_sandbox`. Verifies both network and ports.
+3. Copies **only the already verified schema-only dump** into that container; no source PostgreSQL URI, production credentials, real users, transactions or KYC data passed.
+4. Attempts exact `pg_restore --exit-on-error --single-transaction --schema-only --no-owner --no-privileges` into **only** that disposable local database with max execution time. SQL remains inside container; errors are written privately and only **enumerated dependency categories** are exposed.
+5. If restore succeeds, checks 97 NOVA base tables, 96 routines, 45 triggers, 87 RLS policies, 91 RLS-enabled tables. If it fails, reports a dependency bucket such as `MANAGED_SUPABASE_AUTH_SCHEMA` or `MANAGED_SUPABASE_EXTENSIONS`, **NOT** a passed full clone.
+6. Always deletes the entire transient Podman container, temporary socket and error log. **No production database connections or changes, no port 3098 changes**.
+
+Known caveat: this is a **baseline compatibility experiment**, *not* proof that full Supabase-managed Auth/RLS/extensions functionality or eligibility is identical. The archive excludes managed auth/storage schemas; one NOVA FK refers to auth, and extension schemas/functions may not exist in a bare PostgreSQL image. Do not fabricate auth.users or alter production controls to bypass errors.
+
+Script was committed, not yet executed on the owner VPS. Stage18B only passes upon actual owner output `STAGE18B_OFFLINE_RESTORE_EXPERIMENT=PASS`, and **FULL_SUPABASE_SECURITY_PARITY still requires independent checks**. Local syntax check is included in operator command (`bash -n`). Existing old casino unchanged; PR stays DRAFT.
