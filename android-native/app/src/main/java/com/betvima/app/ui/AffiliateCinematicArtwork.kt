@@ -89,6 +89,7 @@ internal fun AffiliateCinematicPhoto(
     val context=LocalContext.current
     val chartScene = scene == AffiliateScene.STATISTICS ||
         scene == AffiliateScene.CHART || scene == AffiliateScene.GALLERY_INSIGHTS
+    val miniCardIndex = affiliateCardArtIndex(scene)
     // Bitmap decoding on the Compose main thread previously blocked popup
     // entrance frames, especially on lower-end Android devices.
     val bitmap by produceState<androidx.compose.ui.graphics.ImageBitmap?>(
@@ -98,10 +99,14 @@ internal fun AffiliateCinematicPhoto(
             runCatching {
                 val spriteIndex = affiliateCardArtIndex(scene)
                 val supplied = if(spriteIndex >= 0) runCatching {
-                    val bytes = android.util.Base64.decode(
-                        AffiliateArt203.imageData, android.util.Base64.DEFAULT)
-                    val sheet = BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
-                        ?: error("Bundled affiliate artwork could not be decoded")
+                    // Single offline sheet holds 8 user-supplied mini-card images:
+                    // FAQ 0-4, Partner Knowledge 5-7. Not density-scaled.
+                    val options = BitmapFactory.Options().apply { inScaled = false }
+                    val sheet = BitmapFactory.decodeResource(
+                        context.resources,
+                        com.betvima.app.R.drawable.affiliate_small_cards_8_20261031,
+                        options
+                    ) ?: error("New Affiliate thumbnail sheet failed to decode")
                     val cellWidth = sheet.width / 4
                     val cellHeight = sheet.height / 2
                     require(cellWidth > 0 && cellHeight > 0)
@@ -127,14 +132,13 @@ internal fun AffiliateCinematicPhoto(
     val drift by glow.animateFloat(initialValue=0f,targetValue=1f,
         animationSpec=infiniteRepeatable(tween(5800,easing=EaseInOutSine),
             repeatMode=RepeatMode.Reverse),label="affiliate-photo-drift")
-    // Clip at the OUTERMOST image viewport so the photograph, decorative
-    // glow, and entrance layers can never draw outside a rounded image card.
-    // All scenes keep their own aspect ratio inside this fixed viewport.
+    // Mini-cards are fully photo-filled, with no extra panel or darkening layer.
+    // All other scenes retain their existing cinematic overlays.
     Box(modifier
         .clip(RoundedCornerShape(corner.dp))
         .clipToBounds()
-        .background(Brush.linearGradient(listOf(Color(0xFF0E0E13),
-            scene.accent.copy(alpha=.24f),Color(0xFF101116))))) {
+        .background(if (miniCardIndex >= 0) Color.Transparent
+            else Color(0xFF0E0E13))) {
         val resolvedBitmap = bitmap
         if(chartScene) {
             AffiliateAnimatedChart199(
@@ -151,10 +155,10 @@ internal fun AffiliateCinematicPhoto(
             Image(
                 bitmap = resolvedBitmap,
                 contentDescription = null,
-                contentScale = if(affiliateCardArtIndex(scene) >= 0) ContentScale.Crop else ContentScale.Fit,
+                contentScale = if(miniCardIndex >= 0) ContentScale.Crop else ContentScale.Fit,
                 alignment = Alignment.Center,
                 modifier = Modifier.matchParentSize().graphicsLayer {
-                    alpha = .65f + .35f * entrance
+                    alpha = if(miniCardIndex >= 0) 1f else .65f + .35f * entrance
                 }
             )
         } else {
@@ -165,6 +169,7 @@ internal fun AffiliateCinematicPhoto(
                     alpha=.16f;rotationZ=(drift-.5f)*9f
                 },tint=Color.White)
         }
+        if (miniCardIndex < 0) {
         Box(Modifier.fillMaxSize().background(Brush.verticalGradient(
             0f to Color(0xFF080D17).copy(alpha=.04f),
             .65f to Color(0xFF080D17).copy(alpha=.12f),
@@ -185,6 +190,7 @@ internal fun AffiliateCinematicPhoto(
                         radius=size.minDimension*.34f,style=Stroke(3.dp.toPx()))
                 }
             })
+        }
         if(showMark) {
             Row(Modifier.align(Alignment.TopStart).padding(13.dp)
                 .clip(RoundedCornerShape(9.dp))
