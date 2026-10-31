@@ -1,0 +1,90 @@
+name: BetVima Android 223 Grounded Spider And Win Glow Debug APK
+on:
+  push:
+    branches:
+      - feat/android-223-grounded-spider-win-particles-20261031
+    paths:
+      - 'android-native/**'
+      - '.github/workflows/android-223-grounded-spider-win-glow-apk.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-android-apk:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 50
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify native UI source and no financial mutations
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('android-native/app/src/main/java/com/betvima/app/ui')
+          grade = Path('android-native/app/build.gradle.kts').read_text()
+          app = (p / 'BetvimaApp.kt').read_text()
+          locale = (p / 'LanguagePicker.kt').read_text()
+          drawer = (p / 'ReferenceMenuDrawer.kt').read_text()
+          sports = (p / 'PremiumTournamentSheet.kt').read_text()
+          wallet = (p / 'PremiumWallet.kt').read_text()
+          affiliate = (p / 'PremiumAffiliateLanding.kt').read_text()
+          reveal = (p / 'AffiliateCinematicArtwork.kt').read_text()
+          casino = (p / 'CasinoLobby.kt').read_text()
+          assert 'versionCode = 223' in grade and 'versionName = "0.223.0"' in grade
+          assert 'onSelect = { selected -> model.setLanguage(selected) }' in app
+          assert 'Icons.Default.Settings)' in drawer
+          assert 'Color(0xFF111216)' in sports
+          assert 'Color(0xFFF5F7FC)' in sports
+          assert 'Color(0xFF1D2230)' in locale
+          assert 'Active bets (loaded)' in wallet and 'Withdrawal requests use available funds' in wallet
+          assert 'showing(12)' in affiliate and 'showing(16)' in affiliate
+          assert 'LaunchedEffect(Unit) { revealed = true }' in reveal
+          assert 'containerColor = Color(0xFF24262C)' in casino
+          assert 'disabledContentColor = Color(0xFFDBE1EC)' in casino
+          spider = (p / 'LossTicketSpider222.kt').read_text()
+          ticket = (p / 'PremiumMyBets.kt').read_text()
+          assert 'LOSS_SPIDER_DURATION_MS_222 = 3600' in spider
+          assert 'LaunchedEffect(replay, badgeTarget != null)' in spider
+          assert 'drawCircle(' in spider and 'for (leg in 0 until 4)' in spider\n          assert 'rimBottom' in spider and 'turnY' in spider\n          assert 'val black = Color(0xFF090B0E)' in spider\n          assert 'val footLift' in spider
+          assert 'expanded && confirmedLoss && completedLossReplay != lossReplay' in ticket\n          win = (p / 'WinTicketSparklers.kt').read_text()\n          assert 'repeat(4) { burst ->' in win\n          assert 'winBurstPhase223' in win\n          assert 'repeat(38) { i ->' in win
+          assert 'if (!expanded && confirmedLoss) lossReplay++' in ticket
+          assert 'badge - origin' in ticket
+          assert 'expanded && confirmedWin' in ticket
+          print('PASS: native UI and lost-ticket one-shot animation checks')
+          PY
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Configure Android SDK
+        run: |
+          echo "ANDROID_HOME=/usr/local/lib/android/sdk" >> "$GITHUB_ENV"
+          /usr/local/lib/android/sdk/cmdline-tools/latest/bin/sdkmanager 'platforms;android-35' 'build-tools;35.0.0' || true
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.10.2'
+      - name: Build APK and run unit tests
+        working-directory: android-native
+        run: gradle --no-daemon --stacktrace :app:assembleDebug :app:testDebugUnitTest
+      - uses: actions/upload-artifact@v4
+        with:
+          name: BetVima-Android-v0.223.0-Grounded-Spider-Win-Glow-DEBUG
+          path: android-native/app/build/outputs/apk/debug/app-debug.apk
+          retention-days: 30
+          if-no-files-found: error
+      - name: Publish directly downloadable prerelease APK
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          tag="android-v0.223.0-grounded-spider-win-glow-debug-20261031"
+          apk="BetVima-Android-v0.223.0-Grounded-Spider-Win-Glow-DEBUG.apk"
+          cp android-native/app/build/outputs/apk/debug/app-debug.apk "$apk"
+          if gh release view "$tag" >/dev/null 2>&1; then
+            gh release upload "$tag" "$apk" --clobber
+          else
+            gh release create "$tag" "$apk" --target "$GITHUB_SHA" \
+              --prerelease --title "BetVima Android v0.223.0 - Grounded Spider And Win Glow (debug)" \
+              --notes "Android v0.223.0 DEBUG: black articulated spider follows the ticket surface along left rim and upper header, then enters the Lost status chip exactly once per expansion. No diagonal flight or silk trail. Winning tickets now have restrained glassy mint/white/champagne particles, smaller spark bursts and fine comet tails. Read-only visual changes. No changes to wager logic, wallet, ledger, casino or server. Not production signed."
+          fi
