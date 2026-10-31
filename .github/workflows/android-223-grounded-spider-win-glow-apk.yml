@@ -46,8 +46,15 @@ jobs:
           ticket = (p / 'PremiumMyBets.kt').read_text()
           assert 'LOSS_SPIDER_DURATION_MS_222 = 3600' in spider
           assert 'LaunchedEffect(replay, badgeTarget != null)' in spider
-          assert 'drawCircle(' in spider and 'for (leg in 0 until 4)' in spider\n          assert 'rimBottom' in spider and 'turnY' in spider\n          assert 'val black = Color(0xFF090B0E)' in spider\n          assert 'val footLift' in spider
-          assert 'expanded && confirmedLoss && completedLossReplay != lossReplay' in ticket\n          win = (p / 'WinTicketSparklers.kt').read_text()\n          assert 'repeat(4) { burst ->' in win\n          assert 'winBurstPhase223' in win\n          assert 'repeat(38) { i ->' in win
+          assert 'drawCircle(' in spider and 'for (leg in 0 until 4)' in spider
+          assert 'rimBottom' in spider and 'turnY' in spider
+          assert 'val black = Color(0xFF090B0E)' in spider
+          assert 'val footLift' in spider
+          assert 'expanded && confirmedLoss && completedLossReplay != lossReplay' in ticket
+          win = (p / 'WinTicketSparklers.kt').read_text()
+          assert 'repeat(4) { burst ->' in win
+          assert 'winBurstPhase223' in win
+          assert 'repeat(38) { i ->' in win
           assert 'if (!expanded && confirmedLoss) lossReplay++' in ticket
           assert 'badge - origin' in ticket
           assert 'expanded && confirmedWin' in ticket
