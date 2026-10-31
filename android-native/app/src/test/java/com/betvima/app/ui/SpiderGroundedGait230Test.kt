@@ -43,6 +43,45 @@ class SpiderGroundedGait230Test {
         assertTrue((a-b).getDistance()>1f)
     }
 
+    @Test fun newEightFeetRemainSeparatedFromThoraxAndEachOther() {
+        val path = route()
+        val travel = path.length * .46f
+        val body = path.position(travel)
+        val direction = path.heading(travel)
+        val normal = Offset(-direction.y, direction.x)
+        val feet = (0 until 8).map { spiderFoot231(it, travel, path, 1f) }
+        for (i in 0..7) {
+            val side = if (i < 4) -1f else 1f
+            val lateral = (feet[i] - body).x * normal.x +
+                (feet[i] - body).y * normal.y
+            assertTrue("Foot must stay outside the thorax on its own side",
+                lateral * side > 12f)
+        }
+        for (row in 0..3) {
+            assertTrue("Opposite feet must not overlap",
+                (feet[row] - feet[row + 4]).getDistance() > 34f)
+        }
+    }
+
+    @Test fun plantedToeIsFixedAndNewJointBendsOutward() {
+        val path = route()
+        val d = 6f * SPIDER_STEP_LENGTH_DP_231
+        val p1 = spiderFoot231(0, d + .05f * SPIDER_STEP_LENGTH_DP_231, path, 1f)
+        val p2 = spiderFoot231(0, d + .48f * SPIDER_STEP_LENGTH_DP_231, path, 1f)
+        assertEquals(p1.x, p2.x, .0001f)
+        assertEquals(p1.y, p2.y, .0001f)
+        val head = path.position(d)
+        val forward = path.heading(d)
+        val outward = Offset(forward.y, -forward.x)
+        val hip = head + outward * 5f
+        val knee = spiderJoint231(hip, p1, forward, outward, 0, 1f)
+        val midpoint = hip + (p1 - hip) * .48f
+        val displacement = knee - midpoint
+        assertTrue("New knee must visibly open outwards",
+            displacement.getDistance() > 3f)
+        assertTrue(SPIDER_SIZE_MULTIPLIER_231 < SPIDER_SIZE_MULTIPLIER_230)
+    }
+
     @Test fun bodyIsSmallerWithoutScalingWorldSpaceFootCoordinates() {
         assertEquals(.79f, SPIDER_SIZE_MULTIPLIER_230,.001f)
         assertEquals(17f, SPIDER_STEP_LENGTH_DP_230,.001f)
