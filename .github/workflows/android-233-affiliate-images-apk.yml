@@ -73,7 +73,7 @@ jobs:
           assert 'fun affiliateCardArtIndex' in reveal
           assert 'ContentScale.Crop' in reveal
           assert len(art) > 20000 and 'imageData' in art
-          assert Path('android-native/app/src/main/res/drawable/affiliate_hero_custom_20261031.webp').exists()
+          assert Path('android-native/app/src/main/res/drawable-nodpi/affiliate_hero_custom_20261031.webp').exists()
           print('PASS: all 8 Affiliate cards, custom hero, Win unchanged, spider absent')
           PY
       - uses: actions/setup-java@v4
