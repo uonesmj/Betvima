@@ -217,16 +217,18 @@ internal fun LossTicketSpider222(
         val start = lossSpiderStart224(route, width, height)
         val end = lossSpiderBadgeEntry224(badge, route, dp)
         val travel = spiderWalkingDistance228(time)
-        val center = lossSpiderPoint222(start, end, width, height, travel)
-        val forward = spiderHeading229(start, end, width, height, travel)
+        val arc = SpiderArcPath230(start, end, width, height)
+        val distance = arc.distanceAt(travel)
+        val center = arc.position(distance)
+        val forward = arc.heading(distance)
         val normal = Offset(-forward.y, forward.x)
         val angle = (atan2(forward.y.toDouble(), forward.x.toDouble()) * 180.0 /
             PI).toFloat() + 90f
-        val cycle = travel * SPIDER_IK_STRIDES_229 * 2f * PI.toFloat()
-        val bob = .38f * dp * sin(cycle.toDouble()).toFloat()
+        val cycle = distance / (SPIDER_STEP_LENGTH_DP_230 * dp) * 2f * PI.toFloat()
+        val bob = .24f * dp * sin(cycle.toDouble()).toFloat()
         val body = center + normal * bob
         val entering = ((time - .89f) / .11f).coerceIn(0f, 1f)
-        val shrink = 1f - entering * .72f
+        val shrink = SPIDER_SIZE_MULTIPLIER_230 * (1f - entering * .72f)
         val opacity = (1f - entering * entering).coerceIn(0f, 1f)
 
         // Eight high-contrast, individually planted articulated legs. The
@@ -235,35 +237,33 @@ internal fun LossTicketSpider222(
         for (leg in 0 until 8) {
             val row = leg % 4
             val side = if (leg < 4) -1f else 1f
-            val hipF = floatArrayOf(13f, 4f, -6f, -14f)[row] * dp
-            val root = body + forward * hipF + normal * (side * 4.6f * dp * shrink)
-            val foot = spiderFoot229(
-                leg, travel, start, end, width, height, dp
-            )
+            val hipF = floatArrayOf(11f, 3f, -5f, -12f)[row] * dp
+            val root = body + forward * hipF + normal * (side * 3.8f * dp * shrink)
+            val foot = spiderFoot230(leg, distance, arc, dp)
             // As the spider disappears into Lost, feet converge naturally.
             val toe = body + (foot - body) * shrink
-            val first = root + normal * (side * 8.1f * dp * shrink) +
-                forward * ((1.5f - row) * 1.4f * dp)
-            val knee = spiderKnee229(first, toe, normal, side, dp * shrink)
-            val ankle = knee + (toe - knee) * .77f
+            val first = root + normal * (side * 6.2f * dp * shrink) +
+                forward * ((1.5f - row) * 1.2f * dp)
+            val knee = spiderKnee230(first, toe, normal * side, dp * shrink)
+            val ankle = knee + (toe - knee) * .78f
             val black = Color(0xFF101114).copy(alpha = opacity)
             val sheen = Color(0xFF535963).copy(alpha = opacity * .77f)
-            drawLine(black, root, first, strokeWidth = 2.9f * dp * shrink,
+            drawLine(black, root, first, strokeWidth = 2.25f * dp * shrink,
                 cap = StrokeCap.Round)
             drawLine(sheen, root, first, strokeWidth = .62f * dp * shrink,
                 cap = StrokeCap.Round)
-            drawLine(black, first, knee, strokeWidth = 3.5f * dp * shrink,
+            drawLine(black, first, knee, strokeWidth = 2.65f * dp * shrink,
                 cap = StrokeCap.Round)
             drawLine(sheen, first, knee, strokeWidth = .85f * dp * shrink,
                 cap = StrokeCap.Round)
-            drawLine(black, knee, ankle, strokeWidth = 2.7f * dp * shrink,
+            drawLine(black, knee, ankle, strokeWidth = 2.1f * dp * shrink,
                 cap = StrokeCap.Round)
             drawLine(sheen, knee, ankle, strokeWidth = .57f * dp * shrink,
                 cap = StrokeCap.Round)
-            drawLine(black, ankle, toe, strokeWidth = 1.7f * dp * shrink,
+            drawLine(black, ankle, toe, strokeWidth = 1.35f * dp * shrink,
                 cap = StrokeCap.Round)
             drawCircle(Color(0xFF25292D).copy(alpha = opacity),
-                radius = 1.7f * dp * shrink, center = knee)
+                radius = 1.35f * dp * shrink, center = knee)
             drawCircle(Color(0xFF141619).copy(alpha = opacity),
                 radius = .7f * dp * shrink, center = toe)
         }
@@ -272,8 +272,8 @@ internal fun LossTicketSpider222(
         // original transparent image). No rectangular background is drawn.
         // Source photo faces toward lower-left, hence anatomical correction.
         rotate(degrees = angle - 135f, pivot = body) {
-            val dstWidth = (33f * dp * shrink).roundToInt().coerceAtLeast(1)
-            val dstHeight = (39f * dp * shrink).roundToInt().coerceAtLeast(1)
+            val dstWidth = (27f * dp * shrink).roundToInt().coerceAtLeast(1)
+            val dstHeight = (31f * dp * shrink).roundToInt().coerceAtLeast(1)
             drawImage(
                 image = bodyPhoto,
                 srcOffset = IntOffset(51, 14),
