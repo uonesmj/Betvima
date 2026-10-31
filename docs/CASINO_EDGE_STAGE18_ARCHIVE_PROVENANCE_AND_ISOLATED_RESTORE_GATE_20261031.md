@@ -19,7 +19,7 @@ Committed `scripts/stage18/verify_private_nova_schema_archive_offline.cjs`.
 - Rejects `TABLE DATA`, `MATERIALIZED VIEW DATA`, `SEQUENCE SET`, `BLOBS`, and `BLOB COMMENTS` in TOC.
 - Requires exactly **97 table definitions**, **45 noninternal trigger definitions**, and **87 RLS policy definitions** as previously observed in live **read-only** catalog metadata. Logs safe counts for functions, indexes, sequences and views as diagnostics.
 - Uses `pg_restore --schema-only --file=/dev/null <archive>` to fully decode the SQL from custom archive without creating a restore target/database and without outputting SQL source. All children get a clean environment *without DB credentials*, and no `-d`/`--dbname` option.
-- Logs `STAGE18_ST​AGE18A_ARCHIVE_MANIFEST=PASS` (actual marker **`STAGE18_STAGE18A_ARCHIVE_MANIFEST=PASS`**) only after all guards succeed. This is not yet proven on owner VPS; no success should be claimed before real output.
+- Logs `STAGE18_STAGE18A_ARCHIVE_MANIFEST=PASS` only after all guards succeed. This is not yet proven on owner VPS; no success should be claimed before real output.
 - Any unexpected TOC format or count difference fails closed and must be investigated. Do not strip policies/triggers or alter source archive to force a pass.
 
 ### Stage18B isolation prerequisite: pending
