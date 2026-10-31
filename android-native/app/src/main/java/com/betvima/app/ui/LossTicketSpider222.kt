@@ -5,31 +5,33 @@ import com.betvima.app.R
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.Image
-import androidx.compose.foundation.layout.BoxWithConstraints
-import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.Canvas
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.FilterQuality
+import androidx.compose.ui.graphics.drawscope.rotate
+import androidx.compose.ui.res.imageResource
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
 import kotlin.math.PI
 import kotlin.math.atan2
 import kotlin.math.sin
+import kotlin.math.roundToInt
 
 /**
  * Photo-based spider animation.
  * The asset is a real transparent WEBP cutout generated for BetVima.
  * No Canvas body or legs are drawn and no plate/glow/background is created.
  */
-internal const val LOSS_SPIDER_DELAY_MS_222 = 340L
-internal const val LOSS_SPIDER_DURATION_MS_222 = 3200
+internal const val LOSS_SPIDER_DELAY_MS_222 = 380L
+internal const val LOSS_SPIDER_DURATION_MS_222 = 3900
 internal const val LOSS_SPIDER_TOTAL_MS_222 =
     LOSS_SPIDER_DELAY_MS_222 + LOSS_SPIDER_DURATION_MS_222
 internal const val LOSS_SPIDER_ROUTE_COUNT_224 = 6
@@ -91,6 +93,19 @@ internal fun lossSpiderPoint222(
     )
 }
 
+internal const val SPIDER_WALK_FRAME_COUNT_227 = 16
+internal const val SPIDER_WALK_FRAME_WIDTH_227 = 224
+internal const val SPIDER_WALK_FRAME_HEIGHT_227 = 176
+internal const val SPIDER_WALK_STRIDES_227 = 7
+
+/** A distinct leg pose every 22-35 ms while the spider crawls.
+ * Alternating feet are displaced in the actual transparent photograph.
+ */
+internal fun spiderWalkFrame227(progress: Float): Int =
+    ((progress.coerceIn(0f, .99999f) *
+        (SPIDER_WALK_FRAME_COUNT_227 * SPIDER_WALK_STRIDES_227)).toInt()) %
+        SPIDER_WALK_FRAME_COUNT_227
+
 @Composable
 internal fun LossTicketSpider222(
     replay: Int,
@@ -100,55 +115,73 @@ internal fun LossTicketSpider222(
     onComplete: () -> Unit
 ) {
     val progress = remember { Animatable(0f) }
+    // The actual photo has sixteen different articulated leg poses. The entire
+    // sprite sheet is decoded once and only source rectangles change on frames.
+    val sprite = ImageBitmap.imageResource(id = R.drawable.spider_walk_cycle_227)
+    val density = LocalDensity.current
+    val visualWidth = with(density) { 87.dp.toPx() }
+    val visualHeight = with(density) { 69.dp.toPx() }
+    val scaleUnit = with(density) { 1.dp.toPx() }
+
     LaunchedEffect(replay, badgeTarget != null) {
         if (badgeTarget == null) return@LaunchedEffect
         progress.snapTo(0f)
         delay(LOSS_SPIDER_DELAY_MS_222)
-        progress.animateTo(1f, tween(LOSS_SPIDER_DURATION_MS_222, easing = LinearEasing))
+        progress.animateTo(
+            1f, tween(durationMillis = LOSS_SPIDER_DURATION_MS_222,
+                easing = LinearEasing)
+        )
         onComplete()
     }
 
-    // Compose displays the actual image; the photo's alpha channel means there
-    // is never a rectangular background. Only a small graphics-layer transform
-    // is animated, avoiding the earlier complex Canvas Path renderer.
-    BoxWithConstraints(modifier) {
-        val target = badgeTarget ?: return@BoxWithConstraints
-        val w = constraints.maxWidth.toFloat()
-        val h = constraints.maxHeight.toFloat()
-        if (w < 100f || h < 90f) return@BoxWithConstraints
-        val density = LocalDensity.current
-        val imageWidth = with(density) { 69.dp.toPx() }
-        val imageHeight = with(density) { 51.dp.toPx() }
+    Canvas(modifier) {
+        val chip = badgeTarget ?: return@Canvas
+        val w = size.width
+        val h = size.height
+        if (w < 110f || h < 95f) return@Canvas
+        val t = progress.value
+        if (t >= 1f) return@Canvas
+
         val route = spiderRoute226(routeVariant)
         val start = lossSpiderStart224(route, w, h)
-        val end = lossSpiderBadgeEntry224(target, route, with(density) { 1.dp.toPx() })
-        val t = progress.value
-        if (t >= 1f) return@BoxWithConstraints
-
-        val point = lossSpiderPoint222(start, end, w, h, t)
-        val p0 = lossSpiderPoint222(start, end, w, h, (t - .005f).coerceAtLeast(0f))
-        val p1 = lossSpiderPoint222(start, end, w, h, (t + .005f).coerceAtMost(1f))
-        val dx = p1.x - p0.x
-        val dy = p1.y - p0.y
-        // The spider image's face points down in its original orientation.
-        val direction = atan2(dy.toDouble(), dx.toDouble()).toFloat() *
-            (180f / PI.toFloat()) - 90f
-        val gait = sin((t * 27f * PI).toDouble()).toFloat()
-        val close = ((t - .87f) / .13f).coerceIn(0f, 1f)
-        val scale = (1f - close * .78f) * (1f + gait * .012f)
-
-        Image(
-            painter = painterResource(R.drawable.spider_realistic_226),
-            contentDescription = null,
-            contentScale = ContentScale.Fit,
-            modifier = Modifier.size(width = 69.dp, height = 51.dp).graphicsLayer {
-                translationX = point.x - imageWidth * .5f + gait * 0.7f
-                translationY = point.y - imageHeight * .5f
-                rotationZ = direction + gait * 2.1f
-                scaleX = scale
-                scaleY = scale * (1f + gait * .01f)
-                alpha = (1f - close * close).coerceIn(0f, 1f)
-            }
+        val destination = lossSpiderBadgeEntry224(chip, route, scaleUnit)
+        val now = lossSpiderPoint222(start, destination, w, h, t)
+        val before = lossSpiderPoint222(
+            start, destination, w, h, (t - .004f).coerceAtLeast(0f)
         )
+        val after = lossSpiderPoint222(
+            start, destination, w, h, (t + .004f).coerceAtMost(1f)
+        )
+        // The source photo faces down; the vector derivative rotates its face
+        // into the direction of crawling. A tiny rhythmic yaw tracks the legs.
+        val direction = (atan2(
+            (after.y - before.y).toDouble(),
+            (after.x - before.x).toDouble()
+        ) * 180.0 / PI).toFloat() - 90f
+        val phase = (t * SPIDER_WALK_STRIDES_227 * 2f * PI).toDouble()
+        val bob = .65f * scaleUnit * sin(phase * 2.0).toFloat()
+        val yaw = 1.4f * sin(phase).toFloat()
+        val complete = ((t - .89f) / .11f).coerceIn(0f, 1f)
+        val shrink = 1f - .75f * complete
+        val alpha = (1f - complete * complete).coerceIn(0f, 1f)
+        val frame = spiderWalkFrame227(t)
+
+        rotate(degrees = direction + yaw, pivot = now) {
+            val destW = (visualWidth * shrink).roundToInt().coerceAtLeast(1)
+            val destH = (visualHeight * shrink).roundToInt().coerceAtLeast(1)
+            drawImage(
+                image = sprite,
+                srcOffset = IntOffset(frame * SPIDER_WALK_FRAME_WIDTH_227, 0),
+                srcSize = IntSize(SPIDER_WALK_FRAME_WIDTH_227,
+                    SPIDER_WALK_FRAME_HEIGHT_227),
+                dstOffset = IntOffset(
+                    (now.x - destW / 2f).roundToInt(),
+                    (now.y + bob - destH / 2f).roundToInt()
+                ),
+                dstSize = IntSize(destW, destH),
+                alpha = alpha,
+                filterQuality = FilterQuality.Medium
+            )
+        }
     }
 }
