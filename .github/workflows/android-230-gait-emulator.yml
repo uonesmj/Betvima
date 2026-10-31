@@ -1,0 +1,39 @@
+name: BetVima Android 230 Grounded IK Emulator Check
+on:
+  push:
+    branches:
+      - test/android-230-arc-length-gait-emulator-20261031
+    paths:
+      - 'android-native/**'
+      - '.github/workflows/android-230-gait-emulator.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  render-smoke:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Configure Android SDK
+        run: echo "ANDROID_HOME=/usr/local/lib/android/sdk" >> "$GITHUB_ENV"
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.10.2'
+      - name: Enable hardware acceleration
+        run: |
+          if [ -e /dev/kvm ]; then sudo chmod 666 /dev/kvm; fi
+      - name: Render and animate grounded spider on Android 15 emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          disable-animations: true
+          emulator-boot-timeout: 900
+          script: cd android-native && gradle --no-daemon --stacktrace :app:connectedDebugAndroidTest
