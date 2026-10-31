@@ -49,7 +49,7 @@ jobs:
           assert 'spiderFoot229(' in spider
           assert 'spiderKnee229(' in spider
           assert 'SPIDER_IK_STANCE_FRACTION_229 = .68f' in spider
-          assert 'planted' in spider and 'world coordinates' in spider.lower()
+          assert 'planted' in spider and 'card/world coordinates' in spider.lower()
           assert 'ImageBitmap.imageResource(id = R.drawable.spider_realistic_226)' in spider
           assert 'R.drawable.spider_walk_cycle_228' not in spider
           assert 'spiderWalkingDistance228' in spider
