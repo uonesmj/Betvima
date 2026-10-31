@@ -97,3 +97,41 @@ New v2 script `scripts/stage18/run_pg17_schema_restore_offline_sandbox_v2.sh`:
 6. v2 is committed to DRAFT PR; user must run and report outcome. Operator Bash syntax check is included in the supplied command.
 
 **Stage18B remains NOT VERIFIED**, while Stage18A archive integrity remains PASS. There is no reason to alter the original private schema backup.
+
+## Stage18B actual operator result (2026-10-31 00:17 UTC)
+Original owner VPS output from `run_pg17_schema_restore_offline_sandbox_v2.sh`:
+```text
+STAGE18B_REFERENCE_IMAGE_POSTGRES17=PASS
+STAGE18B_CONTAINER_NETWORK=NONE
+STAGE18B_PUBLIC_PORTS=0
+STAGE18B_TARGET=THROWAWAY_LOCAL_POSTGRES
+STAGE18B_TEMP_POSTGRES_READY=PASS
+STAGE18B_RUNNING_POSTGRES_MAJOR=17
+STAGE18B_RESTORE_PHASE=BEGIN
+STAGE18B_BASELINE_RESTORE=BLOCKED
+STAGE18B_FIRST_DEPENDENCY_CLASS=UNRESOLVED_TYPE_OR_FUNCTION
+STAGE18B_NOTE=PLAIN_POSTGRES_NOT_SUPABASE_EQUIVALENT
+STAGE18B_ARCHIVE_INTEGRITY_ALREADY_PASSED=true
+STAGE18B_PRODUCTION_DB_CONNECTIONS=0
+STAGE18B_TEMP_CONTAINER_REMOVED=true
+STAGE18B_LIVE_3098_CHANGED=false
+```
+**Version race/major issues fixed**: sandbox ran PostgreSQL 17. No production connections. **Restore failed at a real missing dependency**. The original v2 deliberately deleted private stderr after categorizing it, so the exact first failed dependency was **not captured and cannot be reconstructed from those logs**.
+
+### Independent read-only production external-dependency audit
+Committed `scripts/stage18/inspect_nova_external_schema_dependencies_readonly.sql` and **executed its exact contents** against live Supabase production with SELECT-only metadata. It identified TWO direct, explicit cross-schema requirements for the `nova` subset:
+
+| dependency | source relation | external object | detail |
+| --- | --- | --- | --- |
+| Foreign key | `nova.profiles` | `auth.users` | `profiles_auth_fk` |
+| Column type | `nova.profiles.kyc_status` | `public.kyc_status` | PostgreSQL enum |
+
+The public enum labels are present in verified production catalogs, but **no type was created, removed, altered or redefined**; no KYC, age, geography, wallet or auth data/controls were touched. A dump of `nova` alone cannot independently create these external objects. These are independently proven **missing baseline requirements**, not confirmation which exact object failed FIRST in this restoration.
+
+### Stage18B v3 — preserve only non-sensitive diagnostic metadata
+`scripts/stage18/run_pg17_schema_restore_offline_sandbox_v3.sh` is v2 plus a **strict, allowlisted parser** of the first PostgreSQL `ERROR:` line on restore failure:
+- Prints `STAGE18B_FIRST_ERROR_CATEGORY`, short SHA256 error fingerprint, matched allowlisted SQL identifier, namespace class, and first TOC entry number if available.
+- Never prints full `pg_restore` stderr, SQL source, function definitions, archive content, financial records, customer data or credentials. Raw error remains only in the 0600 scratch log, which is always deleted after the run.
+- Retains exact original SHA256 and private 0600 archive, offline Podman `--network none`, zero public ports, no source database URI, `--single-transaction --schema-only`, automatic scratch container cleanup.
+- **Source committed, but operator VPS execution pending**. Do not claim exact first missing object until v3 stdout is received.
+- If `public.kyc_status` or `auth.users` is confirmed missing, resolve with authentic, non-data structural definitions only in an isolated Supabase-compatible baseline. **Do not fabricate, bypass or change live KYC/geo/age/access rules**, and never modify live Supabase migration history to force a branch to green.
