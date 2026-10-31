@@ -1,0 +1,108 @@
+name: BetVima Android 228 Eight-Leg Footplant Walking Debug APK
+on:
+  push:
+    branches:
+      - feat/android-228-articulated-footplant-spider-20261031
+    paths:
+      - 'android-native/**'
+      - '.github/workflows/android-228-footplant-spider-apk.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-android-apk:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 50
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify native UI source and no financial mutations
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('android-native/app/src/main/java/com/betvima/app/ui')
+          grade = Path('android-native/app/build.gradle.kts').read_text()
+          app = (p / 'BetvimaApp.kt').read_text()
+          locale = (p / 'LanguagePicker.kt').read_text()
+          drawer = (p / 'ReferenceMenuDrawer.kt').read_text()
+          sports = (p / 'PremiumTournamentSheet.kt').read_text()
+          wallet = (p / 'PremiumWallet.kt').read_text()
+          affiliate = (p / 'PremiumAffiliateLanding.kt').read_text()
+          reveal = (p / 'AffiliateCinematicArtwork.kt').read_text()
+          casino = (p / 'CasinoLobby.kt').read_text()
+          assert 'versionCode = 228' in grade and 'versionName = "0.228.0"' in grade
+          assert 'onSelect = { selected -> model.setLanguage(selected) }' in app
+          assert 'Icons.Default.Settings)' in drawer
+          assert 'Color(0xFF111216)' in sports
+          assert 'Color(0xFFF5F7FC)' in sports
+          assert 'Color(0xFF1D2230)' in locale
+          assert 'Active bets (loaded)' in wallet and 'Withdrawal requests use available funds' in wallet
+          assert 'showing(12)' in affiliate and 'showing(16)' in affiliate
+          assert 'LaunchedEffect(Unit) { revealed = true }' in reveal
+          assert 'containerColor = Color(0xFF24262C)' in casino
+          assert 'disabledContentColor = Color(0xFFDBE1EC)' in casino
+          spider = (p / 'LossTicketSpider222.kt').read_text()
+          ticket = (p / 'PremiumMyBets.kt').read_text()
+          assert 'LOSS_SPIDER_DURATION_MS_222 = 3900' in spider
+          assert 'LaunchedEffect(replay, badgeTarget != null)' in spider
+          assert 'ImageBitmap.imageResource(id = R.drawable.spider_walk_cycle_228)' in spider
+          assert 'spiderWalkFrame227(distance)' in spider
+          assert 'drawImage(' in spider and 'SPIDER_WALK_GRID_COLUMNS_228' in spider
+          assert 'SPIDER_WALK_FRAME_COUNT_227 = 48' in spider
+          assert 'spiderWalkingDistance228' in spider
+          assert 'spiderWalkFrame227' in spider
+          assert 'lossSpiderStart224' in spider and 'lossSpiderBadgeEntry224' in spider
+          assert 'u*u*u*start.x' in spider
+          assert 'expanded && confirmedLoss && completedLossReplay != lossReplay' in ticket
+          assert 'routeVariant = lossSpiderEntryIndex225(lossReplay, bet.id.hashCode())' in ticket
+          image = Path('android-native/app/src/main/res/drawable/spider_walk_cycle_228.webp')
+          assert image.exists(), 'Missing the animated leg-pose sprite'
+          b = image.read_bytes()
+          assert len(b) > 50000 and b[:4] == b'RIFF' and b[8:12] == b'WEBP'
+          assert 'generate_spider_walk_228.py' in str(Path('android-native/scripts/generate_spider_walk_227.py'))
+          win = (p / 'WinTicketSparklers.kt').read_text()
+          assert 'repeat(4) { burst ->' in win
+          assert 'winBurstPhase223' in win
+          assert 'repeat(38) { i ->' in win
+          assert 'LaunchedEffect(expanded, confirmedLoss)' not in ticket
+          assert 'if (!expanded && confirmedLoss) lossReplay++' in ticket
+          assert 'badge - origin' in ticket
+          assert 'expanded && confirmedWin' in ticket
+          print('PASS: native UI and lost-ticket one-shot animation checks')
+          PY
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Configure Android SDK
+        run: |
+          echo "ANDROID_HOME=/usr/local/lib/android/sdk" >> "$GITHUB_ENV"
+          /usr/local/lib/android/sdk/cmdline-tools/latest/bin/sdkmanager 'platforms;android-35' 'build-tools;35.0.0' || true
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.10.2'
+      - name: Build APK and run unit tests
+        working-directory: android-native
+        run: gradle --no-daemon --stacktrace :app:assembleDebug :app:testDebugUnitTest
+      - uses: actions/upload-artifact@v4
+        with:
+          name: BetVima-Android-v0.228.0-Real-Spider-Footplant-DEBUG
+          path: android-native/app/build/outputs/apk/debug/app-debug.apk
+          retention-days: 30
+          if-no-files-found: error
+      - name: Publish directly downloadable prerelease APK
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          tag="android-v0.228.0-real-spider-footplant-debug-20261031"
+          apk="BetVima-Android-v0.228.0-Real-Spider-Footplant-DEBUG.apk"
+          cp android-native/app/build/outputs/apk/debug/app-debug.apk "$apk"
+          if gh release view "$tag" >/dev/null 2>&1; then
+            gh release upload "$tag" "$apk" --clobber
+          else
+            gh release create "$tag" "$apk" --target "$GITHUB_SHA" \
+              --prerelease --title "BetVima Android v0.228.0 - Real Spider Walking Cycle (debug)" \
+              --notes "BetVima Android 0.228.0 DEBUG preview. The genuine photoreal torso retains forty-eight different anatomically articulated spider leg configurations (not a warped static image). Individual eight-legged gait with 64 percent planted stance, lifted swing, tapered hair-covered segment joints, distance-synchronized curved walking and six central ticket entry points. On Lost the spider follows nonlinear path and shrinks inside the actual badge. Win animation, casino, betting, balances, server and settlement unchanged. Debug signed; device-level visual inspection advised."
+          fi
