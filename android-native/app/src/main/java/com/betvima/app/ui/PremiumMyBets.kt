@@ -413,11 +413,6 @@ private fun PremiumTicket(
     val accent = ticketResultColor(bet)
     val confirmedWin = bet.isSettled && accent == Palette.green
     val confirmedLoss = bet.isSettled && accent == Palette.red
-    // Trigger on every true opening (including the first automatically opened
-    // ticket), rather than only clicks on the ticket title.
-    LaunchedEffect(expanded, confirmedLoss) {
-        if (expanded && confirmedLoss) lossReplay++
-    }
     val isMix = bet.type.equals("MULTIPLE", ignoreCase = true) || bet.legs > 1
     val title = if (isMix)
         tr(lang, "Mix bet", "شرط میکس") + " (" + bet.legs + " " +
@@ -455,6 +450,7 @@ private fun PremiumTicket(
                         )
                     ).clickable {
                         if (!expanded && confirmedWin) winReplay++
+                        if (!expanded && confirmedLoss) lossReplay++
                         onToggle()
                     }
                     .padding(horizontal = 11.dp, vertical = 9.dp),
@@ -655,8 +651,7 @@ private fun PremiumTicket(
             replay = lossReplay,
             // Each distinct opening uses another of six surface entrances.
             // The bet id only offsets the initial variant per ticket.
-            routeVariant = Math.floorMod(lossReplay + bet.id.hashCode(),
-                LOSS_SPIDER_ROUTE_COUNT_224),
+            routeVariant = lossSpiderEntryIndex225(lossReplay, bet.id.hashCode()),
             badgeTarget = target,
             modifier = Modifier.matchParentSize(),
             onComplete = { completedLossReplay = lossReplay }
