@@ -7,6 +7,8 @@ import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.res.imageResource
@@ -24,6 +26,11 @@ import kotlin.math.PI
 import kotlin.math.atan2
 import kotlin.math.sin
 import kotlin.math.roundToInt
+import kotlin.math.floor
+import kotlin.math.cos
+import kotlin.math.hypot
+import kotlin.math.max
+import kotlin.math.min
 
 /**
  * Photo-based spider animation.
@@ -93,29 +100,86 @@ internal fun lossSpiderPoint222(
     )
 }
 
-internal const val SPIDER_WALK_FRAME_COUNT_227 = 48
-internal const val SPIDER_WALK_FRAME_WIDTH_227 = 160
-internal const val SPIDER_WALK_FRAME_HEIGHT_227 = 130
-internal const val SPIDER_WALK_GRID_COLUMNS_228 = 8
-internal const val SPIDER_WALK_STRIDES_227 = 6
 
-/** Vary travel velocity gently without a hard stop, but keep gait in phase
- * with distance covered. Derivative remains positive throughout the route.
+/** Physics-inspired runtime gait: eight independently animated, anchored feet.
+ * The old sheet of fixed poses is intentionally not used: a sprite sheet has
+ * no knowledge of the body's actual motion and therefore appears to slide.
  */
+internal const val SPIDER_IK_STRIDES_229 = 8
+internal const val SPIDER_IK_STANCE_FRACTION_229 = .68f
+
 internal fun spiderWalkingDistance228(progress: Float): Float {
     val t = progress.coerceIn(0f, 1f)
     return (t - .024f * sin((4f * PI.toFloat() * t).toDouble()).toFloat())
         .coerceIn(0f, 1f)
 }
 
-/** Each stride has 48 distinct joint configurations. Contact and swing
- * phases come from a photographed torso plus individually rigged limbs,
- * rather than distortions applied to the entire photograph.
+private fun spiderHeading229(
+    start: Offset, end: Offset, width: Float, height: Float, progress: Float
+): Offset {
+    val a = lossSpiderPoint222(start, end, width, height, (progress - .002f).coerceAtLeast(0f))
+    val b = lossSpiderPoint222(start, end, width, height, (progress + .002f).coerceAtMost(1f))
+    val dx = b.x - a.x
+    val dy = b.y - a.y
+    val length = hypot(dx.toDouble(), dy.toDouble()).toFloat().coerceAtLeast(.01f)
+    return Offset(dx / length, dy / length)
+}
+
+private fun spiderFootAnchor229(
+    leg: Int, touchdown: Float, start: Offset, end: Offset,
+    width: Float, height: Float, pixelScale: Float
+): Offset {
+    val t = touchdown.coerceIn(0f, 1f)
+    val body = lossSpiderPoint222(start, end, width, height, t)
+    val heading = spiderHeading229(start, end, width, height, t)
+    val normal = Offset(-heading.y, heading.x)
+    val row = leg % 4
+    val sign = if (leg < 4) -1f else 1f
+    val forward = floatArrayOf(21f, 7f, -10f, -22f)[row] * pixelScale
+    val spread = floatArrayOf(27f, 32f, 32f, 28f)[row] * pixelScale
+    return body + heading * forward + normal * (spread * sign)
+}
+
+/** The foot is *identical* in card/world coordinates for the entire stance.
+ * Only during swing does it interpolate to the next planted touchdown, with
+ * a small inward projection standing in for z-axis lift in this 2D overlay.
+ * Absolutely no mutable animation state or allocations of native Path objects.
  */
-internal fun spiderWalkFrame227(distance: Float): Int =
-    ((distance.coerceIn(0f, .99999f) *
-        (SPIDER_WALK_FRAME_COUNT_227 * SPIDER_WALK_STRIDES_227)).toInt()) %
-        SPIDER_WALK_FRAME_COUNT_227
+internal fun spiderFoot229(
+    leg: Int, progress: Float,
+    start: Offset, end: Offset, width: Float, height: Float, pixelScale: Float
+): Offset {
+    require(leg in 0..7)
+    val offset = if ((leg + (leg / 4)) % 2 == 0) 0f else .5f
+    val cycle = progress.coerceIn(0f, 1f) * SPIDER_IK_STRIDES_229 + offset
+    val whole = floor(cycle.toDouble()).toInt()
+    val phase = cycle - whole
+    val firstTouchdown = (whole - offset) / SPIDER_IK_STRIDES_229
+    val planted = spiderFootAnchor229(
+        leg, firstTouchdown, start, end, width, height, pixelScale
+    )
+    if (phase <= SPIDER_IK_STANCE_FRACTION_229) return planted
+    val next = spiderFootAnchor229(
+        leg, firstTouchdown + 1f / SPIDER_IK_STRIDES_229,
+        start, end, width, height, pixelScale
+    )
+    val swing = ((phase - SPIDER_IK_STANCE_FRACTION_229) /
+        (1f - SPIDER_IK_STANCE_FRACTION_229)).coerceIn(0f, 1f)
+    val eased = swing * swing * (3f - 2f * swing)
+    val heading = spiderHeading229(start, end, width, height, progress)
+    val normal = Offset(-heading.y, heading.x)
+    val side = if (leg < 4) -1f else 1f
+    val lift = sin((swing * PI).toDouble()).toFloat() * 3.3f * pixelScale
+    return planted * (1f - eased) + next * eased + normal * (-side * lift)
+}
+
+/** Dynamic knee placement: hips follow the body, foot stays planted, elbow
+ * flexes outward with the changing hip-to-foot displacement.
+ */
+internal fun spiderKnee229(root: Offset, foot: Offset, normal: Offset,
+                           side: Float, pixelScale: Float): Offset {
+    return root + (foot - root) * .52f + normal * (side * 7.4f * pixelScale)
+}
 
 @Composable
 internal fun LossTicketSpider222(
@@ -126,76 +190,98 @@ internal fun LossTicketSpider222(
     onComplete: () -> Unit
 ) {
     val progress = remember { Animatable(0f) }
-    // The real spider body remains photographic. All 48 poses show physically
-    // articulated eight legs, with planted stance and lifted swing phases.
-    val sprite = ImageBitmap.imageResource(id = R.drawable.spider_walk_cycle_228)
+    // The photo provides anatomical face/abdomen detail. Legs are generated
+    // live by eight stance/swing IK rigs, not a sequence of painted frames.
+    val bodyPhoto = ImageBitmap.imageResource(id = R.drawable.spider_realistic_226)
     val density = LocalDensity.current
-    val visualWidth = with(density) { 99.dp.toPx() }
-    val visualHeight = with(density) { 80.dp.toPx() }
-    val scaleUnit = with(density) { 1.dp.toPx() }
+    val dp = with(density) { 1.dp.toPx() }
 
     LaunchedEffect(replay, badgeTarget != null) {
         if (badgeTarget == null) return@LaunchedEffect
         progress.snapTo(0f)
         delay(LOSS_SPIDER_DELAY_MS_222)
         progress.animateTo(
-            1f, tween(durationMillis = LOSS_SPIDER_DURATION_MS_222,
-                easing = LinearEasing)
+            1f, tween(durationMillis = LOSS_SPIDER_DURATION_MS_222, easing = LinearEasing)
         )
         onComplete()
     }
 
     Canvas(modifier) {
-        val chip = badgeTarget ?: return@Canvas
-        val w = size.width
-        val h = size.height
-        if (w < 110f || h < 95f) return@Canvas
-        val t = progress.value
-        if (t >= 1f) return@Canvas
-
+        val badge = badgeTarget ?: return@Canvas
+        val width = size.width
+        val height = size.height
+        if (width < 110f || height < 95f) return@Canvas
+        val time = progress.value
+        if (time >= 1f) return@Canvas
         val route = spiderRoute226(routeVariant)
-        val start = lossSpiderStart224(route, w, h)
-        val destination = lossSpiderBadgeEntry224(chip, route, scaleUnit)
-        val distance = spiderWalkingDistance228(t)
-        val now = lossSpiderPoint222(start, destination, w, h, distance)
-        val before = lossSpiderPoint222(
-            start, destination, w, h, (distance - .004f).coerceAtLeast(0f)
-        )
-        val after = lossSpiderPoint222(
-            start, destination, w, h, (distance + .004f).coerceAtMost(1f)
-        )
-        // Orient the head along the actual curved travel tangent. Keep the body
-        // settled while independently stepping legs create the locomotion.
-        val direction = (atan2(
-            (after.y - before.y).toDouble(),
-            (after.x - before.x).toDouble()
-        ) * 180.0 / PI).toFloat() - 90f
-        val phase = (distance * SPIDER_WALK_STRIDES_227 * 2f * PI).toDouble()
-        // Modest centre-of-mass pitch; eight feet make the major motion.
-        val bob = .25f * scaleUnit * sin(phase * 2.0).toFloat()
-        val yaw = .7f * sin(phase).toFloat()
-        val complete = ((t - .89f) / .11f).coerceIn(0f, 1f)
-        val shrink = 1f - .75f * complete
-        val alpha = (1f - complete * complete).coerceIn(0f, 1f)
-        val frame = spiderWalkFrame227(distance)
+        val start = lossSpiderStart224(route, width, height)
+        val end = lossSpiderBadgeEntry224(badge, route, dp)
+        val travel = spiderWalkingDistance228(time)
+        val center = lossSpiderPoint222(start, end, width, height, travel)
+        val forward = spiderHeading229(start, end, width, height, travel)
+        val normal = Offset(-forward.y, forward.x)
+        val angle = (atan2(forward.y.toDouble(), forward.x.toDouble()) * 180.0 /
+            PI).toFloat() + 90f
+        val cycle = travel * SPIDER_IK_STRIDES_229 * 2f * PI.toFloat()
+        val bob = .38f * dp * sin(cycle.toDouble()).toFloat()
+        val body = center + normal * bob
+        val entering = ((time - .89f) / .11f).coerceIn(0f, 1f)
+        val shrink = 1f - entering * .72f
+        val opacity = (1f - entering * entering).coerceIn(0f, 1f)
 
-        rotate(degrees = direction + yaw, pivot = now) {
-            val destW = (visualWidth * shrink).roundToInt().coerceAtLeast(1)
-            val destH = (visualHeight * shrink).roundToInt().coerceAtLeast(1)
+        // Eight high-contrast, individually planted articulated legs. The
+        // final toe remains motionless through stance even while the body
+        // advances: this is what eliminates the former skating motion.
+        for (leg in 0 until 8) {
+            val row = leg % 4
+            val side = if (leg < 4) -1f else 1f
+            val hipF = floatArrayOf(13f, 4f, -6f, -14f)[row] * dp
+            val root = body + forward * hipF + normal * (side * 4.6f * dp * shrink)
+            val foot = spiderFoot229(
+                leg, travel, start, end, width, height, dp
+            )
+            // As the spider disappears into Lost, feet converge naturally.
+            val toe = body + (foot - body) * shrink
+            val first = root + normal * (side * 8.1f * dp * shrink) +
+                forward * ((1.5f - row) * 1.4f * dp)
+            val knee = spiderKnee229(first, toe, normal, side, dp * shrink)
+            val ankle = knee + (toe - knee) * .77f
+            val black = Color(0xFF101114).copy(alpha = opacity)
+            val sheen = Color(0xFF535963).copy(alpha = opacity * .77f)
+            drawLine(black, root, first, strokeWidth = 2.9f * dp * shrink,
+                cap = StrokeCap.Round)
+            drawLine(sheen, root, first, strokeWidth = .62f * dp * shrink,
+                cap = StrokeCap.Round)
+            drawLine(black, first, knee, strokeWidth = 3.5f * dp * shrink,
+                cap = StrokeCap.Round)
+            drawLine(sheen, first, knee, strokeWidth = .85f * dp * shrink,
+                cap = StrokeCap.Round)
+            drawLine(black, knee, ankle, strokeWidth = 2.7f * dp * shrink,
+                cap = StrokeCap.Round)
+            drawLine(sheen, knee, ankle, strokeWidth = .57f * dp * shrink,
+                cap = StrokeCap.Round)
+            drawLine(black, ankle, toe, strokeWidth = 1.7f * dp * shrink,
+                cap = StrokeCap.Round)
+            drawCircle(Color(0xFF25292D).copy(alpha = opacity),
+                radius = 1.7f * dp * shrink, center = knee)
+            drawCircle(Color(0xFF141619).copy(alpha = opacity),
+                radius = .7f * dp * shrink, center = toe)
+        }
+
+        // Overlay the real photographic head and abdomen (central crop of the
+        // original transparent image). No rectangular background is drawn.
+        // Source photo faces toward lower-left, hence anatomical correction.
+        rotate(degrees = angle - 135f, pivot = body) {
+            val dstWidth = (33f * dp * shrink).roundToInt().coerceAtLeast(1)
+            val dstHeight = (39f * dp * shrink).roundToInt().coerceAtLeast(1)
             drawImage(
-                image = sprite,
-                srcOffset = IntOffset(
-                    (frame % SPIDER_WALK_GRID_COLUMNS_228) * SPIDER_WALK_FRAME_WIDTH_227,
-                    (frame / SPIDER_WALK_GRID_COLUMNS_228) * SPIDER_WALK_FRAME_HEIGHT_227
-                ),
-                srcSize = IntSize(SPIDER_WALK_FRAME_WIDTH_227,
-                    SPIDER_WALK_FRAME_HEIGHT_227),
-                dstOffset = IntOffset(
-                    (now.x - destW / 2f).roundToInt(),
-                    (now.y + bob - destH / 2f).roundToInt()
-                ),
-                dstSize = IntSize(destW, destH),
-                alpha = alpha,
+                image = bodyPhoto,
+                srcOffset = IntOffset(51, 14),
+                srcSize = IntSize(74, 82),
+                dstOffset = IntOffset((body.x - dstWidth / 2f).roundToInt(),
+                    (body.y - dstHeight / 2f).roundToInt()),
+                dstSize = IntSize(dstWidth, dstHeight),
+                alpha = opacity,
                 filterQuality = FilterQuality.Medium
             )
         }
