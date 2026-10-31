@@ -1,5 +1,7 @@
 package com.betvima.app.ui
 
+import com.betvima.app.R
+
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.tween
