@@ -86,6 +86,24 @@ internal fun AffiliateCinematicPhoto(
     corner:Int=24,showMark:Boolean=false,
     content:@Composable BoxScope.()->Unit={}
 ) {
+    // Two user-supplied blue/white photos replace ONLY the mobile and
+    // reporting feature thumbnails. Fill the actual rounded viewport:
+    // no background gradient, artificial overlay or letterboxing.
+    if (scene == AffiliateScene.MOBILE || scene == AffiliateScene.STATISTICS) {
+        val illustration = if (scene == AffiliateScene.MOBILE) {
+            com.betvima.app.R.drawable.affiliate_feature_mobile_blue_234
+        } else {
+            com.betvima.app.R.drawable.affiliate_feature_reporting_blue_234
+        }
+        Image(
+            painter = painterResource(illustration),
+            contentDescription = null,
+            contentScale = ContentScale.Crop,
+            modifier = modifier.clip(RoundedCornerShape(corner.dp)).clipToBounds()
+        )
+        return
+    }
+
     val context=LocalContext.current
     val chartScene = scene == AffiliateScene.STATISTICS ||
         scene == AffiliateScene.CHART || scene == AffiliateScene.GALLERY_INSIGHTS
