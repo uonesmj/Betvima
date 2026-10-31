@@ -31,6 +31,10 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.platform.LocalContext
@@ -440,100 +444,47 @@ private fun PartnerHero(
     onGetStarted: () -> Unit,
     onLogin: () -> Unit
 ) {
-    val appear by animateFloatAsState(
-        if(active) 1f else 0f,
-        animationSpec=tween(780,easing=FastOutSlowInEasing),
-        label="partner-reference-hero"
-    )
-    val buoyancy=rememberInfiniteTransition(label="partner-hero-object")
-    val floatY by buoyancy.animateFloat(
-        initialValue=0f,targetValue=(-12f),
-        animationSpec=infiniteRepeatable(tween(2800,easing=EaseInOutSine),
-            repeatMode=RepeatMode.Reverse),label="phone-gentle-hover"
-    )
-    Box(Modifier.fillMaxWidth().height(648.dp).background(
-        Brush.verticalGradient(listOf(
-            partnerNight,Color(0xFF0C0F1C),Color(0xFF1B2031),partnerNight
-        ))
-    )) {
-        AffiliateCinematicPhoto(
-            AffiliateScene.HERO,
-            modifier=Modifier.align(Alignment.BottomCenter)
-                .fillMaxWidth().height(413.dp),
-            active=active,corner=0,showMark=false
+    // User-supplied artwork is the ENTIRE hero. Its container keeps the exact
+    // source aspect ratio (1229 x 1536), so there is no crop, letterboxing,
+    // colored backdrop, gradient overlay, duplicate caption, or extra margin.
+    // The button and sign-in callouts are already baked into the graphic.
+    // Transparent hit targets keep both calls to action fully functional.
+    BoxWithConstraints(
+        modifier = Modifier.fillMaxWidth().aspectRatio(1229f / 1536f)
+    ) {
+        Image(
+            painter = painterResource(com.betvima.app.R.drawable.affiliate_hero_custom_20261031),
+            contentDescription = tr(
+                lang,
+                "BetVima Partners affiliate program hero",
+                "تصویر بخش همکاری در فروش بت‌ویما"
+            ),
+            contentScale = ContentScale.FillBounds,
+            modifier = Modifier.matchParentSize()
         )
-        Box(Modifier.fillMaxSize().background(Brush.verticalGradient(
-            listOf(partnerNight.copy(alpha=.65f),
-                Color(0xFF111427).copy(alpha=.17f),
-                Color(0xFF0B0E19).copy(alpha=.14f),
-                partnerNight.copy(alpha=.92f)
-            )
-        )))
-        Column(
-            Modifier.fillMaxWidth()
-                .align(Alignment.TopStart)
-                .padding(horizontal=23.dp,vertical=24.dp),
-            horizontalAlignment=Alignment.Start
-        ) {
-            Text(
-                tr(lang,
-                    "A leading platform.\nA stronger partnership.",
-                    "یک پلتفرم حرفه‌ای.\nیک همکاری سودآور."),
-                color=Color.White,
-                fontSize=32.sp,
-                lineHeight=38.sp,
-                fontWeight=FontWeight.Black,
-                modifier=Modifier.graphicsLayer {
-                    alpha=appear
-                    translationY=(1f-appear)*54f
+        Box(
+            modifier = Modifier
+                .offset(x = maxWidth * .047f, y = maxHeight * .453f)
+                .width(maxWidth * .345f)
+                .height(maxHeight * .081f)
+                .semantics {
+                    contentDescription = tr(
+                        lang, "Become an affiliate", "شروع همکاری"
+                    )
                 }
-            )
-            Spacer(Modifier.height(13.dp))
-            Text(tr(lang,
-                "Bring the right audience to BetVima and grow through transparent tracking.",
-                "مخاطبان مناسب را به بت‌ویما معرفی کنید و با رهگیری شفاف رشد کنید."),
-                color=Color(0xFFC9D1E8),fontSize=12.sp,lineHeight=18.sp)
-            Spacer(Modifier.height(19.dp))
-            Button(
-                onClick=onGetStarted,
-                shape=RoundedCornerShape(11.dp),
-                colors=ButtonDefaults.buttonColors(containerColor=partnerBlue),
-                modifier=Modifier.height(48.dp)
-            ) {
-                Text(tr(lang,"Become an affiliate","شروع همکاری"),
-                    color=Color.White,fontSize=13.sp,
-                    fontWeight=FontWeight.Black)
-                Spacer(Modifier.width(13.dp))
-                Icon(Icons.Default.ArrowForward,null,
-                    modifier=Modifier.size(17.dp),tint=Color.White)
-            }
-            TextButton(onClick=onLogin) {
-                Text(tr(lang,"Already partnered? Sign in","همکار هستید؟ ورود"),
-                    color=Color(0xFFE7ECFF),fontSize=11.sp)
-            }
-        }
-        // Phone images are composed within the BetVima artwork itself.
-        PartnerFloatLabel(
-            "70% RevShare",
-            tr(lang,"For approved BetVima partners","برای همکاران تأییدشده"),
-            Modifier.align(Alignment.BottomStart)
-                .padding(start=17.dp,bottom=195.dp)
-                .graphicsLayer {
-                    alpha=appear
-                    translationX=(1f-appear)*(-72f)
-                    rotationZ=(-7f)
-                }
+                .clickable(role = Role.Button, onClick = onGetStarted)
         )
-        PartnerFloatLabel(
-            "CPA",
-            tr(lang,"Terms agreed individually","شرایط با تأیید جداگانه"),
-            Modifier.align(Alignment.BottomStart)
-                .padding(start=33.dp,bottom=94.dp)
-                .graphicsLayer {
-                    alpha=appear
-                    translationX=(1f-appear)*(-62f)
-                    rotationZ=6f
+        Box(
+            modifier = Modifier
+                .offset(x = maxWidth * .044f, y = maxHeight * .538f)
+                .width(maxWidth * .240f)
+                .height(maxHeight * .045f)
+                .semantics {
+                    contentDescription = tr(
+                        lang, "Already partnered? Sign in", "همکار هستید؟ ورود"
+                    )
                 }
+                .clickable(role = Role.Button, onClick = onLogin)
         )
     }
 }
