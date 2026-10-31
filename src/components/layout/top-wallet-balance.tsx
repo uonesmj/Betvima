@@ -62,7 +62,7 @@ export function TopWalletBalance() {
         const row = payload.ok ? validatedBalance(payload.data?.wallet) : null;
         if (!row || stopped) return;
         const version = BigInt(row.version);
-        if (version < lastVersion) return;
+        if (version <= lastVersion) return;
         lastVersion = version;
         setSnapshot(row);
         setSnapshotUserId(userId);
@@ -76,7 +76,9 @@ export function TopWalletBalance() {
       if (document.visibilityState === 'visible') void refresh();
     };
     const onFocus = () => { void refresh(); };
-    const timer = window.setInterval(() => { void refresh(); }, 4_000);
+    // Read the canonical wallet at most twice per second while the page is visible.
+    // The inFlight guard above prevents concurrent requests from accumulating.
+    const timer = window.setInterval(() => { void refresh(); }, 500);
     window.addEventListener('focus', onFocus);
     window.addEventListener('nova:wallet-balance-changed', onFocus);
     document.addEventListener('visibilitychange', onVisible);
