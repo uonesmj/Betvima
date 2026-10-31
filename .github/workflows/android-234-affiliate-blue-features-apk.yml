@@ -1,0 +1,126 @@
+name: BetVima Android 234 Blue Affiliate Feature Cards Debug APK
+on:
+  push:
+    branches:
+      - feat/android-234-affiliate-blue-feature-photos-20261031
+    paths:
+      - 'android-native/**'
+      - '.github/workflows/android-234-affiliate-blue-features-apk.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-android-apk:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 50
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify native UI source and no financial mutations
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('android-native/app/src/main/java/com/betvima/app/ui')
+          grade = Path('android-native/app/build.gradle.kts').read_text()
+          app = (p / 'BetvimaApp.kt').read_text()
+          locale = (p / 'LanguagePicker.kt').read_text()
+          drawer = (p / 'ReferenceMenuDrawer.kt').read_text()
+          sports = (p / 'PremiumTournamentSheet.kt').read_text()
+          wallet = (p / 'PremiumWallet.kt').read_text()
+          affiliate = (p / 'PremiumAffiliateLanding.kt').read_text()
+          reveal = (p / 'AffiliateCinematicArtwork.kt').read_text()
+          casino = (p / 'CasinoLobby.kt').read_text()
+          assert 'versionCode = 234' in grade and 'versionName = "0.234.0"' in grade
+          assert 'onSelect = { selected -> model.setLanguage(selected) }' in app
+          assert 'Icons.Default.Settings)' in drawer
+          assert 'Color(0xFF111216)' in sports
+          assert 'Color(0xFFF5F7FC)' in sports
+          assert 'Color(0xFF1D2230)' in locale
+          assert 'Active bets (loaded)' in wallet and 'Withdrawal requests use available funds' in wallet
+          assert 'showing(12)' in affiliate and 'showing(16)' in affiliate
+          assert 'LaunchedEffect(Unit) { revealed = true }' in reveal
+          assert 'containerColor = Color(0xFF24262C)' in casino
+          assert 'disabledContentColor = Color(0xFFDBE1EC)' in casino
+          from subprocess import check_output
+          ticket = (p / 'PremiumMyBets.kt').read_text()
+          lost = (p / 'LossTicketSparklers232.kt').read_text()
+          assert 'LOSS_BURST_INTRO_MS_232 = 1950' in lost
+          assert 'LossTicketSparklers232(' in ticket
+          assert 'if (expanded && confirmedLoss && completedLossReplay != lossReplay)' in ticket
+          assert 'if (!expanded && confirmedLoss) lossReplay++' in ticket
+          assert 'WinTicketSparklers(' in ticket
+          assert 'if (expanded && confirmedWin)' in ticket
+          assert 'LaunchedEffect(replay)' in lost
+          assert 'onComplete()' in lost
+          assert 'repeat(4) { burst ->' in lost
+          assert 'Color(0xFFEF496A)' in lost and 'Color(0xFFB51B44)' in lost
+          assert 'Spider' not in ticket, 'Legacy spider remains in bet cards'
+          assert not list(p.glob('*Spider*.kt')), 'Spider component must be removed'
+          assert not list(p.glob('SpiderGroundedGait*.kt'))
+          assert not list(Path('android-native/app/src/main/res/drawable').glob('spider*'))
+          assert not list(Path('android-native/app/src/test').rglob('*Spider*.kt'))
+          win_file = p / 'WinTicketSparklers.kt'
+          win_hash = check_output(['git','hash-object',str(win_file)], text=True).strip()
+          assert win_hash == 'aa83fd88c1706190b6635fd58fbd95805840d75f', 'Win animation modified'
+          assert 'repeat(4) { burst ->' in win_file.read_text()
+          # Artwork checks: original hero + exactly eight offline thumbnails.
+          hero = affiliate
+          art = (p / 'AffiliateArt203.kt').read_text()
+          assert 'affiliate_hero_custom_20261031' in hero
+          assert 'AffiliateScene.GUIDE_START' in hero
+          assert 'AffiliateScene.FAQ_REVSHARE' in hero
+          assert 'fun affiliateCardArtIndex' in reveal
+          assert 'ContentScale.Crop' in reveal
+          assert len(art) > 20000 and 'imageData' in art
+          assert Path('android-native/app/src/main/res/drawable-nodpi/affiliate_hero_custom_20261031.webp').exists()
+          # Both full-bleed blue/white photographs must be bundled natively,
+          # with mobile and reporting card routing and NO decorative overlay.
+          image = (p / 'AffiliateCinematicArtwork.kt').read_text()
+          assert 'affiliate_feature_mobile_blue_234' in image
+          assert 'affiliate_feature_reporting_blue_234' in image
+          assert 'scene == AffiliateScene.MOBILE || scene == AffiliateScene.STATISTICS' in image
+          assert 'contentScale = ContentScale.Crop' in image
+          picture_root = Path('android-native/app/src/main/res/drawable-nodpi')
+          for photo in ('affiliate_feature_mobile_blue_234.webp',
+                        'affiliate_feature_reporting_blue_234.webp'):
+              raw = (picture_root / photo).read_bytes()
+              assert len(raw) > 4000 and raw[:4] == b'RIFF' and raw[8:12] == b'WEBP'
+          assert 'AffiliateScene.MOBILE' in affiliate and 'AffiliateScene.STATISTICS' in affiliate
+          print('PASS: new mobile/reporting blue photos bundled; 8 cards and Win unchanged')
+          PY
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Configure Android SDK
+        run: |
+          echo "ANDROID_HOME=/usr/local/lib/android/sdk" >> "$GITHUB_ENV"
+          /usr/local/lib/android/sdk/cmdline-tools/latest/bin/sdkmanager 'platforms;android-35' 'build-tools;35.0.0' || true
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.10.2'
+      - name: Build APK and run unit tests
+        working-directory: android-native
+        run: gradle --no-daemon --stacktrace :app:assembleDebug :app:testDebugUnitTest
+      - uses: actions/upload-artifact@v4
+        with:
+          name: BetVima-Android-v0.234.0-Affiliate-Blue-Features-DEBUG
+          path: android-native/app/build/outputs/apk/debug/app-debug.apk
+          retention-days: 30
+          if-no-files-found: error
+      - name: Publish directly downloadable prerelease APK
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          tag="android-v0.234.0-affiliate-blue-features-debug-20261031"
+          apk="BetVima-Android-v0.234.0-Affiliate-Blue-Features-DEBUG.apk"
+          cp android-native/app/build/outputs/apk/debug/app-debug.apk "$apk"
+          if gh release view "$tag" >/dev/null 2>&1; then
+            gh release upload "$tag" "$apk" --clobber
+          else
+            gh release create "$tag" "$apk" --target "$GITHUB_SHA" \
+              --prerelease --title "BetVima Android v0.234.0 - Affiliate Images (debug)" \
+              --notes "BetVima Android 0.234.0 DEBUG: user-provided blue-white photos inserted into the Designed for mobile and Partner reporting feature cards at full bleed, rounded corners, no extra background. The previous custom Affiliate hero and all 8 FAQ/Partner Knowledge thumbnails remain. All other frontend, red Lost effect, Win animation, wallet and backend untouched. GitHub CI compile and JVM unit tests."
+          fi
