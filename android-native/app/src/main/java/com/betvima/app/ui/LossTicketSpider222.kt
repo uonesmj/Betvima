@@ -228,7 +228,7 @@ internal fun LossTicketSpider222(
         val bob = .24f * dp * sin(cycle.toDouble()).toFloat()
         val body = center + normal * bob
         val entering = ((time - .89f) / .11f).coerceIn(0f, 1f)
-        val shrink = SPIDER_SIZE_MULTIPLIER_230 * (1f - entering * .72f)
+        val shrink = 1f - entering * .72f
         val opacity = (1f - entering * entering).coerceIn(0f, 1f)
 
         // Eight high-contrast, individually planted articulated legs. The
@@ -272,8 +272,8 @@ internal fun LossTicketSpider222(
         // original transparent image). No rectangular background is drawn.
         // Source photo faces toward lower-left, hence anatomical correction.
         rotate(degrees = angle - 135f, pivot = body) {
-            val dstWidth = (27f * dp * shrink).roundToInt().coerceAtLeast(1)
-            val dstHeight = (31f * dp * shrink).roundToInt().coerceAtLeast(1)
+            val dstWidth = (34f * dp * SPIDER_SIZE_MULTIPLIER_230 * shrink).roundToInt().coerceAtLeast(1)
+            val dstHeight = (39f * dp * SPIDER_SIZE_MULTIPLIER_230 * shrink).roundToInt().coerceAtLeast(1)
             drawImage(
                 image = bodyPhoto,
                 srcOffset = IntOffset(51, 14),
