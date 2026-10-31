@@ -60,7 +60,7 @@ jobs:
           assert image.exists(), 'Missing the animated leg-pose sprite'
           b = image.read_bytes()
           assert len(b) > 50000 and b[:4] == b'RIFF' and b[8:12] == b'WEBP'
-          assert 'generate_spider_walk_228.py' in str(Path('android-native/scripts/generate_spider_walk_227.py'))
+          assert Path('android-native/scripts/generate_spider_walk_228.py').is_file()
           win = (p / 'WinTicketSparklers.kt').read_text()
           assert 'repeat(4) { burst ->' in win
           assert 'winBurstPhase223' in win
