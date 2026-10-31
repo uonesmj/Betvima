@@ -93,16 +93,27 @@ internal fun lossSpiderPoint222(
     )
 }
 
-internal const val SPIDER_WALK_FRAME_COUNT_227 = 16
-internal const val SPIDER_WALK_FRAME_WIDTH_227 = 224
-internal const val SPIDER_WALK_FRAME_HEIGHT_227 = 176
-internal const val SPIDER_WALK_STRIDES_227 = 7
+internal const val SPIDER_WALK_FRAME_COUNT_227 = 48
+internal const val SPIDER_WALK_FRAME_WIDTH_227 = 160
+internal const val SPIDER_WALK_FRAME_HEIGHT_227 = 130
+internal const val SPIDER_WALK_GRID_COLUMNS_228 = 8
+internal const val SPIDER_WALK_STRIDES_227 = 6
 
-/** A distinct leg pose every 22-35 ms while the spider crawls.
- * Alternating feet are displaced in the actual transparent photograph.
+/** Vary travel velocity gently without a hard stop, but keep gait in phase
+ * with distance covered. Derivative remains positive throughout the route.
  */
-internal fun spiderWalkFrame227(progress: Float): Int =
-    ((progress.coerceIn(0f, .99999f) *
+internal fun spiderWalkingDistance228(progress: Float): Float {
+    val t = progress.coerceIn(0f, 1f)
+    return (t - .024f * sin((4f * PI.toFloat() * t).toDouble()).toFloat())
+        .coerceIn(0f, 1f)
+}
+
+/** Each stride has 48 distinct joint configurations. Contact and swing
+ * phases come from a photographed torso plus individually rigged limbs,
+ * rather than distortions applied to the entire photograph.
+ */
+internal fun spiderWalkFrame227(distance: Float): Int =
+    ((distance.coerceIn(0f, .99999f) *
         (SPIDER_WALK_FRAME_COUNT_227 * SPIDER_WALK_STRIDES_227)).toInt()) %
         SPIDER_WALK_FRAME_COUNT_227
 
@@ -115,12 +126,12 @@ internal fun LossTicketSpider222(
     onComplete: () -> Unit
 ) {
     val progress = remember { Animatable(0f) }
-    // The actual photo has sixteen different articulated leg poses. The entire
-    // sprite sheet is decoded once and only source rectangles change on frames.
-    val sprite = ImageBitmap.imageResource(id = R.drawable.spider_walk_cycle_227)
+    // The real spider body remains photographic. All 48 poses show physically
+    // articulated eight legs, with planted stance and lifted swing phases.
+    val sprite = ImageBitmap.imageResource(id = R.drawable.spider_walk_cycle_228)
     val density = LocalDensity.current
-    val visualWidth = with(density) { 87.dp.toPx() }
-    val visualHeight = with(density) { 69.dp.toPx() }
+    val visualWidth = with(density) { 99.dp.toPx() }
+    val visualHeight = with(density) { 80.dp.toPx() }
     val scaleUnit = with(density) { 1.dp.toPx() }
 
     LaunchedEffect(replay, badgeTarget != null) {
@@ -145,33 +156,38 @@ internal fun LossTicketSpider222(
         val route = spiderRoute226(routeVariant)
         val start = lossSpiderStart224(route, w, h)
         val destination = lossSpiderBadgeEntry224(chip, route, scaleUnit)
-        val now = lossSpiderPoint222(start, destination, w, h, t)
+        val distance = spiderWalkingDistance228(t)
+        val now = lossSpiderPoint222(start, destination, w, h, distance)
         val before = lossSpiderPoint222(
-            start, destination, w, h, (t - .004f).coerceAtLeast(0f)
+            start, destination, w, h, (distance - .004f).coerceAtLeast(0f)
         )
         val after = lossSpiderPoint222(
-            start, destination, w, h, (t + .004f).coerceAtMost(1f)
+            start, destination, w, h, (distance + .004f).coerceAtMost(1f)
         )
-        // The source photo faces down; the vector derivative rotates its face
-        // into the direction of crawling. A tiny rhythmic yaw tracks the legs.
+        // Orient the head along the actual curved travel tangent. Keep the body
+        // settled while independently stepping legs create the locomotion.
         val direction = (atan2(
             (after.y - before.y).toDouble(),
             (after.x - before.x).toDouble()
         ) * 180.0 / PI).toFloat() - 90f
-        val phase = (t * SPIDER_WALK_STRIDES_227 * 2f * PI).toDouble()
-        val bob = .65f * scaleUnit * sin(phase * 2.0).toFloat()
-        val yaw = 1.4f * sin(phase).toFloat()
+        val phase = (distance * SPIDER_WALK_STRIDES_227 * 2f * PI).toDouble()
+        // Modest centre-of-mass pitch; eight feet make the major motion.
+        val bob = .25f * scaleUnit * sin(phase * 2.0).toFloat()
+        val yaw = .7f * sin(phase).toFloat()
         val complete = ((t - .89f) / .11f).coerceIn(0f, 1f)
         val shrink = 1f - .75f * complete
         val alpha = (1f - complete * complete).coerceIn(0f, 1f)
-        val frame = spiderWalkFrame227(t)
+        val frame = spiderWalkFrame227(distance)
 
         rotate(degrees = direction + yaw, pivot = now) {
             val destW = (visualWidth * shrink).roundToInt().coerceAtLeast(1)
             val destH = (visualHeight * shrink).roundToInt().coerceAtLeast(1)
             drawImage(
                 image = sprite,
-                srcOffset = IntOffset(frame * SPIDER_WALK_FRAME_WIDTH_227, 0),
+                srcOffset = IntOffset(
+                    (frame % SPIDER_WALK_GRID_COLUMNS_228) * SPIDER_WALK_FRAME_WIDTH_227,
+                    (frame / SPIDER_WALK_GRID_COLUMNS_228) * SPIDER_WALK_FRAME_HEIGHT_227
+                ),
                 srcSize = IntSize(SPIDER_WALK_FRAME_WIDTH_227,
                     SPIDER_WALK_FRAME_HEIGHT_227),
                 dstOffset = IntOffset(
