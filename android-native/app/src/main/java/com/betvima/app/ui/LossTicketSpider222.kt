@@ -96,7 +96,7 @@ internal fun LossTicketSpider222(
         val t = progress.value
         if (t >= 1f) return@Canvas
 
-        val start = Offset(23.dp.toPx(), h - 25.dp.toPx())
+        val start = Offset(40.dp.toPx(), h - 29.dp.toPx())
         val end = Offset(
             target.x.coerceIn(48.dp.toPx(), w - 12.dp.toPx()),
             target.y.coerceIn(12.dp.toPx(), h - 45.dp.toPx())
