@@ -34,7 +34,7 @@ internal const val WIN_TICKET_LOOP_MS_207 = 7800
 internal const val WIN_TICKET_INTRO_MS_207 = 2200
 
 internal fun winBurstPhase223(open: Float, index: Int): Float =
-    ((open - index * .115f) / .66f).coerceIn(0f, 1f)
+    ((open - index * .115f) / .62f).coerceIn(0f, 1f)
 
 @Composable
 internal fun WinTicketSparklers(replay: Int, modifier: Modifier = Modifier) {
