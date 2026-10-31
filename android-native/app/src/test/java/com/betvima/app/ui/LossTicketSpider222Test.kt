@@ -69,6 +69,42 @@ class LossTicketSpider222Test {
         assertTrue(kotlin.math.abs(spiderWalkingDistance228(.125f) - .125f) > .01f)
     }
 
+    @Test fun stanceFootIsFixedInWorldCoordinatesWhileBodyAdvances() {
+        val start = Offset(155f, 610f)
+        val end = Offset(300f, 34f)
+        val a = spiderFoot229(0, .028f, start, end, 350f, 770f, 1f)
+        val b = spiderFoot229(0, .060f, start, end, 350f, 770f, 1f)
+        assertEquals("The planted toe must not slide when the body moves", a.x, b.x, .001f)
+        assertEquals("The planted toe must not slide when the body moves", a.y, b.y, .001f)
+        val bodyA = lossSpiderPoint222(start, end, 350f, 770f, .028f)
+        val bodyB = lossSpiderPoint222(start, end, 350f, 770f, .060f)
+        assertTrue("The body must advance above fixed feet",
+            kotlin.math.abs(bodyB.y - bodyA.y) > 5f)
+    }
+
+    @Test fun staggeredLegsLiftAndReplaceTheirAnchorsIndependently() {
+        val start = Offset(155f, 610f)
+        val end = Offset(300f, 34f)
+        val stance = spiderFoot229(0, .055f, start, end, 350f, 770f, 1f)
+        val swing = spiderFoot229(0, .105f, start, end, 350f, 770f, 1f)
+        assertTrue("Swinging foot must move independently of the planted foot",
+            (stance - swing).getDistance() > 3f)
+        val left = spiderFoot229(0, .105f, start, end, 350f, 770f, 1f)
+        val right = spiderFoot229(4, .105f, start, end, 350f, 770f, 1f)
+        assertTrue("Opposite legs have separate planted coordinates",
+            (left - right).getDistance() > 30f)
+        assertEquals(8, SPIDER_IK_STRIDES_229)
+        assertEquals(.68f, SPIDER_IK_STANCE_FRACTION_229, .001f)
+    }
+
+    @Test fun riggedKneeChangesAsFixedFootRemainsPlanted() {
+        val toe = Offset(128f, 180f)
+        val a = spiderKnee229(Offset(98f, 150f), toe, Offset(1f, 0f), -1f, 1f)
+        val b = spiderKnee229(Offset(110f, 145f), toe, Offset(1f, 0f), -1f, 1f)
+        assertTrue("Knee bends as body advances toward planted toe",
+            (a - b).getDistance() > 3f)
+    }
+
     @Test fun safeRouteCounterAndSinglePlayTime() {
         assertEquals(6, LOSS_SPIDER_ROUTE_COUNT_224)
         assertEquals(380L, LOSS_SPIDER_DELAY_MS_222)
