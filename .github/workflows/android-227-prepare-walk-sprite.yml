@@ -1,0 +1,37 @@
+name: Generate and Commit BetVima 227 Walk Cycle Sprite
+on:
+  push:
+    branches:
+      - feat/android-227-real-spider-walking-cycle-20261031
+    paths:
+      - 'android-native/scripts/generate_spider_walk_227.py'
+      - '.github/workflows/android-227-prepare-walk-sprite.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  render-sprite:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Generate true 16-frame spider walk sheet from the real photo
+        run: |
+          python -m pip install --quiet pillow numpy opencv-python-headless
+          python android-native/scripts/generate_spider_walk_227.py
+          test -s android-native/app/src/main/res/drawable/spider_walk_cycle_227.webp
+      - name: Commit the generated asset to the feature branch
+        run: |
+          set -euo pipefail
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git config user.name "github-actions[bot]"
+          git add android-native/app/src/main/res/drawable/spider_walk_cycle_227.webp
+          if ! git diff --cached --quiet; then
+            git commit -m "assets(android): check in transparent 16-frame spider walking sprite"
+            git push origin HEAD:feat/android-227-real-spider-walking-cycle-20261031
+          fi
