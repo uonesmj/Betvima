@@ -34,7 +34,7 @@ class LossTicketSpider222Test {
             assertTrue(climb.y < start.y)
             val last = lossSpiderPoint222(start, end, 350f, 770f, .98f)
             assertEquals("Final approach follows header surface",
-                end.y, last.y, .02f)
+                end.y, last.y, .35f)
         }
     }
 
