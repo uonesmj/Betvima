@@ -31,7 +31,7 @@ jobs:
           affiliate = (p / 'PremiumAffiliateLanding.kt').read_text()
           reveal = (p / 'AffiliateCinematicArtwork.kt').read_text()
           casino = (p / 'CasinoLobby.kt').read_text()
-          assert 'versionCode = 230' in grade and 'versionName = "0.231.0"' in grade
+          assert 'versionCode = 231' in grade and 'versionName = "0.231.0"' in grade
           assert 'onSelect = { selected -> model.setLanguage(selected) }' in app
           assert 'Icons.Default.Settings)' in drawer
           assert 'Color(0xFF111216)' in sports
