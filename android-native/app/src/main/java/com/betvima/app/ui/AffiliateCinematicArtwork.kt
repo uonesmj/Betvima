@@ -137,8 +137,12 @@ internal fun AffiliateCinematicPhoto(
     Box(modifier
         .clip(RoundedCornerShape(corner.dp))
         .clipToBounds()
-        .background(if (miniCardIndex >= 0) Color.Transparent
-            else Color(0xFF0E0E13))) {
+        .background(Brush.linearGradient(
+            if (miniCardIndex >= 0)
+                listOf(Color.Transparent, Color.Transparent, Color.Transparent)
+            else listOf(Color(0xFF0E0E13),
+                scene.accent.copy(alpha=.24f), Color(0xFF101116))
+        ))) {
         val resolvedBitmap = bitmap
         if(chartScene) {
             AffiliateAnimatedChart199(
