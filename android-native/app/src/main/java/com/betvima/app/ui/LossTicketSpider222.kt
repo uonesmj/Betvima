@@ -36,10 +36,19 @@ internal const val LOSS_SPIDER_TOTAL_MS_222 =
     LOSS_SPIDER_DELAY_MS_222 + LOSS_SPIDER_DURATION_MS_222
 internal const val LOSS_SPIDER_ROUTE_COUNT_224 = 6
 
+// Pure arithmetic, no Android platform Math.floorMod() calls in rendering.
+internal fun lossSpiderEntryIndex225(replay: Int, idHash: Int): Int =
+    ((replay.toLong() + idHash.toLong()) % LOSS_SPIDER_ROUTE_COUNT_224)
+        .let { ((it + LOSS_SPIDER_ROUTE_COUNT_224) % LOSS_SPIDER_ROUTE_COUNT_224).toInt() }
+
+private fun spiderRoute225(route: Int): Int =
+    ((route % LOSS_SPIDER_ROUTE_COUNT_224) + LOSS_SPIDER_ROUTE_COUNT_224) %
+        LOSS_SPIDER_ROUTE_COUNT_224
+
 internal fun lossSpiderStart224(
     route: Int, width: Float, height: Float
 ): Offset {
-    val n = Math.floorMod(route, LOSS_SPIDER_ROUTE_COUNT_224)
+    val n = spiderRoute225(route)
     val left = n % 2 == 0
     val margin = min(width * .105f, 42f)
     val y = when (n / 2) {
@@ -54,7 +63,7 @@ internal fun lossSpiderStart224(
 internal fun lossSpiderBadgeEntry224(
     badgeCenter: Offset, route: Int, pixelScale: Float
 ): Offset {
-    val n = Math.floorMod(route, LOSS_SPIDER_ROUTE_COUNT_224)
+    val n = spiderRoute225(route)
     val horizontal = when (n % 3) {
         0 -> -5f
         1 -> 4f
@@ -130,7 +139,7 @@ internal fun LossTicketSpider222(
         if (t >= 1f) return@Canvas
 
         // All entrances and Lost badge destinations come from measured card bounds.
-        val n = Math.floorMod(routeVariant, LOSS_SPIDER_ROUTE_COUNT_224)
+        val n = spiderRoute225(routeVariant)
         val margin = min(38.dp.toPx(), w * .11f)
         val initial = lossSpiderStart224(n, w, h)
         val start = Offset(if (n % 2 == 0) margin else w - margin, initial.y)
