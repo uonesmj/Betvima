@@ -46,7 +46,7 @@ jobs:
           ticket = (p / 'PremiumMyBets.kt').read_text()
           assert 'LOSS_SPIDER_DURATION_MS_222 = 3400' in spider
           assert 'LaunchedEffect(replay, badgeTarget != null)' in spider
-          assert 'drawCircle(' in spider and 'for (leg in 0 until 4)' in spider
+          assert 'Canvas(modifier)' in spider and 'rotate(degrees = facing' in spider
           assert 'lossSpiderStart224' in spider and 'lossSpiderBadgeEntry224' in spider
           assert 'val spiderImage = remember(context)' in spider
           assert 'drawImage(' in spider and 'BitmapFactory.decodeByteArray' in spider
