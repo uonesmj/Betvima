@@ -1,5 +1,7 @@
 package com.betvima.app.ui
 
+import com.betvima.app.R
+
 import android.graphics.BitmapFactory
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
