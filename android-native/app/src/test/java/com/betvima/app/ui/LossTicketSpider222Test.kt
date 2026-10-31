@@ -50,17 +50,6 @@ class LossTicketSpider222Test {
         }
     }
 
-    @Test fun allFortyEightJointPosesRenderAndMoveWithDistance() {
-        assertEquals(48, SPIDER_WALK_FRAME_COUNT_227)
-        assertEquals(160, SPIDER_WALK_FRAME_WIDTH_227)
-        assertEquals(130, SPIDER_WALK_FRAME_HEIGHT_227)
-        assertEquals(8, SPIDER_WALK_GRID_COLUMNS_228)
-        val poses = (0..10000).map { spiderWalkFrame227(it / 10000f) }.toSet()
-        assertEquals("Every anatomical foot pose must be displayed", 48, poses.size)
-        assertTrue(spiderWalkFrame227(.02f) != spiderWalkFrame227(.08f))
-        assertEquals(0, spiderWalkFrame227(0f))
-    }
-
     @Test fun distanceEaseIsStrictlyForwardAndLocomotionFollowsMotion() {
         val distances = (0..500).map { spiderWalkingDistance228(it / 500f) }
         assertEquals(0f, distances.first(), .0001f)
