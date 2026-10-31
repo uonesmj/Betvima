@@ -58,7 +58,8 @@ jobs:
           assert 'repeat(4) { burst ->' in win
           assert 'winBurstPhase223' in win
           assert 'repeat(38) { i ->' in win
-          assert 'if (!expanded && confirmedLoss) lossReplay++' in ticket
+          assert 'LaunchedEffect(expanded, confirmedLoss)' in ticket
+          assert 'if (expanded && confirmedLoss) lossReplay++' in ticket
           assert 'badge - origin' in ticket
           assert 'expanded && confirmedWin' in ticket
           print('PASS: native UI and lost-ticket one-shot animation checks')
