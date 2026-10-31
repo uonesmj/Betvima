@@ -649,6 +649,10 @@ private fun PremiumTicket(
         }
         LossTicketSpider222(
             replay = lossReplay,
+            // Each distinct opening uses another of six surface entrances.
+            // The bet id only offsets the initial variant per ticket.
+            routeVariant = Math.floorMod(lossReplay + bet.id.hashCode(),
+                LOSS_SPIDER_ROUTE_COUNT_224),
             badgeTarget = target,
             modifier = Modifier.matchParentSize(),
             onComplete = { completedLossReplay = lossReplay }
